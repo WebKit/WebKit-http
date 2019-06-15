@@ -122,6 +122,16 @@ ALLOW_DEPRECATED_DECLARATIONS_END
     _preferences->setJavaScriptEnabled(javaScriptEnabled);
 }
 
+- (void)setFraudulentWebsiteWarningEnabled:(BOOL)enabled
+{
+    _preferences->setSafeBrowsingEnabled(enabled);
+}
+
+- (BOOL)isFraudulentWebsiteWarningEnabled
+{
+    return _preferences->safeBrowsingEnabled();
+}
+
 - (BOOL)javaScriptCanOpenWindowsAutomatically
 {
     return _preferences->javaScriptCanOpenWindowsAutomatically();
@@ -647,6 +657,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setInactiveMediaCaptureSteamRepromptIntervalInMinutes:(double)interval
 {
     _preferences->setInactiveMediaCaptureSteamRepromptIntervalInMinutes(interval);
+}
+
+- (BOOL)_interruptAudioOnPageVisibilityChangeEnabled
+{
+    return _preferences->interruptAudioOnPageVisibilityChangeEnabled();
+}
+
+- (void)_setInterruptAudioOnPageVisibilityChangeEnabled:(BOOL)enabled
+{
+    _preferences->setInterruptAudioOnPageVisibilityChangeEnabled(enabled);
 }
 
 - (BOOL)_enumeratingAllNetworkInterfacesEnabled

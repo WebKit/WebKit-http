@@ -204,16 +204,16 @@ static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParameters
     WKTypeRef firstItem = WKArrayGetItemAtIndex(fileURLs, 0);
     
 #if PLATFORM(IOS_FAMILY)
-    WKStringRef displayString = WKURLCopyLastPathComponent(static_cast<WKURLRef>(firstItem));
+    auto displayString = adoptWK(WKURLCopyLastPathComponent(static_cast<WKURLRef>(firstItem)));
     WKDataRef mediaIcon = TestController::singleton().openPanelFileURLsMediaIcon();
     
     if (mediaIcon) {
         if (WKOpenPanelParametersGetAllowsMultipleFiles(parameters)) {
-            WKOpenPanelResultListenerChooseMediaFiles(resultListenerRef, fileURLs, displayString, mediaIcon);
+            WKOpenPanelResultListenerChooseMediaFiles(resultListenerRef, fileURLs, displayString.get(), mediaIcon);
             return;
         }
         
-        WKOpenPanelResultListenerChooseMediaFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get(), displayString, mediaIcon);
+        WKOpenPanelResultListenerChooseMediaFiles(resultListenerRef, adoptWK(WKArrayCreate(&firstItem, 1)).get(), displayString.get(), mediaIcon);
         return;
     }
 #endif
@@ -1388,8 +1388,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.contentInsetTop = std::stod(value);
         else if (key == "ignoreSynchronousMessagingTimeouts")
             testOptions.contextOptions.ignoreSynchronousMessagingTimeouts = parseBooleanTestHeaderValue(value);
-        else if (key == "shouldUseModernCompatibilityMode")
-            testOptions.shouldUseModernCompatibilityMode = parseBooleanTestHeaderValue(value);
+        else if (key == "contentMode")
+            testOptions.contentMode = { value.c_str() };
         else if (key == "enableAppNap")
             testOptions.enableAppNap = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;

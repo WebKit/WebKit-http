@@ -1,3 +1,133 @@
+2019-06-05  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Fire pointerout and pointerleave events after firing pointercancel
+        https://bugs.webkit.org/show_bug.cgi?id=198560
+
+        Reviewed by Dean Jackson.
+
+        Mark WPT progressions. Notably, the iOS-specific tests now have 100% PASS rate.
+
+        * web-platform-tests/pointerevents/pointerevent_mouse_capture_change_hover-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_pointercancel_touch-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_pointerleave_after_pointercancel_touch-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_pointerout_after_pointercancel_touch-expected.txt:
+
+2019-06-05  Javier Fernandez  <jfernandez@igalia.com>
+
+        Update the CSS Text WPT test suite
+        https://bugs.webkit.org/show_bug.cgi?id=197929
+
+        Reviewed by Myles C. Maxfield.
+
+        Import the last changes in the CSS Text suite.
+
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-001.html:
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-002.html:
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-013-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-013.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-014-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-014.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-015-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-015.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-016-expected.html: Added.
+        * web-platform-tests/css/css-text/line-break/line-break-anywhere-016.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/line-break/w3c-import.log:
+        * web-platform-tests/css/css-text/overflow-wrap/overflow-wrap-break-word-008.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-009.html:
+        * web-platform-tests/css/css-text/white-space/break-spaces-010-expected.html: Added.
+        * web-platform-tests/css/css-text/white-space/break-spaces-010.html: Added.
+        * web-platform-tests/css/css-text/white-space/w3c-import.log:
+        * web-platform-tests/css/css-text/white-space/white-space-intrinsic-size-004-expected.html:
+        * web-platform-tests/css/css-text/white-space/white-space-intrinsic-size-004.html:
+        * web-platform-tests/css/css-text/white-space/white-space-pre-wrap-trailing-spaces-002-expected.html:
+        * web-platform-tests/css/css-text/white-space/white-space-pre-wrap-trailing-spaces-002.html:
+        * web-platform-tests/css/css-text/white-space/white-space-pre-wrap-trailing-spaces-003-expected.html:
+        * web-platform-tests/css/css-text/white-space/white-space-pre-wrap-trailing-spaces-003.html:
+        * web-platform-tests/css/css-text/word-break/w3c-import.log:
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-017.html:
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-023.html:
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-024.html:
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-025-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-025.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-026-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-026.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-027-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-027.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-028-expected.html: Added.
+        * web-platform-tests/css/css-text/word-break/word-break-break-all-028.html: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-text/word-break/word-break-break-all-024.html.
+
+2019-06-01  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Add support for chorded button interactions
+        https://bugs.webkit.org/show_bug.cgi?id=198462
+
+        Reviewed by Dean Jackson.
+
+        Mark the progression for web-platform-tests/pointerevents/pointerevent_mouse_capture_change_hover.html which
+        proves the correct implementation of the chorded button interactions section of the Pointer Events spec. To do that,
+        we also had to make use of the "button" parameter used in WPT tests action sequences, which allows the test to indicate
+        which mouse button is pressed. Finally, there is now a change in the pointerevent_pointermove_on_chorded_mouse_button.html
+        results, another source change is required to get this test to fully pass.
+
+        * web-platform-tests/pointerevents/pointerevent_mouse_capture_change_hover-expected.txt:
+        * web-platform-tests/pointerevents/pointerevent_pointermove_on_chorded_mouse_button-expected.txt:
+        * web-platform-tests/resources/testdriver-vendor.js:
+        (dispatchMouseActions):
+
+2019-06-04  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events] Only allow pointer capture if the pointer is in the active buttons state
+        https://bugs.webkit.org/show_bug.cgi?id=198479
+
+        Reviewed by Dean Jackson.
+
+        Mark WPT progression.
+
+        * web-platform-tests/pointerevents/pointerevent_setpointercapture_inactive_button_mouse-expected.txt:
+
+2019-06-03  Rob Buis  <rbuis@igalia.com>
+
+        Implement imagesrcset and imagesizes attributes on link rel=preload
+        https://bugs.webkit.org/show_bug.cgi?id=192950
+
+        Reviewed by Youenn Fablet.
+
+        Import relevant tests for this feature.
+
+        * web-platform-tests/preload/dynamic-adding-preload-imagesrcset-expected.txt: Added.
+        * web-platform-tests/preload/dynamic-adding-preload-imagesrcset.html: Added.
+        * web-platform-tests/preload/link-header-preload-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-imagesrcset-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-imagesrcset.html: Added.
+        * web-platform-tests/preload/link-header-preload-imagesrcset.html.headers: Added.
+        * web-platform-tests/preload/link-header-preload-nonce-expected.txt: Added.
+        * web-platform-tests/preload/link-header-preload-nonce.html: Added.
+        * web-platform-tests/preload/link-header-preload-nonce.html.headers: Added.
+        * web-platform-tests/preload/link-header-preload.html: Added.
+        * web-platform-tests/preload/link-header-preload.html.headers: Added.
+        * web-platform-tests/preload/onload-event-expected.txt: Added.
+        * web-platform-tests/preload/onload-event.html: Added.
+        * web-platform-tests/preload/preload-csp.sub-expected.txt:
+        * web-platform-tests/preload/preload-csp.sub.html:
+        * web-platform-tests/preload/preload-default-csp.sub-expected.txt:
+        * web-platform-tests/preload/preload-default-csp.sub.html:
+        * web-platform-tests/preload/preload-with-type-expected.txt: Added.
+        * web-platform-tests/preload/preload-with-type.html: Added.
+        * web-platform-tests/preload/resources/A4.ogv: Added.
+        * web-platform-tests/preload/resources/A4.ogv.sub.headers: Added.
+        * web-platform-tests/preload/resources/cross-origin-module.py: Added.
+        (main):
+        * web-platform-tests/preload/resources/dummy-preloads-subresource.css: Added.
+        * web-platform-tests/preload/resources/dummy-preloads-subresource.css.sub.headers: Added.
+        * web-platform-tests/preload/resources/empty.html: Added.
+        * web-platform-tests/preload/resources/empty.html.sub.headers: Added.
+        * web-platform-tests/preload/resources/foo.vtt.sub.headers: Added.
+        * web-platform-tests/preload/resources/module1.js: Added.
+        * web-platform-tests/preload/resources/module2.js: Added.
+        * web-platform-tests/preload/resources/preload_helper.js:
+        (verifyNumberOfResourceTimingEntries):
+        (numberOfResourceTimingEntries):
+
 2019-05-31  Joonghun Park  <jh718.park@samsung.com>
 
         Always min-width should win over max-width.

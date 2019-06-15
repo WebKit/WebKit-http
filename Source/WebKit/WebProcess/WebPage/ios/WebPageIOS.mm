@@ -50,6 +50,7 @@
 #import "VisibleContentRectUpdateInfo.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
 #import "WebAutocorrectionContext.h"
+#import "WebAutocorrectionData.h"
 #import "WebChromeClient.h"
 #import "WebCoreArgumentCoders.h"
 #import "WebFrame.h"
@@ -131,9 +132,6 @@
 
 namespace WebKit {
 using namespace WebCore;
-
-const int blockSelectionStartWidth = 100;
-const int blockSelectionStartHeight = 100;
 
 void WebPage::platformInitialize()
 {
@@ -878,7 +876,7 @@ void WebPage::didFinishLoadingImageForElement(WebCore::HTMLImageElement& element
 void WebPage::computeAndSendEditDragSnapshot()
 {
     Optional<TextIndicatorData> textIndicatorData;
-    static auto defaultTextIndicatorOptionsForEditDrag = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor| TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    static auto defaultTextIndicatorOptionsForEditDrag = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor | TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
     if (auto range = std::exchange(m_rangeForDropSnapshot, nullptr)) {
         if (auto textIndicator = TextIndicator::createWithRange(*range, defaultTextIndicatorOptionsForEditDrag, TextIndicatorPresentationTransition::None, { }))
             textIndicatorData = textIndicator->data();
@@ -1234,93 +1232,6 @@ static IntRect selectionBoxForRange(WebCore::Range* range)
     return boundingRect;
 }
 
-static bool canShrinkToTextSelection(Node* node)
-{
-    if (node && !is<Element>(*node))
-        node = node->parentElement();
-    
-    auto* renderer = (node) ? node->renderer() : nullptr;
-    return renderer && renderer->childrenInline() && (is<RenderBlock>(*renderer) && !downcast<RenderBlock>(*renderer).inlineContinuation()) && !renderer->isTable();
-}
-
-static bool hasCustomLineHeight(Node& node)
-{
-    auto* renderer = node.renderer();
-    return renderer && renderer->style().lineHeight().isSpecified();
-}
-    
-RefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point, const VisiblePosition& position, SelectionFlags& flags)
-{
-    HitTestResult result = m_page->mainFrame().eventHandler().hitTestResultAtPoint((point), HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
-
-    Node* currentNode = result.innerNode();
-    if (!currentNode)
-        return nullptr;
-    RefPtr<Range> range;
-    FloatRect boundingRectInScrollViewCoordinates;
-
-    if (!currentNode->isTextNode() && !canShrinkToTextSelection(currentNode) && hasCustomLineHeight(*currentNode)) {
-        auto* renderer = currentNode->renderer();
-        if (is<RenderBlockFlow>(renderer)) {
-            auto* renderText = downcast<RenderBlockFlow>(*renderer).findClosestTextAtAbsolutePoint(point);
-            if (renderText && renderText->textNode())
-                currentNode = renderText->textNode();
-        }
-    }
-
-    if (currentNode->isTextNode()) {
-        range = enclosingTextUnitOfGranularity(position, ParagraphGranularity, DirectionForward);
-        if (!range || range->collapsed())
-            range = Range::create(currentNode->document(), position, position);
-        else {
-            m_blockRectForTextSelection = selectionBoxForRange(range.get());
-            range = wordRangeFromPosition(position);
-        }
-
-        return range;
-    }
-
-    if (!currentNode->isElementNode())
-        currentNode = currentNode->parentElement();
-
-    Node* bestChoice = currentNode;
-    while (currentNode) {
-        if (currentNode->renderer()) {
-            boundingRectInScrollViewCoordinates = currentNode->renderer()->absoluteBoundingBoxRect(true);
-            boundingRectInScrollViewCoordinates.scale(m_page->pageScaleFactor());
-            if (boundingRectInScrollViewCoordinates.width() > m_blockSelectionDesiredSize.width() && boundingRectInScrollViewCoordinates.height() > m_blockSelectionDesiredSize.height())
-                break;
-            bestChoice = currentNode;
-        }
-        currentNode = currentNode->parentElement();
-    }
-
-    if (!bestChoice)
-        return nullptr;
-
-    RenderObject* renderer = bestChoice->renderer();
-    if (!renderer || renderer->style().userSelect() == UserSelect::None)
-        return nullptr;
-
-    if (renderer->childrenInline() && (is<RenderBlock>(*renderer) && !downcast<RenderBlock>(*renderer).inlineContinuation()) && !renderer->isTable()) {
-        range = enclosingTextUnitOfGranularity(position, WordGranularity, DirectionBackward);
-        if (range && !range->collapsed())
-            return range;
-    }
-
-    // If all we could find is a block whose height is very close to the height
-    // of the visible area, don't use it.
-    const float adjustmentFactor = .97;
-    boundingRectInScrollViewCoordinates = renderer->absoluteBoundingBoxRect(true);
-
-    if (boundingRectInScrollViewCoordinates.height() > m_page->mainFrame().view()->exposedContentRect().height() * adjustmentFactor)
-        return nullptr;
-
-    range = Range::create(bestChoice->document());
-    range->selectNodeContents(*bestChoice);
-    return range->collapsed() ? nullptr : range;
-}
-
 void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithFocusedElement, CallbackID callbackID)
 {
     auto& frame = m_page->focusController().focusedOrMainFrame();
@@ -1462,14 +1373,6 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
             range = Range::create(*frame.document(), position, position);
         } else
             range = enclosingTextUnitOfGranularity(position, ParagraphGranularity, DirectionForward);
-        break;
-
-    case GestureType::MakeWebSelection:
-        if (wkGestureState == GestureRecognizerState::Began) {
-            m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
-            m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
-        }
-        range = rangeForWebSelectionAtPosition(point, position, flags);
         break;
 
     default:
@@ -2055,8 +1958,6 @@ void WebPage::selectTextWithGranularityAtPoint(const WebCore::IntPoint& point, u
     auto& frame = m_page->focusController().focusedOrMainFrame();
     RefPtr<Range> range = rangeForGranularityAtPoint(frame, point, granularity, isInteractingWithFocusedElement);
     if (!isInteractingWithFocusedElement) {
-        m_blockSelectionDesiredSize.setWidth(blockSelectionStartWidth);
-        m_blockSelectionDesiredSize.setHeight(blockSelectionStartHeight);
         auto* renderer = range ? range->startContainer().renderer() : nullptr;
         if (renderer && renderer->style().preserveNewline())
             m_blockRectForTextSelection = renderer->absoluteBoundingBoxRect(true);
@@ -2244,22 +2145,22 @@ void WebPage::replaceDictatedText(const String& oldText, const String& newText)
     frame.editor().setIgnoreSelectionChanges(false);
 }
 
-void WebPage::requestAutocorrectionData(const String& textForAutocorrection, CallbackID callbackID)
+void WebPage::requestAutocorrectionData(const String& textForAutocorrection, CompletionHandler<void(WebAutocorrectionData)>&& reply)
 {
-    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    auto& frame = m_page->focusController().focusedOrMainFrame();
     if (!frame.selection().isCaret()) {
-        send(Messages::WebPageProxy::AutocorrectionDataCallback(Vector<FloatRect>(), String(), 0, 0, callbackID));
+        reply({ });
         return;
     }
 
     VisiblePosition position = frame.selection().selection().start();
-    RefPtr<Range> range = wordRangeFromPosition(position);
+    auto range = wordRangeFromPosition(position);
     if (!range) {
-        send(Messages::WebPageProxy::AutocorrectionDataCallback(Vector<FloatRect>(), String(), 0, 0, callbackID));
+        reply({ });
         return;
     }
 
-    String textForRange = plainTextReplacingNoBreakSpace(range.get());
+    auto textForRange = plainTextReplacingNoBreakSpace(range.get());
     const unsigned maxSearchAttempts = 5;
     for (size_t i = 0;  i < maxSearchAttempts && textForRange != textForAutocorrection; ++i)
     {
@@ -2286,10 +2187,7 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, Cal
     if (auto* coreFont = frame.editor().fontForSelection(multipleFonts))
         font = coreFont->getCTFont();
 
-    CGFloat fontSize = CTFontGetSize(font);
-    uint64_t fontTraits = CTFontGetSymbolicTraits(font);
-    RetainPtr<NSString> fontName = adoptNS((NSString *)CTFontCopyFamilyName(font));
-    send(Messages::WebPageProxy::AutocorrectionDataCallback(rectsForText, fontName.get(), fontSize, fontTraits, callbackID));
+    reply({ WTFMove(rectsForText), (__bridge UIFont *)font });
 }
 
 void WebPage::applyAutocorrection(const String& correction, const String& originalText, CallbackID callbackID)
@@ -2535,7 +2433,7 @@ static void linkIndicatorPositionInformation(WebPage& page, Element& element, El
 
     auto textIndicator = TextIndicator::createWithRange(linkRange.get(),
         TextIndicatorOptionTightlyFitContent | TextIndicatorOptionRespectTextColor | TextIndicatorOptionPaintBackgrounds |
-        TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection,
+        TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionComputeEstimatedBackgroundColor,
         TextIndicatorPresentationTransition::None, FloatSize(marginInPoints * deviceScaleFactor, marginInPoints * deviceScaleFactor));
         
     if (textIndicator)
@@ -3307,6 +3205,9 @@ void WebPage::shrinkToFitContentTimerFired()
 bool WebPage::immediatelyShrinkToFitContent()
 {
     if (m_isClosed)
+        return false;
+
+    if (!m_page->settings().allowViewportShrinkToFitContent())
         return false;
 
     if (!shouldIgnoreMetaViewport())

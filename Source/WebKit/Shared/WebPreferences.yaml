@@ -82,7 +82,7 @@ XSSAuditorEnabled:
 
 SafeBrowsingEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   webcoreBinding: none
 
 PrivateBrowsingEnabled:
@@ -544,6 +544,12 @@ PeerConnectionEnabled:
   defaultValue: WebCore::LibWebRTCProvider::webRTCAvailable()
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
+
+InterruptAudioOnPageVisibilityChangeEnabled:
+  type: bool
+  defaultValue: WebCore::RealtimeMediaSourceCenter::shouldInterruptAudioOnPageVisibilityChange()
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(MEDIA_STREAM)
 
 WebRTCUnifiedPlanEnabled:
   type: bool
@@ -1063,14 +1069,6 @@ DisableScreenSizeOverride:
   defaultValue: false
   category: debug
   condition: PLATFORM(IOS_FAMILY)
-
-UseModernCompatibilityModeByDefault:
-  type: bool
-  defaultValue: false
-  humanReadableName: "Use Modern Compatibility Mode"
-  humanReadableDescription: "Use modern compatibility mode by default"
-  webcoreBinding: none
-  category: debug
 
 SimpleLineLayoutDebugBordersEnabled:
   type: bool
@@ -1634,6 +1632,22 @@ MouseEventsSimulationEnabled:
   category: internal
   condition: ENABLE(TOUCH_EVENTS)
 
+TextAutosizingUsesIdempotentMode:
+  type: bool
+  defaultValue: defaultTextAutosizingUsesIdempotentMode()
+  humanReadableName: "Idempotent Text Autosizing"
+  humanReadableDescription: "Use idempotent text autosizing mode"
+  category: internal
+  condition: ENABLE(TEXT_AUTOSIZING)
+
+AllowViewportShrinkToFitContent:
+  type: bool
+  defaultValue: true
+  humanReadableName: "Allow Viewport Shrink to Fit Content"
+  humanReadableDescription: "Allow the viewport shrink to fit content heuristic when appropriate"
+  category: internal
+  condition: PLATFORM(IOS_FAMILY)
+
 ReferrerPolicyAttributeEnabled:
   type: bool
   defaultValue: false
@@ -1670,6 +1684,14 @@ LinkPrefetchEnabled:
   defaultValue: false
   humanReadableName: "LinkPrefetch"
   humanReadableDescription: "Enable LinkedPrefetch"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+
+LinkPreloadResponsiveImagesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Link preload responsive images"
+  humanReadableDescription: "Enable link preload responsive images"
   webcoreBinding: RuntimeEnabledFeatures
   category: experimental
 

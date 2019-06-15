@@ -52,6 +52,7 @@
 #import "ViewUpdateDispatcherMessages.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WebAutocorrectionContext.h"
+#import "WebAutocorrectionData.h"
 #import "WebPageMessages.h"
 #import "WebProcessPool.h"
 #import "WebProcessProxy.h"
@@ -62,6 +63,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/UserAgent.h>
 #import <WebCore/ValidationBubble.h>
+#import <pal/spi/ios/MobileGestaltSPI.h>
 #import <wtf/text/TextStream.h>
 
 #if USE(QUICK_LOOK)
@@ -160,17 +162,6 @@ void WebPageProxy::touchesCallback(const WebCore::IntPoint& point, uint32_t touc
     callback->performCallbackWithReturnValue(point, touches, flags);
 }
 
-void WebPageProxy::autocorrectionDataCallback(const Vector<WebCore::FloatRect>& rects, const String& fontName, float fontSize, uint64_t fontTraits, CallbackID callbackID)
-{
-    auto callback = m_callbacks.take<AutocorrectionDataCallback>(callbackID);
-    if (!callback) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    callback->performCallbackWithReturnValue(rects, fontName, fontSize, fontTraits);
-}
-
 void WebPageProxy::selectionContextCallback(const String& selectedText, const String& beforeText, const String& afterText, CallbackID callbackID)
 {
     auto callback = m_callbacks.take<SelectionContextCallback>(callbackID);
@@ -180,17 +171,6 @@ void WebPageProxy::selectionContextCallback(const String& selectedText, const St
     }
 
     callback->performCallbackWithReturnValue(selectedText, beforeText, afterText);
-}
-
-void WebPageProxy::autocorrectionContextCallback(const WebAutocorrectionContext& context, CallbackID callbackID)
-{
-    auto callback = m_callbacks.take<AutocorrectionContextCallback>(callbackID);
-    if (!callback) {
-        ASSERT_NOT_REACHED();
-        return;
-    }
-
-    callback->performCallbackWithReturnValue(context);
 }
 
 void WebPageProxy::selectionRectsCallback(const Vector<WebCore::SelectionRect>& selectionRects, CallbackID callbackID)
@@ -464,15 +444,13 @@ void WebPageProxy::replaceSelectedText(const String& oldText, const String& newT
     m_process->send(Messages::WebPage::ReplaceSelectedText(oldText, newText), m_pageID);
 }
 
-void WebPageProxy::requestAutocorrectionData(const String& textForAutocorrection, WTF::Function<void (const Vector<WebCore::FloatRect>&, const String&, double, uint64_t, CallbackBase::Error)>&& callbackFunction)
+void WebPageProxy::requestAutocorrectionData(const String& textForAutocorrection, CompletionHandler<void(WebAutocorrectionData)>&& callback)
 {
     if (!hasRunningProcess()) {
-        callbackFunction(Vector<WebCore::FloatRect>(), String(), 0, 0, CallbackBase::Error::Unknown);
+        callback({ });
         return;
     }
-
-    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
-    m_process->send(Messages::WebPage::RequestAutocorrectionData(textForAutocorrection, callbackID), m_pageID);
+    m_process->connection()->sendWithAsyncReply(Messages::WebPage::RequestAutocorrectionData(textForAutocorrection), WTFMove(callback), m_pageID);
 }
 
 void WebPageProxy::applyAutocorrection(const String& correction, const String& originalText, WTF::Function<void (const String&, CallbackBase::Error)>&& callbackFunction)
@@ -1284,9 +1262,148 @@ const String& WebPageProxy::paymentCoordinatorCTDataConnectionServiceType(const 
 
 #endif
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebPageProxyIOSAdditions.mm>
+static bool desktopClassBrowsingSupported()
+{
+    static bool supportsDesktopClassBrowsing = false;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+#if PLATFORM(IOSMAC)
+        supportsDesktopClassBrowsing = true;
+#else
+        supportsDesktopClassBrowsing = currentUserInterfaceIdiomIsPad();
 #endif
+    });
+    return supportsDesktopClassBrowsing;
+}
+
+#if !PLATFORM(IOSMAC)
+
+static bool webViewSizeIsNarrow(WebCore::IntSize viewSize)
+{
+    return !viewSize.isEmpty() && viewSize.width() <= 375;
+}
+
+#endif // !PLATFORM(IOSMAC)
+
+static bool desktopClassBrowsingRecommendedForRequest(const WebCore::ResourceRequest& request)
+{
+    // FIXME: This should be additionally gated on site-specific quirks being enabled. However, site-specific quirks are already
+    // disabled by default in WKWebView, so we would need a new preference for controlling site-specific quirks that are on-by-default
+    // in all apps, but may be turned off via SPI (or via Web Inspector). See also: <rdar://problem/50035167>.
+    auto host = request.url().host();
+    if (equalLettersIgnoringASCIICase(host, "tv.kakao.com") || host.endsWithIgnoringASCIICase(".tv.kakao.com"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "tving.com") || host.endsWithIgnoringASCIICase(".tving.com"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "live.iqiyi.com") || host.endsWithIgnoringASCIICase(".live.iqiyi.com"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "video.sina.com.cn") || host.endsWithIgnoringASCIICase(".video.sina.com.cn"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "huya.com") || host.endsWithIgnoringASCIICase(".huya.com"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "video.tudou.com") || host.endsWithIgnoringASCIICase(".video.tudou.com"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "cctv.com") || host.endsWithIgnoringASCIICase(".cctv.com"))
+        return false;
+
+    if (equalLettersIgnoringASCIICase(host, "v.china.com.cn"))
+        return false;
+
+    return true;
+}
+
+enum class IgnoreAppCompatibilitySafeguards : bool { No, Yes };
+static bool desktopClassBrowsingRecommended(const WebCore::ResourceRequest& request, WebCore::IntSize viewSize, IgnoreAppCompatibilitySafeguards ignoreSafeguards)
+{
+    if (!desktopClassBrowsingRecommendedForRequest(request))
+        return false;
+
+#if !PLATFORM(IOSMAC)
+    if (webViewSizeIsNarrow(viewSize))
+        return false;
+#endif
+
+    static bool shouldRecommendDesktopClassBrowsing = false;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+#if PLATFORM(IOSMAC)
+        UNUSED_PARAM(ignoreSafeguards);
+        shouldRecommendDesktopClassBrowsing = true;
+#else
+        // While desktop-class browsing is supported on all iPad models, it is not recommended for iPad mini.
+        auto screenClass = MGGetSInt32Answer(kMGQMainScreenClass, MGScreenClassPad2);
+        shouldRecommendDesktopClassBrowsing = screenClass != MGScreenClassPad3 && screenClass != MGScreenClassPad4 && desktopClassBrowsingSupported();
+        if (ignoreSafeguards == IgnoreAppCompatibilitySafeguards::No && !linkedOnOrAfter(WebKit::SDKVersion::FirstWithModernCompabilityModeByDefault)) {
+            // Opt out apps that haven't yet built against the iOS 13 SDK to limit any incompatibilities as a result of enabling desktop-class browsing by default in
+            // WKWebView on appropriately-sized iPad models.
+            shouldRecommendDesktopClassBrowsing = false;
+        }
+#endif
+    });
+    return shouldRecommendDesktopClassBrowsing;
+}
+
+WebContentMode WebPageProxy::effectiveContentModeAfterAdjustingPolicies(API::WebsitePolicies& policies, const WebCore::ResourceRequest& request)
+{
+    if (m_preferences->mediaSourceEnabled()) {
+        // FIXME: This is a compatibility hack to ensure that turning MSE on via the existing preference still enables MSE.
+        policies.setMediaSourcePolicy(WebsiteMediaSourcePolicy::Enable);
+    }
+
+    auto viewSize = this->viewSize();
+    bool useDesktopBrowsingMode;
+    switch (policies.preferredContentMode()) {
+    case WebContentMode::Recommended: {
+        auto ignoreSafeguards = m_navigationClient->shouldBypassContentModeSafeguards() ? IgnoreAppCompatibilitySafeguards::Yes : IgnoreAppCompatibilitySafeguards::No;
+        useDesktopBrowsingMode = desktopClassBrowsingRecommended(request, viewSize, ignoreSafeguards);
+        break;
+    }
+    case WebContentMode::Mobile:
+        useDesktopBrowsingMode = false;
+        break;
+    case WebContentMode::Desktop:
+        useDesktopBrowsingMode = !policies.allowSiteSpecificQuirksToOverrideContentMode() || desktopClassBrowsingRecommendedForRequest(request);
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+        useDesktopBrowsingMode = false;
+        break;
+    }
+
+    m_allowsFastClicksEverywhere = false;
+
+    if (!useDesktopBrowsingMode)
+        return WebContentMode::Mobile;
+
+    if (policies.customUserAgent().isEmpty() && customUserAgent().isEmpty()) {
+        auto applicationName = policies.applicationNameForUserAgentWithModernCompatibility();
+        if (applicationName.isEmpty())
+            applicationName = applicationNameForUserAgent();
+        policies.setCustomUserAgent(standardUserAgentWithApplicationName(applicationName, UserAgentType::Desktop));
+    }
+
+    if (policies.customNavigatorPlatform().isEmpty()) {
+        // FIXME: Grab this from WebCore instead of hard-coding it here.
+        policies.setCustomNavigatorPlatform("MacIntel"_s);
+    }
+
+    if (desktopClassBrowsingSupported()) {
+        // Apply some additional desktop-class browsing behaviors on supported devices.
+        policies.setMetaViewportPolicy(WebsiteMetaViewportPolicy::Ignore);
+        policies.setMediaSourcePolicy(WebsiteMediaSourcePolicy::Enable);
+        policies.setSimulatedMouseEventsDispatchPolicy(WebsiteSimulatedMouseEventsDispatchPolicy::Allow);
+        policies.setLegacyOverflowScrollingTouchPolicy(WebsiteLegacyOverflowScrollingTouchPolicy::Disable);
+        m_allowsFastClicksEverywhere = true;
+    }
+
+    return WebContentMode::Desktop;
+}
 
 } // namespace WebKit
 

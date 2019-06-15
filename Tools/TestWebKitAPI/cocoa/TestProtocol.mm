@@ -29,6 +29,10 @@
 #import <WebKit/WKBrowsingContextController.h>
 #import <wtf/RetainPtr.h>
 
+#if PLATFORM(IOS_FAMILY)
+#include <MobileCoreServices/MobileCoreServices.h>
+#endif
+
 static NSString *testScheme;
 
 @implementation TestProtocol
@@ -68,9 +72,29 @@ static NSString *testScheme;
     testScheme = nil;
 }
 
+static NSDictionary<NSString *, NSString *> *additionalResponseHeaders;
+
++ (NSDictionary<NSString *, NSString *> *)additionalResponseHeaders
+{
+    return additionalResponseHeaders;
+}
+
++ (void)setAdditionalResponseHeaders:(NSDictionary<NSString *, NSString *> *)additionalHeaders
+{
+    [additionalResponseHeaders autorelease];
+    additionalResponseHeaders = [additionalHeaders copy];
+}
+
 static NSURL *createRedirectURL(NSString *query)
 {
     return [NSURL URLWithString:[NSString stringWithFormat:@"%@://%@", testScheme, query]];
+}
+
+static NSString *contentTypeForFileExtension(NSString *fileExtension)
+{
+    auto identifier = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, nullptr));
+    auto mimeType = adoptCF(UTTypeCopyPreferredTagWithClass(identifier.get(), kUTTagClassMIMEType));
+    return (__bridge NSString *)mimeType.autorelease();
 }
 
 - (void)startLoading
@@ -86,18 +110,32 @@ static NSURL *createRedirectURL(NSString *query)
         return;
     }
 
-    NSData *data;
-    if ([requestURL.host isEqualToString:@"bundle-html-file"])
-        data = [NSData dataWithContentsOfURL:[NSBundle.mainBundle URLForResource:requestURL.lastPathComponent.stringByDeletingPathExtension withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
-    else
-        data = [@"PASS" dataUsingEncoding:NSASCIIStringEncoding];
-
-    RetainPtr<NSURLResponse> response = adoptNS([[NSURLResponse alloc] initWithURL:requestURL MIMEType:@"text/html" expectedContentLength:data.length textEncodingName:nil]);
-
     if ([requestURL.host isEqualToString:@"redirect"]) {
+        NSData *data = [@"PASS" dataUsingEncoding:NSASCIIStringEncoding];
+        auto response = adoptNS([[NSURLResponse alloc] initWithURL:requestURL MIMEType:@"text/html" expectedContentLength:data.length textEncodingName:nil]);
         [self.client URLProtocol:self wasRedirectedToRequest:[NSURLRequest requestWithURL:createRedirectURL(requestURL.query)] redirectResponse:response.get()];
         return;
     }
+
+    NSString *contentType;
+    NSData *data;
+    if ([requestURL.host isEqualToString:@"bundle-file"]) {
+        NSString *fileName = requestURL.lastPathComponent;
+        NSString *fileExtension = fileName.pathExtension;
+        contentType = contentTypeForFileExtension(fileExtension);
+        data = [NSData dataWithContentsOfURL:[NSBundle.mainBundle URLForResource:fileName.stringByDeletingPathExtension withExtension:fileExtension subdirectory:@"TestWebKitAPI.resources"]];
+    } else {
+        contentType = @"text/html";
+        data = [@"PASS" dataUsingEncoding:NSASCIIStringEncoding];
+    }
+
+    NSMutableDictionary *responseHeaders = [NSMutableDictionary dictionaryWithCapacity:2];
+    responseHeaders[@"Content-Type"] = contentType;
+    responseHeaders[@"Content-Length"] = [NSString stringWithFormat:@"%tu", data.length];
+    if (additionalResponseHeaders)
+        [responseHeaders addEntriesFromDictionary:additionalResponseHeaders];
+
+    auto response = adoptNS([[NSHTTPURLResponse alloc] initWithURL:requestURL statusCode:200 HTTPVersion:@"HTTP/1.1" headerFields:responseHeaders]);
 
     [self.client URLProtocol:self didReceiveResponse:response.get() cacheStoragePolicy:NSURLCacheStorageNotAllowed];
     [self.client URLProtocol:self didLoadData:data];

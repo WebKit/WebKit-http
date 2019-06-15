@@ -53,11 +53,16 @@ public:
     ReferenceType(const ReferenceType&) = delete;
     ReferenceType(ReferenceType&&) = default;
 
-    bool isReferenceType() const override { return false; }
+    bool isReferenceType() const override { return true; }
 
     AddressSpace addressSpace() const { return m_addressSpace; }
     const UnnamedType& elementType() const { return m_elementType; }
     UnnamedType& elementType() { return m_elementType; }
+
+    unsigned hash() const override
+    {
+        return ~m_elementType->hash();
+    }
 
 private:
     AddressSpace m_addressSpace;

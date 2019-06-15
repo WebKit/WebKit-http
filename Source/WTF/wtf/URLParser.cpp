@@ -2401,6 +2401,8 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
     IPv6Address address = {{0, 0, 0, 0, 0, 0, 0, 0}};
     size_t piecePointer = 0;
     Optional<size_t> compressPointer;
+    bool previousValueWasZero = false;
+    bool immediatelyAfterCompress = false;
 
     if (*c == ':') {
         advance(c, hostBegin);
@@ -2411,6 +2413,7 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
         advance(c, hostBegin);
         ++piecePointer;
         compressPointer = piecePointer;
+        immediatelyAfterCompress = true;
     }
     
     while (!c.atEnd()) {
@@ -2422,6 +2425,9 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
             advance(c, hostBegin);
             ++piecePointer;
             compressPointer = piecePointer;
+            immediatelyAfterCompress = true;
+            if (previousValueWasZero)
+                syntaxViolation(hostBegin);
             continue;
         }
         if (piecePointer == 6 || (compressPointer && piecePointer < 6)) {
@@ -2451,7 +2457,8 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
             advance(c, hostBegin);
         }
         
-        if (UNLIKELY((value && leadingZeros) || (!value && length > 1)))
+        previousValueWasZero = !value;
+        if (UNLIKELY((value && leadingZeros) || (previousValueWasZero && (length > 1 || immediatelyAfterCompress))))
             syntaxViolation(hostBegin);
 
         address[piecePointer++] = value;
@@ -2460,6 +2467,8 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
         if (piecePointer == 8 || *c != ':')
             return WTF::nullopt;
         advance(c, hostBegin);
+
+        immediatelyAfterCompress = false;
     }
     
     if (!c.atEnd())
@@ -2650,13 +2659,11 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
             serializeIPv6(address.value());
             if (!ipv6End.atEnd()) {
                 advance(ipv6End);
-                if (!ipv6End.atEnd() && *ipv6End == ':') {
-                    m_url.m_hostEnd = currentPosition(ipv6End);
-                    return parsePort(ipv6End);
-                }
                 m_url.m_hostEnd = currentPosition(ipv6End);
+                if (!ipv6End.atEnd() && *ipv6End == ':')
+                    return parsePort(ipv6End);
                 m_url.m_portLength = 0;
-                return true;
+                return ipv6End.atEnd();
             }
             m_url.m_hostEnd = currentPosition(ipv6End);
             return true;

@@ -254,6 +254,16 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
     node->commitStateAfterChildren(*stateNode);
 }
 
+void ScrollingTree::applyLayerPositionsAfterCommit()
+{
+    // Scrolling tree needs to make adjustments only if the UI side positions have changed.
+    if (!m_wasScrolledByDelegatedScrollingSincePreviousCommit)
+        return;
+    m_wasScrolledByDelegatedScrollingSincePreviousCommit = false;
+
+    applyLayerPositions();
+}
+
 void ScrollingTree::applyLayerPositions()
 {
     ASSERT(isMainThread());
@@ -294,28 +304,28 @@ void ScrollingTree::notifyRelatedNodesAfterScrollPositionChange(ScrollingTreeScr
     if (is<ScrollingTreeOverflowScrollingNode>(changedNode))
         additionalUpdateRoots = overflowRelatedNodes().get(changedNode.scrollingNodeID());
 
-    notifyRelatedNodesRecursive(changedNode, changedNode);
+    notifyRelatedNodesRecursive(changedNode);
     
     for (auto positionedNodeID : additionalUpdateRoots) {
         auto* positionedNode = nodeForID(positionedNodeID);
         if (positionedNode)
-            notifyRelatedNodesRecursive(changedNode, *positionedNode);
+            notifyRelatedNodesRecursive(*positionedNode);
     }
 }
 
-void ScrollingTree::notifyRelatedNodesRecursive(ScrollingTreeScrollingNode& changedNode, ScrollingTreeNode& currNode)
+void ScrollingTree::notifyRelatedNodesRecursive(ScrollingTreeNode& node)
 {
-    currNode.relatedNodeScrollPositionDidChange(changedNode);
+    node.applyLayerPositions();
 
-    if (!currNode.children())
+    if (!node.children())
         return;
 
-    for (auto& child : *currNode.children()) {
+    for (auto& child : *node.children()) {
         // Never need to cross frame boundaries, since scroll layer adjustments are isolated to each document.
         if (is<ScrollingTreeFrameScrollingNode>(child))
             continue;
 
-        notifyRelatedNodesRecursive(changedNode, *child);
+        notifyRelatedNodesRecursive(*child);
     }
 }
 

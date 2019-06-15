@@ -759,18 +759,13 @@ void StorageManager::createLocalStorageMap(IPC::Connection& connection, uint64_t
     m_queue->dispatch([this, protectedThis = makeRef(*this), connectionID = connection.uniqueID(), storageMapID, storageNamespaceID, securityOriginData = securityOriginData.isolatedCopy()]() mutable {
         std::pair<IPC::Connection::UniqueID, uint64_t> connectionAndStorageMapIDPair(connectionID, storageMapID);
 
-        // FIXME: This should be a message check.
         ASSERT((HashMap<std::pair<IPC::Connection::UniqueID, uint64_t>, RefPtr<StorageArea>>::isValidKey(connectionAndStorageMapIDPair)));
 
         auto result = m_storageAreasByConnection.add(connectionAndStorageMapIDPair, nullptr);
-
-        // FIXME: These should be a message checks.
         ASSERT(result.isNewEntry);
         ASSERT((HashMap<uint64_t, RefPtr<LocalStorageNamespace>>::isValidKey(storageNamespaceID)));
 
         LocalStorageNamespace* localStorageNamespace = getOrCreateLocalStorageNamespace(storageNamespaceID);
-
-        // FIXME: This should be a message check.
         ASSERT(localStorageNamespace);
 
         auto storageArea = localStorageNamespace->getOrCreateStorageArea(WTFMove(securityOriginData), m_localStorageDatabaseTracker ? StorageManager::LocalStorageNamespace::IsEphemeral::No : StorageManager::LocalStorageNamespace::IsEphemeral::Yes);
@@ -783,7 +778,6 @@ void StorageManager::createLocalStorageMap(IPC::Connection& connection, uint64_t
 void StorageManager::createTransientLocalStorageMap(IPC::Connection& connection, uint64_t storageMapID, uint64_t storageNamespaceID, SecurityOriginData&& topLevelOriginData, SecurityOriginData&& origin)
 {
     m_queue->dispatch([this, protectedThis = makeRef(*this), connectionID = connection.uniqueID(), storageMapID, storageNamespaceID, topLevelOriginData = topLevelOriginData.isolatedCopy(), origin = origin.isolatedCopy()]() mutable {
-        // FIXME: This should be a message check.
         ASSERT(m_storageAreasByConnection.isValidKey({ connectionID, storageMapID }));
 
         // See if we already have session storage for this connection/origin combo.
@@ -808,8 +802,6 @@ void StorageManager::createTransientLocalStorageMap(IPC::Connection& connection,
         }
 
         auto& slot = m_storageAreasByConnection.add({ connectionID, storageMapID }, nullptr).iterator->value;
-
-        // FIXME: This should be a message check.
         ASSERT(!slot);
 
         auto* transientLocalStorageNamespace = getOrCreateTransientLocalStorageNamespace(storageNamespaceID, WTFMove(topLevelOriginData));
@@ -824,7 +816,6 @@ void StorageManager::createTransientLocalStorageMap(IPC::Connection& connection,
 void StorageManager::createSessionStorageMap(IPC::Connection& connection, uint64_t storageMapID, uint64_t storageNamespaceID, SecurityOriginData&& securityOriginData)
 {
     m_queue->dispatch([this, protectedThis = makeRef(*this), connectionID = connection.uniqueID(), storageMapID, storageNamespaceID, securityOriginData = securityOriginData.isolatedCopy()]() mutable {
-        // FIXME: This should be a message check.
         ASSERT(m_sessionStorageNamespaces.isValidKey(storageNamespaceID));
 
         SessionStorageNamespace* sessionStorageNamespace = m_sessionStorageNamespaces.get(storageNamespaceID);
@@ -834,15 +825,10 @@ void StorageManager::createSessionStorageMap(IPC::Connection& connection, uint64
             return;
         }
 
-        // FIXME: This should be a message check.
         ASSERT(m_storageAreasByConnection.isValidKey({ connectionID, storageMapID }));
 
         auto& slot = m_storageAreasByConnection.add({ connectionID, storageMapID }, nullptr).iterator->value;
-
-        // FIXME: This should be a message check.
         ASSERT(!slot);
-
-        // FIXME: This should be a message check.
         ASSERT(sessionStorageNamespace->allowedConnections().contains(connectionID));
 
         auto storageArea = sessionStorageNamespace->getOrCreateStorageArea(WTFMove(securityOriginData));
@@ -856,8 +842,6 @@ void StorageManager::destroyStorageMap(IPC::Connection& connection, uint64_t sto
 {
     m_queue->dispatch([this, protectedThis = makeRef(*this), connectionID = connection.uniqueID(), storageMapID]() mutable {
         std::pair<IPC::Connection::UniqueID, uint64_t> connectionAndStorageMapIDPair(connectionID, storageMapID);
-
-        // FIXME: This should be a message check.
         ASSERT(m_storageAreasByConnection.isValidKey(connectionAndStorageMapIDPair));
 
         auto it = m_storageAreasByConnection.find(connectionAndStorageMapIDPair);

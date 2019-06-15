@@ -2873,7 +2873,7 @@ JITCompiler::Jump SpeculativeJIT::jumpForTypedArrayIsNeuteredIfOutOfBounds(Node*
                 TrustedImm32(WastefulTypedArray));
 
             JITCompiler::Jump hasNullVector;
-#if !GIGACAGE_ENABLED && CPU(ARM64E)
+#if CPU(ARM64E)
             {
                 GPRReg scratch = m_jit.scratchRegister();
                 DisallowMacroScratchRegisterUsage disallowScratch(m_jit);
@@ -2882,7 +2882,7 @@ JITCompiler::Jump SpeculativeJIT::jumpForTypedArrayIsNeuteredIfOutOfBounds(Node*
                 m_jit.removeArrayPtrTag(scratch);
                 hasNullVector = m_jit.branchTestPtr(MacroAssembler::Zero, scratch);
             }
-#else // !GIGACAGE_ENABLED && CPU(ARM64E)
+#else // CPU(ARM64E)
             hasNullVector = m_jit.branchTestPtr(
                 MacroAssembler::Zero,
                 MacroAssembler::Address(base, JSArrayBufferView::offsetOfVector()));
@@ -5796,6 +5796,47 @@ static MacroAssembler::Jump compileArithPowIntegerFastPath(JITCompiler& assemble
     return skipSlowPath;
 }
 
+void SpeculativeJIT::compileValuePow(Node* node)
+{
+    Edge& leftChild = node->child1();
+    Edge& rightChild = node->child2();
+
+    if (node->binaryUseKind() == BigIntUse) {
+        SpeculateCellOperand left(this, leftChild);
+        SpeculateCellOperand right(this, rightChild);
+        GPRReg leftGPR = left.gpr();
+        GPRReg rightGPR = right.gpr();
+
+        speculateBigInt(leftChild, leftGPR);
+        speculateBigInt(rightChild, rightGPR);
+
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+
+        callOperation(operationPowBigInt, resultGPR, leftGPR, rightGPR);
+
+        m_jit.exceptionCheck();
+        cellResult(resultGPR, node);
+        return;
+    }
+
+    DFG_ASSERT(m_jit.graph(), node, node->binaryUseKind() == UntypedUse, node->binaryUseKind());
+
+    JSValueOperand left(this, leftChild);
+    JSValueOperand right(this, rightChild);
+    JSValueRegs leftRegs = left.jsValueRegs();
+    JSValueRegs rightRegs = right.jsValueRegs();
+
+    flushRegisters();
+    JSValueRegsFlushedCallResult result(this);
+    JSValueRegs resultRegs = result.regs();
+    callOperation(operationValuePow, resultRegs, leftRegs, rightRegs);
+    m_jit.exceptionCheck();
+
+    jsValueResult(resultRegs, node);
+}
+
 void SpeculativeJIT::compileArithPow(Node* node)
 {
     if (node->child2().useKind() == Int32Use) {
@@ -6719,6 +6760,13 @@ void SpeculativeJIT::compileConstantStoragePointer(Node* node)
 
 void SpeculativeJIT::cageTypedArrayStorage(GPRReg baseReg, GPRReg storageReg)
 {
+#if CPU(ARM64E)
+    m_jit.untagArrayPtr(MacroAssembler::Address(baseReg, JSArrayBufferView::offsetOfLength()), storageReg);
+#else
+    UNUSED_PARAM(baseReg);
+    UNUSED_PARAM(storageReg);
+#endif
+
 #if GIGACAGE_ENABLED
     UNUSED_PARAM(baseReg);
     if (!Gigacage::shouldBeEnabled())
@@ -6731,12 +6779,7 @@ void SpeculativeJIT::cageTypedArrayStorage(GPRReg baseReg, GPRReg storageReg)
             return;
     }
     
-    m_jit.cage(Gigacage::Primitive, storageReg);
-#elif CPU(ARM64E)
-    m_jit.untagArrayPtr(MacroAssembler::Address(baseReg, JSArrayBufferView::offsetOfLength()), storageReg);
-#else
-    UNUSED_PARAM(baseReg);
-    UNUSED_PARAM(storageReg);
+    m_jit.cageWithoutUntagging(Gigacage::Primitive, storageReg);
 #endif
 }
 
@@ -6800,7 +6843,7 @@ void SpeculativeJIT::compileGetTypedArrayByteOffset(Node* node)
     JITCompiler::Jump nullVector = m_jit.branchTestPtr(JITCompiler::Zero, vectorGPR);
 
     m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), dataGPR);
-    m_jit.cage(Gigacage::JSValue, dataGPR);
+    m_jit.cageWithoutUntagging(Gigacage::JSValue, dataGPR);
 
     cageTypedArrayStorage(baseGPR, vectorGPR);
 
@@ -7152,7 +7195,7 @@ void SpeculativeJIT::compileNewFunction(Node* node)
 
     FunctionExecutable* executable = node->castOperand<FunctionExecutable*>();
 
-    if (executable->singletonFunction()->isStillValid()) {
+    if (executable->singleton().isStillValid()) {
         GPRFlushedCallResult result(this);
         GPRReg resultGPR = result.gpr();
         
@@ -7369,7 +7412,7 @@ void SpeculativeJIT::compileCreateActivation(Node* node)
     JSValue initializationValue = node->initializationValueForActivation();
     ASSERT(initializationValue == jsUndefined() || initializationValue == jsTDZValue());
     
-    if (table->singletonScope()->isStillValid()) {
+    if (table->singleton().isStillValid()) {
         GPRFlushedCallResult result(this);
         GPRReg resultGPR = result.gpr();
 
@@ -9804,7 +9847,7 @@ void SpeculativeJIT::compileNewTypedArrayWithSize(Node* node)
         MacroAssembler::BaseIndex(storageGPR, scratchGPR, MacroAssembler::TimesFour));
     m_jit.branchTest32(MacroAssembler::NonZero, scratchGPR).linkTo(loop, &m_jit);
     done.link(&m_jit);
-#if !GIGACAGE_ENABLED && CPU(ARM64E)
+#if CPU(ARM64E)
     // sizeGPR is still boxed as a number and there is no 32-bit variant of the PAC instructions.
     m_jit.zeroExtend32ToPtr(sizeGPR, scratchGPR);
     m_jit.tagArrayPtr(scratchGPR, storageGPR);

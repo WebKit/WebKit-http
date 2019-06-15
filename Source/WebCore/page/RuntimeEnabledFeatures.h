@@ -357,6 +357,12 @@ public:
     bool pageAtRuleSupportEnabled() const { return m_pageAtRuleSupportEnabled; }
     void setPageAtRuleSupportEnabled(bool isEnabled) { m_pageAtRuleSupportEnabled = isEnabled; }
 
+    bool interruptAudioOnPageVisibilityChangeEnabled() const { return m_interruptAudioOnPageVisibilityChangeEnabled; }
+    void setInterruptAudioOnPageVisibilityChangeEnabled(bool enabled) { m_interruptAudioOnPageVisibilityChangeEnabled = enabled; }
+
+    bool linkPreloadResponsiveImagesEnabled() const { return m_linkPreloadResponsiveImagesEnabled; }
+    void setLinkPreloadResponsiveImagesEnabled(bool isEnabled) { m_linkPreloadResponsiveImagesEnabled = isEnabled; }
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -540,6 +546,9 @@ private:
     bool m_isITPFirstPartyWebsiteDataRemovalEnabled { false };
 
     bool m_referrerPolicyAttributeEnabled { false };
+    bool m_interruptAudioOnPageVisibilityChangeEnabled { false };
+
+    bool m_linkPreloadResponsiveImagesEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

@@ -34,16 +34,13 @@
 namespace WebCore {
 namespace Layout {
 
-LineBreaker::LineBreaker(const LayoutState& layoutState)
-    : m_layoutState(layoutState)
+LineBreaker::BreakingContext LineBreaker::breakingContext(const InlineItem& inlineItem, LayoutUnit logicalWidth, const LineContext& lineContext)
 {
-}
-
-LineBreaker::BreakingContext LineBreaker::breakingContext(InlineItem& inlineItem, LineContext lineContext)
-{
-    inlineItem.setWidth(runWidth(inlineItem, lineContext.logicalLeft));
     // First content always stays on line.
-    if (lineContext.isEmpty || inlineItem.width() <= lineContext.availableWidth)
+    if (lineContext.isEmpty || logicalWidth <= lineContext.availableWidth)
+        return { BreakingBehavior::Keep, isAtBreakingOpportunity(inlineItem) };
+
+    if (inlineItem.isHardLineBreak())
         return { BreakingBehavior::Keep, isAtBreakingOpportunity(inlineItem) };
 
     if (is<InlineTextItem>(inlineItem))
@@ -51,7 +48,7 @@ LineBreaker::BreakingContext LineBreaker::breakingContext(InlineItem& inlineItem
 
     // Wrap non-text boxes to the next line unless we can trim trailing whitespace.
     auto availableWidth = lineContext.availableWidth + lineContext.trimmableWidth;
-    if (inlineItem.width() <= availableWidth)
+    if (logicalWidth <= availableWidth)
         return { BreakingBehavior::Keep, isAtBreakingOpportunity(inlineItem) };
     return { BreakingBehavior::Wrap, isAtBreakingOpportunity(inlineItem) };
 }
@@ -68,62 +65,36 @@ LineBreaker::BreakingBehavior LineBreaker::wordBreakingBehavior(const InlineText
     auto& style = inlineItem.style();
 
     if (inlineItem.isWhitespace())
-        return style.collapseWhiteSpace() ? BreakingBehavior::Wrap : BreakingBehavior::Break;
+        return style.collapseWhiteSpace() ? BreakingBehavior::Wrap : BreakingBehavior::Split;
 
     auto shouldHypenate = !m_hyphenationIsDisabled && style.hyphens() == Hyphens::Auto && canHyphenate(style.locale());
     if (shouldHypenate)
-        return BreakingBehavior::Break;
+        return BreakingBehavior::Split;
 
     if (style.autoWrap()) {
         // Break any word
         if (style.wordBreak() == WordBreak::BreakAll)
-            return BreakingBehavior::Break;
+            return BreakingBehavior::Split;
 
         // Break first run on line.
         if (lineIsEmpty && style.breakWords() && style.preserveNewline())
-            return BreakingBehavior::Break;
+            return BreakingBehavior::Split;
     }
 
     // Non-breakable non-whitespace run.
     return lineIsEmpty ? BreakingBehavior::Keep : BreakingBehavior::Wrap;
 }
 
-LayoutUnit LineBreaker::runWidth(const InlineItem& inlineItem, LayoutUnit contentLogicalLeft) const
-{
-    if (inlineItem.isLineBreak())
-        return 0;
-
-    if (is<InlineTextItem>(inlineItem))
-        return textWidth(downcast<InlineTextItem>(inlineItem), contentLogicalLeft);
-
-    auto& layoutBox = inlineItem.layoutBox();
-    ASSERT(m_layoutState.hasDisplayBox(layoutBox));
-    auto& displayBox = m_layoutState.displayBoxForLayoutBox(layoutBox);
-
-    if (inlineItem.isContainerStart())
-        return displayBox.marginStart() + displayBox.borderLeft() + displayBox.paddingLeft().valueOr(0);
-
-    if (inlineItem.isContainerEnd())
-        return displayBox.marginEnd() + displayBox.borderRight() + displayBox.paddingRight().valueOr(0);
-
-    if (inlineItem.isFloat())
-        return displayBox.marginBoxWidth();
-
-    return displayBox.width();
-}
-
 bool LineBreaker::isAtBreakingOpportunity(const InlineItem& inlineItem)
 {
+    if (inlineItem.isHardLineBreak())
+        return true;
+
     if (is<InlineTextItem>(inlineItem))
         return downcast<InlineTextItem>(inlineItem).isWhitespace();
     return !inlineItem.isFloat() && !inlineItem.isContainerStart() && !inlineItem.isContainerEnd();
 }
 
-LayoutUnit LineBreaker::textWidth(const InlineTextItem& inlineTextItem, LayoutUnit contentLogicalLeft) const
-{
-    auto end = inlineTextItem.isCollapsed() ? inlineTextItem.start() + 1 : inlineTextItem.end();
-    return TextUtil::width(downcast<InlineBox>(inlineTextItem.layoutBox()), inlineTextItem.start(), end, contentLogicalLeft);
-}
 }
 }
 #endif

@@ -228,21 +228,25 @@ bool Quirks::isNeverRichlyEditableForTouchBar() const
     return false;
 }
 
-#if USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/QuirksAdditions.cpp>
+static bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreasForHost(const StringView& host)
+{
+#if PLATFORM(IOS_FAMILY)
+    return equalLettersIgnoringASCIICase(host, "docs.google.com");
 #else
-
-static bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreasForHost(const StringView&)
-{
+    UNUSED_PARAM(host);
     return false;
-}
-
-static bool shouldEmulateUndoRedoInHiddenEditableAreasForHost(const StringView&)
-{
-    return false;
-}
-
 #endif
+}
+
+static bool shouldEmulateUndoRedoInHiddenEditableAreasForHost(const StringView& host)
+{
+#if PLATFORM(IOS_FAMILY)
+    return equalLettersIgnoringASCIICase(host, "docs.google.com");
+#else
+    UNUSED_PARAM(host);
+    return false;
+#endif
+}
 
 bool Quirks::shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const
 {
@@ -337,6 +341,17 @@ bool Quirks::needsInputModeNoneImplicitly(const HTMLElement& element) const
 #if PLATFORM(IOS_FAMILY)
     if (!needsQuirks())
         return false;
+
+    if (element.hasTagName(HTMLNames::inputTag)) {
+        if (!equalLettersIgnoringASCIICase(m_document->url().host(), "calendar.google.com"))
+            return false;
+        static NeverDestroyed<QualifiedName> dataInitialValueAttr(nullAtom(), "data-initial-value", nullAtom());
+        static NeverDestroyed<QualifiedName> dataPreviousValueAttr(nullAtom(), "data-previous-value", nullAtom());
+
+        return equalLettersIgnoringASCIICase(element.attributeWithoutSynchronization(HTMLNames::autocompleteAttr), "off")
+            && element.hasAttributeWithoutSynchronization(dataInitialValueAttr)
+            && element.hasAttributeWithoutSynchronization(dataPreviousValueAttr);
+    }
 
     if (!element.hasTagName(HTMLNames::textareaTag))
         return false;

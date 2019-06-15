@@ -76,7 +76,7 @@
 #
 #  - pc holds the (native) program counter on 32-bits ARM architectures (ARMv7)
 #
-#  - t0, t1, t2, t3, t4 and optionally t5 are temporary registers that can get trashed on
+#  - t0, t1, t2, t3, t4, and optionally t5, t6, and t7 are temporary registers that can get trashed on
 #  calls, and are pairwise distinct registers. t4 holds the JS program counter, so use
 #  with caution in opcodes (actually, don't use it in opcodes at all, except as PC).
 #
@@ -1346,10 +1346,14 @@ macro setEntryAddressWide32(index, label)
 end
 
 macro setEntryAddressCommon(index, label, map)
-    if X86_64 or X86_64_WIN
+    if X86_64
         leap (label - _relativePCBase)[t3], t4
         move index, t5
         storep t4, [map, t5, 8]
+    elsif X86_64_WIN
+        leap (label - _relativePCBase)[t3], t4
+        move index, t0
+        storep t4, [map, t0, 8]
     elsif X86 or X86_WIN
         leap (label - _relativePCBase)[t3], t4
         move index, t5

@@ -4653,7 +4653,7 @@ void WebPageProxy::decidePolicyForNavigationAction(Ref<WebProcessProxy>&& proces
                         policies = defaultPolicies->copy();
                 }
                 if (policies)
-                    navigation->setEffectiveCompatibilityMode(effectiveCompatibilityModeAfterAdjustingPolicies(*policies, navigation->currentRequest()));
+                    navigation->setEffectiveContentMode(effectiveContentModeAfterAdjustingPolicies(*policies, navigation->currentRequest()));
             }
             receivedNavigationPolicyDecision(policyAction, navigation.get(), processSwapRequestedByClient, frame, policies.get(), WTFMove(sender));
         };
@@ -5472,6 +5472,10 @@ void WebPageProxy::stopAllMediaPlayback()
 
 void WebPageProxy::suspendAllMediaPlayback()
 {
+    if (m_mediaPlaybackIsSuspended)
+        return;
+    m_mediaPlaybackIsSuspended = true;
+
     if (!hasRunningProcess())
         return;
 
@@ -5480,6 +5484,10 @@ void WebPageProxy::suspendAllMediaPlayback()
 
 void WebPageProxy::resumeAllMediaPlayback()
 {
+    if (!m_mediaPlaybackIsSuspended)
+        return;
+    m_mediaPlaybackIsSuspended = false;
+
     if (!hasRunningProcess())
         return;
 
@@ -7125,6 +7133,7 @@ WebPageCreationParameters WebPageProxy::creationParameters(WebProcessProxy& proc
     parameters.mediaVolume = m_mediaVolume;
     parameters.muted = m_mutedState;
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
+    parameters.mediaPlaybackIsSuspended = m_mediaPlaybackIsSuspended;
     parameters.viewLayoutSize = m_viewLayoutSize;
     parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
     parameters.viewportSizeForCSSViewportUnits = m_viewportSizeForCSSViewportUnits;
@@ -9130,14 +9139,14 @@ void WebPageProxy::speechSynthesisResume(CompletionHandler<void()>&& completionH
 }
 #endif // ENABLE(SPEECH_SYNTHESIS)
 
-#if !PLATFORM(IOS_FAMILY) || !USE(APPLE_INTERNAL_SDK)
+#if !PLATFORM(IOS_FAMILY)
 
-WebCompatibilityMode WebPageProxy::effectiveCompatibilityModeAfterAdjustingPolicies(API::WebsitePolicies&, const WebCore::ResourceRequest&)
+WebContentMode WebPageProxy::effectiveContentModeAfterAdjustingPolicies(API::WebsitePolicies&, const WebCore::ResourceRequest&)
 {
-    return WebCompatibilityMode::Recommended;
+    return WebContentMode::Recommended;
 }
 
-#endif // !PLATFORM(IOS_FAMILY) || !USE(APPLE_INTERNAL_SDK)
+#endif // !PLATFORM(IOS_FAMILY)
 
 void WebPageProxy::addObserver(WebViewDidMoveToWindowObserver& observer)
 {

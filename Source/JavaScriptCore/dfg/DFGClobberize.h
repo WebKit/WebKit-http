@@ -514,7 +514,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case CreateActivation: {
         SymbolTable* table = node->castOperand<SymbolTable*>();
-        if (table->singletonScope()->isStillValid())
+        if (table->singleton().isStillValid())
             write(Watchpoint_fire);
         read(HeapObjectCount);
         write(HeapObjectCount);
@@ -681,6 +681,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ValueMul:
     case ValueDiv:
     case ValueMod:
+    case ValuePow:
         if (node->isBinaryUseKind(BigIntUse)) {
             def(PureValue(node));
             return;
@@ -1567,7 +1568,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NewGeneratorFunction:
     case NewAsyncGeneratorFunction:
     case NewAsyncFunction:
-        if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
+        if (node->castOperand<FunctionExecutable*>()->singleton().isStillValid())
             write(Watchpoint_fire);
         read(HeapObjectCount);
         write(HeapObjectCount);

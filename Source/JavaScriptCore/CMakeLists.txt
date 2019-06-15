@@ -7,7 +7,6 @@ list(APPEND JavaScriptCore_UNIFIED_SOURCE_LIST_FILES
 )
 
 set(JavaScriptCore_INCLUDE_DIRECTORIES
-    "${WTF_FRAMEWORK_HEADERS_DIR}"
     "${JavaScriptCore_FRAMEWORK_HEADERS_DIR}"
 )
 
@@ -116,7 +115,7 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
 )
 
 set(JavaScriptCore_LIBRARIES
-    WTF${DEBUG_SUFFIX}
+    WebKit::WTF
 )
 
 if (USE_CAPSTONE)
@@ -290,10 +289,10 @@ add_executable(LLIntOffsetsExtractor
     ${JavaScriptCore_DERIVED_SOURCES_DIR}/LLIntDesiredOffsets.h ${JavaScriptCore_DERIVED_SOURCES_DIR}/Bytecodes.h ${JavaScriptCore_DERIVED_SOURCES_DIR}/BytecodeStructs.h
 )
 
-target_link_libraries(LLIntSettingsExtractor WTF)
-add_dependencies(LLIntSettingsExtractor JavaScriptCoreFrameworkHeaders)
-target_link_libraries(LLIntOffsetsExtractor WTF)
-add_dependencies(LLIntOffsetsExtractor JavaScriptCoreFrameworkHeaders)
+target_link_libraries(LLIntSettingsExtractor WebKit::WTF)
+add_dependencies(LLIntSettingsExtractor JavaScriptCore_CopyHeaders)
+target_link_libraries(LLIntOffsetsExtractor WebKit::WTF)
+add_dependencies(LLIntOffsetsExtractor JavaScriptCore_CopyHeaders)
 
 # The build system will execute asm.rb every time LLIntOffsetsExtractor's mtime is newer than
 # LLIntAssembly.h's mtime. The problem we have here is: asm.rb has some built-in optimization
@@ -425,6 +424,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     API/JSScriptRefPrivate.h
     API/JSStringRefPrivate.h
     API/JSValueInternal.h
+    API/JSValuePrivate.h
     API/JSVirtualMachineInternal.h
     API/JSWeakObjectMapRefInternal.h
     API/JSWeakObjectMapRefPrivate.h
@@ -752,6 +752,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/BooleanPrototype.h
     runtime/Butterfly.h
     runtime/ButterflyInlines.h
+    runtime/BytecodeCacheError.h
     runtime/CachePayload.h
     runtime/CacheUpdate.h
     runtime/CachedBytecode.h
@@ -1263,6 +1264,16 @@ if (WTF_CPU_X86_64)
     endif ()
 endif ()
 
+set(JavaScriptCore_INTERFACE_LIBRARIES JavaScriptCore)
+set(JavaScriptCore_INTERFACE_INCLUDE_DIRECTORIES
+    ${JavaScriptCore_FRAMEWORK_HEADERS_DIR}
+    ${JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS_DIR}
+)
+set(JavaScriptCore_INTERFACE_DEPENDENCIES
+    JavaScriptCore_CopyHeaders
+    JavaScriptCore_CopyPrivateHeaders
+)
+
 WEBKIT_FRAMEWORK_DECLARE(JavaScriptCore)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
@@ -1272,15 +1283,13 @@ if (COMPILER_IS_GCC_OR_CLANG)
     WEBKIT_ADD_TARGET_CXX_FLAGS(JavaScriptCore -ffp-contract=off)
 endif ()
 
-WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore
-    TARGET_NAME JavaScriptCoreFrameworkHeaders
+WEBKIT_COPY_FILES(JavaScriptCore_CopyHeaders
     DESTINATION ${JavaScriptCore_FRAMEWORK_HEADERS_DIR}/JavaScriptCore
     FILES ${JavaScriptCore_PUBLIC_FRAMEWORK_HEADERS}
     FLATTENED
 )
 
-WEBKIT_MAKE_FORWARDING_HEADERS(JavaScriptCore
-    TARGET_NAME JavaScriptCorePrivateFrameworkHeaders
+WEBKIT_COPY_FILES(JavaScriptCore_CopyPrivateHeaders
     DESTINATION ${JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS_DIR}/JavaScriptCore
     FILES ${JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS}
     FLATTENED
@@ -1303,6 +1312,7 @@ add_subdirectory(shell)
 WEBKIT_COMPUTE_SOURCES(JavaScriptCore)
 WEBKIT_WRAP_SOURCELIST(${JavaScriptCore_SOURCES})
 WEBKIT_FRAMEWORK(JavaScriptCore)
+WEBKIT_FRAMEWORK_TARGET(JavaScriptCore)
 
 if (NOT "${PORT}" STREQUAL "Mac")
     if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")

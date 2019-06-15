@@ -75,11 +75,15 @@ public:
     };
     std::unique_ptr<Content> close();
 
-    void appendTextContent(const InlineTextItem&, LayoutSize);
-    void appendNonReplacedInlineBox(const InlineItem&, LayoutSize);
-    void appendReplacedInlineBox(const InlineItem&, LayoutSize);
-    void appendInlineContainerStart(const InlineItem&);
-    void appendInlineContainerEnd(const InlineItem&);
+    struct InlineItemSize {
+        LayoutUnit logicalWidth;
+        Optional<LayoutUnit> logicalHeight;
+    };
+    void appendTextContent(const InlineTextItem&, InlineItemSize);
+    void appendNonReplacedInlineBox(const InlineItem&, InlineItemSize);
+    void appendReplacedInlineBox(const InlineItem&, InlineItemSize);
+    void appendInlineContainerStart(const InlineItem&, InlineItemSize);
+    void appendInlineContainerEnd(const InlineItem&, InlineItemSize);
     void appendHardLineBreak(const InlineItem&);
 
     bool hasContent() const { return !m_content->isVisuallyEmpty(); }
@@ -111,6 +115,8 @@ private:
 
     void appendNonBreakableSpace(const InlineItem&, const Display::Rect& logicalRect);
     void removeTrailingTrimmableContent();
+
+    void adjustBaselineAndLineHeight(const InlineItem&, LayoutUnit runHeight);
 
     const LayoutState& m_layoutState;
     std::unique_ptr<Content> m_content;

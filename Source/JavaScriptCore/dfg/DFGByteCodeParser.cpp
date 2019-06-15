@@ -321,10 +321,8 @@ private:
             // that we don't have such watchpoint-based folding for inlined uses of Callee, since in that
             // case if the function is a singleton then we already know it.
             if (FunctionExecutable* executable = jsDynamicCast<FunctionExecutable*>(*m_vm, m_codeBlock->ownerExecutable())) {
-                InferredValue* singleton = executable->singletonFunction();
-                if (JSValue value = singleton->inferredValue()) {
-                    m_graph.watchpoints().addLazily(singleton);
-                    JSFunction* function = jsCast<JSFunction*>(value);
+                if (JSFunction* function = executable->singleton().inferredValue()) {
+                    m_graph.watchpoints().addLazily(executable);
                     return weakJSConstant(function);
                 }
             }
@@ -5125,12 +5123,13 @@ void ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_pow: {
-            // FIXME: ArithPow(Untyped, Untyped) should be supported as the same to ArithMul, ArithSub etc.
-            // https://bugs.webkit.org/show_bug.cgi?id=160012
             auto bytecode = currentInstruction->as<OpPow>();
             Node* op1 = get(bytecode.m_lhs);
             Node* op2 = get(bytecode.m_rhs);
-            set(bytecode.m_dst, addToGraph(ArithPow, op1, op2));
+            if (op1->hasNumberOrAnyIntResult() && op2->hasNumberOrAnyIntResult())
+                set(bytecode.m_dst, addToGraph(ArithPow, op1, op2));
+            else
+                set(bytecode.m_dst, addToGraph(ValuePow, op1, op2));
             NEXT_OPCODE(op_pow);
         }
 
@@ -6275,11 +6274,11 @@ void ByteCodeParser::parseBlock(unsigned limit)
                 
                 // We have various forms of constant folding here. This is necessary to avoid
                 // spurious recompiles in dead-but-foldable code.
+
                 if (symbolTable) {
-                    InferredValue* singleton = symbolTable->singletonScope();
-                    if (JSValue value = singleton->inferredValue()) {
-                        m_graph.watchpoints().addLazily(singleton);
-                        set(bytecode.m_dst, weakJSConstant(value));
+                    if (JSScope* scope = symbolTable->singleton().inferredValue()) {
+                        m_graph.watchpoints().addLazily(symbolTable);
+                        set(bytecode.m_dst, weakJSConstant(scope));
                         break;
                     }
                 }
@@ -6310,7 +6309,6 @@ void ByteCodeParser::parseBlock(unsigned limit)
         case op_resolve_scope_for_hoisting_func_decl_in_eval: {
             auto bytecode = currentInstruction->as<OpResolveScopeForHoistingFuncDeclInEval>();
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[bytecode.m_property];
-
             set(bytecode.m_dst, addToGraph(ResolveScopeForHoistingFuncDeclInEval, OpInfo(identifierNumber), get(bytecode.m_scope)));
 
             NEXT_OPCODE(op_resolve_scope_for_hoisting_func_decl_in_eval);

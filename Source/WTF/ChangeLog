@@ -1,3 +1,190 @@
+2019-06-06  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSCOnly] JSCOnly port is not building on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=198563
+
+        Reviewed by Don Olmstead.
+
+        We are adding `<mach/vm_types.h>` to fix build issues when compiling
+        JSCOnly port on macOS.
+
+        * wtf/WTFAssertions.cpp:
+
+2019-06-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246022.
+        https://bugs.webkit.org/show_bug.cgi?id=198486
+
+        Causing Internal build failures and JSC test failures
+        (Requested by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Reenable Gigacage on ARM64."
+        https://bugs.webkit.org/show_bug.cgi?id=198453
+        https://trac.webkit.org/changeset/246022
+
+2019-06-03  Darin Adler  <darin@apple.com>
+
+        Finish cleanup of String::number for floating point
+        https://bugs.webkit.org/show_bug.cgi?id=198471
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/JSONValues.cpp:
+        (WTF::JSONImpl::Value::writeJSON const): Use appendNumber instead of
+        appendECMAScriptNumber, since that's now the default.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::appendNumber): Renamed from appendShortestFormNumber.
+        * wtf/text/StringBuilder.h: Removed appendShortestFormNumber and
+        appendECMAScriptNumber, replacing both with overload of appendNumber.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::number): Renamed from numberToStringShortest.
+        * wtf/text/WTFString.h: Removed numberToStringShortest and
+        numberToStringECMAScript, replacing both with overload of number.
+
+2019-06-02  Keith Miller  <keith_miller@apple.com>
+
+        Reenable Gigacage on ARM64.
+        https://bugs.webkit.org/show_bug.cgi?id=198453
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/CagedPtr.h:
+        (WTF::CagedPtr::authenticatingLoad):
+        (WTF::CagedPtr::get const):
+        (WTF::CagedPtr::getMayBeNull const):
+
+2019-05-31  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser::parseIPv6Host should properly parse 0's around compression
+        https://bugs.webkit.org/show_bug.cgi?id=198424
+
+        Reviewed by Tim Horton.
+
+        * wtf/URLParser.cpp:
+        (WTF::URLParser::parseIPv6Host):
+
+2019-05-31  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser::parseHostAndPort should not allow non-port characters after an ipv6 host
+        https://bugs.webkit.org/show_bug.cgi?id=198428
+        <rdar://problem/51209196>
+
+        Reviewed by Tim Horton.
+
+        This matches Chrome and Firefox.
+
+        * wtf/URLParser.cpp:
+        (WTF::URLParser::parseHostAndPort):
+
+2019-05-31  Tim Horton  <timothy_horton@apple.com>
+
+        Optionally respect device management restrictions when loading from the network
+        https://bugs.webkit.org/show_bug.cgi?id=198318
+        <rdar://problem/44263806>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+        Add a HAVE flag for DeviceManagement.framework.
+        It does exist in the simulator, but does not function; pretend it doesn't exist.
+
+2019-05-31  Geoffrey Garen  <ggaren@apple.com>
+
+        Some WeakPtr cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=198390
+
+        Reviewed by Chris Dumez.
+
+        * wtf/WeakHashSet.h:
+        (WTF::HashTraits<Ref<WeakPtrImpl>>::isReleasedWeakValue):
+        (WTF::WeakHashSet::WeakHashSetConstIterator::WeakHashSetConstIterator):
+        Updated for rename to WeakPtrImpl.
+
+        (WTF::WeakHashSet::WeakHashSetConstIterator::get const): Updated for new
+        get() interface. Also, switched to iterator operator* to help clarify
+        the double dereference here.
+
+        (WTF::WeakHashSet::add):
+        (WTF::WeakHashSet::remove):
+        (WTF::WeakHashSet::contains const):
+        (WTF::WeakHashSet::computeSize const):
+        (WTF::HashTraits<Ref<WeakReference>>::isReleasedWeakValue): Deleted.
+        Updated for rename to WeakPtrImpl.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrImpl::create):
+        (WTF::WeakPtrImpl::~WeakPtrImpl): Renamed WeakReference to WeakPtrImpl.
+        Now we don't need a comment explaining that this class is the backing
+        implementation of WeakPtr.
+
+        (WTF::WeakPtrImpl::get): Return the pointer type we stored, rather than
+        the pointer type requested by our client. It's a little too surprising
+        for a field to store one pointer type and load another.
+
+        (WTF::WeakPtrImpl::WeakPtrImpl): Fixed a theoretical type safety bug.
+        Make sure to store T::WeakValueType* instead of T*, since they might
+        not be the same pointer value. (In practice, T and T::WeakValueType*
+        are always the same type in this constructor because WeakPtrFactory
+        makes them so, but it's best not to depend on implementation details
+        across classes.)
+
+        (WTF::WeakPtr::get const): Updated for new get() interface.
+
+        (WTF::WeakPtr::operator bool const):
+        (WTF::WeakPtr::operator=):
+        (WTF::WeakPtr::clear):
+        (WTF::WeakPtr::WeakPtr): Updated for WeakPtrImpl rename.
+
+        (WTF::WeakPtrFactory::~WeakPtrFactory): Updated for WeakPtrImpl rename.
+
+        (WTF::WeakPtrFactory::createWeakPtr const): ASSERT that the passed-in
+        pointer is equal to the stored pointer. As a space optimization, we
+        require our client to remind us what we point to each time a weak
+        pointer is created -- but nothing guarantees that our client will do
+        this correctly.
+
+        (WTF::WeakPtrFactory::revokeAll): Updated for WeakPtrImpl rename.
+
+        (WTF::CanMakeWeakPtr::weakPtrFactory const):
+        (WTF::CanMakeWeakPtr::weakPtrFactory): Use idiomatic accessor naming.
+
+        (WTF::weak_ptr_impl_cast): Fixed a theoretical type safety bug.
+        Previously, if Base and Derived both inherited CanMakeWeakPtr, and
+        you casted WeakPtr<Base> to WeakPtr<Derived> (or vice versa), and
+        casting Base <-> Derived required pointer fixup, the previous
+        compile-time check would accept the cast, even though the stored pointer
+        would be wrong.
+
+        (WTF::WeakPtr<T>::WeakPtr):
+        (WTF::=):
+        (WTF::makeWeakPtr):
+        (WTF::WeakReference::create): Deleted.
+        (WTF::WeakReference::~WeakReference): Deleted.
+        (WTF::WeakReference::get const): Deleted.
+        (WTF::WeakReference::operator bool const): Deleted.
+        (WTF::WeakReference::clear): Deleted.
+        (WTF::WeakReference::WeakReference): Deleted.
+        (WTF::weak_reference_cast): Deleted. Updated for rename to WeakPtrImpl.
+
+        Don't export WeakPtrImpl because it's an implmenetation detail and
+        it shouldn't be easy to use outside WTF.
+
+2019-05-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Add WebKit::WTF target
+        https://bugs.webkit.org/show_bug.cgi?id=198400
+
+        Reviewed by Konstantin Tokarev.
+
+        Create the WebKit::WTF target and use that to propagate headers. Use
+        WEBKIT_COPY_FILES instead of WEBKIT_MAKE_FORWARDING_HEADERS.
+
+        * wtf/CMakeLists.txt:
+
 2019-05-30  Saam Barati  <sbarati@apple.com>
 
         [WHLSL] Enforce variable lifetimes

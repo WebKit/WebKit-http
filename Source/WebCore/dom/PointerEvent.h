@@ -27,6 +27,7 @@
 
 #if ENABLE(POINTER_EVENTS)
 
+#include "EventNames.h"
 #include "MouseEvent.h"
 #include "Node.h"
 #include "PointerID.h"
@@ -75,7 +76,8 @@ public:
         return adoptRef(*new PointerEvent);
     }
 
-    static RefPtr<PointerEvent> create(const MouseEvent&);
+    static RefPtr<PointerEvent> create(short button, const MouseEvent&);
+    static Ref<PointerEvent> create(const String& type, short button, const MouseEvent&);
     static Ref<PointerEvent> create(const String& type, PointerID, const String& pointerType, IsPrimary = IsPrimary::No);
 
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS_FAMILY)
@@ -113,10 +115,15 @@ public:
     EventInterface eventInterface() const override;
 
 private:
+    static bool typeIsEnterOrLeave(const AtomicString& type) { return type == eventNames().pointerenterEvent || type == eventNames().pointerleaveEvent; }
+    static CanBubble typeCanBubble(const AtomicString& type) { return typeIsEnterOrLeave(type) ? CanBubble::No : CanBubble::Yes; }
+    static IsCancelable typeIsCancelable(const AtomicString& type) { return typeIsEnterOrLeave(type) ? IsCancelable::No : IsCancelable::Yes; }
+    static IsComposed typeIsComposed(const AtomicString& type) { return typeIsEnterOrLeave(type) ? IsComposed::No : IsComposed::Yes; }
+
     PointerEvent();
     PointerEvent(const AtomicString&, Init&&);
-    PointerEvent(const AtomicString& type, CanBubble, IsCancelable, IsComposed, const MouseEvent&);
-    PointerEvent(const AtomicString& type, CanBubble, IsCancelable, IsComposed, PointerID, const String& pointerType, IsPrimary);
+    PointerEvent(const AtomicString& type, short button, const MouseEvent&);
+    PointerEvent(const AtomicString& type, PointerID, const String& pointerType, IsPrimary);
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS_FAMILY)
     PointerEvent(const AtomicString& type, const PlatformTouchEvent&, IsCancelable isCancelable, unsigned touchIndex, bool isPrimary, Ref<WindowProxy>&&);
 #endif
