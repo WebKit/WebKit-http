@@ -29,7 +29,6 @@
 #include <Size.h>
 
 #include "wtf/URL.h"
-#include <FindOptions.h>
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSStringRef.h>
 #include <wtf/Vector.h>

@@ -1,10 +1,12 @@
-set(IMAGE_DIFF_SOURCES
-    ${IMAGE_DIFF_DIR}/haiku/ImageDiff.cpp
+list(APPEND ImageDiff_SOURCES
+    ${IMAGE_DIFF_DIR}/haiku/PlatformImageHaiku.cpp
 )
 
-list(APPEND IMAGE_DIFF_INCLUDE_DIRECTORIES
+list(APPEND ImageDiff_INCLUDE_DIRECTORIES
 )
 
-list(APPEND IMAGE_DIFF_LIBRARIES
+list(APPEND ImageDiff_LIBRARIES
     be translation
 )
+
+list(APPEND ImageDiff_PRIVATE_DEFINITIONS USE_HAIKU=1)

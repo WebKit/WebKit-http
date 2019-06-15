@@ -36,7 +36,6 @@
 #include "WebCore/DocumentLoader.h"
 #include "Document.h"
 #include "DOMWindow.h"
-#include <Editor.h>
 #include "FocusController.h"
 #include "Frame.h"
 #include "WebCore/FrameLoader.h"
@@ -47,6 +46,8 @@
 #include <ScriptController.h>
 #include <Settings.h>
 #include "UserContentTypes.h"
+
+#include "WebCore/Editor.h"
 
 namespace WebCore {
 
