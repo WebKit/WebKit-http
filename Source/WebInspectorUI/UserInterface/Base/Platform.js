@@ -23,38 +23,46 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Platform = {
+WI.Platform = {
     name: InspectorFrontendHost.platform(),
     isNightlyBuild: false,
     version: {
         base: 0,
         release: 0,
-        name: ""
+        name: "",
+        build: "",
     }
 };
 
 (function () {
-    // Check for a nightly build by looking for a plus in the version number and a small number of stylesheets (indicating combined resources).
-    var versionMatch = / AppleWebKit\/([^ ]+)/.exec(navigator.userAgent);
-    if (versionMatch && versionMatch[1].indexOf("+") !== -1 && document.styleSheets.length < 10)
-        WebInspector.Platform.isNightlyBuild = true;
+    let versionMatch = / AppleWebKit\/([^ ]+)/.exec(navigator.userAgent);
+    if (versionMatch) {
+        WI.Platform.version.build = versionMatch[1];
 
-    var osVersionMatch = / Mac OS X (\d+)_(\d+)/.exec(navigator.appVersion);
+        // Check for a nightly build by looking for a plus in the version number and a small number of stylesheets (indicating combined resources).
+        if (versionMatch[1].indexOf("+") !== -1 && document.styleSheets.length < 10)
+            WI.Platform.isNightlyBuild = true;
+    }
+
+    let osVersionMatch = / Mac OS X (\d+)_(\d+)/.exec(navigator.appVersion);
     if (osVersionMatch && osVersionMatch[1] === "10") {
-        WebInspector.Platform.version.base = 10;
-        WebInspector.Platform.version.release = parseInt(osVersionMatch[2]);
+        WI.Platform.version.base = 10;
+        WI.Platform.version.release = parseInt(osVersionMatch[2]);
         switch (osVersionMatch[2]) {
         case "12":
-            WebInspector.Platform.version.name = "sierra";
+            WI.Platform.version.name = "high-sierra";
+            break;
+        case "12":
+            WI.Platform.version.name = "sierra";
             break;
         case "11":
-            WebInspector.Platform.version.name = "el-capitan";
+            WI.Platform.version.name = "el-capitan";
             break;
         case "10":
-            WebInspector.Platform.version.name = "yosemite";
+            WI.Platform.version.name = "yosemite";
             break;
         default:
-            WebInspector.Platform.version.name = "unknown-mac";
+            WI.Platform.version.name = "unknown-mac";
             break;
         }
     }

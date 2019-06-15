@@ -25,6 +25,8 @@
 
 #ifndef InlineASM_h
 #define InlineASM_h
+#include <wtf/Platform.h>
+#if !CPU(UNKNOWN)
 
 /* asm directive helpers */ 
 
@@ -62,12 +64,12 @@
 #elif OS(AIX)
     // IBM's own file format
 #define HIDE_SYMBOL(name) ".lglobl " #name
-#elif   OS(LINUX)               \
-     || OS(FREEBSD)             \
-     || OS(OPENBSD)             \
-     || OS(SOLARIS)             \
-     || (OS(HPUX) && CPU(IA64)) \
-     || OS(NETBSD)
+#elif  OS(LINUX)               \
+    || OS(FREEBSD)             \
+    || OS(FUCHSIA)             \
+    || OS(OPENBSD)             \
+    || OS(HPUX)                \
+    || OS(NETBSD)
     // ELF platform
 #define HIDE_SYMBOL(name) ".hidden " #name
 #else
@@ -79,8 +81,9 @@
 // Don't know about any of the others.
 #if OS(DARWIN)
 #define LOCAL_LABEL_STRING(name) "L" #name
-#elif   OS(LINUX)               \
+#elif  OS(LINUX)               \
     || OS(FREEBSD)             \
+    || OS(FUCHSIA)             \
     || OS(OPENBSD)             \
     || OS(HURD)                \
     || OS(NETBSD)              \
@@ -95,4 +98,5 @@
 #define INLINE_ARM_FUNCTION(name)
 #endif
 
+#endif // !CPU(UNKNOWN)
 #endif // InlineASM_h

@@ -32,13 +32,11 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface _WKVisitedLinkStore : NSObject
 
 - (void)addVisitedLinkWithURL:(NSURL *)URL;
+- (void)addVisitedLinkWithString:(NSString *)string WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 - (void)removeAll;
+- (BOOL)containsVisitedLinkWithURL:(NSURL *)URL WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
+- (void)removeVisitedLinkWithURL:(NSURL *)URL WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 
-@end
-
-// Defined for binary compatibility with Safari in iOS 10.
-__attribute__((visibility("default"))) NS_UNAVAILABLE
-@interface _WKVisitedLinkProvider : _WKVisitedLinkStore
 @end
 
 #endif

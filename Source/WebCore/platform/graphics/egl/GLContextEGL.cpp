@@ -25,9 +25,10 @@
 #include "PlatformDisplay.h"
 
 #if USE(LIBEPOXY)
-#include <epoxy/egl.h>
+#include "EpoxyEGL.h"
 #else
 #include <EGL/egl.h>
+#include <EGL/eglext.h>
 #endif
 
 #if USE(CAIRO)
@@ -36,7 +37,7 @@
 
 #if USE(LIBEPOXY)
 #include <epoxy/gl.h>
-#elif USE(OPENGL_ES_2)
+#elif USE(OPENGL_ES)
 #define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -54,23 +55,47 @@
 
 namespace WebCore {
 
-static const EGLint gContextAttributes[] = {
-#if USE(OPENGL_ES_2)
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-#endif
-    EGL_NONE
-};
-
-#if USE(OPENGL_ES_2)
+#if USE(OPENGL_ES)
 static const EGLenum gEGLAPIVersion = EGL_OPENGL_ES_API;
 #else
 static const EGLenum gEGLAPIVersion = EGL_OPENGL_API;
 #endif
 
+const char* GLContextEGL::errorString(int statusCode)
+{
+    static_assert(sizeof(int) >= sizeof(EGLint), "EGLint must not be wider than int");
+    switch (statusCode) {
+#define CASE_RETURN_STRING(name) case name: return #name
+        // https://www.khronos.org/registry/EGL/sdk/docs/man/html/eglGetError.xhtml
+        CASE_RETURN_STRING(EGL_SUCCESS);
+        CASE_RETURN_STRING(EGL_NOT_INITIALIZED);
+        CASE_RETURN_STRING(EGL_BAD_ACCESS);
+        CASE_RETURN_STRING(EGL_BAD_ALLOC);
+        CASE_RETURN_STRING(EGL_BAD_ATTRIBUTE);
+        CASE_RETURN_STRING(EGL_BAD_CONTEXT);
+        CASE_RETURN_STRING(EGL_BAD_CONFIG);
+        CASE_RETURN_STRING(EGL_BAD_CURRENT_SURFACE);
+        CASE_RETURN_STRING(EGL_BAD_DISPLAY);
+        CASE_RETURN_STRING(EGL_BAD_SURFACE);
+        CASE_RETURN_STRING(EGL_BAD_MATCH);
+        CASE_RETURN_STRING(EGL_BAD_PARAMETER);
+        CASE_RETURN_STRING(EGL_BAD_NATIVE_PIXMAP);
+        CASE_RETURN_STRING(EGL_BAD_NATIVE_WINDOW);
+        CASE_RETURN_STRING(EGL_CONTEXT_LOST);
+#undef CASE_RETURN_STRING
+    default: return "Unknown EGL error";
+    }
+}
+
+const char* GLContextEGL::lastErrorString()
+{
+    return errorString(eglGetError());
+}
+
 bool GLContextEGL::getEGLConfig(EGLDisplay display, EGLConfig* config, EGLSurfaceType surfaceType)
 {
     EGLint attributeList[] = {
-#if USE(OPENGL_ES_2)
+#if USE(OPENGL_ES)
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
 #else
         EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
@@ -105,12 +130,16 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowTy
 {
     EGLDisplay display = platformDisplay.eglDisplay();
     EGLConfig config;
-    if (!getEGLConfig(display, &config, WindowSurface))
+    if (!getEGLConfig(display, &config, WindowSurface)) {
+        WTFLogAlways("Cannot obtain EGL window context configuration: %s\n", lastErrorString());
         return nullptr;
+    }
 
-    EGLContext context = eglCreateContext(display, config, sharingContext, gContextAttributes);
-    if (context == EGL_NO_CONTEXT)
+    EGLContext context = createContextForEGLVersion(platformDisplay, config, sharingContext);
+    if (context == EGL_NO_CONTEXT) {
+        WTFLogAlways("Cannot create EGL window context: %s\n", lastErrorString());
         return nullptr;
+    }
 
     EGLSurface surface = EGL_NO_SURFACE;
 #if PLATFORM(GTK)
@@ -129,6 +158,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createWindowContext(GLNativeWindowTy
     surface = eglCreateWindowSurface(display, config, static_cast<EGLNativeWindowType>(window), nullptr);
 #endif
     if (surface == EGL_NO_SURFACE) {
+        WTFLogAlways("Cannot create EGL window surface: %s\n", lastErrorString());
         eglDestroyContext(display, context);
         return nullptr;
     }
@@ -140,16 +170,21 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createPbufferContext(PlatformDisplay
 {
     EGLDisplay display = platformDisplay.eglDisplay();
     EGLConfig config;
-    if (!getEGLConfig(display, &config, PbufferSurface))
+    if (!getEGLConfig(display, &config, PbufferSurface)) {
+        WTFLogAlways("Cannot obtain EGL Pbuffer configuration: %s\n", lastErrorString());
         return nullptr;
+    }
 
-    EGLContext context = eglCreateContext(display, config, sharingContext, gContextAttributes);
-    if (context == EGL_NO_CONTEXT)
+    EGLContext context = createContextForEGLVersion(platformDisplay, config, sharingContext);
+    if (context == EGL_NO_CONTEXT) {
+        WTFLogAlways("Cannot create EGL Pbuffer context: %s\n", lastErrorString());
         return nullptr;
+    }
 
     static const int pbufferAttributes[] = { EGL_WIDTH, 1, EGL_HEIGHT, 1, EGL_NONE };
     EGLSurface surface = eglCreatePbufferSurface(display, config, pbufferAttributes);
     if (surface == EGL_NO_SURFACE) {
+        WTFLogAlways("Cannot create EGL Pbuffer surface: %s\n", lastErrorString());
         eglDestroyContext(display, context);
         return nullptr;
     }
@@ -160,31 +195,47 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createPbufferContext(PlatformDisplay
 std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDisplay& platformDisplay, EGLContext sharingContext)
 {
     EGLDisplay display = platformDisplay.eglDisplay();
-    if (display == EGL_NO_DISPLAY)
+    if (display == EGL_NO_DISPLAY) {
+        WTFLogAlways("Cannot create surfaceless EGL context: invalid display (last error: %s)\n", lastErrorString());
         return nullptr;
+    }
 
     const char* extensions = eglQueryString(display, EGL_EXTENSIONS);
-    if (!GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_context") && !GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_opengl"))
+    if (!GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_context") && !GLContext::isExtensionSupported(extensions, "EGL_KHR_surfaceless_opengl")) {
+        WTFLogAlways("Cannot create EGL surfaceless context: missing EGL_KHR_surfaceless_{context,opengl} extension.\n");
         return nullptr;
+    }
 
     EGLConfig config;
-    if (!getEGLConfig(display, &config, Surfaceless))
+    if (!getEGLConfig(display, &config, Surfaceless)) {
+        WTFLogAlways("Cannot obtain EGL surfaceless configuration: %s\n", lastErrorString());
         return nullptr;
+    }
 
-    EGLContext context = eglCreateContext(display, config, sharingContext, gContextAttributes);
-    if (context == EGL_NO_CONTEXT)
+    EGLContext context = createContextForEGLVersion(platformDisplay, config, sharingContext);
+    if (context == EGL_NO_CONTEXT) {
+        WTFLogAlways("Cannot create EGL surfaceless context: %s\n", lastErrorString());
         return nullptr;
+    }
 
     return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, EGL_NO_SURFACE, Surfaceless));
 }
 
 std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay)
 {
-    if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
+    if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY) {
+        WTFLogAlways("Cannot create EGL context: invalid display (last error: %s)\n", lastErrorString());
         return nullptr;
+    }
 
-    if (eglBindAPI(gEGLAPIVersion) == EGL_FALSE)
+    if (eglBindAPI(gEGLAPIVersion) == EGL_FALSE) {
+#if USE(OPENGL_ES)
+        WTFLogAlways("Cannot create EGL context: error binding OpenGL ES API (%s)\n", lastErrorString());
+#else
+        WTFLogAlways("Cannot create EGL context: error binding OpenGL API (%s)\n", lastErrorString());
+#endif
         return nullptr;
+    }
 
     EGLContext eglSharingContext = platformDisplay.sharingGLContext() ? static_cast<GLContextEGL*>(platformDisplay.sharingGLContext())->m_context : EGL_NO_CONTEXT;
     auto context = window ? createWindowContext(window, platformDisplay, eglSharingContext) : nullptr;
@@ -212,11 +263,19 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType win
 
 std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay)
 {
-    if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
+    if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY) {
+        WTFLogAlways("Cannot create EGL sharing context: invalid display (last error: %s)", lastErrorString());
         return nullptr;
+    }
 
-    if (eglBindAPI(gEGLAPIVersion) == EGL_FALSE)
+    if (eglBindAPI(gEGLAPIVersion) == EGL_FALSE) {
+#if USE(OPENGL_ES)
+        WTFLogAlways("Cannot create EGL sharing context: error binding OpenGL ES API (%s)\n", lastErrorString());
+#else
+        WTFLogAlways("Cannot create EGL sharing context: error binding OpenGL API (%s)\n", lastErrorString());
+#endif
         return nullptr;
+    }
 
     auto context = createSurfacelessContext(platformDisplay);
     if (!context) {
@@ -247,6 +306,8 @@ GLContextEGL::GLContextEGL(PlatformDisplay& display, EGLContext context, EGLSurf
 {
     ASSERT(type != PixmapSurface);
     ASSERT(type == Surfaceless || surface != EGL_NO_SURFACE);
+    RELEASE_ASSERT(m_display.eglDisplay() != EGL_NO_DISPLAY);
+    RELEASE_ASSERT(context != EGL_NO_CONTEXT);
 }
 
 GLContextEGL::~GLContextEGL()
@@ -291,6 +352,65 @@ IntSize GLContextEGL::defaultFrameBufferSize()
         return IntSize();
 
     return IntSize(width, height);
+}
+
+EGLContext GLContextEGL::createContextForEGLVersion(PlatformDisplay& platformDisplay, EGLConfig config, EGLContext sharingContext)
+{
+    static EGLint contextAttributes[7];
+    static bool contextAttributesInitialized = false;
+
+    if (!contextAttributesInitialized) {
+        contextAttributesInitialized = true;
+
+#if USE(OPENGL_ES)
+        // GLES case. Not much to do here besides requesting a GLES2 version.
+        contextAttributes[0] = EGL_CONTEXT_CLIENT_VERSION;
+        contextAttributes[1] = 2;
+        contextAttributes[2] = EGL_NONE;
+#else
+        // OpenGL case. We want to request an OpenGL version >= 3.2 with a core profile. If that's not possible,
+        // we'll use whatever is available. In order to request a concrete version of OpenGL we need EGL version
+        // 1.5 or EGL version 1.4 with the extension EGL_KHR_create_context.
+        EGLContext context = EGL_NO_CONTEXT;
+
+        if (platformDisplay.eglCheckVersion(1, 5)) {
+            contextAttributes[0] = EGL_CONTEXT_MAJOR_VERSION;
+            contextAttributes[1] = 3;
+            contextAttributes[2] = EGL_CONTEXT_MINOR_VERSION;
+            contextAttributes[3] = 2;
+            contextAttributes[4] = EGL_CONTEXT_OPENGL_PROFILE_MASK;
+            contextAttributes[5] = EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT;
+            contextAttributes[6] = EGL_NONE;
+
+            // Try to create a context with this configuration.
+            context = eglCreateContext(platformDisplay.eglDisplay(), config, sharingContext, contextAttributes);
+        } else if (platformDisplay.eglCheckVersion(1, 4)) {
+            const char* extensions = eglQueryString(platformDisplay.eglDisplay(), EGL_EXTENSIONS);
+            if (GLContext::isExtensionSupported(extensions, "EGL_KHR_create_context")) {
+                contextAttributes[0] = EGL_CONTEXT_MAJOR_VERSION_KHR;
+                contextAttributes[1] = 3;
+                contextAttributes[2] = EGL_CONTEXT_MINOR_VERSION_KHR;
+                contextAttributes[3] = 2;
+                contextAttributes[4] = EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR;
+                contextAttributes[5] = EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR;
+                contextAttributes[6] = EGL_NONE;
+
+                // Try to create a context with this configuration.
+                context = eglCreateContext(platformDisplay.eglDisplay(), config, sharingContext, contextAttributes);
+            }
+        }
+
+        // If the context creation worked, just return it.
+        if (context != EGL_NO_CONTEXT)
+            return context;
+
+        // Legacy case: the required EGL version is not present, or we haven't been able to create a >= 3.2 OpenGL
+        // context, so just request whatever is available.
+        contextAttributes[0] = EGL_NONE;
+#endif
+    }
+
+    return eglCreateContext(platformDisplay.eglDisplay(), config, sharingContext, contextAttributes);
 }
 
 bool GLContextEGL::makeContextCurrent()

@@ -42,7 +42,7 @@
 #define COMPILER_HAS_CLANG_BUILTIN(x) 0
 #endif
 
-/* COMPILER_HAS_CLANG_HEATURE() - whether the compiler supports a particular language or library feature. */
+/* COMPILER_HAS_CLANG_FEATURE() - whether the compiler supports a particular language or library feature. */
 /* http://clang.llvm.org/docs/LanguageExtensions.html#has-feature-and-has-extension */
 #ifdef __has_feature
 #define COMPILER_HAS_CLANG_FEATURE(x) __has_feature(x)
@@ -66,7 +66,6 @@
 #define WTF_COMPILER_CLANG 1
 #define WTF_COMPILER_SUPPORTS_BLOCKS COMPILER_HAS_CLANG_FEATURE(blocks)
 #define WTF_COMPILER_SUPPORTS_C_STATIC_ASSERT COMPILER_HAS_CLANG_FEATURE(c_static_assert)
-#define WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS COMPILER_HAS_CLANG_FEATURE(cxx_reference_qualified_functions)
 #define WTF_COMPILER_SUPPORTS_CXX_EXCEPTIONS COMPILER_HAS_CLANG_FEATURE(cxx_exceptions)
 #define WTF_COMPILER_SUPPORTS_BUILTIN_IS_TRIVIALLY_COPYABLE COMPILER_HAS_CLANG_FEATURE(is_trivially_copyable)
 
@@ -75,6 +74,8 @@
 #define WTF_CPP_STD_VER 11
 #elif __cplusplus <= 201402L
 #define WTF_CPP_STD_VER 14
+#elif __cplusplus <= 201703L
+#define WTF_CPP_STD_VER 17
 #endif
 #endif
 
@@ -89,22 +90,19 @@
 /* Note: This section must come after the Clang section since we check !COMPILER(CLANG) here. */
 #if COMPILER(GCC_OR_CLANG) && !COMPILER(CLANG)
 #define WTF_COMPILER_GCC 1
-#define WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS 1
 
 #define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
 #define GCC_VERSION_AT_LEAST(major, minor, patch) (GCC_VERSION >= (major * 10000 + minor * 100 + patch))
-
-#if !GCC_VERSION_AT_LEAST(5, 0, 0)
-#error "Please use a newer version of GCC. WebKit requires GCC 5.0.0 or newer to compile."
-#endif
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define WTF_COMPILER_SUPPORTS_C_STATIC_ASSERT 1
 #endif
 
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-
 #endif /* COMPILER(GCC) */
+
+#if COMPILER(GCC_OR_CLANG) && defined(NDEBUG) && !defined(__OPTIMIZE__) && !defined(RELEASE_WITHOUT_OPTIMIZATIONS)
+#error "Building release without compiler optimizations: WebKit will be slow. Set -DRELEASE_WITHOUT_OPTIMIZATIONS if this is intended."
+#endif
 
 /* COMPILER(MINGW) - MinGW GCC */
 
@@ -126,18 +124,11 @@
 #if defined(_MSC_VER)
 
 #define WTF_COMPILER_MSVC 1
-#define WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS 1
 
-#if _MSC_VER < 1900
-#error "Please use a newer version of Visual Studio. WebKit requires VS2015 or newer to compile."
+#if _MSC_VER < 1910
+#error "Please use a newer version of Visual Studio. WebKit requires VS2017 or newer to compile."
 #endif
 
-#endif
-
-/* COMPILER(SUNCC) */
-
-#if defined(__SUNPRO_CC) || defined(__SUNPRO_C)
-#define WTF_COMPILER_SUNCC 1
 #endif
 
 #if !COMPILER(CLANG) && !COMPILER(MSVC)
@@ -152,21 +143,13 @@
 #define WTF_COMPILER_SUPPORTS_EABI 1
 #endif
 
-/* RELAXED_CONSTEXPR */
+/* ASAN_ENABLED and SUPPRESS_ASAN */
 
-#if defined(__cpp_constexpr) && __cpp_constexpr >= 201304
-#define WTF_COMPILER_SUPPORTS_RELAXED_CONSTEXPR 1
-#endif
-
-#if !defined(RELAXED_CONSTEXPR)
-#if COMPILER_SUPPORTS(RELAXED_CONSTEXPR)
-#define RELAXED_CONSTEXPR constexpr
+#ifdef __SANITIZE_ADDRESS__
+#define ASAN_ENABLED 1
 #else
-#define RELAXED_CONSTEXPR
-#endif
-#endif
-
 #define ASAN_ENABLED COMPILER_HAS_CLANG_FEATURE(address_sanitizer)
+#endif
 
 #if ASAN_ENABLED
 #define SUPPRESS_ASAN __attribute__((no_sanitize_address))
@@ -178,7 +161,9 @@
 
 /* ALWAYS_INLINE */
 
-#if !defined(ALWAYS_INLINE) && COMPILER(GCC_OR_CLANG) && defined(NDEBUG) && !COMPILER(MINGW)
+/* In GCC functions marked with no_sanitize_address cannot call functions that are marked with always_inline and not marked with no_sanitize_address.
+ * Therefore we need to give up on the enforcement of ALWAYS_INLINE when bulding with ASAN. https://gcc.gnu.org/bugzilla/show_bug.cgi?id=67368 */
+#if !defined(ALWAYS_INLINE) && COMPILER(GCC_OR_CLANG) && defined(NDEBUG) && !COMPILER(MINGW) && !(COMPILER(GCC) && ASAN_ENABLED)
 #define ALWAYS_INLINE inline __attribute__((__always_inline__))
 #endif
 
@@ -188,6 +173,12 @@
 
 #if !defined(ALWAYS_INLINE)
 #define ALWAYS_INLINE inline
+#endif
+
+#if COMPILER(MSVC)
+#define ALWAYS_INLINE_EXCEPT_MSVC inline
+#else
+#define ALWAYS_INLINE_EXCEPT_MSVC ALWAYS_INLINE
 #endif
 
 /* WTF_EXTERN_C_{BEGIN, END} */
@@ -210,6 +201,14 @@
 #define FALLTHROUGH [[clang::fallthrough]]
 #elif __has_cpp_attribute(gnu::fallthrough)
 #define FALLTHROUGH [[gnu::fallthrough]]
+#endif
+
+#elif !defined(FALLTHROUGH) && !defined(__cplusplus)
+
+#if COMPILER(GCC)
+#if GCC_VERSION_AT_LEAST(7, 0, 0)
+#define FALLTHROUGH __attribute__ ((fallthrough))
+#endif
 #endif
 
 #endif // !defined(FALLTHROUGH) && defined(__cplusplus) && defined(__has_cpp_attribute)
@@ -295,6 +294,18 @@
 
 #if !defined(OBJC_CLASS)
 #define OBJC_CLASS class
+#endif
+
+/* OBJC_PROTOCOL */
+
+#if !defined(OBJC_PROTOCOL) && defined(__OBJC__)
+/* This forward-declares a protocol, then also creates a type of the same name based on NSObject.
+ * This allows us to use "NSObject<MyProtocol> *" or "MyProtocol *" more-or-less interchangably. */
+#define OBJC_PROTOCOL(protocolName) @protocol protocolName; using protocolName = NSObject<protocolName>
+#endif
+
+#if !defined(OBJC_PROTOCOL)
+#define OBJC_PROTOCOL(protocolName) class protocolName
 #endif
 
 /* PURE_FUNCTION */

@@ -29,52 +29,22 @@
 #import <WebKitLegacy/WebDownload.h>
 
 #import <Foundation/NSURLAuthenticationChallenge.h>
-#import <WebCore/AuthenticationCF.h>
 #import <WebCore/AuthenticationMac.h>
 #import <WebCore/Credential.h>
 #import <WebCore/CredentialStorage.h>
-#import <WebCore/NSURLDownloadSPI.h>
 #import <WebCore/ProtectionSpace.h>
 #import <WebKitLegacy/WebPanelAuthenticationHandler.h>
+#import <pal/spi/cocoa/NSURLDownloadSPI.h>
 #import <wtf/Assertions.h>
 
 #import "WebTypesInternal.h"
 
-#if USE(CFURLCONNECTION)
-#import <CFNetwork/CFNetwork.h>
-#import <CFNetwork/CFURLConnection.h>
-#endif
-
 using namespace WebCore;
 
-@class NSURLConnectionDelegateProxy;
-
-// FIXME: The following are NSURLDownload SPI - it would be nice to not have to override them at 
-// some point in the future
-@interface NSURLDownload (WebDownloadCapability)
-- (id)_initWithLoadingConnection:(NSURLConnection *)connection
-                         request:(NSURLRequest *)request
-                        response:(NSURLResponse *)response
-                        delegate:(id)delegate
-                           proxy:(NSURLConnectionDelegateProxy *)proxy;
-- (id)_initWithRequest:(NSURLRequest *)request
-              delegate:(id)delegate
-             directory:(NSString *)directory;
-
-#if USE(CFURLCONNECTION)
-- (id)_initWithLoadingCFURLConnection:(CFURLConnectionRef)connection request:(CFURLRequestRef)request response:(CFURLResponseRef)response delegate:(id)delegate proxy:(NSURLConnectionDelegateProxy *)proxy;
-#endif
-
-@end
-
-@interface WebDownloadInternal : NSObject <NSURLDownloadDelegate>
-{
-@public
+@interface WebDownloadInternal : NSObject <NSURLDownloadDelegate> {
     id realDelegate;
 }
-
-- (void)setRealDelegate:(id)rd;
-
+- (void)setRealDelegate:(id)realDelegate;
 @end
 
 @implementation WebDownloadInternal
@@ -226,14 +196,6 @@ using namespace WebCore;
     [self _setRealDelegate:delegate];
     return [super _initWithLoadingConnection:connection request:request response:response delegate:_webInternal proxy:proxy];
 }
-
-#if USE(CFURLCONNECTION)
-- (id)_initWithLoadingCFURLConnection:(CFURLConnectionRef)connection request:(CFURLRequestRef)request response:(CFURLResponseRef)response delegate:(id)delegate proxy:(NSURLConnectionDelegateProxy *)proxy
-{
-    [self _setRealDelegate:delegate];
-    return [super _initWithLoadingCFURLConnection:connection request:request response:response delegate:_webInternal proxy:proxy];
-}
-#endif
 
 - (id)_initWithRequest:(NSURLRequest *)request
               delegate:(id)delegate

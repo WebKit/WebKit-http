@@ -3,7 +3,7 @@
 /*---
 description: Resolving with an object with a "poisoned" `then` property
 es6id: 25.4.4.1
-info: >
+info: |
     [...]
     6. Let promiseCapability be NewPromiseCapability(C).
     [...]
@@ -60,12 +60,12 @@ try {
 }
 
 promise.then(function() {
-    $DONE('The promise should not be fulfilled.');
-  }, function(val) {
-    if (val !== value) {
-      $DONE('The promise should be rejected with the expected value.');
-      return;
-    }
+  $DONE('The promise should not be fulfilled.');
+}, function(val) {
+  if (val !== value) {
+    $DONE('The promise should be rejected with the expected value.');
+    return;
+  }
 
-    $DONE();
-  });
+  $DONE();
+});

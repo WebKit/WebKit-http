@@ -24,8 +24,11 @@
 
 #include "SVGGElement.h"
 #include "SVGUseElement.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGTransformableContainer);
     
 RenderSVGTransformableContainer::RenderSVGTransformableContainer(SVGGraphicsElement& element, RenderStyle&& style)
     : RenderSVGContainer(element, WTFMove(style))
@@ -63,7 +66,7 @@ bool RenderSVGTransformableContainer::calculateLocalTransform()
         return false;
 
     m_localTransform = element.animatedLocalTransform();
-    m_localTransform.translate(m_lastTranslation.width(), m_lastTranslation.height());
+    m_localTransform.translate(m_lastTranslation);
     m_needsTransformUpdate = false;
     return true;
 }

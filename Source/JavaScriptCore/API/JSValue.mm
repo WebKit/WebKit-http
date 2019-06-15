@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,6 +39,7 @@
 #import "JSCJSValue.h"
 #import "Strong.h"
 #import "StrongInlines.h"
+#import <wtf/Expected.h>
 #import <wtf/HashMap.h>
 #import <wtf/HashSet.h>
 #import <wtf/Lock.h>
@@ -64,6 +65,21 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 
 @implementation JSValue {
     JSValueRef m_value;
+}
+
+- (void)dealloc
+{
+    JSValueUnprotect([_context JSGlobalContextRef], m_value);
+    [_context release];
+    _context = nil;
+    [super dealloc];
+}
+
+- (NSString *)description
+{
+    if (id wrapped = tryUnwrapObjcObject([_context JSGlobalContextRef], m_value))
+        return [wrapped description];
+    return [self toString];
 }
 
 - (JSValueRef)JSValueRef
@@ -108,8 +124,8 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 
 + (JSValue *)valueWithNewRegularExpressionFromPattern:(NSString *)pattern flags:(NSString *)flags inContext:(JSContext *)context
 {
-    JSStringRef patternString = JSStringCreateWithCFString((CFStringRef)pattern);
-    JSStringRef flagsString = JSStringCreateWithCFString((CFStringRef)flags);
+    JSStringRef patternString = JSStringCreateWithCFString((__bridge CFStringRef)pattern);
+    JSStringRef flagsString = JSStringCreateWithCFString((__bridge CFStringRef)flags);
     JSValueRef arguments[2] = { JSValueMakeString([context JSGlobalContextRef], patternString), JSValueMakeString([context JSGlobalContextRef], flagsString) };
     JSStringRelease(patternString);
     JSStringRelease(flagsString);
@@ -119,7 +135,7 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 
 + (JSValue *)valueWithNewErrorFromMessage:(NSString *)message inContext:(JSContext *)context
 {
-    JSStringRef string = JSStringCreateWithCFString((CFStringRef)message);
+    JSStringRef string = JSStringCreateWithCFString((__bridge CFStringRef)message);
     JSValueRef argument = JSValueMakeString([context JSGlobalContextRef], string);
     JSStringRelease(string);
 
@@ -135,6 +151,13 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 {
     return [JSValue valueWithJSValueRef:JSValueMakeUndefined([context JSGlobalContextRef]) inContext:context];
 }
+
++ (JSValue *)valueWithNewSymbolFromDescription:(NSString *)description inContext:(JSContext *)context
+{
+    JSStringRef string = JSStringCreateWithCFString(reinterpret_cast<CFStringRef>(description));
+    return [JSValue valueWithJSValueRef:JSValueMakeSymbol([context JSGlobalContextRef], string) inContext:context];
+}
+
 
 - (id)toObject
 {
@@ -219,72 +242,81 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
     return result;
 }
 
-- (JSValue *)valueForProperty:(NSString *)propertyName
+template<typename Result, typename NSStringFunction, typename JSValueFunction, typename... Types>
+inline Expected<Result, JSValueRef> performPropertyOperation(NSStringFunction stringFunction, JSValueFunction jsFunction, JSValue* value, id propertyKey, Types... arguments)
 {
-    JSValueRef exception = 0;
-    JSObjectRef object = JSValueToObject([_context JSGlobalContextRef], m_value, &exception);
+    JSContext* context = [value context];
+    JSValueRef exception = nullptr;
+    JSObjectRef object = JSValueToObject([context JSGlobalContextRef], [value JSValueRef], &exception);
     if (exception)
-        return [_context valueFromNotifyException:exception];
+        return Unexpected<JSValueRef>(exception);
 
-    JSStringRef name = JSStringCreateWithCFString((CFStringRef)propertyName);
-    JSValueRef result = JSObjectGetProperty([_context JSGlobalContextRef], object, name, &exception);
-    JSStringRelease(name);
-    if (exception)
-        return [_context valueFromNotifyException:exception];
-
-    return [JSValue valueWithJSValueRef:result inContext:_context];
+    Result result;
+    // If it's a NSString already, reduce indirection and just pass the NSString.
+    if ([propertyKey isKindOfClass:[NSString class]]) {
+        JSStringRef name = JSStringCreateWithCFString((__bridge CFStringRef)propertyKey);
+        result = stringFunction([context JSGlobalContextRef], object, name, arguments..., &exception);
+        JSStringRelease(name);
+    } else
+        result = jsFunction([context JSGlobalContextRef], object, [[JSValue valueWithObject:propertyKey inContext:context] JSValueRef], arguments..., &exception);
+    return Expected<Result, JSValueRef>(result);
 }
 
-- (void)setValue:(id)value forProperty:(NSString *)propertyName
+- (JSValue *)valueForProperty:(id)key
 {
-    JSValueRef exception = 0;
-    JSObjectRef object = JSValueToObject([_context JSGlobalContextRef], m_value, &exception);
-    if (exception) {
-        [_context notifyException:exception];
+    auto result = performPropertyOperation<JSValueRef>(JSObjectGetProperty, JSObjectGetPropertyForKey, self, key);
+    if (!result)
+        return [_context valueFromNotifyException:result.error()];
+
+    return [JSValue valueWithJSValueRef:result.value() inContext:_context];
+}
+
+
+- (void)setValue:(id)value forProperty:(JSValueProperty)key
+{
+    // We need Unit business because void can't be assigned to in performPropertyOperation and I don't want to duplicate the code...
+    using Unit = std::tuple<>;
+    auto stringSetProperty = [] (auto... args) -> Unit {
+        JSObjectSetProperty(args...);
+        return { };
+    };
+
+    auto jsValueSetProperty = [] (auto... args) -> Unit {
+        JSObjectSetPropertyForKey(args...);
+        return { };
+    };
+
+    auto result = performPropertyOperation<Unit>(stringSetProperty, jsValueSetProperty, self, key, objectToValue(_context, value), kJSPropertyAttributeNone);
+    if (!result) {
+        [_context notifyException:result.error()];
         return;
     }
-
-    JSStringRef name = JSStringCreateWithCFString((CFStringRef)propertyName);
-    JSObjectSetProperty([_context JSGlobalContextRef], object, name, objectToValue(_context, value), 0, &exception);
-    JSStringRelease(name);
-    if (exception) {
-        [_context notifyException:exception];
-        return;
-    }
 }
 
-- (BOOL)deleteProperty:(NSString *)propertyName
+- (BOOL)deleteProperty:(JSValueProperty)key
 {
-    JSValueRef exception = 0;
-    JSObjectRef object = JSValueToObject([_context JSGlobalContextRef], m_value, &exception);
-    if (exception)
-        return [_context boolFromNotifyException:exception];
-
-    JSStringRef name = JSStringCreateWithCFString((CFStringRef)propertyName);
-    BOOL result = JSObjectDeleteProperty([_context JSGlobalContextRef], object, name, &exception);
-    JSStringRelease(name);
-    if (exception)
-        return [_context boolFromNotifyException:exception];
-
-    return result;
+    Expected<BOOL, JSValueRef> result = performPropertyOperation<BOOL>(JSObjectDeleteProperty, JSObjectDeletePropertyForKey, self, key);
+    if (!result)
+        return [_context boolFromNotifyException:result.error()];
+    return result.value();
 }
 
-- (BOOL)hasProperty:(NSString *)propertyName
+- (BOOL)hasProperty:(JSValueProperty)key
 {
-    JSValueRef exception = 0;
-    JSObjectRef object = JSValueToObject([_context JSGlobalContextRef], m_value, &exception);
-    if (exception)
-        return [_context boolFromNotifyException:exception];
+    // The C-api doesn't return an exception value for the string version of has property.
+    auto stringHasProperty = [] (JSContextRef ctx, JSObjectRef object, JSStringRef propertyName, JSValueRef*) -> BOOL {
+        return JSObjectHasProperty(ctx, object, propertyName);
+    };
 
-    JSStringRef name = JSStringCreateWithCFString((CFStringRef)propertyName);
-    BOOL result = JSObjectHasProperty([_context JSGlobalContextRef], object, name);
-    JSStringRelease(name);
-    return result;
+    Expected<BOOL, JSValueRef> result = performPropertyOperation<BOOL>(stringHasProperty, JSObjectHasPropertyForKey, self, key);
+    if (!result)
+        return [_context boolFromNotifyException:result.error()];
+    return result.value();
 }
 
-- (void)defineProperty:(NSString *)property descriptor:(id)descriptor
+- (void)defineProperty:(JSValueProperty)key descriptor:(id)descriptor
 {
-    [[_context globalObject][@"Object"] invokeMethod:@"defineProperty" withArguments:@[ self, property, descriptor ]];
+    [[_context globalObject][@"Object"] invokeMethod:@"defineProperty" withArguments:@[ self, key, descriptor ]];
 }
 
 - (JSValue *)valueAtIndex:(NSUInteger)index
@@ -355,6 +387,11 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 - (BOOL)isObject
 {
     return JSValueIsObject([_context JSGlobalContextRef], m_value);
+}
+
+- (BOOL)isSymbol
+{
+    return JSValueIsSymbol([_context JSGlobalContextRef], m_value);
 }
 
 - (BOOL)isArray
@@ -446,7 +483,7 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
     if (exception)
         return [_context valueFromNotifyException:exception];
 
-    JSStringRef name = JSStringCreateWithCFString((CFStringRef)method);
+    JSStringRef name = JSStringCreateWithCFString((__bridge CFStringRef)method);
     JSValueRef function = JSObjectGetProperty([_context JSGlobalContextRef], thisObject, name, &exception);
     JSStringRelease(name);
     if (exception)
@@ -539,13 +576,7 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 
 - (JSValue *)objectForKeyedSubscript:(id)key
 {
-    if (![key isKindOfClass:[NSString class]]) {
-        key = [[JSValue valueWithObject:key inContext:_context] toString];
-        if (!key)
-            return [JSValue valueWithUndefinedInContext:_context];
-    }
-
-    return [self valueForProperty:(NSString *)key];
+    return [self valueForProperty:key];
 }
 
 - (JSValue *)objectAtIndexedSubscript:(NSUInteger)index
@@ -553,15 +584,9 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
     return [self valueAtIndex:index];
 }
 
-- (void)setObject:(id)object forKeyedSubscript:(NSObject <NSCopying> *)key
+- (void)setObject:(id)object forKeyedSubscript:(id)key
 {
-    if (![key isKindOfClass:[NSString class]]) {
-        key = [[JSValue valueWithObject:key inContext:_context] toString];
-        if (!key)
-            return;
-    }
-
-    [self setValue:object forProperty:(NSString *)key];
+    [self setValue:object forProperty:key];
 }
 
 - (void)setObject:(id)object atIndexedSubscript:(NSUInteger)index
@@ -574,13 +599,13 @@ NSString * const JSPropertyDescriptorSetKey = @"set";
 inline bool isDate(JSC::VM& vm, JSObjectRef object, JSGlobalContextRef context)
 {
     JSC::JSLockHolder locker(toJS(context));
-    return toJS(object)->inherits(vm, JSC::DateInstance::info());
+    return toJS(object)->inherits<JSC::DateInstance>(vm);
 }
 
 inline bool isArray(JSC::VM& vm, JSObjectRef object, JSGlobalContextRef context)
 {
     JSC::JSLockHolder locker(toJS(context));
-    return toJS(object)->inherits(vm, JSC::JSArray::info());
+    return toJS(object)->inherits<JSC::JSArray>(vm);
 }
 
 @implementation JSValue(Internal)
@@ -611,14 +636,14 @@ public:
 
 private:
     JSGlobalContextRef m_context;
-    HashMap<JSValueRef, id> m_objectMap;
+    HashMap<JSValueRef, __unsafe_unretained id> m_objectMap;
     Vector<Task> m_worklist;
     Vector<JSC::Strong<JSC::Unknown>> m_jsValues;
 };
 
 inline id JSContainerConvertor::convert(JSValueRef value)
 {
-    HashMap<JSValueRef, id>::iterator iter = m_objectMap.find(value);
+    auto iter = m_objectMap.find(value);
     if (iter != m_objectMap.end())
         return iter->value;
 
@@ -649,8 +674,9 @@ JSContainerConvertor::Task JSContainerConvertor::take()
 static void reportExceptionToInspector(JSGlobalContextRef context, JSC::JSValue exceptionValue)
 {
     JSC::ExecState* exec = toJS(context);
-    JSC::Exception* exception = JSC::Exception::create(exec->vm(), exceptionValue);
-    exec->vmEntryGlobalObject()->inspectorController().reportAPIException(exec, exception);
+    JSC::VM& vm = exec->vm();
+    JSC::Exception* exception = JSC::Exception::create(vm, exceptionValue);
+    vm.vmEntryGlobalObject(exec)->inspectorController().reportAPIException(exec, exception);
 }
 #endif
 
@@ -671,30 +697,29 @@ static JSContainerConvertor::Task valueToObjectWithoutCopy(JSGlobalContextRef co
         } else if (JSValueIsString(context, value)) {
             // Would be nice to unique strings, too.
             JSStringRef jsstring = JSValueToStringCopy(context, value, 0);
-            NSString * stringNS = (NSString *)JSStringCopyCFString(kCFAllocatorDefault, jsstring);
+            primitive = CFBridgingRelease(JSStringCopyCFString(kCFAllocatorDefault, jsstring));
             JSStringRelease(jsstring);
-            primitive = [stringNS autorelease];
         } else if (JSValueIsNull(context, value))
             primitive = [NSNull null];
         else {
             ASSERT(JSValueIsUndefined(context, value));
             primitive = nil;
         }
-        return (JSContainerConvertor::Task){ value, primitive, ContainerNone };
+        return { value, primitive, ContainerNone };
     }
 
     JSObjectRef object = JSValueToObject(context, value, 0);
 
     if (id wrapped = tryUnwrapObjcObject(context, object))
-        return (JSContainerConvertor::Task){ object, wrapped, ContainerNone };
+        return { object, wrapped, ContainerNone };
 
     if (isDate(vm, object, context))
-        return (JSContainerConvertor::Task){ object, [NSDate dateWithTimeIntervalSince1970:JSValueToNumber(context, object, 0) / 1000.0], ContainerNone };
+        return { object, [NSDate dateWithTimeIntervalSince1970:JSValueToNumber(context, object, 0) / 1000.0], ContainerNone };
 
     if (isArray(vm, object, context))
-        return (JSContainerConvertor::Task){ object, [NSMutableArray array], ContainerArray };
+        return { object, [NSMutableArray array], ContainerArray };
 
-    return (JSContainerConvertor::Task){ object, [NSMutableDictionary dictionary], ContainerDictionary };
+    return { object, [NSMutableDictionary dictionary], ContainerDictionary };
 }
 
 static id containerValueToObject(JSGlobalContextRef context, JSContainerConvertor::Task task)
@@ -734,7 +759,7 @@ static id containerValueToObject(JSGlobalContextRef context, JSContainerConverto
             for (size_t i = 0; i < length; ++i) {
                 JSStringRef propertyName = JSPropertyNameArrayGetNameAtIndex(propertyNameArray, i);
                 if (id objc = convertor.convert(JSObjectGetProperty(context, js, propertyName, 0)))
-                    dictionary[[(NSString *)JSStringCopyCFString(kCFAllocatorDefault, propertyName) autorelease]] = objc;
+                    dictionary[(__bridge NSString *)adoptCF(JSStringCopyCFString(kCFAllocatorDefault, propertyName)).get()] = objc;
             }
 
             JSPropertyNameArrayRelease(propertyNameArray);
@@ -782,9 +807,9 @@ id valueToString(JSGlobalContextRef context, JSValueRef value, JSValueRef* excep
         return nil;
     }
 
-    RetainPtr<CFStringRef> stringCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, jsstring));
+    NSString *string = CFBridgingRelease(JSStringCopyCFString(kCFAllocatorDefault, jsstring));
     JSStringRelease(jsstring);
-    return (NSString *)stringCF.autorelease();
+    return string;
 }
 
 id valueToDate(JSGlobalContextRef context, JSValueRef value, JSValueRef* exception)
@@ -808,11 +833,11 @@ id valueToArray(JSGlobalContextRef context, JSValueRef value, JSValueRef* except
     }
 
     if (JSValueIsObject(context, value))
-        return containerValueToObject(context, (JSContainerConvertor::Task){ value, [NSMutableArray array], ContainerArray});
+        return containerValueToObject(context, { value, [NSMutableArray array], ContainerArray});
 
     JSC::JSLockHolder locker(toJS(context));
     if (!(JSValueIsNull(context, value) || JSValueIsUndefined(context, value))) {
-        JSC::JSObject* exceptionObject = JSC::createTypeError(toJS(context), ASCIILiteral("Cannot convert primitive to NSArray"));
+        JSC::JSObject* exceptionObject = JSC::createTypeError(toJS(context), "Cannot convert primitive to NSArray"_s);
         *exception = toRef(exceptionObject);
 #if ENABLE(REMOTE_INSPECTOR)
         reportExceptionToInspector(context, exceptionObject);
@@ -830,11 +855,11 @@ id valueToDictionary(JSGlobalContextRef context, JSValueRef value, JSValueRef* e
     }
 
     if (JSValueIsObject(context, value))
-        return containerValueToObject(context, (JSContainerConvertor::Task){ value, [NSMutableDictionary dictionary], ContainerDictionary});
+        return containerValueToObject(context, { value, [NSMutableDictionary dictionary], ContainerDictionary});
 
     JSC::JSLockHolder locker(toJS(context));
     if (!(JSValueIsNull(context, value) || JSValueIsUndefined(context, value))) {
-        JSC::JSObject* exceptionObject = JSC::createTypeError(toJS(context), ASCIILiteral("Cannot convert primitive to NSDictionary"));
+        JSC::JSObject* exceptionObject = JSC::createTypeError(toJS(context), "Cannot convert primitive to NSDictionary"_s);
         *exception = toRef(exceptionObject);
 #if ENABLE(REMOTE_INSPECTOR)
         reportExceptionToInspector(context, exceptionObject);
@@ -863,7 +888,7 @@ public:
 
 private:
     JSContext *m_context;
-    HashMap<id, JSValueRef> m_objectMap;
+    HashMap<__unsafe_unretained id, JSValueRef> m_objectMap;
     Vector<Task> m_worklist;
     Vector<JSC::Strong<JSC::Unknown>> m_jsValues;
 };
@@ -911,49 +936,49 @@ static ObjcContainerConvertor::Task objectToValueWithoutCopy(JSContext *context,
     JSGlobalContextRef contextRef = [context JSGlobalContextRef];
 
     if (!object)
-        return (ObjcContainerConvertor::Task){ object, JSValueMakeUndefined(contextRef), ContainerNone };
+        return { object, JSValueMakeUndefined(contextRef), ContainerNone };
 
     if (!class_conformsToProtocol(object_getClass(object), getJSExportProtocol())) {
         if ([object isKindOfClass:[NSArray class]])
-            return (ObjcContainerConvertor::Task){ object, JSObjectMakeArray(contextRef, 0, NULL, 0), ContainerArray };
+            return { object, JSObjectMakeArray(contextRef, 0, NULL, 0), ContainerArray };
 
         if ([object isKindOfClass:[NSDictionary class]])
-            return (ObjcContainerConvertor::Task){ object, JSObjectMake(contextRef, 0, 0), ContainerDictionary };
+            return { object, JSObjectMake(contextRef, 0, 0), ContainerDictionary };
 
         if ([object isKindOfClass:[NSNull class]])
-            return (ObjcContainerConvertor::Task){ object, JSValueMakeNull(contextRef), ContainerNone };
+            return { object, JSValueMakeNull(contextRef), ContainerNone };
 
         if ([object isKindOfClass:[JSValue class]])
-            return (ObjcContainerConvertor::Task){ object, ((JSValue *)object)->m_value, ContainerNone };
+            return { object, ((JSValue *)object)->m_value, ContainerNone };
 
         if ([object isKindOfClass:[NSString class]]) {
-            JSStringRef string = JSStringCreateWithCFString((CFStringRef)object);
+            JSStringRef string = JSStringCreateWithCFString((__bridge CFStringRef)object);
             JSValueRef js = JSValueMakeString(contextRef, string);
             JSStringRelease(string);
-            return (ObjcContainerConvertor::Task){ object, js, ContainerNone };
+            return { object, js, ContainerNone };
         }
 
         if ([object isKindOfClass:[NSNumber class]]) {
             if (isNSBoolean(object))
-                return (ObjcContainerConvertor::Task){ object, JSValueMakeBoolean(contextRef, [object boolValue]), ContainerNone };
-            return (ObjcContainerConvertor::Task){ object, JSValueMakeNumber(contextRef, [object doubleValue]), ContainerNone };
+                return { object, JSValueMakeBoolean(contextRef, [object boolValue]), ContainerNone };
+            return { object, JSValueMakeNumber(contextRef, [object doubleValue]), ContainerNone };
         }
 
         if ([object isKindOfClass:[NSDate class]]) {
             JSValueRef argument = JSValueMakeNumber(contextRef, [object timeIntervalSince1970] * 1000.0);
             JSObjectRef result = JSObjectMakeDate(contextRef, 1, &argument, 0);
-            return (ObjcContainerConvertor::Task){ object, result, ContainerNone };
+            return { object, result, ContainerNone };
         }
 
         if ([object isKindOfClass:[JSManagedValue class]]) {
             JSValue *value = [static_cast<JSManagedValue *>(object) value];
             if (!value)
-                return (ObjcContainerConvertor::Task) { object, JSValueMakeUndefined(contextRef), ContainerNone };
-            return (ObjcContainerConvertor::Task){ object, value->m_value, ContainerNone };
+                return  { object, JSValueMakeUndefined(contextRef), ContainerNone };
+            return { object, value->m_value, ContainerNone };
         }
     }
 
-    return (ObjcContainerConvertor::Task){ object, valueInternalValue([context wrapperForObjCObject:object]), ContainerNone };
+    return { object, valueInternalValue([context wrapperForObjCObject:object]), ContainerNone };
 }
 
 JSValueRef objectToValue(JSContext *context, id object)
@@ -986,7 +1011,7 @@ JSValueRef objectToValue(JSContext *context, id object)
             NSDictionary *dictionary = (NSDictionary *)current.objc;
             for (id key in [dictionary keyEnumerator]) {
                 if ([key isKindOfClass:[NSString class]]) {
-                    JSStringRef propertyName = JSStringCreateWithCFString((CFStringRef)key);
+                    JSStringRef propertyName = JSStringCreateWithCFString((__bridge CFStringRef)key);
                     JSObjectSetProperty(contextRef, js, propertyName, convertor.convert([dictionary objectForKey:key]), 0, 0);
                     JSStringRelease(propertyName);
                 }
@@ -1054,19 +1079,19 @@ static StructHandlers* createStructHandlerMap()
             return;
         char idType[3];
         // Check 2nd argument type is "@"
-        char* secondType = method_copyArgumentType(method, 3);
-        if (strcmp(secondType, "@") != 0) {
-            free(secondType);
-            return;
+        {
+            auto secondType = adoptSystem<char[]>(method_copyArgumentType(method, 3));
+            if (strcmp(secondType.get(), "@") != 0)
+                return;
         }
-        free(secondType);
         // Check result type is also "@"
         method_getReturnType(method, idType, 3);
         if (strcmp(idType, "@") != 0)
             return;
-        char* type = method_copyArgumentType(method, 2);
-        structHandlers->add(StringImpl::create(type), (StructTagHandler){ selector, 0 });
-        free(type);
+        {
+            auto type = adoptSystem<char[]>(method_copyArgumentType(method, 2));
+            structHandlers->add(StringImpl::create(type.get()), (StructTagHandler) { selector, 0 });
+        }
     });
 
     // Step 2: find all to<Foo> instance methods in JSValue.
@@ -1081,10 +1106,8 @@ static StructHandlers* createStructHandlerMap()
         if (method_getNumberOfArguments(method) != 2)
             return;
         // Try to find a matching valueWith<Foo>:context: method.
-        char* type = method_copyReturnType(method);
-
-        StructHandlers::iterator iter = structHandlers->find(type);
-        free(type);
+        auto type = adoptSystem<char[]>(method_copyReturnType(method));
+        StructHandlers::iterator iter = structHandlers->find(type.get());
         if (iter == structHandlers->end())
             return;
         StructTagHandler& handler = iter->value;
@@ -1117,7 +1140,7 @@ static StructHandlers* createStructHandlerMap()
 
 static StructTagHandler* handerForStructTag(const char* encodedType)
 {
-    static StaticLock handerForStructTagLock;
+    static Lock handerForStructTagLock;
     LockHolder lockHolder(&handerForStructTagLock);
 
     static StructHandlers* structHandlers = createStructHandlerMap();
@@ -1138,21 +1161,6 @@ static StructTagHandler* handerForStructTag(const char* encodedType)
 {
     StructTagHandler* handler = handerForStructTag(structTag);
     return handler ? handler->valueToTypeSEL : nil;
-}
-
-- (void)dealloc
-{
-    JSValueUnprotect([_context JSGlobalContextRef], m_value);
-    [_context release];
-    _context = nil;
-    [super dealloc];
-}
-
-- (NSString *)description
-{
-    if (id wrapped = tryUnwrapObjcObject([_context JSGlobalContextRef], m_value))
-        return [wrapped description];
-    return [self toString];
 }
 
 NSInvocation *typeToValueInvocationFor(const char* encodedType)

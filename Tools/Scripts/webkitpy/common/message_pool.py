@@ -107,6 +107,8 @@ class _MessagePool(object):
             worker = _Worker(host, self._messages_to_manager, self._messages_to_worker, self._worker_factory, worker_number, self._running_inline, self if self._running_inline else None, self._worker_log_level())
             self._workers.append(worker)
             worker.start()
+            if not self._running_inline:
+                self._caller.handle('did_spawn_worker', worker_number)
             if self._worker_startup_delay_secs:
                 time.sleep(self._worker_startup_delay_secs)
 
@@ -261,9 +263,9 @@ class _Worker(multiprocessing.Process):
             _log.debug("%s exiting" % self.name)
         except Queue.Empty:
             assert False, '%s: ran out of messages in worker queue.' % self.name
-        except KeyboardInterrupt, e:
+        except KeyboardInterrupt as e:
             self._raise(sys.exc_info())
-        except Exception, e:
+        except Exception as e:
             self._raise(sys.exc_info())
         finally:
             try:

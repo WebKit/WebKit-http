@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: Throws a TypeError if comparefn detaches the object buffer
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   When the TypedArray SortCompare abstract operation is called with two
@@ -16,6 +16,7 @@ info: >
     ...
   ...
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

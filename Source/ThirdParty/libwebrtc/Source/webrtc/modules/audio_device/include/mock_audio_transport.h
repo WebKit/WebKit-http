@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_DEVICE_INCLUDE_MOCK_AUDIO_TRANSPORT_H_
-#define WEBRTC_MODULES_AUDIO_DEVICE_INCLUDE_MOCK_AUDIO_TRANSPORT_H_
+#ifndef MODULES_AUDIO_DEVICE_INCLUDE_MOCK_AUDIO_TRANSPORT_H_
+#define MODULES_AUDIO_DEVICE_INCLUDE_MOCK_AUDIO_TRANSPORT_H_
 
-#include "webrtc/modules/audio_device/include/audio_device_defines.h"
-#include "webrtc/test/gmock.h"
+#include "modules/audio_device/include/audio_device_defines.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 namespace test {
@@ -44,14 +44,6 @@ class MockAudioTransport : public AudioTransport {
                        int64_t* elapsed_time_ms,
                        int64_t* ntp_time_ms));
 
-  MOCK_METHOD6(PushCaptureData,
-               void(int voe_channel,
-                    const void* audio_data,
-                    int bits_per_sample,
-                    int sample_rate,
-                    size_t number_of_channels,
-                    size_t number_of_frames));
-
   MOCK_METHOD7(PullRenderData,
                void(int bits_per_sample,
                     int sample_rate,
@@ -65,4 +57,4 @@ class MockAudioTransport : public AudioTransport {
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_DEVICE_INCLUDE_MOCK_AUDIO_TRANSPORT_H_
+#endif  // MODULES_AUDIO_DEVICE_INCLUDE_MOCK_AUDIO_TRANSPORT_H_

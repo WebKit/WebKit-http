@@ -31,10 +31,10 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
 #include <WebCore/BlobDataFileReference.h>
-
-using namespace WebCore;
+#include <WebCore/SWContextManager.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 void BlobRegistryProxy::registerFileBlobURL(const WebCore::URL& url, Ref<BlobDataFileReference>&& file, const String& contentType)
 {
@@ -42,48 +42,52 @@ void BlobRegistryProxy::registerFileBlobURL(const WebCore::URL& url, Ref<BlobDat
 
     // File path can be empty when submitting a form file input without a file, see bug 111778.
     if (!file->path().isEmpty())
-        SandboxExtension::createHandle(file->path(), SandboxExtension::ReadOnly, extensionHandle);
+        SandboxExtension::createHandle(file->path(), SandboxExtension::Type::ReadOnly, extensionHandle);
 
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterFileBlobURL(url, file->path(), extensionHandle, contentType), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterFileBlobURL(url, file->path(), extensionHandle, contentType), 0);
 }
 
 void BlobRegistryProxy::registerBlobURL(const URL& url, Vector<BlobPart>&& blobParts, const String& contentType)
 {
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURL(url, blobParts, contentType), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURL(url, blobParts, contentType), 0);
 }
 
 void BlobRegistryProxy::registerBlobURL(const URL& url, const URL& srcURL)
 {
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURLFromURL(url, srcURL), 0);
+    bool shouldBypassConnectionCheck = false;
+#if ENABLE(SERVICE_WORKER)
+    shouldBypassConnectionCheck = SWContextManager::singleton().connection();
+#endif
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURLFromURL { url, srcURL, shouldBypassConnectionCheck }, 0);
 }
 
 void BlobRegistryProxy::registerBlobURLOptionallyFileBacked(const URL& url, const URL& srcURL, RefPtr<WebCore::BlobDataFileReference>&& file, const String& contentType)
 {
     ASSERT(file);
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURLOptionallyFileBacked(url, srcURL, file->path(), contentType), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURLOptionallyFileBacked(url, srcURL, file->path(), contentType), 0);
 }
 
 void BlobRegistryProxy::unregisterBlobURL(const URL& url)
 {
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::UnregisterBlobURL(url), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::UnregisterBlobURL(url), 0);
 }
 
 void BlobRegistryProxy::registerBlobURLForSlice(const URL& url, const URL& srcURL, long long start, long long end)
 {
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURLForSlice(url, srcURL, start, end), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RegisterBlobURLForSlice(url, srcURL, start, end), 0);
 }
 
 unsigned long long BlobRegistryProxy::blobSize(const URL& url)
 {
     uint64_t resultSize;
-    if (!WebProcess::singleton().networkConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::BlobSize(url), Messages::NetworkConnectionToWebProcess::BlobSize::Reply(resultSize), 0))
+    if (!WebProcess::singleton().ensureNetworkProcessConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::BlobSize(url), Messages::NetworkConnectionToWebProcess::BlobSize::Reply(resultSize), 0))
         return 0;
     return resultSize;
 }
 
 void BlobRegistryProxy::writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler)
 {
-    WebProcess::singleton().networkConnection().writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler));
+    WebProcess::singleton().ensureNetworkProcessConnection().writeBlobsToTemporaryFiles(blobURLs, WTFMove(completionHandler));
 }
 
 }

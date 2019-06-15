@@ -63,7 +63,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
 
     dispatch(message)
     {
-        let messageObject = (typeof message === "string") ? JSON.parse(message) : message;
+        let messageObject = typeof message === "string" ? JSON.parse(message) : message;
 
         if ("id" in messageObject)
             this._dispatchResponse(messageObject);
@@ -105,7 +105,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         let responseData = this._pendingResponses.take(sequenceId) || {};
         let {request, command, callback, promise} = responseData;
 
-        let processingStartTimestamp = timestamp();
+        let processingStartTimestamp = performance.now();
         for (let tracer of InspectorBackend.activeTracers)
             tracer.logWillHandleResponse(messageObject);
 
@@ -122,7 +122,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         InspectorBackend.currentDispatchState.request = null;
         InspectorBackend.currentDispatchState.response = null;
 
-        let processingTime = (timestamp() - processingStartTimestamp).toFixed(3);
+        let processingTime = (performance.now() - processingStartTimestamp).toFixed(3);
         let roundTripTime = (processingStartTimestamp - responseData.sendRequestTimestamp).toFixed(3);
 
         for (let tracer of InspectorBackend.activeTracers)
@@ -145,7 +145,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         try {
             callback.apply(null, callbackArguments);
         } catch (e) {
-            WebInspector.reportInternalError(e, {"cause": `An uncaught exception was thrown while dispatching response callback for command ${command.qualifiedName}.`});
+            WI.reportInternalError(e, {"cause": `An uncaught exception was thrown while dispatching response callback for command ${command.qualifiedName}.`});
         }
     }
 
@@ -183,7 +183,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         if (messageObject["params"])
             eventArguments = event.parameterNames.map((name) => messageObject["params"][name]);
 
-        let processingStartTimestamp = timestamp();
+        let processingStartTimestamp = performance.now();
         for (let tracer of InspectorBackend.activeTracers)
             tracer.logWillHandleEvent(messageObject);
 
@@ -195,12 +195,12 @@ InspectorBackend.Connection = class InspectorBackendConnection
             for (let tracer of InspectorBackend.activeTracers)
                 tracer.logFrontendException(messageObject, e);
 
-            WebInspector.reportInternalError(e, {"cause": `An uncaught exception was thrown while handling event: ${qualifiedName}`});
+            WI.reportInternalError(e, {"cause": `An uncaught exception was thrown while handling event: ${qualifiedName}`});
         }
 
         InspectorBackend.currentDispatchState.event = null;
 
-        let processingDuration = (timestamp() - processingStartTimestamp).toFixed(3);
+        let processingDuration = (performance.now() - processingStartTimestamp).toFixed(3);
         for (let tracer of InspectorBackend.activeTracers)
             tracer.logDidHandleEvent(messageObject, {dispatch: processingDuration});
     }
@@ -220,7 +220,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         let responseData = {command, request: messageObject, callback};
 
         if (InspectorBackend.activeTracer)
-            responseData.sendRequestTimestamp = timestamp();
+            responseData.sendRequestTimestamp = performance.now();
 
         this._pendingResponses.set(sequenceId, responseData);
         this._sendMessageToBackend(messageObject);
@@ -241,7 +241,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         let responseData = {command, request: messageObject};
 
         if (InspectorBackend.activeTracer)
-            responseData.sendRequestTimestamp = timestamp();
+            responseData.sendRequestTimestamp = performance.now();
 
         let responsePromise = new Promise(function(resolve, reject) {
             responseData.promise = {resolve, reject};
@@ -272,7 +272,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
     }
 };
 
-InspectorBackend.MainConnection = class InspectorBackendPageConnection extends InspectorBackend.Connection
+InspectorBackend.MainConnection = class InspectorBackendMainConnection extends InspectorBackend.Connection
 {
     constructor()
     {

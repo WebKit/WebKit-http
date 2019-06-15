@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduceright
 es5id: 15.4.4.22-9-b-15
 description: >
     Array.prototype.reduceRight - decreasing length of array with
@@ -9,30 +10,30 @@ description: >
     visited
 ---*/
 
-        var testResult = false;
+var testResult = false;
 
-        function callbackfn(prevVal, curVal, idx, obj) {
-            if (idx === 2 && curVal === "prototype") {
-                testResult = true;
-            }
-        }
-        var arr = [0, 1, 2, 3];
+function callbackfn(prevVal, curVal, idx, obj) {
+  if (idx === 2 && curVal === "prototype") {
+    testResult = true;
+  }
+}
+var arr = [0, 1, 2, 3];
 
-            Object.defineProperty(Array.prototype, "2", {
-                get: function () {
-                    return "prototype";
-                },
-                configurable: true
-            });
+Object.defineProperty(Array.prototype, "2", {
+  get: function() {
+    return "prototype";
+  },
+  configurable: true
+});
 
-            Object.defineProperty(arr, "3", {
-                get: function () {
-                    arr.length = 2;
-                    return 1;
-                },
-                configurable: true
-            });
+Object.defineProperty(arr, "3", {
+  get: function() {
+    arr.length = 2;
+    return 1;
+  },
+  configurable: true
+});
 
-            arr.reduceRight(callbackfn);
+arr.reduceRight(callbackfn);
 
 assert(testResult, 'testResult !== true');

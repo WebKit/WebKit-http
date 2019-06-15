@@ -32,22 +32,25 @@
 #import "CacheModel.h"
 #import "DownloadClient.h"
 #import "Logging.h"
+#import "PluginProcessManager.h"
 #import "SandboxUtilities.h"
 #import "UIGamepadProvider.h"
 #import "WKObject.h"
-#import "WeakObjCPtr.h"
 #import "WebCertificateInfo.h"
 #import "WebCookieManagerProxy.h"
 #import "WebProcessMessages.h"
 #import "WebProcessPool.h"
+#import "XPCServiceEntryPoint.h"
 #import "_WKAutomationDelegate.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadDelegate.h"
 #import "_WKProcessPoolConfigurationInternal.h"
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/PluginData.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/WeakObjCPtr.h>
 
 #if PLATFORM(IOS)
 #import <WebCore/WebCoreThreadSystemInterface.h>
@@ -57,8 +60,8 @@
 static WKProcessPool *sharedProcessPool;
 
 @implementation WKProcessPool {
-    WebKit::WeakObjCPtr<id <_WKAutomationDelegate>> _automationDelegate;
-    WebKit::WeakObjCPtr<id <_WKDownloadDelegate>> _downloadDelegate;
+    WeakObjCPtr<id <_WKAutomationDelegate>> _automationDelegate;
+    WeakObjCPtr<id <_WKDownloadDelegate>> _downloadDelegate;
 
     RetainPtr<_WKAutomationSession> _automationSession;
 #if PLATFORM(IOS)
@@ -71,11 +74,6 @@ static WKProcessPool *sharedProcessPool;
 {
     if (!(self = [super init]))
         return nil;
-
-#if PLATFORM(IOS)
-    // FIXME: Remove once <rdar://problem/15256572> is fixed.
-    InitWebCoreThreadSystemInterface();
-#endif
 
     API::Object::constructInWrapper<WebKit::WebProcessPool>(self, *configuration->_processPoolConfiguration);
 
@@ -92,6 +90,11 @@ static WKProcessPool *sharedProcessPool;
     _processPool->~WebProcessPool();
 
     [super dealloc];
+}
+
++ (BOOL)supportsSecureCoding
+{
+    return YES;
 }
 
 - (void)encodeWithCoder:(NSCoder *)coder
@@ -123,7 +126,7 @@ static WKProcessPool *sharedProcessPool;
 
 - (_WKProcessPoolConfiguration *)_configuration
 {
-    return wrapper(_processPool->configuration().copy().leakRef());
+    return wrapper(_processPool->configuration().copy());
 }
 
 - (API::Object&)_apiObject
@@ -154,6 +157,15 @@ static WKProcessPool *sharedProcessPool;
     return sharedProcessPool;
 }
 
++ (NSArray<WKProcessPool *> *)_allProcessPoolsForTesting
+{
+    auto& allPools = WebKit::WebProcessPool::allProcessPools();
+    auto nsAllPools = adoptNS([[NSMutableArray alloc] initWithCapacity:allPools.size()]);
+    for (auto* pool : allPools)
+        [nsAllPools addObject:wrapper(*pool)];
+    return nsAllPools.autorelease();
+}
+
 + (NSURL *)_websiteDataURLForContainerWithURL:(NSURL *)containerURL
 {
     return [WKProcessPool _websiteDataURLForContainerWithURL:containerURL bundleIdentifierIfNotInContainer:nil];
@@ -170,9 +182,29 @@ static WKProcessPool *sharedProcessPool;
     return [url URLByAppendingPathComponent:@"WebsiteData" isDirectory:YES];
 }
 
++ (int)_webContentProcessXPCMain
+{
+    return WebKit::XPCServiceMain();
+}
+
 - (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host
 {
-    _processPool->allowSpecificHTTPSCertificateForHost(WebKit::WebCertificateInfo::create(WebCore::CertificateInfo((CFArrayRef)certificateChain)).ptr(), host);
+    _processPool->allowSpecificHTTPSCertificateForHost(WebKit::WebCertificateInfo::create(WebCore::CertificateInfo((__bridge CFArrayRef)certificateChain)).ptr(), host);
+}
+
+- (void)_registerURLSchemeServiceWorkersCanHandle:(NSString *)scheme
+{
+    _processPool->registerURLSchemeServiceWorkersCanHandle(scheme);
+}
+
+- (void)_registerURLSchemeAsCanDisplayOnlyIfCanRequest:(NSString *)scheme
+{
+    _processPool->registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
+}
+
+- (void)_setMaximumNumberOfProcesses:(NSUInteger)value
+{
+    _processPool->setMaximumNumberOfProcesses(value);
 }
 
 - (void)_setCanHandleHTTPSServerTrustEvaluation:(BOOL)value
@@ -199,7 +231,7 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 
 - (void)_setCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
-    _processPool->supplement<WebKit::WebCookieManagerProxy>()->setHTTPCookieAcceptPolicy(WebCore::SessionID::defaultSessionID(), toHTTPCookieAcceptPolicy(policy), [](WebKit::CallbackBase::Error){});
+    _processPool->supplement<WebKit::WebCookieManagerProxy>()->setHTTPCookieAcceptPolicy(PAL::SessionID::defaultSessionID(), toHTTPCookieAcceptPolicy(policy), [](WebKit::CallbackBase::Error){});
 }
 
 - (id)_objectForBundleParameter:(NSString *)parameter
@@ -210,10 +242,7 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 - (void)_setObject:(id <NSCopying, NSSecureCoding>)object forBundleParameter:(NSString *)parameter
 {
     auto copy = adoptNS([(NSObject *)object copy]);
-
-    auto data = adoptNS([[NSMutableData alloc] init]);
-    auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-    [keyedArchiver setRequiresSecureCoding:YES];
+    auto keyedArchiver = secureArchiver();
 
     @try {
         [keyedArchiver encodeObject:copy.get() forKey:@"parameter"];
@@ -227,16 +256,14 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     else
         [_processPool->ensureBundleParameters() removeObjectForKey:parameter];
 
+    auto data = keyedArchiver.get().encodedData;
     _processPool->sendToAllProcesses(Messages::WebProcess::SetInjectedBundleParameter(parameter, IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length])));
 }
 
 - (void)_setObjectsForBundleParametersWithDictionary:(NSDictionary *)dictionary
 {
     auto copy = adoptNS([[NSDictionary alloc] initWithDictionary:dictionary copyItems:YES]);
-
-    auto data = adoptNS([[NSMutableData alloc] init]);
-    auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-    [keyedArchiver setRequiresSecureCoding:YES];
+    auto keyedArchiver = secureArchiver();
 
     @try {
         [keyedArchiver encodeObject:copy.get() forKey:@"parameters"];
@@ -247,6 +274,7 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 
     [_processPool->ensureBundleParameters() setValuesForKeysWithDictionary:copy.get()];
 
+    auto data = keyedArchiver.get().encodedData;
     _processPool->sendToAllProcesses(Messages::WebProcess::SetInjectedBundleParameters(IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length])));
 }
 
@@ -370,7 +398,7 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 
 - (void)_warmInitialProcess
 {
-    _processPool->warmInitialProcess();
+    _processPool->prewarmProcess();
 }
 
 - (void)_automationCapabilitiesDidChange
@@ -384,9 +412,26 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->setAutomationSession(automationSession ? automationSession->_session.get() : nullptr);
 }
 
-- (void)_terminateDatabaseProcess
+- (void)_addSupportedPlugin:(NSString *) domain named:(NSString *) name withMimeTypes: (NSSet<NSString *> *) nsMimeTypes withExtensions: (NSSet<NSString *> *) nsExtensions
 {
-    _processPool->terminateDatabaseProcess();
+    HashSet<String> mimeTypes;
+    for (NSString *mimeType in nsMimeTypes)
+        mimeTypes.add(mimeType);
+    HashSet<String> extensions;
+    for (NSString *extension in nsExtensions)
+        extensions.add(extension);
+
+    _processPool->addSupportedPlugin(domain, name, WTFMove(mimeTypes), WTFMove(extensions));
+}
+
+- (void)_clearSupportedPlugins
+{
+    _processPool->clearSupportedPlugins();
+}
+
+- (void)_terminateStorageProcess
+{
+    _processPool->terminateStorageProcessForTesting();
 }
 
 - (void)_terminateNetworkProcess
@@ -394,9 +439,24 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
     _processPool->terminateNetworkProcess();
 }
 
+- (void)_terminateServiceWorkerProcesses
+{
+    _processPool->terminateServiceWorkerProcesses();
+}
+
+- (void)_disableServiceWorkerProcessTerminationDelay
+{
+    _processPool->disableServiceWorkerProcessTerminationDelay();
+}
+
 - (pid_t)_networkProcessIdentifier
 {
     return _processPool->networkProcessIdentifier();
+}
+
+- (pid_t)_storageProcessIdentifier
+{
+    return _processPool->storageProcessIdentifier();
 }
 
 - (void)_syncNetworkProcessCookies
@@ -407,6 +467,67 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (size_t)_webProcessCount
 {
     return _processPool->processes().size();
+}
+
+- (void)_makeNextWebProcessLaunchFailForTesting
+{
+    _processPool->setShouldMakeNextWebProcessLaunchFailForTesting(true);
+}
+
+- (void)_makeNextNetworkProcessLaunchFailForTesting
+{
+    _processPool->setShouldMakeNextNetworkProcessLaunchFailForTesting(true);
+}
+
+- (BOOL)_hasPrewarmedWebProcess
+{
+    for (auto& process : _processPool->processes()) {
+        if (process->isPrewarmed())
+            return YES;
+    }
+    return NO;
+}
+
+- (size_t)_webProcessCountIgnoringPrewarmed
+{
+    return [self _webProcessCount] - ([self _hasPrewarmedWebProcess] ? 1 : 0);
+}
+
+- (size_t)_webPageContentProcessCount
+{
+    auto allWebProcesses = _processPool->processes();
+#if ENABLE(SERVICE_WORKER)
+    auto& serviceWorkerProcesses = _processPool->serviceWorkerProxies();
+    if (serviceWorkerProcesses.isEmpty())
+        return allWebProcesses.size();
+
+    return allWebProcesses.size() - serviceWorkerProcesses.size();
+#else
+    return allWebProcesses.size();
+#endif
+}
+
+- (void)_preconnectToServer:(NSURL *)serverURL
+{
+    _processPool->preconnectToServer(serverURL);
+}
+
+- (size_t)_pluginProcessCount
+{
+#if !PLATFORM(IOS)
+    return WebKit::PluginProcessManager::singleton().pluginProcesses().size();
+#else
+    return 0;
+#endif
+}
+
+- (size_t)_serviceWorkerProcessCount
+{
+#if ENABLE(SERVICE_WORKER)
+    return _processPool->serviceWorkerProxies().size();
+#else
+    return 0;
+#endif
 }
 
 + (void)_forceGameControllerFramework
@@ -424,6 +545,23 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (void)_setCookieStoragePartitioningEnabled:(BOOL)enabled
 {
     _processPool->setCookieStoragePartitioningEnabled(enabled);
+}
+
+- (BOOL)_isStorageAccessAPIEnabled
+{
+    return _processPool->storageAccessAPIEnabled();
+}
+
+- (void)_setStorageAccessAPIEnabled:(BOOL)enabled
+{
+    _processPool->setStorageAccessAPIEnabled(enabled);
+}
+
+- (void)_setAllowsAnySSLCertificateForServiceWorker:(BOOL) allows
+{
+#if ENABLE(SERVICE_WORKER)
+    _processPool->setAllowsAnySSLCertificateForServiceWorker(allows);
+#endif
 }
 
 #if PLATFORM(IOS)

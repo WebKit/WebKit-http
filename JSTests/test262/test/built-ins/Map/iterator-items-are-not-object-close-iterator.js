@@ -4,7 +4,7 @@
 es6id: 23.1.1.1
 description: >
   Closes the iterator after `not Object` error.
-info: >
+info: |
   Map ( [ iterable ] )
 
   ...
@@ -27,7 +27,10 @@ var iterable = {};
 iterable[Symbol.iterator] = function() {
   return {
     next: function() {
-      return { value: nextItem, done: false };
+      return {
+        value: nextItem,
+        done: false
+      };
     },
     return: function() {
       count += 1;

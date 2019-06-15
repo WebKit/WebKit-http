@@ -27,6 +27,7 @@
 #include "JSDOMMapLike.h"
 
 #include "WebCoreJSClientData.h"
+#include <JavaScriptCore/CatchScope.h>
 
 namespace WebCore {
 
@@ -39,16 +40,18 @@ static inline JSC::JSObject& getBackingMap(JSC::ExecState& state, JSC::JSObject&
 
 void initializeBackingMap(JSC::VM& vm, JSC::JSObject& mapLike, JSC::JSMap& backingMap)
 {
-    mapLike.putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().backingMapPrivateName(), &backingMap, JSC::DontEnum);
+    mapLike.putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().backingMapPrivateName(), &backingMap, static_cast<unsigned>(JSC::PropertyAttribute::DontEnum));
 }
 
 JSC::JSMap& createBackingMap(JSC::ExecState& state, JSC::JSGlobalObject& globalObject, JSC::JSObject& mapLike)
 {
     auto& vm = state.vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     ASSERT(mapLike.get(&state, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().backingMapPrivateName()).isUndefined());
     auto backingMap = JSC::JSMap::create(&state, vm, globalObject.mapStructure());
-    mapLike.putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().backingMapPrivateName(), backingMap, JSC::DontEnum);
+    scope.releaseAssertNoException();
+    mapLike.putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().backingMapPrivateName(), backingMap, static_cast<unsigned>(JSC::PropertyAttribute::DontEnum));
     return *backingMap;
 }
 
@@ -65,11 +68,12 @@ JSC::JSValue forwardFunctionCallToBackingMap(JSC::ExecState& state, JSC::JSObjec
     ASSERT(function);
 
     JSC::CallData callData;
-    JSC::CallType callType = JSC::getCallData(function, callData);
+    JSC::CallType callType = JSC::getCallData(state.vm(), function, callData);
     ASSERT(callType != JSC::CallType::None);
     JSC::MarkedArgumentBuffer arguments;
     for (size_t cptr = 0; cptr < state.argumentCount(); ++cptr)
         arguments.append(state.uncheckedArgument(cptr));
+    ASSERT(!arguments.hasOverflowed());
     return JSC::call(&state, function, callType, callData, &backingMap, arguments);
 }
 
@@ -81,11 +85,12 @@ JSC::JSValue forwardForEachCallToBackingMap(JSC::ExecState& state, JSDOMGlobalOb
     getBackingMap(state, mapLike);
 
     JSC::CallData callData;
-    JSC::CallType callType = JSC::getCallData(function, callData);
+    JSC::CallType callType = JSC::getCallData(state.vm(), function, callData);
     ASSERT(callType != JSC::CallType::None);
     JSC::MarkedArgumentBuffer arguments;
     for (size_t cptr = 0; cptr < state.argumentCount(); ++cptr)
         arguments.append(state.uncheckedArgument(cptr));
+    ASSERT(!arguments.hasOverflowed());
     return JSC::call(&state, function, callType, callData, &mapLike, arguments);
 }
 

@@ -25,14 +25,18 @@
 #include "JSDOMBuiltinConstructor.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
+#include "ScriptExecutionContext.h"
 #include "TestClassWithJSBuiltinConstructorBuiltins.h"
-#include <runtime/FunctionPrototype.h>
-#include <runtime/JSCInlines.h>
+#include "URL.h"
+#include <JavaScriptCore/FunctionPrototype.h>
+#include <JavaScriptCore/HeapSnapshotBuilder.h>
+#include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
+#include <wtf/PointerPreparations.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 // Attributes
 
@@ -74,9 +78,9 @@ template<> JSValue JSTestClassWithJSBuiltinConstructorConstructor::prototypeForS
 
 template<> void JSTestClassWithJSBuiltinConstructorConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    putDirect(vm, vm.propertyNames->prototype, JSTestClassWithJSBuiltinConstructor::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestClassWithJSBuiltinConstructor"))), ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestClassWithJSBuiltinConstructor::prototype(vm, globalObject), JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String("TestClassWithJSBuiltinConstructor"_s)), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(0), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
 }
 
 template<> FunctionExecutable* JSTestClassWithJSBuiltinConstructorConstructor::initializeExecutable(VM& vm)
@@ -90,7 +94,7 @@ template<> const ClassInfo JSTestClassWithJSBuiltinConstructorConstructor::s_inf
 
 static const HashTableValue JSTestClassWithJSBuiltinConstructorPrototypeTableValues[] =
 {
-    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestClassWithJSBuiltinConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestClassWithJSBuiltinConstructorConstructor) } },
+    { "constructor", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestClassWithJSBuiltinConstructorConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestClassWithJSBuiltinConstructorConstructor) } },
 };
 
 const ClassInfo JSTestClassWithJSBuiltinConstructorPrototype::s_info = { "TestClassWithJSBuiltinConstructorPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestClassWithJSBuiltinConstructorPrototype) };
@@ -98,7 +102,7 @@ const ClassInfo JSTestClassWithJSBuiltinConstructorPrototype::s_info = { "TestCl
 void JSTestClassWithJSBuiltinConstructorPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestClassWithJSBuiltinConstructorPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestClassWithJSBuiltinConstructor::info(), JSTestClassWithJSBuiltinConstructorPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestClassWithJSBuiltinConstructor::s_info = { "TestClassWithJSBuiltinConstructor", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestClassWithJSBuiltinConstructor) };
@@ -140,7 +144,7 @@ EncodedJSValue jsTestClassWithJSBuiltinConstructorConstructor(ExecState* state, 
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestClassWithJSBuiltinConstructorPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestClassWithJSBuiltinConstructorPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestClassWithJSBuiltinConstructor::getConstructor(state->vm(), prototype->globalObject()));
@@ -150,19 +154,29 @@ bool setJSTestClassWithJSBuiltinConstructorConstructor(ExecState* state, Encoded
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestClassWithJSBuiltinConstructorPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestClassWithJSBuiltinConstructorPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
-bool JSTestClassWithJSBuiltinConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+void JSTestClassWithJSBuiltinConstructor::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
+{
+    auto* thisObject = jsCast<JSTestClassWithJSBuiltinConstructor*>(cell);
+    builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
+    if (thisObject->scriptExecutionContext())
+        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+    Base::heapSnapshot(cell, builder);
+}
+
+bool JSTestClassWithJSBuiltinConstructorOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor, const char** reason)
 {
     UNUSED_PARAM(handle);
     UNUSED_PARAM(visitor);
+    UNUSED_PARAM(reason);
     return false;
 }
 
@@ -188,9 +202,9 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
 #if ENABLE(BINDING_INTEGRITY)
     void* actualVTablePointer = *(reinterpret_cast<void**>(impl.ptr()));
 #if PLATFORM(WIN)
-    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestClassWithJSBuiltinConstructor@WebCore@@6B@"));
+    void* expectedVTablePointer = WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION(__identifier("??_7TestClassWithJSBuiltinConstructor@WebCore@@6B@"));
 #else
-    void* expectedVTablePointer = &_ZTVN7WebCore33TestClassWithJSBuiltinConstructorE[2];
+    void* expectedVTablePointer = WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION(&_ZTVN7WebCore33TestClassWithJSBuiltinConstructorE[2]);
 #endif
 
     // If this fails TestClassWithJSBuiltinConstructor does not have a vtable, so you need to add the
@@ -213,7 +227,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCl
 
 TestClassWithJSBuiltinConstructor* JSTestClassWithJSBuiltinConstructor::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestClassWithJSBuiltinConstructor*>(vm, value))
+    if (auto* wrapper = jsDynamicCast<JSTestClassWithJSBuiltinConstructor*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

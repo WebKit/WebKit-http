@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   The callbackfn returned values are applied to the new instance
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
   6. Let A be ? TypedArraySpeciesCreate(O, « len »).
@@ -16,6 +16,7 @@ info: >
     ...
   9. Return A.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

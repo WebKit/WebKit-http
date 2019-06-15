@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,19 +24,27 @@
  */
 
 #pragma once
-#include "DumpRenderTree.h"
 
-@class NSURL;
+#include <string>
 
 struct TestOptions {
+    bool enableAttachmentElement { false };
+    bool enableWebAnimationsCSSIntegration { false };
+    bool useAcceleratedDrawing { false };
     bool enableIntersectionObserver { false };
+    bool enableMenuItemElement { false };
     bool enableModernMediaControls { true };
     bool enablePointerLock { false };
-    bool enableCredentialManagement { false };
+    bool enableWebAuthentication { true };
     bool enableDragDestinationActionLoad { false };
     bool layerBackedWebView { false };
     bool enableIsSecureContextAttribute { true };
+    bool enableInspectorAdditions { false };
+    bool dumpJSConsoleLogInStdErr { false };
+    bool allowCrossOriginSubresourcesToAskForCredentials { false };
+    bool enableColorFilter { false };
+    std::string jscOptions;
 
-    TestOptions(NSURL*, const TestCommand&);
+    TestOptions(const std::string& pathOrURL, const std::string& absolutePath);
     bool webViewIsCompatibleWithOptions(const TestOptions&) const;
 };

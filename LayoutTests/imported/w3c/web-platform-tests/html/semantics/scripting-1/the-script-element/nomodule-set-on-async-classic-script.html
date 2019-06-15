@@ -6,7 +6,7 @@
 <link rel="author" title="Ryosuke Niwa" href="mailto:rniwa@webkit.org">
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
-<!--  Load this script synchronously to ensure test cases below can load it in 200ms  -->
+<!-- Load this script synchronously to ensure test cases below can load it in 200ms -->
 <script src="resources/set-script-executed.js"></script>
 </head>
 <body>
@@ -16,12 +16,6 @@ let supportsNoModule = "noModule" in document.getElementsByTagName("script")[0];
 waitForLoadEvent = new Promise((resolve) => {
     window.onload = resolve;
 });
-
-waitForAsyncScript = () => {
-    return new Promise((resolve) => {
-        waitForLoadEvent.then(() => setTimeout(resolve, 200));
-    });
-}
 
 promise_test(() => {
     window.executed = false;
@@ -36,7 +30,7 @@ promise_test(() => {
     script.noModule = false;
     document.body.appendChild(script);
 
-    return waitForAsyncScript().then(() => {
+    return waitForLoadEvent.then(() => {
         assert_true(supportsNoModule);
         assert_true(executed);
         assert_true(loaded);
@@ -56,7 +50,7 @@ promise_test(() => {
     script.noModule = true;
     document.body.appendChild(script);
 
-    return waitForAsyncScript().then(() => {
+    return waitForLoadEvent.then(() => {
         assert_true(supportsNoModule);
         assert_false(executed);
         assert_false(loaded);

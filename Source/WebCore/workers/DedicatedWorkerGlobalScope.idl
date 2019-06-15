@@ -33,8 +33,15 @@
     Exposed=DedicatedWorker,
     Global=(Worker,DedicatedWorker),
     JSGenerateToNativeObject,
+    ImplicitThis,
+    IsImmutablePrototypeExoticObject,
+    IsImmutablePrototypeExoticObjectOnPrototype,
 ] interface DedicatedWorkerGlobalScope : WorkerGlobalScope {
+    [Replaceable] readonly attribute DOMString name;
+
     [CallWith=ScriptState, MayThrowException] void postMessage(any message, optional sequence<object> transfer = []);
+
+    void close();
 
     attribute EventHandler onmessage;
 };

@@ -249,32 +249,46 @@ end
 #
 
 class Node
-    def resolveOffsets(offsets, sizes)
+    def resolveOffsets(constantsMap)
         mapChildren {
             | child |
-            child.resolveOffsets(offsets, sizes)
+            child.resolveOffsets(constantsMap)
         }
     end
 end
 
 class StructOffset
-    def resolveOffsets(offsets, sizes)
-        if offsets[self]
-            Immediate.new(codeOrigin, offsets[self])
+    def resolveOffsets(constantsMap)
+        if constantsMap[self]
+            Immediate.new(codeOrigin, constantsMap[self])
         else
-            self
+            puts "Could not find #{self.inspect} in #{constantsMap.keys.inspect}"
+            puts "sizes = #{constantsMap.inspect}"
+            raise
         end
     end
 end
 
 class Sizeof
-    def resolveOffsets(offsets, sizes)
-        if sizes[self]
-            Immediate.new(codeOrigin, sizes[self])
+    def resolveOffsets(constantsMap)
+        if constantsMap[self]
+            Immediate.new(codeOrigin, constantsMap[self])
         else
-            puts "Could not find #{self.inspect} in #{sizes.keys.inspect}"
-            puts "sizes = #{sizes.inspect}"
-            self
+            puts "Could not find #{self.inspect} in #{constantsMap.keys.inspect}"
+            puts "sizes = #{constantsMap.inspect}"
+            raise
+        end
+    end
+end
+
+class ConstExpr
+    def resolveOffsets(constantsMap)
+        if constantsMap[self]
+            Immediate.new(codeOrigin, constantsMap[self])
+        else
+            puts "Could not find #{self.inspect} in #{constantsMap.keys.inspect}"
+            puts "sizes = #{constantsMap.inspect}"
+            raise
         end
     end
 end
@@ -298,6 +312,10 @@ class AddImmediates
     def fold
         @left = @left.fold
         @right = @right.fold
+        
+        return right.plusOffset(@left.value) if @left.is_a? Immediate and @right.is_a? LabelReference
+        return left.plusOffset(@right.value) if @left.is_a? LabelReference and @right.is_a? Immediate
+        
         return self unless @left.is_a? Immediate
         return self unless @right.is_a? Immediate
         Immediate.new(codeOrigin, @left.value + @right.value)
@@ -308,6 +326,9 @@ class SubImmediates
     def fold
         @left = @left.fold
         @right = @right.fold
+        
+        return left.plusOffset(-@right.value) if @left.is_a? LabelReference and @right.is_a? Immediate
+        
         return self unless @left.is_a? Immediate
         return self unless @right.is_a? Immediate
         Immediate.new(codeOrigin, @left.value - @right.value)
@@ -377,8 +398,8 @@ end
 #
 
 class Node
-    def resolve(offsets, sizes)
-        demacroify({}).resolveOffsets(offsets, sizes).fold
+    def resolve(constantsMap)
+        demacroify({}).resolveOffsets(constantsMap).fold
     end
 end
 

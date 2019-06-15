@@ -57,8 +57,8 @@ public:
     unsigned column() const { return m_column; }
 
 private:
-    mutable unsigned m_line;
-    mutable unsigned m_column;
+    mutable unsigned m_line { 0 };
+    mutable unsigned m_column { 0 };
 };
 
 Ref<DebuggerCallFrame> DebuggerCallFrame::create(VM& vm, CallFrame* callFrame)
@@ -118,7 +118,8 @@ JSC::JSGlobalObject* DebuggerCallFrame::vmEntryGlobalObject() const
     ASSERT(isValid());
     if (!isValid())
         return nullptr;
-    return m_validMachineFrame->vmEntryGlobalObject();
+    VM& vm = m_validMachineFrame->vm();
+    return vm.vmEntryGlobalObject(m_validMachineFrame);
 }
 
 SourceID DebuggerCallFrame::sourceID() const
@@ -252,10 +253,10 @@ JSValue DebuggerCallFrame::evaluateWithScopeExtension(const String& script, JSOb
         return jsUndefined();
     }
 
-    JSGlobalObject* globalObject = callFrame->vmEntryGlobalObject();
+    JSGlobalObject* globalObject = vm.vmEntryGlobalObject(callFrame);
     if (scopeExtensionObject) {
         JSScope* ignoredPreviousScope = globalObject->globalScope();
-        globalObject->setGlobalScopeExtension(JSWithScope::create(vm, globalObject, scopeExtensionObject, ignoredPreviousScope));
+        globalObject->setGlobalScopeExtension(JSWithScope::create(vm, globalObject, ignoredPreviousScope, scopeExtensionObject));
     }
 
     JSValue thisValue = this->thisValue();

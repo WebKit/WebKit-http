@@ -2,13 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-2-1
 description: >
     Array.prototype.lastIndexOf - 'length' is own data property on an
     Array-like object
 ---*/
 
-        var obj = { 1: null, 2: undefined, length: 2 };
+var obj = {
+  1: null,
+  2: undefined,
+  length: 2
+};
 
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, null), 1, 'Array.prototype.lastIndexOf.call(obj, null)');
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, undefined), -1, 'Array.prototype.lastIndexOf.call(obj, undefined)');

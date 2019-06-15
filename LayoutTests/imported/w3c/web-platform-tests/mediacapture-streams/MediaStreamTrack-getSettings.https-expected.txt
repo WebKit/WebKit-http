@@ -1,0 +1,6 @@
+When prompted, accept to share your video stream.
+
+
+PASS A device can be opened twice and have the same device ID 
+PASS A device can be opened twice with different resolutions 
+

@@ -5,7 +5,7 @@
 es6id: B.2.3.11
 description: >
   String.prototype.small.name is "small".
-info: >
+info: |
   String.prototype.small ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.small.name, "small");
-
-verifyNotEnumerable(String.prototype.small, "name");
-verifyNotWritable(String.prototype.small, "name");
-verifyConfigurable(String.prototype.small, "name");
+verifyProperty(String.prototype.small, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "small"
+});

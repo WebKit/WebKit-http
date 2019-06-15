@@ -68,7 +68,7 @@
 #import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLHeadElement.h>
 #import <WebCore/HTMLScriptElement.h>
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/NameNodeList.h>
 #import <WebCore/NativeNodeFilter.h>
 #import <WebCore/Node.h>
@@ -162,7 +162,7 @@
 - (DOMAbstractView *)defaultView
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->defaultView()));
+    return kit(WTF::getPtr(IMPL->windowProxy()));
 }
 
 - (DOMStyleSheetList *)styleSheets
@@ -326,20 +326,16 @@
 
 - (NSString *)preferredStylesheetSet
 {
-    WebCore::JSMainThreadNullState state;
-    return IMPL->preferredStylesheetSet();
+    return nil;
 }
 
 - (NSString *)selectedStylesheetSet
 {
-    WebCore::JSMainThreadNullState state;
-    return IMPL->selectedStylesheetSet();
+    return nil;
 }
 
 - (void)setSelectedStylesheetSet:(NSString *)newSelectedStylesheetSet
 {
-    WebCore::JSMainThreadNullState state;
-    IMPL->setSelectedStylesheetSet(newSelectedStylesheetSet);
 }
 
 - (DOMElement *)activeElement
@@ -392,11 +388,11 @@
 {
     WebCore::JSMainThreadNullState state;
     switch (IMPL->visibilityState()) {
-    case WebCore::Document::VisibilityState::Hidden:
+    case WebCore::VisibilityState::Hidden:
         return @"hidden";
-    case WebCore::Document::VisibilityState::Visible:
+    case WebCore::VisibilityState::Visible:
         return @"visible";
-    case WebCore::Document::VisibilityState::Prerender:
+    case WebCore::VisibilityState::Prerender:
         return @"prerender";
     }
 }
@@ -422,7 +418,7 @@
 - (DOMElement *)scrollingElement
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->scrollingElement()));
+    return kit(WTF::getPtr(IMPL->scrollingElementForAPI()));
 }
 
 - (DOMHTMLCollection *)children
@@ -561,7 +557,7 @@
         raiseTypeErrorException();
     RefPtr<WebCore::NodeFilter> nativeNodeFilter;
     if (filter)
-        nativeNodeFilter = WebCore::NativeNodeFilter::create(WebCore::ObjCNodeFilterCondition::create(filter));
+        nativeNodeFilter = WebCore::NativeNodeFilter::create(IMPL, WebCore::ObjCNodeFilterCondition::create(filter));
     return kit(WTF::getPtr(IMPL->createNodeIterator(*core(root), whatToShow, WTF::getPtr(nativeNodeFilter), expandEntityReferences)));
 }
 
@@ -572,7 +568,7 @@
         raiseTypeErrorException();
     RefPtr<WebCore::NodeFilter> nativeNodeFilter;
     if (filter)
-        nativeNodeFilter = WebCore::NativeNodeFilter::create(WebCore::ObjCNodeFilterCondition::create(filter));
+        nativeNodeFilter = WebCore::NativeNodeFilter::create(IMPL, WebCore::ObjCNodeFilterCondition::create(filter));
     return kit(WTF::getPtr(IMPL->createTreeWalker(*core(root), whatToShow, WTF::getPtr(nativeNodeFilter), expandEntityReferences)));
 }
 
@@ -684,7 +680,7 @@ static RefPtr<WebCore::XPathNSResolver> wrap(id <DOMXPathNSResolver> resolver)
     WebCore::JSMainThreadNullState state;
     if (!element)
         raiseTypeErrorException();
-    WebCore::DOMWindow* dv = IMPL->defaultView();
+    WebCore::DOMWindow* dv = IMPL->domWindow();
     if (!dv)
         return nil;
     return kit(WTF::getPtr(dv->getComputedStyle(*core(element), pseudoElement)));
@@ -698,7 +694,7 @@ static RefPtr<WebCore::XPathNSResolver> wrap(id <DOMXPathNSResolver> resolver)
 - (DOMCSSRuleList *)getMatchedCSSRules:(DOMElement *)element pseudoElement:(NSString *)pseudoElement authorOnly:(BOOL)authorOnly
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::DOMWindow* dv = IMPL->defaultView();
+    WebCore::DOMWindow* dv = IMPL->domWindow();
     if (!dv)
         return nil;
     return kit(WTF::getPtr(dv->getMatchedCSSRules(core(element), pseudoElement, authorOnly)));

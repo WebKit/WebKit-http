@@ -88,10 +88,10 @@ enum class CopyType {
     Unobservable,
 };
 
-static const char* const typedArrayBufferHasBeenDetachedErrorMessage = "Underlying ArrayBuffer has been detached from the view";
+static const ASCIILiteral typedArrayBufferHasBeenDetachedErrorMessage { "Underlying ArrayBuffer has been detached from the view"_s };
 
 template<typename Adaptor>
-class JSGenericTypedArrayView : public JSArrayBufferView {
+class JSGenericTypedArrayView final : public JSArrayBufferView {
 public:
     typedef JSArrayBufferView Base;
     typedef typename Adaptor::Type ElementType;
@@ -176,7 +176,7 @@ public:
         RETURN_IF_EXCEPTION(scope, false);
 
         if (isNeutered()) {
-            throwTypeError(exec, scope, ASCIILiteral(typedArrayBufferHasBeenDetachedErrorMessage));
+            throwTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
             return false;
         }
 
@@ -285,13 +285,8 @@ protected:
     
     static void getOwnPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
 
-    static size_t estimatedSize(JSCell*);
+    static size_t estimatedSize(JSCell*, VM&);
     static void visitChildren(JSCell*, SlotVisitor&);
-
-    // Allocates the full-on native buffer and moves data into the C heap if
-    // necessary. Note that this never allocates in the GC heap.
-    static ArrayBuffer* slowDownAndWasteMemory(JSArrayBufferView*);
-    static RefPtr<ArrayBufferView> getTypedArrayImpl(JSArrayBufferView*);
 
 private:
     // Returns true if successful, and false on error; it will throw on error.
@@ -333,14 +328,6 @@ private:
     }
 
     template<typename IntegralType>
-    static bool ALWAYS_INLINE sortComparison(IntegralType a, IntegralType b)
-    {
-        if (a >= 0 || b >= 0)
-            return a < b;
-        return a > b;
-    }
-
-    template<typename IntegralType>
     void sortFloat()
     {
         ASSERT(sizeof(IntegralType) == sizeof(ElementType));
@@ -353,7 +340,11 @@ private:
         purifyArray();
 
         IntegralType* array = reinterpret_cast_ptr<IntegralType*>(typedVector());
-        std::sort(array, array + m_length, sortComparison<IntegralType>);
+        std::sort(array, array + m_length, [] (IntegralType a, IntegralType b) {
+            if (a >= 0 || b >= 0)
+                return a < b;
+            return a > b;
+        });
 
     }
 

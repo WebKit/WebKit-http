@@ -2,7 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-boolean.prototype.tostring
+info: |
     The toString function is not generic, it cannot be transferred
     to other kinds of objects for use as a method and there is should be
     a TypeError exception if its this value is not a Boolean object
@@ -11,27 +12,27 @@ description: transferring to the Number objects
 ---*/
 
 //CHECK#1
-try{
+try {
   var s1 = new Number();
   s1.toString = Boolean.prototype.toString;
-  var v1 = s1.toString(); 
+  var v1 = s1.toString();
   $ERROR('#1: Boolean.prototype.toString on not a Boolean object should throw TypeError');
 }
-catch(e){
-  if(!(e instanceof TypeError)){
-    $ERROR('#1: Boolean.prototype.toString on not a Boolean object should throw TypeError, not '+e);
+catch (e) {
+  if (!(e instanceof TypeError)) {
+    $ERROR('#1: Boolean.prototype.toString on not a Boolean object should throw TypeError, not ' + e);
   }
 }
 
 //CHECK#1
-try{
+try {
   var s2 = new Number();
   s2.myToString = Boolean.prototype.toString;
-  var v2 = s2.myToString(); 
+  var v2 = s2.myToString();
   $ERROR('#2: Boolean.prototype.toString on not a Boolean object should throw TypeError');
 }
-catch(e){
-  if(!(e instanceof TypeError)){
-    $ERROR('#2: Boolean.prototype.toString on not a Boolean object should throw TypeError, not '+e);
+catch (e) {
+  if (!(e instanceof TypeError)) {
+    $ERROR('#2: Boolean.prototype.toString on not a Boolean object should throw TypeError, not ' + e);
   }
 }

@@ -23,16 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CallFrameTreeElement = class CallFrameTreeElement extends WebInspector.GeneralTreeElement
+WI.CallFrameTreeElement = class CallFrameTreeElement extends WI.GeneralTreeElement
 {
     constructor(callFrame, isAsyncBoundaryCallFrame)
     {
-        console.assert(callFrame instanceof WebInspector.CallFrame);
+        console.assert(callFrame instanceof WI.CallFrame);
 
-        let className = WebInspector.CallFrameView.iconClassNameForCallFrame(callFrame);
-        let title = callFrame.functionName || WebInspector.UIString("(anonymous function)");
-
-        super(["call-frame", className], title, null, callFrame, false);
+        let className = WI.CallFrameView.iconClassNameForCallFrame(callFrame);
+        let title = callFrame.functionName || WI.UIString("(anonymous function)");
+        const subtitle = null;
+        super(["call-frame", className], title, subtitle, callFrame);
 
         this._callFrame = callFrame;
         this._isActiveCallFrame = false;
@@ -81,7 +81,7 @@ WebInspector.CallFrameTreeElement = class CallFrameTreeElement extends WebInspec
         if (this.tooltipHandledSeparately) {
             let tailCallSuffix = "";
             if (this._callFrame.isTailDeleted)
-                tailCallSuffix = " " + WebInspector.UIString("(Tail Call)");
+                tailCallSuffix = " " + WI.UIString("(Tail Call)");
             let tooltipPrefix = this.mainTitle + tailCallSuffix + "\n";
             this._callFrame.sourceCodeLocation.populateLiveDisplayLocationTooltip(this.element, tooltipPrefix);
         }
@@ -102,7 +102,7 @@ WebInspector.CallFrameTreeElement = class CallFrameTreeElement extends WebInspec
         }
 
         if (!this._statusImageElement)
-            this._statusImageElement = useSVGSymbol("Images/ActiveCallFrame.svg", "status-image");
+            this._statusImageElement = WI.ImageUtilities.useSVGSymbol("Images/ActiveCallFrame.svg", "status-image");
         this.status = this._statusImageElement;
     }
 };

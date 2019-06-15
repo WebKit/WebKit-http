@@ -1,6 +1,6 @@
 /*
     Copyright (C) 1999 Lars Knoll (knoll@mpi-hd.mpg.de)
-    Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2012 Apple Inc. All rights reserved.
+    Copyright (C) 2003-2017 Apple Inc. All rights reserved.
     Copyright (C) 2005, 2006, 2007 Alexey Proskuryakov (ap@nypop.com)
 
     This library is free software; you can redistribute it and/or
@@ -31,11 +31,10 @@
 #include "TextEncodingDetector.h"
 #include "TextEncodingRegistry.h"
 #include <wtf/ASCIICType.h>
-#include <wtf/StringExtras.h>
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 using namespace HTMLNames;
 
@@ -322,23 +321,19 @@ const TextEncoding& TextResourceDecoder::defaultEncoding(ContentType contentType
     return specifiedDefaultEncoding;
 }
 
-TextResourceDecoder::TextResourceDecoder(const String& mimeType, const TextEncoding& specifiedDefaultEncoding, bool usesEncodingDetector)
+inline TextResourceDecoder::TextResourceDecoder(const String& mimeType, const TextEncoding& specifiedDefaultEncoding, bool usesEncodingDetector)
     : m_contentType(determineContentType(mimeType))
     , m_encoding(defaultEncoding(m_contentType, specifiedDefaultEncoding))
-    , m_source(DefaultEncoding)
-    , m_hintEncoding(nullptr)
-    , m_checkedForBOM(false)
-    , m_checkedForCSSCharset(false)
-    , m_checkedForHeadCharset(false)
-    , m_useLenientXMLDecoding(false)
-    , m_sawError(false)
     , m_usesEncodingDetector(usesEncodingDetector)
 {
 }
 
-TextResourceDecoder::~TextResourceDecoder()
+Ref<TextResourceDecoder> TextResourceDecoder::create(const String& mimeType, const TextEncoding& defaultEncoding, bool usesEncodingDetector)
 {
+    return adoptRef(*new TextResourceDecoder(mimeType, defaultEncoding, usesEncodingDetector));
 }
+
+TextResourceDecoder::~TextResourceDecoder() = default;
 
 void TextResourceDecoder::setEncoding(const TextEncoding& encoding, EncodingSource source)
 {
@@ -348,7 +343,7 @@ void TextResourceDecoder::setEncoding(const TextEncoding& encoding, EncodingSour
 
     // When encoding comes from meta tag (i.e. it cannot be XML files sent via XHR),
     // treat x-user-defined as windows-1252 (bug 18270)
-    if (source == EncodingFromMetaTag && strcasecmp(encoding.name(), "x-user-defined") == 0)
+    if (source == EncodingFromMetaTag && equalLettersIgnoringASCIICase(encoding.name(), "x-user-defined"))
         m_encoding = "windows-1252";
     else if (source == EncodingFromMetaTag || source == EncodingFromXMLHeader || source == EncodingFromCSSCharset)        
         m_encoding = encoding.closestByteBasedEquivalent();
@@ -406,8 +401,10 @@ static int findXMLEncoding(const char* str, int len, int& encodingLength)
 
 size_t TextResourceDecoder::checkForBOM(const char* data, size_t len)
 {
-    // Check for UTF-16/32 or UTF-8 BOM mark at the beginning, which is a sure sign of a Unicode encoding.
+    // Check for UTF-16 or UTF-8 BOM mark at the beginning, which is a sure sign of a Unicode encoding.
     // We let it override even a user-chosen encoding.
+    const size_t maximumBOMLength = 3;
+
     ASSERT(!m_checkedForBOM);
 
     size_t lengthOfBOM = 0;
@@ -421,31 +418,26 @@ size_t TextResourceDecoder::checkForBOM(const char* data, size_t len)
     unsigned char c1 = buf1Len ? (--buf1Len, *buf1++) : buf2Len ? (--buf2Len, *buf2++) : 0;
     unsigned char c2 = buf1Len ? (--buf1Len, *buf1++) : buf2Len ? (--buf2Len, *buf2++) : 0;
     unsigned char c3 = buf1Len ? (--buf1Len, *buf1++) : buf2Len ? (--buf2Len, *buf2++) : 0;
-    unsigned char c4 = buf2Len ? (--buf2Len, *buf2++) : 0;
 
     // Check for the BOM.
     if (c1 == 0xFF && c2 == 0xFE) {
-        if (c3 != 0 || c4 != 0) {
-            setEncoding(UTF16LittleEndianEncoding(), AutoDetectedEncoding);
-            lengthOfBOM = 2;
-        } else {
-            setEncoding(UTF32LittleEndianEncoding(), AutoDetectedEncoding);
-            lengthOfBOM = 4;
-        }
-    } else if (c1 == 0xEF && c2 == 0xBB && c3 == 0xBF) {
-        setEncoding(UTF8Encoding(), AutoDetectedEncoding);
-        lengthOfBOM = 3;
+        ASSERT(UTF16LittleEndianEncoding().isValid());
+        setEncoding(UTF16LittleEndianEncoding(), AutoDetectedEncoding);
+        lengthOfBOM = 2;
     } else if (c1 == 0xFE && c2 == 0xFF) {
+        ASSERT(UTF16BigEndianEncoding().isValid());
         setEncoding(UTF16BigEndianEncoding(), AutoDetectedEncoding);
         lengthOfBOM = 2;
-    } else if (c1 == 0 && c2 == 0 && c3 == 0xFE && c4 == 0xFF) {
-        setEncoding(UTF32BigEndianEncoding(), AutoDetectedEncoding);
-        lengthOfBOM = 4;
+    } else if (c1 == 0xEF && c2 == 0xBB && c3 == 0xBF) {
+        ASSERT(UTF8Encoding().isValid());
+        setEncoding(UTF8Encoding(), AutoDetectedEncoding);
+        lengthOfBOM = 3;
     }
 
-    if (lengthOfBOM || bufferLength + len >= 4)
+    if (lengthOfBOM || bufferLength + len >= maximumBOMLength)
         m_checkedForBOM = true;
 
+    ASSERT(lengthOfBOM <= maximumBOMLength);
     return lengthOfBOM;
 }
 
@@ -538,12 +530,6 @@ bool TextResourceDecoder::checkForHeadCharset(const char* data, size_t len, bool
     } else if (bytesEqual(ptr, 0, '<', 0, '?', 0, 'x')) {
         setEncoding(UTF16BigEndianEncoding(), AutoDetectedEncoding);
         return true;
-    } else if (bytesEqual(ptr, '<', 0, 0, 0, '?', 0, 0, 0)) {
-        setEncoding(UTF32LittleEndianEncoding(), AutoDetectedEncoding);
-        return true;
-    } else if (bytesEqual(ptr, 0, 0, 0, '<', 0, 0, 0, '?')) {
-        setEncoding(UTF32BigEndianEncoding(), AutoDetectedEncoding);
-        return true;
     }
 
     // The HTTP-EQUIV meta has no effect on XHTML.
@@ -595,35 +581,33 @@ void TextResourceDecoder::detectJapaneseEncoding(const char* data, size_t len)
 //   in the first place. 
 bool TextResourceDecoder::shouldAutoDetect() const
 {
-    // Just checking m_hintEncoding suffices here because it's only set
-    // in setHintEncoding when the source is AutoDetectedEncoding.
     return m_usesEncodingDetector
-        && (m_source == DefaultEncoding || (m_source == EncodingFromParentFrame && m_hintEncoding)); 
+        && (m_source == DefaultEncoding || (m_source == EncodingFromParentFrame && m_parentFrameAutoDetectedEncoding));
 }
 
-String TextResourceDecoder::decode(const char* data, size_t len)
+String TextResourceDecoder::decode(const char* data, size_t length)
 {
     size_t lengthOfBOM = 0;
     if (!m_checkedForBOM)
-        lengthOfBOM = checkForBOM(data, len);
+        lengthOfBOM = checkForBOM(data, length);
 
     bool movedDataToBuffer = false;
 
     if (m_contentType == CSS && !m_checkedForCSSCharset)
-        if (!checkForCSSCharset(data, len, movedDataToBuffer))
+        if (!checkForCSSCharset(data, length, movedDataToBuffer))
             return emptyString();
 
     if ((m_contentType == HTML || m_contentType == XML) && !m_checkedForHeadCharset) // HTML and XML
-        if (!checkForHeadCharset(data, len, movedDataToBuffer))
+        if (!checkForHeadCharset(data, length, movedDataToBuffer))
             return emptyString();
 
     // FIXME: It is wrong to change the encoding downstream after we have already done some decoding.
     if (shouldAutoDetect()) {
         if (m_encoding.isJapanese())
-            detectJapaneseEncoding(data, len); // FIXME: We should use detectTextEncoding() for all languages.
+            detectJapaneseEncoding(data, length); // FIXME: We should use detectTextEncoding() for all languages.
         else {
             TextEncoding detectedEncoding;
-            if (detectTextEncoding(data, len, m_hintEncoding, &detectedEncoding))
+            if (detectTextEncoding(data, length, m_parentFrameAutoDetectedEncoding, &detectedEncoding))
                 setEncoding(detectedEncoding, AutoDetectedEncoding);
         }
     }
@@ -634,12 +618,12 @@ String TextResourceDecoder::decode(const char* data, size_t len)
         m_codec = newTextCodec(m_encoding);
 
     if (m_buffer.isEmpty())
-        return m_codec->decode(data + lengthOfBOM, len - lengthOfBOM, false, m_contentType == XML, m_sawError);
+        return m_codec->decode(data + lengthOfBOM, length - lengthOfBOM, false, m_contentType == XML, m_sawError);
 
     if (!movedDataToBuffer) {
         size_t oldSize = m_buffer.size();
-        m_buffer.grow(oldSize + len);
-        memcpy(m_buffer.data() + oldSize, data, len);
+        m_buffer.grow(oldSize + length);
+        memcpy(m_buffer.data() + oldSize, data, length);
     }
 
     String result = m_codec->decode(m_buffer.data() + lengthOfBOM, m_buffer.size() - lengthOfBOM, false, m_contentType == XML && !m_useLenientXMLDecoding, m_sawError);
@@ -649,15 +633,14 @@ String TextResourceDecoder::decode(const char* data, size_t len)
 
 String TextResourceDecoder::flush()
 {
-   // If we can not identify the encoding even after a document is completely
-   // loaded, we need to detect the encoding if other conditions for
-   // autodetection is satisfied.
+    // If we can not identify the encoding even after a document is completely
+    // loaded, we need to detect the encoding if other conditions for
+    // autodetection is satisfied.
     if (m_buffer.size() && shouldAutoDetect()
         && ((!m_checkedForHeadCharset && (m_contentType == HTML || m_contentType == XML)) || (!m_checkedForCSSCharset && (m_contentType == CSS)))) {
-         TextEncoding detectedEncoding;
-         if (detectTextEncoding(m_buffer.data(), m_buffer.size(),
-                                m_hintEncoding, &detectedEncoding))
-             setEncoding(detectedEncoding, AutoDetectedEncoding);
+        TextEncoding detectedEncoding;
+        if (detectTextEncoding(m_buffer.data(), m_buffer.size(), m_parentFrameAutoDetectedEncoding, &detectedEncoding))
+            setEncoding(detectedEncoding, AutoDetectedEncoding);
     }
 
     if (!m_codec)

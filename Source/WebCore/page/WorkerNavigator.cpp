@@ -29,14 +29,21 @@
 
 namespace WebCore {
 
-WorkerNavigator::WorkerNavigator(const String& userAgent)
-    : m_userAgent(userAgent)
+WorkerNavigator::WorkerNavigator(ScriptExecutionContext& context, const String& userAgent, bool isOnline)
+    : NavigatorBase(context)
+    , m_userAgent(userAgent)
+    , m_isOnline(isOnline)
 {
 }
 
-String WorkerNavigator::userAgent() const
+const String& WorkerNavigator::userAgent() const
 {
     return m_userAgent;
+}
+
+bool WorkerNavigator::onLine() const
+{
+    return m_isOnline;
 }
 
 } // namespace WebCore

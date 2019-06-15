@@ -3,7 +3,7 @@
 /*---
 es6id: 21.2.5.11
 description: RegExp.prototype[Symbol.split] `length` property
-info: >
+info: |
     The length property of the @@split method is 2.
 
     ES6 Section 17:
@@ -14,6 +14,7 @@ info: >
     object has the attributes { [[Writable]]: false, [[Enumerable]]: false,
     [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol.split]
 ---*/
 
 assert.sameValue(RegExp.prototype[Symbol.split].length, 2);

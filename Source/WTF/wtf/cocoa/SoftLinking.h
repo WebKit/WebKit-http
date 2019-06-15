@@ -63,6 +63,13 @@
         return frameworkLibrary; \
     }
 
+#define SOFT_LINK_FRAMEWORK_OPTIONAL_PREFLIGHT(framework) \
+    static bool framework##LibraryIsAvailable() \
+    { \
+        static bool frameworkLibraryIsAvailable = dlopen_preflight("/System/Library/Frameworks/" #framework ".framework/" #framework); \
+        return frameworkLibraryIsAvailable; \
+    }
+
 #define SOFT_LINK_FRAMEWORK_OPTIONAL(framework) \
     static void* framework##Library() \
     { \
@@ -115,7 +122,7 @@
         return softLink##functionName parameterNames; \
     } \
     \
-    inline resultType functionName parameterDeclarations \
+    inline __attribute__((__always_inline__)) resultType functionName parameterDeclarations \
     { \
         return softLink##functionName parameterNames; \
     }
@@ -139,7 +146,7 @@
         return loaded; \
     } \
     \
-    __attribute__((visibility("hidden"))) resultType functionName parameterDeclarations \
+    inline __attribute__((__always_inline__)) __attribute__((visibility("hidden"))) resultType functionName parameterDeclarations \
     { \
         ASSERT(softLink##functionName); \
         return softLink##functionName parameterNames; \
@@ -263,7 +270,7 @@
     { \
         void* constant = dlsym(framework##Library(), #name); \
         RELEASE_ASSERT_WITH_MESSAGE(constant, "%s", dlerror()); \
-        constant##name = *static_cast<type*>(constant); \
+        constant##name = *static_cast<type const *>(constant); \
         get##name = name##Function; \
         return constant##name; \
     }
@@ -290,7 +297,7 @@
         void* constant = dlsym(framework##Library(), #name); \
         if (!constant) \
             return false; \
-        constant##name = *static_cast<type*>(constant); \
+        constant##name = *static_cast<type const *>(constant); \
         get##name = name##Function; \
         return true; \
     }
@@ -298,6 +305,31 @@
 #pragma mark - Soft-link macros for sharing across multiple source files
 
 // See Source/WebCore/platform/cf/CoreMediaSoftLink.{cpp,h} for an example implementation.
+
+
+#define SOFT_LINK_LIBRARY_FOR_HEADER(functionNamespace, lib) \
+    namespace functionNamespace { \
+    extern void* lib##Library(bool isOptional = false); \
+    inline bool is##lib##LibaryAvailable() { \
+        return lib##Library(true) != nullptr; \
+    } \
+    }
+
+#define SOFT_LINK_LIBRARY_FOR_SOURCE(functionNamespace, lib) \
+    namespace functionNamespace { \
+    void* lib##Library(bool isOptional); \
+    void* lib##Library(bool isOptional) \
+    { \
+        static void* library; \
+        static dispatch_once_t once; \
+        dispatch_once(&once, ^{ \
+            library = dlopen("/usr/lib/" #lib ".dylib", RTLD_NOW); \
+            if (!isOptional) \
+                RELEASE_ASSERT_WITH_MESSAGE(library, "%s", dlerror()); \
+        }); \
+        return library; \
+    } \
+    }
 
 #define SOFT_LINK_FRAMEWORK_FOR_HEADER(functionNamespace, framework) \
     namespace functionNamespace { \
@@ -397,7 +429,7 @@
         dispatch_once(&once, ^{ \
             void* constant = dlsym(framework##Library(), #variableName); \
             RELEASE_ASSERT_WITH_MESSAGE(constant, "%s", dlerror()); \
-            constant##framework##variableName = *static_cast<variableType*>(constant); \
+            constant##framework##variableName = *static_cast<variableType const *>(constant); \
         }); \
         return constant##framework##variableName; \
     } \
@@ -425,7 +457,7 @@
         void* constant = dlsym(framework##Library(), #variableName); \
         if (!constant) \
             return false; \
-        constant##framework##variableName = *static_cast<variableType*>(constant); \
+        constant##framework##variableName = *static_cast<variableType const *>(constant); \
         return true; \
     } \
     bool canLoad_##framework##_##variableName(); \
@@ -451,6 +483,10 @@
     { \
         return softLink##framework##functionName parameterNames; \
     } \
+    } \
+    inline __attribute__((__always_inline__)) resultType functionName parameterDeclarations \
+    {\
+        return functionNamespace::softLink##framework##functionName parameterNames; \
     }
 
 #define SOFT_LINK_FUNCTION_FOR_SOURCE(functionNamespace, framework, functionName, resultType, parameterDeclarations, parameterNames) \

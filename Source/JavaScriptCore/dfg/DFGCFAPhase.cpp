@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,8 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGAbstractInterpreterInlines.h"
+#include "DFGBlockSet.h"
+#include "DFGClobberSet.h"
 #include "DFGGraph.h"
 #include "DFGInPlaceAbstractState.h"
 #include "DFGPhase.h"
@@ -55,8 +57,8 @@ public:
         ASSERT(m_graph.m_refCountState == EverythingIsLive);
         
         m_count = 0;
-        
-        if (m_verbose && !shouldDumpGraphAtEachPhase(m_graph.m_plan.mode)) {
+
+        if (m_verbose && !shouldDumpGraphAtEachPhase(m_graph.m_plan.mode())) {
             dataLog("Graph before CFA:\n");
             m_graph.dump();
         }
@@ -74,16 +76,9 @@ public:
         
         m_state.initialize();
         
-        do {
-            m_changed = false;
-            performForwardCFA();
-        } while (m_changed);
-        
         if (m_graph.m_form != SSA) {
             if (m_verbose)
                 dataLog("   Widening state at OSR entry block.\n");
-            
-            ASSERT(!m_changed);
             
             // Widen the abstract values at the block that serves as the must-handle OSR entry.
             for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
@@ -93,44 +88,51 @@ public:
                 
                 if (!block->isOSRTarget)
                     continue;
-                if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex)
+                if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex())
                     continue;
                 
-                if (m_verbose)
-                    dataLog("   Found must-handle block: ", *block, "\n");
-                
-                bool changed = false;
-                for (size_t i = m_graph.m_plan.mustHandleValues.size(); i--;) {
-                    int operand = m_graph.m_plan.mustHandleValues.operandForIndex(i);
-                    JSValue value = m_graph.m_plan.mustHandleValues[i];
-                    Node* node = block->variablesAtHead.operand(operand);
-                    if (!node) {
-                        if (m_verbose)
-                            dataLog("   Not live: ", VirtualRegister(operand), "\n");
-                        continue;
-                    }
-                    
-                    if (m_verbose)
-                        dataLog("   Widening ", VirtualRegister(operand), " with ", value, "\n");
-
-                    AbstractValue& target = block->valuesAtHead.operand(operand);
-                    changed |= target.mergeOSREntryValue(m_graph, value);
-                    target.fixTypeForRepresentation(
-                        m_graph, resultFor(node->variableAccessData()->flushFormat()));
-                }
-                
-                if (changed || !block->cfaHasVisited) {
-                    m_changed = true;
-                    block->cfaShouldRevisit = true;
-                }
+                // We record that the block needs some OSR stuff, but we don't do that yet. We want to
+                // handle OSR entry data at the right time in order to get the best compile times. If we
+                // simply injected OSR data right now, then we'd potentially cause a loop body to be
+                // interpreted with just the constants we feed it, which is more expensive than if we
+                // interpreted it with non-constant values. If we always injected this data after the
+                // main pass of CFA ran, then we would potentially spend a bunch of time rerunning CFA
+                // after convergence. So, we try very hard to inject OSR data for a block when we first
+                // naturally come to see it - see the m_blocksWithOSR check in performBlockCFA(). This
+                // way, we:
+                //
+                // - Reduce the likelihood of interpreting the block with constants, since we will inject
+                //   the OSR entry constants on top of whatever abstract values we got for that block on
+                //   the first pass. The mix of those two things is likely to not be constant.
+                //
+                // - Reduce the total number of CFA reexecutions since we inject the OSR data as part of
+                //   the normal flow of CFA instead of having to do a second fixpoint. We may still have
+                //   to do a second fixpoint if we don't even reach the OSR entry block during the main
+                //   run of CFA, but in that case at least we're not being redundant.
+                m_blocksWithOSR.add(block);
             }
+        }
 
-            // Propagate any of the changes we just introduced.
+        do {
+            m_changed = false;
+            performForwardCFA();
+        } while (m_changed);
+        
+        if (m_graph.m_form != SSA) {
+            for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+                BasicBlock* block = m_graph.block(blockIndex);
+                if (!block)
+                    continue;
+                
+                if (m_blocksWithOSR.remove(block))
+                    m_changed |= injectOSR(block);
+            }
+            
             while (m_changed) {
                 m_changed = false;
                 performForwardCFA();
             }
-            
+        
             // Make sure we record the intersection of all proofs that we ever allowed the
             // compiler to rely upon.
             for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
@@ -139,8 +141,15 @@ public:
                     continue;
                 
                 block->intersectionOfCFAHasVisited &= block->cfaHasVisited;
-                for (unsigned i = block->intersectionOfPastValuesAtHead.size(); i--;)
-                    block->intersectionOfPastValuesAtHead[i].filter(block->valuesAtHead[i]);
+                for (unsigned i = block->intersectionOfPastValuesAtHead.size(); i--;) {
+                    AbstractValue value = block->valuesAtHead[i];
+                    // We need to guarantee that when we do an OSR entry, we validate the incoming
+                    // value as if it could be live past an invalidation point. Otherwise, we may
+                    // OSR enter with a value with the wrong structure, and an InvalidationPoint's
+                    // promise of filtering the structure set of certain values is no longer upheld.
+                    value.m_structure.observeInvalidationPoint();
+                    block->intersectionOfPastValuesAtHead[i].filter(value);
+                }
             }
         }
         
@@ -148,6 +157,40 @@ public:
     }
     
 private:
+    bool injectOSR(BasicBlock* block)
+    {
+        if (m_verbose)
+            dataLog("   Found must-handle block: ", *block, "\n");
+        
+        bool changed = false;
+        const Operands<JSValue>& mustHandleValues = m_graph.m_plan.mustHandleValues();
+        for (size_t i = mustHandleValues.size(); i--;) {
+            int operand = mustHandleValues.operandForIndex(i);
+            JSValue value = mustHandleValues[i];
+            Node* node = block->variablesAtHead.operand(operand);
+            if (!node) {
+                if (m_verbose)
+                    dataLog("   Not live: ", VirtualRegister(operand), "\n");
+                continue;
+            }
+            
+            if (m_verbose)
+                dataLog("   Widening ", VirtualRegister(operand), " with ", value, "\n");
+            
+            AbstractValue& target = block->valuesAtHead.operand(operand);
+            changed |= target.mergeOSREntryValue(m_graph, value);
+            target.fixTypeForRepresentation(
+                m_graph, resultFor(node->variableAccessData()->flushFormat()));
+        }
+        
+        if (changed || !block->cfaHasVisited) {
+            block->cfaShouldRevisit = true;
+            return true;
+        }
+        
+        return false;
+    }
+    
     void performBlockCFA(BasicBlock* block)
     {
         if (!block)
@@ -156,6 +199,10 @@ private:
             return;
         if (m_verbose)
             dataLog("   Block ", *block, ":\n");
+        
+        if (m_blocksWithOSR.remove(block))
+            injectOSR(block);
+        
         m_state.beginBasicBlock(block);
         if (m_verbose) {
             dataLog("      head vars: ", block->valuesAtHead, "\n");
@@ -163,14 +210,14 @@ private:
                 dataLog("      head regs: ", nodeValuePairListDump(block->ssa->valuesAtHead), "\n");
         }
         for (unsigned i = 0; i < block->size(); ++i) {
+            Node* node = block->at(i);
             if (m_verbose) {
-                Node* node = block->at(i);
                 dataLogF("      %s @%u: ", Graph::opName(node->op()), node->index());
                 
                 if (!safeToExecute(m_state, m_graph, node))
                     dataLog("(UNSAFE) ");
                 
-                dataLog(m_state.variables(), " ", m_interpreter);
+                dataLog(m_state.variablesForDebugging(), " ", m_interpreter);
                 
                 dataLogF("\n");
             }
@@ -179,6 +226,10 @@ private:
                     dataLogF("         Expect OSR exit.\n");
                 break;
             }
+            
+            if (!ASSERT_DISABLED
+                && m_state.didClobberOrFolded() != writesOverlap(m_graph, node, JSCell_structureID))
+                DFG_CRASH(m_graph, node, toCString("AI-clobberize disagreement; AI says ", m_state.clobberState(), " while clobberize says ", writeSet(m_graph, node)).data());
         }
         if (m_verbose) {
             dataLogF("      tail regs: ");
@@ -198,7 +249,7 @@ private:
     {
         ++m_count;
         if (m_verbose)
-            dataLogF("CFA [%u]\n", ++m_count);
+            dataLogF("CFA [%u]\n", m_count);
         
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex)
             performBlockCFA(m_graph.block(blockIndex));
@@ -207,6 +258,7 @@ private:
 private:
     InPlaceAbstractState m_state;
     AbstractInterpreter<InPlaceAbstractState> m_interpreter;
+    BlockSet m_blocksWithOSR;
     
     bool m_verbose;
     

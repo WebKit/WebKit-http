@@ -146,6 +146,8 @@
 
 #define WebKitCustomDragCursorsEnabledPreferenceKey "WebKitCustomDragCursorsEnabled"
 
+#define WebKitSpatialNavigationEnabledPreferenceKey "WebKitSpatialNavigationEnabled"
+
 #define WebKitDNSPrefetchingEnabledPreferenceKey "WebKitDNSPrefetchingEnabled"
 
 #define WebKitFullScreenEnabledPreferenceKey "WebKitFullScreenEnabled"
@@ -170,13 +172,21 @@
 
 #define WebKitFetchAPIEnabledPreferenceKey "WebKitFetchAPIEnabled"
 
+#define WebKitFetchAPIKeepAliveEnabledPreferenceKey "WebKitFetchAPIKeepAlivEnabled"
+
 #define WebKitShadowDOMEnabledPreferenceKey "WebKitShadowDOMEnabled"
 
 #define WebKitCustomElementsEnabledPreferenceKey "WebKitCustomElementsEnabled"
 
+#define WebKitMenuItemElementEnabledPreferenceKey "WebKitMenuItemElementEnabled"
+
+#define WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey "WebKitCrossOriginWindowPolicySupportEnabled"
+
 #define WebKitModernMediaControlsEnabledPreferenceKey "WebKitModernMediaControlsEnabled"
 
 #define WebKitWebAnimationsEnabledPreferenceKey "WebKitWebAnimationsEnabled"
+
+#define WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey "WebKitWebAnimationsCSSIntegrationEnabled"
 
 #define WebKitUserTimingEnabledPreferenceKey "WebKitUserTimingEnabled"
 
@@ -187,3 +197,14 @@
 #define WebKitMediaPreloadingEnabledPreferenceKey "WebKitMediaPreloadingEnabled"
 
 #define WebKitIsSecureContextAttributeEnabledPreferenceKey "WebKitIsSecureContextAttributeEnabled"
+
+#define WebKitDataTransferItemsEnabledPreferenceKey "WebKitDataTransferItemsEnabled"
+
+#define WebKitInspectorAdditionsEnabledPreferenceKey "WebKitInspectorAdditionsEnabled"
+
+#define WebKitVisualViewportAPIEnabledPreferenceKey "WebKitVisualViewportAPIEnabled"
+
+#define WebKitServerTimingEnabledPreferenceKey "WebKitServerTimingEnabled"
+
+#define WebKitCSSOMViewScrollingAPIEnabledPreferenceKey "WebKitCSSOMViewScrollingAPIEnabled"
+

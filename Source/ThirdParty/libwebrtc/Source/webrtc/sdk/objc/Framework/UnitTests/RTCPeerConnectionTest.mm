@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include "webrtc/base/gunit.h"
+#include "rtc_base/gunit.h"
 
 #import "NSString+StdString.h"
 #import "RTCConfiguration+Private.h"
@@ -40,8 +40,8 @@
   config.tcpCandidatePolicy = RTCTcpCandidatePolicyDisabled;
   config.candidateNetworkPolicy = RTCCandidateNetworkPolicyLowCost;
   const int maxPackets = 60;
-  const int timeout = 1;
-  const int interval = 2;
+  const int timeout = 1500;
+  const int interval = 2000;
   config.audioJitterBufferMaxPackets = maxPackets;
   config.audioJitterBufferFastAccelerate = YES;
   config.iceConnectionReceivingTimeout = timeout;
@@ -49,6 +49,7 @@
   config.continualGatheringPolicy =
       RTCContinualGatheringPolicyGatherContinually;
   config.shouldPruneTurnPorts = YES;
+  config.activeResetSrtpParams = YES;
 
   RTCMediaConstraints *contraints = [[RTCMediaConstraints alloc] initWithMandatoryConstraints:@{}
       optionalConstraints:nil];
@@ -59,7 +60,15 @@
     RTCPeerConnection *peerConnection =
         [factory peerConnectionWithConfiguration:config constraints:contraints delegate:nil];
     newConfig = peerConnection.configuration;
+
+    EXPECT_TRUE([peerConnection setBweMinBitrateBps:[NSNumber numberWithInt:100000]
+                                  currentBitrateBps:[NSNumber numberWithInt:5000000]
+                                      maxBitrateBps:[NSNumber numberWithInt:500000000]]);
+    EXPECT_FALSE([peerConnection setBweMinBitrateBps:[NSNumber numberWithInt:2]
+                                   currentBitrateBps:[NSNumber numberWithInt:1]
+                                       maxBitrateBps:nil]);
   }
+
   EXPECT_EQ([config.iceServers count], [newConfig.iceServers count]);
   RTCIceServer *newServer = newConfig.iceServers[0];
   RTCIceServer *origServer = config.iceServers[0];
@@ -79,6 +88,7 @@
             newConfig.iceBackupCandidatePairPingInterval);
   EXPECT_EQ(config.continualGatheringPolicy, newConfig.continualGatheringPolicy);
   EXPECT_EQ(config.shouldPruneTurnPorts, newConfig.shouldPruneTurnPorts);
+  EXPECT_EQ(config.activeResetSrtpParams, newConfig.activeResetSrtpParams);
 }
 
 @end

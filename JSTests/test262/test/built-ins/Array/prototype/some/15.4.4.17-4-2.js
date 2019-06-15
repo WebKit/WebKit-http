@@ -2,13 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.some
 es5id: 15.4.4.17-4-2
 description: >
     Array.prototype.some throws ReferenceError if callbackfn is
     unreferenced
 ---*/
 
-  var arr = new Array(10);
+var arr = new Array(10);
 assert.throws(ReferenceError, function() {
-    arr.some(foo);
+  arr.some(foo);
 });

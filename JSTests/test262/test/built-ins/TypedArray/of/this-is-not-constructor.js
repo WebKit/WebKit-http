@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.of
 description: >
   Throws a TypeError exception if this is not a constructor
-info: >
+info: |
   22.2.2.2 %TypedArray%.of ( ...items )
 
   ...
@@ -12,6 +12,7 @@ info: >
   4. If IsConstructor(C) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var m = { m() {} }.m;

@@ -22,10 +22,9 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMDOMTokenListPrivate.h"
 #include "WebKitDOMPrivate.h"
 #include "ConvertToUTF8String.h"
@@ -37,6 +36,8 @@
 typedef struct _WebKitDOMDOMTokenListPrivate {
     RefPtr<WebCore::DOMTokenList> coreObject;
 } WebKitDOMDOMTokenListPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -67,9 +68,9 @@ WebKitDOMDOMTokenList* wrapDOMTokenList(WebCore::DOMTokenList* coreObject)
 G_DEFINE_TYPE(WebKitDOMDOMTokenList, webkit_dom_dom_token_list, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_LENGTH,
-    PROP_VALUE,
+    DOM_DOM_TOKEN_LIST_PROP_0,
+    DOM_DOM_TOKEN_LIST_PROP_LENGTH,
+    DOM_DOM_TOKEN_LIST_PROP_VALUE,
 };
 
 static void webkit_dom_dom_token_list_finalize(GObject* object)
@@ -87,7 +88,7 @@ static void webkit_dom_dom_token_list_set_property(GObject* object, guint proper
     WebKitDOMDOMTokenList* self = WEBKIT_DOM_DOM_TOKEN_LIST(object);
 
     switch (propertyId) {
-    case PROP_VALUE:
+    case DOM_DOM_TOKEN_LIST_PROP_VALUE:
         webkit_dom_dom_token_list_set_value(self, g_value_get_string(value));
         break;
     default:
@@ -101,10 +102,10 @@ static void webkit_dom_dom_token_list_get_property(GObject* object, guint proper
     WebKitDOMDOMTokenList* self = WEBKIT_DOM_DOM_TOKEN_LIST(object);
 
     switch (propertyId) {
-    case PROP_LENGTH:
+    case DOM_DOM_TOKEN_LIST_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_dom_token_list_get_length(self));
         break;
-    case PROP_VALUE:
+    case DOM_DOM_TOKEN_LIST_PROP_VALUE:
         g_value_take_string(value, webkit_dom_dom_token_list_get_value(self));
         break;
     default:
@@ -135,7 +136,7 @@ static void webkit_dom_dom_token_list_class_init(WebKitDOMDOMTokenListClass* req
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_DOM_TOKEN_LIST_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "DOMTokenList:length",
@@ -145,7 +146,7 @@ static void webkit_dom_dom_token_list_class_init(WebKitDOMDOMTokenListClass* req
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_VALUE,
+        DOM_DOM_TOKEN_LIST_PROP_VALUE,
         g_param_spec_string(
             "value",
             "DOMTokenList:value",
@@ -195,8 +196,8 @@ void webkit_dom_dom_token_list_add(WebKitDOMDOMTokenList* self, GError** error, 
     va_end(variadicParameterList);
     auto result = item->add(WTFMove(convertedTokens));
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -214,8 +215,8 @@ void webkit_dom_dom_token_list_remove(WebKitDOMDOMTokenList* self, GError** erro
     va_end(variadicParameterList);
     auto result = item->remove(WTFMove(convertedTokens));
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -229,8 +230,8 @@ gboolean webkit_dom_dom_token_list_toggle(WebKitDOMDOMTokenList* self, const gch
     WTF::String convertedToken = WTF::String::fromUTF8(token);
     auto result = item->toggle(convertedToken, force);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -248,8 +249,8 @@ void webkit_dom_dom_token_list_replace(WebKitDOMDOMTokenList* self, const gchar*
     WTF::String convertedNewToken = WTF::String::fromUTF8(newToken);
     auto result = item->replace(convertedToken, convertedNewToken);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -281,3 +282,4 @@ void webkit_dom_dom_token_list_set_value(WebKitDOMDOMTokenList* self, const gcha
     item->setValue(convertedValue);
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

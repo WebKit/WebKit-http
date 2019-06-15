@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.2.3.5
+esid: sec-%typedarray%.prototype.copywithin
 description: >
   %TypedArray%.prototype.copyWithin.name is "copyWithin".
-info: >
+info: |
   %TypedArray%.prototype.copyWithin (target, start [, end ] )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.prototype.copyWithin.name, "copyWithin");

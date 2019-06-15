@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "DOMTimeStamp.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
@@ -35,7 +35,7 @@ class KeyboardEvent;
 
 class TypeAheadDataSource {
 public:
-    virtual ~TypeAheadDataSource() { }
+    virtual ~TypeAheadDataSource() = default;
 
     virtual int indexOfSelectedOption() const = 0;
     virtual int optionCount() const = 0;
@@ -58,7 +58,7 @@ public:
 
 private:
     TypeAheadDataSource* m_dataSource;
-    DOMTimeStamp m_lastTypeTime;
+    MonotonicTime m_lastTypeTime;
     UChar m_repeatingChar;
     StringBuilder m_buffer;
 };

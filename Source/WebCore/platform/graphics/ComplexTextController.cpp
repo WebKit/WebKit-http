@@ -41,11 +41,29 @@
 #include <CoreText/CoreText.h>
 #endif
 
-#if PLATFORM(MAC)
-#include <ApplicationServices/ApplicationServices.h>
-#endif
-
 namespace WebCore {
+
+#if PLATFORM(WIN)
+
+class TextLayout {
+};
+
+void TextLayoutDeleter::operator()(TextLayout*) const
+{
+}
+
+std::unique_ptr<TextLayout, TextLayoutDeleter> FontCascade::createLayout(RenderText&, float, bool) const
+{
+    return nullptr;
+}
+
+float FontCascade::width(TextLayout&, unsigned, unsigned, HashSet<const Font*>*)
+{
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+#else
 
 class TextLayout {
     WTF_MAKE_FAST_ALLOCATED;
@@ -78,8 +96,6 @@ private:
     static TextRun constructTextRun(RenderText& text, float xPos)
     {
         TextRun run = RenderBlock::constructTextRun(text, text.style());
-        run.setCharactersLength(text.textLength());
-        ASSERT(run.charactersLength() >= run.length());
         run.setXPos(xPos);
         return run;
     }
@@ -92,39 +108,19 @@ private:
 
 void TextLayoutDeleter::operator()(TextLayout* layout) const
 {
-#if PLATFORM(COCOA)
     delete layout;
-#else
-    ASSERT_UNUSED(layout, !layout);
-#endif
 }
 
 std::unique_ptr<TextLayout, TextLayoutDeleter> FontCascade::createLayout(RenderText& text, float xPos, bool collapseWhiteSpace) const
 {
-#if PLATFORM(COCOA)
     if (!collapseWhiteSpace || !TextLayout::isNeeded(text, *this))
         return nullptr;
     return std::unique_ptr<TextLayout, TextLayoutDeleter>(new TextLayout(text, *this, xPos));
-#else
-    UNUSED_PARAM(text);
-    UNUSED_PARAM(xPos);
-    UNUSED_PARAM(collapseWhiteSpace);
-    return nullptr;
-#endif
 }
 
 float FontCascade::width(TextLayout& layout, unsigned from, unsigned len, HashSet<const Font*>* fallbackFonts)
 {
-#if PLATFORM(COCOA)
     return layout.width(from, len, fallbackFonts);
-#else
-    UNUSED_PARAM(layout);
-    UNUSED_PARAM(from);
-    UNUSED_PARAM(len);
-    UNUSED_PARAM(fallbackFonts);
-    ASSERT_NOT_REACHED();
-    return 0;
-#endif
 }
 
 void ComplexTextController::computeExpansionOpportunity()
@@ -132,7 +128,7 @@ void ComplexTextController::computeExpansionOpportunity()
     if (!m_expansion)
         m_expansionPerOpportunity = 0;
     else {
-        unsigned expansionOpportunityCount = FontCascade::expansionOpportunityCount(m_run.text(), m_run.ltr() ? LTR : RTL, m_run.expansionBehavior()).first;
+        unsigned expansionOpportunityCount = FontCascade::expansionOpportunityCount(m_run.text(), m_run.ltr() ? TextDirection::LTR : TextDirection::RTL, m_run.expansionBehavior()).first;
 
         if (!expansionOpportunityCount)
             m_expansionPerOpportunity = 0;
@@ -150,6 +146,10 @@ ComplexTextController::ComplexTextController(const FontCascade& font, const Text
     , m_mayUseNaturalWritingDirection(mayUseNaturalWritingDirection)
     , m_forTextEmphasis(forTextEmphasis)
 {
+#if PLATFORM(WIN)
+    ASSERT_NOT_REACHED();
+#endif
+
     computeExpansionOpportunity();
 
     collectComplexTextRuns();
@@ -886,5 +886,7 @@ ComplexTextController::ComplexTextRun::ComplexTextRun(const Vector<FloatSize>& a
     , m_isLTR(ltr)
 {
 }
+
+#endif
 
 } // namespace WebCore

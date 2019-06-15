@@ -26,6 +26,7 @@
 #import "SettingsController.h"
 
 #import "AppDelegate.h"
+#import "AppKitCompatibilityDeclarations.h"
 #import "BrowserWindowController.h"
 #import <WebKit/WKPreferencesPrivate.h>
 
@@ -63,12 +64,17 @@ static NSString * const EnableSubPixelCSSOMMetricsPreferenceKey = @"EnableSubPix
 static NSString * const VisualViewportEnabledPreferenceKey = @"VisualViewportEnabled";
 static NSString * const LargeImageAsyncDecodingEnabledPreferenceKey = @"LargeImageAsyncDecodingEnabled";
 static NSString * const AnimatedImageAsyncDecodingEnabledPreferenceKey = @"AnimatedImageAsyncDecodingEnabled";
+static NSString * const AppleColorFilterEnabledPreferenceKey = @"AppleColorFilterEnabled";
+static NSString * const PunchOutWhiteBackgroundsInDarkModePreferenceKey = @"PunchOutWhiteBackgroundsInDarkMode";
+static NSString * const UseSystemAppearancePreferenceKey = @"UseSystemAppearance";
 
 // This default name intentionally overlaps with the key that WebKit2 checks when creating a view.
 static NSString * const UseRemoteLayerTreeDrawingAreaPreferenceKey = @"WebKit2UseRemoteLayerTreeDrawingArea";
 
 static NSString * const PerWindowWebProcessesDisabledKey = @"PerWindowWebProcessesDisabled";
 static NSString * const NetworkCacheSpeculativeRevalidationDisabledKey = @"NetworkCacheSpeculativeRevalidationDisabled";
+static NSString * const ProcessSwapOnNavigationKey = @"ProcessSwapOnNavigation";
+static NSString * const ProcessSwapOnWindowOpenWithOpenerKey = @"ProcessSwapOnWindowOpenWithOpener";
 
 typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     NonFastScrollableRegionOverlayTag = 100,
@@ -167,7 +173,9 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     [self _addItemWithTitle:@"Enable Resource Load Statistics" action:@selector(toggleResourceLoadStatisticsEnabled:) indented:NO];
     [self _addItemWithTitle:@"Enable Large Image Async Decoding" action:@selector(toggleLargeImageAsyncDecodingEnabled:) indented:NO];
     [self _addItemWithTitle:@"Enable Animated Image Async Decoding" action:@selector(toggleAnimatedImageAsyncDecodingEnabled:) indented:NO];
-
+    [self _addItemWithTitle:@"Enable color-filter" action:@selector(toggleAppleColorFilterEnabled:) indented:NO];
+    [self _addItemWithTitle:@"Punch Out White Backgrounds in Dark Mode" action:@selector(togglePunchOutWhiteBackgroundsInDarkMode:) indented:NO];
+    [self _addItemWithTitle:@"Use System Appearance" action:@selector(toggleUseSystemAppearance:) indented:NO];
     [self _addHeaderWithTitle:@"WebKit2-only Settings"];
 
     [self _addItemWithTitle:@"Reserve Space For Banners" action:@selector(toggleReserveSpaceForBanners:) indented:YES];
@@ -178,6 +186,8 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     [self _addItemWithTitle:@"Load All Site Icons Per-Page" action:@selector(toggleLoadsAllSiteIcons:) indented:YES];
     [self _addItemWithTitle:@"Use GameController.framework on macOS (Restart required)" action:@selector(toggleUsesGameControllerFramework:) indented:YES];
     [self _addItemWithTitle:@"Disable network cache speculative revalidation" action:@selector(toggleNetworkCacheSpeculativeRevalidationDisabled:) indented:YES];
+    [self _addItemWithTitle:@"Enable Process Swap on Navigation" action:@selector(toggleProcessSwapOnNavigation:) indented:YES];
+    [self _addItemWithTitle:@"Enable Process Swap on window.open() with an opener" action:@selector(toggleProcessSwapOnWindowOpenWithOpener:) indented:YES];
 
     NSMenuItem *debugOverlaysSubmenuItem = [[NSMenuItem alloc] initWithTitle:@"Debug Overlays" action:nil keyEquivalent:@""];
     NSMenu *debugOverlaysMenu = [[NSMenu alloc] initWithTitle:@"Debug Overlays"];
@@ -228,60 +238,70 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     SEL action = [menuItem action];
 
     if (action == @selector(toggleUseWebKit2ByDefault:))
-        [menuItem setState:[self useWebKit2ByDefault] ? NSOnState : NSOffState];
+        [menuItem setState:[self useWebKit2ByDefault] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleCreateEditorByDefault:))
-        [menuItem setState:[self createEditorByDefault] ? NSOnState : NSOffState];
+        [menuItem setState:[self createEditorByDefault] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleUseTransparentWindows:))
-        [menuItem setState:[self useTransparentWindows] ? NSOnState : NSOffState];
+        [menuItem setState:[self useTransparentWindows] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleUsePaginatedMode:))
-        [menuItem setState:[self usePaginatedMode] ? NSOnState : NSOffState];
+        [menuItem setState:[self usePaginatedMode] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleShowLayerBorders:))
-        [menuItem setState:[self layerBordersVisible] ? NSOnState : NSOffState];
+        [menuItem setState:[self layerBordersVisible] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleSimpleLineLayoutEnabled:))
-        [menuItem setState:[self simpleLineLayoutEnabled] ? NSOffState : NSOnState];
+        [menuItem setState:[self simpleLineLayoutEnabled] ? NSControlStateValueOff : NSControlStateValueOn];
     else if (action == @selector(toggleSimpleLineLayoutDebugBordersEnabled:))
-        [menuItem setState:[self simpleLineLayoutDebugBordersEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self simpleLineLayoutDebugBordersEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleIncrementalRenderingSuppressed:))
-        [menuItem setState:[self incrementalRenderingSuppressed] ? NSOnState : NSOffState];
+        [menuItem setState:[self incrementalRenderingSuppressed] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleAcceleratedDrawingEnabled:))
-        [menuItem setState:[self acceleratedDrawingEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self acceleratedDrawingEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleDisplayListDrawingEnabled:))
-        [menuItem setState:[self displayListDrawingEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self displayListDrawingEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleSubpixelAntialiasedLayerTextEnabled:))
-        [menuItem setState:[self subpixelAntialiasedLayerTextEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self subpixelAntialiasedLayerTextEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleResourceLoadStatisticsEnabled:))
-        [menuItem setState:[self resourceLoadStatisticsEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self resourceLoadStatisticsEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleLargeImageAsyncDecodingEnabled:))
-        [menuItem setState:[self largeImageAsyncDecodingEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self largeImageAsyncDecodingEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleAnimatedImageAsyncDecodingEnabled:))
-        [menuItem setState:[self animatedImageAsyncDecodingEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self animatedImageAsyncDecodingEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
+    else if (action == @selector(toggleAppleColorFilterEnabled:))
+        [menuItem setState:[self appleColorFilterEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
+    else if (action == @selector(togglePunchOutWhiteBackgroundsInDarkMode:))
+        [menuItem setState:[self punchOutWhiteBackgroundsInDarkMode] ? NSControlStateValueOn : NSControlStateValueOff];
+    else if (action == @selector(toggleUseSystemAppearance:))
+        [menuItem setState:[self useSystemAppearance] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleVisualViewportEnabled:))
-        [menuItem setState:[self visualViewportEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self visualViewportEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleReserveSpaceForBanners:))
-        [menuItem setState:[self isSpaceReservedForBanners] ? NSOnState : NSOffState];
+        [menuItem setState:[self isSpaceReservedForBanners] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleShowTiledScrollingIndicator:))
-        [menuItem setState:[self tiledScrollingIndicatorVisible] ? NSOnState : NSOffState];
+        [menuItem setState:[self tiledScrollingIndicatorVisible] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleShowResourceUsageOverlay:))
-        [menuItem setState:[self resourceUsageOverlayVisible] ? NSOnState : NSOffState];
+        [menuItem setState:[self resourceUsageOverlayVisible] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleLoadsAllSiteIcons:))
-        [menuItem setState:[self loadsAllSiteIcons] ? NSOnState : NSOffState];
+        [menuItem setState:[self loadsAllSiteIcons] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleUsesGameControllerFramework:))
-        [menuItem setState:[self usesGameControllerFramework] ? NSOnState : NSOffState];
+        [menuItem setState:[self usesGameControllerFramework] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleNetworkCacheSpeculativeRevalidationDisabled:))
-        [menuItem setState:[self networkCacheSpeculativeRevalidationDisabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self networkCacheSpeculativeRevalidationDisabled] ? NSControlStateValueOn : NSControlStateValueOff];
+    else if (action == @selector(toggleProcessSwapOnNavigation:))
+        [menuItem setState:[self processSwapOnNavigationEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
+    else if (action == @selector(toggleProcessSwapOnWindowOpenWithOpener:))
+        [menuItem setState:[self processSwapOnWindowOpenWithOpenerEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleUseUISideCompositing:))
-        [menuItem setState:[self useUISideCompositing] ? NSOnState : NSOffState];
+        [menuItem setState:[self useUISideCompositing] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(togglePerWindowWebProcessesDisabled:))
-        [menuItem setState:[self perWindowWebProcessesDisabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self perWindowWebProcessesDisabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleEnableSubPixelCSSOMMetrics:))
-        [menuItem setState:[self subPixelCSSOMMetricsEnabled] ? NSOnState : NSOffState];
+        [menuItem setState:[self subPixelCSSOMMetricsEnabled] ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleDebugOverlay:))
-        [menuItem setState:[self debugOverlayVisible:menuItem] ? NSOnState : NSOffState];
+        [menuItem setState:[self debugOverlayVisible:menuItem] ? NSControlStateValueOn : NSControlStateValueOff];
 
 #if WK_API_ENABLED
     if (menuItem.tag == ExperimentalFeatureTag) {
         _WKExperimentalFeature *feature = menuItem.representedObject;
-        [menuItem setState:[defaultPreferences() _isEnabledForFeature:feature] ? NSOnState : NSOffState];
+        [menuItem setState:[defaultPreferences() _isEnabledForFeature:feature] ? NSControlStateValueOn : NSControlStateValueOff];
     }
 #endif
 
@@ -484,6 +504,26 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     [self _toggleBooleanDefault:NetworkCacheSpeculativeRevalidationDisabledKey];
 }
 
+- (BOOL)processSwapOnNavigationEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:ProcessSwapOnNavigationKey];
+}
+
+- (void)toggleProcessSwapOnNavigation:(id)sender
+{
+    [self _toggleBooleanDefault:ProcessSwapOnNavigationKey];
+}
+
+- (BOOL)processSwapOnWindowOpenWithOpenerEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:ProcessSwapOnWindowOpenWithOpenerKey];
+}
+
+- (void)toggleProcessSwapOnWindowOpenWithOpener:(id)sender
+{
+    [self _toggleBooleanDefault:ProcessSwapOnWindowOpenWithOpenerKey];
+}
+
 - (BOOL)isSpaceReservedForBanners
 {
     return [[NSUserDefaults standardUserDefaults] boolForKey:ReserveSpaceForBannersPreferenceKey];
@@ -537,6 +577,36 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
 - (BOOL)animatedImageAsyncDecodingEnabled
 {
     return [[NSUserDefaults standardUserDefaults] boolForKey:AnimatedImageAsyncDecodingEnabledPreferenceKey];
+}
+
+- (void)toggleAppleColorFilterEnabled:(id)sender
+{
+    [self _toggleBooleanDefault:AppleColorFilterEnabledPreferenceKey];
+}
+
+- (BOOL)appleColorFilterEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:AppleColorFilterEnabledPreferenceKey];
+}
+
+- (void)togglePunchOutWhiteBackgroundsInDarkMode:(id)sender
+{
+    [self _toggleBooleanDefault:PunchOutWhiteBackgroundsInDarkModePreferenceKey];
+}
+
+- (BOOL)punchOutWhiteBackgroundsInDarkMode
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:PunchOutWhiteBackgroundsInDarkModePreferenceKey];
+}
+
+- (void)toggleUseSystemAppearance:(id)sender
+{
+    [self _toggleBooleanDefault:UseSystemAppearancePreferenceKey];
+}
+
+- (BOOL)useSystemAppearance
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:UseSystemAppearancePreferenceKey];
 }
 
 - (void)toggleEnableSubPixelCSSOMMetrics:(id)sender

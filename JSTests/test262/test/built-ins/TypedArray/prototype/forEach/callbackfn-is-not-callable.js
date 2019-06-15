@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.foreach
 description: >
   callbackfn is not callable
-info: >
+info: |
   22.2.3.12 %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.forEach is a distinct function that implements the same
@@ -18,6 +18,7 @@ info: >
   3. If IsCallable(callbackfn) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -27,16 +27,14 @@
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMGlobalObject.h"
 #include "ScriptExecutionContext.h"
-#include <runtime/JSArray.h>
-#include <runtime/JSLock.h>
+#include <JavaScriptCore/JSArray.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 JSTestCallbackFunctionRethrow::JSTestCallbackFunctionRethrow(JSObject* callback, JSDOMGlobalObject* globalObject)
-    : TestCallbackFunctionRethrow()
-    , ActiveDOMCallback(globalObject->scriptExecutionContext())
+    : TestCallbackFunctionRethrow(globalObject->scriptExecutionContext())
     , m_data(new JSCallbackDataStrong(callback, globalObject, this))
 {
 }
@@ -67,11 +65,13 @@ CallbackResult<typename IDLDOMString::ImplementationType> JSTestCallbackFunction
 
     JSLockHolder lock(vm);
     auto& state = *globalObject.globalExec();
+    JSValue thisValue = jsUndefined();
     MarkedArgumentBuffer args;
     args.append(toJS<IDLSequence<IDLLong>>(state, globalObject, argument));
+    ASSERT(!args.hasOverflowed());
 
     NakedPtr<JSC::Exception> returnedException;
-    auto jsResult = m_data->invokeCallback(args, JSCallbackData::CallbackType::Function, Identifier(), returnedException);
+    auto jsResult = m_data->invokeCallback(thisValue, args, JSCallbackData::CallbackType::Function, Identifier(), returnedException);
     if (returnedException) {
         auto throwScope = DECLARE_THROW_SCOPE(vm);
         throwException(&state, throwScope, returnedException);
@@ -90,7 +90,6 @@ JSC::JSValue toJS(TestCallbackFunctionRethrow& impl)
         return jsNull();
 
     return static_cast<JSTestCallbackFunctionRethrow&>(impl).callbackData()->callback();
-
 }
 
 } // namespace WebCore

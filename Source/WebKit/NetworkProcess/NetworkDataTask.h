@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,18 +25,16 @@
 
 #pragma once
 
-#if USE(NETWORK_SESSION)
-
 #include "DownloadID.h"
 #include "SandboxExtension.h"
 #include <WebCore/Credential.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/NetworkLoadMetrics.h>
-#include <WebCore/ResourceHandleTypes.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/StoredCredentialsPolicy.h>
 #include <WebCore/Timer.h>
-#include <wtf/Function.h>
+#include <wtf/CompletionHandler.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -54,14 +52,14 @@ class NetworkSession;
 class PendingDownload;
 enum class AuthenticationChallengeDisposition;
 
-typedef Function<void(const WebCore::ResourceRequest&)> RedirectCompletionHandler;
-typedef Function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)> ChallengeCompletionHandler;
-typedef Function<void(WebCore::PolicyAction)> ResponseCompletionHandler;
+using RedirectCompletionHandler = CompletionHandler<void(WebCore::ResourceRequest&&)>;
+using ChallengeCompletionHandler = CompletionHandler<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>;
+using ResponseCompletionHandler = CompletionHandler<void(WebCore::PolicyAction)>;
 
 class NetworkDataTaskClient {
 public:
     virtual void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) = 0;
-    virtual void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&) = 0;
+    virtual void didReceiveChallenge(WebCore::AuthenticationChallenge&&, ChallengeCompletionHandler&&) = 0;
     virtual void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) = 0;
     virtual void didReceiveData(Ref<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) = 0;
@@ -119,18 +117,21 @@ public:
         m_pendingDownload = &pendingDownload;
     }
 
-    virtual void setPendingDownloadLocation(const String& filename, const SandboxExtension::Handle&, bool /*allowOverwrite*/) { m_pendingDownloadLocation = filename; }
+    virtual void setPendingDownloadLocation(const String& filename, SandboxExtension::Handle&&, bool /*allowOverwrite*/) { m_pendingDownloadLocation = filename; }
     const String& pendingDownloadLocation() const { return m_pendingDownloadLocation; }
     bool isDownload() const { return !!m_pendingDownloadID.downloadID(); }
 
     const WebCore::ResourceRequest& firstRequest() const { return m_firstRequest; }
     virtual String suggestedFilename() const { return String(); }
     void setSuggestedFilename(const String& suggestedName) { m_suggestedFilename = suggestedName; }
-    virtual bool allowsSpecificHTTPSCertificateForHost(const WebCore::AuthenticationChallenge&) { return false; }
     const String& partition() { return m_partition; }
 
+    bool isTopLevelNavigation() const { return m_dataTaskIsForMainFrameNavigation; }
+
+    virtual String description() const;
+
 protected:
-    NetworkDataTask(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
+    NetworkDataTask(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentialsPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect, bool dataTaskIsForMainFrameNavigation);
 
     enum FailureType {
         NoFailure,
@@ -152,14 +153,13 @@ protected:
 #if USE(CREDENTIAL_STORAGE_WITH_NETWORK_SESSION)
     WebCore::Credential m_initialCredential;
 #endif
-    WebCore::StoredCredentials m_storedCredentials { WebCore::DoNotAllowStoredCredentials };
+    WebCore::StoredCredentialsPolicy m_storedCredentialsPolicy { WebCore::StoredCredentialsPolicy::DoNotUse };
     String m_lastHTTPMethod;
     String m_pendingDownloadLocation;
     WebCore::ResourceRequest m_firstRequest;
     bool m_shouldClearReferrerOnHTTPSToHTTPRedirect { true };
     String m_suggestedFilename;
+    bool m_dataTaskIsForMainFrameNavigation { false };
 };
 
 } // namespace WebKit
-
-#endif // USE(NETWORK_SESSION)

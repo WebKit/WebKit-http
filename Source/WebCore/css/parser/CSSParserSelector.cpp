@@ -124,11 +124,9 @@ CSSParserSelector::~CSSParserSelector()
     }
 }
 
-void CSSParserSelector::adoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>& selectorVector)
+void CSSParserSelector::adoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>&& selectorVector)
 {
-    auto selectorList = std::make_unique<CSSSelectorList>();
-    selectorList->adoptSelectorVector(selectorVector);
-    m_selector->setSelectorList(WTFMove(selectorList));
+    m_selector->setSelectorList(std::make_unique<CSSSelectorList>(WTFMove(selectorVector)));
 }
 
 void CSSParserSelector::setLangArgumentList(std::unique_ptr<Vector<AtomicString>> argumentList)
@@ -198,11 +196,6 @@ void CSSParserSelector::appendTagHistory(CSSParserSelectorCombinator relation, s
     case CSSParserSelectorCombinator::DescendantSpace:
         selectorRelation = CSSSelector::DescendantSpace;
         break;
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-    case CSSParserSelectorCombinator::DescendantDoubleChild:
-        selectorRelation = CSSSelector::DescendantDoubleChild;
-        break;
-#endif
     case CSSParserSelectorCombinator::DirectAdjacent:
         selectorRelation = CSSSelector::DirectAdjacent;
         break;

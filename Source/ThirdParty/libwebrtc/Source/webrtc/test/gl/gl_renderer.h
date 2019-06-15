@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_TEST_GL_GL_RENDERER_H_
-#define WEBRTC_TEST_GL_GL_RENDERER_H_
+#ifndef TEST_GL_GL_RENDERER_H_
+#define TEST_GL_GL_RENDERER_H_
 
 #ifdef WEBRTC_MAC
 #include <OpenGL/gl.h>
@@ -17,9 +17,7 @@
 #include <GL/gl.h>
 #endif
 
-#include "webrtc/test/video_renderer.h"
-#include "webrtc/typedefs.h"
-
+#include "test/video_renderer.h"
 
 namespace webrtc {
 namespace test {
@@ -44,7 +42,7 @@ class GlRenderer : public VideoRenderer {
 
   void ResizeVideo(size_t width, size_t height);
 };
-}  // test
-}  // webrtc
+}  // namespace test
+}  // namespace webrtc
 
-#endif  // WEBRTC_TEST_GL_GL_RENDERER_H_
+#endif  // TEST_GL_GL_RENDERER_H_

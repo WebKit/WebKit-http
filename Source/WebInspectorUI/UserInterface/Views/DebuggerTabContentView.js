@@ -23,22 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DebuggerTabContentView = class DebuggerTabContentView extends WebInspector.ContentBrowserTabContentView
+WI.DebuggerTabContentView = class DebuggerTabContentView extends WI.ContentBrowserTabContentView
 {
     constructor(identifier)
     {
-        let {image, title} = WebInspector.DebuggerTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
-        let detailsSidebarPanelConstructors = [WebInspector.ScopeChainDetailsSidebarPanel, WebInspector.ResourceDetailsSidebarPanel, WebInspector.ProbeDetailsSidebarPanel];
+        let tabBarItem = WI.GeneralTabBarItem.fromTabInfo(WI.DebuggerTabContentView.tabInfo());
+        let detailsSidebarPanelConstructors = [WI.ScopeChainDetailsSidebarPanel, WI.ResourceDetailsSidebarPanel, WI.ProbeDetailsSidebarPanel];
 
-        super(identifier || "debugger", "debugger", tabBarItem, WebInspector.DebuggerSidebarPanel, detailsSidebarPanelConstructors);
+        super(identifier || "debugger", "debugger", tabBarItem, WI.DebuggerSidebarPanel, detailsSidebarPanelConstructors);
     }
 
     static tabInfo()
     {
         return {
             image: "Images/Debugger.svg",
-            title: WebInspector.UIString("Debugger"),
+            title: WI.UIString("Debugger"),
         };
     }
 
@@ -46,7 +45,7 @@ WebInspector.DebuggerTabContentView = class DebuggerTabContentView extends WebIn
 
     get type()
     {
-        return WebInspector.DebuggerTabContentView.Type;
+        return WI.DebuggerTabContentView.Type;
     }
 
     get supportsSplitContentBrowser()
@@ -56,13 +55,13 @@ WebInspector.DebuggerTabContentView = class DebuggerTabContentView extends WebIn
 
     canShowRepresentedObject(representedObject)
     {
-        if (representedObject instanceof WebInspector.Script)
+        if (representedObject instanceof WI.Script)
             return true;
 
-        if (!(representedObject instanceof WebInspector.Resource))
+        if (!(representedObject instanceof WI.Resource))
             return false;
 
-        return representedObject.type === WebInspector.Resource.Type.Document || representedObject.type === WebInspector.Resource.Type.Script;
+        return representedObject.type === WI.Resource.Type.Document || representedObject.type === WI.Resource.Type.Script;
     }
 
     showDetailsSidebarPanels()
@@ -72,11 +71,16 @@ WebInspector.DebuggerTabContentView = class DebuggerTabContentView extends WebIn
         if (!this._showScopeChainDetailsSidebarPanel)
             return;
 
-        let scopeChainDetailsSidebarPanel = WebInspector.instanceForClass(WebInspector.ScopeChainDetailsSidebarPanel);
-        if (!scopeChainDetailsSidebarPanel.parentSidebar)
+        let scopeChainDetailsSidebarPanel = this.detailsSidebarPanels.find((item) => item instanceof WI.ScopeChainDetailsSidebarPanel);
+        if (!scopeChainDetailsSidebarPanel)
             return;
 
-        scopeChainDetailsSidebarPanel.show();
+        let sidebar = scopeChainDetailsSidebarPanel.parentSidebar;
+        if (!sidebar)
+            return;
+
+        sidebar.selectedSidebarPanel = scopeChainDetailsSidebarPanel;
+        sidebar.collapsed = false;
 
         this._showScopeChainDetailsSidebarPanel = false;
     }
@@ -88,7 +92,7 @@ WebInspector.DebuggerTabContentView = class DebuggerTabContentView extends WebIn
 
     revealAndSelectBreakpoint(breakpoint)
     {
-        console.assert(breakpoint instanceof WebInspector.Breakpoint);
+        console.assert(breakpoint instanceof WI.Breakpoint);
 
         var treeElement = this.navigationSidebarPanel.treeElementForRepresentedObject(breakpoint);
         if (treeElement)
@@ -96,4 +100,4 @@ WebInspector.DebuggerTabContentView = class DebuggerTabContentView extends WebIn
     }
 };
 
-WebInspector.DebuggerTabContentView.Type = "debugger";
+WI.DebuggerTabContentView.Type = "debugger";

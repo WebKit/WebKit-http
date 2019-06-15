@@ -26,13 +26,10 @@
 #include "config.h"
 #include "NetworkCacheKey.h"
 
-#if ENABLE(NETWORK_CACHE)
-
 #include "NetworkCacheCoders.h"
 #include <wtf/ASCIICType.h>
-#include <wtf/NeverDestroyed.h>
-#include <wtf/persistence/Decoder.h>
-#include <wtf/persistence/Encoder.h>
+#include <wtf/persistence/PersistentDecoder.h>
+#include <wtf/persistence/PersistentEncoder.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -89,7 +86,7 @@ static void hashString(SHA1& sha1, const String& string)
     if (string.isNull())
         return;
 
-    if (string.is8Bit() && string.containsOnlyASCII()) {
+    if (string.is8Bit() && string.isAllASCII()) {
         const uint8_t nullByte = 0;
         sha1.addBytes(string.characters8(), string.length());
         sha1.addBytes(&nullByte, 1);
@@ -183,5 +180,3 @@ bool Key::decode(WTF::Persistence::Decoder& decoder, Key& key)
 
 }
 }
-
-#endif

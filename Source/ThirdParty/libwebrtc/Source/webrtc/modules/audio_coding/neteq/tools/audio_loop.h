@@ -8,15 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_LOOP_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_LOOP_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_LOOP_H_
+#define MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_LOOP_H_
 
 #include <memory>
 #include <string>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/typedefs.h"
+#include "api/array_view.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 namespace test {
@@ -26,10 +25,7 @@ namespace test {
 class AudioLoop {
  public:
   AudioLoop()
-      : next_index_(0),
-        loop_length_samples_(0),
-        block_length_samples_(0) {
-  }
+      : next_index_(0), loop_length_samples_(0), block_length_samples_(0) {}
 
   virtual ~AudioLoop() {}
 
@@ -38,7 +34,8 @@ class AudioLoop {
   // greater. Otherwise, the loop length is the same as the file length.
   // The audio will be delivered in blocks of |block_length_samples|.
   // Returns false if the initialization failed, otherwise true.
-  bool Init(const std::string file_name, size_t max_loop_length_samples,
+  bool Init(const std::string file_name,
+            size_t max_loop_length_samples,
             size_t block_length_samples);
 
   // Returns a (pointer,size) pair for the next block of audio. The size is
@@ -56,4 +53,4 @@ class AudioLoop {
 
 }  // namespace test
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_LOOP_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_LOOP_H_

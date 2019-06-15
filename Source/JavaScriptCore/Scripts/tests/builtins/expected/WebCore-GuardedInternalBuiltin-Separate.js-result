@@ -33,10 +33,10 @@
 
 #if ENABLE(READABLE_STREAM_API) || ENABLE(WRITABLE_STREAM_API)
 
-#include <builtins/BuiltinUtils.h>
-#include <bytecode/UnlinkedFunctionExecutable.h>
-#include <runtime/Identifier.h>
-#include <runtime/JSFunction.h>
+#include <JavaScriptCore/BuiltinUtils.h>
+#include <JavaScriptCore/Identifier.h>
+#include <JavaScriptCore/JSFunction.h>
+#include <JavaScriptCore/UnlinkedFunctionExecutable.h>
 
 namespace JSC {
 class FunctionExecutable;
@@ -55,12 +55,12 @@ extern const JSC::ConstructAbility s_guardedInternalBuiltinIsReadableStreamLocke
 #define WEBCORE_BUILTIN_GUARDEDINTERNALBUILTIN_ISREADABLESTREAMLOCKED 1
 
 #define WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(macro) \
-    macro(guardedInternalBuiltinIsReadableStreamLockedCode, isReadableStreamLocked, s_guardedInternalBuiltinIsReadableStreamLockedCodeLength) \
+    macro(guardedInternalBuiltinIsReadableStreamLockedCode, isReadableStreamLocked, static_cast<const char*>(nullptr), s_guardedInternalBuiltinIsReadableStreamLockedCodeLength) \
 
 #define WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_FUNCTION_NAME(macro) \
     macro(isReadableStreamLocked) \
 
-#define DECLARE_BUILTIN_GENERATOR(codeName, functionName, argumentCount) \
+#define DECLARE_BUILTIN_GENERATOR(codeName, functionName, overriddenName, argumentCount) \
     JSC::FunctionExecutable* codeName##Generator(JSC::VM&);
 
 WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(DECLARE_BUILTIN_GENERATOR)
@@ -71,13 +71,13 @@ public:
     explicit GuardedInternalBuiltinBuiltinsWrapper(JSC::VM* vm)
         : m_vm(*vm)
         WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_FUNCTION_NAME(INITIALIZE_BUILTIN_NAMES)
-#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
+#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, overriddenName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
         WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(INITIALIZE_BUILTIN_SOURCE_MEMBERS)
 #undef INITIALIZE_BUILTIN_SOURCE_MEMBERS
     {
     }
 
-#define EXPOSE_BUILTIN_EXECUTABLES(name, functionName, length) \
+#define EXPOSE_BUILTIN_EXECUTABLES(name, functionName, overriddenName, length) \
     JSC::UnlinkedFunctionExecutable* name##Executable(); \
     const JSC::SourceCode& name##Source() const { return m_##name##Source; }
     WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(EXPOSE_BUILTIN_EXECUTABLES)
@@ -92,7 +92,7 @@ private:
 
     WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_FUNCTION_NAME(DECLARE_BUILTIN_NAMES)
 
-#define DECLARE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) \
+#define DECLARE_BUILTIN_SOURCE_MEMBERS(name, functionName, overriddenName, length) \
     JSC::SourceCode m_##name##Source;\
     JSC::Weak<JSC::UnlinkedFunctionExecutable> m_##name##Executable;
     WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(DECLARE_BUILTIN_SOURCE_MEMBERS)
@@ -100,11 +100,15 @@ private:
 
 };
 
-#define DEFINE_BUILTIN_EXECUTABLES(name, functionName, length) \
+#define DEFINE_BUILTIN_EXECUTABLES(name, functionName, overriddenName, length) \
 inline JSC::UnlinkedFunctionExecutable* GuardedInternalBuiltinBuiltinsWrapper::name##Executable() \
 {\
-    if (!m_##name##Executable)\
-        m_##name##Executable = JSC::Weak<JSC::UnlinkedFunctionExecutable>(JSC::createBuiltinExecutable(m_vm, m_##name##Source, functionName##PublicName(), s_##name##ConstructAbility), this, &m_##name##Executable);\
+    if (!m_##name##Executable) {\
+        JSC::Identifier executableName = functionName##PublicName();\
+        if (overriddenName)\
+            executableName = JSC::Identifier::fromString(&m_vm, overriddenName);\
+        m_##name##Executable = JSC::Weak<JSC::UnlinkedFunctionExecutable>(JSC::createBuiltinExecutable(m_vm, m_##name##Source, executableName, s_##name##ConstructAbility), this, &m_##name##Executable);\
+    }\
     return m_##name##Executable.get();\
 }
 WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(DEFINE_BUILTIN_EXECUTABLES)
@@ -135,8 +139,8 @@ public:
 
 inline void GuardedInternalBuiltinBuiltinFunctions::init(JSC::JSGlobalObject& globalObject)
 {
-#define EXPORT_FUNCTION(codeName, functionName, length)\
-    m_##functionName##Function.set(m_vm, &globalObject, JSC::JSFunction::createBuiltinFunction(m_vm, codeName##Generator(m_vm), &globalObject));
+#define EXPORT_FUNCTION(codeName, functionName, overriddenName, length)\
+    m_##functionName##Function.set(m_vm, &globalObject, JSC::JSFunction::create(m_vm, codeName##Generator(m_vm), &globalObject));
     WEBCORE_FOREACH_GUARDEDINTERNALBUILTIN_BUILTIN_CODE(EXPORT_FUNCTION)
 #undef EXPORT_FUNCTION
 }
@@ -191,28 +195,30 @@ inline void GuardedInternalBuiltinBuiltinFunctions::visit(JSC::SlotVisitor& visi
 #if ENABLE(READABLE_STREAM_API) || ENABLE(WRITABLE_STREAM_API)
 
 #include "WebCoreJSClientData.h"
-#include <heap/HeapInlines.h>
-#include <runtime/Intrinsic.h>
-#include <runtime/JSCJSValueInlines.h>
-#include <runtime/JSCellInlines.h>
-#include <runtime/StructureInlines.h>
-#include <runtime/VM.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/IdentifierInlines.h>
+#include <JavaScriptCore/Intrinsic.h>
+#include <JavaScriptCore/JSCJSValueInlines.h>
+#include <JavaScriptCore/JSCellInlines.h>
+#include <JavaScriptCore/StructureInlines.h>
+#include <JavaScriptCore/VM.h>
 
 namespace WebCore {
 
 const JSC::ConstructAbility s_guardedInternalBuiltinIsReadableStreamLockedCodeConstructAbility = JSC::ConstructAbility::CannotConstruct;
-const int s_guardedInternalBuiltinIsReadableStreamLockedCodeLength = 70;
+const int s_guardedInternalBuiltinIsReadableStreamLockedCodeLength = 71;
 static const JSC::Intrinsic s_guardedInternalBuiltinIsReadableStreamLockedCodeIntrinsic = JSC::NoIntrinsic;
 const char* s_guardedInternalBuiltinIsReadableStreamLockedCode =
     "(function (stream)\n" \
     "{\n" \
     "   \"use strict\";\n" \
+    "\n" \
     "    return !!stream.@reader;\n" \
     "})\n" \
 ;
 
 
-#define DEFINE_BUILTIN_GENERATOR(codeName, functionName, argumentCount) \
+#define DEFINE_BUILTIN_GENERATOR(codeName, functionName, overriddenName, argumentCount) \
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \
 {\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \

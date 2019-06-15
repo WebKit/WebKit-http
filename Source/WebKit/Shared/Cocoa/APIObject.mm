@@ -68,45 +68,81 @@
 #import "WKWebsiteDataRecordInternal.h"
 #import "WKWebsiteDataStoreInternal.h"
 #import "WKWindowFeaturesInternal.h"
+#import "_WKAttachmentInternal.h"
 #import "_WKAutomationSessionInternal.h"
 #import "_WKDownloadInternal.h"
 #import "_WKExperimentalFeatureInternal.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKGeolocationPositionInternal.h"
 #import "_WKHitTestResultInternal.h"
+#import "_WKInspectorInternal.h"
 #import "_WKProcessPoolConfigurationInternal.h"
 #import "_WKUserContentWorldInternal.h"
 #import "_WKUserInitiatedActionInternal.h"
 #import "_WKUserStyleSheetInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
+#import "_WKWebsitePoliciesInternal.h"
+
+#if ENABLE(APPLICATION_MANIFEST)
+#import "_WKApplicationManifestInternal.h"
+#endif
+
+static const size_t minimumObjectAlignment = 8;
+static_assert(minimumObjectAlignment >= alignof(void*), "Objects should always be at least pointer-aligned.");
+static const size_t maximumExtraSpaceForAlignment = minimumObjectAlignment - alignof(void*);
 
 namespace API {
 
 void Object::ref()
 {
-    CFRetain(wrapper());
+    CFRetain((__bridge CFTypeRef)wrapper());
 }
 
 void Object::deref()
 {
-    CFRelease(wrapper());
+    CFRelease((__bridge CFTypeRef)wrapper());
+}
+
+static id <WKObject> allocateWKObject(Class cls, size_t size)
+{
+    return class_createInstance(cls, size + maximumExtraSpaceForAlignment);
+}
+
+API::Object& Object::fromWKObjectExtraSpace(id <WKObject> obj)
+{
+    size_t size = sizeof(API::Object);
+    size_t spaceAvailable = size + maximumExtraSpaceForAlignment;
+    void* indexedIvars = object_getIndexedIvars(obj);
+    return *static_cast<API::Object*>(std::align(minimumObjectAlignment, size, indexedIvars, spaceAvailable));
 }
 
 void* Object::newObject(size_t size, Type type)
 {
-    NSObject <WKObject> *wrapper;
+    id <WKObject> wrapper;
 
     // Wrappers that inherit from WKObject store the API::Object in their extra bytes, so they are
     // allocated using NSAllocatedObject. The other wrapper classes contain inline storage for the
     // API::Object, so they are allocated using +alloc.
 
     switch (type) {
+#if ENABLE(APPLICATION_MANIFEST)
+    case Type::ApplicationManifest:
+        wrapper = [_WKApplicationManifest alloc];
+        break;
+#endif
+
     case Type::Array:
         wrapper = [WKNSArray alloc];
         break;
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+    case Type::Attachment:
+        wrapper = [_WKAttachment alloc];
+        break;
+#endif
+
     case Type::AuthenticationChallenge:
-        wrapper = NSAllocateObject([WKNSURLAuthenticationChallenge self], size, nullptr);
+        wrapper = allocateWKObject([WKNSURLAuthenticationChallenge self], size);
         break;
 
     case Type::AutomationSession:
@@ -137,7 +173,9 @@ void* Object::newObject(size_t size, Type type)
         break;
 
     case Type::Connection:
-        wrapper = NSAllocateObject([WKConnection self], size, nullptr);
+        // While not actually a WKObject instance, WKConnection uses allocateWKObject to allocate extra space
+        // instead of using ObjectStorage because the wrapped C++ object is a subclass of WebConnection.
+        wrapper = allocateWKObject([WKConnection self], size);
         break;
 
     case Type::Preferences:
@@ -169,7 +207,7 @@ void* Object::newObject(size_t size, Type type)
         break;
 
     case Type::Error:
-        wrapper = NSAllocateObject([WKNSError self], size, nullptr);
+        wrapper = allocateWKObject([WKNSError self], size);
         break;
 
     case Type::FrameHandle:
@@ -196,6 +234,10 @@ void* Object::newObject(size_t size, Type type)
         break;
 #endif
 
+    case Type::Inspector:
+        wrapper = [_WKInspector alloc];
+        break;
+        
     case Type::Navigation:
         wrapper = [WKNavigation alloc];
         break;
@@ -227,15 +269,15 @@ void* Object::newObject(size_t size, Type type)
         break;
 
     case Type::String:
-        wrapper = NSAllocateObject([WKNSString class], size, nullptr);
+        wrapper = allocateWKObject([WKNSString self], size);
         break;
 
     case Type::URL:
-        wrapper = NSAllocateObject([WKNSURL class], size, nullptr);
+        wrapper = allocateWKObject([WKNSURL self], size);
         break;
 
     case Type::URLRequest:
-        wrapper = NSAllocateObject([WKNSURLRequest class], size, nullptr);
+        wrapper = allocateWKObject([WKNSURLRequest self], size);
         break;
 
     case Type::URLSchemeTask:
@@ -282,6 +324,10 @@ void* Object::newObject(size_t size, Type type)
         wrapper = [WKWebsiteDataStore alloc];
         break;
 
+    case Type::WebsitePolicies:
+        wrapper = [_WKWebsitePolicies alloc];
+        break;
+
     case Type::WindowFeatures:
         wrapper = [WKWindowFeatures alloc];
         break;
@@ -311,7 +357,7 @@ void* Object::newObject(size_t size, Type type)
         break;
 
     default:
-        wrapper = NSAllocateObject([WKObject class], size, nullptr);
+        wrapper = allocateWKObject([WKObject self], size);
         break;
     }
 
@@ -326,7 +372,7 @@ void* Object::wrap(API::Object* object)
     if (!object)
         return nullptr;
 
-    return static_cast<void*>(object->wrapper());
+    return (__bridge void*)object->wrapper();
 }
 
 API::Object* Object::unwrap(void* object)
@@ -334,10 +380,7 @@ API::Object* Object::unwrap(void* object)
     if (!object)
         return nullptr;
 
-    ASSERT([(id)object conformsToProtocol:@protocol(WKObject)]);
-    ASSERT([(id)object respondsToSelector:@selector(_apiObject)]);
-
-    return &static_cast<id <WKObject>>(object)._apiObject;
+    return &((__bridge id <WKObject>)object)._apiObject;
 }
 
 } // namespace API

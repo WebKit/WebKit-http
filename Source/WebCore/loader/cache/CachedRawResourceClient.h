@@ -23,6 +23,7 @@
 #pragma once
 
 #include "CachedResourceClient.h"
+#include <wtf/CompletionHandler.h>
 
 namespace WebCore {
 
@@ -33,19 +34,21 @@ class ResourceTiming;
 
 class CachedRawResourceClient : public CachedResourceClient {
 public:
-    virtual ~CachedRawResourceClient() { }
+    virtual ~CachedRawResourceClient() = default;
     static CachedResourceClientType expectedType() { return RawResourceType; }
     CachedResourceClientType resourceClientType() const override { return expectedType(); }
 
     virtual void dataSent(CachedResource&, unsigned long long /* bytesSent */, unsigned long long /* totalBytesToBeSent */) { }
-    virtual void responseReceived(CachedResource&, const ResourceResponse&) { }
+    virtual void responseReceived(CachedResource&, const ResourceResponse&, CompletionHandler<void()>&& completionHandler)
+    {
+        if (completionHandler)
+            completionHandler();
+    }
+
     virtual bool shouldCacheResponse(CachedResource&, const ResourceResponse&) { return true; }
     virtual void dataReceived(CachedResource&, const char* /* data */, int /* length */) { }
-    virtual void redirectReceived(CachedResource&, ResourceRequest&, const ResourceResponse&) { }
+    virtual void redirectReceived(CachedResource&, ResourceRequest&& request, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&& completionHandler) { completionHandler(WTFMove(request)); }
     virtual void finishedTimingForWorkerLoad(CachedResource&, const ResourceTiming&) { }
-#if USE(SOUP)
-    virtual char* getOrCreateReadBuffer(CachedResource&, size_t /* requestedSize */, size_t& /* actualSize */) { return nullptr; }
-#endif
 };
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,7 +55,7 @@ bool CSSFontFaceSrcValue::isSupportedFormat() const
     // we will also check to see if the URL ends with .eot. If so, we'll assume that we shouldn't load it.
     if (m_format.isEmpty()) {
         // Check for .eot.
-        if (!m_resource.startsWith("data:", false) && m_resource.endsWith(".eot", false))
+        if (!protocolIs(m_resource, "data") && m_resource.endsWithIgnoringASCIICase(".eot"))
             return false;
         return true;
     }
@@ -101,7 +101,7 @@ CachedFont* CSSFontFaceSrcValue::cachedFont(Document* document, bool isSVG, bool
 
     CachedResourceRequest request(ResourceRequest(document->completeURL(m_resource)), options);
     request.setInitiator(cachedResourceRequestInitiators().css);
-    m_cachedFont = document->cachedResourceLoader().requestFont(WTFMove(request), isSVG);
+    m_cachedFont = document->cachedResourceLoader().requestFont(WTFMove(request), isSVG).value_or(nullptr);
     return m_cachedFont.get();
 }
 

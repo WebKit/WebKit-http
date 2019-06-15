@@ -43,9 +43,7 @@ AccessibilityARIAGridCell::AccessibilityARIAGridCell(RenderObject* renderer)
 {
 }
 
-AccessibilityARIAGridCell::~AccessibilityARIAGridCell()
-{
-}
+AccessibilityARIAGridCell::~AccessibilityARIAGridCell() = default;
 
 Ref<AccessibilityARIAGridCell> AccessibilityARIAGridCell::create(RenderObject* renderer)
 {
@@ -93,12 +91,12 @@ void AccessibilityARIAGridCell::rowIndexRange(std::pair<unsigned, unsigned>& row
 
     // ARIA 1.1, aria-rowspan attribute is intended for cells and gridcells which are not contained in a native table.
     // So we should check for that attribute here.
-    rowRange.second = ariaRowSpanWithRowIndex(rowRange.first);
+    rowRange.second = axRowSpanWithRowIndex(rowRange.first);
 }
 
-unsigned AccessibilityARIAGridCell::ariaRowSpanWithRowIndex(unsigned rowIndex) const
+unsigned AccessibilityARIAGridCell::axRowSpanWithRowIndex(unsigned rowIndex) const
 {
-    int rowSpan = AccessibilityTableCell::ariaRowSpan();
+    int rowSpan = AccessibilityTableCell::axRowSpan();
     if (rowSpan == -1) {
         std::pair<unsigned, unsigned> range;
         AccessibilityTableCell::rowIndexRange(range);
@@ -153,12 +151,12 @@ void AccessibilityARIAGridCell::columnIndexRange(std::pair<unsigned, unsigned>& 
             columnRange.first = indexWithSpan;
             break;
         }
-        indexWithSpan += is<AccessibilityTableCell>(*child) ? std::max(downcast<AccessibilityTableCell>(*child).ariaColumnSpan(), 1) : 1;
+        indexWithSpan += is<AccessibilityTableCell>(*child) ? std::max(downcast<AccessibilityTableCell>(*child).axColumnSpan(), 1) : 1;
     }
     
     // ARIA 1.1, aria-colspan attribute is intended for cells and gridcells which are not contained in a native table.
     // So we should check for that attribute here.
-    int columnSpan = AccessibilityTableCell::ariaColumnSpan();
+    int columnSpan = AccessibilityTableCell::axColumnSpan();
     if (columnSpan == -1) {
         std::pair<unsigned, unsigned> range;
         AccessibilityTableCell::columnIndexRange(range);
@@ -171,7 +169,7 @@ void AccessibilityARIAGridCell::columnIndexRange(std::pair<unsigned, unsigned>& 
 AccessibilityObject* AccessibilityARIAGridCell::parentRowGroup() const
 {
     for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
-        if (parent->hasTagName(theadTag) || parent->hasTagName(tbodyTag) || parent->hasTagName(tfootTag) || parent->roleValue() == RowGroupRole)
+        if (parent->hasTagName(theadTag) || parent->hasTagName(tbodyTag) || parent->hasTagName(tfootTag) || parent->roleValue() == AccessibilityRole::RowGroup)
             return parent;
     }
     
@@ -179,7 +177,7 @@ AccessibilityObject* AccessibilityARIAGridCell::parentRowGroup() const
     return parentTable();
 }
 
-String AccessibilityARIAGridCell::ariaReadOnlyValue() const
+String AccessibilityARIAGridCell::readOnlyValue() const
 {
     if (hasAttribute(aria_readonlyAttr))
         return getAttribute(aria_readonlyAttr).string().convertToASCIILowercase();
@@ -187,7 +185,7 @@ String AccessibilityARIAGridCell::ariaReadOnlyValue() const
     // ARIA 1.1 requires user agents to propagate the grid's aria-readonly value to all
     // gridcell elements if the property is not present on the gridcell element itelf.
     if (AccessibilityObject* parent = parentTable())
-        return parent->ariaReadOnlyValue();
+        return parent->readOnlyValue();
 
     return String();
 }

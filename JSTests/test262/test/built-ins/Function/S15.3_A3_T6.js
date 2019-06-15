@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Since when call is used for Function constructor themself new function instance creates
     and then first argument(thisArg) should be ignored
 es5id: 15.3_A3_T6
@@ -11,14 +11,14 @@ description: >
     return this.var_name
 ---*/
 
-var f=Function.call(this, "return this.planet;");
+var f = Function.call(this, "return this.planet;");
 
 //CHECK#1
 if (f() !== undefined) {
   $ERROR('#1: ');
-}  
+}
 
-var planet="mars";
+var planet = "mars";
 
 //CHECK#2
 if (f() !== "mars") {

@@ -1,17 +1,20 @@
-<iframe src="http://does.not.exist/" id="target"></iframe>
+<iframe src="resources/empty-subframe.html" id="target"></iframe>
 <script>
 if (window.testRunner) {
     testRunner.dumpAsText();
     testRunner.waitUntilDone();
 }
 
-setTimeout(function() {
-        document.getElementById("target").src = "javascript:alert('FAIL')";
+let frame = document.getElementById("target");
+frame.contentWindow.onbeforeunload = function() {
+    setTimeout(function() {
+        frame.src = "javascript:alert('FAIL')";
     }, 0);
+};
 
 window.addEventListener("load", function() {
-        document.write("PASS - Javascript URL blocked without crashing.");
-        if (window.testRunner)
-            testRunner.notifyDone();
-    }, false);
+    document.write("PASS - Javascript URL blocked without crashing.");
+    if (window.testRunner)
+        testRunner.notifyDone();
+}, false);
 </script>

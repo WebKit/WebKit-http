@@ -42,9 +42,8 @@
 #include <WebCore/SharedBuffer.h>
 #include <wtf/text/WTFString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 InjectedBundlePageLoaderClient::InjectedBundlePageLoaderClient(const WKBundlePageLoaderClientBase* client)
 {
@@ -283,12 +282,12 @@ void InjectedBundlePageLoaderClient::didCancelClientRedirectForFrame(WebPage& pa
     m_client.didCancelClientRedirectForFrame(toAPI(&page), toAPI(&frame), m_client.base.clientInfo);
 }
 
-void InjectedBundlePageLoaderClient::willPerformClientRedirectForFrame(WebPage& page, WebFrame& frame, const String& url, double delay, double date)
+void InjectedBundlePageLoaderClient::willPerformClientRedirectForFrame(WebPage& page, WebFrame& frame, const String& url, double delay, WallTime date)
 {
     if (!m_client.willPerformClientRedirectForFrame)
         return;
 
-    m_client.willPerformClientRedirectForFrame(toAPI(&page), toAPI(&frame), toURLRef(url.impl()), delay, date, m_client.base.clientInfo);
+    m_client.willPerformClientRedirectForFrame(toAPI(&page), toAPI(&frame), toURLRef(url.impl()), delay, date.secondsSinceEpoch().seconds(), m_client.base.clientInfo);
 }
 
 void InjectedBundlePageLoaderClient::didHandleOnloadEventsForFrame(WebPage& page, WebFrame& frame)
@@ -303,9 +302,18 @@ void InjectedBundlePageLoaderClient::globalObjectIsAvailableForFrame(WebPage& pa
 {
     if (!m_client.globalObjectIsAvailableForFrame)
         return;
-    
+
     RefPtr<InjectedBundleScriptWorld> injectedWorld = InjectedBundleScriptWorld::getOrCreate(world);
     m_client.globalObjectIsAvailableForFrame(toAPI(&page), toAPI(&frame), toAPI(injectedWorld.get()), m_client.base.clientInfo);
+}
+
+void InjectedBundlePageLoaderClient::willInjectUserScriptForFrame(WebPage& page, WebFrame& frame, DOMWrapperWorld& world)
+{
+    if (!m_client.willInjectUserScriptForFrame)
+        return;
+
+    RefPtr<InjectedBundleScriptWorld> injectedWorld = InjectedBundleScriptWorld::getOrCreate(world);
+    m_client.willInjectUserScriptForFrame(toAPI(&page), toAPI(&frame), toAPI(injectedWorld.get()), m_client.base.clientInfo);
 }
 
 void InjectedBundlePageLoaderClient::willDisconnectDOMWindowExtensionFromGlobalObject(WebPage& page, DOMWindowExtension* coreExtension)

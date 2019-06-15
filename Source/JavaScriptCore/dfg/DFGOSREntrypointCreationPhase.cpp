@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 
 #include "DFGBasicBlockInlines.h"
 #include "DFGBlockInsertionSet.h"
+#include "DFGCFG.h"
 #include "DFGGraph.h"
 #include "DFGLoopPreHeaderCreationPhase.h"
 #include "DFGPhase.h"
@@ -46,15 +47,15 @@ public:
     
     bool run()
     {
-        RELEASE_ASSERT(m_graph.m_plan.mode == FTLForOSREntryMode);
+        RELEASE_ASSERT(m_graph.m_plan.mode() == FTLForOSREntryMode);
         RELEASE_ASSERT(m_graph.m_form == ThreadedCPS);
-        
-        unsigned bytecodeIndex = m_graph.m_plan.osrEntryBytecodeIndex;
+
+        unsigned bytecodeIndex = m_graph.m_plan.osrEntryBytecodeIndex();
         RELEASE_ASSERT(bytecodeIndex);
         RELEASE_ASSERT(bytecodeIndex != UINT_MAX);
         
         // Needed by createPreHeader().
-        m_graph.ensureDominators();
+        m_graph.ensureCPSDominators();
         
         CodeBlock* baseline = m_graph.m_profiledBlock;
         
@@ -93,8 +94,8 @@ public:
         // We'd really like to use an unset origin, but ThreadedCPS won't allow that.
         NodeOrigin origin = NodeOrigin(CodeOrigin(0), CodeOrigin(0), false);
         
-        Vector<Node*> locals(baseline->m_numCalleeLocals);
-        for (int local = 0; local < baseline->m_numCalleeLocals; ++local) {
+        Vector<Node*> locals(baseline->numCalleeLocals());
+        for (int local = 0; local < baseline->numCalleeLocals(); ++local) {
             Node* previousHead = target->variablesAtHead.local(local);
             if (!previousHead)
                 continue;
@@ -112,19 +113,20 @@ public:
         // type checks to here.
         origin = target->at(0)->origin;
         
+        ArgumentsVector newArguments = m_graph.m_rootToArguments.find(m_graph.block(0))->value;
         for (int argument = 0; argument < baseline->numParameters(); ++argument) {
             Node* oldNode = target->variablesAtHead.argument(argument);
             if (!oldNode) {
                 // Just for sanity, always have a SetArgument even if it's not needed.
-                oldNode = m_graph.m_arguments[argument];
+                oldNode = newArguments[argument];
             }
             Node* node = newRoot->appendNode(
                 m_graph, SpecNone, SetArgument, origin,
                 OpInfo(oldNode->variableAccessData()));
-            m_graph.m_arguments[argument] = node;
+            newArguments[argument] = node;
         }
 
-        for (int local = 0; local < baseline->m_numCalleeLocals; ++local) {
+        for (int local = 0; local < baseline->numCalleeLocals(); ++local) {
             Node* previousHead = target->variablesAtHead.local(local);
             if (!previousHead)
                 continue;
@@ -139,8 +141,16 @@ public:
             OpInfo(createPreHeader(m_graph, insertionSet, target)));
         
         insertionSet.execute();
+
+        RELEASE_ASSERT(m_graph.m_roots.size() == 1);
+        m_graph.m_roots[0] = newRoot;
+        m_graph.m_rootToArguments.clear();
+        m_graph.m_rootToArguments.add(newRoot, newArguments);
+
+        m_graph.invalidateCFG();
         m_graph.resetReachability();
         m_graph.killUnreachableBlocks();
+
         return true;
     }
 };

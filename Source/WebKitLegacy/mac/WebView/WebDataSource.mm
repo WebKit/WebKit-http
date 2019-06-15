@@ -40,26 +40,26 @@
 #import "WebHTMLRepresentation.h"
 #import "WebKitErrorsPrivate.h"
 #import "WebKitLogging.h"
-#import "WebKitStatisticsPrivate.h"
 #import "WebKitNSStringExtras.h"
+#import "WebKitStatisticsPrivate.h"
 #import "WebNSURLExtras.h"
 #import "WebNSURLRequestExtras.h"
 #import "WebPDFRepresentation.h"
 #import "WebResourceInternal.h"
 #import "WebResourceLoadDelegate.h"
 #import "WebViewInternal.h"
+#import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/FrameLoader.h>
-#import <WebCore/URL.h>
 #import <WebCore/LegacyWebArchive.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/URL.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
 #import <WebKitLegacy/DOMHTML.h>
 #import <WebKitLegacy/DOMPrivate.h>
-#import <runtime/InitializeThreading.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/RefPtr.h>
@@ -474,7 +474,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
 
 - (NSURLRequest *)initialRequest
 {
-    return toPrivate(_private)->loader->originalRequest().nsURLRequest(UpdateHTTPBody);
+    return toPrivate(_private)->loader->originalRequest().nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody);
 }
 
 - (NSMutableURLRequest *)request
@@ -484,7 +484,7 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
         return nil;
 
     // FIXME: this cast is dubious
-    return (NSMutableURLRequest *)toPrivate(_private)->loader->request().nsURLRequest(UpdateHTTPBody);
+    return (NSMutableURLRequest *)toPrivate(_private)->loader->request().nsURLRequest(HTTPBodyUpdatePolicy::UpdateHTTPBody);
 }
 
 - (NSURLResponse *)response

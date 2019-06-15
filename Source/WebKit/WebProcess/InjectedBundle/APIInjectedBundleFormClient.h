@@ -27,7 +27,6 @@
 #define APIInjectedBundleFormClient_h
 
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 class Element;
@@ -72,7 +71,7 @@ public:
     virtual void willSendSubmitEvent(WebKit::WebPage*, WebCore::HTMLFormElement*, WebKit::WebFrame*, WebKit::WebFrame*, const Vector<std::pair<WTF::String, WTF::String>>&) { }
     virtual void didAssociateFormControls(WebKit::WebPage*, const Vector<RefPtr<WebCore::Element>>&) { }
     virtual bool shouldNotifyOnFormChanges(WebKit::WebPage*) { return false; }
-    virtual void willBeginInputSession(WebKit::WebPage*, WebCore::Element*, WebKit::WebFrame*, RefPtr<API::Object>& userData, bool userIsInteracting) { UNUSED_PARAM(userData); }
+    virtual void willBeginInputSession(WebKit::WebPage*, WebCore::Element*, WebKit::WebFrame*, bool userIsInteracting, RefPtr<API::Object>& userData) { UNUSED_PARAM(userData); }
 };
 
 } // namespace InjectedBundle

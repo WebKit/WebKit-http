@@ -43,7 +43,7 @@ namespace WebCore {
 // this situation, if the function has a return value, 0 is returned.
 class Extensions3D {
 public:
-    virtual ~Extensions3D() {}
+    virtual ~Extensions3D() = default;
 
     // Supported extensions:
     //   GL_EXT_texture_format_BGRA8888
@@ -70,6 +70,8 @@ public:
     //   GL_EXT_texture_compression_s3tc
     //   GL_OES_compressed_ETC1_RGB8_texture
     //   GL_IMG_texture_compression_pvrtc
+    //   GL_KHR_texture_compression_astc_hdr
+    //   GL_KHR_texture_compression_astc_ldr
     //   EXT_texture_filter_anisotropic
     //   GL_EXT_debug_marker
     //   GL_ARB_draw_buffers / GL_EXT_draw_buffers
@@ -107,6 +109,7 @@ public:
         GUILTY_CONTEXT_RESET_ARB = 0x8253,
         INNOCENT_CONTEXT_RESET_ARB = 0x8254,
         UNKNOWN_CONTEXT_RESET_ARB = 0x8255,
+        CONTEXT_ROBUST_ACCESS = 0x90F3,
 
         // GL_EXT/OES_packed_depth_stencil enums
         DEPTH24_STENCIL8 = 0x88F0,
@@ -165,6 +168,37 @@ public:
         COMPRESSED_ATC_RGB_AMD = 0x8C92,
         COMPRESSED_ATC_RGBA_EXPLICIT_ALPHA_AMD = 0x8C93,
         COMPRESSED_ATC_RGBA_INTERPOLATED_ALPHA_AMD = 0x87EE,
+        
+        // GL_KHR_texture_compression_astc_hdr
+        COMPRESSED_RGBA_ASTC_4x4_KHR = 0x93B0,
+        COMPRESSED_RGBA_ASTC_5x4_KHR = 0x93B1,
+        COMPRESSED_RGBA_ASTC_5x5_KHR = 0x93B2,
+        COMPRESSED_RGBA_ASTC_6x5_KHR = 0x93B3,
+        COMPRESSED_RGBA_ASTC_6x6_KHR = 0x93B4,
+        COMPRESSED_RGBA_ASTC_8x5_KHR = 0x93B5,
+        COMPRESSED_RGBA_ASTC_8x6_KHR = 0x93B6,
+        COMPRESSED_RGBA_ASTC_8x8_KHR = 0x93B7,
+        COMPRESSED_RGBA_ASTC_10x5_KHR = 0x93B8,
+        COMPRESSED_RGBA_ASTC_10x6_KHR = 0x93B9,
+        COMPRESSED_RGBA_ASTC_10x8_KHR = 0x93BA,
+        COMPRESSED_RGBA_ASTC_10x10_KHR = 0x93BB,
+        COMPRESSED_RGBA_ASTC_12x10_KHR = 0x93BC,
+        COMPRESSED_RGBA_ASTC_12x12_KHR = 0x93BD,
+        
+        COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR = 0x93D0,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_5x4_KHR = 0x93D1,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_5x5_KHR = 0x93D2,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_6x5_KHR = 0x93D3,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_6x6_KHR = 0x93D4,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_8x5_KHR = 0x93D5,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_8x6_KHR = 0x93D6,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR = 0x93D7,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_10x5_KHR = 0x93D8,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_10x6_KHR = 0x93D9,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_10x8_KHR = 0x93DA,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_10x10_KHR = 0x93DB,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR = 0x93DC,
+        COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR = 0x93DD,
 
         // GL_EXT_texture_filter_anisotropic
         TEXTURE_MAX_ANISOTROPY_EXT = 0x84FE,

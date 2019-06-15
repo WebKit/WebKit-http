@@ -2,33 +2,34 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-5-30
 description: >
     Array.prototype.lastIndexOf - side effects produced by step 3 are
     visible when an exception occurs
 ---*/
 
-        var stepFiveOccurs = false;
+var stepFiveOccurs = false;
 
-        var obj = {};
-        Object.defineProperty(obj, "length", {
-            get: function () {
-                return {
-                    valueOf: function () {
-                        throw new TypeError();
-                    }
-                };
-            },
-            configurable: true
-        });
+var obj = {};
+Object.defineProperty(obj, "length", {
+  get: function() {
+    return {
+      valueOf: function() {
+        throw new TypeError();
+      }
+    };
+  },
+  configurable: true
+});
 
-        var fromIndex = {
-            valueOf: function () {
-                stepFiveOccurs = true;
-                return 0;
-            }
-        };
+var fromIndex = {
+  valueOf: function() {
+    stepFiveOccurs = true;
+    return 0;
+  }
+};
 assert.throws(TypeError, function() {
-            Array.prototype.lastIndexOf.call(obj, undefined, fromIndex);
+  Array.prototype.lastIndexOf.call(obj, undefined, fromIndex);
 });
 assert.sameValue(stepFiveOccurs, false, 'stepFiveOccurs');

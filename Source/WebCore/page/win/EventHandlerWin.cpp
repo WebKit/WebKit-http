@@ -48,7 +48,7 @@
 namespace WebCore {
 
 #if ENABLE(DRAG_SUPPORT)
-const double EventHandler::TextDragDelay = 0.0;
+const Seconds EventHandler::TextDragDelay { 0_s };
 #endif
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
@@ -81,7 +81,7 @@ bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& wheelEven
     return downcast<FrameView>(widget).frame().eventHandler().handleWheelEvent(wheelEvent);
 }
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent&) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
 {
     return true;
 }
@@ -90,15 +90,6 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
 {
     return event.didActivateWebView();
 }
-
-#if ENABLE(DRAG_SUPPORT)
-
-Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
-{
-    return DataTransfer::createForDrag();
-}
-
-#endif
 
 void EventHandler::focusDocumentView()
 {

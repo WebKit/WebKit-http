@@ -2,14 +2,22 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
-    RegularExpressionFirstChar :: BackslashSequence :: \LineTerminator is
-    incorrect
-es5id: 7.8.5_A1.5_T3
-description: Carriage Return, without eval
-negative: SyntaxError
+esid: prod-RegularExpressionBackslashSequence
+info: |
+  RegularExpressionBackslashSequence ::
+  \ RegularExpressionNonTerminator
+
+  RegularExpressionNonTerminator ::
+    SourceCharacter but not LineTerminator
+
+description: >
+  A RegularExpressionBackslashSequence may not contain a <CR>
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
 
-//CHECK#1
+throw "Test262: This statement should not be evaluated.";
+
 /\
 /

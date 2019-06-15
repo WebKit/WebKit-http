@@ -5,7 +5,7 @@
 es6id: B.2.3.11
 description: >
   String.prototype.small.length is 0.
-info: >
+info: |
   String.prototype.small ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.small.length, 0);
-
-verifyNotEnumerable(String.prototype.small, "length");
-verifyNotWritable(String.prototype.small, "length");
-verifyConfigurable(String.prototype.small, "length");
+verifyProperty(String.prototype.small, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

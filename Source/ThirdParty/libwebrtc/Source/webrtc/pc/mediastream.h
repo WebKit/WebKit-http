@@ -10,38 +10,37 @@
 
 // This file contains the implementation of MediaStreamInterface interface.
 
-#ifndef WEBRTC_PC_MEDIASTREAM_H_
-#define WEBRTC_PC_MEDIASTREAM_H_
+#ifndef PC_MEDIASTREAM_H_
+#define PC_MEDIASTREAM_H_
 
 #include <string>
 #include <vector>
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/notifier.h"
-#include "webrtc/base/basictypes.h"
+#include "api/mediastreaminterface.h"
+#include "api/notifier.h"
 
 namespace webrtc {
 
-class WEBRTC_DYLIB_EXPORT MediaStream : public Notifier<MediaStreamInterface> {
+class MediaStream : public Notifier<MediaStreamInterface> {
  public:
-  static rtc::scoped_refptr<MediaStream> Create(const std::string& label);
+  static rtc::scoped_refptr<MediaStream> Create(const std::string& id);
 
-  std::string label() const override { return label_; }
+  std::string id() const override { return id_; }
 
   bool AddTrack(AudioTrackInterface* track) override;
   bool AddTrack(VideoTrackInterface* track) override;
   bool RemoveTrack(AudioTrackInterface* track) override;
   bool RemoveTrack(VideoTrackInterface* track) override;
-  rtc::scoped_refptr<AudioTrackInterface>
-      FindAudioTrack(const std::string& track_id) override;
-  rtc::scoped_refptr<VideoTrackInterface>
-      FindVideoTrack(const std::string& track_id) override;
+  rtc::scoped_refptr<AudioTrackInterface> FindAudioTrack(
+      const std::string& track_id) override;
+  rtc::scoped_refptr<VideoTrackInterface> FindVideoTrack(
+      const std::string& track_id) override;
 
   AudioTrackVector GetAudioTracks() override { return audio_tracks_; }
   VideoTrackVector GetVideoTracks() override { return video_tracks_; }
 
  protected:
-  explicit MediaStream(const std::string& label);
+  explicit MediaStream(const std::string& id);
 
  private:
   template <typename TrackVector, typename Track>
@@ -49,11 +48,11 @@ class WEBRTC_DYLIB_EXPORT MediaStream : public Notifier<MediaStreamInterface> {
   template <typename TrackVector>
   bool RemoveTrack(TrackVector* Tracks, MediaStreamTrackInterface* track);
 
-  std::string label_;
+  std::string id_;
   AudioTrackVector audio_tracks_;
   VideoTrackVector video_tracks_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_MEDIASTREAM_H_
+#endif  // PC_MEDIASTREAM_H_

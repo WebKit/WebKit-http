@@ -25,7 +25,6 @@
 #include "OverlapTestRequestClient.h"
 #include "RenderReplaced.h"
 #include "Widget.h"
-#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -55,6 +54,7 @@ private:
 };
     
 class RenderWidget : public RenderReplaced, private OverlapTestRequestClient {
+    WTF_MAKE_ISO_ALLOCATED(RenderWidget);
 public:
     virtual ~RenderWidget();
 
@@ -70,8 +70,6 @@ public:
     WEBCORE_EXPORT IntRect windowClipRect() const;
 
     bool requiresAcceleratedCompositing() const;
-
-    WeakPtr<RenderWidget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
     void ref() { ++m_refCount; }
     void deref();
@@ -101,7 +99,6 @@ private:
     bool setWidgetGeometry(const LayoutRect&);
     bool updateWidgetGeometry();
 
-    WeakPtrFactory<RenderWidget> m_weakPtrFactory;
     RefPtr<Widget> m_widget;
     IntRect m_clipRect; // The rectangle needs to remain correct after scrolling, so it is stored in content view coordinates, and not clipped to window.
     unsigned m_refCount { 1 };

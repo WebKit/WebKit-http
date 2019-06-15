@@ -27,7 +27,9 @@
 
 #if ENABLE(FULLSCREEN_API)
 
+#include "WebCoreArgumentCoders.h"
 #include <WebCore/IntRect.h>
+#include <WebCore/LengthBox.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -40,6 +42,7 @@ namespace WebCore {
 class IntRect;
 class Element;
 class GraphicsLayer;
+class HTMLVideoElement;
 }
 
 namespace WebKit {
@@ -64,15 +67,22 @@ public:
 
     WebCore::Element* element();
 
+    void videoControlsManagerDidChange();
+
     void close();
 
 protected:
     WebFullScreenManager(WebPage*);
 
+    void setPIPStandbyElement(WebCore::HTMLVideoElement*);
+
     void setAnimatingFullScreen(bool);
     void requestExitFullScreen();
     void saveScrollPosition();
     void restoreScrollPosition();
+    void setFullscreenInsets(const WebCore::FloatBoxExtent&);
+    void setFullscreenAutoHideDuration(Seconds);
+    void setFullscreenControlsHidden(bool);
 
     void didReceiveWebFullScreenManagerMessage(IPC::Connection&, IPC::Decoder&);
 
@@ -82,6 +92,9 @@ protected:
     float m_topContentInset;
     RefPtr<WebPage> m_page;
     RefPtr<WebCore::Element> m_element;
+#if ENABLE(VIDEO)
+    RefPtr<WebCore::HTMLVideoElement> m_pipStandbyElement;
+#endif
 };
 
 } // namespace WebKit

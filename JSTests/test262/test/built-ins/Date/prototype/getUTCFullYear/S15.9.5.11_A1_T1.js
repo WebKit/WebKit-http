@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "getUTCFullYear" has { DontEnum } attributes
+esid: sec-date.prototype.getutcfullyear
 es5id: 15.9.5.11_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.getUTCFullYear;
-if(x === 1)
+if (x === 1)
   Date.prototype.getUTCFullYear = 2;
 else
   Date.prototype.getUTCFullYear = 1;

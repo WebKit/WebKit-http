@@ -44,9 +44,8 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static CString buildAcceptLanguages(const Vector<String>& languages)
 {
@@ -110,17 +109,17 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     ASSERT(!parameters.diskCacheDirectory.isEmpty());
     m_diskCacheDirectory = parameters.diskCacheDirectory;
 
-    SoupNetworkSession::clearOldSoupCache(WebCore::directoryName(m_diskCacheDirectory));
+    SoupNetworkSession::clearOldSoupCache(WebCore::FileSystem::directoryName(m_diskCacheDirectory));
 
-    OptionSet<NetworkCache::Cache::Option> cacheOptions;
+    OptionSet<NetworkCache::Cache::Option> cacheOptions { NetworkCache::Cache::Option::RegisterNotify };
     if (parameters.shouldEnableNetworkCacheEfficacyLogging)
-        cacheOptions |= NetworkCache::Cache::Option::EfficacyLogging;
+        cacheOptions.add(NetworkCache::Cache::Option::EfficacyLogging);
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     if (parameters.shouldEnableNetworkCacheSpeculativeRevalidation)
-        cacheOptions |= NetworkCache::Cache::Option::SpeculativeRevalidation;
+        cacheOptions.add(NetworkCache::Cache::Option::SpeculativeRevalidation);
 #endif
 
-    NetworkCache::singleton().initialize(m_diskCacheDirectory, cacheOptions);
+    m_cache = NetworkCache::Cache::open(m_diskCacheDirectory, cacheOptions);
 
     if (!parameters.cookiePersistentStoragePath.isEmpty()) {
         supplement<WebCookieManager>()->setCookiePersistentStorage(parameters.cookiePersistentStoragePath,
@@ -132,10 +131,6 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
         userPreferredLanguagesChanged(parameters.languages);
 
     setIgnoreTLSErrors(parameters.ignoreTLSErrors);
-}
-
-void NetworkProcess::platformSetURLCacheSize(unsigned, uint64_t)
-{
 }
 
 void NetworkProcess::setIgnoreTLSErrors(bool ignoreTLSErrors)
@@ -153,12 +148,14 @@ void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)
     if (cachesToClear == InMemoryResourceCachesOnly)
         return;
 
-    clearDiskCache(std::chrono::system_clock::time_point::min(), [] { });
+    clearDiskCache(-WallTime::infinity(), [] { });
 }
 
-void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifiedSince, Function<void ()>&& completionHandler)
+void NetworkProcess::clearDiskCache(WallTime modifiedSince, Function<void ()>&& completionHandler)
 {
-    NetworkCache::singleton().clear(modifiedSince, WTFMove(completionHandler));
+    if (!m_cache)
+        return;
+    m_cache->clear(modifiedSince, WTFMove(completionHandler));
 }
 
 void NetworkProcess::platformTerminate()
@@ -173,6 +170,27 @@ void NetworkProcess::setNetworkProxySettings(const SoupNetworkProxySettings& set
         if (auto* soupSession = session.soupNetworkSession())
             soupSession->setupProxy();
     });
+}
+
+void NetworkProcess::platformPrepareToSuspend(CompletionHandler<void()>&& completionHandler)
+{
+    notImplemented();
+    completionHandler();
+}
+
+void NetworkProcess::platformProcessDidResume()
+{
+    notImplemented();
+}
+
+void NetworkProcess::platformProcessDidTransitionToForeground()
+{
+    notImplemented();
+}
+
+void NetworkProcess::platformProcessDidTransitionToBackground()
+{
+    notImplemented();
 }
 
 } // namespace WebKit

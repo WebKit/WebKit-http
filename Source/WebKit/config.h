@@ -28,36 +28,15 @@
 #include "cmakeconfig.h"
 #endif
 
+#include <JavaScriptCore/JSExportMacros.h>
 #include <WebCore/PlatformExportMacros.h>
 #include <pal/ExportMacros.h>
-#include <runtime/JSExportMacros.h>
 #include <wtf/DisallowCType.h>
 
-#if defined(WIN32) || defined(_WIN32)
-
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x0502
-#endif
-
-#ifndef WINVER
-#define WINVER 0x0502
-#endif
-
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ /* Prevent inclusion of winsock.h in windows.h */
-#endif
-
-#include <WebCore/config.h>
-#include <windows.h>
-
+#if PLATFORM(WIN)
 #undef WEBCORE_EXPORT
 #define WEBCORE_EXPORT WTF_EXPORT_DECLARATION
-
-#if USE(CG)
-#include <CoreGraphics/CoreGraphics.h>
-#endif
-
-#endif /* defined(WIN32) || defined(_WIN32) */
+#endif // PLATFORM(WIN)
 
 #ifdef __cplusplus
 
@@ -72,8 +51,8 @@
 #ifndef PLUGIN_ARCHITECTURE_UNSUPPORTED
 #if PLATFORM(MAC)
 #define PLUGIN_ARCHITECTURE_MAC 1
-#elif PLATFORM(GTK) && PLATFORM(X11) && OS(UNIX) && !OS(MAC_OS_X)
-#define PLUGIN_ARCHITECTURE_X11 1
+#elif PLATFORM(GTK) && OS(UNIX) && !OS(MAC_OS_X)
+#define PLUGIN_ARCHITECTURE_UNIX 1
 #else
 #define PLUGIN_ARCHITECTURE_UNSUPPORTED 1
 #endif
@@ -99,20 +78,14 @@
 #endif
 #endif
 
-#if USE(CFURLCONNECTION)
-#ifndef USE_NETWORK_SESSION
-#define USE_NETWORK_SESSION 0
-#endif
-#endif
-
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS) || PLATFORM(APPLETV) || PLATFORM(WATCHOS) || USE(SOUP)
-#ifndef USE_NETWORK_SESSION
-#define USE_NETWORK_SESSION 1
-#endif
-
-// FIXME: We should work towards not using CredentialStorage in WebKit2 to not have problems with digest authentication.
+// FIXME: We should work towards not using CredentialStorage in WebKit to not have problems with digest authentication.
 #ifndef USE_CREDENTIAL_STORAGE_WITH_NETWORK_SESSION
 #define USE_CREDENTIAL_STORAGE_WITH_NETWORK_SESSION 1
+#endif
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+#ifndef ENABLE_SERVER_PRECONNECT
+#define ENABLE_SERVER_PRECONNECT 1
 #endif
 #endif
 
@@ -122,28 +95,14 @@
 #endif
 #endif
 
-#ifndef HAVE_OS_ACTIVITY
-#if PLATFORM(IOS) || PLATFORM(MAC)
-#define HAVE_OS_ACTIVITY 1
-#endif
-#endif
-
-#ifndef ENABLE_NETWORK_CACHE
-#if PLATFORM(COCOA) || USE(SOUP)
-#define ENABLE_NETWORK_CACHE 1
-#else
-#define ENABLE_NETWORK_CACHE 0
-#endif
-#endif
-
 #ifndef ENABLE_NETWORK_CAPTURE
-#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
+#if PLATFORM(COCOA)
 #define ENABLE_NETWORK_CAPTURE 1
 #endif
 #endif
 
 #ifndef ENABLE_NETWORK_CACHE_SPECULATIVE_REVALIDATION
-#if ENABLE(NETWORK_CACHE) && (PLATFORM(COCOA) || PLATFORM(GTK))
+#if (PLATFORM(COCOA) || PLATFORM(GTK))
 #define ENABLE_NETWORK_CACHE_SPECULATIVE_REVALIDATION 1
 #else
 #define ENABLE_NETWORK_CACHE_SPECULATIVE_REVALIDATION 0
@@ -151,7 +110,7 @@
 #endif
 
 #ifndef HAVE_SAFARI_SERVICES_FRAMEWORK
-#if PLATFORM(IOS) && (!defined TARGET_OS_IOS || TARGET_OS_IOS)
+#if PLATFORM(IOS) && (!defined TARGET_OS_IOS || TARGET_OS_IOS) && !PLATFORM(IOSMAC)
 #define HAVE_SAFARI_SERVICES_FRAMEWORK 1
 #else
 #define HAVE_SAFARI_SERVICES_FRAMEWORK 0
@@ -164,4 +123,10 @@
 #else
 #define HAVE_LINK_PREVIEW 0
 #endif
+#endif
+
+#if ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)) && !defined(__i386__) && !PLATFORM(IOSMAC)
+#define HAVE_SAFE_BROWSING 1
+#else
+#define HAVE_SAFE_BROWSING 0
 #endif

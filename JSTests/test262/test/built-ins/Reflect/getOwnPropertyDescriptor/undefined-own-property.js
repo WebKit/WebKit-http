@@ -4,7 +4,7 @@
 es6id: 26.1.7
 description: >
   Return undefined for an non existing own property.
-info: >
+info: |
   26.1.7 Reflect.getOwnPropertyDescriptor ( target, propertyKey )
 
   ...
@@ -17,7 +17,9 @@ info: >
   1. If Desc is undefined, return undefined.
 ---*/
 
-var o = Object.create({p: 1});
+var o = Object.create({
+  p: 1
+});
 
 var result = Reflect.getOwnPropertyDescriptor(o, 'p');
 assert.sameValue(result, undefined);

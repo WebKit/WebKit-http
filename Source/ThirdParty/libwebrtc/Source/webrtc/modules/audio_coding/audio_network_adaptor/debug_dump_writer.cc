@@ -8,18 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/audio_network_adaptor/debug_dump_writer.h"
+#include "modules/audio_coding/audio_network_adaptor/debug_dump_writer.h"
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/ignore_wundef.h"
-#include "webrtc/base/protobuf_utils.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/ignore_wundef.h"
+#include "rtc_base/numerics/safe_conversions.h"
+#include "rtc_base/protobuf_utils.h"
 
 #if WEBRTC_ENABLE_PROTOBUF
 RTC_PUSH_IGNORING_WUNDEF()
 #ifdef WEBRTC_ANDROID_PLATFORM_BUILD
 #include "external/webrtc/webrtc/modules/audio_coding/audio_network_adaptor/debug_dump.pb.h"
 #else
-#include "webrtc/modules/audio_coding/audio_network_adaptor/debug_dump.pb.h"
+#include "modules/audio_coding/audio_network_adaptor/debug_dump.pb.h"
 #endif
 RTC_POP_IGNORING_WUNDEF()
 #endif
@@ -37,7 +38,7 @@ void DumpEventToFile(const Event& event, FileWrapper* dump_file) {
   RTC_CHECK(dump_file->is_open());
   ProtoString dump_data;
   event.SerializeToString(&dump_data);
-  int32_t size = event.ByteSize();
+  int32_t size = rtc::checked_cast<int32_t>(event.ByteSizeLong());
   dump_file->Write(&size, sizeof(size));
   dump_file->Write(dump_data.data(), dump_data.length());
 }
@@ -55,6 +56,13 @@ class DebugDumpWriterImpl final : public DebugDumpWriter {
 
   void DumpNetworkMetrics(const Controller::NetworkMetrics& metrics,
                           int64_t timestamp) override;
+
+#if WEBRTC_ENABLE_PROTOBUF
+  void DumpControllerManagerConfig(
+      const audio_network_adaptor::config::ControllerManager&
+          controller_manager_config,
+      int64_t timestamp) override;
+#endif
 
  private:
   std::unique_ptr<FileWrapper> dump_file_;
@@ -136,6 +144,20 @@ void DebugDumpWriterImpl::DumpEncoderRuntimeConfig(
   DumpEventToFile(event, dump_file_.get());
 #endif  // WEBRTC_ENABLE_PROTOBUF
 }
+
+#if WEBRTC_ENABLE_PROTOBUF
+void DebugDumpWriterImpl::DumpControllerManagerConfig(
+    const audio_network_adaptor::config::ControllerManager&
+        controller_manager_config,
+    int64_t timestamp) {
+  Event event;
+  event.set_timestamp(timestamp);
+  event.set_type(Event::CONTROLLER_MANAGER_CONFIG);
+  event.mutable_controller_manager_config()->CopyFrom(
+      controller_manager_config);
+  DumpEventToFile(event, dump_file_.get());
+}
+#endif  // WEBRTC_ENABLE_PROTOBUF
 
 std::unique_ptr<DebugDumpWriter> DebugDumpWriter::Create(FILE* file_handle) {
   return std::unique_ptr<DebugDumpWriter>(new DebugDumpWriterImpl(file_handle));

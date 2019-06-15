@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,21 +24,16 @@
  */
 
 #include "config.h"
-#if !PLATFORM(IOS)
-
 #include "WebCoreFullScreenPlaceholderView.h"
+
+#if PLATFORM(MAC)
 
 #include "LocalizedStrings.h"
 #include "WebCoreFullScreenWarningView.h"
 #include <wtf/text/WTFString.h>
 
-@interface CAFilter : NSObject
-+ (CAFilter *)filterWithType:(NSString *)type;
-@end
-
-using namespace WebCore;
-
 @implementation WebCoreFullScreenPlaceholderView
+
 - (id)initWithFrame:(NSRect)frameRect
 {
     self = [super initWithFrame:frameRect];
@@ -56,8 +51,15 @@ using namespace WebCore;
     _effectView.get().autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     _effectView.get().blendingMode = NSVisualEffectBlendingModeWithinWindow;
     _effectView.get().hidden = YES;
-    _effectView.get().material = NSVisualEffectMaterialLight;
     _effectView.get().state = NSVisualEffectStateActive;
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    _effectView.get().material = NSVisualEffectMaterialPopover;
+#else
+    _effectView.get().material = NSVisualEffectMaterialLight;
+    _effectView.get().appearance = [NSAppearance appearanceNamed:NSAppearanceNameVibrantLight];
+#endif
+
     [self addSubview:_effectView.get()];
 
     _exitWarning = adoptNS([[NSTextField alloc] initWithFrame:NSZeroRect]);
@@ -67,7 +69,7 @@ using namespace WebCore;
     _exitWarning.get().editable = NO;
     _exitWarning.get().font = [NSFont systemFontOfSize:27];
     _exitWarning.get().selectable = NO;
-    _exitWarning.get().stringValue = clickToExitFullScreenText();
+    _exitWarning.get().stringValue = WebCore::clickToExitFullScreenText();
     _exitWarning.get().textColor = [NSColor tertiaryLabelColor];
     [_exitWarning sizeToFit];
 
@@ -80,9 +82,9 @@ using namespace WebCore;
 }
 
 @synthesize target = _target;
-@synthesize action = _action;
 
 @dynamic contents;
+
 - (void)setContents:(id)contents
 {
     [[self layer] setContents:contents];
@@ -98,13 +100,10 @@ using namespace WebCore;
     [_effectView setHidden:!visible];
 }
 
-- (void)mouseDown:(NSEvent *)theEvent
+- (void)mouseDown:(NSEvent *)event
 {
-    UNUSED_PARAM(theEvent);
-
-    if (!_target || !_action)
-        return;
-    [_target performSelector:_action];
+    UNUSED_PARAM(event);
+    [_target cancelOperation:self];
 }
 
 @end

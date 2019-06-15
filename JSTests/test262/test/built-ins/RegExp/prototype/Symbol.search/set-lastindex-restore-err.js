@@ -6,20 +6,21 @@ es6id: 21.2.5.9
 description: >
     Behavior when error thrown while restoring `lastIndex` property following
     match execution
-info: >
+info: |
     [...]
-    11. Let status be Set(rx, "lastIndex", previousLastIndex, true).
-    12. ReturnIfAbrupt(status).
+    8. If SameValue(currentLastIndex, previousLastIndex) is false, then
+        a. Perform ? Set(rx, "lastIndex", previousLastIndex, true).
 features: [Symbol.search]
 ---*/
 
 var callCount;
 var poisonedLastIndex = {
-  get lastIndex() {},
+  get lastIndex() { return this.lastIndex_; },
   set lastIndex(_) {
     if (callCount === 1) {
       throw new Test262Error();
     }
+    this.lastIndex_ = _;
   },
   exec: function() {
     callCount += 1;

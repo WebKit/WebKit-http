@@ -26,6 +26,8 @@
 #include "config.h"
 #include "SimpleLineLayoutFunctions.h"
 
+#include "BidiRun.h"
+#include "BidiRunList.h"
 #include "FontCache.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
@@ -33,8 +35,10 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InlineTextBox.h"
+#include "LineInfo.h"
 #include "PaintInfo.h"
 #include "RenderBlockFlow.h"
+#include "RenderChildIterator.h"
 #include "RenderIterator.h"
 #include "RenderStyle.h"
 #include "RenderText.h"
@@ -46,7 +50,7 @@
 #include "TextDecorationPainter.h"
 #include "TextPaintStyle.h"
 #include "TextPainter.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 #if ENABLE(TREE_DEBUGGING)
 #include <stdio.h>
@@ -72,25 +76,25 @@ FloatRect computeOverflow(const RenderBlockFlow& flow, const FloatRect& layoutRe
 
 void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (paintInfo.phase != PaintPhaseForeground)
+    if (paintInfo.phase != PaintPhase::Foreground)
         return;
 
     auto& style = flow.style();
-    if (style.visibility() != VISIBLE)
+    if (style.visibility() != Visibility::Visible)
         return;
 
     TextPainter textPainter(paintInfo.context());
     textPainter.setFont(style.fontCascade());
-    textPainter.setTextPaintStyle(computeTextPaintStyle(flow.frame(), style, paintInfo));
+    textPainter.setStyle(computeTextPaintStyle(flow.frame(), style, paintInfo));
 
     std::unique_ptr<ShadowData> debugShadow = nullptr;
     if (flow.settings().simpleLineLayoutDebugBordersEnabled()) {
         debugShadow = std::make_unique<ShadowData>(IntPoint(0, 0), 10, 20, ShadowStyle::Normal, true, Color(0, 255, 0, 200));
-        textPainter.addTextShadow(debugShadow.get(), nullptr);
+        textPainter.setShadow(debugShadow.get());
     }
 
     std::optional<TextDecorationPainter> textDecorationPainter;
-    if (style.textDecorationsInEffect() != TextDecorationNone) {
+    if (!style.textDecorationsInEffect().isEmpty()) {
         const RenderText* textRenderer = childrenOfType<RenderText>(flow).first();
         if (textRenderer) {
             textDecorationPainter.emplace(paintInfo.context(), style.textDecorationsInEffect(), *textRenderer, false);
@@ -102,7 +106,7 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
     LayoutRect paintRect = paintInfo.rect;
     paintRect.moveBy(-paintOffset);
 
-    auto resolver = runResolver(flow, layout);
+    auto& resolver = layout.runResolver();
     float deviceScaleFactor = flow.document().deviceScaleFactor();
     for (auto run : resolver.rangeForRect(paintRect)) {
         if (run.start() == run.end())
@@ -117,10 +121,12 @@ void paintFlow(const RenderBlockFlow& flow, const Layout& layout, PaintInfo& pai
         if (run.hasHyphen())
             textWithHyphen = run.textWithHyphen();
         // x position indicates the line offset from the rootbox. It's always 0 in case of simple line layout.
-        TextRun textRun(run.hasHyphen() ? textWithHyphen : run.text(), 0, run.expansion(), run.expansionBehavior());
+        TextRun textRun { run.hasHyphen() ? textWithHyphen : run.text(), 0, run.expansion(), run.expansionBehavior() };
         textRun.setTabSize(!style.collapseWhiteSpace(), style.tabSize());
-        FloatPoint textOrigin = FloatPoint(rect.x() + paintOffset.x(), roundToDevicePixel(run.baselinePosition() + paintOffset.y(), deviceScaleFactor));
-        textPainter.paintText(textRun, textRun.length(), rect, textOrigin);
+        FloatPoint textOrigin { rect.x() + paintOffset.x(), roundToDevicePixel(run.baselinePosition() + paintOffset.y(), deviceScaleFactor) };
+
+        textPainter.setGlyphDisplayListIfNeeded(run.simpleRun(), paintInfo, style.fontCascade(), paintInfo.context(), textRun);
+        textPainter.paint(textRun, rect, textOrigin);
         if (textDecorationPainter) {
             textDecorationPainter->setWidth(rect.width());
             textDecorationPainter->paintTextDecoration(textRun, textOrigin, rect.location() + paintOffset);
@@ -137,12 +143,12 @@ bool hitTestFlow(const RenderBlockFlow& flow, const Layout& layout, const HitTes
         return false;
 
     auto& style = flow.style();
-    if (style.visibility() != VISIBLE || style.pointerEvents() == PE_NONE)
+    if (style.visibility() != Visibility::Visible || style.pointerEvents() == PointerEvents::None)
         return false;
 
     LayoutRect rangeRect = locationInContainer.boundingBox();
     rangeRect.moveBy(-accumulatedOffset);
-    auto resolver = lineResolver(flow, layout);
+    auto resolver = lineResolver(layout.runResolver());
     auto range = resolver.rangeForRect(rangeRect);
     for (auto it = range.begin(), end = range.end(); it != end; ++it) {
         auto lineRect = *it;
@@ -151,7 +157,7 @@ bool hitTestFlow(const RenderBlockFlow& flow, const Layout& layout, const HitTes
         if (!locationInContainer.intersects(lineRect))
             continue;
         renderer.updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
-        if (!result.addNodeToRectBasedTestResult(renderer.node(), request, locationInContainer, lineRect))
+        if (result.addNodeToListBasedTestResult(renderer.node(), request, locationInContainer, lineRect) == HitTestProgress::Stop)
             return true;
     }
     return false;
@@ -159,7 +165,7 @@ bool hitTestFlow(const RenderBlockFlow& flow, const Layout& layout, const HitTes
 
 void collectFlowOverflow(RenderBlockFlow& flow, const Layout& layout)
 {
-    for (auto lineRect : lineResolver(flow, layout)) {
+    for (auto lineRect : lineResolver(layout.runResolver())) {
         LayoutRect visualOverflowRect = LayoutRect(computeOverflow(flow, lineRect));
         flow.addLayoutOverflow(LayoutRect(lineRect));
         flow.addVisualOverflow(visualOverflowRect);
@@ -168,7 +174,7 @@ void collectFlowOverflow(RenderBlockFlow& flow, const Layout& layout)
 
 IntRect computeBoundingBox(const RenderObject& renderer, const Layout& layout)
 {
-    auto resolver = runResolver(downcast<RenderBlockFlow>(*renderer.parent()), layout);
+    auto& resolver = layout.runResolver();
     FloatRect boundingBoxRect;
     for (auto run : resolver.rangeForRenderer(renderer)) {
         FloatRect rect = run.rect();
@@ -182,7 +188,7 @@ IntRect computeBoundingBox(const RenderObject& renderer, const Layout& layout)
 
 IntPoint computeFirstRunLocation(const RenderObject& renderer, const Layout& layout)
 {
-    auto resolver = runResolver(downcast<RenderBlockFlow>(*renderer.parent()), layout);
+    auto& resolver = layout.runResolver();
     auto range = resolver.rangeForRenderer(renderer);
     auto begin = range.begin();
     if (begin == range.end())
@@ -193,7 +199,7 @@ IntPoint computeFirstRunLocation(const RenderObject& renderer, const Layout& lay
 Vector<IntRect> collectAbsoluteRects(const RenderObject& renderer, const Layout& layout, const LayoutPoint& accumulatedOffset)
 {
     Vector<IntRect> rects;
-    auto resolver = runResolver(downcast<RenderBlockFlow>(*renderer.parent()), layout);
+    auto& resolver = layout.runResolver();
     for (auto run : resolver.rangeForRenderer(renderer)) {
         FloatRect rect = run.rect();
         rects.append(enclosingIntRect(FloatRect(accumulatedOffset + rect.location(), rect.size())));
@@ -204,7 +210,7 @@ Vector<IntRect> collectAbsoluteRects(const RenderObject& renderer, const Layout&
 Vector<FloatQuad> collectAbsoluteQuads(const RenderObject& renderer, const Layout& layout, bool* wasFixed)
 {
     Vector<FloatQuad> quads;
-    auto resolver = runResolver(downcast<RenderBlockFlow>(*renderer.parent()), layout);
+    auto& resolver = layout.runResolver();
     for (auto run : resolver.rangeForRenderer(renderer))
         quads.append(renderer.localToAbsoluteQuad(FloatQuad(run.rect()), UseTransforms, wasFixed));
     return quads;
@@ -214,10 +220,10 @@ unsigned textOffsetForPoint(const LayoutPoint& point, const RenderText& renderer
 {
     auto& flow = downcast<RenderBlockFlow>(*renderer.parent());
     ASSERT(flow.firstChild() == flow.lastChild());
-    auto resolver = runResolver(flow, layout);
+    auto& resolver = layout.runResolver();
     auto it = resolver.runForPoint(point);
     if (it == resolver.end())
-        return renderer.textLength();
+        return renderer.text().length();
     auto run = *it;
     auto& style = flow.style();
     TextRun textRun(run.text(), run.logicalLeft(), run.expansion(), run.expansionBehavior());
@@ -229,7 +235,7 @@ Vector<FloatQuad> collectAbsoluteQuadsForRange(const RenderObject& renderer, uns
 {
     auto& style = downcast<RenderBlockFlow>(*renderer.parent()).style();
     Vector<FloatQuad> quads;
-    auto resolver = runResolver(downcast<RenderBlockFlow>(*renderer.parent()), layout);
+    auto& resolver = layout.runResolver();
     for (auto run : resolver.rangeForRendererWithOffsets(renderer, start, end)) {
         // This run is fully contained.
         if (start <= run.start() && end >= run.end()) {
@@ -259,6 +265,108 @@ Vector<FloatQuad> collectAbsoluteQuadsForRange(const RenderObject& renderer, uns
 const RenderObject& rendererForPosition(const FlowContents& flowContents, unsigned position)
 {
     return flowContents.segmentForPosition(position).renderer;
+}
+
+void simpleLineLayoutWillBeDeleted(const Layout& layout)
+{
+    for (unsigned i = 0; i < layout.runCount(); ++i)
+        TextPainter::removeGlyphDisplayList(layout.runAt(i));
+}
+
+bool canUseForLineBoxTree(RenderBlockFlow& flow, const Layout& layout)
+{
+    if (layout.isPaginated())
+        return false;
+    
+    if (flow.style().preserveNewline())
+        return false;
+    
+    if (!flow.firstChild())
+        return false;
+    
+    for (auto& child : childrenOfType<RenderObject>(flow)) {
+        if (!is<RenderText>(child))
+            return false;
+        // Simple line layout iterator can't handle renderers with zero length properly.
+        if (!downcast<RenderText>(child).length())
+            return false;
+    }
+    return true;
+}
+
+static void initializeInlineTextBox(RenderBlockFlow& flow, InlineTextBox& inlineTextBox, const RunResolver::Run& run)
+{
+    inlineTextBox.setLogicalLeft(run.logicalLeft());
+    inlineTextBox.setLogicalTop(run.rect().y());
+    inlineTextBox.setLogicalWidth(run.logicalRight() - run.logicalLeft());
+    auto overflowRect = computeOverflow(const_cast<RenderBlockFlow&>(flow), run.rect());
+    if (overflowRect != run.rect())
+        inlineTextBox.setLogicalOverflowRect(LayoutRect(overflowRect));
+
+    inlineTextBox.setHasHyphen(run.hasHyphen());
+    inlineTextBox.setExpansionWithoutGrowing(run.expansion());
+
+    auto expansionBehavior = run.expansionBehavior();
+    inlineTextBox.setCanHaveLeadingExpansion(expansionBehavior & AllowLeadingExpansion);
+    inlineTextBox.setCanHaveTrailingExpansion(expansionBehavior & AllowTrailingExpansion);
+    if (expansionBehavior & ForceTrailingExpansion)
+        inlineTextBox.setForceTrailingExpansion();
+    if (expansionBehavior & ForceLeadingExpansion)
+        inlineTextBox.setForceLeadingExpansion();
+}
+
+void generateLineBoxTree(RenderBlockFlow& flow, const Layout& layout)
+{
+    ASSERT(!flow.lineBoxes().firstLineBox());
+    if (!layout.runCount())
+        return;
+
+    Ref<BidiContext> bidiContext = BidiContext::create(0, U_LEFT_TO_RIGHT);
+    auto& resolver = layout.runResolver();
+    unsigned lineIndex = 0;
+    while (true) {
+        auto range = resolver.rangeForLine(lineIndex++);
+        if (range.begin() == range.end())
+            break;
+
+        // Generate bidi runs out of simple line layout runs.
+        BidiRunList<BidiRun> bidiRuns;
+        for (auto it = range.begin(); it != range.end(); ++it) {
+            auto run = *it;
+            bidiRuns.appendRun(std::make_unique<BidiRun>(run.localStart(), run.localEnd(), const_cast<RenderObject&>(run.renderer()), bidiContext.ptr(), U_LEFT_TO_RIGHT));
+        }
+
+        LineInfo lineInfo;
+        lineInfo.setFirstLine(!flow.lineBoxes().firstLineBox());
+        // FIXME: This is needed for flow boxes -but we don't have them yet.
+        // lineInfo.setLastLine(lastLine);
+        lineInfo.setEmpty(!bidiRuns.runCount());
+        bidiRuns.setLogicallyLastRun(bidiRuns.lastRun());
+        auto* root = flow.constructLine(bidiRuns, lineInfo);
+        bidiRuns.clear();
+        if (!root)
+            continue;
+
+        auto& rootLineBox = *root;
+        auto it = range.begin();
+        float lineWidth = 0;
+        // Set the geometry for the inlineboxes.
+        for (auto* inlineBox = rootLineBox.firstChild(); inlineBox && it != range.end(); inlineBox = inlineBox->nextOnLine(), ++it) {
+            auto run = *it;
+            initializeInlineTextBox(flow, downcast<InlineTextBox>(*inlineBox), run);
+            lineWidth += inlineBox->logicalWidth();
+        }
+
+        // Finish setting up the rootline.
+        auto iter = range.begin();
+        auto firstRun = *iter;
+        rootLineBox.setLogicalLeft(firstRun.logicalLeft());
+        rootLineBox.setLogicalWidth(lineWidth);
+        auto lineTop = firstRun.rect().y();
+        auto lineHeight = firstRun.rect().height();
+        rootLineBox.setLogicalTop(lineTop);
+        rootLineBox.setLineTopBottomPositions(lineTop, lineTop + lineHeight, lineTop, lineTop + lineHeight);
+    }
 }
 
 #if ENABLE(TREE_DEBUGGING)

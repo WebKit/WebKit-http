@@ -3,9 +3,10 @@
 /*---
 esid: sec-%typedarray%.prototype.slice
 description: Result does not import own properties
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice( start , end )
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

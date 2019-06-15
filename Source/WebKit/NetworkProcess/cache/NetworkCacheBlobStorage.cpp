@@ -26,16 +26,18 @@
 #include "config.h"
 #include "NetworkCacheBlobStorage.h"
 
-#if ENABLE(NETWORK_CACHE)
-
 #include "Logging.h"
 #include "NetworkCacheFileSystem.h"
 #include <WebCore/FileSystem.h>
 #include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
 #include <wtf/RunLoop.h>
 #include <wtf/SHA1.h>
+
+#if !OS(WINDOWS)
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 namespace WebKit {
 namespace NetworkCache {
@@ -55,15 +57,15 @@ void BlobStorage::synchronize()
 {
     ASSERT(!RunLoop::isMain());
 
-    WebCore::makeAllDirectories(blobDirectoryPath());
+    WebCore::FileSystem::makeAllDirectories(blobDirectoryPath());
 
     m_approximateSize = 0;
     auto blobDirectory = blobDirectoryPath();
     traverseDirectory(blobDirectory, [this, &blobDirectory](const String& name, DirectoryEntryType type) {
         if (type != DirectoryEntryType::File)
             return;
-        auto path = WebCore::pathByAppendingComponent(blobDirectory, name);
-        auto filePath = WebCore::fileSystemRepresentation(path);
+        auto path = WebCore::FileSystem::pathByAppendingComponent(blobDirectory, name);
+        auto filePath = WebCore::FileSystem::fileSystemRepresentation(path);
         struct stat stat;
         ::stat(filePath.data(), &stat);
         // No clients left for this blob.
@@ -79,19 +81,20 @@ void BlobStorage::synchronize()
 String BlobStorage::blobPathForHash(const SHA1::Digest& hash) const
 {
     auto hashAsString = SHA1::hexDigest(hash);
-    return WebCore::pathByAppendingComponent(blobDirectoryPath(), String::fromUTF8(hashAsString));
+    return WebCore::FileSystem::pathByAppendingComponent(blobDirectoryPath(), String::fromUTF8(hashAsString));
 }
 
 BlobStorage::Blob BlobStorage::add(const String& path, const Data& data)
 {
+#if !OS(WINDOWS)
     ASSERT(!RunLoop::isMain());
 
     auto hash = computeSHA1(data, m_salt);
     if (data.isEmpty())
         return { data, hash };
 
-    auto blobPath = WebCore::fileSystemRepresentation(blobPathForHash(hash));
-    auto linkPath = WebCore::fileSystemRepresentation(path);
+    auto blobPath = WebCore::FileSystem::fileSystemRepresentation(blobPathForHash(hash));
+    auto linkPath = WebCore::FileSystem::fileSystemRepresentation(path);
     unlink(linkPath.data());
 
     bool blobExists = access(blobPath.data(), F_OK) != -1;
@@ -115,13 +118,16 @@ BlobStorage::Blob BlobStorage::add(const String& path, const Data& data)
     m_approximateSize += mappedData.size();
 
     return { mappedData, hash };
+#else
+    return { Data(), computeSHA1(data, m_salt) };
+#endif
 }
 
 BlobStorage::Blob BlobStorage::get(const String& path)
 {
     ASSERT(!RunLoop::isMain());
 
-    auto linkPath = WebCore::fileSystemRepresentation(path);
+    auto linkPath = WebCore::FileSystem::fileSystemRepresentation(path);
     auto data = mapFile(linkPath.data());
 
     return { data, computeSHA1(data, m_salt) };
@@ -131,7 +137,7 @@ void BlobStorage::remove(const String& path)
 {
     ASSERT(!RunLoop::isMain());
 
-    auto linkPath = WebCore::fileSystemRepresentation(path);
+    auto linkPath = WebCore::FileSystem::fileSystemRepresentation(path);
     unlink(linkPath.data());
 }
 
@@ -139,7 +145,7 @@ unsigned BlobStorage::shareCount(const String& path)
 {
     ASSERT(!RunLoop::isMain());
 
-    auto linkPath = WebCore::fileSystemRepresentation(path);
+    auto linkPath = WebCore::FileSystem::fileSystemRepresentation(path);
     struct stat stat;
     if (::stat(linkPath.data(), &stat) < 0)
         return 0;
@@ -149,5 +155,3 @@ unsigned BlobStorage::shareCount(const String& path)
 
 }
 }
-
-#endif

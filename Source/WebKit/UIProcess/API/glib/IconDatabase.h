@@ -33,11 +33,11 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/RunLoop.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
-class Image;
 class SharedBuffer;
 }
 
@@ -50,19 +50,13 @@ public:
     virtual void didImportIconURLForPageURL(const String&) { }
     virtual void didImportIconDataForPageURL(const String&) { }
     virtual void didChangeIconForPageURL(const String&) { }
-    virtual void didRemoveAllIcons() { }
     virtual void didFinishURLImport() { }
-    virtual void didClose() { }
 };
 
 class IconDatabase {
     WTF_MAKE_FAST_ALLOCATED;
 
 private:
-    enum ImageDataStatus {
-        ImageDataStatusPresent, ImageDataStatusMissing, ImageDataStatusUnknown
-    };
-
     class IconSnapshot {
     public:
         IconSnapshot() = default;
@@ -95,11 +89,9 @@ private:
         void setTimestamp(time_t stamp) { m_stamp = stamp; }
 
         void setImageData(RefPtr<WebCore::SharedBuffer>&&);
-        WebCore::Image* image(const WebCore::IntSize&);
+        WebCore::NativeImagePtr image(const WebCore::IntSize&);
 
         String iconURL() { return m_iconURL; }
-
-        void loadImageFromResource(const char*);
 
         enum class ImageDataStatus { Present, Missing, Unknown };
         ImageDataStatus imageDataStatus();
@@ -113,7 +105,8 @@ private:
 
         String m_iconURL;
         time_t m_stamp { 0 };
-        RefPtr<WebCore::Image> m_image;
+        RefPtr<WebCore::SharedBuffer> m_imageData;
+        WebCore::NativeImagePtr m_image;
 
         HashSet<String> m_retainingPageURLs;
 
@@ -178,6 +171,65 @@ private:
         int m_retainCount { 0 };
     };
 
+    class MainThreadNotifier {
+    public:
+        MainThreadNotifier()
+            : m_timer(RunLoop::main(), this, &MainThreadNotifier::timerFired)
+        {
+            m_timer.setPriority(RunLoopSourcePriority::MainThreadDispatcherTimer);
+        }
+
+        void setActive(bool active)
+        {
+            m_isActive.store(active);
+        }
+
+        void notify(Function<void()>&& notification)
+        {
+            if (!m_isActive.load())
+                return;
+
+            {
+                LockHolder locker(m_notificationQueueLock);
+                m_notificationQueue.append(WTFMove(notification));
+            }
+
+            if (!m_timer.isActive())
+                m_timer.startOneShot(0_s);
+        }
+
+        void stop()
+        {
+            setActive(false);
+            m_timer.stop();
+            LockHolder locker(m_notificationQueueLock);
+            m_notificationQueue.clear();
+        }
+
+    private:
+        void timerFired()
+        {
+            Deque<Function<void()>> notificationQueue;
+            {
+                LockHolder locker(m_notificationQueueLock);
+                notificationQueue = WTFMove(m_notificationQueue);
+            }
+
+            if (!m_isActive.load())
+                return;
+
+            while (!notificationQueue.isEmpty()) {
+                auto function = notificationQueue.takeFirst();
+                function();
+            }
+        }
+
+        Deque<Function<void()>> m_notificationQueue;
+        Lock m_notificationQueueLock;
+        Atomic<bool> m_isActive;
+        RunLoop::Timer<MainThreadNotifier> m_timer;
+    };
+
 // *** Main Thread Only ***
 public:
     IconDatabase();
@@ -197,7 +249,8 @@ public:
     void setIconDataForIconURL(RefPtr<WebCore::SharedBuffer>&&, const String& iconURL);
     void setIconURLForPageURL(const String& iconURL, const String& pageURL);
 
-    WebCore::Image* synchronousIconForPageURL(const String&, const WebCore::IntSize&);
+    enum class IsKnownIcon { No, Yes };
+    std::pair<WebCore::NativeImagePtr, IsKnownIcon> synchronousIconForPageURL(const String&, const WebCore::IntSize&);
     String synchronousIconURLForPageURL(const String&);
     bool synchronousIconDataKnownForIconURL(const String&);
     IconLoadDecision synchronousLoadDecisionForIconURL(const String&);
@@ -232,7 +285,7 @@ private:
     Ref<IconRecord> getOrCreateIconRecord(const String& iconURL);
     PageURLRecord* getOrCreatePageURLRecord(const String& pageURL);
 
-    bool m_isEnabled {false };
+    bool m_isEnabled { false };
     bool m_privateBrowsingEnabled { false };
 
     mutable Lock m_syncLock;
@@ -292,9 +345,6 @@ private:
     void performRetainIconForPageURL(const String&, int retainCount);
     void performReleaseIconForPageURL(const String&, int releaseCount);
 
-    bool isOpenBesidesMainThreadCallbacks() const;
-    void checkClosedAfterMainThreadCallback();
-
     bool m_initialPruningComplete { false };
 
     void setIconURLForPageURLInSQLDatabase(const String&, const String&);
@@ -311,9 +361,7 @@ private:
     // Methods to dispatch client callbacks on the main thread
     void dispatchDidImportIconURLForPageURLOnMainThread(const String&);
     void dispatchDidImportIconDataForPageURLOnMainThread(const String&);
-    void dispatchDidRemoveAllIconsOnMainThread();
     void dispatchDidFinishURLImportOnMainThread();
-    std::atomic<uint32_t> m_mainThreadCallbackCount;
 
     // The client is set by the main thread before the thread starts, and from then on is only used by the sync thread
     std::unique_ptr<IconDatabaseClient> m_client;
@@ -334,6 +382,8 @@ private:
     std::unique_ptr<WebCore::SQLiteStatement> m_updateIconDataStatement;
     std::unique_ptr<WebCore::SQLiteStatement> m_setIconInfoStatement;
     std::unique_ptr<WebCore::SQLiteStatement> m_setIconDataStatement;
+
+    MainThreadNotifier m_mainThreadNotifier;
 };
 
 } // namespace WebKit

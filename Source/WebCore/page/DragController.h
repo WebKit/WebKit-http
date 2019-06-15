@@ -47,6 +47,7 @@ class PlatformMouseEvent;
 
 struct DragItem;
 struct DragState;
+struct PromisedAttachmentInfo;
 
     class DragController {
         WTF_MAKE_NONCOPYABLE(DragController); WTF_MAKE_FAST_ALLOCATED;
@@ -74,9 +75,6 @@ struct DragState;
         bool didInitiateDrag() const { return m_didInitiateDrag; }
         DragOperation sourceDragOperation() const { return m_sourceDragOperation; }
         const URL& draggingImageURL() const { return m_draggingImageURL; }
-#if ENABLE(ATTACHMENT_ELEMENT)
-        const URL& draggingAttachmentURL() const { return m_draggingAttachmentURL; }
-#endif
         void setDragOffset(const IntPoint& offset) { m_dragOffset = offset; }
         const IntPoint& dragOffset() const { return m_dragOffset; }
         DragSourceAction dragSourceAction() const { return m_dragSourceAction; }
@@ -91,7 +89,7 @@ struct DragState;
         
         WEBCORE_EXPORT void placeDragCaret(const IntPoint&);
         
-        bool startDrag(Frame& src, const DragState&, DragOperation srcOp, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin);
+        bool startDrag(Frame& src, const DragState&, DragOperation srcOp, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin, HasNonDefaultPasteboardData);
         static const IntSize& maxDragImageSize();
         
         static const int MaxOriginalImageArea;
@@ -116,8 +114,8 @@ struct DragState;
         void mouseMovedIntoDocument(Document*);
         bool shouldUseCachedImageForDragImage(const Image&) const;
 
-        void doImageDrag(Element&, const IntPoint&, const IntRect&, Frame&, IntPoint&, const DragState&);
-        void doSystemDrag(DragImage, const IntPoint&, const IntPoint&, Frame&, const DragState&);
+        void doImageDrag(Element&, const IntPoint&, const IntRect&, Frame&, IntPoint&, const DragState&, PromisedAttachmentInfo&&);
+        void doSystemDrag(DragImage, const IntPoint&, const IntPoint&, Frame&, const DragState&, PromisedAttachmentInfo&&);
 
         void beginDrag(DragItem, Frame&, const IntPoint& mouseDownPoint, const IntPoint& mouseDraggedPoint, DataTransfer&, DragSourceAction);
 
@@ -130,10 +128,13 @@ struct DragState;
 #endif
         }
 
+        String platformContentTypeForBlobType(const String& type) const;
+
         void cleanupAfterSystemDrag();
         void declareAndWriteDragImage(DataTransfer&, Element&, const URL&, const String& label);
+
 #if ENABLE(ATTACHMENT_ELEMENT)
-        void declareAndWriteAttachment(DataTransfer&, Element&, const URL&);
+        PromisedAttachmentInfo promisedAttachmentInfo(Frame&, Element&);
 #endif
         Page& m_page;
         DragClient& m_client;
@@ -151,9 +152,6 @@ struct DragState;
         IntPoint m_dragOffset;
         URL m_draggingImageURL;
         bool m_isPerformingDrop { false };
-#if ENABLE(ATTACHMENT_ELEMENT)
-        URL m_draggingAttachmentURL;
-#endif
     };
 
     WEBCORE_EXPORT bool isDraggableLink(const Element&);

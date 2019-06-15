@@ -10,31 +10,42 @@
 
 package org.webrtc;
 
+import javax.annotation.Nullable;
+
 /** Java wrapper for a C++ RtpSenderInterface. */
 public class RtpSender {
   final long nativeRtpSender;
 
-  private MediaStreamTrack cachedTrack;
+  @Nullable private MediaStreamTrack cachedTrack;
   private boolean ownsTrack = true;
 
-  private final DtmfSender dtmfSender;
+  private final @Nullable DtmfSender dtmfSender;
 
+  @CalledByNative
   public RtpSender(long nativeRtpSender) {
     this.nativeRtpSender = nativeRtpSender;
-    long track = nativeGetTrack(nativeRtpSender);
-    // It may be possible for an RtpSender to be created without a track.
-    cachedTrack = (track != 0) ? new MediaStreamTrack(track) : null;
+    long nativeTrack = nativeGetTrack(nativeRtpSender);
+    cachedTrack = MediaStreamTrack.createMediaStreamTrack(nativeTrack);
 
     long nativeDtmfSender = nativeGetDtmfSender(nativeRtpSender);
     dtmfSender = (nativeDtmfSender != 0) ? new DtmfSender(nativeDtmfSender) : null;
   }
 
-  // If |takeOwnership| is true, the RtpSender takes ownership of the track
-  // from the caller, and will auto-dispose of it when no longer needed.
-  // |takeOwnership| should only be used if the caller owns the track; it is
-  // not appropriate when the track is owned by, for example, another RtpSender
-  // or a MediaStream.
-  public boolean setTrack(MediaStreamTrack track, boolean takeOwnership) {
+  /**
+   * Starts sending a new track, without requiring additional SDP negotiation.
+   * <p>
+   * Note: This is equivalent to replaceTrack in the official WebRTC API. It
+   * was just implemented before the standards group settled on a name.
+   *
+   * @param takeOwnership If true, the RtpSender takes ownership of the track
+   *                      from the caller, and will auto-dispose of it when no
+   *                      longer needed. |takeOwnership| should only be used if
+   *                      the caller owns the track; it is not appropriate when
+   *                      the track is owned by, for example, another RtpSender
+   *                      or a MediaStream.
+   * @return              true on success and false on failure.
+   */
+  public boolean setTrack(@Nullable MediaStreamTrack track, boolean takeOwnership) {
     if (!nativeSetTrack(nativeRtpSender, (track == null) ? 0 : track.nativeTrack)) {
       return false;
     }
@@ -46,6 +57,7 @@ public class RtpSender {
     return true;
   }
 
+  @Nullable
   public MediaStreamTrack track() {
     return cachedTrack;
   }
@@ -59,9 +71,10 @@ public class RtpSender {
   }
 
   public String id() {
-    return nativeId(nativeRtpSender);
+    return nativeGetId(nativeRtpSender);
   }
 
+  @Nullable
   public DtmfSender dtmf() {
     return dtmfSender;
   }
@@ -73,24 +86,22 @@ public class RtpSender {
     if (cachedTrack != null && ownsTrack) {
       cachedTrack.dispose();
     }
-    free(nativeRtpSender);
+    JniCommon.nativeReleaseRef(nativeRtpSender);
   }
 
-  private static native boolean nativeSetTrack(long nativeRtpSender, long nativeTrack);
+  private static native boolean nativeSetTrack(long rtpSender, long nativeTrack);
 
   // This should increment the reference count of the track.
   // Will be released in dispose() or setTrack().
-  private static native long nativeGetTrack(long nativeRtpSender);
+  private static native long nativeGetTrack(long rtpSender);
 
   // This should increment the reference count of the DTMF sender.
   // Will be released in dispose().
-  private static native long nativeGetDtmfSender(long nativeRtpSender);
+  private static native long nativeGetDtmfSender(long rtpSender);
 
-  private static native boolean nativeSetParameters(long nativeRtpSender, RtpParameters parameters);
+  private static native boolean nativeSetParameters(long rtpSender, RtpParameters parameters);
 
-  private static native RtpParameters nativeGetParameters(long nativeRtpSender);
+  private static native RtpParameters nativeGetParameters(long rtpSender);
 
-  private static native String nativeId(long nativeRtpSender);
-
-  private static native void free(long nativeRtpSender);
+  private static native String nativeGetId(long rtpSender);
 };

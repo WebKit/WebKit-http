@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Object function is called with one argument value,
     and the value neither is null nor undefined, and is supplied, return ToObject(value)
 es5id: 15.2.1.1_A2_T5
@@ -12,7 +12,7 @@ description: Calling Object function with NaN argument value
 var num = NaN;
 
 // CHECK#1
-if(typeof num  !== 'number'){
+if (typeof num !== 'number') {
   $ERROR('#1: num = NaN should have number type');
 }
 
@@ -24,7 +24,7 @@ if (obj.constructor !== Number) {
 }
 
 //CHECK#3
-if (typeof obj!=="object") {
+if (typeof obj !== "object") {
   $ERROR('#2: Object(NaN) returns ToObject(NaN)');
 }
 //

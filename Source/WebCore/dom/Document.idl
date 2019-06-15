@@ -28,12 +28,14 @@ typedef (
 #if defined(ENABLE_WEBGPU) && ENABLE_WEBGPU
     WebGPURenderingContext or
 #endif
+    ImageBitmapRenderingContext or 
     CanvasRenderingContext2D) RenderingContext;
 
 [
     Constructor,
     ConstructorCallWith=Document,
     CustomToJSObject,
+    CustomHeapSnapshot,
     DOMJIT,
     ExportMacro=WEBCORE_EXPORT,
     JSCustomHeader,
@@ -81,16 +83,16 @@ typedef (
 
     // Extensions from HTML specification (https://html.spec.whatwg.org/#the-document-object).
     [PutForwards=href, Unforgeable] readonly attribute Location? location;
-    [SetterMayThrowException] attribute USVString domain;
+    attribute USVString domain;
     readonly attribute USVString referrer;
-    [GetterMayThrowException, SetterMayThrowException] attribute USVString cookie;
+    attribute USVString cookie;
     readonly attribute DOMString lastModified;
     readonly attribute DocumentReadyState readyState;
 
     // DOM tree accessors.
     [CEReactions] attribute DOMString title;
     [CEReactions] attribute DOMString dir;
-    [CEReactions, DOMJIT=Getter, ImplementedAs=bodyOrFrameset, SetterMayThrowException] attribute HTMLElement? body;
+    [CEReactions, DOMJIT=Getter, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
     readonly attribute HTMLHeadElement? head;
     readonly attribute HTMLCollection images; // Should be [SameObject].
     readonly attribute HTMLCollection embeds; // Should be [SameObject].
@@ -106,13 +108,13 @@ typedef (
     // that the caller document matches those semantics. It is possible we should replace it with
     // the existing 'incumbent document' concept.
     [CEReactions, CallWith=ResponsibleDocument, ImplementedAs=openForBindings, MayThrowException] Document open(optional DOMString type = "text/html", optional DOMString replace = "");
-    [CallWith=ActiveWindow&FirstWindow, ImplementedAs=openForBindings, MayThrowException] DOMWindow open(USVString url, DOMString name, DOMString features);
+    [CallWith=ActiveWindow&FirstWindow, ImplementedAs=openForBindings, MayThrowException] WindowProxy open(USVString url, DOMString name, DOMString features);
     [CEReactions, ImplementedAs=closeForBindings, MayThrowException] void close();
     [CEReactions, CallWith=ResponsibleDocument, MayThrowException] void write(DOMString... text);
     [CEReactions, CallWith=ResponsibleDocument, MayThrowException] void writeln(DOMString... text);
 
     // User interaction.
-    readonly attribute DOMWindow? defaultView;
+    [ImplementedAs=windowProxy] readonly attribute WindowProxy? defaultView;
     boolean hasFocus();
     [CEReactions] attribute DOMString designMode;
     [CEReactions] boolean execCommand(DOMString commandId, optional boolean showUI = false, optional DOMString? value = null); // FIXME: value should not be nullable.
@@ -130,7 +132,7 @@ typedef (
     readonly attribute StyleSheetList styleSheets; // FIXME: Should be [SameObject].
 
     // Extensions from the CSSOM-View specification (https://drafts.csswg.org/cssom-view/#extensions-to-the-document-interface).
-    readonly attribute Element? scrollingElement;
+    [ImplementedAs=scrollingElementForAPI] readonly attribute Element? scrollingElement;
 
     // Extensions from Selection API (https://www.w3.org/TR/selection-api/#extensions-to-document-interface).
     // FIXME: Should likely be moved to DocumentOrShadowRoot.
@@ -143,15 +145,15 @@ typedef (
 
     // Extensions from FullScreen API (https://fullscreen.spec.whatwg.org/#api).
     // FIXME: Should probably be unprefixed.
-    [Conditional=FULLSCREEN_API] readonly attribute boolean webkitFullscreenEnabled;
-    [Conditional=FULLSCREEN_API, ImplementedAs=webkitFullscreenElementForBindings] readonly attribute Element? webkitFullscreenElement;
-    [Conditional=FULLSCREEN_API] void webkitExitFullscreen();
-    [Conditional=FULLSCREEN_API] readonly attribute boolean webkitIsFullScreen; // Mozilla version.
-    [Conditional=FULLSCREEN_API] readonly attribute boolean webkitFullScreenKeyboardInputAllowed; // Mozilla version.
-    [Conditional=FULLSCREEN_API, ImplementedAs=webkitCurrentFullScreenElementForBindings] readonly attribute Element webkitCurrentFullScreenElement; // Mozilla version.
-    [Conditional=FULLSCREEN_API] void webkitCancelFullScreen(); // Mozilla version.
-    [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventHandler onwebkitfullscreenchange;
-    [NotEnumerable, Conditional=FULLSCREEN_API] attribute EventHandler onwebkitfullscreenerror;
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] readonly attribute boolean webkitFullscreenEnabled;
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen, ImplementedAs=webkitFullscreenElementForBindings] readonly attribute Element? webkitFullscreenElement;
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] void webkitExitFullscreen();
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] readonly attribute boolean webkitIsFullScreen; // Mozilla version.
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] readonly attribute boolean webkitFullScreenKeyboardInputAllowed; // Mozilla version.
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen, ImplementedAs=webkitCurrentFullScreenElementForBindings] readonly attribute Element webkitCurrentFullScreenElement; // Mozilla version.
+    [Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] void webkitCancelFullScreen(); // Mozilla version.
+    [NotEnumerable, Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] attribute EventHandler onwebkitfullscreenchange;
+    [NotEnumerable, Conditional=FULLSCREEN_API, EnabledBySetting=FullScreen] attribute EventHandler onwebkitfullscreenerror;
 
     // Extensions from Pointer Lock API (https://www.w3.org/TR/pointerlock/#extensions-to-the-document-interface).
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockchange; // FIXME: Should be enumerable.
@@ -167,13 +169,9 @@ typedef (
     readonly attribute VisibilityState visibilityState;
     attribute EventHandler onvisibilitychange;
 
-    // FIXME: Those were dropped from the CSSOM specification.
-    readonly attribute DOMString? preferredStylesheetSet;
-    attribute DOMString? selectedStylesheetSet;
-
     // FIXME: Those have been dropped from the DOM specification.
     readonly attribute DOMString? xmlEncoding;
-    [SetterMayThrowException] attribute DOMString? xmlVersion;
+    attribute DOMString? xmlVersion;
     attribute boolean xmlStandalone;
 
     // FIXME: Blink has already dropped this (https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/s3ezjTuC8ig).
@@ -189,9 +187,9 @@ typedef (
     // FIXME: This is not standard and has been dropped from Blink already.
     RenderingContext? getCSSCanvasContext(DOMString contextId, DOMString name, long width, long height);
 
-    // Non standard (https://developer.apple.com/reference/webkitjs/document/1633863-webkitgetnamedflows).
-    [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
-
+    // Non standard, to bring up with standards working group.
+    [EnabledBySetting=StorageAccessAPI] Promise<bool> hasStorageAccess();
+    [EnabledBySetting=StorageAccessAPI] Promise<void> requestStorageAccess();
 
     // Obsolete features from https://html.spec.whatwg.org/multipage/obsolete.html
 
@@ -209,10 +207,10 @@ typedef (
     void releaseEvents();
 
     [Replaceable] readonly attribute HTMLAllCollection all; /* [SameObject] */
-};
 
-// FIXME: Missing "unloaded" value (https://www.w3.org/TR/page-visibility/#sec-document-interface).
-enum VisibilityState { "hidden", "visible", "prerender" };
+    [EnabledAtRuntime=WebAnimations] readonly attribute DocumentTimeline timeline;
+    [EnabledAtRuntime=WebAnimations] sequence<WebAnimation> getAnimations();
+};
 
 enum DocumentReadyState { "loading", "interactive", "complete" };
 

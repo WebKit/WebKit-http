@@ -30,10 +30,6 @@
 
 namespace WebKit {
 
-PlatformPopupMenuData::PlatformPopupMenuData()
-{
-}
-
 void PlatformPopupMenuData::encode(IPC::Encoder& encoder) const
 {
 #if PLATFORM(COCOA)
@@ -43,6 +39,21 @@ void PlatformPopupMenuData::encode(IPC::Encoder& encoder) const
     encoder.encodeEnum(menuSize);
 #elif PLATFORM(QT)
     encoder << multipleSelections;
+#elif PLATFORM(WIN)
+    encoder << m_clientPaddingLeft;
+    encoder << m_clientPaddingRight;
+    encoder << m_clientInsetLeft;
+    encoder << m_clientInsetRight;
+    encoder << m_popupWidth;
+    encoder << m_itemHeight;
+
+    ShareableBitmap::Handle notSelectedBackingStoreHandle;
+    m_notSelectedBackingStore->createHandle(notSelectedBackingStoreHandle);
+    encoder << notSelectedBackingStoreHandle;
+
+    ShareableBitmap::Handle selectedBackingStoreHandle;
+    m_selectedBackingStore->createHandle(selectedBackingStoreHandle);
+    encoder << selectedBackingStoreHandle;
 #else
     UNUSED_PARAM(encoder);
 #endif
@@ -62,12 +73,43 @@ bool PlatformPopupMenuData::decode(IPC::Decoder& decoder, PlatformPopupMenuData&
 #elif PLATFORM(QT)
     if (!decoder.decode(data.multipleSelections))
         return false;
+#elif PLATFORM(WIN)
+    if (!decoder.decode(data.m_clientPaddingLeft))
+        return false;
+    if (!decoder.decode(data.m_clientPaddingRight))
+        return false;
+    if (!decoder.decode(data.m_clientInsetLeft))
+        return false;
+    if (!decoder.decode(data.m_clientInsetRight))
+        return false;
+    if (!decoder.decode(data.m_popupWidth))
+        return false;
+    if (!decoder.decode(data.m_itemHeight))
+        return false;
+
+    ShareableBitmap::Handle notSelectedBackingStoreHandle;
+    if (!decoder.decode(notSelectedBackingStoreHandle))
+        return false;
+    data.m_notSelectedBackingStore = ShareableBitmap::create(notSelectedBackingStoreHandle);
+
+    ShareableBitmap::Handle selectedBackingStoreHandle;
+    if (!decoder.decode(selectedBackingStoreHandle))
+        return false;
+    data.m_selectedBackingStore = ShareableBitmap::create(selectedBackingStoreHandle);
 #else
     UNUSED_PARAM(decoder);
     UNUSED_PARAM(data);
 #endif
-
+    
     return true;
+}
+
+std::optional<PlatformPopupMenuData> PlatformPopupMenuData::decode(IPC::Decoder& decoder)
+{
+    PlatformPopupMenuData data;
+    if (!decode(decoder, data))
+        return std::nullopt;
+    return data;
 }
 
 } // namespace WebKit

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,13 +84,11 @@ private:
     void startProducingData() final;
     void stopProducingData() final;
 
-    bool applyVolume(double) final { return true; }
-    bool applySampleRate(int) final;
-    bool applyEchoCancellation(bool) final;
+    std::optional<Vector<int>> discreteSampleRates() const final { return { { 8000, 16000, 32000, 44100, 48000, 96000 } }; }
 
     const RealtimeMediaSourceCapabilities& capabilities() const final;
     const RealtimeMediaSourceSettings& settings() const final;
-    void settingsDidChange() final;
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
 
     bool interrupted() const final;
 
@@ -108,6 +106,29 @@ private:
     bool m_reconfigurationRequired { false };
     bool m_suspendPending { false };
     bool m_resumePending { false };
+};
+
+class CoreAudioCaptureSourceFactory : public RealtimeMediaSource::AudioCaptureFactory {
+public:
+    static CoreAudioCaptureSourceFactory& singleton();
+
+    void beginInterruption();
+    void endInterruption();
+    void scheduleReconfiguration();
+
+#if PLATFORM(IOS)
+    void setCoreAudioActiveSource(CoreAudioCaptureSource& source) { setActiveSource(source); }
+    void unsetCoreAudioActiveSource(CoreAudioCaptureSource& source) { unsetActiveSource(source); }
+    CoreAudioCaptureSource* coreAudioActiveSource() { return static_cast<CoreAudioCaptureSource*>(activeSource()); }
+#else
+    CoreAudioCaptureSource* coreAudioActiveSource() { return nullptr; }
+#endif
+
+private:
+    CaptureSourceOrError createAudioCaptureSource(const CaptureDevice& device, const MediaConstraints* constraints) final
+    {
+        return CoreAudioCaptureSource::create(device.persistentId(), constraints);
+    }
 };
 
 } // namespace WebCore

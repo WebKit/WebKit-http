@@ -8,15 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_CNG_WEBRTC_CNG_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_CNG_WEBRTC_CNG_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_CNG_WEBRTC_CNG_H_
+#define MODULES_AUDIO_CODING_CODECS_CNG_WEBRTC_CNG_H_
 
 #include <cstddef>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/typedefs.h"
+#include "api/array_view.h"
+#include "rtc_base/buffer.h"
 
 #define WEBRTC_CNG_MAX_LPC_ORDER 12
 
@@ -54,8 +52,8 @@ class ComfortNoiseDecoder {
   int16_t dec_filtstate_[WEBRTC_CNG_MAX_LPC_ORDER + 1];
   int16_t dec_filtstateLow_[WEBRTC_CNG_MAX_LPC_ORDER + 1];
   uint16_t dec_order_;
-  int16_t dec_target_scale_factor_;  /* Q29 */
-  int16_t dec_used_scale_factor_;  /* Q29 */
+  int16_t dec_target_scale_factor_; /* Q29 */
+  int16_t dec_used_scale_factor_;   /* Q29 */
 };
 
 class ComfortNoiseEncoder {
@@ -96,4 +94,4 @@ class ComfortNoiseEncoder {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_CODECS_CNG_WEBRTC_CNG_H_
+#endif  // MODULES_AUDIO_CODING_CODECS_CNG_WEBRTC_CNG_H_

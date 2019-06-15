@@ -27,8 +27,8 @@
 #include "AudioDSPKernel.h"
 #include "AudioDSPKernelProcessor.h"
 #include "AudioNode.h"
+#include <JavaScriptCore/Float32Array.h>
 #include <memory>
-#include <runtime/Float32Array.h>
 #include <wtf/Lock.h>
 #include <wtf/RefPtr.h>
 
@@ -36,7 +36,7 @@ namespace WebCore {
 
 // WaveShaperProcessor is an AudioDSPKernelProcessor which uses WaveShaperDSPKernel objects to implement non-linear distortion effects.
 
-class WaveShaperProcessor : public AudioDSPKernelProcessor {
+class WaveShaperProcessor final : public AudioDSPKernelProcessor {
 public:
     enum OverSampleType {
         OverSampleNone,

@@ -184,6 +184,28 @@
              </dict>
              <dict>
                  <key>Name</key>
+                 <string>Record display list</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
+                 <string>5023</string>
+                 <key>CodeEnd</key>
+                 <string>5024</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Display Refresh Dispatch to main thread</string>
+                 <key>Type</key>
+                 <string>Impulse</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>Code</key>
+                 <string>5026</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
                  <string>Paint WebHTMLView</string>
                  <key>Type</key>
                  <string>Interval</string>
@@ -244,6 +266,18 @@
              </dict>
              <dict>
                  <key>Name</key>
+                 <string>Initialize Web Process</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
+                 <string>12009</string>
+                 <key>CodeEnd</key>
+                 <string>12010</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
                  <string>Commit RemoteLayerTree transaction</string>
                  <key>Type</key>
                  <string>Interval</string>
@@ -253,6 +287,30 @@
                  <string>14001</string>
                  <key>CodeEnd</key>
                  <string>14002</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Process Launch</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
+                 <string>14003</string>
+                 <key>CodeEnd</key>
+                 <string>14004</string>
+             </dict>
+             <dict>
+                 <key>Name</key>
+                 <string>Initialize Sandbox</string>
+                 <key>Type</key>
+                 <string>Interval</string>
+                 <key>Component</key>
+                 <string>47</string>
+                 <key>CodeBegin</key>
+                 <string>14005</string>
+                 <key>CodeEnd</key>
+                 <string>14006</string>
              </dict>
          </array>
      </dict>

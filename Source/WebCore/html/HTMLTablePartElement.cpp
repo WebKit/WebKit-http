@@ -33,8 +33,11 @@
 #include "HTMLParserIdioms.h"
 #include "HTMLTableElement.h"
 #include "StyleProperties.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLTablePartElement);
 
 using namespace HTMLNames;
 
@@ -82,12 +85,12 @@ void HTMLTablePartElement::collectStyleForPresentationAttribute(const QualifiedN
         HTMLElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-HTMLTableElement* HTMLTablePartElement::findParentTable() const
+RefPtr<HTMLTableElement> HTMLTablePartElement::findParentTable() const
 {
-    ContainerNode* parent = parentNode();
+    RefPtr<ContainerNode> parent = parentNode();
     while (parent && !is<HTMLTableElement>(*parent))
         parent = parent->parentNode();
-    return downcast<HTMLTableElement>(parent);
+    return downcast<HTMLTableElement>(parent.get());
 }
 
 }

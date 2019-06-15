@@ -2,12 +2,17 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-literals-regular-expression-literals-static-semantics-early-errors
-es6id: 11.8.5.1
-description: >
-  RegularExpressionFlags :: RegularExpressionFlags IdentifierPart
+info: |
+  RegularExpressionFlags ::
+    RegularExpressionFlags IdentifierPart
 
-  - It is a Syntax Error if IdentifierPart contains a Unicode escape sequence.
-negative: SyntaxError
+description: >
+  It is a Syntax Error if IdentifierPart contains a Unicode escape sequence.
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 /./\u0067;

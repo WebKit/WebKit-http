@@ -45,7 +45,7 @@
 
 namespace WebCore {
 
-class AudioFileReader {
+class AudioFileReader : public CanMakeWeakPtr<AudioFileReader> {
     WTF_MAKE_NONCOPYABLE(AudioFileReader);
 public:
     AudioFileReader(const char* filePath);
@@ -55,8 +55,6 @@ public:
     RefPtr<AudioBus> createBus(float sampleRate, bool mixToMono);
 
 private:
-    WeakPtr<AudioFileReader> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
     static void deinterleavePadAddedCallback(AudioFileReader*, GstPad*);
     static void deinterleaveReadyCallback(AudioFileReader*);
     static void decodebinPadAddedCallback(AudioFileReader*, GstPad*);
@@ -68,7 +66,6 @@ private:
     void decodeAudioForBusCreation();
     GstFlowReturn handleSample(GstAppSink*);
 
-    WeakPtrFactory<AudioFileReader> m_weakPtrFactory;
     RunLoop& m_runLoop;
     const void* m_data { nullptr };
     size_t m_dataSize { 0 };
@@ -115,15 +112,13 @@ void AudioFileReader::decodebinPadAddedCallback(AudioFileReader* reader, GstPad*
 }
 
 AudioFileReader::AudioFileReader(const char* filePath)
-    : m_weakPtrFactory(this)
-    , m_runLoop(RunLoop::current())
+    : m_runLoop(RunLoop::current())
     , m_filePath(filePath)
 {
 }
 
 AudioFileReader::AudioFileReader(const void* data, size_t dataSize)
-    : m_weakPtrFactory(this)
-    , m_runLoop(RunLoop::current())
+    : m_runLoop(RunLoop::current())
     , m_data(data)
     , m_dataSize(dataSize)
 {
@@ -310,7 +305,7 @@ void AudioFileReader::decodeAudioForBusCreation()
             reader.handleMessage(message);
         else {
             GRefPtr<GstMessage> protectMessage(message);
-            auto weakThis = reader.createWeakPtr();
+            auto weakThis = makeWeakPtr(reader);
             reader.m_runLoop.dispatch([weakThis, protectMessage] {
                 if (weakThis)
                     weakThis->handleMessage(protectMessage.get());

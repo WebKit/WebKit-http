@@ -46,6 +46,8 @@
 
 namespace WebCore {
 
+namespace FileSystem {
+
 String homeDirectoryPath()
 {
     return NSHomeDirectory();
@@ -87,7 +89,11 @@ bool moveFile(const String& oldPath, const String& newPath)
     auto delegate = adoptNS([[WebFileManagerDelegate alloc] init]);
     [manager setDelegate:delegate.get()];
     
-    return [manager moveItemAtURL:[NSURL fileURLWithPath:oldPath] toURL:[NSURL fileURLWithPath:newPath] error:nil];
+    NSError *error = nil;
+    bool success = [manager moveItemAtURL:[NSURL fileURLWithPath:oldPath] toURL:[NSURL fileURLWithPath:newPath] error:&error];
+    if (!success)
+        NSLog(@"Error in moveFile: %@", error);
+    return success;
 }
 
 bool getVolumeFreeSpace(const String& path, uint64_t& freeSpace)
@@ -99,4 +105,39 @@ bool getVolumeFreeSpace(const String& path, uint64_t& freeSpace)
     return true;
 }
 
+NSString *createTemporaryDirectory(NSString *directoryPrefix)
+{
+    NSString *tempDirectory = NSTemporaryDirectory();
+    if (!tempDirectory || ![tempDirectory length])
+        return nil;
+
+    if (!directoryPrefix || ![directoryPrefix length])
+        return nil;
+
+    NSString *tempDirectoryComponent = [directoryPrefix stringByAppendingString:@"-XXXXXXXX"];
+    const char* tempDirectoryCString = [[tempDirectory stringByAppendingPathComponent:tempDirectoryComponent] fileSystemRepresentation];
+    if (!tempDirectoryCString)
+        return nil;
+
+    const size_t length = strlen(tempDirectoryCString);
+    ASSERT(length <= MAXPATHLEN);
+    if (length > MAXPATHLEN)
+        return nil;
+
+    const size_t lengthPlusNullTerminator = length + 1;
+    Vector<char, MAXPATHLEN + 1> path(lengthPlusNullTerminator);
+    memcpy(path.data(), tempDirectoryCString, lengthPlusNullTerminator);
+
+    if (!mkdtemp(path.data()))
+        return nil;
+
+    return [[NSFileManager defaultManager] stringWithFileSystemRepresentation:path.data() length:length];
+}
+
+bool deleteNonEmptyDirectory(const String& path)
+{
+    return [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
+}
+
+} // namespace FileSystem
 } // namespace WebCore

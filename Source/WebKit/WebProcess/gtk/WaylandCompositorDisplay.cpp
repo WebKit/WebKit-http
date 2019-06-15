@@ -28,25 +28,29 @@
 
 #if PLATFORM(WAYLAND)
 
-#include "WebKit2WaylandClientProtocol.h"
+#include "WebKitWaylandClientProtocol.h"
 #include "WebPage.h"
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 std::unique_ptr<WaylandCompositorDisplay> WaylandCompositorDisplay::create(const String& displayName)
 {
     if (displayName.isNull())
         return nullptr;
 
+    if (PlatformDisplay::sharedDisplay().type() != PlatformDisplay::Type::Wayland)
+        return nullptr;
+
     struct wl_display* display = wl_display_connect(displayName.utf8().data());
     if (!display) {
-        WTFLogAlways("PlatformDisplayWayland initialization: failed to connect to the Wayland display: %s", displayName.utf8().data());
+        WTFLogAlways("WaylandCompositorDisplay initialization: failed to connect to the Wayland display: %s", displayName.utf8().data());
         return nullptr;
     }
 
-    return std::unique_ptr<WaylandCompositorDisplay>(new WaylandCompositorDisplay(display));
+    auto compositorDisplay = std::unique_ptr<WaylandCompositorDisplay>(new WaylandCompositorDisplay(display));
+    compositorDisplay->initialize();
+    return compositorDisplay;
 }
 
 void WaylandCompositorDisplay::bindSurfaceToPage(struct wl_surface* surface, WebPage& page)
@@ -59,8 +63,8 @@ void WaylandCompositorDisplay::bindSurfaceToPage(struct wl_surface* surface, Web
 }
 
 WaylandCompositorDisplay::WaylandCompositorDisplay(struct wl_display* display)
+    : PlatformDisplayWayland(display, NativeDisplayOwned::Yes)
 {
-    initialize(display);
     PlatformDisplay::setSharedDisplayForCompositing(*this);
 }
 

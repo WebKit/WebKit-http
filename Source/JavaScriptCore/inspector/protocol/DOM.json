@@ -1,7 +1,7 @@
 {
     "domain": "DOM",
     "description": "This domain exposes DOM read/write operations. Each DOM Node is represented with its mirror object that has an <code>id</code>. This <code>id</code> can be used to get additional information on the Node, resolve it into the JavaScript object wrapper, etc. It is important that client receives DOM events only for the nodes that are known to the client. Backend keeps track of the nodes that were sent to the client and never sends the same node twice. It is client's responsibility to collect information about the nodes that were sent to the client.<p>Note that <code>iframe</code> owner elements will return corresponding document elements as their child nodes.</p>",
-    "availability": "web",
+    "availability": ["web"],
     "types": [
         {
             "id": "NodeId",
@@ -12,6 +12,11 @@
             "id": "BackendNodeId",
             "type": "integer",
             "description": "Unique DOM node identifier used to reference a node that may not have been pushed to the front-end."
+        },
+        {
+            "id": "EventListenerId",
+            "type": "integer",
+            "description": "Unique event listener identifier."
         },
         {
             "id": "PseudoType",
@@ -74,6 +79,7 @@
             "type": "object",
             "description": "A structure holding event listener properties.",
             "properties": [
+                { "name": "eventListenerId", "$ref": "EventListenerId" },
                 { "name": "type", "type": "string", "description": "<code>EventListener</code>'s type." },
                 { "name": "useCapture", "type": "boolean", "description": "<code>EventListener</code>'s useCapture." },
                 { "name": "isAttribute", "type": "boolean", "description": "<code>EventListener</code>'s isAttribute." },
@@ -83,7 +89,9 @@
                 { "name": "sourceName", "type": "string", "optional": true, "description": "Source script URL." },
                 { "name": "handler", "$ref": "Runtime.RemoteObject", "optional": true, "description": "Event handler function value." },
                 { "name": "passive", "type": "boolean", "optional": true, "description": "<code>EventListener</code>'s passive." },
-                { "name": "once", "type": "boolean", "optional": true, "description": "<code>EventListener</code>'s once." }
+                { "name": "once", "type": "boolean", "optional": true, "description": "<code>EventListener</code>'s once." },
+                { "name": "disabled", "type": "boolean", "optional": true },
+                { "name": "hasBreakpoint", "type": "boolean", "optional": true }
             ]
         },
         {
@@ -248,6 +256,13 @@
             ]
         },
         {
+            "name": "getSupportedEventNames",
+            "description": "Gets the list of builtin DOM event names.",
+            "returns": [
+                { "name": "eventNames", "type": "array", "items": { "type": "string" } }
+            ]
+        },
+        {
             "name": "getEventListenersForNode",
             "description": "Returns event listeners relevant to the node.",
             "parameters": [
@@ -256,6 +271,28 @@
             ],
             "returns": [
                 { "name": "listeners", "type": "array", "items": { "$ref": "EventListener"}, "description": "Array of relevant listeners." }
+            ]
+        },
+        {
+            "name": "setEventListenerDisabled",
+            "description": "Enable/disable the given event listener. A disabled event listener will not fire.",
+            "parameters": [
+                { "name": "eventListenerId", "$ref": "EventListenerId" },
+                { "name": "disabled", "type": "boolean" }
+            ]
+        },
+        {
+            "name": "setBreakpointForEventListener",
+            "description": "Set a breakpoint on the given event listener.",
+            "parameters": [
+                { "name": "eventListenerId", "$ref": "EventListenerId" }
+            ]
+        },
+        {
+            "name": "removeBreakpointForEventListener",
+            "description": "Remove any breakpoints on the given event listener.",
+            "parameters": [
+                { "name": "eventListenerId", "$ref": "EventListenerId" }
             ]
         },
         {
@@ -284,6 +321,14 @@
             "parameters": [
                 { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to set markup for." },
                 { "name": "outerHTML", "type": "string", "description": "Outer HTML markup to set." }
+            ]
+        },
+        {
+            "name": "insertAdjacentHTML",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId" },
+                { "name": "position", "type": "string" },
+                { "name": "html", "type": "string" }
             ]
         },
         {
@@ -475,12 +520,26 @@
             "parameters": [
                 { "name": "nodeId", "$ref": "NodeId", "description": "Id of the node to focus." }
             ]
+        },
+        {
+            "name": "setInspectedNode",
+            "description": "Enables console to refer to the node with given id via $0 (see Command Line API for more details).",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId", "description": "DOM node id to be accessible by means of $0 command line API." }
+            ]
         }
     ],
     "events": [
         {
             "name": "documentUpdated",
             "description": "Fired when <code>Document</code> has been totally updated. Node ids are no longer valid."
+        },
+        {
+            "name": "inspect",
+            "description": "Inspect a particular node.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId", "description": "Equivalent of Inspector.inspect but with a nodeId instead of a RemoteObject. Useful for augmented contexts." }
+            ]
         },
         {
             "name": "setChildNodes",
@@ -585,6 +644,20 @@
             "parameters": [
                 { "name": "parentId", "$ref": "NodeId", "description": "Pseudo element's parent element id." },
                 { "name": "pseudoElementId", "$ref": "NodeId", "description": "The removed pseudo element id." }
+            ]
+        },
+        {
+            "name": "didAddEventListener",
+            "description": "Called when an event listener is added to a node.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId" }
+            ]
+        },
+        {
+            "name": "willRemoveEventListener",
+            "description": "Called after a request has been made to remove an event listener from a node.",
+            "parameters": [
+                { "name": "nodeId", "$ref": "NodeId" }
             ]
         }
     ]

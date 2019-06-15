@@ -23,6 +23,7 @@
 #include "Operations.h"
 
 #include "Error.h"
+#include "JSBigInt.h"
 #include "JSCInlines.h"
 #include "JSObject.h"
 #include "JSString.h"
@@ -64,10 +65,19 @@ NEVER_INLINE JSValue jsAddSlowCase(CallFrame* callFrame, JSValue v1, JSValue v2)
         return jsString(callFrame, p1String, asString(p2));
     }
 
-    double p1Number = p1.toNumber(callFrame);
+    auto leftNumeric = p1.toNumeric(callFrame);
     RETURN_IF_EXCEPTION(scope, { });
-    scope.release();
-    return jsNumber(p1Number + p2.toNumber(callFrame));
+    auto rightNumeric = p2.toNumeric(callFrame);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    if (WTF::holds_alternative<JSBigInt*>(leftNumeric) || WTF::holds_alternative<JSBigInt*>(rightNumeric)) {
+        if (WTF::holds_alternative<JSBigInt*>(leftNumeric) && WTF::holds_alternative<JSBigInt*>(rightNumeric))
+            return JSBigInt::add(vm, WTF::get<JSBigInt*>(leftNumeric), WTF::get<JSBigInt*>(rightNumeric));
+
+        return throwTypeError(callFrame, scope, "Invalid mix of BigInt and other type in addition."_s);
+    }
+
+    return jsNumber(WTF::get<double>(leftNumeric) + WTF::get<double>(rightNumeric));
 }
 
 JSValue jsTypeStringForValue(VM& vm, JSGlobalObject* globalObject, JSValue v)
@@ -82,20 +92,16 @@ JSValue jsTypeStringForValue(VM& vm, JSGlobalObject* globalObject, JSValue v)
         return vm.smallStrings.stringString();
     if (v.isSymbol())
         return vm.smallStrings.symbolString();
+    if (v.isBigInt())
+        return vm.smallStrings.bigintString();
     if (v.isObject()) {
         JSObject* object = asObject(v);
         // Return "undefined" for objects that should be treated
         // as null when doing comparisons.
         if (object->structure(vm)->masqueradesAsUndefined(globalObject))
             return vm.smallStrings.undefinedString();
-        if (object->type() == JSFunctionType)
+        if (object->isFunction(vm))
             return vm.smallStrings.functionString();
-        if (object->inlineTypeFlags() & TypeOfShouldCallGetCallData) {
-            CallData callData;
-            JSObject* object = asObject(v);
-            if (object->methodTable(vm)->getCallData(object, callData) != CallType::None)
-                return vm.smallStrings.functionString();
-        }
     }
     return vm.smallStrings.objectString();
 }
@@ -112,47 +118,42 @@ bool jsIsObjectTypeOrNull(CallFrame* callFrame, JSValue v)
         return v.isNull();
 
     JSType type = v.asCell()->type();
-    if (type == StringType || type == SymbolType)
+    if (type == StringType || type == SymbolType || type == BigIntType)
         return false;
     if (type >= ObjectType) {
         if (asObject(v)->structure(vm)->masqueradesAsUndefined(callFrame->lexicalGlobalObject()))
             return false;
-        CallData callData;
         JSObject* object = asObject(v);
-        if (object->methodTable(vm)->getCallData(object, callData) != CallType::None)
+        if (object->isFunction(vm))
             return false;
     }
     return true;
 }
 
-bool jsIsFunctionType(JSValue v)
-{
-    if (v.isObject()) {
-        CallData callData;
-        JSObject* object = asObject(v);
-        if (object->methodTable()->getCallData(object, callData) != CallType::None)
-            return true;
-    }
-    return false;
-}
-
-size_t normalizePrototypeChain(CallFrame* callFrame, Structure* structure)
+size_t normalizePrototypeChain(CallFrame* callFrame, JSCell* base, bool& sawPolyProto)
 {
     VM& vm = callFrame->vm();
     size_t count = 0;
+    sawPolyProto = false;
+    JSCell* current = base;
+    JSGlobalObject* globalObject = callFrame->lexicalGlobalObject();
     while (1) {
+        Structure* structure = current->structure(vm);
         if (structure->isProxy())
             return InvalidPrototypeChain;
-        JSValue v = structure->prototypeForLookup(callFrame);
-        if (v.isNull())
+
+        sawPolyProto |= structure->hasPolyProto();
+
+        JSValue prototype = structure->prototypeForLookup(globalObject, current);
+        if (prototype.isNull())
             return count;
 
-        JSCell* base = v.asCell();
-        structure = base->structure(vm);
+        current = prototype.asCell();
+        structure = current->structure(vm);
         if (structure->isDictionary()) {
             if (structure->hasBeenFlattenedBefore())
                 return InvalidPrototypeChain;
-            structure->flattenDictionaryStructure(vm, asObject(base));
+            structure->flattenDictionaryStructure(vm, asObject(current));
         }
 
         ++count;

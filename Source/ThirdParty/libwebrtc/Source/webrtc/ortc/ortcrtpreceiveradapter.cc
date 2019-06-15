@@ -8,21 +8,23 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/ortc/ortcrtpreceiveradapter.h"
+#include "ortc/ortcrtpreceiveradapter.h"
 
+#include <string>
 #include <utility>
+#include <vector>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/helpers.h"  // For "CreateRandomX".
-#include "webrtc/media/base/mediaconstants.h"
-#include "webrtc/ortc/rtptransportadapter.h"
+#include "media/base/mediaconstants.h"
+#include "ortc/rtptransportadapter.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/helpers.h"  // For "CreateRandomX".
 
 namespace {
 
 void FillAudioReceiverParameters(webrtc::RtpParameters* parameters) {
   for (webrtc::RtpCodecParameters& codec : parameters->codecs) {
     if (!codec.num_channels) {
-      codec.num_channels = rtc::Optional<int>(1);
+      codec.num_channels = 1;
     }
   }
 }
@@ -30,7 +32,7 @@ void FillAudioReceiverParameters(webrtc::RtpParameters* parameters) {
 void FillVideoReceiverParameters(webrtc::RtpParameters* parameters) {
   for (webrtc::RtpCodecParameters& codec : parameters->codecs) {
     if (!codec.clock_rate) {
-      codec.clock_rate = rtc::Optional<int>(cricket::kVideoCodecClockrate);
+      codec.clock_rate = cricket::kVideoCodecClockrate;
     }
   }
 }
@@ -150,19 +152,30 @@ void OrtcRtpReceiverAdapter::MaybeRecreateInternalReceiver() {
   }
   internal_receiver_ = nullptr;
   switch (kind_) {
-    case cricket::MEDIA_TYPE_AUDIO:
-      internal_receiver_ =
-          new AudioRtpReceiver(rtc::CreateRandomUuid(), ssrc,
-                               rtp_transport_controller_->voice_channel());
+    case cricket::MEDIA_TYPE_AUDIO: {
+      auto* audio_receiver = new AudioRtpReceiver(
+          rtp_transport_controller_->worker_thread(), rtc::CreateRandomUuid(),
+          std::vector<std::string>({}));
+      auto* voice_channel = rtp_transport_controller_->voice_channel();
+      RTC_DCHECK(voice_channel);
+      audio_receiver->SetVoiceMediaChannel(voice_channel->media_channel());
+      internal_receiver_ = audio_receiver;
       break;
-    case cricket::MEDIA_TYPE_VIDEO:
-      internal_receiver_ = new VideoRtpReceiver(
-          rtc::CreateRandomUuid(), rtp_transport_controller_->worker_thread(),
-          ssrc, rtp_transport_controller_->video_channel());
+    }
+    case cricket::MEDIA_TYPE_VIDEO: {
+      auto* video_receiver = new VideoRtpReceiver(
+          rtp_transport_controller_->worker_thread(), rtc::CreateRandomUuid(),
+          std::vector<std::string>({}));
+      auto* video_channel = rtp_transport_controller_->video_channel();
+      RTC_DCHECK(video_channel);
+      video_receiver->SetVideoMediaChannel(video_channel->media_channel());
+      internal_receiver_ = video_receiver;
       break;
+    }
     case cricket::MEDIA_TYPE_DATA:
       RTC_NOTREACHED();
   }
+  internal_receiver_->SetupMediaChannel(ssrc);
 }
 
 }  // namespace webrtc

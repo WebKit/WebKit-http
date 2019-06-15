@@ -8,20 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CODING_UTILITY_MOVING_AVERAGE_H_
-#define WEBRTC_MODULES_VIDEO_CODING_UTILITY_MOVING_AVERAGE_H_
+#ifndef MODULES_VIDEO_CODING_UTILITY_MOVING_AVERAGE_H_
+#define MODULES_VIDEO_CODING_UTILITY_MOVING_AVERAGE_H_
 
 #include <vector>
 
-#include "webrtc/base/optional.h"
+#include "absl/types/optional.h"
 
 namespace webrtc {
 class MovingAverage {
  public:
   explicit MovingAverage(size_t s);
+  ~MovingAverage();
   void AddSample(int sample);
-  rtc::Optional<int> GetAverage() const;
-  rtc::Optional<int> GetAverage(size_t num_samples) const;
+  absl::optional<int> GetAverage() const;
+  absl::optional<int> GetAverage(size_t num_samples) const;
   void Reset();
   size_t size() const;
 
@@ -32,4 +33,4 @@ class MovingAverage {
 };
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_VIDEO_CODING_UTILITY_MOVING_AVERAGE_H_
+#endif  // MODULES_VIDEO_CODING_UTILITY_MOVING_AVERAGE_H_

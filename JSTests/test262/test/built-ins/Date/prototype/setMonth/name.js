@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.setmonth
 es6id: 20.3.4.25
 description: >
   Date.prototype.setMonth.name is "setMonth".
-info: >
+info: |
   Date.prototype.setMonth ( month [ , date ] )
 
   17 ECMAScript Standard Built-in Objects:

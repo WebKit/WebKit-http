@@ -8,21 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_AUDIO_MOCKS_MOCK_SMOOTHING_FILTER_H_
-#define WEBRTC_COMMON_AUDIO_MOCKS_MOCK_SMOOTHING_FILTER_H_
+#ifndef COMMON_AUDIO_MOCKS_MOCK_SMOOTHING_FILTER_H_
+#define COMMON_AUDIO_MOCKS_MOCK_SMOOTHING_FILTER_H_
 
-#include "webrtc/common_audio/smoothing_filter.h"
-#include "webrtc/test/gmock.h"
+#include "common_audio/smoothing_filter.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 
 class MockSmoothingFilter : public SmoothingFilter {
  public:
   MOCK_METHOD1(AddSample, void(float));
-  MOCK_METHOD0(GetAverage, rtc::Optional<float>());
+  MOCK_METHOD0(GetAverage, absl::optional<float>());
   MOCK_METHOD1(SetTimeConstantMs, bool(int));
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_AUDIO_MOCKS_MOCK_SMOOTHING_FILTER_H_
+#endif  // COMMON_AUDIO_MOCKS_MOCK_SMOOTHING_FILTER_H_

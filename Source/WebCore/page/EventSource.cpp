@@ -33,9 +33,9 @@
 #include "config.h"
 #include "EventSource.h"
 
+#include "CachedResourceRequestInitiators.h"
 #include "ContentSecurityPolicy.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "MessageEvent.h"
 #include "ResourceError.h"
 #include "ResourceRequest.h"
@@ -53,7 +53,7 @@ inline EventSource::EventSource(ScriptExecutionContext& context, const URL& url,
     : ActiveDOMObject(&context)
     , m_url(url)
     , m_withCredentials(eventSourceInit.withCredentials)
-    , m_decoder(TextResourceDecoder::create(ASCIILiteral("text/plain"), "UTF-8"))
+    , m_decoder(TextResourceDecoder::create("text/plain"_s, "UTF-8"))
     , m_connectTimer(*this, &EventSource::connect)
 {
 }
@@ -61,16 +61,16 @@ inline EventSource::EventSource(ScriptExecutionContext& context, const URL& url,
 ExceptionOr<Ref<EventSource>> EventSource::create(ScriptExecutionContext& context, const String& url, const Init& eventSourceInit)
 {
     if (url.isEmpty())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     URL fullURL = context.completeURL(url);
     if (!fullURL.isValid())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is resolved.
     if (!context.shouldBypassMainWorldContentSecurityPolicy() && !context.contentSecurityPolicy()->allowConnectToSource(fullURL)) {
         // FIXME: Should this be throwing an exception?
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
     }
 
     auto source = adoptRef(*new EventSource(context, fullURL, eventSourceInit));
@@ -99,13 +99,14 @@ void EventSource::connect()
         request.setHTTPHeaderField(HTTPHeaderName::LastEventID, m_lastEventId);
 
     ThreadableLoaderOptions options;
-    options.sendLoadCallbacks = SendCallbacks;
+    options.sendLoadCallbacks = SendCallbackPolicy::SendCallbacks;
     options.credentials = m_withCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
-    options.preflightPolicy = PreventPreflight;
+    options.preflightPolicy = PreflightPolicy::Prevent;
     options.mode = FetchOptions::Mode::Cors;
     options.cache = FetchOptions::Cache::NoStore;
-    options.dataBufferingPolicy = DoNotBufferData;
+    options.dataBufferingPolicy = DataBufferingPolicy::DoNotBufferData;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
+    options.initiator = cachedResourceRequestInitiators().eventsource;
 
     ASSERT(scriptExecutionContext());
     m_loader = ThreadableLoader::create(*scriptExecutionContext(), *this, WTFMove(request), options);
@@ -139,7 +140,7 @@ void EventSource::scheduleReconnect()
 {
     m_state = CONNECTING;
     m_connectTimer.startOneShot(1_ms * m_reconnectDelay);
-    dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+    dispatchEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void EventSource::close()
@@ -195,13 +196,13 @@ void EventSource::didReceiveResponse(unsigned long, const ResourceResponse& resp
 
     if (!responseIsValid(response)) {
         m_loader->cancel();
-        dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+        dispatchEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
         return;
     }
 
-    m_eventStreamOrigin = SecurityOrigin::create(response.url())->toString();
+    m_eventStreamOrigin = SecurityOriginData::fromURL(response.url()).toString();
     m_state = OPEN;
-    dispatchEvent(Event::create(eventNames().openEvent, false, false));
+    dispatchEvent(Event::create(eventNames().openEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void EventSource::didReceiveData(const char* data, int length)
@@ -237,9 +238,6 @@ void EventSource::didFail(const ResourceError& error)
     ASSERT(m_state != CLOSED);
 
     if (error.isAccessControl()) {
-        String message = makeString("EventSource cannot load ", error.failingURL().string(), ". ", error.localizedDescription());
-        scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, message);
-
         abortConnectionAttempt();
         return;
     }
@@ -266,7 +264,7 @@ void EventSource::abortConnectionAttempt()
     }
 
     ASSERT(m_state == CLOSED);
-    dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+    dispatchEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void EventSource::parseEventStream()
@@ -346,9 +344,11 @@ void EventSource::parseEventStreamLine(unsigned position, std::optional<unsigned
         m_data.append('\n');
     } else if (field == "event")
         m_eventName = { &m_receiveBuffer[position], valueLength };
-    else if (field == "id")
-        m_currentlyParsedEventId = { &m_receiveBuffer[position], valueLength };
-    else if (field == "retry") {
+    else if (field == "id") {
+        StringView parsedEventId = { &m_receiveBuffer[position], valueLength };
+        if (!parsedEventId.contains('\0'))
+            m_currentlyParsedEventId = parsedEventId.toString();
+    } else if (field == "retry") {
         if (!valueLength)
             m_reconnectDelay = defaultReconnectDelay;
         else {
@@ -389,9 +389,10 @@ void EventSource::dispatchMessageEvent()
     ASSERT(!m_data.isEmpty());
     unsigned size = m_data.size() - 1;
     auto data = SerializedScriptValue::create({ m_data.data(), size });
+    RELEASE_ASSERT(data);
     m_data = { };
 
-    dispatchEvent(MessageEvent::create(name, WTFMove(data), m_eventStreamOrigin, m_lastEventId));
+    dispatchEvent(MessageEvent::create(name, data.releaseNonNull(), m_eventStreamOrigin, m_lastEventId));
 }
 
 } // namespace WebCore

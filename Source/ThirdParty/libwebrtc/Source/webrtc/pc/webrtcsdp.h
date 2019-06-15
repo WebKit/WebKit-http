@@ -17,8 +17,8 @@
 // * draft-lennox-mmusic-sdp-source-selection-02 -
 //   Mechanisms for Media Source Selection in SDP
 
-#ifndef WEBRTC_PC_WEBRTCSDP_H_
-#define WEBRTC_PC_WEBRTCSDP_H_
+#ifndef PC_WEBRTCSDP_H_
+#define PC_WEBRTCSDP_H_
 
 #include <string>
 
@@ -38,8 +38,7 @@ struct SdpParseError;
 // jdesc - The JsepSessionDescription object to be serialized.
 // unified_plan_sdp - If set to true, include "a=msid" lines where appropriate.
 // return - SDP string serialized from the arguments.
-std::string SdpSerialize(const JsepSessionDescription& jdesc,
-                         bool unified_plan_sdp);
+std::string SdpSerialize(const JsepSessionDescription& jdesc);
 
 // Serializes the passed in IceCandidateInterface to a SDP string.
 // candidate - The candidate to be serialized.
@@ -84,4 +83,4 @@ bool SdpDeserializeCandidate(const std::string& transport_name,
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_WEBRTCSDP_H_
+#endif  // PC_WEBRTCSDP_H_

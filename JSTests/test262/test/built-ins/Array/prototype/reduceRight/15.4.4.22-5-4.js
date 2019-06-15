@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduceright
 es5id: 15.4.4.22-5-4
 description: >
     Array.prototype.reduceRight throws TypeError if 'length' is 0
@@ -9,12 +10,13 @@ description: >
     initVal
 ---*/
 
-  foo.prototype = new Array(1, 2, 3);
-  function foo() {}
-  var f = new foo();
-  f.length = 0;
-  
-  function cb(){}
+foo.prototype = new Array(1, 2, 3);
+
+function foo() {}
+var f = new foo();
+f.length = 0;
+
+function cb() {}
 assert.throws(TypeError, function() {
-    f.reduceRight(cb);
+  f.reduceRight(cb);
 });

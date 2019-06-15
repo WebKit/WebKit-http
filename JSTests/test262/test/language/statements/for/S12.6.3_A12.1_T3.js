@@ -2,14 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     If (Evaluate Statement).type is "break" and (Evaluate Statement).target
     is in the current label set, (normal, (Evaluate Statement), empty) is
     returned while evaluating a "var-loop"
 es5id: 12.6.3_A12.1_T3
 description: Trying to break non-existent label
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 __str="";
 

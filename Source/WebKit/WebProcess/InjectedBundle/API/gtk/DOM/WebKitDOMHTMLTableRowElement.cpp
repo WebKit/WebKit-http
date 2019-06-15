@@ -22,12 +22,11 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMHTMLCollectionPrivate.h"
@@ -38,6 +37,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,8 +69,8 @@ static gboolean webkit_dom_html_table_row_element_dispatch_event(WebKitDOMEventT
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -87,25 +88,25 @@ static gboolean webkit_dom_html_table_row_element_remove_event_listener(WebKitDO
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_table_row_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_table_row_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_table_row_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_table_row_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLTableRowElement, webkit_dom_html_table_row_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLTableRowElement, webkit_dom_html_table_row_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_table_row_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_ROW_INDEX,
-    PROP_SECTION_ROW_INDEX,
-    PROP_CELLS,
-    PROP_ALIGN,
-    PROP_BG_COLOR,
-    PROP_CH,
-    PROP_CH_OFF,
-    PROP_V_ALIGN,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_0,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_ROW_INDEX,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_SECTION_ROW_INDEX,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_CELLS,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_ALIGN,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_BG_COLOR,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH_OFF,
+    DOM_HTML_TABLE_ROW_ELEMENT_PROP_V_ALIGN,
 };
 
 static void webkit_dom_html_table_row_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -113,19 +114,19 @@ static void webkit_dom_html_table_row_element_set_property(GObject* object, guin
     WebKitDOMHTMLTableRowElement* self = WEBKIT_DOM_HTML_TABLE_ROW_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_ALIGN:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_ALIGN:
         webkit_dom_html_table_row_element_set_align(self, g_value_get_string(value));
         break;
-    case PROP_BG_COLOR:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_BG_COLOR:
         webkit_dom_html_table_row_element_set_bg_color(self, g_value_get_string(value));
         break;
-    case PROP_CH:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH:
         webkit_dom_html_table_row_element_set_ch(self, g_value_get_string(value));
         break;
-    case PROP_CH_OFF:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH_OFF:
         webkit_dom_html_table_row_element_set_ch_off(self, g_value_get_string(value));
         break;
-    case PROP_V_ALIGN:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_V_ALIGN:
         webkit_dom_html_table_row_element_set_v_align(self, g_value_get_string(value));
         break;
     default:
@@ -139,28 +140,28 @@ static void webkit_dom_html_table_row_element_get_property(GObject* object, guin
     WebKitDOMHTMLTableRowElement* self = WEBKIT_DOM_HTML_TABLE_ROW_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_ROW_INDEX:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_ROW_INDEX:
         g_value_set_long(value, webkit_dom_html_table_row_element_get_row_index(self));
         break;
-    case PROP_SECTION_ROW_INDEX:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_SECTION_ROW_INDEX:
         g_value_set_long(value, webkit_dom_html_table_row_element_get_section_row_index(self));
         break;
-    case PROP_CELLS:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_CELLS:
         g_value_set_object(value, webkit_dom_html_table_row_element_get_cells(self));
         break;
-    case PROP_ALIGN:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_ALIGN:
         g_value_take_string(value, webkit_dom_html_table_row_element_get_align(self));
         break;
-    case PROP_BG_COLOR:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_BG_COLOR:
         g_value_take_string(value, webkit_dom_html_table_row_element_get_bg_color(self));
         break;
-    case PROP_CH:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH:
         g_value_take_string(value, webkit_dom_html_table_row_element_get_ch(self));
         break;
-    case PROP_CH_OFF:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH_OFF:
         g_value_take_string(value, webkit_dom_html_table_row_element_get_ch_off(self));
         break;
-    case PROP_V_ALIGN:
+    case DOM_HTML_TABLE_ROW_ELEMENT_PROP_V_ALIGN:
         g_value_take_string(value, webkit_dom_html_table_row_element_get_v_align(self));
         break;
     default:
@@ -177,7 +178,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ROW_INDEX,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_ROW_INDEX,
         g_param_spec_long(
             "row-index",
             "HTMLTableRowElement:row-index",
@@ -187,7 +188,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SECTION_ROW_INDEX,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_SECTION_ROW_INDEX,
         g_param_spec_long(
             "section-row-index",
             "HTMLTableRowElement:section-row-index",
@@ -197,7 +198,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CELLS,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_CELLS,
         g_param_spec_object(
             "cells",
             "HTMLTableRowElement:cells",
@@ -207,7 +208,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALIGN,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_ALIGN,
         g_param_spec_string(
             "align",
             "HTMLTableRowElement:align",
@@ -217,7 +218,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BG_COLOR,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_BG_COLOR,
         g_param_spec_string(
             "bg-color",
             "HTMLTableRowElement:bg-color",
@@ -227,7 +228,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CH,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH,
         g_param_spec_string(
             "ch",
             "HTMLTableRowElement:ch",
@@ -237,7 +238,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CH_OFF,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_CH_OFF,
         g_param_spec_string(
             "ch-off",
             "HTMLTableRowElement:ch-off",
@@ -247,7 +248,7 @@ static void webkit_dom_html_table_row_element_class_init(WebKitDOMHTMLTableRowEl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_V_ALIGN,
+        DOM_HTML_TABLE_ROW_ELEMENT_PROP_V_ALIGN,
         g_param_spec_string(
             "v-align",
             "HTMLTableRowElement:v-align",
@@ -270,11 +271,11 @@ WebKitDOMHTMLElement* webkit_dom_html_table_row_element_insert_cell(WebKitDOMHTM
     WebCore::HTMLTableRowElement* item = WebKit::core(self);
     auto result = item->insertCell(index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
-    return WebKit::kit(result.releaseReturnValue().ptr());
+    return WEBKIT_DOM_HTML_ELEMENT(WebKit::kit(result.releaseReturnValue().ptr()));
 }
 
 void webkit_dom_html_table_row_element_delete_cell(WebKitDOMHTMLTableRowElement* self, glong index, GError** error)
@@ -285,8 +286,8 @@ void webkit_dom_html_table_row_element_delete_cell(WebKitDOMHTMLTableRowElement*
     WebCore::HTMLTableRowElement* item = WebKit::core(self);
     auto result = item->deleteCell(index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -412,3 +413,4 @@ void webkit_dom_html_table_row_element_set_v_align(WebKitDOMHTMLTableRowElement*
     item->setAttributeWithoutSynchronization(WebCore::HTMLNames::valignAttr, convertedValue);
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

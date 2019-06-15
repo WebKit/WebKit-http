@@ -3,14 +3,15 @@
 
 /*---
 info: The "length" property of the "toString" is 0
+esid: sec-date.prototype.tostring
 es5id: 15.9.5.2_A2_T1
 description: The "length" property of the "toString" is 0
 ---*/
 
-if(Date.prototype.toString.hasOwnProperty("length") !== true){
+if (Date.prototype.toString.hasOwnProperty("length") !== true) {
   $ERROR('#1: The toString has a "length" property');
 }
 
-if(Date.prototype.toString.length !== 0){
+if (Date.prototype.toString.length !== 0) {
   $ERROR('#2: The "length" property of the toString is 0');
 }

@@ -29,7 +29,7 @@
 
 #include "InbandTextTrackPrivateGStreamer.h"
 
-#include "GStreamerUtilities.h"
+#include "GStreamerCommon.h"
 #include "Logging.h"
 #include <glib-object.h>
 #include <gst/gst.h>
@@ -40,7 +40,8 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_player_debug);
 namespace WebCore {
 
 InbandTextTrackPrivateGStreamer::InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstPad> pad)
-    : InbandTextTrackPrivate(WebVTT), TrackPrivateBaseGStreamer(this, index, pad)
+    : InbandTextTrackPrivate(WebVTT)
+    , TrackPrivateBaseGStreamer(this, index, pad)
 {
     m_eventProbe = gst_pad_add_probe(m_pad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, [] (GstPad*, GstPadProbeInfo* info, gpointer userData) -> GstPadProbeReturn {
         auto* track = static_cast<InbandTextTrackPrivateGStreamer*>(userData);
@@ -57,12 +58,20 @@ InbandTextTrackPrivateGStreamer::InbandTextTrackPrivateGStreamer(gint index, GRe
     notifyTrackOfStreamChanged();
 }
 
+#if GST_CHECK_VERSION(1, 10, 0)
+InbandTextTrackPrivateGStreamer::InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstStream> stream)
+    : InbandTextTrackPrivate(WebVTT)
+    , TrackPrivateBaseGStreamer(this, index, stream)
+{
+    m_streamId = gst_stream_get_stream_id(stream.get());
+    GST_INFO("Track %d got stream start for stream %s.", m_index, m_streamId.utf8().data());
+}
+#endif
+
 void InbandTextTrackPrivateGStreamer::disconnect()
 {
-    if (!m_pad)
-        return;
-
-    gst_pad_remove_probe(m_pad.get(), m_eventProbe);
+    if (m_pad)
+        gst_pad_remove_probe(m_pad.get(), m_eventProbe);
 
     TrackPrivateBaseGStreamer::disconnect();
 }
@@ -103,18 +112,16 @@ void InbandTextTrackPrivateGStreamer::notifyTrackOfSample()
             GST_WARNING("Track %d got sample with no buffer.", m_index);
             continue;
         }
-        GstMapInfo info;
-        gboolean ret = gst_buffer_map(buffer, &info, GST_MAP_READ);
-        ASSERT(ret);
-        if (!ret) {
+        GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
+        ASSERT(mappedBuffer);
+        if (!mappedBuffer) {
             GST_WARNING("Track %d unable to map buffer.", m_index);
             continue;
         }
 
-        GST_INFO("Track %d parsing sample: %.*s", m_index, static_cast<int>(info.size),
-            reinterpret_cast<char*>(info.data));
-        client()->parseWebVTTCueData(reinterpret_cast<char*>(info.data), info.size);
-        gst_buffer_unmap(buffer, &info);
+        GST_INFO("Track %d parsing sample: %.*s", m_index, static_cast<int>(mappedBuffer.size()),
+            reinterpret_cast<char*>(mappedBuffer.data()));
+        client()->parseWebVTTCueData(reinterpret_cast<char*>(mappedBuffer.data()), mappedBuffer.size());
     }
 }
 

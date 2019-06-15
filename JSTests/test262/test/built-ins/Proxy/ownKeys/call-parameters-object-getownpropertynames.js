@@ -1,25 +1,25 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 9.5.12
+esid: sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys
 description: >
     [[OwnPropertyKeys]] ( )
 
-    8. Let trapResultArray be Call(trap, handler, «target»).
+    7. Let trapResultArray be ? Call(trap, handler, « target »).
 ---*/
 
 var _target, _handler;
 var target = {
-    foo: 1,
-    bar: 2
+  foo: 1,
+  bar: 2
 };
 
 var handler = {
-    ownKeys: function(t) {
-        _handler = this;
-        _target = t;
-        return Object.getOwnPropertyNames(t);
-    }
+  ownKeys: function(t) {
+    _handler = this;
+    _target = t;
+    return Object.getOwnPropertyNames(t);
+  }
 }
 var p = new Proxy(target, handler);
 

@@ -51,7 +51,7 @@
 #import "DOMHTMLElementInternal.h"
 #import <WebCore/Autocapitalize.h>
 #import <WebCore/HTMLTextFormControlElement.h>
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/RenderLayer.h>
 #import <WebCore/WAKWindow.h>
 #import <WebCore/WebCoreThreadMessage.h>
@@ -115,7 +115,7 @@ using namespace WebCore;
     RenderLayer* layer = downcast<RenderBox>(*renderer).layer();
     if (adjustForIOSCaret)
         layer->setAdjustForIOSCaretWhenScrolling(true);
-    layer->scrollToOffset(ScrollOffset(x, y));
+    layer->scrollToOffset(ScrollOffset(x, y), ScrollClamping::Unclamped);
     if (adjustForIOSCaret)
         layer->setAdjustForIOSCaretWhenScrolling(false);
 }

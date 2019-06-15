@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The MV of StringNumericLiteral ::: StrWhiteSpaceopt StrNumericLiteral
     StrWhiteSpaceopt is the MV of StrNumericLiteral, no matter whether white
     space is present or not
@@ -10,8 +10,8 @@ es5id: 9.3.1_A3_T2
 description: dynamic string
 ---*/
 
-function dynaString(s1, s2){
-  return String(s1)+String(s2);
+function dynaString(s1, s2) {
+  return String(s1) + String(s2);
 }
 
 // CHECK#1

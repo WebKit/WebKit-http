@@ -64,13 +64,13 @@ class BindingsTests:
         try:
             output = self.executive.run_command(cmd)
             if output:
-                print output
-        except ScriptError, e:
-            print e.output
+                print(output)
+        except ScriptError as e:
+            print(e.output)
             exit_code = e.exit_code
         return exit_code
 
-    def generate_supplemental_dependency(self, input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file):
+    def generate_supplemental_dependency(self, input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file, serviceworkerglobalscope_constructors_file):
         idl_files_list = tempfile.mkstemp()
         for input_file in os.listdir(input_directory):
             (name, extension) = os.path.splitext(input_file)
@@ -87,15 +87,16 @@ class BindingsTests:
                '--supplementalDependencyFile', supplemental_dependency_file,
                '--windowConstructorsFile', window_constructors_file,
                '--workerGlobalScopeConstructorsFile', workerglobalscope_constructors_file,
-               '--dedicatedWorkerGlobalScopeConstructorsFile', dedicatedworkerglobalscope_constructors_file]
+               '--dedicatedWorkerGlobalScopeConstructorsFile', dedicatedworkerglobalscope_constructors_file,
+               '--serviceWorkerGlobalScopeConstructorsFile', serviceworkerglobalscope_constructors_file]
 
         exit_code = 0
         try:
             output = self.executive.run_command(cmd)
             if output:
-                print output
-        except ScriptError, e:
-            print e.output
+                print(output)
+        except ScriptError as e:
+            print(e.output)
             exit_code = e.exit_code
         os.remove(idl_files_list[1])
         return exit_code
@@ -112,18 +113,18 @@ class BindingsTests:
             exit_code = 0
             try:
                 output = self.executive.run_command(cmd)
-            except ScriptError, e:
+            except ScriptError as e:
                 output = e.output
                 exit_code = e.exit_code
 
             if exit_code or output:
-                print 'FAIL: (%s) %s' % (generator, output_file)
-                print output
+                print('FAIL: (%s) %s' % (generator, output_file))
+                print(output)
                 changes_found = True
                 if self.json_file_name:
                     self.failures.append("(%s) %s" % (generator, output_file))
             elif self.verbose:
-                print 'PASS: (%s) %s' % (generator, output_file)
+                print('PASS: (%s) %s' % (generator, output_file))
         return changes_found
 
     def test_matches_patterns(self, test):
@@ -158,7 +159,7 @@ class BindingsTests:
                 passed = False
 
             if self.reset_results:
-                print "Reset results: (%s) %s" % (generator, input_file)
+                print("Reset results: (%s) %s" % (generator, input_file))
                 continue
 
             # Detect changes
@@ -168,6 +169,10 @@ class BindingsTests:
 
         return passed
 
+    def close_and_remove(self, temporary_file):
+        os.close(temporary_file[0])
+        os.remove(temporary_file[1])
+
     def main(self):
         current_scm = detect_scm_system(os.curdir)
         os.chdir(os.path.join(current_scm.checkout_root, 'Source'))
@@ -175,28 +180,31 @@ class BindingsTests:
         all_tests_passed = True
 
         input_directory = os.path.join('WebCore', 'bindings', 'scripts', 'test')
-        supplemental_dependency_file = tempfile.mkstemp()[1]
-        window_constructors_file = tempfile.mkstemp()[1]
-        workerglobalscope_constructors_file = tempfile.mkstemp()[1]
-        dedicatedworkerglobalscope_constructors_file = tempfile.mkstemp()[1]
-        if self.generate_supplemental_dependency(input_directory, supplemental_dependency_file, window_constructors_file, workerglobalscope_constructors_file, dedicatedworkerglobalscope_constructors_file):
-            print 'Failed to generate a supplemental dependency file.'
-            os.remove(supplemental_dependency_file)
-            os.remove(window_constructors_file)
-            os.remove(workerglobalscope_constructors_file)
-            os.remove(dedicatedworkerglobalscope_constructors_file)
+        supplemental_dependency_file = tempfile.mkstemp()
+        window_constructors_file = tempfile.mkstemp()
+        workerglobalscope_constructors_file = tempfile.mkstemp()
+        dedicatedworkerglobalscope_constructors_file = tempfile.mkstemp()
+        serviceworkerglobalscope_constructors_file = tempfile.mkstemp()
+        if self.generate_supplemental_dependency(input_directory, supplemental_dependency_file[1], window_constructors_file[1], workerglobalscope_constructors_file[1], dedicatedworkerglobalscope_constructors_file[1], serviceworkerglobalscope_constructors_file[1]):
+            print('Failed to generate a supplemental dependency file.')
+            self.close_and_remove(supplemental_dependency_file)
+            self.close_and_remove(window_constructors_file)
+            self.close_and_remove(workerglobalscope_constructors_file)
+            self.close_and_remove(dedicatedworkerglobalscope_constructors_file)
+            self.close_and_remove(serviceworkerglobalscope_constructors_file)
             return -1
 
         for generator in self.generators:
             input_directory = os.path.join('WebCore', 'bindings', 'scripts', 'test')
             reference_directory = os.path.join('WebCore', 'bindings', 'scripts', 'test', generator)
-            if not self.run_tests(generator, input_directory, reference_directory, supplemental_dependency_file):
+            if not self.run_tests(generator, input_directory, reference_directory, supplemental_dependency_file[1]):
                 all_tests_passed = False
 
-        os.remove(supplemental_dependency_file)
-        os.remove(window_constructors_file)
-        os.remove(workerglobalscope_constructors_file)
-        os.remove(dedicatedworkerglobalscope_constructors_file)
+        self.close_and_remove(supplemental_dependency_file)
+        self.close_and_remove(window_constructors_file)
+        self.close_and_remove(workerglobalscope_constructors_file)
+        self.close_and_remove(dedicatedworkerglobalscope_constructors_file)
+        self.close_and_remove(serviceworkerglobalscope_constructors_file)
 
         if self.json_file_name:
             json_data = {
@@ -206,10 +214,10 @@ class BindingsTests:
             with open(self.json_file_name, 'w') as json_file:
                 json.dump(json_data, json_file)
 
-        print ''
+        print('')
         if all_tests_passed:
-            print 'All tests PASS!'
+            print('All tests PASS!')
             return 0
         else:
-            print 'Some tests FAIL! (To update the reference files, execute "run-bindings-tests --reset-results")'
+            print('Some tests FAIL! (To update the reference files, execute "run-bindings-tests --reset-results")')
             return -1

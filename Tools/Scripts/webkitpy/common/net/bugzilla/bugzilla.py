@@ -1,5 +1,5 @@
 # Copyright (c) 2011 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2018 Apple Inc. All rights reserved.
 # Copyright (c) 2010 Research In Motion Limited. All rights reserved.
 # Copyright (c) 2013 University of Szeged. All rights reserved.
 #
@@ -45,7 +45,9 @@ from .bug import Bug
 
 from webkitpy.common.config import committers
 import webkitpy.common.config.urls as config_urls
+from webkitpy.common.net.bugzilla.constants import BUGZILLA_DATE_FORMAT
 from webkitpy.common.net.credentials import Credentials
+from webkitpy.common.net.networktransaction import NetworkTransaction
 from webkitpy.common.system.user import User
 from webkitpy.thirdparty.BeautifulSoup import BeautifulSoup, BeautifulStoneSoup, SoupStrainer
 
@@ -139,6 +141,9 @@ class BugzillaQueries(object):
     # This is kinda a hack.  There is probably a better way to get this information from bugzilla.
     def _parse_result_count(self, results_page):
         result_count_text = BeautifulSoup(results_page).find(attrs={'class': 'bz_result_count'}).string
+        if result_count_text is None:
+            _log.warn("BeautifulSoup returned None while finding class: bz_result_count in:\n{}".format(results_page))
+            return 0
         result_count_parts = result_count_text.strip().split(" ")
         if result_count_parts[0] == "Zarro":
             return 0
@@ -162,6 +167,7 @@ class BugzillaQueries(object):
             bug_id = int(results_url.split("=")[-1])
             return [self._fetch_bug(bug_id)]
         if not self._parse_result_count(results_page):
+            _log.warn('Failed to find bugs for {}'.format(results_url))
             return []
         # Bugzilla results pages have an "XML" submit button at the bottom
         # which can be used to get an XML page containing all of the <bug> elements.
@@ -273,8 +279,10 @@ class BugzillaQueries(object):
 
     # NOTE: This is the only client of _fetch_attachment_ids_request_query
     # This method only makes one request to bugzilla.
-    def fetch_attachment_ids_from_review_queue(self, since=None):
+    def fetch_attachment_ids_from_review_queue(self, since=None, only_security_bugs=False):
         review_queue_url = "request.cgi?action=queue&type=review&group=type"
+        if only_security_bugs:
+            review_queue_url += '&product=Security'
         return self._fetch_attachment_ids_request_query(review_queue_url, since)
 
     # This only works if your account has edituser privileges.
@@ -323,14 +331,17 @@ class Bugzilla(object):
     def setdefaulttimeout(self, value):
         socket.setdefaulttimeout(value)
 
+    def open_url(self, url):
+        return NetworkTransaction().run(lambda: self.browser.open(url), url)
+
     def fetch_user(self, user_id):
         self.authenticate()
-        edit_user_page = self.browser.open(self.edit_user_url_for_id(user_id))
+        edit_user_page = self.open_url(self.edit_user_url_for_id(user_id))
         return self.edit_user_parser.user_dict_from_edit_user_page(edit_user_page)
 
     def add_user_to_groups(self, user_id, group_names):
         self.authenticate()
-        user_edit_page = self.browser.open(self.edit_user_url_for_id(user_id))
+        user_edit_page = self.open_url(self.edit_user_url_for_id(user_id))
         self.browser.select_form(nr=1)
         for group_name in group_names:
             group_string = self.edit_user_parser.group_string_from_name(user_edit_page, group_name)
@@ -391,12 +402,6 @@ class Bugzilla(object):
         # convert from NavigableString to a real unicode() object using unicode().
         return unicode(soup.string)
 
-    # Example: 2010-01-20 14:31 PST
-    # FIXME: Some bugzilla dates seem to have seconds in them?
-    # Python does not support timezones out of the box.
-    # Assume that bugzilla always uses PST (which is true for bugs.webkit.org)
-    _bugzilla_date_format = "%Y-%m-%d %H:%M:%S"
-
     @classmethod
     def _parse_date(cls, date_string):
         (date, time, time_zone) = date_string.split(" ")
@@ -405,7 +410,7 @@ class Bugzilla(object):
             time += ':0'
         # Ignore the timezone because python doesn't understand timezones out of the box.
         date_string = "%s %s" % (date, time)
-        return datetime.strptime(date_string, cls._bugzilla_date_format)
+        return datetime.strptime(date_string, BUGZILLA_DATE_FORMAT)
 
     def _date_contents(self, soup):
         return self._parse_date(self._string_contents(soup))
@@ -443,6 +448,10 @@ class Bugzilla(object):
 
     def _parse_bug_dictionary_from_xml(self, page):
         soup = BeautifulStoneSoup(page, convertEntities=BeautifulStoneSoup.XML_ENTITIES)
+        bug_element = soup.find('bug')
+        if bug_element and bug_element.get('error', '') == 'NotPermitted':
+            _log.warning("You don't have permission to view this bug.")
+            return {}
         bug = {}
         bug["id"] = int(soup.find("bug_id").string)
         bug["title"] = self._string_contents(soup.find("short_desc"))
@@ -455,6 +464,7 @@ class Bugzilla(object):
         bug["cc_emails"] = [self._string_contents(element) for element in soup.findAll('cc')]
         bug["attachments"] = [self._parse_attachment_element(element, bug["id"]) for element in soup.findAll('attachment')]
         bug["comments"] = [self._parse_log_descr_element(element) for element in soup.findAll('long_desc')]
+        bug['groups'] = frozenset([self._string_contents(group) for group in soup.findAll('group')])
 
         return bug
 
@@ -464,7 +474,7 @@ class Bugzilla(object):
     def _fetch_bug_page(self, bug_id):
         bug_url = self.bug_url_for_bug_id(bug_id, xml=True)
         _log.info("Fetching: %s" % bug_url)
-        return self.browser.open(bug_url)
+        return self.open_url(bug_url)
 
     def fetch_bug_dictionary(self, bug_id):
         try:
@@ -476,42 +486,70 @@ class Bugzilla(object):
     # FIXME: A BugzillaCache object should provide all these fetch_ methods.
 
     def fetch_bug(self, bug_id):
-        return Bug(self.fetch_bug_dictionary(bug_id), self)
+        bug_dictionary = self.fetch_bug_dictionary(bug_id)
+        if bug_dictionary:
+            return Bug(bug_dictionary, self)
+        return None
 
     def fetch_attachment_contents(self, attachment_id):
         attachment_url = self.attachment_url_for_id(attachment_id)
+        _log.info("Fetching: %s" % attachment_url)
         # We need to authenticate to download patches from security bugs.
         self.authenticate()
-        return self.browser.open(attachment_url).read()
+        return self.open_url(attachment_url).read()
+
+    class AccessError(Exception):
+        NOT_PERMITTED = 1
+        OTHER = 2
+
+        def __init__(self, attachment_id, error_code, bug_title):
+            super(Bugzilla.AccessError, self).__init__('Failed to access {}'.format(attachment_id))
+            self.attachment_id = attachment_id
+            self.error_code = error_code
+            self.bug_title = bug_title
+
+    def _parse_bug_title_from_attachment_page(self, page):
+        return BeautifulSoup(page).find('div', attrs={'id': 'bug_title'})
 
     def _parse_bug_id_from_attachment_page(self, page):
         # The "Up" relation happens to point to the bug.
-        title = BeautifulSoup(page).find('div', attrs={'id':'bug_title'})
-        if not title :
-            _log.warning("This attachment does not exist (or you don't have permissions to view it).")
-            return None
+        title = self._parse_bug_title_from_attachment_page(page)
+        if not title:
+            _log.warning("This attachment does not exist (or you don't have permission to view it).")
+            return (None, Bugzilla.AccessError.OTHER)
+        if title.getText() == 'Bug Access Denied':
+            _log.warning("You don't have permission to view this attachment.")
+            return (None, Bugzilla.AccessError.NOT_PERMITTED)
         match = re.search("show_bug.cgi\?id=(?P<bug_id>\d+)", str(title))
         if not match:
             _log.warning("Unable to parse bug id from attachment")
-            return None
-        return int(match.group('bug_id'))
+            return (None, None)
+        return (int(match.group('bug_id')), None)
 
-    def bug_id_for_attachment_id(self, attachment_id):
+    def bug_id_for_attachment_id(self, attachment_id, throw_on_access_error=False):
+        return NetworkTransaction().run(lambda: self.get_bug_id_for_attachment_id(attachment_id, throw_on_access_error))
+
+    def get_bug_id_for_attachment_id(self, attachment_id, throw_on_access_error=False):
         self.authenticate()
 
         attachment_url = self.attachment_url_for_id(attachment_id, 'edit')
         _log.info("Fetching: %s" % attachment_url)
-        page = self.browser.open(attachment_url)
-        return self._parse_bug_id_from_attachment_page(page)
+        page = self.open_url(attachment_url)
+        bug_id, error_code = self._parse_bug_id_from_attachment_page(page)
+        if bug_id:
+            return bug_id
+        if error_code is not None and throw_on_access_error:
+            raise Bugzilla.AccessError(attachment_id, error_code, str(self._parse_bug_title_from_attachment_page(page)))
+        return None
 
     # FIXME: This should just return Attachment(id), which should be able to
     # lazily fetch needed data.
 
-    def fetch_attachment(self, attachment_id):
+    def fetch_attachment(self, attachment_id, throw_on_access_error=False):
         # We could grab all the attachment details off of the attachment edit
         # page but we already have working code to do so off of the bugs page,
         # so re-use that.
-        bug_id = self.bug_id_for_attachment_id(attachment_id)
+        bug_id = self.bug_id_for_attachment_id(attachment_id, throw_on_access_error)
         if not bug_id:
             _log.warning("Unable to parse bug_id from attachment {}".format(attachment_id))
             return None
@@ -534,7 +572,7 @@ class Bugzilla(object):
             username, password = credentials.read_credentials(use_stored_credentials=attempts == 1)
 
             _log.info("Logging in as %s..." % username)
-            self.browser.open(config_urls.bug_server_url +
+            self.open_url(config_urls.bug_server_url +
                               "index.cgi?GoAheadAndLogIn=1")
             self.browser.select_form(name="login")
             self.browser['Bugzilla_login'] = username
@@ -610,7 +648,7 @@ class Bugzilla(object):
     def add_attachment_to_bug(self, bug_id, file_or_string, description, filename=None, comment_text=None, mimetype=None):
         self.authenticate()
         _log.info('Adding attachment "%s" to %s' % (description, self.bug_url_for_bug_id(bug_id)))
-        self.browser.open(self.add_attachment_url(bug_id))
+        self.open_url(self.add_attachment_url(bug_id))
         self.browser.select_form(name="entryform")
         file_object = self._file_object_for_upload(file_or_string)
         filename = filename or self._filename_for_upload(file_object, bug_id)
@@ -619,6 +657,14 @@ class Bugzilla(object):
             _log.info(comment_text)
             self.browser['comment'] = comment_text
         self.browser.submit()
+
+    @staticmethod
+    def _parse_attachment_id_from_add_patch_to_bug_response(response_html):
+        match = re.search('<title>Attachment (?P<attachment_id>\d+) added to Bug \d+</title>', response_html)
+        if match:
+            return match.group('attachment_id')
+        _log.warning('Unable to parse attachment id')
+        return None
 
     # FIXME: The arguments to this function should be simplified and then
     # this should be merged into add_attachment_to_bug
@@ -633,7 +679,7 @@ class Bugzilla(object):
         self.authenticate()
         _log.info('Adding patch "%s" to %s' % (description, self.bug_url_for_bug_id(bug_id)))
 
-        self.browser.open(self.add_attachment_url(bug_id))
+        self.open_url(self.add_attachment_url(bug_id))
         self.browser.select_form(name="entryform")
         file_object = self._file_object_for_upload(file_or_string)
         filename = self._filename_for_upload(file_object, bug_id, extension="patch")
@@ -652,7 +698,8 @@ class Bugzilla(object):
         if comment_text:
             _log.info(comment_text)
             self.browser['comment'] = comment_text
-        self.browser.submit()
+        response = self.browser.submit()
+        return self._parse_attachment_id_from_add_patch_to_bug_response(response.read())
 
     # FIXME: There has to be a more concise way to write this method.
     def _check_create_bug_response(self, response_html):
@@ -688,7 +735,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info('Creating bug with title "%s"' % bug_title)
-        self.browser.open(config_urls.bug_server_url + "enter_bug.cgi?product=WebKit")
+        self.open_url(config_urls.bug_server_url + "enter_bug.cgi?product=WebKit")
         self.browser.select_form(name="Create")
         component_items = self.browser.find_control('component').items
         component_names = map(lambda item: item.name, component_items)
@@ -749,7 +796,7 @@ class Bugzilla(object):
             comment_text += "\n\n%s" % additional_comment_text
         _log.info(comment_text)
 
-        self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
+        self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
         self.browser.set_value(comment_text, name='comment', nr=1)
         self._find_select_element_for_flag('review').value = ("X",)
@@ -766,7 +813,7 @@ class Bugzilla(object):
 
         self.authenticate()
         _log.info(comment_text)
-        self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
+        self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
 
         if comment_text:
@@ -782,7 +829,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Obsoleting attachment: %s" % attachment_id)
-        self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
+        self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
         self.browser.find_control('isobsolete').items[0].selected = True
         # Also clear any review flag (to remove it from review/commit queues)
@@ -799,18 +846,30 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Adding %s to the CC list for bug %s" % (email_address_list, bug_id))
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         self.browser["newcc"] = ", ".join(email_address_list)
         self.browser.submit()
 
-    def post_comment_to_bug(self, bug_id, comment_text, cc=None):
+    def add_keyword_to_bug(self, bug_id, keyword):
+        self.authenticate()
+
+        _log.info("Adding %s to the keyword list for bug %s" % (keyword, bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
+        self.browser.select_form(name="changeform")
+        self.browser["keywords"] = keyword
+        self.browser.submit()
+
+    def post_comment_to_bug(self, bug_id, comment_text, cc=None, see_also=None):
         self.authenticate()
 
         _log.info("Adding comment to bug %s" % bug_id)
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         self.browser["comment"] = comment_text
+        if see_also:
+            _log.info("Adding PR link to See Also List for bug %s" % bug_id)
+            self.browser["see_also"] = ", ".join(see_also)
         if cc:
             self.browser["newcc"] = ", ".join(cc)
         self.browser.submit()
@@ -819,7 +878,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Closing bug %s as fixed" % bug_id)
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         if comment_text:
             self.browser['comment'] = comment_text
@@ -837,7 +896,7 @@ class Bugzilla(object):
             assignee = self.username
 
         _log.info("Assigning bug %s to %s" % (bug_id, assignee))
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
 
         if not self._has_control(self.browser, "assigned_to"):
@@ -858,7 +917,7 @@ Ignore this message if you don't have EditBugs privileges (https://bugs.webkit.o
         # Bugzilla requires a comment when re-opening a bug, so we know it will
         # never be None.
         _log.info(comment_text)
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         bug_status = self.browser.find_control("bug_status", type="select")
         # This is a hack around the fact that ClientForm.ListControl seems to

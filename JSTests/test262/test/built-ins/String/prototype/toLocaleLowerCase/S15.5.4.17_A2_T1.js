@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     String.prototype.toLocaleLowerCase() return a string, but not a String
     object
 es5id: 15.5.4.17_A2_T1
@@ -12,7 +12,7 @@ description: Checking returned result
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if ("Hello, WoRlD!".toLocaleLowerCase() !== "hello, world!") {
-  $ERROR('#1: "Hello, WoRlD!".toLocaleLowerCase() === "hello, world!". Actual: '+("Hello, WoRlD!".toLocaleLowerCase()) );
+  $ERROR('#1: "Hello, WoRlD!".toLocaleLowerCase() === "hello, world!". Actual: ' + ("Hello, WoRlD!".toLocaleLowerCase()));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -20,7 +20,7 @@ if ("Hello, WoRlD!".toLocaleLowerCase() !== "hello, world!") {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if ("Hello, WoRlD!".toLocaleLowerCase() !== String("hello, world!")) {
-  $ERROR('#2: "Hello, WoRlD!".toLocaleLowerCase() === String("hello, world!"). Actual: '+("Hello, WoRlD!".toLocaleLowerCase()) );
+  $ERROR('#2: "Hello, WoRlD!".toLocaleLowerCase() === String("hello, world!"). Actual: ' + ("Hello, WoRlD!".toLocaleLowerCase()));
 }
 //
 //////////////////////////////////////////////////////////////////////////////

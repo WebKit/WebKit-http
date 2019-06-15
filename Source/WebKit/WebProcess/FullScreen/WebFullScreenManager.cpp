@@ -34,18 +34,23 @@
 #include "WebPage.h"
 #include <WebCore/Color.h>
 #include <WebCore/Element.h>
+#include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
-#include <WebCore/MainFrame.h>
+#include <WebCore/HTMLVideoElement.h>
 #include <WebCore/Page.h>
 #include <WebCore/RenderLayer.h>
 #include <WebCore/RenderLayerBacking.h>
 #include <WebCore/RenderObject.h>
 #include <WebCore/RenderView.h>
 #include <WebCore/Settings.h>
+#include <WebCore/TypedElementDescendantIterator.h>
 
-using namespace WebCore;
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#include "PlaybackSessionManager.h"
+#endif
 
 namespace WebKit {
+using namespace WebCore;
 
 static IntRect screenRectOfContents(Element* element)
 {
@@ -79,6 +84,33 @@ WebCore::Element* WebFullScreenManager::element()
     return m_element.get(); 
 }
 
+void WebFullScreenManager::videoControlsManagerDidChange()
+{
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    auto* currentPlaybackControlsElement = m_page->playbackSessionManager().currentPlaybackControlsElement();
+    if (!m_element || !is<HTMLVideoElement>(currentPlaybackControlsElement)) {
+        setPIPStandbyElement(nullptr);
+        return;
+    }
+
+    setPIPStandbyElement(downcast<HTMLVideoElement>(currentPlaybackControlsElement));
+#endif
+}
+
+void WebFullScreenManager::setPIPStandbyElement(WebCore::HTMLVideoElement* pipStandbyElement)
+{
+    if (pipStandbyElement == m_pipStandbyElement)
+        return;
+
+    if (m_pipStandbyElement)
+        m_pipStandbyElement->setVideoFullscreenStandby(false);
+
+    m_pipStandbyElement = pipStandbyElement;
+
+    if (m_pipStandbyElement)
+        m_pipStandbyElement->setVideoFullscreenStandby(true);
+}
+
 void WebFullScreenManager::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     didReceiveWebFullScreenManagerMessage(connection, decoder);
@@ -109,7 +141,9 @@ void WebFullScreenManager::willEnterFullScreen()
 {
     ASSERT(m_element);
     m_element->document().webkitWillEnterFullScreenForElement(m_element.get());
+#if !PLATFORM(IOS)
     m_page->hidePageBanners();
+#endif
     m_element->document().updateLayout();
     m_page->forceRepaintWithoutCallback();
     m_finalFrame = screenRectOfContents(m_element.get());
@@ -120,20 +154,34 @@ void WebFullScreenManager::didEnterFullScreen()
 {
     ASSERT(m_element);
     m_element->document().webkitDidEnterFullScreenForElement(m_element.get());
+
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    auto* currentPlaybackControlsElement = m_page->playbackSessionManager().currentPlaybackControlsElement();
+    setPIPStandbyElement(is<HTMLVideoElement>(currentPlaybackControlsElement) ? downcast<HTMLVideoElement>(currentPlaybackControlsElement) : nullptr);
+#endif
 }
 
 void WebFullScreenManager::willExitFullScreen()
 {
     ASSERT(m_element);
+
+#if ENABLE(VIDEO)
+    setPIPStandbyElement(nullptr);
+#endif
+
     m_finalFrame = screenRectOfContents(m_element.get());
     m_element->document().webkitWillExitFullScreenForElement(m_element.get());
+#if !PLATFORM(IOS)
     m_page->showPageBanners();
+#endif
     m_page->injectedBundleFullScreenClient().beganExitFullScreen(m_page.get(), m_finalFrame, m_initialFrame);
 }
 
 void WebFullScreenManager::didExitFullScreen()
 {
     ASSERT(m_element);
+    setFullscreenInsets(FloatBoxExtent());
+    setFullscreenAutoHideDuration(0_s);
     m_element->document().webkitDidExitFullScreenForElement(m_element.get());
 }
 
@@ -162,6 +210,21 @@ void WebFullScreenManager::saveScrollPosition()
 void WebFullScreenManager::restoreScrollPosition()
 {
     m_page->corePage()->mainFrame().view()->setScrollPosition(m_scrollPosition);
+}
+
+void WebFullScreenManager::setFullscreenInsets(const WebCore::FloatBoxExtent& insets)
+{
+    m_page->corePage()->setFullscreenInsets(insets);
+}
+
+void WebFullScreenManager::setFullscreenAutoHideDuration(Seconds duration)
+{
+    m_page->corePage()->setFullscreenAutoHideDuration(duration);
+}
+
+void WebFullScreenManager::setFullscreenControlsHidden(bool hidden)
+{
+    m_page->corePage()->setFullscreenControlsHidden(hidden);
 }
 
 } // namespace WebKit

@@ -40,6 +40,7 @@ from webkitpy.common.config.urls import svn_server_host, svn_server_realm
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.executive import Executive, ScriptError
 from webkitpy.common.webkit_finder import WebKitFinder
+from webkitpy.common.version import Version
 
 from .scm import AuthenticationError, SCM, commit_error_handler
 
@@ -60,7 +61,7 @@ class SVNRepository(object):
         if not os.path.isdir(os.path.join(home_directory, ".subversion")):
             return False
         find_args = ["find", ".subversion", "-type", "f", "-exec", "grep", "-q", realm, "{}", ";", "-print"]
-        find_output = self.run(find_args, cwd=home_directory, error_handler=Executive.ignore_error).rstrip()
+        find_output = self.run(find_args, cwd=home_directory, ignore_errors=True).rstrip()
         if not find_output or not os.path.isfile(os.path.join(home_directory, find_output)):
             return False
         # Subversion either stores the password in the credential file, indicated by the presence of the key "password",
@@ -95,10 +96,13 @@ class SVN(SCM, SVNRepository):
             # but doesn't work for SVN >= 1.7.
             return True
 
-        executive = executive or Executive()
-        svn_info_args = [cls.executable_name, 'info']
-        exit_code = executive.run_command(svn_info_args, cwd=path, return_exit_code=True)
-        return (exit_code == 0)
+        try:
+            executive = executive or Executive()
+            svn_info_args = [cls.executable_name, 'info']
+            exit_code = executive.run_command(svn_info_args, cwd=path, return_exit_code=True)
+            return (exit_code == 0)
+        except OSError as e:
+            return False
 
     def find_uuid(self, path):
         if not self.in_working_directory(path):
@@ -139,7 +143,7 @@ class SVN(SCM, SVNRepository):
 
     @memoized
     def svn_version(self):
-        return self._run_svn(['--version', '--quiet'])
+        return Version.from_string(self._run_svn(['--version', '--quiet']))
 
     def has_working_directory_changes(self):
         # FIXME: What about files which are not committed yet?
@@ -171,16 +175,19 @@ class SVN(SCM, SVNRepository):
             # This is robust against cwd != self.checkout_root
             absolute_path = self.absolute_path(path)
             # Completely lame that there is no easy way to remove both types with one call.
-            if os.path.isdir(path):
-                os.rmdir(absolute_path)
-            else:
-                os.remove(absolute_path)
+            try:
+                if os.path.isdir(path):
+                    os.rmdir(absolute_path)
+                else:
+                    os.remove(absolute_path)
+            except:
+                _log.warning('Could not delete: "%s".', absolute_path)
 
     def status_command(self):
         return [self.executable_name, 'status']
 
     def _status_regexp(self, expected_types):
-        field_count = 6 if self.svn_version() > "1.6" else 5
+        field_count = 6 if self.svn_version() > Version(1, 6) else 5
         return "^(?P<status>[%s]).{%s} (?P<filename>.+)$" % (expected_types, field_count)
 
     def _add_parent_directories(self, path):
@@ -192,7 +199,7 @@ class SVN(SCM, SVNRepository):
     def add_list(self, paths):
         for path in paths:
             self._add_parent_directories(os.path.dirname(os.path.abspath(path)))
-        if self.svn_version() >= "1.7":
+        if self.svn_version() >= Version(1, 7):
             # For subversion client 1.7 and later, need to add '--parents' option to ensure intermediate directories
             # are added; in addition, 1.7 returns an exit code of 1 from svn add if one or more of the requested
             # adds are already under version control, including intermediate directories subject to addition
@@ -240,7 +247,7 @@ class SVN(SCM, SVNRepository):
         log_command = ['log', '--quiet', '--limit=%s' % limit, path]
         try:
             log_output = self._run_svn(log_command, cwd=self.checkout_root)
-        except ScriptError, e:
+        except ScriptError as e:
             return []
         for line in log_output.splitlines():
             match = re.search('^r(?P<revision>\d+) ', line)

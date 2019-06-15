@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Devin Rousso <webkit@devinrousso.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,31 +24,116 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-function useSVGSymbol(url, className, title)
-{
-    const svgNamespace = "http://www.w3.org/2000/svg";
-    const xlinkNamespace = "http://www.w3.org/1999/xlink";
+WI.ImageUtilities = class ImageUtilities {
+    static useSVGSymbol(url, className, title)
+    {
+        const svgNamespace = "http://www.w3.org/2000/svg";
+        const xlinkNamespace = "http://www.w3.org/1999/xlink";
 
-    let svgElement = document.createElementNS(svgNamespace, "svg");
-    svgElement.style.width = "100%";
-    svgElement.style.height = "100%";
+        let svgElement = document.createElementNS(svgNamespace, "svg");
+        svgElement.style.width = "100%";
+        svgElement.style.height = "100%";
 
-    // URL must contain a fragment reference to a graphical element, like a symbol. If none is given
-    // append #root which all of our SVGs have on the top level <svg> element.
-    if (!url.includes("#"))
-        url += "#root";
+        // URL must contain a fragment reference to a graphical element, like a symbol. If none is given
+        // append #root which all of our SVGs have on the top level <svg> element.
+        if (!url.includes("#"))
+            url += "#root";
 
-    let useElement = document.createElementNS(svgNamespace, "use");
-    useElement.setAttributeNS(xlinkNamespace, "xlink:href", url);
-    svgElement.appendChild(useElement);
+        let useElement = document.createElementNS(svgNamespace, "use");
+        useElement.setAttributeNS(xlinkNamespace, "xlink:href", url);
+        svgElement.appendChild(useElement);
 
-    let wrapper = document.createElement("div");
-    wrapper.appendChild(svgElement);
+        let wrapper = document.createElement("div");
+        wrapper.appendChild(svgElement);
 
-    if (className)
-        wrapper.className = className;
-    if (title)
-        wrapper.title = title;
+        if (className)
+            wrapper.className = className;
+        if (title)
+            wrapper.title = title;
 
-    return wrapper;
-}
+        return wrapper;
+    }
+
+    static promisifyLoad(src)
+    {
+        return new Promise((resolve, reject) => {
+            let image = new Image;
+            let resolveWithImage = () => { resolve(image); };
+            image.addEventListener("load", resolveWithImage);
+            image.addEventListener("error", resolveWithImage);
+            image.src = src;
+        });
+    }
+
+    static scratchCanvasContext2D(callback)
+    {
+        if (!WI.ImageUtilities._scratchContext2D)
+            WI.ImageUtilities._scratchContext2D = document.createElement("canvas").getContext("2d");
+
+        let context = WI.ImageUtilities._scratchContext2D;
+
+        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        context.save();
+        callback(context);
+        context.restore();
+    }
+
+    static imageFromImageBitmap(data)
+    {
+        console.assert(data instanceof ImageBitmap);
+
+        let image = null;
+        WI.ImageUtilities.scratchCanvasContext2D((context) => {
+            context.canvas.width = data.width;
+            context.canvas.height = data.height;
+            context.drawImage(data, 0, 0);
+
+            image = new Image;
+            image.src = context.canvas.toDataURL();
+        });
+        return image;
+    }
+
+    static imageFromImageData(data)
+    {
+        console.assert(data instanceof ImageData);
+
+        let image = null;
+        WI.ImageUtilities.scratchCanvasContext2D((context) => {
+            context.canvas.width = data.width;
+            context.canvas.height = data.height;
+            context.putImageData(data, 0, 0);
+
+            image = new Image;
+            image.src = context.canvas.toDataURL();
+        });
+        return image;
+    }
+
+    static imageFromCanvasGradient(gradient, width, height)
+    {
+        console.assert(gradient instanceof CanvasGradient);
+
+        let image = null;
+        WI.ImageUtilities.scratchCanvasContext2D((context) => {
+            context.canvas.width = width;
+            context.canvas.height = height;
+            context.fillStyle = gradient;
+            context.fillRect(0, 0, width, height);
+
+            image = new Image;
+            image.src = context.canvas.toDataURL();
+        });
+        return image;
+    }
+
+    static supportsCanvasPathDebugging()
+    {
+        return "getPath" in CanvasRenderingContext2D.prototype
+            && "setPath" in CanvasRenderingContext2D.prototype
+            && "currentX" in CanvasRenderingContext2D.prototype
+            && "currentY" in CanvasRenderingContext2D.prototype;
+    }
+};
+
+WI.ImageUtilities._scratchContext2D = null;

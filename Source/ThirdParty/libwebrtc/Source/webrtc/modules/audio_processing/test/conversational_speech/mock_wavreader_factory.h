@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_TEST_CONVERSATIONAL_SPEECH_MOCK_WAVREADER_FACTORY_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_TEST_CONVERSATIONAL_SPEECH_MOCK_WAVREADER_FACTORY_H_
+#ifndef MODULES_AUDIO_PROCESSING_TEST_CONVERSATIONAL_SPEECH_MOCK_WAVREADER_FACTORY_H_
+#define MODULES_AUDIO_PROCESSING_TEST_CONVERSATIONAL_SPEECH_MOCK_WAVREADER_FACTORY_H_
 
 #include <map>
 #include <memory>
 #include <string>
 
-#include "webrtc/modules/audio_processing/test/conversational_speech/wavreader_abstract_factory.h"
-#include "webrtc/modules/audio_processing/test/conversational_speech/wavreader_interface.h"
-#include "webrtc/test/gmock.h"
+#include "modules/audio_processing/test/conversational_speech/wavreader_abstract_factory.h"
+#include "modules/audio_processing/test/conversational_speech/wavreader_interface.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 namespace test {
@@ -25,7 +25,7 @@ namespace conversational_speech {
 
 class MockWavReaderFactory : public WavReaderAbstractFactory {
  public:
-  struct Params{
+  struct Params {
     int sample_rate;
     size_t num_channels;
     size_t num_samples;
@@ -36,8 +36,8 @@ class MockWavReaderFactory : public WavReaderAbstractFactory {
   explicit MockWavReaderFactory(const Params& default_params);
   ~MockWavReaderFactory();
 
-  MOCK_CONST_METHOD1(Create, std::unique_ptr<WavReaderInterface>(
-      const std::string&));
+  MOCK_CONST_METHOD1(Create,
+                     std::unique_ptr<WavReaderInterface>(const std::string&));
 
  private:
   // Creates a MockWavReader instance using the parameters in
@@ -53,4 +53,4 @@ class MockWavReaderFactory : public WavReaderAbstractFactory {
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_TEST_CONVERSATIONAL_SPEECH_MOCK_WAVREADER_FACTORY_H_
+#endif  // MODULES_AUDIO_PROCESSING_TEST_CONVERSATIONAL_SPEECH_MOCK_WAVREADER_FACTORY_H_

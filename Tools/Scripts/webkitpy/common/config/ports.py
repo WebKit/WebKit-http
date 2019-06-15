@@ -68,6 +68,7 @@ class DeprecatedPort(object):
             # FIXME: https://bugs.webkit.org/show_bug.cgi?id=169302
             "ios": IOSPort,
             "ios-simulator-wk2": IOSSimulatorWK2Port,
+            "jsc-only": JscOnlyPort,
             "mac": MacPort,
             "mac-wk2": MacWK2Port,
             "win": WinPort,
@@ -136,6 +137,9 @@ class DeprecatedPort(object):
         command = self.script_shell_command("run-api-tests")
         return self._append_build_style_flag(command, build_style)
 
+    def run_sort_xcode_project_file_command(self):
+        return self.script_shell_command("sort-Xcode-project-file")
+
 
 class IOSPort(DeprecatedPort):
     port_flag_name = "ios-device"
@@ -187,6 +191,16 @@ class WinPort(DeprecatedPort):
 
 class WinCairoPort(DeprecatedPort):
     port_flag_name = "wincairo"
+
+    def build_webkit_command(self, build_style=None):
+        command = super(WinCairoPort, self).build_webkit_command(build_style=build_style)
+        command.append('--wincairo')
+        return command
+
+    def run_webkit_tests_command(self, build_style=None):
+        command = super(WinCairoPort, self).run_webkit_tests_command(build_style)
+        command.append("--wincairo")
+        return command
 
 
 class GtkWK2Port(DeprecatedPort):
@@ -251,3 +265,12 @@ class WpePort(DeprecatedPort):
         command = super(WpePort, self).run_webkit_tests_command(build_style)
         command.append("--wpe")
         return command
+
+
+class JscOnlyPort(DeprecatedPort):
+    port_flag_name = "jsc-only"
+
+    def build_jsc_command(self, build_style=None):
+        command = self.script_shell_command("build-jsc")
+        command.append("--jsc-only")
+        return self._append_build_style_flag(command, build_style)

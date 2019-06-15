@@ -2,13 +2,17 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Appearing of "continue" within a function call that is within an
     IterationStatement yields SyntaxError
 es5id: 12.7_A6
 description: Using labaled "continue Identifier" within a function body
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 var x=0,y=0;
 

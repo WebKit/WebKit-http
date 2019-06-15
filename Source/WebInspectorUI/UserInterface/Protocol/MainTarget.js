@@ -23,34 +23,60 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.MainTarget = class MainTarget extends WebInspector.Target
+WI.MainTarget = class MainTarget extends WI.Target
 {
     constructor(connection)
     {
-        super("main", "", WebInspector.Target.Type.Main, InspectorBackend.mainConnection);
+        let {type, displayName} = MainTarget.mainConnectionInfo();
 
-        let displayName = WebInspector.debuggableType === WebInspector.DebuggableType.Web ? WebInspector.UIString("Main Frame") : this.displayName;
-        this._executionContext = new WebInspector.ExecutionContext(this, WebInspector.RuntimeManager.TopLevelContextExecutionIdentifier, displayName, true, null);
+        super("main", displayName, type, InspectorBackend.mainConnection);
+
+        this._executionContext = new WI.ExecutionContext(this, WI.RuntimeManager.TopLevelContextExecutionIdentifier, displayName, true, null);
+        this._mainResource = null;
+    }
+
+    // Static
+
+    static mainConnectionInfo()
+    {
+        switch (WI.sharedApp.debuggableType) {
+        case WI.DebuggableType.JavaScript:
+            return {
+                type: WI.Target.Type.JSContext,
+                displayName: WI.UIString("JavaScript Context"),
+            };
+        case WI.DebuggableType.ServiceWorker:
+            return {
+                type: WI.Target.Type.ServiceWorker,
+                displayName: WI.UIString("ServiceWorker"),
+            };
+        case WI.DebuggableType.Web:
+            return {
+                type: WI.Target.Type.Page,
+                displayName: WI.UIString("Page"),
+            };
+        default:
+            console.error("Unexpected debuggable type: ", WI.sharedApp.debuggableType);
+            return {
+                type: WI.Target.Type.Page,
+                displayName: WI.UIString("Main"),
+            };
+        }
     }
 
     // Protected (Target)
 
-    get displayName()
-    {
-        switch (WebInspector.debuggableType) {
-        case WebInspector.DebuggableType.Web:
-            return WebInspector.UIString("Page");
-        case WebInspector.DebuggableType.JavaScript:
-            return WebInspector.UIString("JavaScript Context");
-        default:
-            console.error("Unexpected debuggable type: ", WebInspector.debuggableType);
-            return WebInspector.UIString("Main");
-        }
-    }
-
     get mainResource()
     {
-        let mainFrame = WebInspector.frameResourceManager.mainFrame;
+        if (this._mainResource)
+            return this._mainResource;
+
+        let mainFrame = WI.frameResourceManager.mainFrame;
         return mainFrame ? mainFrame.mainResource : null;
+    }
+
+    set mainResource(resource)
+    {
+        this._mainResource = resource;
     }
 };

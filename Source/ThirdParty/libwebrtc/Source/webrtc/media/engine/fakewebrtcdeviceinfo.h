@@ -8,13 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_ENGINE_FAKEWEBRTCDEVICEINFO_H_
-#define WEBRTC_MEDIA_ENGINE_FAKEWEBRTCDEVICEINFO_H_
+#ifndef MEDIA_ENGINE_FAKEWEBRTCDEVICEINFO_H_
+#define MEDIA_ENGINE_FAKEWEBRTCDEVICEINFO_H_
 
+#include <string>
 #include <vector>
 
-#include "webrtc/base/stringutils.h"
-#include "webrtc/media/engine/webrtcvideocapturer.h"
+#include "media/engine/webrtcvideocapturer.h"
+#include "rtc_base/stringutils.h"
 
 // Fake class for mocking out webrtc::VideoCaptureModule::DeviceInfo.
 class FakeWebRtcDeviceInfo : public webrtc::VideoCaptureModule::DeviceInfo {
@@ -32,9 +33,10 @@ class FakeWebRtcDeviceInfo : public webrtc::VideoCaptureModule::DeviceInfo {
   }
   void AddCapability(const std::string& device_id,
                      const webrtc::VideoCaptureCapability& cap) {
-    Device* dev = GetDeviceById(
-        reinterpret_cast<const char*>(device_id.c_str()));
-    if (!dev) return;
+    Device* dev =
+        GetDeviceById(reinterpret_cast<const char*>(device_id.c_str()));
+    if (!dev)
+      return;
     dev->caps.push_back(cap);
   }
   virtual uint32_t NumberOfDevices() {
@@ -48,28 +50,32 @@ class FakeWebRtcDeviceInfo : public webrtc::VideoCaptureModule::DeviceInfo {
                                 char* product_id,
                                 uint32_t product_id_len) {
     Device* dev = GetDeviceByIndex(device_num);
-    if (!dev) return -1;
+    if (!dev)
+      return -1;
     rtc::strcpyn(reinterpret_cast<char*>(device_name), device_name_len,
-                       dev->name.c_str());
+                 dev->name.c_str());
     rtc::strcpyn(reinterpret_cast<char*>(device_id), device_id_len,
-                       dev->id.c_str());
+                 dev->id.c_str());
     if (product_id) {
       rtc::strcpyn(reinterpret_cast<char*>(product_id), product_id_len,
-                         dev->product.c_str());
+                   dev->product.c_str());
     }
     return 0;
   }
   virtual int32_t NumberOfCapabilities(const char* device_id) {
     Device* dev = GetDeviceById(device_id);
-    if (!dev) return -1;
+    if (!dev)
+      return -1;
     return static_cast<int32_t>(dev->caps.size());
   }
   virtual int32_t GetCapability(const char* device_id,
                                 const uint32_t device_cap_num,
                                 webrtc::VideoCaptureCapability& cap) {
     Device* dev = GetDeviceById(device_id);
-    if (!dev) return -1;
-    if (device_cap_num >= dev->caps.size()) return -1;
+    if (!dev)
+      return -1;
+    if (device_cap_num >= dev->caps.size())
+      return -1;
     cap = dev->caps[device_cap_num];
     return 0;
   }
@@ -83,9 +89,11 @@ class FakeWebRtcDeviceInfo : public webrtc::VideoCaptureModule::DeviceInfo {
       webrtc::VideoCaptureCapability& resulting) {
     return -1;  // not implemented
   }
-  virtual int32_t DisplayCaptureSettingsDialogBox(
-      const char* device_id, const char* dialog_title,
-      void* parent, uint32_t x, uint32_t y) {
+  virtual int32_t DisplayCaptureSettingsDialogBox(const char* device_id,
+                                                  const char* dialog_title,
+                                                  void* parent,
+                                                  uint32_t x,
+                                                  uint32_t y) {
     return -1;  // not implemented
   }
 
@@ -105,4 +113,4 @@ class FakeWebRtcDeviceInfo : public webrtc::VideoCaptureModule::DeviceInfo {
   std::vector<Device> devices_;
 };
 
-#endif  // WEBRTC_MEDIA_ENGINE_FAKEWEBRTCDEVICEINFO_H_
+#endif  // MEDIA_ENGINE_FAKEWEBRTCDEVICEINFO_H_

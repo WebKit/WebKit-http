@@ -7,11 +7,10 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_PLI_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_PLI_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_PLI_H_
+#define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_PLI_H_
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/psfb.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/psfb.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -31,9 +30,9 @@ class Pli : public Psfb {
   bool Create(uint8_t* packet,
               size_t* index,
               size_t max_length,
-              RtcpPacket::PacketReadyCallback* callback) const override;
+              PacketReadyCallback callback) const override;
 };
 
 }  // namespace rtcp
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_PLI_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_PLI_H_

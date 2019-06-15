@@ -5,7 +5,7 @@ es6id: 9.5.5
 description: >
     Throws a TypeError exception if trap result is undefined and target is not
     extensible
-info: >
+info: |
     [[GetOwnProperty]] (P)
 
     ...
@@ -16,17 +16,17 @@ info: >
 ---*/
 
 var target = {
-    foo: 1
+  foo: 1
 };
 
 var p = new Proxy(target, {
-    getOwnPropertyDescriptor: function(t, prop) {
-        return;
-    }
+  getOwnPropertyDescriptor: function(t, prop) {
+    return;
+  }
 });
 
 Object.preventExtensions(target);
 
 assert.throws(TypeError, function() {
-    Object.getOwnPropertyDescriptor(p, "foo");
+  Object.getOwnPropertyDescriptor(p, "foo");
 });

@@ -22,9 +22,9 @@
 
 #include "Filter.h"
 #include "GraphicsContext.h"
-#include "TextStream.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/TextStream.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -60,14 +60,9 @@ void SourceGraphic::platformApplySoftware()
     resultImage->context().drawImageBuffer(*sourceImage, IntPoint());
 }
 
-void SourceGraphic::dump()
+TextStream& SourceGraphic::externalRepresentation(TextStream& ts, RepresentationType) const
 {
-}
-
-TextStream& SourceGraphic::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[SourceGraphic]\n";
+    ts << indent << "[SourceGraphic]\n";
     return ts;
 }
 

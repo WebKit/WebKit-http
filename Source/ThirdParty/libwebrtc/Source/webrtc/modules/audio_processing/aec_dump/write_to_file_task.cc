@@ -8,9 +8,9 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec_dump/write_to_file_task.h"
+#include "modules/audio_processing/aec_dump/write_to_file_task.h"
 
-#include "webrtc/base/protobuf_utils.h"
+#include "rtc_base/protobuf_utils.h"
 
 namespace webrtc {
 
@@ -46,7 +46,7 @@ bool WriteToFileTask::Run() {
   ProtoString event_string;
   event_.SerializeToString(&event_string);
 
-  const size_t event_byte_size = event_.ByteSize();
+  const size_t event_byte_size = event_.ByteSizeLong();
 
   if (!IsRoomForNextEvent(event_byte_size)) {
     debug_file_->CloseFile();

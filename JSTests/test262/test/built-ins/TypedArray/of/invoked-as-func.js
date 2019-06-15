@@ -4,7 +4,7 @@
 es6id: 22.2.2.2
 description: >
   "of" cannot be invoked as a function
-info: >
+info: |
   22.2.2.2 %TypedArray%.of ( ...items )
 
   ...
@@ -12,6 +12,7 @@ info: >
   4. If IsConstructor(C) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var of = TypedArray.of;

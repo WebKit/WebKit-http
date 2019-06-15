@@ -5,12 +5,16 @@
 esid: sec-arrow-function-definitions-static-semantics-early-errors
 description: >
   A SyntaxError is thrown if an arrow function contains a non-simple parameter list and a UseStrict directive.
-info: >
+info: |
   Static Semantics: Early Errors
 
   It is a Syntax Error if ContainsUseStrict of ConciseBody is true and IsSimpleParameterList of ArrowParameters is false.
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 var f = (a = 0) => {
   "use strict";

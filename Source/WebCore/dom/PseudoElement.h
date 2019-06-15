@@ -32,26 +32,15 @@
 namespace WebCore {
 
 class PseudoElement final : public Element {
+    WTF_MAKE_ISO_ALLOCATED(PseudoElement);
 public:
-    static Ref<PseudoElement> create(Element& host, PseudoId pseudoId)
-    {
-        return adoptRef(*new PseudoElement(host, pseudoId));
-    }
+    static Ref<PseudoElement> create(Element& host, PseudoId);
     virtual ~PseudoElement();
 
     Element* hostElement() const { return m_hostElement; }
     void clearHostElement();
 
-    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
-    void didAttachRenderers() override;
-    void didRecalcStyle(Style::Change) override;
     bool rendererIsNeeded(const RenderStyle&) override;
-
-    // As per http://dev.w3.org/csswg/css3-regions/#flow-into, pseudo-elements such as ::first-line, ::first-letter, ::before or ::after
-    // cannot be directly collected into a named flow.
-#if ENABLE(CSS_REGIONS)
-    bool shouldMoveToFlowThread(const RenderStyle&) const override { return false; }
-#endif
 
     bool canStartSelection() const override { return false; }
     bool canContainRangeEndPoint() const override { return false; }

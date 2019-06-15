@@ -1,7 +1,7 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
  * (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,6 +25,7 @@
 #include "Color.h"
 #include "FloatPoint.h"
 #include "RenderStyleConstants.h"
+#include <wtf/OptionSet.h>
 
 namespace WebCore {
 
@@ -40,18 +41,23 @@ class TextRun;
     
 class TextDecorationPainter {
 public:
-    TextDecorationPainter(GraphicsContext&, TextDecoration, const RenderText&, bool isFirstLine);
+    struct Styles;
+    TextDecorationPainter(GraphicsContext&, OptionSet<TextDecoration> decorations, const RenderText&, bool isFirstLine, std::optional<Styles> = std::nullopt);
     
     void setInlineTextBox(const InlineTextBox* inlineTextBox) { m_inlineTextBox = inlineTextBox; }
     void setFont(const FontCascade& font) { m_font = &font; }
     void setIsHorizontal(bool isHorizontal) { m_isHorizontal = isHorizontal; }
     void setWidth(float width) { m_width = width; }
     void setBaseline(float baseline) { m_baseline = baseline; }
-    void addTextShadow(const ShadowData* textShadow) { m_shadow = textShadow; }
+    void setTextShadow(const ShadowData* textShadow) { m_shadow = textShadow; }
+    void setShadowColorFilter(const FilterOperations* colorFilter) { m_shadowColorFilter = colorFilter; }
 
     void paintTextDecoration(const TextRun&, const FloatPoint& textOrigin, const FloatPoint& boxOrigin);
 
     struct Styles {
+        bool operator==(const Styles&) const;
+        bool operator!=(const Styles& other) const { return !(*this == other); }
+
         Color underlineColor;
         Color overlineColor;
         Color linethroughColor;
@@ -59,21 +65,22 @@ public:
         TextDecorationStyle overlineStyle;
         TextDecorationStyle linethroughStyle;
     };
-    static Styles stylesForRenderer(const RenderObject&, unsigned requestedDecorations, bool firstLineStyle = false);
-        
+    static Styles stylesForRenderer(const RenderObject&, OptionSet<TextDecoration> requestedDecorations, bool firstLineStyle = false, PseudoId = PseudoId::None);
+
 private:
     GraphicsContext& m_context;
-    TextDecoration m_decoration;
-    int m_wavyOffset { 0 };
-    bool m_isPrinting { false };
+    OptionSet<TextDecoration> m_decorations;
+    float m_wavyOffset;
     float m_width { 0 };
     float m_baseline { 0 };
     FloatPoint m_boxOrigin;
+    bool m_isPrinting;
     bool m_isHorizontal { true };
     const ShadowData* m_shadow { nullptr };
+    const FilterOperations* m_shadowColorFilter { nullptr };
     const InlineTextBox* m_inlineTextBox { nullptr };
     const FontCascade* m_font { nullptr };
-    
+
     Styles m_styles;
     const RenderStyle& m_lineStyle;
 };

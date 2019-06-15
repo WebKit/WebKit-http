@@ -29,9 +29,11 @@
 #include "config.h"
 #include "SystemMemory.h"
 
+#if PLATFORM(IOS)
+
 #include <sys/sysctl.h>
 #include <wtf/Assertions.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 namespace WebCore {
 
@@ -41,9 +43,9 @@ int systemMemoryLevel()
     return 35;
 #else
     static int memoryFreeLevel = -1;
-    static double previousCheckTime; 
-    double time = currentTime();
-    if (time - previousCheckTime < 0.1)
+    static WallTime previousCheckTime;
+    WallTime time = WallTime::now();
+    if (time - previousCheckTime < 100_ms)
         return memoryFreeLevel;
     previousCheckTime = time;
     size_t size = sizeof(memoryFreeLevel);
@@ -53,3 +55,5 @@ int systemMemoryLevel()
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(IOS)

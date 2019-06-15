@@ -32,20 +32,22 @@
 #include "JSCInlines.h"
 #include "SlotVisitor.h"
 #include "TypeLocation.h"
-#include <wtf/CurrentTime.h>
 
 
 namespace JSC {
 
+namespace TypeProfilerLogInternal {
 static const bool verbose = false;
+}
 
-void TypeProfilerLog::initializeLog()
+TypeProfilerLog::TypeProfilerLog(VM& vm)
+    : m_vm(vm)
+    , m_logSize(50000)
+    , m_logStartPtr(new LogEntry[m_logSize])
+    , m_currentLogEntryPtr(m_logStartPtr)
+    , m_logEndPtr(m_logStartPtr + m_logSize)
 {
-    ASSERT(!m_logStartPtr);
-    m_logSize = 50000;
-    m_logStartPtr = new LogEntry[m_logSize];
-    m_currentLogEntryPtr = m_logStartPtr;
-    m_logEndPtr = m_logStartPtr + m_logSize;
+    ASSERT(m_logStartPtr);
 }
 
 TypeProfilerLog::~TypeProfilerLog()
@@ -55,35 +57,51 @@ TypeProfilerLog::~TypeProfilerLog()
 
 void TypeProfilerLog::processLogEntries(const String& reason)
 {
-    double before = 0;
-    if (verbose) {
+    MonotonicTime before { };
+    if (TypeProfilerLogInternal::verbose) {
         dataLog("Process caller:'", reason, "'");
-        before = currentTimeMS();
+        before = MonotonicTime::now();
     }
 
+    HashMap<Structure*, RefPtr<StructureShape>> cachedMonoProtoShapes;
+    HashMap<std::pair<Structure*, JSCell*>, RefPtr<StructureShape>> cachedPolyProtoShapes;
+
     LogEntry* entry = m_logStartPtr;
-    HashMap<Structure*, RefPtr<StructureShape>> seenShapes;
+
     while (entry != m_currentLogEntryPtr) {
         StructureID id = entry->structureID;
-        RefPtr<StructureShape> shape; 
+        RefPtr<StructureShape> shape;
         JSValue value = entry->value;
         Structure* structure = nullptr;
+        bool sawPolyProtoStructure = false;
         if (id) {
-            structure = Heap::heap(value.asCell())->structureIDTable().get(id); 
-            auto iter = seenShapes.find(structure);
-            if (iter == seenShapes.end()) {
-                shape = structure->toStructureShape(value);
-                seenShapes.set(structure, shape);
+            structure = Heap::heap(value.asCell())->structureIDTable().get(id);
+            auto iter = cachedMonoProtoShapes.find(structure);
+            if (iter == cachedMonoProtoShapes.end()) {
+                auto key = std::make_pair(structure, value.asCell());
+                auto iter = cachedPolyProtoShapes.find(key);
+                if (iter != cachedPolyProtoShapes.end()) {
+                    shape = iter->value;
+                    sawPolyProtoStructure = true;
+                }
+
+                if (!shape) {
+                    shape = structure->toStructureShape(value, sawPolyProtoStructure);
+                    if (sawPolyProtoStructure)
+                        cachedPolyProtoShapes.set(key, shape);
+                    else
+                        cachedMonoProtoShapes.set(structure, shape);
+                }
             } else
                 shape = iter->value;
         }
 
-        RuntimeType type = runtimeTypeForValue(value);
+        RuntimeType type = runtimeTypeForValue(m_vm, value);
         TypeLocation* location = entry->location;
         location->m_lastSeenType = type;
         if (location->m_globalTypeSet)
-            location->m_globalTypeSet->addTypeInformation(type, shape.copyRef(), structure);
-        location->m_instructionTypeSet->addTypeInformation(type, WTFMove(shape), structure);
+            location->m_globalTypeSet->addTypeInformation(type, shape.copyRef(), structure, sawPolyProtoStructure);
+        location->m_instructionTypeSet->addTypeInformation(type, WTFMove(shape), structure, sawPolyProtoStructure);
 
         entry++;
     }
@@ -95,9 +113,9 @@ void TypeProfilerLog::processLogEntries(const String& reason)
     // pauses and causes the collector to mark the log.
     m_currentLogEntryPtr = m_logStartPtr;
 
-    if (verbose) {
-        double after = currentTimeMS();
-        dataLogF(" Processing the log took: '%f' ms\n", after - before);
+    if (TypeProfilerLogInternal::verbose) {
+        MonotonicTime after = MonotonicTime::now();
+        dataLogF(" Processing the log took: '%f' ms\n", (after - before).milliseconds());
     }
 }
 

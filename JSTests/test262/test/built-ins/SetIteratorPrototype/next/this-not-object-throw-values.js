@@ -4,7 +4,7 @@
 es6id: 23.2.5.2.1
 description: >
   Throws a TypeError if `this` value is not an Object.
-info: >
+info: |
   From Set.prototype.values()
 
   %SetIteratorPrototype%.next ( )
@@ -17,7 +17,10 @@ features:
   - Symbol.iterator
 ---*/
 
-var set = new Set([[1, 11], [2, 22]]);
+var set = new Set([
+  [1, 11],
+  [2, 22]
+]);
 var iterator = set.values();
 
 assert.throws(TypeError, function() {

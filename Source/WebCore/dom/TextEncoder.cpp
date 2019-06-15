@@ -26,14 +26,14 @@
 #include "TextEncoder.h"
 
 #include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
-#include <runtime/JSCInlines.h>
 
 namespace WebCore {
 
 String TextEncoder::encoding() const
 {
-    return ASCIILiteral("utf-8");
+    return "utf-8"_s;
 }
 
 RefPtr<Uint8Array> TextEncoder::encode(String&& input) const

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,19 +26,38 @@
 #include "config.h"
 #include "APIWebsitePolicies.h"
 
+#include "APIWebsiteDataStore.h"
+#include "WebsitePoliciesData.h"
+
 namespace API {
 
-Ref<WebsitePolicies> WebsitePolicies::create()
-{
-    return adoptRef(*new WebsitePolicies());
-}
+WebsitePolicies::WebsitePolicies() = default;
 
-WebsitePolicies::WebsitePolicies()
-{
-}
+WebsitePolicies::WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk> allowedAutoplayQuirks, WebKit::WebsiteAutoplayPolicy autoplayPolicy, Vector<WebCore::HTTPHeaderField>&& customHeaderFields, WebKit::WebsitePopUpPolicy popUpPolicy, RefPtr<WebsiteDataStore>&& websiteDataStore)
+    : m_contentBlockersEnabled(contentBlockersEnabled)
+    , m_allowedAutoplayQuirks(allowedAutoplayQuirks)
+    , m_autoplayPolicy(autoplayPolicy)
+    , m_customHeaderFields(WTFMove(customHeaderFields))
+    , m_popUpPolicy(popUpPolicy)
+    , m_websiteDataStore(WTFMove(websiteDataStore))
+{ }
 
 WebsitePolicies::~WebsitePolicies()
 {
 }
 
+void WebsitePolicies::setWebsiteDataStore(RefPtr<WebsiteDataStore>&& websiteDataStore)
+{
+    m_websiteDataStore = WTFMove(websiteDataStore);
 }
+
+WebKit::WebsitePoliciesData WebsitePolicies::data()
+{
+    std::optional<WebKit::WebsiteDataStoreParameters> parameters;
+    if (m_websiteDataStore)
+        parameters = m_websiteDataStore->websiteDataStore().parameters();
+    return { contentBlockersEnabled(), allowedAutoplayQuirks(), autoplayPolicy(), customHeaderFields(), popUpPolicy(), WTFMove(parameters) };
+}
+
+}
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginProcessCreationParameters_h
-#define PluginProcessCreationParameters_h
+#pragma once
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
-#include "Attachment.h"
 #include "PluginProcessAttributes.h"
 #include <wtf/Seconds.h>
 
 #if PLATFORM(COCOA)
-#include <WebCore/MachSendRight.h>
+#include <wtf/MachSendRight.h>
 #endif
 
 namespace IPC {
@@ -56,16 +54,11 @@ struct PluginProcessCreationParameters {
     Seconds terminationTimeout;
 
 #if PLATFORM(COCOA)
-    WebCore::MachSendRight acceleratedCompositingPort;
+    WTF::MachSendRight acceleratedCompositingPort;
     RetainPtr<CFDataRef> networkATSContext;
-#endif
-#if OS(LINUX)
-    IPC::Attachment memoryPressureMonitorHandle;
 #endif
 };
 
 } // namespace WebKit
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-
-#endif // PluginProcessCreationParameters_h

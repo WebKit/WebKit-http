@@ -5,7 +5,7 @@
 es6id: B.2.1.2
 description: >
   unescape.length is 1.
-info: >
+info: |
   unescape (string)
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(unescape.length, 1);
-
-verifyNotEnumerable(unescape, "length");
-verifyNotWritable(unescape, "length");
-verifyConfigurable(unescape, "length");
+verifyProperty(unescape, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 1
+});

@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-8-a-9
 description: >
     Array.prototype.lastIndexOf -  properties can be added to
@@ -9,19 +10,21 @@ description: >
     object
 ---*/
 
-        var arr = { length: 9 };
+var arr = {
+  length: 9
+};
 
-        Object.defineProperty(arr, "4", {
-            get: function () {
-                Object.defineProperty(Object.prototype, "1", {
-                    get: function () {
-                        return Infinity;
-                    },
-                    configurable: true
-                });
-                return 0;
-            },
-            configurable: true
-        });
+Object.defineProperty(arr, "4", {
+  get: function() {
+    Object.defineProperty(Object.prototype, "1", {
+      get: function() {
+        return Infinity;
+      },
+      configurable: true
+    });
+    return 0;
+  },
+  configurable: true
+});
 
 assert.sameValue(Array.prototype.lastIndexOf.call(arr, Infinity), 1, 'Array.prototype.lastIndexOf.call(arr, Infinity)');

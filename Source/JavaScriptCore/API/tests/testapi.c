@@ -23,7 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <wtf/Platform.h>
+#define ASSERT_DISABLED 0
+#include "config.h"
 
 #if USE(CF)
 #include "JavaScriptCore.h"
@@ -44,7 +45,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#define ASSERT_DISABLED 0
 #include <wtf/Assertions.h>
 
 #if OS(WINDOWS)
@@ -62,9 +62,15 @@
 #include "PingPongStackOverflowTest.h"
 #include "TypedArrayCTest.h"
 
+#if COMPILER(MSVC)
+#pragma warning(disable:4204)
+#endif
+
 #if JSC_OBJC_API_ENABLED
 void testObjectiveCAPI(void);
 #endif
+
+int testCAPIViaCpp(void);
 
 bool assertTrue(bool value, const char* message);
 
@@ -1134,6 +1140,10 @@ static bool globalContextNameTest()
     return result;
 }
 
+#if COMPILER(GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
+#endif
 static void checkConstnessInJSObjectNames()
 {
     JSStaticFunction fun;
@@ -1141,6 +1151,9 @@ static void checkConstnessInJSObjectNames()
     JSStaticValue val;
     val.name = "something";
 }
+#if COMPILER(GCC)
+#pragma GCC diagnostic pop
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -1197,7 +1210,7 @@ static void testMarkingConstraintsAndHeapFinalizers(void)
 
     weakRefs = (JSWeakRef*)calloc(numWeakRefs, sizeof(JSWeakRef));
 
-    JSContextGroupAddMarkingConstraint(group, markingConstraint, weakRefs);
+    JSContextGroupAddMarkingConstraint(group, markingConstraint, (void*)weakRefs);
     JSContextGroupAddHeapFinalizer(group, heapFinalizer, (void*)(uintptr_t)42);
     
     for (i = numWeakRefs; i--;)
@@ -1342,10 +1355,10 @@ static void testCFStrings(void)
 int main(int argc, char* argv[])
 {
 #if OS(WINDOWS)
-    // Cygwin calls ::SetErrorMode(SEM_FAILCRITICALERRORS), which we will inherit. This is bad for
+    // Cygwin calls SetErrorMode(SEM_FAILCRITICALERRORS), which we will inherit. This is bad for
     // testing/debugging, as it causes the post-mortem debugger not to be invoked. We reset the
     // error mode here to work around Cygwin's behavior. See <http://webkit.org/b/55222>.
-    ::SetErrorMode(0);
+    SetErrorMode(0);
 #endif
 
     testCompareAndSwap();
@@ -1354,6 +1367,7 @@ int main(int argc, char* argv[])
 #if JSC_OBJC_API_ENABLED
     testObjectiveCAPI();
 #endif
+    RELEASE_ASSERT(!testCAPIViaCpp());
 
     const char *scriptPath = "testapi.js";
     if (argc > 1) {
@@ -2033,6 +2047,22 @@ int main(int argc, char* argv[])
         JSGlobalContextRelease(context);
     }
 
+    // Check JSObjectGetGlobalContext
+    {
+        JSGlobalContextRef context = JSGlobalContextCreateInGroup(NULL, NULL);
+        {
+            JSObjectRef globalObject = JSContextGetGlobalObject(context);
+            assertTrue(JSObjectGetGlobalContext(globalObject) == context, "global object context is correct");
+            JSObjectRef object = JSObjectMake(context, NULL, NULL);
+            assertTrue(JSObjectGetGlobalContext(object) == context, "regular object context is correct");
+            JSStringRef returnFunctionSource = JSStringCreateWithUTF8CString("return this;");
+            JSObjectRef theFunction = JSObjectMakeFunction(context, NULL, 0, NULL, returnFunctionSource, NULL, 1, NULL);
+            assertTrue(JSObjectGetGlobalContext(theFunction) == context, "function object context is correct");
+            assertTrue(JSObjectGetGlobalContext(NULL) == NULL, "NULL object context is NULL");
+            JSStringRelease(returnFunctionSource);
+        }
+        JSGlobalContextRelease(context);
+    }
     failed = testTypedArrayCAPI() || failed;
     failed = testExecutionTimeLimit() || failed;
     failed = testFunctionOverrides() || failed;
@@ -2131,8 +2161,8 @@ static char* createStringWithContentsOfFile(const char* fileName)
 }
 
 #if OS(WINDOWS)
-extern "C" __declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, const char* argv[])
+__declspec(dllexport) int WINAPI dllLauncherEntryPoint(int argc, char* argv[])
 {
-    return main(argc, const_cast<char**>(argv));
+    return main(argc, argv);
 }
 #endif

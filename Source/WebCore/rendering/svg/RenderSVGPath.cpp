@@ -30,17 +30,18 @@
 
 #include "SVGPathElement.h"
 #include "SVGSubpathData.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGPath);
 
 RenderSVGPath::RenderSVGPath(SVGGraphicsElement& element, RenderStyle&& style)
     : RenderSVGShape(element, WTFMove(style))
 {
 }
 
-RenderSVGPath::~RenderSVGPath()
-{
-}
+RenderSVGPath::~RenderSVGPath() = default;
 
 void RenderSVGPath::updateShapeFromElement()
 {
@@ -66,7 +67,7 @@ FloatRect RenderSVGPath::calculateUpdatedStrokeBoundingBox() const
 
 static void useStrokeStyleToFill(GraphicsContext& context)
 {
-    if (Gradient* gradient = context.strokeGradient())
+    if (auto gradient = context.strokeGradient())
         context.setFillGradient(*gradient);
     else if (Pattern* pattern = context.strokePattern())
         context.setFillPattern(*pattern);
@@ -100,9 +101,9 @@ void RenderSVGPath::strokeShape(GraphicsContext& context) const
     }
 }
 
-bool RenderSVGPath::shapeDependentStrokeContains(const FloatPoint& point)
+bool RenderSVGPath::shapeDependentStrokeContains(const FloatPoint& point, PointCoordinateSpace pointCoordinateSpace)
 {
-    if (RenderSVGShape::shapeDependentStrokeContains(point))
+    if (RenderSVGShape::shapeDependentStrokeContains(point, pointCoordinateSpace))
         return true;
 
     for (size_t i = 0; i < m_zeroLengthLinecapLocations.size(); ++i) {

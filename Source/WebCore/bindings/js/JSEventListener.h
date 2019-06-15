@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,9 +21,9 @@
 
 #include "DOMWrapperWorld.h"
 #include "EventListener.h"
-#include <heap/StrongInlines.h>
-#include <heap/Weak.h>
-#include <heap/WeakInlines.h>
+#include <JavaScriptCore/StrongInlines.h>
+#include <JavaScriptCore/Weak.h>
+#include <JavaScriptCore/WeakInlines.h>
 #include <wtf/Ref.h>
 #include <wtf/TypeCasts.h>
 #include <wtf/text/TextPosition.h>
@@ -32,40 +32,23 @@
 namespace WebCore {
 
 class DOMWindow;
+class Document;
 class EventTarget;
 class HTMLElement;
-class JSDOMGlobalObject;
 
 class JSEventListener : public EventListener {
 public:
-    static Ref<JSEventListener> create(JSC::JSObject* listener, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld& world)
-    {
-        return adoptRef(*new JSEventListener(listener, wrapper, isAttribute, world));
-    }
-
-    static RefPtr<JSEventListener> create(JSC::JSValue listener, JSC::JSObject& wrapper, bool isAttribute, DOMWrapperWorld& world)
-    {
-        if (UNLIKELY(!listener.isObject()))
-            return nullptr;
-
-        return adoptRef(new JSEventListener(JSC::asObject(listener), &wrapper, isAttribute, world));
-    }
-
-    static const JSEventListener* cast(const EventListener* listener)
-    {
-        return listener->type() == JSEventListenerType
-            ? static_cast<const JSEventListener*>(listener)
-            : nullptr;
-    }
+    static Ref<JSEventListener> create(JSC::JSObject* listener, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld&);
+    static RefPtr<JSEventListener> create(JSC::JSValue listener, JSC::JSObject& wrapper, bool isAttribute, DOMWrapperWorld&);
 
     virtual ~JSEventListener();
 
-    bool operator==(const EventListener& other) const override;
+    bool operator==(const EventListener&) const final;
 
     // Returns true if this event listener was created for an event handler attribute, like "onload" or "onclick".
-    bool isAttribute() const { return m_isAttribute; }
+    bool isAttribute() const final { return m_isAttribute; }
 
-    JSC::JSObject* jsFunction(ScriptExecutionContext*) const;
+    JSC::JSObject* jsFunction(ScriptExecutionContext&) const;
     DOMWrapperWorld& isolatedWorld() const { return m_isolatedWorld; }
 
     JSC::JSObject* wrapper() const { return m_wrapper.get(); }
@@ -75,13 +58,12 @@ public:
     virtual TextPosition sourcePosition() const { return TextPosition(); }
 
 private:
-    virtual JSC::JSObject* initializeJSFunction(ScriptExecutionContext*) const;
-    void visitJSFunction(JSC::SlotVisitor&) override;
-    bool virtualisAttribute() const override;
+    virtual JSC::JSObject* initializeJSFunction(ScriptExecutionContext&) const;
+    void visitJSFunction(JSC::SlotVisitor&) final;
 
 protected:
     JSEventListener(JSC::JSObject* function, JSC::JSObject* wrapper, bool isAttribute, DOMWrapperWorld&);
-    void handleEvent(ScriptExecutionContext*, Event*) override;
+    void handleEvent(ScriptExecutionContext&, Event&) override;
 
 private:
     mutable JSC::Weak<JSC::JSObject> m_jsFunction;
@@ -107,17 +89,16 @@ void setDocumentEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, HTMLEleme
 JSC::JSValue documentEventHandlerAttribute(Document&, const AtomicString& eventType, DOMWrapperWorld&);
 void setDocumentEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, Document&, const AtomicString& eventType, JSC::JSValue);
 
-inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* scriptExecutionContext) const
+inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext& scriptExecutionContext) const
 {
     // initializeJSFunction can trigger code that deletes this event listener
-    // before we're done. It should always return 0 in this case.
+    // before we're done. It should always return null in this case.
     auto protect = makeRef(const_cast<JSEventListener&>(*this));
     JSC::Strong<JSC::JSObject> wrapper(m_isolatedWorld->vm(), m_wrapper.get());
 
     if (!m_jsFunction) {
-        JSC::JSObject* function = initializeJSFunction(scriptExecutionContext);
-        JSC::JSObject* wrapper = m_wrapper.get();
-        if (wrapper)
+        auto* function = initializeJSFunction(scriptExecutionContext);
+        if (auto* wrapper = m_wrapper.get())
             JSC::Heap::heap(wrapper)->writeBarrier(wrapper, function);
         m_jsFunction = JSC::Weak<JSC::JSObject>(function);
     }
@@ -127,7 +108,7 @@ inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* script
     // world and can have zombie m_jsFunctions.
     ASSERT(!m_isolatedWorld->isNormal() || m_wrapper || !m_jsFunction);
 
-    // If m_wrapper is 0, then m_jsFunction is zombied, and should never be accessed.
+    // If m_wrapper is null, then m_jsFunction is zombied, and should never be accessed.
     if (!m_wrapper)
         return nullptr;
 

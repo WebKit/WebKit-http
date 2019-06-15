@@ -28,6 +28,7 @@
 #if ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)
 #include "MacroAssembler.h"
 
+#include "ProbeContext.h"
 #include <wtf/InlineASM.h>
 
 namespace JSC {
@@ -36,16 +37,20 @@ namespace JSC {
 
 extern "C" void ctiMasmProbeTrampoline();
 
+using namespace ARMRegisters;
+
 #if COMPILER(GCC_OR_CLANG)
 
-// The following are offsets for ProbeContext fields accessed
+// The following are offsets for Probe::State fields accessed
 // by the ctiMasmProbeTrampoline stub.
 
 #define PTR_SIZE 4
 #define PROBE_PROBE_FUNCTION_OFFSET (0 * PTR_SIZE)
 #define PROBE_ARG_OFFSET (1 * PTR_SIZE)
+#define PROBE_INIT_STACK_FUNCTION_OFFSET (2 * PTR_SIZE)
+#define PROBE_INIT_STACK_ARG_OFFSET (3 * PTR_SIZE)
 
-#define PROBE_FIRST_GPREG_OFFSET (2 * PTR_SIZE)
+#define PROBE_FIRST_GPREG_OFFSET (4 * PTR_SIZE)
 
 #define GPREG_SIZE 4
 #define PROBE_CPU_R0_OFFSET (PROBE_FIRST_GPREG_OFFSET + (0 * GPREG_SIZE))
@@ -87,6 +92,8 @@ extern "C" void ctiMasmProbeTrampoline();
 #define PROBE_CPU_D13_OFFSET (PROBE_FIRST_FPREG_OFFSET + (13 * FPREG_SIZE))
 #define PROBE_CPU_D14_OFFSET (PROBE_FIRST_FPREG_OFFSET + (14 * FPREG_SIZE))
 #define PROBE_CPU_D15_OFFSET (PROBE_FIRST_FPREG_OFFSET + (15 * FPREG_SIZE))
+
+#if CPU(ARM_NEON) || CPU(ARM_VFP_V3_D32)
 #define PROBE_CPU_D16_OFFSET (PROBE_FIRST_FPREG_OFFSET + (16 * FPREG_SIZE))
 #define PROBE_CPU_D17_OFFSET (PROBE_FIRST_FPREG_OFFSET + (17 * FPREG_SIZE))
 #define PROBE_CPU_D18_OFFSET (PROBE_FIRST_FPREG_OFFSET + (18 * FPREG_SIZE))
@@ -103,78 +110,110 @@ extern "C" void ctiMasmProbeTrampoline();
 #define PROBE_CPU_D29_OFFSET (PROBE_FIRST_FPREG_OFFSET + (29 * FPREG_SIZE))
 #define PROBE_CPU_D30_OFFSET (PROBE_FIRST_FPREG_OFFSET + (30 * FPREG_SIZE))
 #define PROBE_CPU_D31_OFFSET (PROBE_FIRST_FPREG_OFFSET + (31 * FPREG_SIZE))
+
 #define PROBE_SIZE (PROBE_FIRST_FPREG_OFFSET + (32 * FPREG_SIZE))
-#define PROBE_ALIGNED_SIZE (PROBE_SIZE)
+#else
+#define PROBE_SIZE (PROBE_FIRST_FPREG_OFFSET + (16 * FPREG_SIZE))
+#endif // CPU(ARM_NEON) || CPU(ARM_VFP_V3_D32)
 
-// These ASSERTs remind you that if you change the layout of ProbeContext,
+#define OUT_SIZE GPREG_SIZE
+
+// These ASSERTs remind you that if you change the layout of Probe::State,
 // you need to change ctiMasmProbeTrampoline offsets above to match.
-#define PROBE_OFFSETOF(x) offsetof(struct ProbeContext, x)
-COMPILE_ASSERT(PROBE_OFFSETOF(probeFunction) == PROBE_PROBE_FUNCTION_OFFSET, ProbeContext_probeFunction_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(arg) == PROBE_ARG_OFFSET, ProbeContext_arg_offset_matches_ctiMasmProbeTrampoline);
+#define PROBE_OFFSETOF(x) offsetof(struct Probe::State, x)
+static_assert(PROBE_OFFSETOF(probeFunction) == PROBE_PROBE_FUNCTION_OFFSET, "Probe::State::probeFunction's offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(arg) == PROBE_ARG_OFFSET, "Probe::State::arg's offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(initializeStackFunction) == PROBE_INIT_STACK_FUNCTION_OFFSET, "Probe::State::initializeStackFunction's offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(initializeStackArg) == PROBE_INIT_STACK_ARG_OFFSET, "Probe::State::initializeStackArg's offset matches ctiMasmProbeTrampoline");
 
-COMPILE_ASSERT(!(PROBE_CPU_R0_OFFSET & 0x3), ProbeContext_cpu_r0_offset_should_be_4_byte_aligned);
+static_assert(!(PROBE_CPU_R0_OFFSET & 0x3), "Probe::State::cpu.gprs[r0]'s offset should be 4 byte aligned");
 
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r0) == PROBE_CPU_R0_OFFSET, ProbeContext_cpu_r0_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r1) == PROBE_CPU_R1_OFFSET, ProbeContext_cpu_r1_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r2) == PROBE_CPU_R2_OFFSET, ProbeContext_cpu_r2_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r3) == PROBE_CPU_R3_OFFSET, ProbeContext_cpu_r3_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r4) == PROBE_CPU_R4_OFFSET, ProbeContext_cpu_r4_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r5) == PROBE_CPU_R5_OFFSET, ProbeContext_cpu_r5_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r6) == PROBE_CPU_R6_OFFSET, ProbeContext_cpu_r6_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r7) == PROBE_CPU_R7_OFFSET, ProbeContext_cpu_r7_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r8) == PROBE_CPU_R8_OFFSET, ProbeContext_cpu_r8_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r9) == PROBE_CPU_R9_OFFSET, ProbeContext_cpu_r9_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r10) == PROBE_CPU_R10_OFFSET, ProbeContext_cpu_r10_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.r11) == PROBE_CPU_R11_OFFSET, ProbeContext_cpu_r11_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.ip) == PROBE_CPU_IP_OFFSET, ProbeContext_cpu_ip_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.sp) == PROBE_CPU_SP_OFFSET, ProbeContext_cpu_sp_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.lr) == PROBE_CPU_LR_OFFSET, ProbeContext_cpu_lr_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.pc) == PROBE_CPU_PC_OFFSET, ProbeContext_cpu_pc_offset_matches_ctiMasmProbeTrampoline);
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r0]) == PROBE_CPU_R0_OFFSET, "Probe::State::cpu.gprs[r0]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r1]) == PROBE_CPU_R1_OFFSET, "Probe::State::cpu.gprs[r1]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r2]) == PROBE_CPU_R2_OFFSET, "Probe::State::cpu.gprs[r2]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r3]) == PROBE_CPU_R3_OFFSET, "Probe::State::cpu.gprs[r3]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r4]) == PROBE_CPU_R4_OFFSET, "Probe::State::cpu.gprs[r4]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r5]) == PROBE_CPU_R5_OFFSET, "Probe::State::cpu.gprs[r5]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r6]) == PROBE_CPU_R6_OFFSET, "Probe::State::cpu.gprs[r6]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r7]) == PROBE_CPU_R7_OFFSET, "Probe::State::cpu.gprs[r7]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r8]) == PROBE_CPU_R8_OFFSET, "Probe::State::cpu.gprs[r8]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r9]) == PROBE_CPU_R9_OFFSET, "Probe::State::cpu.gprs[r9]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r10]) == PROBE_CPU_R10_OFFSET, "Probe::State::cpu.gprs[r10]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::r11]) == PROBE_CPU_R11_OFFSET, "Probe::State::cpu.gprs[r11]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::ip]) == PROBE_CPU_IP_OFFSET, "Probe::State::cpu.gprs[ip]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::sp]) == PROBE_CPU_SP_OFFSET, "Probe::State::cpu.gprs[sp]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::lr]) == PROBE_CPU_LR_OFFSET, "Probe::State::cpu.gprs[lr]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.gprs[ARMRegisters::pc]) == PROBE_CPU_PC_OFFSET, "Probe::State::cpu.gprs[pc]'s offset matches ctiMasmProbeTrampoline");
 
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.apsr) == PROBE_CPU_APSR_OFFSET, ProbeContext_cpu_apsr_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.fpscr) == PROBE_CPU_FPSCR_OFFSET, ProbeContext_cpu_fpscr_offset_matches_ctiMasmProbeTrampoline);
+static_assert(PROBE_OFFSETOF(cpu.sprs[ARMRegisters::apsr]) == PROBE_CPU_APSR_OFFSET, "Probe::State::cpu.sprs[apsr]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.sprs[ARMRegisters::fpscr]) == PROBE_CPU_FPSCR_OFFSET, "Probe::State::cpu.sprs[fpscr]'s offset matches ctiMasmProbeTrampoline");
 
-COMPILE_ASSERT(!(PROBE_CPU_D0_OFFSET & 0xf), ProbeContext_cpu_d0_offset_should_be_16_byte_aligned);
+static_assert(!(PROBE_CPU_D0_OFFSET & 0x7), "Probe::State::cpu.fprs[d0]'s offset should be 8 byte aligned");
 
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d0) == PROBE_CPU_D0_OFFSET, ProbeContext_cpu_d0_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d1) == PROBE_CPU_D1_OFFSET, ProbeContext_cpu_d1_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d2) == PROBE_CPU_D2_OFFSET, ProbeContext_cpu_d2_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d3) == PROBE_CPU_D3_OFFSET, ProbeContext_cpu_d3_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d4) == PROBE_CPU_D4_OFFSET, ProbeContext_cpu_d4_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d5) == PROBE_CPU_D5_OFFSET, ProbeContext_cpu_d5_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d6) == PROBE_CPU_D6_OFFSET, ProbeContext_cpu_d6_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d7) == PROBE_CPU_D7_OFFSET, ProbeContext_cpu_d7_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d8) == PROBE_CPU_D8_OFFSET, ProbeContext_cpu_d8_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d9) == PROBE_CPU_D9_OFFSET, ProbeContext_cpu_d9_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d10) == PROBE_CPU_D10_OFFSET, ProbeContext_cpu_d10_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d11) == PROBE_CPU_D11_OFFSET, ProbeContext_cpu_d11_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d12) == PROBE_CPU_D12_OFFSET, ProbeContext_cpu_d12_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d13) == PROBE_CPU_D13_OFFSET, ProbeContext_cpu_d13_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d14) == PROBE_CPU_D14_OFFSET, ProbeContext_cpu_d14_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d15) == PROBE_CPU_D15_OFFSET, ProbeContext_cpu_d15_offset_matches_ctiMasmProbeTrampoline);
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d0]) == PROBE_CPU_D0_OFFSET, "Probe::State::cpu.fprs[d0]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d1]) == PROBE_CPU_D1_OFFSET, "Probe::State::cpu.fprs[d1]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d2]) == PROBE_CPU_D2_OFFSET, "Probe::State::cpu.fprs[d2]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d3]) == PROBE_CPU_D3_OFFSET, "Probe::State::cpu.fprs[d3]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d4]) == PROBE_CPU_D4_OFFSET, "Probe::State::cpu.fprs[d4]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d5]) == PROBE_CPU_D5_OFFSET, "Probe::State::cpu.fprs[d5]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d6]) == PROBE_CPU_D6_OFFSET, "Probe::State::cpu.fprs[d6]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d7]) == PROBE_CPU_D7_OFFSET, "Probe::State::cpu.fprs[d7]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d8]) == PROBE_CPU_D8_OFFSET, "Probe::State::cpu.fprs[d8]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d9]) == PROBE_CPU_D9_OFFSET, "Probe::State::cpu.fprs[d9]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d10]) == PROBE_CPU_D10_OFFSET, "Probe::State::cpu.fprs[d10]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d11]) == PROBE_CPU_D11_OFFSET, "Probe::State::cpu.fprs[d11]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d12]) == PROBE_CPU_D12_OFFSET, "Probe::State::cpu.fprs[d12]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d13]) == PROBE_CPU_D13_OFFSET, "Probe::State::cpu.fprs[d13]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d14]) == PROBE_CPU_D14_OFFSET, "Probe::State::cpu.fprs[d14]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d15]) == PROBE_CPU_D15_OFFSET, "Probe::State::cpu.fprs[d15]'s offset matches ctiMasmProbeTrampoline");
 
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d16) == PROBE_CPU_D16_OFFSET, ProbeContext_cpu_d16_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d17) == PROBE_CPU_D17_OFFSET, ProbeContext_cpu_d17_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d18) == PROBE_CPU_D18_OFFSET, ProbeContext_cpu_d18_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d19) == PROBE_CPU_D19_OFFSET, ProbeContext_cpu_d19_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d20) == PROBE_CPU_D20_OFFSET, ProbeContext_cpu_d20_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d21) == PROBE_CPU_D21_OFFSET, ProbeContext_cpu_d21_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d22) == PROBE_CPU_D22_OFFSET, ProbeContext_cpu_d22_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d23) == PROBE_CPU_D23_OFFSET, ProbeContext_cpu_d23_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d24) == PROBE_CPU_D24_OFFSET, ProbeContext_cpu_d24_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d25) == PROBE_CPU_D25_OFFSET, ProbeContext_cpu_d25_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d26) == PROBE_CPU_D26_OFFSET, ProbeContext_cpu_d26_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d27) == PROBE_CPU_D27_OFFSET, ProbeContext_cpu_d27_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d28) == PROBE_CPU_D28_OFFSET, ProbeContext_cpu_d28_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d29) == PROBE_CPU_D29_OFFSET, ProbeContext_cpu_d29_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d30) == PROBE_CPU_D30_OFFSET, ProbeContext_cpu_d30_offset_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(PROBE_OFFSETOF(cpu.d31) == PROBE_CPU_D31_OFFSET, ProbeContext_cpu_d31_offset_matches_ctiMasmProbeTrampoline);
+#if CPU(ARM_NEON) || CPU(ARM_VFP_V3_D32)
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d16]) == PROBE_CPU_D16_OFFSET, "Probe::State::cpu.fprs[d16]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d17]) == PROBE_CPU_D17_OFFSET, "Probe::State::cpu.fprs[d17]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d18]) == PROBE_CPU_D18_OFFSET, "Probe::State::cpu.fprs[d18]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d19]) == PROBE_CPU_D19_OFFSET, "Probe::State::cpu.fprs[d19]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d20]) == PROBE_CPU_D20_OFFSET, "Probe::State::cpu.fprs[d20]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d21]) == PROBE_CPU_D21_OFFSET, "Probe::State::cpu.fprs[d21]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d22]) == PROBE_CPU_D22_OFFSET, "Probe::State::cpu.fprs[d22]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d23]) == PROBE_CPU_D23_OFFSET, "Probe::State::cpu.fprs[d23]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d24]) == PROBE_CPU_D24_OFFSET, "Probe::State::cpu.fprs[d24]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d25]) == PROBE_CPU_D25_OFFSET, "Probe::State::cpu.fprs[d25]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d26]) == PROBE_CPU_D26_OFFSET, "Probe::State::cpu.fprs[d26]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d27]) == PROBE_CPU_D27_OFFSET, "Probe::State::cpu.fprs[d27]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d28]) == PROBE_CPU_D28_OFFSET, "Probe::State::cpu.fprs[d28]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d29]) == PROBE_CPU_D29_OFFSET, "Probe::State::cpu.fprs[d29]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d30]) == PROBE_CPU_D30_OFFSET, "Probe::State::cpu.fprs[d30]'s offset matches ctiMasmProbeTrampoline");
+static_assert(PROBE_OFFSETOF(cpu.fprs[ARMRegisters::d31]) == PROBE_CPU_D31_OFFSET, "Probe::State::cpu.fprs[d31]'s offset matches ctiMasmProbeTrampoline");
+#endif // CPU(ARM_NEON) || CPU(ARM_VFP_V3_D32)
 
-COMPILE_ASSERT(sizeof(ProbeContext) == PROBE_SIZE, ProbeContext_size_matches_ctiMasmProbeTrampoline);
-COMPILE_ASSERT(!(PROBE_ALIGNED_SIZE & 0xf), ProbeContext_aligned_size_offset_should_be_16_byte_aligned);
-
+static_assert(sizeof(Probe::State) == PROBE_SIZE, "Probe::State's size matches ctiMasmProbeTrampoline");
 #undef PROBE_OFFSETOF
-    
+
+struct IncomingRecord {
+    uintptr_t lr;
+    uintptr_t ip;
+    uintptr_t apsr;
+    uintptr_t r0;
+    uintptr_t r1;
+    uintptr_t r2;
+};
+
+#define IN_LR_OFFSET (0 * PTR_SIZE)
+#define IN_IP_OFFSET (1 * PTR_SIZE)
+#define IN_APSR_OFFSET (2 * PTR_SIZE)
+#define IN_R0_OFFSET (3 * PTR_SIZE)
+#define IN_R1_OFFSET (4 * PTR_SIZE)
+#define IN_R2_OFFSET (5 * PTR_SIZE)
+#define IN_SIZE      (6 * PTR_SIZE)
+
+static_assert(IN_LR_OFFSET == offsetof(IncomingRecord, lr), "IN_LR_OFFSET is incorrect");
+static_assert(IN_IP_OFFSET == offsetof(IncomingRecord, ip), "IN_IP_OFFSET is incorrect");
+static_assert(IN_APSR_OFFSET == offsetof(IncomingRecord, apsr), "IN_APSR_OFFSET is incorrect");
+static_assert(IN_R0_OFFSET == offsetof(IncomingRecord, r0), "IN_R0_OFFSET is incorrect");
+static_assert(IN_R1_OFFSET == offsetof(IncomingRecord, r1), "IN_R1_OFFSET is incorrect");
+static_assert(IN_R2_OFFSET == offsetof(IncomingRecord, r2), "IN_R2_OFFSET is incorrect");
+static_assert(IN_SIZE == sizeof(IncomingRecord), "IN_SIZE is incorrect");
+
 asm (
     ".text" "\n"
     ".align 2" "\n"
@@ -185,63 +224,118 @@ asm (
     SYMBOL_STRING(ctiMasmProbeTrampoline) ":" "\n"
 
     // MacroAssemblerARMv7::probe() has already generated code to store some values.
-    // The top of stack now looks like this:
-    //     esp[0 * ptrSize]: probeFunction
-    //     esp[1 * ptrSize]: arg
-    //     esp[2 * ptrSize]: saved r0
-    //     esp[3 * ptrSize]: saved ip
-    //     esp[4 * ptrSize]: saved lr
-    //     esp[5 * ptrSize]: saved sp
+    // The top of stack now contains the IncomingRecord.
+    //
+    // Incoming register values:
+    //     r0: probe function
+    //     r1: probe arg
+    //     r2: Probe::executeProbe
+    //     ip: scratch, was ctiMasmProbeTrampoline
+    //     lr: return address
 
     "mov       ip, sp" "\n"
-    "mov       r0, sp" "\n"
-    "sub       r0, r0, #" STRINGIZE_VALUE_OF(PROBE_ALIGNED_SIZE) "\n"
+    "str       r2, [ip, #-" STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n" // Stash Probe::executeProbe.
+
+    "mov       r2, sp" "\n"
+    "sub       r2, r2, #" STRINGIZE_VALUE_OF(PROBE_SIZE + OUT_SIZE) "\n"
 
     // The ARM EABI specifies that the stack needs to be 16 byte aligned.
-    "bic       r0, r0, #0xf" "\n"
-    "mov       sp, r0" "\n"
+    "bic       r2, r2, #0xf" "\n"
+    "mov       sp, r2" "\n" // Set the sp to protect the Probe::State from interrupts before we initialize it.
+    "ldr       r2, [ip, #-" STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n" // Reload Probe::executeProbe.
 
+    "str       r0, [sp, #" STRINGIZE_VALUE_OF(PROBE_PROBE_FUNCTION_OFFSET) "]" "\n"
+    "str       r1, [sp, #" STRINGIZE_VALUE_OF(PROBE_ARG_OFFSET) "]" "\n"
     "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_PC_OFFSET) "]" "\n"
-    "add       lr, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R1_OFFSET) "\n"
-    "stmia     lr, { r1-r11 }" "\n"
-    "mrs       lr, APSR" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_APSR_OFFSET) "]" "\n"
+
+    "add       r0, ip, #" STRINGIZE_VALUE_OF(IN_SIZE) "\n"
+    "str       r0, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
+
+    "add       lr, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R3_OFFSET) "\n"
+    "stmia     lr, { r3-r11 }" "\n"
+
     "vmrs      lr, FPSCR" "\n"
     "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_FPSCR_OFFSET) "]" "\n"
 
-    "ldr       lr, [ip, #0 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_PROBE_FUNCTION_OFFSET) "]" "\n"
-    "ldr       lr, [ip, #1 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_ARG_OFFSET) "]" "\n"
-    "ldr       lr, [ip, #2 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R0_OFFSET) "]" "\n"
-    "ldr       lr, [ip, #3 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_IP_OFFSET) "]" "\n"
-    "ldr       lr, [ip, #4 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
-    "ldr       lr, [ip, #5 * " STRINGIZE_VALUE_OF(PTR_SIZE) "]" "\n"
-    "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
-
-    "ldr       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_PC_OFFSET) "]" "\n"
+    "ldr       r4, [ip, #" STRINGIZE_VALUE_OF(IN_LR_OFFSET) "]" "\n"
+    "ldr       r5, [ip, #" STRINGIZE_VALUE_OF(IN_IP_OFFSET) "]" "\n"
+    "ldr       r6, [ip, #" STRINGIZE_VALUE_OF(IN_APSR_OFFSET) "]" "\n"
+    "ldr       r7, [ip, #" STRINGIZE_VALUE_OF(IN_R0_OFFSET) "]" "\n"
+    "ldr       r8, [ip, #" STRINGIZE_VALUE_OF(IN_R1_OFFSET) "]" "\n"
+    "ldr       r9, [ip, #" STRINGIZE_VALUE_OF(IN_R2_OFFSET) "]" "\n"
+    "str       r4, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
+    "str       r5, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_IP_OFFSET) "]" "\n"
+    "str       r6, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_APSR_OFFSET) "]" "\n"
+    "str       r7, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R0_OFFSET) "]" "\n"
+    "str       r8, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R1_OFFSET) "]" "\n"
+    "str       r9, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R2_OFFSET) "]" "\n"
 
     "add       ip, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_D0_OFFSET) "\n"
     "vstmia.64 ip!, { d0-d15 }" "\n"
+#if CPU(ARM_NEON) || CPU(ARM_VFP_V3_D32)
     "vstmia.64 ip!, { d16-d31 }" "\n"
+#endif
 
-    "mov       fp, sp" "\n" // Save the ProbeContext*.
+    // r5 is a callee saved register. We'll use it for preserving the Probe::State*.
+    // https://stackoverflow.com/questions/261419/arm-to-c-calling-convention-registers-to-save#261496
+    "mov       r5, sp" "\n"
 
-    "ldr       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_PROBE_FUNCTION_OFFSET) "]" "\n"
-    "mov       r0, sp" "\n" // the ProbeContext* arg.
-    "blx       ip" "\n"
+    "mov       r0, sp" "\n" // the Probe::State* arg.
+    "blx       r2" "\n" // Call Probe::executeProbe.
 
-    "mov       sp, fp" "\n"
+    // Make sure the Probe::State is entirely below the result stack pointer so
+    // that register values are still preserved when we call the initializeStack
+    // function.
+    "ldr       r1, [r5, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n" // Result sp.
+    "add       r2, r5, #" STRINGIZE_VALUE_OF(PROBE_SIZE + OUT_SIZE) "\n" // End of ProveContext + buffer.
+    "cmp       r1, r2" "\n"
+    "it        ge" "\n"
+    "bge     " LOCAL_LABEL_STRING(ctiMasmProbeTrampolineProbeStateIsSafe) "\n"
+
+    // Allocate a safe place on the stack below the result stack pointer to stash the Probe::State.
+    "sub       r1, r1, #" STRINGIZE_VALUE_OF(PROBE_SIZE + OUT_SIZE) "\n"
+    "bic       r1, r1, #0xf" "\n" // The ARM EABI specifies that the stack needs to be 16 byte aligned.
+    "mov       sp, r1" "\n" // Set the new sp to protect that memory from interrupts before we copy the Probe::State.
+
+    // Copy the Probe::State to the safe place.
+    // Note: we have to copy from low address to higher address because we're moving the
+    // Probe::State to a lower address.
+    "add       r7, r5, #" STRINGIZE_VALUE_OF(PROBE_SIZE) "\n"
+
+    LOCAL_LABEL_STRING(ctiMasmProbeTrampolineCopyLoop) ":" "\n"
+    "ldr       r3, [r5], #4" "\n"
+    "ldr       r4, [r5], #4" "\n"
+    "str       r3, [r1], #4" "\n"
+    "str       r4, [r1], #4" "\n"
+    "cmp       r5, r7" "\n"
+    "it        lt" "\n"
+    "blt     " LOCAL_LABEL_STRING(ctiMasmProbeTrampolineCopyLoop) "\n"
+
+    "mov       r5, sp" "\n"
+
+    // Call initializeStackFunction if present.
+    LOCAL_LABEL_STRING(ctiMasmProbeTrampolineProbeStateIsSafe) ":" "\n"
+    "ldr       r2, [r5, #" STRINGIZE_VALUE_OF(PROBE_INIT_STACK_FUNCTION_OFFSET) "]" "\n"
+    "cbz       r2, " LOCAL_LABEL_STRING(ctiMasmProbeTrampolineRestoreRegisters) "\n"
+
+    "mov       r0, r5" "\n" // Set the Probe::State* arg.
+    "blx       r2" "\n" // Call the initializeStackFunction (loaded into r2 above).
+
+    LOCAL_LABEL_STRING(ctiMasmProbeTrampolineRestoreRegisters) ":" "\n"
+
+    "mov       sp, r5" "\n" // Ensure that sp points to the Probe::State*.
 
     // To enable probes to modify register state, we copy all registers
-    // out of the ProbeContext before returning.
+    // out of the Probe::State before returning.
 
+#if CPU(ARM_NEON) || CPU(ARM_VFP_V3_D32)
     "add       ip, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_D31_OFFSET + FPREG_SIZE) "\n"
     "vldmdb.64 ip!, { d16-d31 }" "\n"
     "vldmdb.64 ip!, { d0-d15 }" "\n"
+#else
+    "add       ip, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_D15_OFFSET + FPREG_SIZE) "\n"
+    "vldmdb.64 ip!, { d0-d15 }" "\n"
+#endif
 
     "add       ip, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_R11_OFFSET + GPREG_SIZE) "\n"
     "ldmdb     ip, { r0-r11 }" "\n"
@@ -249,100 +343,52 @@ asm (
     "vmsr      FPSCR, ip" "\n"
 
     // There are 5 more registers left to restore: ip, sp, lr, pc, and apsr.
-    // There are 2 issues that complicate the restoration of these last few
-    // registers:
-    //
-    // 1. Normal ARM calling convention relies on moving lr to pc to return to
-    //    the caller. In our case, the address to return to is specified by
-    //    ProbeContext.cpu.pc. And at that moment, we won't have any available
-    //    scratch registers to hold the return address (lr needs to hold
-    //    ProbeContext.cpu.lr, not the return address).
-    //
-    //    The solution is to store the return address on the stack and load the
-    //    pc from there.
-    //
-    // 2. Issue 1 means we will need to write to the stack location at
-    //    ProbeContext.cpu.sp - 4. But if the user probe function had modified
-    //    the value of ProbeContext.cpu.sp to point in the range between
-    //    &ProbeContext.cpu.ip thru &ProbeContext.cpu.aspr, then the action for
-    //    Issue 1 may trash the values to be restored before we can restore
-    //    them.
-    //
-    //    The solution is to check if ProbeContext.cpu.sp contains a value in
-    //    the undesirable range. If so, we copy the remaining ProbeContext
-    //    register data to a safe range (at memory lower than where
-    //    ProbeContext.cpu.sp points) first, and restore the remaining register
-    //    from this new range.
 
-    "add       ip, sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_APSR_OFFSET) "\n"
+    // Set up the restore area for sp and pc.
     "ldr       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
-    "cmp       lr, ip" "\n"
-    "it        gt" "\n"
-    "bgt     " SYMBOL_STRING(ctiMasmProbeTrampolineEnd) "\n"
 
-    // We get here because the new expected stack pointer location is lower
-    // than where it's supposed to be. This means the safe range of stack
-    // memory where we'll be copying the remaining register restore values to
-    // might be in a region of memory below the sp i.e. unallocated stack
-    // memory. This, in turn, makes it vulnerable to interrupts potentially
-    // trashing the copied values. To prevent that, we must first allocate the
-    // needed stack memory by adjusting the sp before the copying.
-
-    "sub       lr, lr, #(6 * " STRINGIZE_VALUE_OF(PTR_SIZE)
-    " + " STRINGIZE_VALUE_OF(PROBE_CPU_IP_OFFSET) ")" "\n"
-
-    "mov       ip, sp" "\n"
-    "mov       sp, lr" "\n"
-    "mov       lr, ip" "\n"
-
-    "ldr       ip, [lr, #" STRINGIZE_VALUE_OF(PROBE_CPU_IP_OFFSET) "]" "\n"
-    "str       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_IP_OFFSET) "]" "\n"
-    "ldr       ip, [lr, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
-    "str       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
-    "ldr       ip, [lr, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
-    "str       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
-    "ldr       ip, [lr, #" STRINGIZE_VALUE_OF(PROBE_CPU_PC_OFFSET) "]" "\n"
-    "str       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_PC_OFFSET) "]" "\n"
-    "ldr       ip, [lr, #" STRINGIZE_VALUE_OF(PROBE_CPU_APSR_OFFSET) "]" "\n"
-    "str       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_APSR_OFFSET) "]" "\n"
-
-    ".thumb_func " THUMB_FUNC_PARAM(ctiMasmProbeTrampolineEnd) "\n"
-    SYMBOL_STRING(ctiMasmProbeTrampolineEnd) ":" "\n"
+    // Push the pc on to the restore area.
     "ldr       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_PC_OFFSET) "]" "\n"
-    "ldr       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
-    "sub       lr, lr, #" STRINGIZE_VALUE_OF(PTR_SIZE) "\n"
+    "sub       lr, lr, #" STRINGIZE_VALUE_OF(OUT_SIZE) "\n"
     "str       ip, [lr]" "\n"
+    // Point sp to the restore area.
     "str       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
 
+    // All done with math i.e. won't trash the status register (apsr) and don't need
+    // scratch registers (lr and ip) anymore. Restore apsr, lr, and ip.
     "ldr       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_APSR_OFFSET) "]" "\n"
     "msr       APSR, ip" "\n"
-    "ldr       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
-    "mov       lr, ip" "\n"
+    "ldr       lr, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_LR_OFFSET) "]" "\n"
     "ldr       ip, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_IP_OFFSET) "]" "\n"
-    "ldr       sp, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
 
+    // Restore the sp and pc.
+    "ldr       sp, [sp, #" STRINGIZE_VALUE_OF(PROBE_CPU_SP_OFFSET) "]" "\n"
     "pop       { pc }" "\n"
 );
 #endif // COMPILER(GCC_OR_CLANG)
 
-void MacroAssembler::probe(ProbeFunction function, void* arg)
+void MacroAssembler::probe(Probe::Function function, void* arg)
 {
-    push(RegisterID::lr);
-    push(RegisterID::lr);
-    add32(TrustedImm32(8), RegisterID::sp, RegisterID::lr);
-    store32(RegisterID::lr, ArmAddress(RegisterID::sp, 4));
-    push(RegisterID::ip);
-    push(RegisterID::r0);
-    // The following uses RegisterID::ip. So, they must come after we push ip above.
-    push(trustedImm32FromPtr(arg));
-    push(trustedImm32FromPtr(function));
+    sub32(TrustedImm32(sizeof(IncomingRecord)), sp);
 
-    move(trustedImm32FromPtr(ctiMasmProbeTrampoline), RegisterID::ip);
-    m_assembler.blx(RegisterID::ip);
+    store32(lr, Address(sp, offsetof(IncomingRecord, lr)));
+    store32(ip, Address(sp, offsetof(IncomingRecord, ip)));
+    m_assembler.mrs(ip, apsr);
+    store32(ip, Address(sp, offsetof(IncomingRecord, apsr)));
+    store32(r0, Address(sp, offsetof(IncomingRecord, r0)));
+    store32(r1, Address(sp, offsetof(IncomingRecord, r1)));
+    store32(r2, Address(sp, offsetof(IncomingRecord, r2)));
+
+    // The following may emit a T1 mov instruction, which is effectively a movs.
+    // This means we must first preserve the apsr flags above first.
+    move(TrustedImmPtr(reinterpret_cast<void*>(function)), r0);
+    move(TrustedImmPtr(arg), r1);
+    move(TrustedImmPtr(reinterpret_cast<void*>(Probe::executeProbe)), r2);
+    move(TrustedImmPtr(reinterpret_cast<void*>(ctiMasmProbeTrampoline)), ip);
+    m_assembler.blx(ip);
 }
 #endif // ENABLE(MASM_PROBE)
 
 } // namespace JSC
 
-#endif // ENABLE(ASSEMBLER)
-
+#endif // ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)

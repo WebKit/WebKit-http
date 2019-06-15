@@ -8,12 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/remote_bitrate_estimator/test/metric_recorder.h"
+#include "modules/remote_bitrate_estimator/test/metric_recorder.h"
+
+#include <inttypes.h>
 
 #include <algorithm>
 
-#include "webrtc/modules/remote_bitrate_estimator/test/packet_sender.h"
-#include "webrtc/typedefs.h"
+#include "modules/remote_bitrate_estimator/test/packet_sender.h"
+#include "rtc_base/system/unused.h"
 
 namespace webrtc {
 namespace testing {
@@ -25,13 +27,14 @@ template <typename T>
 double NormLp(T sum, size_t size, double p) {
   return pow(sum / size, 1.0 / p);
 }
-}
+}  // namespace
 
 const double kP = 1.0;  // Used for Norm Lp.
 
 LinkShare::LinkShare(ChokeFilter* choke_filter)
-    : choke_filter_(choke_filter), running_flows_(choke_filter->flow_ids()) {
-}
+    : choke_filter_(choke_filter), running_flows_(choke_filter->flow_ids()) {}
+
+LinkShare::~LinkShare() = default;
 
 void LinkShare::PauseFlow(int flow_id) {
   running_flows_.erase(flow_id);
@@ -76,6 +79,8 @@ MetricRecorder::MetricRecorder(const std::string algorithm_name,
   if (packet_sender != nullptr)
     packet_sender->set_metric_recorder(this);
 }
+
+MetricRecorder::~MetricRecorder() = default;
 
 void MetricRecorder::SetPlotInformation(
     const std::vector<std::string>& prefixes,
@@ -286,10 +291,10 @@ void MetricRecorder::PlotThroughputHistogram(
       average_bitrate_kbps + pos_error + extra_error, "estimate_error",
       optimal_bitrate_per_flow_kbps, optimum_title, flow_id_);
 
-  BWE_TEST_LOGGING_LOG1("RESULTS >>> " + bwe_name + " Channel utilization : ",
-                        "%lf %%",
-                        100.0 * static_cast<double>(average_bitrate_kbps) /
-                            optimal_bitrate_per_flow_kbps);
+  BWE_TEST_LOGGING_LOG1(
+      "RESULTS >>> " + bwe_name + " Channel utilization : ", "%lf %%",
+      100.0 * static_cast<double>(average_bitrate_kbps) /
+          optimal_bitrate_per_flow_kbps);
 
   RTC_UNUSED(pos_error);
   RTC_UNUSED(neg_error);
@@ -321,10 +326,12 @@ void MetricRecorder::PlotDelayHistogram(const std::string& title,
   // Log added latency, disregard baseline path delay.
   BWE_TEST_LOGGING_LOG1("RESULTS >>> " + bwe_name + " Delay average : ",
                         "%lf ms", average_delay_ms - one_way_path_delay_ms);
-  BWE_TEST_LOGGING_LOG1("RESULTS >>> " + bwe_name + " Delay 5th percentile : ",
-                        "%ld ms", percentile_5_ms - one_way_path_delay_ms);
-  BWE_TEST_LOGGING_LOG1("RESULTS >>> " + bwe_name + " Delay 95th percentile : ",
-                        "%ld ms", percentile_95_ms - one_way_path_delay_ms);
+  BWE_TEST_LOGGING_LOG1(
+      "RESULTS >>> " + bwe_name + " Delay 5th percentile : ", "%" PRId64 " ms",
+      percentile_5_ms - one_way_path_delay_ms);
+  BWE_TEST_LOGGING_LOG1(
+      "RESULTS >>> " + bwe_name + " Delay 95th percentile : ", "%" PRId64 " ms",
+      percentile_95_ms - one_way_path_delay_ms);
 
   RTC_UNUSED(average_delay_ms);
   RTC_UNUSED(percentile_5_ms);

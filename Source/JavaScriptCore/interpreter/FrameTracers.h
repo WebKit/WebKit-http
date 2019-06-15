@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,12 @@
 #pragma once
 
 #include "CatchScope.h"
+#include "StackAlignment.h"
 #include "VM.h"
 
 namespace JSC {
 
-struct VMEntryFrame;
+struct EntryFrame;
 
 class SuspendExceptionScope {
 public:
@@ -68,40 +69,28 @@ private:
     CallFrame* oldCallFrame;
 };
 
+ALWAYS_INLINE static void assertStackPointerIsAligned()
+{
+#ifndef NDEBUG
+#if CPU(X86) && !OS(WINDOWS)
+    uintptr_t stackPointer;
+
+    asm("movl %%esp,%0" : "=r"(stackPointer));
+    ASSERT(!(stackPointer % stackAlignmentBytes()));
+#endif
+#endif
+}
+
 class NativeCallFrameTracer {
 public:
     ALWAYS_INLINE NativeCallFrameTracer(VM* vm, CallFrame* callFrame)
     {
         ASSERT(vm);
         ASSERT(callFrame);
-        ASSERT(reinterpret_cast<void*>(callFrame) < reinterpret_cast<void*>(vm->topVMEntryFrame));
+        ASSERT(reinterpret_cast<void*>(callFrame) < reinterpret_cast<void*>(vm->topEntryFrame));
+        assertStackPointerIsAligned();
         vm->topCallFrame = callFrame;
     }
 };
 
-class NativeCallFrameTracerWithRestore {
-public:
-    ALWAYS_INLINE NativeCallFrameTracerWithRestore(VM* vm, VMEntryFrame* vmEntryFrame, CallFrame* callFrame)
-        : m_vm(vm)
-    {
-        ASSERT(vm);
-        ASSERT(callFrame);
-        m_savedTopVMEntryFrame = vm->topVMEntryFrame;
-        m_savedTopCallFrame = vm->topCallFrame;
-        vm->topVMEntryFrame = vmEntryFrame;
-        vm->topCallFrame = callFrame;
-    }
-
-    ALWAYS_INLINE ~NativeCallFrameTracerWithRestore()
-    {
-        m_vm->topVMEntryFrame = m_savedTopVMEntryFrame;
-        m_vm->topCallFrame = m_savedTopCallFrame;
-    }
-
-private:
-    VM* m_vm;
-    VMEntryFrame* m_savedTopVMEntryFrame;
-    CallFrame* m_savedTopCallFrame;
-};
-
-}
+} // namespace JSC

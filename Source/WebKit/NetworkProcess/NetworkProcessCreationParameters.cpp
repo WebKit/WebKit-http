@@ -47,16 +47,14 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << canHandleHTTPSServerTrustEvaluation;
     encoder << diskCacheDirectory;
     encoder << diskCacheDirectoryExtensionHandle;
-#if ENABLE(NETWORK_CACHE)
-    encoder << shouldEnableNetworkCache;
     encoder << shouldEnableNetworkCacheEfficacyLogging;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     encoder << shouldEnableNetworkCacheSpeculativeRevalidation;
 #endif
-#endif
 #if PLATFORM(MAC)
     encoder << uiProcessCookieStorageIdentifier;
 #endif
+    encoder << defaultSessionPendingCookies;
 #if PLATFORM(IOS)
     encoder << cookieStorageDirectoryExtensionHandle;
     encoder << containerCachesDirectoryExtensionHandle;
@@ -68,22 +66,18 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << urlSchemesRegisteredForCustomProtocols;
     encoder << presentingApplicationPID;
 #if PLATFORM(COCOA)
-    encoder << parentProcessName;
     encoder << uiProcessBundleIdentifier;
-    encoder << nsURLCacheMemoryCapacity;
-    encoder << nsURLCacheDiskCapacity;
+    encoder << uiProcessSDKVersion;
     encoder << sourceApplicationBundleIdentifier;
     encoder << sourceApplicationSecondaryIdentifier;
-    encoder << allowsCellularAccess;
 #if PLATFORM(IOS)
     encoder << ctDataConnectionServiceType;
 #endif
     encoder << httpProxy;
     encoder << httpsProxy;
-#if PLATFORM(COCOA)
     IPC::encode(encoder, networkATSContext.get());
-#endif
-    encoder << cookieStoragePartitioningEnabled;
+    encoder << storageAccessAPIEnabled;
+    encoder << suppressesConnectionTerminationOnSystemChange;
 #endif
 #if USE(SOUP) || PLATFORM(QT)
     encoder << cookiePersistentStoragePath;
@@ -92,13 +86,27 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << ignoreTLSErrors;
     encoder << languages;
     encoder << proxySettings;
+#elif USE(CURL)
+    encoder << cookiePersistentStorageFile;
 #endif
-#if OS(LINUX)
-    encoder << memoryPressureMonitorHandle;
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    encoder << logCookieInformation;
 #endif
 #if ENABLE(NETWORK_CAPTURE)
     encoder << recordReplayMode;
     encoder << recordReplayCacheLocation;
+#endif
+
+    encoder << urlSchemesRegisteredAsSecure;
+    encoder << urlSchemesRegisteredAsBypassingContentSecurityPolicy;
+    encoder << urlSchemesRegisteredAsLocal;
+    encoder << urlSchemesRegisteredAsNoAccess;
+    encoder << urlSchemesRegisteredAsDisplayIsolated;
+    encoder << urlSchemesRegisteredAsCORSEnabled;
+    encoder << urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
+
+#if ENABLE(PROXIMITY_NETWORKING)
+    encoder << wirelessContextIdentifier;
 #endif
 }
 
@@ -112,31 +120,46 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.canHandleHTTPSServerTrustEvaluation))
         return false;
+
     if (!decoder.decode(result.diskCacheDirectory))
         return false;
-    if (!decoder.decode(result.diskCacheDirectoryExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> diskCacheDirectoryExtensionHandle;
+    decoder >> diskCacheDirectoryExtensionHandle;
+    if (!diskCacheDirectoryExtensionHandle)
         return false;
-#if ENABLE(NETWORK_CACHE)
-    if (!decoder.decode(result.shouldEnableNetworkCache))
-        return false;
+    result.diskCacheDirectoryExtensionHandle = WTFMove(*diskCacheDirectoryExtensionHandle);
+
     if (!decoder.decode(result.shouldEnableNetworkCacheEfficacyLogging))
         return false;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     if (!decoder.decode(result.shouldEnableNetworkCacheSpeculativeRevalidation))
         return false;
 #endif
-#endif
 #if PLATFORM(MAC)
     if (!decoder.decode(result.uiProcessCookieStorageIdentifier))
         return false;
 #endif
+    if (!decoder.decode(result.defaultSessionPendingCookies))
+        return false;
 #if PLATFORM(IOS)
-    if (!decoder.decode(result.cookieStorageDirectoryExtensionHandle))
+    std::optional<SandboxExtension::Handle> cookieStorageDirectoryExtensionHandle;
+    decoder >> cookieStorageDirectoryExtensionHandle;
+    if (!cookieStorageDirectoryExtensionHandle)
         return false;
-    if (!decoder.decode(result.containerCachesDirectoryExtensionHandle))
+    result.cookieStorageDirectoryExtensionHandle = WTFMove(*cookieStorageDirectoryExtensionHandle);
+
+    std::optional<SandboxExtension::Handle> containerCachesDirectoryExtensionHandle;
+    decoder >> containerCachesDirectoryExtensionHandle;
+    if (!containerCachesDirectoryExtensionHandle)
         return false;
-    if (!decoder.decode(result.parentBundleDirectoryExtensionHandle))
+    result.containerCachesDirectoryExtensionHandle = WTFMove(*containerCachesDirectoryExtensionHandle);
+
+    std::optional<SandboxExtension::Handle> parentBundleDirectoryExtensionHandle;
+    decoder >> parentBundleDirectoryExtensionHandle;
+    if (!parentBundleDirectoryExtensionHandle)
         return false;
+    result.parentBundleDirectoryExtensionHandle = WTFMove(*parentBundleDirectoryExtensionHandle);
 #endif
     if (!decoder.decode(result.shouldSuppressMemoryPressureHandler))
         return false;
@@ -149,19 +172,13 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.presentingApplicationPID))
         return false;
 #if PLATFORM(COCOA)
-    if (!decoder.decode(result.parentProcessName))
-        return false;
     if (!decoder.decode(result.uiProcessBundleIdentifier))
         return false;
-    if (!decoder.decode(result.nsURLCacheMemoryCapacity))
-        return false;
-    if (!decoder.decode(result.nsURLCacheDiskCapacity))
+    if (!decoder.decode(result.uiProcessSDKVersion))
         return false;
     if (!decoder.decode(result.sourceApplicationBundleIdentifier))
         return false;
     if (!decoder.decode(result.sourceApplicationSecondaryIdentifier))
-        return false;
-    if (!decoder.decode(result.allowsCellularAccess))
         return false;
 #if PLATFORM(IOS)
     if (!decoder.decode(result.ctDataConnectionServiceType))
@@ -171,11 +188,11 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.httpsProxy))
         return false;
-#if PLATFORM(COCOA)
     if (!IPC::decode(decoder, result.networkATSContext))
         return false;
-#endif
-    if (!decoder.decode(result.cookieStoragePartitioningEnabled))
+    if (!decoder.decode(result.storageAccessAPIEnabled))
+        return false;
+    if (!decoder.decode(result.suppressesConnectionTerminationOnSystemChange))
         return false;
 #endif
 
@@ -192,10 +209,13 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.proxySettings))
         return false;
+#elif USE(CURL)
+    if (!decoder.decode(result.cookiePersistentStorageFile))
+        return false;
 #endif
 
-#if OS(LINUX)
-    if (!decoder.decode(result.memoryPressureMonitorHandle))
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    if (!decoder.decode(result.logCookieInformation))
         return false;
 #endif
 
@@ -203,6 +223,26 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.recordReplayMode))
         return false;
     if (!decoder.decode(result.recordReplayCacheLocation))
+        return false;
+#endif
+
+    if (!decoder.decode(result.urlSchemesRegisteredAsSecure))
+        return false;
+    if (!decoder.decode(result.urlSchemesRegisteredAsBypassingContentSecurityPolicy))
+        return false;
+    if (!decoder.decode(result.urlSchemesRegisteredAsLocal))
+        return false;
+    if (!decoder.decode(result.urlSchemesRegisteredAsNoAccess))
+        return false;
+    if (!decoder.decode(result.urlSchemesRegisteredAsDisplayIsolated))
+        return false;
+    if (!decoder.decode(result.urlSchemesRegisteredAsCORSEnabled))
+        return false;
+    if (!decoder.decode(result.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest))
+        return false;
+
+#if ENABLE(PROXIMITY_NETWORKING)
+    if (!decoder.decode(result.wirelessContextIdentifier))
         return false;
 #endif
 

@@ -8,19 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/desktop_capture/mouse_cursor_monitor.h"
+#include "modules/desktop_capture/mouse_cursor_monitor.h"
 
 #include <assert.h>
 #include <string.h>
 
 #include <memory>
 
-#include "webrtc/base/logging.h"
-#include "webrtc/modules/desktop_capture/desktop_frame.h"
-#include "webrtc/modules/desktop_capture/desktop_geometry.h"
-#include "webrtc/modules/desktop_capture/mouse_cursor.h"
-#include "webrtc/modules/desktop_capture/win/cursor.h"
-#include "webrtc/modules/desktop_capture/win/window_capture_utils.h"
+#include "modules/desktop_capture/desktop_capture_types.h"
+#include "modules/desktop_capture/desktop_frame.h"
+#include "modules/desktop_capture/desktop_geometry.h"
+#include "modules/desktop_capture/mouse_cursor.h"
+#include "modules/desktop_capture/win/cursor.h"
+#include "modules/desktop_capture/win/screen_capture_utils.h"
+#include "modules/desktop_capture/win/window_capture_utils.h"
+#include "rtc_base/logging.h"
 
 namespace webrtc {
 
@@ -29,8 +31,7 @@ namespace {
 bool IsSameCursorShape(const CURSORINFO& left, const CURSORINFO& right) {
   // If the cursors are not showing, we do not care the hCursor handle.
   return left.flags == right.flags &&
-         (left.flags != CURSOR_SHOWING ||
-          left.hCursor == right.hCursor);
+         (left.flags != CURSOR_SHOWING || left.hCursor == right.hCursor);
 }
 
 }  // namespace
@@ -102,7 +103,8 @@ void MouseCursorMonitorWin::Capture() {
   CURSORINFO cursor_info;
   cursor_info.cbSize = sizeof(CURSORINFO);
   if (!GetCursorInfo(&cursor_info)) {
-    LOG_F(LS_ERROR) << "Unable to get cursor info. Error = " << GetLastError();
+    RTC_LOG_F(LS_ERROR) << "Unable to get cursor info. Error = "
+                        << GetLastError();
     return;
   }
 
@@ -136,6 +138,7 @@ void MouseCursorMonitorWin::Capture() {
   if (mode_ != SHAPE_AND_POSITION)
     return;
 
+  // CURSORINFO::ptScreenPos is in full desktop coordinate.
   DesktopVector position(cursor_info.ptScreenPos.x, cursor_info.ptScreenPos.y);
   bool inside = cursor_info.flags == CURSOR_SHOWING;
 
@@ -148,8 +151,9 @@ void MouseCursorMonitorWin::Capture() {
     } else {
       if (inside) {
         HWND windowUnderCursor = WindowFromPoint(cursor_info.ptScreenPos);
-        inside = windowUnderCursor ?
-            (window_ == GetAncestor(windowUnderCursor, GA_ROOT)) : false;
+        inside = windowUnderCursor
+                     ? (window_ == GetAncestor(windowUnderCursor, GA_ROOT))
+                     : false;
       }
       position = position.subtract(cropped_rect.top_left());
     }
@@ -161,17 +165,16 @@ void MouseCursorMonitorWin::Capture() {
     position = position.subtract(rect.top_left());
   }
 
-  callback_->OnMouseCursorPosition(inside ? INSIDE : OUTSIDE, position);
+  callback_->OnMouseCursorPosition(position);
 }
 
 DesktopRect MouseCursorMonitorWin::GetScreenRect() {
   assert(screen_ != kInvalidScreenId);
   if (screen_ == kFullDesktopScreenId) {
-    return DesktopRect::MakeXYWH(
-        GetSystemMetrics(SM_XVIRTUALSCREEN),
-        GetSystemMetrics(SM_YVIRTUALSCREEN),
-        GetSystemMetrics(SM_CXVIRTUALSCREEN),
-        GetSystemMetrics(SM_CYVIRTUALSCREEN));
+    return DesktopRect::MakeXYWH(GetSystemMetrics(SM_XVIRTUALSCREEN),
+                                 GetSystemMetrics(SM_YVIRTUALSCREEN),
+                                 GetSystemMetrics(SM_CXVIRTUALSCREEN),
+                                 GetSystemMetrics(SM_CYVIRTUALSCREEN));
   }
   DISPLAY_DEVICE device;
   device.cb = sizeof(device);
@@ -182,19 +185,19 @@ DesktopRect MouseCursorMonitorWin::GetScreenRect() {
   DEVMODE device_mode;
   device_mode.dmSize = sizeof(device_mode);
   device_mode.dmDriverExtra = 0;
-  result = EnumDisplaySettingsEx(
-      device.DeviceName, ENUM_CURRENT_SETTINGS, &device_mode, 0);
+  result = EnumDisplaySettingsEx(device.DeviceName, ENUM_CURRENT_SETTINGS,
+                                 &device_mode, 0);
   if (!result)
     return DesktopRect();
 
-  return DesktopRect::MakeXYWH(device_mode.dmPosition.x,
-                               device_mode.dmPosition.y,
-                               device_mode.dmPelsWidth,
-                               device_mode.dmPelsHeight);
+  return DesktopRect::MakeXYWH(
+      device_mode.dmPosition.x, device_mode.dmPosition.y,
+      device_mode.dmPelsWidth, device_mode.dmPelsHeight);
 }
 
 MouseCursorMonitor* MouseCursorMonitor::CreateForWindow(
-    const DesktopCaptureOptions& options, WindowId window) {
+    const DesktopCaptureOptions& options,
+    WindowId window) {
   return new MouseCursorMonitorWin(reinterpret_cast<HWND>(window));
 }
 
@@ -202,6 +205,12 @@ MouseCursorMonitor* MouseCursorMonitor::CreateForScreen(
     const DesktopCaptureOptions& options,
     ScreenId screen) {
   return new MouseCursorMonitorWin(screen);
+}
+
+std::unique_ptr<MouseCursorMonitor> MouseCursorMonitor::Create(
+    const DesktopCaptureOptions& options) {
+  return std::unique_ptr<MouseCursorMonitor>(
+      CreateForScreen(options, kFullDesktopScreenId));
 }
 
 }  // namespace webrtc

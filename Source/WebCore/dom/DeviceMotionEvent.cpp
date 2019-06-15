@@ -30,9 +30,7 @@
 
 namespace WebCore {
 
-DeviceMotionEvent::~DeviceMotionEvent()
-{
-}
+DeviceMotionEvent::~DeviceMotionEvent() = default;
 
 DeviceMotionEvent::DeviceMotionEvent()
     : m_deviceMotionData(DeviceMotionData::create())
@@ -40,7 +38,7 @@ DeviceMotionEvent::DeviceMotionEvent()
 }
 
 DeviceMotionEvent::DeviceMotionEvent(const AtomicString& eventType, DeviceMotionData* deviceMotionData)
-    : Event(eventType, false, false) // Can't bubble, not cancelable
+    : Event(eventType, CanBubble::No, IsCancelable::No)
     , m_deviceMotionData(deviceMotionData)
 {
 }
@@ -105,7 +103,7 @@ std::optional<double> DeviceMotionEvent::interval() const
 
 void DeviceMotionEvent::initDeviceMotionEvent(const AtomicString& type, bool bubbles, bool cancelable, std::optional<DeviceMotionEvent::Acceleration>&& acceleration, std::optional<DeviceMotionEvent::Acceleration>&& accelerationIncludingGravity, std::optional<DeviceMotionEvent::RotationRate>&& rotationRate, std::optional<double> interval)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
     initEvent(type, bubbles, cancelable);

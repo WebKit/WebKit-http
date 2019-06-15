@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_CONGESTION_CONTROLLER_INCLUDE_MOCK_MOCK_CONGESTION_OBSERVER_H_
-#define WEBRTC_MODULES_CONGESTION_CONTROLLER_INCLUDE_MOCK_MOCK_CONGESTION_OBSERVER_H_
+#ifndef MODULES_CONGESTION_CONTROLLER_INCLUDE_MOCK_MOCK_CONGESTION_OBSERVER_H_
+#define MODULES_CONGESTION_CONTROLLER_INCLUDE_MOCK_MOCK_CONGESTION_OBSERVER_H_
 
-#include "webrtc/modules/congestion_controller/include/congestion_controller.h"
-#include "webrtc/test/gmock.h"
+#include "modules/congestion_controller/include/network_changed_observer.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 namespace test {
 
-class MockCongestionObserver : public CongestionController::Observer {
+class MockCongestionObserver : public NetworkChangedObserver {
  public:
   MOCK_METHOD4(OnNetworkChanged,
                void(uint32_t bitrate_bps,
@@ -28,4 +28,4 @@ class MockCongestionObserver : public CongestionController::Observer {
 
 }  // namespace test
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_CONGESTION_CONTROLLER_INCLUDE_MOCK_MOCK_CONGESTION_OBSERVER_H_
+#endif  // MODULES_CONGESTION_CONTROLLER_INCLUDE_MOCK_MOCK_CONGESTION_OBSERVER_H_

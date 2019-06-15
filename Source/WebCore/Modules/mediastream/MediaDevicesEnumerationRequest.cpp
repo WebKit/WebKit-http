@@ -31,7 +31,7 @@
 
 #include "CaptureDevice.h"
 #include "Document.h"
-#include "MainFrame.h"
+#include "Frame.h"
 #include "SecurityOrigin.h"
 #include "UserMediaController.h"
 
@@ -48,9 +48,7 @@ MediaDevicesEnumerationRequest::MediaDevicesEnumerationRequest(ScriptExecutionCo
 {
 }
 
-MediaDevicesEnumerationRequest::~MediaDevicesEnumerationRequest()
-{
-}
+MediaDevicesEnumerationRequest::~MediaDevicesEnumerationRequest() = default;
 
 SecurityOrigin* MediaDevicesEnumerationRequest::userMediaDocumentOrigin() const
 {

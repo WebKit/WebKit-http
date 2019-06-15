@@ -50,7 +50,7 @@ struct PropertyMapHashTableStats {
     std::atomic<unsigned> numReinserts;
 };
 
-JS_EXPORTDATA extern PropertyMapHashTableStats* propertyMapHashTableStats;
+JS_EXPORT_PRIVATE extern PropertyMapHashTableStats* propertyMapHashTableStats;
 
 #endif
 
@@ -84,7 +84,7 @@ class PropertyTable final : public JSCell {
     public:
         ordered_iterator<T>& operator++()
         {
-            m_valuePtr = skipDeletedEntries(m_valuePtr + 1);
+            m_valuePtr = skipDeletedEntries(m_valuePtr + 1, m_endValuePtr);
             return *this;
         }
 
@@ -108,18 +108,26 @@ class PropertyTable final : public JSCell {
             return m_valuePtr;
         }
 
-        ordered_iterator(T* valuePtr)
+        ordered_iterator(T* valuePtr, T* endValuePtr)
             : m_valuePtr(valuePtr)
+            , m_endValuePtr(endValuePtr)
         {
         }
 
     private:
         T* m_valuePtr;
+        T* m_endValuePtr;
     };
 
 public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.propertyTableSpace;
+    }
 
     static const bool needsDestruction = true;
     static void destroy(JSCell*);
@@ -222,11 +230,14 @@ private:
 
     // Used in iterator creation/progression.
     template<typename T>
-    static T* skipDeletedEntries(T* valuePtr);
+    static T* skipDeletedEntries(T* valuePtr, T* endValuePtr);
 
     // The table of values lies after the hash index.
     ValueType* table();
     const ValueType* table() const;
+
+    ValueType* tableEnd() { return table() + usedCount(); }
+    const ValueType* tableEnd() const { return table() + usedCount(); }
 
     // total number of  used entries in the values array - by either valid entries, or deleted ones.
     unsigned usedCount() const;
@@ -252,22 +263,26 @@ private:
 
 inline PropertyTable::iterator PropertyTable::begin()
 {
-    return iterator(skipDeletedEntries(table()));
+    auto* tableEnd = this->tableEnd();
+    return iterator(skipDeletedEntries(table(), tableEnd), tableEnd);
 }
 
 inline PropertyTable::iterator PropertyTable::end()
 {
-    return iterator(table() + usedCount());
+    auto* tableEnd = this->tableEnd();
+    return iterator(tableEnd, tableEnd);
 }
 
 inline PropertyTable::const_iterator PropertyTable::begin() const
 {
-    return const_iterator(skipDeletedEntries(table()));
+    auto* tableEnd = this->tableEnd();
+    return const_iterator(skipDeletedEntries(table(), tableEnd), tableEnd);
 }
 
 inline PropertyTable::const_iterator PropertyTable::end() const
 {
-    return const_iterator(table() + usedCount());
+    auto* tableEnd = this->tableEnd();
+    return const_iterator(tableEnd, tableEnd);
 }
 
 inline PropertyTable::find_iterator PropertyTable::find(const KeyType& key)
@@ -514,9 +529,9 @@ inline unsigned PropertyTable::tableCapacity() const { return m_indexSize >> 1; 
 inline unsigned PropertyTable::deletedEntryIndex() const { return tableCapacity() + 1; }
 
 template<typename T>
-inline T* PropertyTable::skipDeletedEntries(T* valuePtr)
+inline T* PropertyTable::skipDeletedEntries(T* valuePtr, T* endValuePtr)
 {
-    while (valuePtr->key == PROPERTY_MAP_DELETED_ENTRY_KEY)
+    while (valuePtr < endValuePtr && valuePtr->key == PROPERTY_MAP_DELETED_ENTRY_KEY)
         ++valuePtr;
     return valuePtr;
 }

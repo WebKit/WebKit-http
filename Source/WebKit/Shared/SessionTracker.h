@@ -30,7 +30,7 @@ namespace WebCore {
 class NetworkStorageSession;
 }
 
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 #include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -45,11 +45,9 @@ public:
     static const String& getIdentifierBase();
     static void setIdentifierBase(const String&);
     
-#if USE(NETWORK_SESSION)
-    static void setSession(WebCore::SessionID, Ref<NetworkSession>&&);
-    static NetworkSession* networkSession(WebCore::SessionID);
-#endif
-    static void destroySession(WebCore::SessionID);
+    static void setSession(PAL::SessionID, Ref<NetworkSession>&&);
+    static NetworkSession* networkSession(PAL::SessionID);
+    static void destroySession(PAL::SessionID);
 };
 
 } // namespace WebKit

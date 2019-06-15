@@ -4,7 +4,7 @@
 es6id: 9.5.5
 description: >
     Return target.[[GetOwnProperty]](P) if trap is undefined.
-info: >
+info: |
     [[GetOwnProperty]] (P)
 
     ...
@@ -14,7 +14,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-var target = {attr: 1};
+var target = {
+  attr: 1
+};
 var p = new Proxy(target, {});
 
 var proxyDesc = Object.getOwnPropertyDescriptor(p, "attr");

@@ -36,40 +36,28 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(GeneratorFunctionConstructor);
 
 const ClassInfo GeneratorFunctionConstructor::s_info = { "GeneratorFunction", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(GeneratorFunctionConstructor) };
 
+static EncodedJSValue JSC_HOST_CALL callGeneratorFunctionConstructor(ExecState* exec)
+{
+    ArgList args(exec);
+    return JSValue::encode(constructFunction(exec, jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm()), args, FunctionConstructionMode::Generator));
+}
+
+static EncodedJSValue JSC_HOST_CALL constructGeneratorFunctionConstructor(ExecState* exec)
+{
+    ArgList args(exec);
+    return JSValue::encode(constructFunction(exec, jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm()), args, FunctionConstructionMode::Generator, exec->newTarget()));
+}
+
 GeneratorFunctionConstructor::GeneratorFunctionConstructor(VM& vm, Structure* structure)
-    : InternalFunction(vm, structure)
+    : InternalFunction(vm, structure, callGeneratorFunctionConstructor, constructGeneratorFunctionConstructor)
 {
 }
 
 void GeneratorFunctionConstructor::finishCreation(VM& vm, GeneratorFunctionPrototype* generatorFunctionPrototype)
 {
     Base::finishCreation(vm, "GeneratorFunction");
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, generatorFunctionPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
-}
-
-static EncodedJSValue JSC_HOST_CALL callGeneratorFunctionConstructor(ExecState* exec)
-{
-    ArgList args(exec);
-    return JSValue::encode(constructFunction(exec, asInternalFunction(exec->jsCallee())->globalObject(), args, FunctionConstructionMode::Generator));
-}
-
-static EncodedJSValue JSC_HOST_CALL constructGeneratorFunctionConstructor(ExecState* exec)
-{
-    ArgList args(exec);
-    return JSValue::encode(constructFunction(exec, asInternalFunction(exec->jsCallee())->globalObject(), args, FunctionConstructionMode::Generator, exec->newTarget()));
-}
-
-CallType GeneratorFunctionConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callGeneratorFunctionConstructor;
-    return CallType::Host;
-}
-
-ConstructType GeneratorFunctionConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructGeneratorFunctionConstructor;
-    return ConstructType::Host;
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, generatorFunctionPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 } // namespace JSC

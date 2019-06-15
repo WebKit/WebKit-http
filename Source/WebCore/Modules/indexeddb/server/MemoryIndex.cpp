@@ -53,9 +53,7 @@ MemoryIndex::MemoryIndex(const IDBIndexInfo& info, MemoryObjectStore& objectStor
 {
 }
 
-MemoryIndex::~MemoryIndex()
-{
-}
+MemoryIndex::~MemoryIndex() = default;
 
 void MemoryIndex::cursorDidBecomeClean(MemoryIndexCursor& cursor)
 {
@@ -79,17 +77,13 @@ void MemoryIndex::objectStoreCleared()
 
 void MemoryIndex::notifyCursorsOfValueChange(const IDBKeyData& indexKey, const IDBKeyData& primaryKey)
 {
-    Vector<MemoryIndexCursor*> cursors;
-    copyToVector(m_cleanCursors, cursors);
-    for (auto* cursor : cursors)
+    for (auto* cursor : copyToVector(m_cleanCursors))
         cursor->indexValueChanged(indexKey, primaryKey);
 }
 
 void MemoryIndex::notifyCursorsOfAllRecordsChanged()
 {
-    Vector<MemoryIndexCursor*> cursors;
-    copyToVector(m_cleanCursors, cursors);
-    for (auto* cursor : cursors)
+    for (auto* cursor : copyToVector(m_cleanCursors))
         cursor->indexRecordsAllChanged();
 
     ASSERT(m_cleanCursors.isEmpty());
@@ -218,7 +212,7 @@ IDBError MemoryIndex::putIndexKey(const IDBKeyData& valueKey, const IndexKey& in
     if (m_info.unique()) {
         for (auto& key : keys) {
             if (m_records->contains(key))
-                return IDBError(IDBDatabaseException::ConstraintError);
+                return IDBError(ConstraintError);
         }
     }
 
@@ -228,7 +222,7 @@ IDBError MemoryIndex::putIndexKey(const IDBKeyData& valueKey, const IndexKey& in
         notifyCursorsOfValueChange(key, valueKey);
     }
 
-    return { };
+    return IDBError { };
 }
 
 void MemoryIndex::removeRecord(const IDBKeyData& valueKey, const IndexKey& indexKey)

@@ -144,13 +144,13 @@ void TextTrackCue::setPauseOnExit(bool value)
     m_pauseOnExit = value;
 }
 
-bool TextTrackCue::dispatchEvent(Event& event)
+void TextTrackCue::dispatchEvent(Event& event)
 {
     // When a TextTrack's mode is disabled: no cues are active, no events fired.
     if (!track() || track()->mode() == TextTrack::Mode::Disabled)
-        return false;
+        return;
 
-    return EventTarget::dispatchEvent(event);
+    EventTarget::dispatchEvent(event);
 }
 
 bool TextTrackCue::isActive()
@@ -214,6 +214,35 @@ bool TextTrackCue::doesExtendCue(const TextTrackCue& cue) const
         return false;
     
     return true;
+}
+
+void TextTrackCue::toJSON(JSON::Object& value) const
+{
+    ASCIILiteral type = "Generic"_s;
+    switch (cueType()) {
+    case TextTrackCue::Generic:
+        type = "Generic"_s;
+        break;
+    case TextTrackCue::WebVTT:
+        type = "WebVTT"_s;
+        break;
+    case TextTrackCue::Data:
+        type = "Data"_s;
+        break;
+    }
+
+    value.setString("type"_s, type);
+    value.setDouble("startTime"_s, startTime());
+    value.setDouble("endTime"_s, endTime());
+}
+
+String TextTrackCue::toJSONString() const
+{
+    auto object = JSON::Object::create();
+
+    toJSON(object.get());
+
+    return object->toJSONString();
 }
 
 } // namespace WebCore

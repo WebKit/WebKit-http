@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/neteq/red_payload_splitter.h"
+#include "modules/audio_coding/neteq/red_payload_splitter.h"
 
 #include <assert.h>
 #include <vector>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/safe_conversions.h"
-#include "webrtc/modules/audio_coding/neteq/decoder_database.h"
+#include "modules/audio_coding/neteq/decoder_database.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/numerics/safe_conversions.h"
 
 namespace webrtc {
 
@@ -100,7 +100,7 @@ bool RedPayloadSplitter::SplitRed(PacketList* packet_list) {
           // The block lengths in the RED headers do not match the overall
           // packet length. Something is corrupt. Discard this and the remaining
           // payloads from this packet.
-          LOG(LS_WARNING) << "SplitRed length mismatch";
+          RTC_LOG(LS_WARNING) << "SplitRed length mismatch";
           ret = false;
           break;
         }
@@ -119,7 +119,7 @@ bool RedPayloadSplitter::SplitRed(PacketList* packet_list) {
       // iterator |it|.
       packet_list->splice(it, std::move(new_packets));
     } else {
-      LOG(LS_WARNING) << "SplitRed too many blocks: " << new_headers.size();
+      RTC_LOG(LS_WARNING) << "SplitRed too many blocks: " << new_headers.size();
       ret = false;
     }
     // Remove |it| from the packet list. This operation effectively moves the
@@ -130,13 +130,16 @@ bool RedPayloadSplitter::SplitRed(PacketList* packet_list) {
   return ret;
 }
 
-int RedPayloadSplitter::CheckRedPayloads(
+void RedPayloadSplitter::CheckRedPayloads(
     PacketList* packet_list,
     const DecoderDatabase& decoder_database) {
   int main_payload_type = -1;
-  int num_deleted_packets = 0;
   for (auto it = packet_list->begin(); it != packet_list->end(); /* */) {
     uint8_t this_payload_type = it->payload_type;
+    if (decoder_database.IsRed(this_payload_type)) {
+      it = packet_list->erase(it);
+      continue;
+    }
     if (!decoder_database.IsDtmf(this_payload_type) &&
         !decoder_database.IsComfortNoise(this_payload_type)) {
       if (main_payload_type == -1) {
@@ -149,14 +152,12 @@ int RedPayloadSplitter::CheckRedPayloads(
           // moves the iterator |it| to the next packet in the list. Thus, we
           // do not have to increment it manually.
           it = packet_list->erase(it);
-          ++num_deleted_packets;
           continue;
         }
       }
     }
     ++it;
   }
-  return num_deleted_packets;
 }
 
 }  // namespace webrtc

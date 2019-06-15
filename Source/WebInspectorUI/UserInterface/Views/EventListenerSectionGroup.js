@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends WebInspector.DetailsSectionGroup
+WI.EventListenerSectionGroup = class EventListenerSectionGroup extends WI.DetailsSectionGroup
 {
     constructor(eventListener, options = {})
     {
@@ -33,24 +33,32 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
 
         var rows = [];
         if (!options.hideType)
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Event"), this._eventListener.type));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Event"), this._eventListener.type));
         if (!options.hideNode)
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Node"), this._nodeTextOrLink()));
-        rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Function"), this._functionTextOrLink()));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Node"), this._nodeTextOrLink()));
+        rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Function"), this._functionTextOrLink()));
 
         if (this._eventListener.useCapture)
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Capturing"), WebInspector.UIString("Yes")));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Capturing"), WI.UIString("Yes")));
         else
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Bubbling"), WebInspector.UIString("Yes")));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Bubbling"), WI.UIString("Yes")));
 
         if (this._eventListener.isAttribute)
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Attribute"), WebInspector.UIString("Yes")));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Attribute"), WI.UIString("Yes")));
 
         if (this._eventListener.passive)
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Passive"), WebInspector.UIString("Yes")));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Passive"), WI.UIString("Yes")));
 
         if (this._eventListener.once)
-            rows.push(new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Once"), WebInspector.UIString("Yes")));
+            rows.push(new WI.DetailsSectionSimpleRow(WI.UIString("Once"), WI.UIString("Yes")));
+
+        if (this._eventListener.eventListenerId) {
+            if (DOMAgent.setEventListenerDisabled)
+                rows.push(this._createDisabledToggleRow());
+
+            if (DOMAgent.setBreakpointForEventListener && DOMAgent.removeBreakpointForEventListener)
+                rows.push(this._createBreakpointToggleRow());
+        }
 
         this.rows = rows;
     }
@@ -67,7 +75,7 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
         if (node.nodeType() === Node.DOCUMENT_NODE)
             return "document";
 
-        return WebInspector.linkifyNodeReference(node);
+        return WI.linkifyNodeReference(node);
     }
 
     _functionTextOrLink()
@@ -78,13 +86,13 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
             var functionName = match[1];
         } else {
             var anonymous = true;
-            var functionName = WebInspector.UIString("(anonymous function)");
+            var functionName = WI.UIString("(anonymous function)");
         }
 
         if (!this._eventListener.location)
             return functionName;
 
-        var sourceCode = WebInspector.debuggerManager.scriptForIdentifier(this._eventListener.location.scriptId, WebInspector.mainTarget);
+        var sourceCode = WI.debuggerManager.scriptForIdentifier(this._eventListener.location.scriptId, WI.mainTarget);
         if (!sourceCode)
             return functionName;
 
@@ -95,7 +103,7 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
             ignoreNetworkTab: true,
             ignoreSearchTab: true,
         };
-        let linkElement = WebInspector.createSourceCodeLocationLink(sourceCodeLocation, options);
+        let linkElement = WI.createSourceCodeLocationLink(sourceCodeLocation, options);
 
         if (anonymous)
             return linkElement;
@@ -103,5 +111,69 @@ WebInspector.EventListenerSectionGroup = class EventListenerSectionGroup extends
         var fragment = document.createDocumentFragment();
         fragment.append(linkElement, functionName);
         return fragment;
+    }
+
+    _createDisabledToggleRow()
+    {
+        let toggleElement = document.createElement("input");
+        toggleElement.type = "checkbox";
+        toggleElement.checked = !this._eventListener.disabled;
+
+        let updateTitle = () => {
+            if (this._eventListener.disabled)
+                toggleElement.title = WI.UIString("Enable Event Listener");
+            else
+                toggleElement.title = WI.UIString("Disable Event Listener");
+        };
+
+        updateTitle();
+
+        toggleElement.addEventListener("change", (event) => {
+            this._eventListener.disabled = !toggleElement.checked;
+            WI.domTreeManager.setEventListenerDisabled(this._eventListener, this._eventListener.disabled);
+            updateTitle();
+        });
+
+        let toggleLabel = document.createElement("span");
+        toggleLabel.textContent = WI.UIString("Enabled");
+        toggleLabel.addEventListener("click", (event) => {
+            toggleElement.click();
+        });
+
+        return new WI.DetailsSectionSimpleRow(toggleLabel, toggleElement);
+    }
+
+    _createBreakpointToggleRow()
+    {
+        let checkboxElement = document.createElement("input");
+        checkboxElement.type = "checkbox";
+        checkboxElement.checked = !!this._eventListener.hasBreakpoint;
+
+        let updateTitle = () => {
+            if (this._eventListener.hasBreakpoint)
+                checkboxElement.title = WI.UIString("Delete Breakpoint");
+            else
+                checkboxElement.title = WI.UIString("Add Breakpoint");
+        };
+
+        updateTitle();
+
+        checkboxElement.addEventListener("change", (event) => {
+            this._eventListener.hasBreakpoint = !!checkboxElement.checked;
+            if (this._eventListener.hasBreakpoint)
+                WI.domTreeManager.setBreakpointForEventListener(this._eventListener);
+            else
+                WI.domTreeManager.removeBreakpointForEventListener(this._eventListener);
+
+            updateTitle();
+        });
+
+        let labelElement = document.createElement("span");
+        labelElement.textContent = WI.UIString("Breakpoint");
+        labelElement.addEventListener("click", (event) => {
+            checkboxElement.click();
+        });
+
+        return new WI.DetailsSectionSimpleRow(labelElement, checkboxElement);
     }
 };

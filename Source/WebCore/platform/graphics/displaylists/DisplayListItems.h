@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DisplayListItems_h
-#define DisplayListItems_h
+#pragma once
 
 #include "FloatPoint.h"
 #include "FloatRect.h"
@@ -40,9 +39,12 @@
 #include "GraphicsContextPlatformPrivateCG.h"
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
-class TextStream;
 struct ImagePaintingOptions;
 
 namespace DisplayList {
@@ -110,7 +112,7 @@ public:
     {
     }
 
-    virtual ~Item() { }
+    virtual ~Item() = default;
 
     ItemType type() const
     {
@@ -316,7 +318,7 @@ public:
 
     static void applyState(GraphicsContext&, const GraphicsContextState&, GraphicsContextState::StateChangeFlags);
 
-    static void dumpStateChanges(TextStream&, const GraphicsContextState&, GraphicsContextState::StateChangeFlags);
+    static void dumpStateChanges(WTF::TextStream&, const GraphicsContextState&, GraphicsContextState::StateChangeFlags);
 private:
     SetState(const GraphicsContextState& state, GraphicsContextState::StateChangeFlags flags)
         : Item(ItemType::SetState)
@@ -683,7 +685,7 @@ public:
     FloatSize spacing() const { return m_spacing; }
 
 private:
-    DrawPattern(Image&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform&, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
+    DrawPattern(Image&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform&, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendMode::Normal);
 
     void apply(GraphicsContext&) const override;
 
@@ -828,7 +830,7 @@ private:
 
 class DrawLineForDocumentMarker : public DrawingItem {
 public:
-    static Ref<DrawLineForDocumentMarker> create(const FloatPoint& point, float width, GraphicsContext::DocumentMarkerLineStyle style)
+    static Ref<DrawLineForDocumentMarker> create(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
     {
         return adoptRef(*new DrawLineForDocumentMarker(point, width, style));
     }
@@ -837,7 +839,7 @@ public:
     float width() const { return m_width; }
 
 private:
-    DrawLineForDocumentMarker(const FloatPoint& point, float width, GraphicsContext::DocumentMarkerLineStyle style)
+    DrawLineForDocumentMarker(const FloatPoint& point, float width, DocumentMarkerLineStyle style)
         : DrawingItem(ItemType::DrawLineForDocumentMarker)
         , m_point(point)
         , m_width(width)
@@ -851,7 +853,7 @@ private:
 
     FloatPoint m_point;
     float m_width;
-    GraphicsContext::DocumentMarkerLineStyle m_style;
+    DocumentMarkerLineStyle m_style;
 };
 
 class DrawEllipse : public DrawingItem {
@@ -901,18 +903,18 @@ private:
 
 class DrawFocusRingPath : public DrawingItem {
 public:
-    static Ref<DrawFocusRingPath> create(const Path& path, int width, int offset, const Color& color)
+    static Ref<DrawFocusRingPath> create(const Path& path, float width, float offset, const Color& color)
     {
         return adoptRef(*new DrawFocusRingPath(path, width, offset, color));
     }
 
     const Path& path() const { return m_path; }
-    int width() const { return m_width; }
-    int offset() const { return m_offset; }
+    float width() const { return m_width; }
+    float offset() const { return m_offset; }
     const Color& color() const { return m_color; }
 
 private:
-    DrawFocusRingPath(const Path& path, int width, int offset, const Color& color)
+    DrawFocusRingPath(const Path& path, float width, float offset, const Color& color)
         : DrawingItem(ItemType::DrawFocusRingPath)
         , m_path(path)
         , m_width(width)
@@ -926,25 +928,25 @@ private:
     std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     const Path m_path;
-    int m_width;
-    int m_offset;
+    float m_width;
+    float m_offset;
     Color m_color;
 };
 
 class DrawFocusRingRects : public DrawingItem {
 public:
-    static Ref<DrawFocusRingRects> create(const Vector<FloatRect>& rects, int width, int offset, const Color& color)
+    static Ref<DrawFocusRingRects> create(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
     {
         return adoptRef(*new DrawFocusRingRects(rects, width, offset, color));
     }
 
     const Vector<FloatRect> rects() const { return m_rects; }
-    int width() const { return m_width; }
-    int offset() const { return m_offset; }
+    float width() const { return m_width; }
+    float offset() const { return m_offset; }
     const Color& color() const { return m_color; }
 
 private:
-    DrawFocusRingRects(const Vector<FloatRect>& rects, int width, int offset, const Color& color)
+    DrawFocusRingRects(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
         : DrawingItem(ItemType::DrawFocusRingRects)
         , m_rects(rects)
         , m_width(width)
@@ -958,8 +960,8 @@ private:
     std::optional<FloatRect> localBounds(const GraphicsContext&) const override;
 
     Vector<FloatRect> m_rects;
-    int m_width;
-    int m_offset;
+    float m_width;
+    float m_offset;
     Color m_color;
 };
 
@@ -1314,7 +1316,7 @@ private:
     float m_scaleFactor;
 };
 
-TextStream& operator<<(TextStream&, const Item&);
+WTF::TextStream& operator<<(WTF::TextStream&, const Item&);
 
 } // namespace DisplayList
 } // namespace WebCore
@@ -1384,4 +1386,3 @@ SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(ApplyFillPattern)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(ApplyDeviceScaleFactor)
 SPECIALIZE_TYPE_TRAITS_DISPLAYLIST_ITEM(ClearShadow)
 
-#endif // DisplayListItems_h

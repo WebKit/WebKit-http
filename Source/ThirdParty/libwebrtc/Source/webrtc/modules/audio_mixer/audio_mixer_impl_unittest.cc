@@ -16,13 +16,13 @@
 #include <string>
 #include <utility>
 
-#include "webrtc/api/audio/audio_mixer.h"
-#include "webrtc/base/bind.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/thread.h"
-#include "webrtc/modules/audio_mixer/audio_mixer_impl.h"
-#include "webrtc/modules/audio_mixer/default_output_rate_calculator.h"
-#include "webrtc/test/gmock.h"
+#include "api/audio/audio_mixer.h"
+#include "modules/audio_mixer/audio_mixer_impl.h"
+#include "modules/audio_mixer/default_output_rate_calculator.h"
+#include "rtc_base/bind.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/task_queue_for_test.h"
+#include "test/gmock.h"
 
 using testing::_;
 using testing::Exactly;
@@ -34,12 +34,10 @@ namespace webrtc {
 namespace {
 
 constexpr int kDefaultSampleRateHz = 48000;
-constexpr int kId = 1;
 
 // Utility function that resets the frame member variables with
 // sensible defaults.
 void ResetFrame(AudioFrame* frame) {
-  frame->id_ = kId;
   frame->sample_rate_hz_ = kDefaultSampleRateHz;
   frame->num_channels_ = 1;
 
@@ -63,7 +61,7 @@ AudioFrame frame_for_mixing;
 
 }  // namespace
 
-class MockMixerAudioSource : public AudioMixer::Source {
+class MockMixerAudioSource : public testing::NiceMock<AudioMixer::Source> {
  public:
   MockMixerAudioSource()
       : fake_audio_frame_info_(AudioMixer::Source::AudioFrameInfo::kNormal) {
@@ -190,11 +188,11 @@ TEST(AudioMixer, LargestEnergyVadActiveMixed) {
     if (i == kAudioSources - 1 ||
         i < kAudioSources - 1 -
                 AudioMixerImpl::kMaximumAmountOfMixedAudioSources) {
-      EXPECT_FALSE(is_mixed) << "Mixing status of AudioSource #" << i
-                             << " wrong.";
+      EXPECT_FALSE(is_mixed)
+          << "Mixing status of AudioSource #" << i << " wrong.";
     } else {
-      EXPECT_TRUE(is_mixed) << "Mixing status of AudioSource #" << i
-                            << " wrong.";
+      EXPECT_TRUE(is_mixed)
+          << "Mixing status of AudioSource #" << i << " wrong.";
     }
   }
 }
@@ -223,9 +221,8 @@ TEST(AudioMixer, FrameNotModifiedForSingleParticipant) {
                &audio_frame);
   }
 
-  EXPECT_EQ(
-      0,
-      memcmp(participant.fake_frame()->data(), audio_frame.data(), n_samples));
+  EXPECT_EQ(0, memcmp(participant.fake_frame()->data(), audio_frame.data(),
+                      n_samples));
 }
 
 TEST(AudioMixer, SourceAtNativeRateShouldNeverResample) {
@@ -373,23 +370,19 @@ TEST(AudioMixer, RampedOutSourcesShouldNotBeMarkedMixed) {
 // This test checks that the initialization and participant addition
 // can be done on a different thread.
 TEST(AudioMixer, ConstructFromOtherThread) {
-  std::unique_ptr<rtc::Thread> init_thread = rtc::Thread::Create();
-  std::unique_ptr<rtc::Thread> participant_thread = rtc::Thread::Create();
-  init_thread->Start();
-  const auto mixer = init_thread->Invoke<rtc::scoped_refptr<AudioMixer>>(
-      RTC_FROM_HERE,
-      // Since AudioMixerImpl::Create is overloaded, we have to
-      // specify the type of which version we want.
-      static_cast<rtc::scoped_refptr<AudioMixerImpl>(*)()>(
-          &AudioMixerImpl::Create));
+  rtc::test::TaskQueueForTest init_queue("init");
+  rtc::scoped_refptr<AudioMixer> mixer;
+  init_queue.SendTask([&mixer]() { mixer = AudioMixerImpl::Create(); });
+
   MockMixerAudioSource participant;
+  EXPECT_CALL(participant, PreferredSampleRate())
+      .WillRepeatedly(Return(kDefaultSampleRateHz));
 
   ResetFrame(participant.fake_frame());
 
-  participant_thread->Start();
-  EXPECT_TRUE(participant_thread->Invoke<int>(
-      RTC_FROM_HERE,
-      rtc::Bind(&AudioMixer::AddSource, mixer.get(), &participant)));
+  rtc::test::TaskQueueForTest participant_queue("participant");
+  participant_queue.SendTask(
+      [&mixer, &participant]() { mixer->AddSource(&participant); });
 
   EXPECT_CALL(participant, GetAudioFrameWithInfo(kDefaultSampleRateHz, _))
       .Times(Exactly(1));

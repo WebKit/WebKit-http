@@ -2,19 +2,20 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-2-4
 description: >
     Array.prototype.reduce - 'length' is own data property that
     overrides an inherited data property on an Array
 ---*/
 
-        var storeProtoLength;
+var storeProtoLength;
 
-        function callbackfn(prevVal, curVal, idx, obj) {
-            return (obj.length === 2);
-        }
+function callbackfn(prevVal, curVal, idx, obj) {
+  return (obj.length === 2);
+}
 
-            storeProtoLength = Array.prototype.length;
-            Array.prototype.length = 0;
+storeProtoLength = Array.prototype.length;
+Array.prototype.length = 0;
 
 assert.sameValue([12, 11].reduce(callbackfn, 1), true, '[12, 11].reduce(callbackfn, 1)');

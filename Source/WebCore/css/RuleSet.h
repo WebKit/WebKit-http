@@ -23,6 +23,7 @@
 
 #include "RuleFeature.h"
 #include "SelectorCompiler.h"
+#include "SelectorFilter.h"
 #include "StyleRule.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
@@ -31,15 +32,9 @@
 
 namespace WebCore {
 
-enum AddRuleFlags {
-    RuleHasNoSpecialState         = 0,
-    RuleHasDocumentSecurityOrigin = 1,
-    RuleIsInRegionRule            = 1 << 1,
-};
-    
 enum PropertyWhitelistType {
     PropertyWhitelistNone   = 0,
-    PropertyWhitelistRegion,
+    PropertyWhitelistMarker,
 #if ENABLE(VIDEO_TRACK)
     PropertyWhitelistCue
 #endif
@@ -50,7 +45,6 @@ class ContainerNode;
 class MediaQueryEvaluator;
 class Node;
 class StyleResolver;
-class StyleRuleRegion;
 class StyleSheetContents;
 
 enum class MatchBasedOnRuleHash : unsigned {
@@ -65,47 +59,27 @@ class RuleData {
 public:
     static const unsigned maximumSelectorComponentCount = 8192;
 
-    RuleData(StyleRule*, unsigned selectorIndex, unsigned position, AddRuleFlags);
+    RuleData(StyleRule*, unsigned selectorIndex, unsigned selectorListIndex, unsigned position);
 
     unsigned position() const { return m_position; }
     StyleRule* rule() const { return m_rule.get(); }
     const CSSSelector* selector() const { return m_rule->selectorList().selectorAt(m_selectorIndex); }
     unsigned selectorIndex() const { return m_selectorIndex; }
+    unsigned selectorListIndex() const { return m_selectorListIndex; }
 
     bool canMatchPseudoElement() const { return m_canMatchPseudoElement; }
     MatchBasedOnRuleHash matchBasedOnRuleHash() const { return static_cast<MatchBasedOnRuleHash>(m_matchBasedOnRuleHash); }
     bool containsUncommonAttributeSelector() const { return m_containsUncommonAttributeSelector; }
     unsigned linkMatchType() const { return m_linkMatchType; }
-    bool hasDocumentSecurityOrigin() const { return m_hasDocumentSecurityOrigin; }
     PropertyWhitelistType propertyWhitelistType() const { return static_cast<PropertyWhitelistType>(m_propertyWhitelistType); }
-    // Try to balance between memory usage (there can be lots of RuleData objects) and good filtering performance.
-    static const unsigned maximumIdentifierCount = 4;
-    const unsigned* descendantSelectorIdentifierHashes() const { return m_descendantSelectorIdentifierHashes; }
+    const SelectorFilter::Hashes& descendantSelectorIdentifierHashes() const { return m_descendantSelectorIdentifierHashes; }
 
     void disableSelectorFiltering() { m_descendantSelectorIdentifierHashes[0] = 0; }
 
-#if ENABLE(CSS_SELECTOR_JIT)
-    SelectorCompilationStatus compilationStatus() const { return m_compilationStatus; }
-    JSC::MacroAssemblerCodeRef compiledSelectorCodeRef() const { return m_compiledSelectorCodeRef; }
-    void setCompiledSelector(SelectorCompilationStatus status, JSC::MacroAssemblerCodeRef codeRef) const
-    {
-        m_compilationStatus = status;
-        m_compiledSelectorCodeRef = codeRef;
-    }
-#if CSS_SELECTOR_JIT_PROFILING
-    ~RuleData()
-    {
-        if (m_compiledSelectorCodeRef.code().executableAddress())
-            dataLogF("RuleData compiled selector %d \"%s\"\n", m_compiledSelectorUseCount, selector()->selectorText().utf8().data());
-    }
-    void compiledSelectorUsed() const { m_compiledSelectorUseCount++; }
-#endif
-#endif // ENABLE(CSS_SELECTOR_JIT)
-
 private:
     RefPtr<StyleRule> m_rule;
-    unsigned m_selectorIndex : 13;
-    unsigned m_hasDocumentSecurityOrigin : 1;
+    unsigned m_selectorIndex : 16;
+    unsigned m_selectorListIndex : 16;
     // This number was picked fairly arbitrarily. We can probably lower it if we need to.
     // Some simple testing showed <100,000 RuleData's on large sites.
     unsigned m_position : 18;
@@ -114,27 +88,10 @@ private:
     unsigned m_containsUncommonAttributeSelector : 1;
     unsigned m_linkMatchType : 2; //  SelectorChecker::LinkMatchMask
     unsigned m_propertyWhitelistType : 2;
-    // Use plain array instead of a Vector to minimize memory overhead.
-    unsigned m_descendantSelectorIdentifierHashes[maximumIdentifierCount];
-#if ENABLE(CSS_SELECTOR_JIT)
-    mutable SelectorCompilationStatus m_compilationStatus;
-    mutable JSC::MacroAssemblerCodeRef m_compiledSelectorCodeRef;
-#if CSS_SELECTOR_JIT_PROFILING
-    mutable unsigned m_compiledSelectorUseCount;
-#endif
-#endif // ENABLE(CSS_SELECTOR_JIT)
+    SelectorFilter::Hashes m_descendantSelectorIdentifierHashes;
 };
     
 struct SameSizeAsRuleData {
-#if ENABLE(CSS_SELECTOR_JIT)
-    unsigned compilationStatus;
-    void* compiledSelectorPointer;
-    void* codeRefPtr;
-#if CSS_SELECTOR_JIT_PROFILING
-    unsigned compiledSelectorUseCount;
-#endif
-#endif // ENABLE(CSS_SELECTOR_JIT)
-
     void* a;
     unsigned b;
     unsigned c;
@@ -162,11 +119,10 @@ public:
 
     void addRulesFromSheet(StyleSheetContents&, const MediaQueryEvaluator&, StyleResolver* = 0);
 
-    void addStyleRule(StyleRule*, AddRuleFlags);
-    void addRule(StyleRule*, unsigned selectorIndex, AddRuleFlags);
+    void addStyleRule(StyleRule*);
+    void addRule(StyleRule*, unsigned selectorIndex, unsigned selectorListIndex);
     void addPageRule(StyleRulePage*);
     void addToRuleSet(const AtomicString& key, AtomRuleMap&, const RuleData&);
-    void addRegionRule(StyleRuleRegion*, bool hasDocumentSecurityOrigin);
     void shrinkToFit();
     void disableAutoShrinkToFit() { m_autoShrinkToFitEnabled = false; }
 
@@ -186,7 +142,6 @@ public:
     const RuleDataVector* universalRules() const { return &m_universalRules; }
 
     const Vector<StyleRulePage*>& pageRules() const { return m_pageRules; }
-    const Vector<RuleSetSelectorPair>& regionSelectorsAndRuleSets() const { return m_regionSelectorsAndRuleSets; }
 
     unsigned ruleCount() const { return m_ruleCount; }
 
@@ -194,7 +149,7 @@ public:
     bool hasHostPseudoClassRulesMatchingInShadowTree() const { return m_hasHostPseudoClassRulesMatchingInShadowTree; }
 
 private:
-    void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, const MediaQueryEvaluator& medium, StyleResolver*, bool hasDocumentSecurityOrigin, bool isInitiatingElementInUserAgentShadowTree, AddRuleFlags);
+    void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, const MediaQueryEvaluator& medium, StyleResolver*, bool isInitiatingElementInUserAgentShadowTree);
 
     AtomRuleMap m_idRules;
     AtomRuleMap m_classRules;
@@ -214,7 +169,6 @@ private:
     bool m_hasHostPseudoClassRulesMatchingInShadowTree { false };
     bool m_autoShrinkToFitEnabled { true };
     RuleFeatureSet m_features;
-    Vector<RuleSetSelectorPair> m_regionSelectorsAndRuleSets;
 };
 
 inline const RuleSet::RuleDataVector* RuleSet::tagRules(const AtomicString& key, bool isHTMLName) const

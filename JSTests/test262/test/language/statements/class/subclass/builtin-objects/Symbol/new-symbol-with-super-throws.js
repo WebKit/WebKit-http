@@ -3,7 +3,7 @@
 /*---
 es6id: 19.4.1
 description: Symbol subclass called with the new operator throws on super()
-info: >
+info: |
   19.4.1 The Symbol Constructor
 
   ...
@@ -15,6 +15,7 @@ info: >
 
   ...
   1. If NewTarget is not undefined, throw a TypeError exception.
+features: [Symbol]
 ---*/
 
 class S1 extends Symbol {}

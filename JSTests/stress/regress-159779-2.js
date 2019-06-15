@@ -1,4 +1,5 @@
-//@ defaultRunNoisyTest
+//@ skip
+//@ if $buildType == "release" then defaultRunNoisyTest else skip end
 
 var jsStrictMode = false;
 var ENGINE_UNKNOWN = 0;

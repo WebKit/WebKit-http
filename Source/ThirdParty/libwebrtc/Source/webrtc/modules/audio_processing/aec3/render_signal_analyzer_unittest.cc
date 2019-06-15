@@ -8,20 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec3/render_signal_analyzer.h"
+#include "modules/audio_processing/aec3/render_signal_analyzer.h"
 
 #include <math.h>
 #include <array>
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/random.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
-#include "webrtc/modules/audio_processing/aec3/fft_data.h"
-#include "webrtc/modules/audio_processing/aec3/render_buffer.h"
-#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
-#include "webrtc/test/gtest.h"
+#include "api/array_view.h"
+#include "modules/audio_processing/aec3/aec3_common.h"
+#include "modules/audio_processing/aec3/aec3_fft.h"
+#include "modules/audio_processing/aec3/fft_data.h"
+#include "modules/audio_processing/aec3/render_delay_buffer.h"
+#include "modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "rtc_base/random.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace {
@@ -46,7 +46,7 @@ void ProduceSinusoid(int sample_rate_hz,
 #if RTC_DCHECK_IS_ON && GTEST_HAS_DEATH_TEST && !defined(WEBRTC_ANDROID)
 // Verifies that the check for non-null output parameter works.
 TEST(RenderSignalAnalyzer, NullMaskOutput) {
-  RenderSignalAnalyzer analyzer;
+  RenderSignalAnalyzer analyzer(EchoCanceller3Config{});
   EXPECT_DEATH(analyzer.MaskRegionsAroundNarrowBands(nullptr), "");
 }
 
@@ -54,22 +54,26 @@ TEST(RenderSignalAnalyzer, NullMaskOutput) {
 
 // Verify that no narrow bands are detected in a Gaussian noise signal.
 TEST(RenderSignalAnalyzer, NoFalseDetectionOfNarrowBands) {
-  RenderSignalAnalyzer analyzer;
+  RenderSignalAnalyzer analyzer(EchoCanceller3Config{});
   Random random_generator(42U);
   std::vector<std::vector<float>> x(3, std::vector<float>(kBlockSize, 0.f));
   std::array<float, kBlockSize> x_old;
-  FftData X;
-  Aec3Fft fft;
-  RenderBuffer render_buffer(Aec3Optimization::kNone, 3, 1,
-                             std::vector<size_t>(1, 1));
+  std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
+      RenderDelayBuffer::Create(EchoCanceller3Config(), 3));
   std::array<float, kFftLengthBy2Plus1> mask;
   x_old.fill(0.f);
 
   for (size_t k = 0; k < 100; ++k) {
     RandomizeSampleVector(&random_generator, x[0]);
-    fft.PaddedFft(x[0], x_old, &X);
-    render_buffer.Insert(x);
-    analyzer.Update(render_buffer, rtc::Optional<size_t>(0));
+
+    render_delay_buffer->Insert(x);
+    if (k == 0) {
+      render_delay_buffer->Reset();
+    }
+    render_delay_buffer->PrepareCaptureProcessing();
+
+    analyzer.Update(*render_delay_buffer->GetRenderBuffer(),
+                    absl::optional<size_t>(0));
   }
 
   mask.fill(1.f);
@@ -81,13 +85,16 @@ TEST(RenderSignalAnalyzer, NoFalseDetectionOfNarrowBands) {
 
 // Verify that a sinusiod signal is detected as narrow bands.
 TEST(RenderSignalAnalyzer, NarrowBandDetection) {
-  RenderSignalAnalyzer analyzer;
+  RenderSignalAnalyzer analyzer(EchoCanceller3Config{});
   Random random_generator(42U);
   std::vector<std::vector<float>> x(3, std::vector<float>(kBlockSize, 0.f));
   std::array<float, kBlockSize> x_old;
   Aec3Fft fft;
-  RenderBuffer render_buffer(Aec3Optimization::kNone, 3, 1,
-                             std::vector<size_t>(1, 1));
+  EchoCanceller3Config config;
+  config.delay.min_echo_path_delay_blocks = 0;
+  std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
+      RenderDelayBuffer::Create(config, 3));
+
   std::array<float, kFftLengthBy2Plus1> mask;
   x_old.fill(0.f);
   constexpr int kSinusFrequencyBin = 32;
@@ -97,9 +104,15 @@ TEST(RenderSignalAnalyzer, NarrowBandDetection) {
     for (size_t k = 0; k < 100; ++k) {
       ProduceSinusoid(16000, 16000 / 2 * kSinusFrequencyBin / kFftLengthBy2,
                       &sample_counter, x[0]);
-      render_buffer.Insert(x);
-      analyzer.Update(render_buffer, known_delay ? rtc::Optional<size_t>(0)
-                                                 : rtc::Optional<size_t>());
+
+      render_delay_buffer->Insert(x);
+      if (k == 0) {
+        render_delay_buffer->Reset();
+      }
+      render_delay_buffer->PrepareCaptureProcessing();
+
+      analyzer.Update(*render_delay_buffer->GetRenderBuffer(),
+                      known_delay ? absl::optional<size_t>(0) : absl::nullopt);
     }
   };
 

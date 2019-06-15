@@ -24,29 +24,39 @@
 
 #pragma once
 
+#include "CSSValue.h"
+#include "ExceptionOr.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
-namespace WebCore {
-
+namespace WTF {
 class TextStream;
+}
+
+namespace WebCore {
 
 class TimingFunction : public RefCounted<TimingFunction> {
 public:
     virtual Ref<TimingFunction> clone() const = 0;
 
-    virtual ~TimingFunction() { }
+    virtual ~TimingFunction() = default;
 
-    enum TimingFunctionType { LinearFunction, CubicBezierFunction, StepsFunction, SpringFunction };
+    enum TimingFunctionType { LinearFunction, CubicBezierFunction, StepsFunction, FramesFunction, SpringFunction };
     TimingFunctionType type() const { return m_type; }
 
     bool isLinearTimingFunction() const { return m_type == LinearFunction; }
     bool isCubicBezierTimingFunction() const { return m_type == CubicBezierFunction; }
     bool isStepsTimingFunction() const { return m_type == StepsFunction; }
+    bool isFramesTimingFunction() const { return m_type == FramesFunction; }
     bool isSpringTimingFunction() const { return m_type == SpringFunction; }
 
     virtual bool operator==(const TimingFunction&) const = 0;
     bool operator!=(const TimingFunction& other) const { return !(*this == other); }
+
+    static ExceptionOr<RefPtr<TimingFunction>> createFromCSSText(const String&);
+    static RefPtr<TimingFunction> createFromCSSValue(const CSSValue&);
+    double transformTime(double, double, bool before = false) const;
+    String cssText() const;
 
 protected:
     explicit TimingFunction(TimingFunctionType type)
@@ -67,7 +77,7 @@ public:
     
     bool operator==(const TimingFunction& other) const final
     {
-        return other.isLinearTimingFunction();
+        return is<LinearTimingFunction>(other);
     }
 
 private:
@@ -116,9 +126,9 @@ public:
 
     bool operator==(const TimingFunction& other) const final
     {
-        if (!other.isCubicBezierTimingFunction())
+        if (!is<CubicBezierTimingFunction>(other))
             return false;
-        auto& otherCubic = static_cast<const CubicBezierTimingFunction&>(other);
+        auto& otherCubic = downcast<CubicBezierTimingFunction>(other);
         if (m_timingFunctionPreset != otherCubic.m_timingFunctionPreset)
             return false;
         if (m_timingFunctionPreset != Custom)
@@ -151,6 +161,11 @@ public:
     Ref<CubicBezierTimingFunction> createReversed() const
     {
         return create(1.0 - m_x2, 1.0 - m_y2, 1.0 - m_x1, 1.0 - m_y1);
+    }
+
+    bool isLinear() const
+    {
+        return (!m_x1 && !m_y1 && !m_x2 && !m_y2) || (m_x1 == 1.0 && m_y1 == 1.0 && m_x2 == 1.0 && m_y2 == 1.0) || (m_x1 == 0.0 && m_y1 == 0.0 && m_x2 == 1.0 && m_y2 == 1.0);
     }
 
 private:
@@ -189,9 +204,9 @@ public:
     
     bool operator==(const TimingFunction& other) const final
     {
-        if (!other.isStepsTimingFunction())
+        if (!is<StepsTimingFunction>(other))
             return false;
-        auto& otherSteps = static_cast<const StepsTimingFunction&>(other);
+        auto& otherSteps = downcast<StepsTimingFunction>(other);
         return m_steps == otherSteps.m_steps && m_stepAtStart == otherSteps.m_stepAtStart;
     }
     
@@ -218,6 +233,43 @@ private:
     bool m_stepAtStart;
 };
 
+class FramesTimingFunction final : public TimingFunction {
+public:
+    static Ref<FramesTimingFunction> create(unsigned frames)
+    {
+        return adoptRef(*new FramesTimingFunction(frames));
+    }
+    static Ref<FramesTimingFunction> create()
+    {
+        return adoptRef(*new FramesTimingFunction(2));
+    }
+
+    bool operator==(const TimingFunction& other) const final
+    {
+        if (!is<FramesTimingFunction>(other))
+            return false;
+        auto& otherFrames = downcast<FramesTimingFunction>(other);
+        return m_frames == otherFrames.m_frames;
+    }
+    
+    unsigned numberOfFrames() const { return m_frames; }
+    void setNumberOfFrames(unsigned frames) { m_frames = frames; }
+
+private:
+    FramesTimingFunction(unsigned frames)
+        : TimingFunction(FramesFunction)
+        , m_frames(frames)
+    {
+    }
+
+    Ref<TimingFunction> clone() const final
+    {
+        return adoptRef(*new FramesTimingFunction(m_frames));
+    }
+    
+    unsigned m_frames;
+};
+
 class SpringTimingFunction final : public TimingFunction {
 public:
     static Ref<SpringTimingFunction> create(double mass, double stiffness, double damping, double initialVelocity)
@@ -234,9 +286,9 @@ public:
     
     bool operator==(const TimingFunction& other) const final
     {
-        if (!other.isSpringTimingFunction())
+        if (!is<SpringTimingFunction>(other))
             return false;
-        auto& otherSpring = static_cast<const SpringTimingFunction&>(other);
+        auto& otherSpring = downcast<SpringTimingFunction>(other);
         return m_mass == otherSpring.m_mass && m_stiffness == otherSpring.m_stiffness && m_damping == otherSpring.m_damping && m_initialVelocity == otherSpring.m_initialVelocity;
     }
 
@@ -274,6 +326,17 @@ private:
     double m_initialVelocity;
 };
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const TimingFunction&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const TimingFunction&);
 
 } // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_TIMINGFUNCTION(ToValueTypeName, predicate) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
+static bool isType(const WebCore::TimingFunction& function) { return function.predicate; } \
+SPECIALIZE_TYPE_TRAITS_END()
+
+SPECIALIZE_TYPE_TRAITS_TIMINGFUNCTION(WebCore::LinearTimingFunction, isLinearTimingFunction())
+SPECIALIZE_TYPE_TRAITS_TIMINGFUNCTION(WebCore::CubicBezierTimingFunction, isCubicBezierTimingFunction())
+SPECIALIZE_TYPE_TRAITS_TIMINGFUNCTION(WebCore::StepsTimingFunction, isStepsTimingFunction())
+SPECIALIZE_TYPE_TRAITS_TIMINGFUNCTION(WebCore::FramesTimingFunction, isFramesTimingFunction())
+SPECIALIZE_TYPE_TRAITS_TIMINGFUNCTION(WebCore::SpringTimingFunction, isSpringTimingFunction())

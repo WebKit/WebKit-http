@@ -1,9 +1,9 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.20
+esid: sec-%typedarray%.prototype.reduceright
 description: Requires a [[TypedArrayName]] internal slot.
-info: >
+info: |
   22.2.3.20 %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] )
 
   ...
@@ -18,6 +18,7 @@ info: >
   exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

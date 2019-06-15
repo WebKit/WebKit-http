@@ -30,7 +30,7 @@
 #import "DOMNodeInternal.h"
 #import <WebCore/Event.h>
 #import "ExceptionHandlers.h"
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/Node.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/URL.h>
@@ -97,7 +97,7 @@
 - (DOMTimeStamp)timeStamp
 {
     WebCore::JSMainThreadNullState state;
-    return IMPL->timeStamp();
+    return IMPL->timeStamp().approximateWallTime().secondsSinceEpoch().milliseconds();
 }
 
 - (BOOL)defaultPrevented
@@ -115,7 +115,7 @@
 - (id <DOMEventTarget>)srcElement
 {
     WebCore::JSMainThreadNullState state;
-    return kit(WTF::getPtr(IMPL->srcElement()));
+    return kit(WTF::getPtr(IMPL->target()));
 }
 
 - (BOOL)returnValue

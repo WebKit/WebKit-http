@@ -58,8 +58,8 @@ RenderStyle resolveForDocument(const Document& document)
 
     auto documentStyle = RenderStyle::create();
 
-    documentStyle.setDisplay(BLOCK);
-    documentStyle.setRTLOrdering(document.visuallyOrdered() ? VisualOrder : LogicalOrder);
+    documentStyle.setDisplay(DisplayType::Block);
+    documentStyle.setRTLOrdering(document.visuallyOrdered() ? Order::Visual : Order::Logical);
     documentStyle.setZoom(!document.printing() ? renderView.frame().pageZoomFactor() : 1);
     documentStyle.setPageScaleTransform(renderView.frame().frameScaleFactor());
     FontCascadeDescription documentFontDescription = documentStyle.fontDescription();
@@ -67,7 +67,7 @@ RenderStyle resolveForDocument(const Document& document)
     documentStyle.setFontDescription(WTFMove(documentFontDescription));
 
     // This overrides any -webkit-user-modify inherited from the parent iframe.
-    documentStyle.setUserModify(document.inDesignMode() ? READ_WRITE : READ_ONLY);
+    documentStyle.setUserModify(document.inDesignMode() ? UserModify::ReadWrite : UserModify::ReadOnly);
 #if PLATFORM(IOS)
     if (document.inDesignMode())
         documentStyle.setTextSizeAdjust(TextSizeAdjustment(NoTextSizeAdjustment));
@@ -94,12 +94,12 @@ RenderStyle resolveForDocument(const Document& document)
     const Pagination& pagination = renderView.frameView().pagination();
     if (pagination.mode != Pagination::Unpaginated) {
         documentStyle.setColumnStylesFromPaginationMode(pagination.mode);
-        documentStyle.setColumnGap(pagination.gap);
-        if (renderView.multiColumnFlowThread())
+        documentStyle.setColumnGap(GapLength(Length((int) pagination.gap, Fixed)));
+        if (renderView.multiColumnFlow())
             renderView.updateColumnProgressionFromStyle(documentStyle);
         if (renderView.page().paginationLineGridEnabled()) {
             documentStyle.setLineGrid("-webkit-default-pagination-grid");
-            documentStyle.setLineSnap(LineSnapContain);
+            documentStyle.setLineSnap(LineSnap::Contain);
         }
     }
 
@@ -109,6 +109,7 @@ RenderStyle resolveForDocument(const Document& document)
     fontDescription.setLocale(document.contentLanguage());
     fontDescription.setRenderingMode(settings.fontRenderingMode());
     fontDescription.setOneFamily(standardFamily);
+    fontDescription.setShouldAllowUserInstalledFonts(settings.shouldAllowUserInstalledFonts() ? AllowUserInstalledFonts::Yes : AllowUserInstalledFonts::No);
 
     fontDescription.setKeywordSizeFromIdentifier(CSSValueMedium);
     int size = fontSizeForKeyword(CSSValueMedium, false, document);
@@ -122,7 +123,7 @@ RenderStyle resolveForDocument(const Document& document)
     fontDescription.setOrientation(fontOrientation);
     fontDescription.setNonCJKGlyphOrientation(glyphOrientation);
 
-    documentStyle.setFontDescription(fontDescription);
+    documentStyle.setFontDescription(WTFMove(fontDescription));
 
     documentStyle.fontCascade().update(&const_cast<Document&>(document).fontSelector());
 

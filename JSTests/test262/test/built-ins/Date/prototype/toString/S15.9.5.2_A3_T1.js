@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The Date.prototype.toString property "length" has { ReadOnly, DontDelete,
     DontEnum } attributes
+esid: sec-date.prototype.tostring
 es5id: 15.9.5.2_A3_T1
 description: Checking ReadOnly attribute
 includes: [propertyHelper.js]

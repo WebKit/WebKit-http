@@ -51,6 +51,10 @@ public:
 
     void dispatchDidFailToStartPlugin(const WebCore::PluginView*) const;
 
+    std::optional<uint64_t> pageID() const final;
+    std::optional<uint64_t> frameID() const final;
+    PAL::SessionID sessionID() const final;
+
     bool hasWebView() const override;
 
     Ref<WebCore::FrameNetworkingContext> createNetworkingContext() override;
@@ -64,7 +68,7 @@ public:
     void detachedFromParent2() override;
     void detachedFromParent3() override;
 
-    void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, WebCore::SessionID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&) override;
+    void convertMainResourceLoadToDownload(WebCore::DocumentLoader*, PAL::SessionID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&) override;
     void assignIdentifierToInitialRequest(unsigned long identifier, WebCore::DocumentLoader*, const WebCore::ResourceRequest&) override;
 
     void dispatchWillSendRequest(WebCore::DocumentLoader*, unsigned long identifier, WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse) override;
@@ -81,7 +85,7 @@ public:
     void dispatchDidDispatchOnloadEvents() override;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() override;
     void dispatchDidCancelClientRedirect() override;
-    void dispatchWillPerformClientRedirect(const WebCore::URL&, double interval, double fireDate) override;
+    void dispatchWillPerformClientRedirect(const WebCore::URL&, double interval, WallTime fireDate) override;
     void dispatchDidChangeLocationWithinPage() override;
     void dispatchDidPushStateWithinPage() override;
     void dispatchDidReplaceStateWithinPage() override;
@@ -98,13 +102,13 @@ public:
 
     void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, const WTF::String& frameName, WebCore::FramePolicyFunction&&) override;
-    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, WebCore::FramePolicyFunction&&) override;
+    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse, WebCore::FormState*, WebCore::PolicyDecisionMode, WebCore::ShouldSkipSafeBrowsingCheck, WebCore::FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) override;
 
     void dispatchWillSendSubmitEvent(Ref<WebCore::FormState>&&) override;
-    void dispatchWillSubmitForm(WebCore::FormState&, WebCore::FramePolicyFunction&&) override;
+    void dispatchWillSubmitForm(WebCore::FormState&, CompletionHandler<void()>&&) override;
 
     void revertToProvisionalState(WebCore::DocumentLoader*) override;
     bool dispatchDidLoadResourceFromMemoryCache(WebCore::DocumentLoader*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, int length) override;

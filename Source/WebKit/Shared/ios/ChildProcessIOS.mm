@@ -25,12 +25,11 @@
 
 #import "config.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
 
 #import "ChildProcess.h"
 
 #import "SandboxInitializationParameters.h"
-#import "WebKitSystemInterface.h"
 #import "XPCServiceEntryPoint.h"
 #import <WebCore/FileSystem.h>
 #import <WebCore/FloatingPointEnvironment.h>
@@ -44,8 +43,6 @@
 #if ENABLE(MANUAL_SANDBOXING)
 #import <wtf/spi/darwin/SandboxSPI.h>
 #endif
-
-using namespace WebCore;
 
 namespace WebKit {
 
@@ -71,17 +68,22 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
         sandboxParameters.setUserDirectorySuffix(defaultUserDirectorySuffix);
     }
 
+#if !PLATFORM(IOSMAC)
     String sandboxImportPath = "/usr/local/share/sandbox/imports";
-    sandboxParameters.addPathParameter("IMPORT_DIR", fileSystemRepresentation(sandboxImportPath).data());
+    sandboxParameters.addPathParameter("IMPORT_DIR", FileSystem::fileSystemRepresentation(sandboxImportPath).data());
+#endif
 
     switch (sandboxParameters.mode()) {
     case SandboxInitializationParameters::UseDefaultSandboxProfilePath:
     case SandboxInitializationParameters::UseOverrideSandboxProfilePath: {
         String sandboxProfilePath = sandboxParameters.mode() == SandboxInitializationParameters::UseDefaultSandboxProfilePath ? defaultProfilePath : sandboxParameters.overrideSandboxProfilePath();
         if (!sandboxProfilePath.isEmpty()) {
-            CString profilePath = fileSystemRepresentation(sandboxProfilePath);
+            CString profilePath = FileSystem::fileSystemRepresentation(sandboxProfilePath);
             char* errorBuf;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             if (sandbox_init_with_parameters(profilePath.data(), SANDBOX_NAMED_EXTERNAL, sandboxParameters.namedParameterArray(), &errorBuf)) {
+#pragma clang diagnostic pop
                 WTFLogAlways("%s: Couldn't initialize sandbox profile [%s], error '%s'\n", getprogname(), profilePath.data(), errorBuf);
                 for (size_t i = 0, count = sandboxParameters.count(); i != count; ++i)
                     WTFLogAlways("%s=%s\n", sandboxParameters.name(i), sandboxParameters.value(i));
@@ -93,7 +95,10 @@ void ChildProcess::initializeSandbox(const ChildProcessInitializationParameters&
     }
     case SandboxInitializationParameters::UseSandboxProfile: {
         char* errorBuf;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (sandbox_init_with_parameters(sandboxParameters.sandboxProfile().utf8().data(), 0, sandboxParameters.namedParameterArray(), &errorBuf)) {
+#pragma clang diagnostic pop
             WTFLogAlways("%s: Couldn't initialize sandbox profile, error '%s'\n", getprogname(), errorBuf);
             for (size_t i = 0, count = sandboxParameters.count(); i != count; ++i)
                 WTFLogAlways("%s=%s\n", sandboxParameters.name(i), sandboxParameters.value(i));

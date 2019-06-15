@@ -1,4 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
+# Copyright (C) 2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -30,6 +31,7 @@ import datetime
 import logging
 
 from .bug import Bug
+from .bugzilla import Bugzilla
 from .attachment import Attachment
 from webkitpy.common.config.committers import CommitterList, Reviewer
 
@@ -151,6 +153,19 @@ _patch8 = {  # Resolved bug, without review flag, not marked obsolete (maybe alr
     "attacher_email": "eric@webkit.org",
 }
 
+_patch9 = {
+    'id': 10008,
+    'bug_id': 50007,
+    'url': 'http://example.com/10008',
+    'name': 'Patch9',
+    'is_obsolete': False,
+    'is_patch': True,
+    'review': '?',
+    'commit-queue': '-',
+    'attacher_email': 'dbates@webkit.org',
+    'attach_date': datetime.datetime.today(),
+}
+
 # This matches one of Bug.unassigned_emails
 _unassigned_email = "webkit-unassigned@lists.webkit.org"
 # This is needed for the FlakyTestReporter to believe the bug
@@ -181,7 +196,7 @@ _bug2 = {
     "bug_status": "ASSIGNED",
     "comments": [{"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                   "comment_email": "bar@foo.com",
-                  "text": "Message1.\nCommitted r35: <http://trac.webkit.org/changeset/35>",
+                  "text": "Message1.\nCommitted r35: <https://trac.webkit.org/changeset/35>",
                   },
                  ],
 }
@@ -197,11 +212,11 @@ _bug3 = {
     "bug_status": "NEW",
     "comments":  [{"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                    "comment_email": "bar@foo.com",
-                   "text": "Committed r30: <http://trac.webkit.org/changeset/30>",
+                   "text": "Committed r30: <https://trac.webkit.org/changeset/30>",
                    },
                   {"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                    "comment_email": "bar@foo.com",
-                   "text": "Committed r31: <http://trac.webkit.org/changeset/31>",
+                   "text": "Committed r31: <https://trac.webkit.org/changeset/31>",
                    },
                   ],
 }
@@ -217,11 +232,11 @@ _bug4 = {
     "bug_status": "REOPENED",
     "comments": [{"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                   "comment_email": "bar@foo.com",
-                  "text": "Committed r25: <http://trac.webkit.org/changeset/30>",
+                  "text": "Committed r25: <https://trac.webkit.org/changeset/30>",
                   },
                  {"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                   "comment_email": "bar@foo.com",
-                  "text": "Rolled out in <http://trac.webkit.org/changeset/26",
+                  "text": "Rolled out in <https://trac.webkit.org/changeset/26",
                   },
                  ],
 }
@@ -238,7 +253,7 @@ _bug5 = {
     "dup_id": 50002,
     "comments": [{"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                   "comment_email": "bar@foo.com",
-                  "text": "Committed r15: <http://trac.webkit.org/changeset/15>",
+                  "text": "Committed r15: <https://trac.webkit.org/changeset/15>",
                   },
                  ],
 
@@ -255,7 +270,7 @@ _bug6 = {
     "bug_status": "RESOLVED",
     "comments": [{"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                   "comment_email": "bar@foo.com",
-                  "text": "Committed r95: <http://trac.webkit.org/changeset/95>",
+                  "text": "Committed r95: <https://trac.webkit.org/changeset/95>",
                   },
                  ],
 
@@ -272,7 +287,24 @@ _bug7 = {
     "bug_status": "RESOLVED",
     "comments": [{"comment_date":  datetime.datetime(2011, 6, 11, 9, 4, 3),
                   "comment_email": "bar@foo.com",
-                  "text": "Message1.\nCommitted r105: <http://trac.webkit.org/changeset/105>",
+                  "text": "Message1.\nCommitted r105: <https://trac.webkit.org/changeset/105>",
+                  },
+                 ],
+}
+
+
+_bug8 = {
+    'id': 50007,
+    'title': 'Security bug with a patch needing review.',
+    'reporter_email': 'dbates@webkit.org',
+    'assigned_to_email': 'foo@foo.com',
+    'cc_emails': [],
+    'attachments': [_patch9],
+    'bug_status': 'ASSIGNED',
+    'groups': frozenset(['Security-Sensitive']),
+    'comments': [{'comment_date':  datetime.datetime(2011, 6, 11, 9, 4, 3),
+                  'comment_email': 'bar@foo.com',
+                  'text': 'Message1.\nCommitted r35: <https://trac.webkit.org/changeset/35>',
                   },
                  ],
 }
@@ -293,12 +325,14 @@ class MockBugzillaQueries(object):
                 self._all_bugs())
         return map(lambda bug: bug.id(), bugs_with_commit_queued_patches)
 
-    def fetch_attachment_ids_from_review_queue(self, since=None):
+    def fetch_attachment_ids_from_review_queue(self, since=None, only_security_bugs=False):
         unreviewed_patches = sum([bug.unreviewed_patches()
                                   for bug in self._all_bugs()], [])
         if since:
-            unreviewed_pacthes = [patch for patch in unreviewed_patches
+            unreviewed_patches = [patch for patch in unreviewed_patches
                                         if patch.attach_date() >= since]
+        if only_security_bugs:
+            unreviewed_patches = filter(lambda patch: patch.bug().is_security_sensitive(), unreviewed_patches)
         return map(lambda patch: patch.id(), unreviewed_patches)
 
     def fetch_patches_from_commit_queue(self):
@@ -344,16 +378,10 @@ class MockBugzilla(object):
 
     bug_server_url = "http://example.com"
 
-    bug_cache = _id_to_object_dictionary(_bug1, _bug2, _bug3, _bug4, _bug5, _bug6, _bug7)
+    bug_cache = _id_to_object_dictionary(_bug1, _bug2, _bug3, _bug4, _bug5, _bug6, _bug7, _bug8)
 
-    attachment_cache = _id_to_object_dictionary(_patch1,
-                                                _patch2,
-                                                _patch3,
-                                                _patch4,
-                                                _patch5,
-                                                _patch6,
-                                                _patch7,
-                                                _patch8)
+    attachment_cache = _id_to_object_dictionary(_patch1, _patch2, _patch3, _patch4, _patch5, _patch6,
+                                                _patch7, _patch8, _patch9)
 
     def __init__(self):
         self.queries = MockBugzillaQueries(self)
@@ -395,18 +423,23 @@ class MockBugzilla(object):
     def set_override_patch(self, patch):
         self._override_patch = patch
 
-    def fetch_attachment(self, attachment_id):
+    def fetch_attachment(self, attachment_id, throw_on_access_error=False):
         if self._override_patch:
             return self._override_patch
 
-        attachment_dictionary = self.attachment_cache.get(attachment_id)
+        attachment_dictionary = self.attachment_cache.get(int(attachment_id))
         if not attachment_dictionary:
-            print "MOCK: fetch_attachment: %s is not a known attachment id" % attachment_id
+            print("MOCK: fetch_attachment: %s is not a known attachment id" % attachment_id)
             return None
         bug = self.fetch_bug(attachment_dictionary["bug_id"])
+        if bug.is_security_sensitive() and throw_on_access_error:
+            raise Bugzilla.AccessError(attachment_id, Bugzilla.AccessError.NOT_PERMITTED, 'Bug Access Denied')
         for attachment in bug.attachments(include_obsolete=True):
             if attachment.id() == int(attachment_id):
                 return attachment
+
+    def fetch_attachment_contents(self, attachment_id):
+        return 'Patch'
 
     def bug_url_for_bug_id(self, bug_id):
         return "%s/%s" % (self.bug_server_url, bug_id)
@@ -435,9 +468,9 @@ class MockBugzilla(object):
         _log.info("MOCK setting flag '%s' to '%s' on attachment '%s' with comment '%s'" % (
                   flag_name, flag_value, attachment_id, comment_text))
 
-    def post_comment_to_bug(self, bug_id, comment_text, cc=None):
-        _log.info("MOCK bug comment: bug_id=%s, cc=%s\n--- Begin comment ---\n%s\n--- End comment ---\n" % (
-                  bug_id, cc, comment_text))
+    def post_comment_to_bug(self, bug_id, comment_text, cc=None, see_also=None):
+        _log.info("MOCK bug comment: bug_id=%s, cc=%s, see_also=%s\n--- Begin comment ---\n%s\n--- End comment ---\n" % (
+                  bug_id, cc, see_also, comment_text))
 
     def add_attachment_to_bug(self, bug_id, file_or_string, description, filename=None, comment_text=None, mimetype=None):
         _log.info("MOCK add_attachment_to_bug: bug_id=%s, description=%s filename=%s mimetype=%s" %
@@ -461,6 +494,12 @@ class MockBugzilla(object):
             _log.info("-- Begin comment --")
             _log.info(comment_text)
             _log.info("-- End comment --")
+        bug = self.fetch_bug(bug_id)
+        if bug.bug_dictionary:
+            patches = bug.patches()
+            if len(patches) == 1:
+                return patches[0].id()
+        return '10001'
 
     def add_cc_to_bug(self, bug_id, ccs):
         pass

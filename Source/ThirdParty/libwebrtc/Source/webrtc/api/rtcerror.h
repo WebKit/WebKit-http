@@ -8,16 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_RTCERROR_H_
-#define WEBRTC_API_RTCERROR_H_
+#ifndef API_RTCERROR_H_
+#define API_RTCERROR_H_
 
+#ifdef UNIT_TEST
 #include <ostream>
+#endif  // UNIT_TEST
 #include <string>
 #include <utility>  // For std::move.
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/export.h"
-#include "webrtc/base/logging.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
 
 namespace webrtc {
 
@@ -78,7 +79,7 @@ enum class RTCErrorType {
 //
 // Doesn't contain anything beyond a type and message now, but will in the
 // future as more errors are implemented.
-class WEBRTC_DYLIB_EXPORT RTCError {
+class RTCError {
  public:
   // Constructors.
 
@@ -107,7 +108,7 @@ class WEBRTC_DYLIB_EXPORT RTCError {
   // Identical to default constructed error.
   //
   // Preferred over the default constructor for code readability.
-  static RTCError OK() { return RTCError(); }
+  static RTCError OK();
 
   // Error type.
   RTCErrorType type() const { return type_; }
@@ -144,16 +145,24 @@ class WEBRTC_DYLIB_EXPORT RTCError {
 // error type.
 //
 // Only intended to be used for logging/disagnostics.
-std::ostream& operator<<(std::ostream& stream, RTCErrorType error);
+std::string ToString(RTCErrorType error);
+
+#ifdef UNIT_TEST
+inline std::ostream& operator<<(  // no-presubmit-check TODO(webrtc:8982)
+    std::ostream& stream,         // no-presubmit-check TODO(webrtc:8982)
+    RTCErrorType error) {
+  return stream << ToString(error);
+}
+#endif  // UNIT_TEST
 
 // Helper macro that can be used by implementations to create an error with a
 // message and log it. |message| should be a string literal or movable
 // std::string.
-#define LOG_AND_RETURN_ERROR_EX(type, message, severity) \
-  {                                                      \
-    RTC_DCHECK(type != RTCErrorType::NONE);              \
-    LOG(severity) << message << " (" << type << ")";     \
-    return webrtc::RTCError(type, message);   \
+#define LOG_AND_RETURN_ERROR_EX(type, message, severity)           \
+  {                                                                \
+    RTC_DCHECK(type != RTCErrorType::NONE);                        \
+    RTC_LOG(severity) << message << " (" << ToString(type) << ")"; \
+    return webrtc::RTCError(type, message);                        \
   }
 
 #define LOG_AND_RETURN_ERROR(type, message) \
@@ -177,7 +186,7 @@ std::ostream& operator<<(std::ostream& stream, RTCErrorType error);
 //    std::unique_ptr<Foo> foo = result.ConsumeValue();
 //    foo->DoSomethingCool();
 //  } else {
-//    LOG(LS_ERROR) << result.error();
+//    RTC_LOG(LS_ERROR) << result.error();
 //  }
 //
 // Example factory implementation returning RTCErrorOr<std::unique_ptr<T>>:
@@ -298,4 +307,4 @@ class RTCErrorOr {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_RTCERROR_H_
+#endif  // API_RTCERROR_H_

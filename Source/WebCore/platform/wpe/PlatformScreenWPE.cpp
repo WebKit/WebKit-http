@@ -54,6 +54,17 @@ bool screenHasInvertedColors()
     return false;
 }
 
+double screenDPI()
+{
+    notImplemented();
+    return 96;
+}
+
+void setScreenDPIObserverHandler(Function<void()>&&, void*)
+{
+    notImplemented();
+}
+
 FloatRect screenRect(Widget*)
 {
     notImplemented();

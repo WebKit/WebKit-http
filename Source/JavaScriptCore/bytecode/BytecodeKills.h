@@ -26,6 +26,7 @@
 #pragma once
 
 #include "CodeBlock.h"
+#include <wtf/UniqueArray.h>
 
 namespace JSC {
 
@@ -51,7 +52,7 @@ public:
     
     bool operandIsKilled(Instruction* instruction, int operand) const
     {
-        return operandIsKilled(instruction - m_codeBlock->instructions().begin(), operand);
+        return operandIsKilled(m_codeBlock->bytecodeOffset(instruction), operand);
     }
     
     template<typename Functor>
@@ -67,13 +68,14 @@ public:
     template<typename Functor>
     void forEachOperandKilledAt(Instruction* pc, const Functor& functor) const
     {
-        forEachOperandKilledAt(pc - m_codeBlock->instructions().begin(), functor);
+        forEachOperandKilledAt(m_codeBlock->bytecodeOffset(pc), functor);
     }
     
 private:
     friend class BytecodeLivenessAnalysis;
 
     class KillSet {
+        WTF_MAKE_FAST_ALLOCATED;
     public:
         KillSet()
             : m_word(0)
@@ -170,7 +172,7 @@ private:
     };
     
     CodeBlock* m_codeBlock;
-    std::unique_ptr<KillSet[]> m_killSets;
+    UniqueArray<KillSet> m_killSets;
 };
 
 } // namespace JSC

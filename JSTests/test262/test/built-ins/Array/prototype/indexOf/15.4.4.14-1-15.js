@@ -2,13 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.indexof
 es5id: 15.4.4.14-1-15
 description: Array.prototype.indexOf applied to Arguments object
 ---*/
 
-        function fun() {
-            return arguments;
-        }
-        var obj = fun(1, true, 3);
+function fun() {
+  return arguments;
+}
+var obj = fun(1, true, 3);
 
 assert.sameValue(Array.prototype.indexOf.call(obj, true), 1, 'Array.prototype.indexOf.call(obj, true)');

@@ -5,7 +5,7 @@
 es6id: B.2.3.12
 description: >
   String.prototype.strike.length is 0.
-info: >
+info: |
   String.prototype.strike ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.strike.length, 0);
-
-verifyNotEnumerable(String.prototype.strike, "length");
-verifyNotWritable(String.prototype.strike, "length");
-verifyConfigurable(String.prototype.strike, "length");
+verifyProperty(String.prototype.strike, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

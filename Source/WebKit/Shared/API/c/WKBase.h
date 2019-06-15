@@ -32,14 +32,12 @@
 
 #if defined(BUILDING_GTK__)
 #include <WebKit/WKBaseGtk.h>
-#endif
-
-#if defined(__APPLE__) && !defined(BUILDING_GTK__) && !defined(BUILDING_QT__)
-#include <WebKit/WKBaseMac.h>
-#endif
-
-#if defined(BUILDING_WPE__)
+#elif defined(BUILDING_WPE__)
 #include <WebKit/WKBaseWPE.h>
+#elif defined(__APPLE__) && !defined(BUILDING_QT__) // QTFIXME: Do we need WKBaseQt.h?
+#include <WebKit/WKBaseMac.h>
+#elif defined(_WIN32)
+#include <WebKit/WKBaseWin.h>
 #endif
 
 /* WebKit2 shared types */
@@ -127,6 +125,7 @@ typedef const struct OpaqueWKPageRunBeforeUnloadConfirmPanelResultListener* WKPa
 typedef const struct OpaqueWKPageRunJavaScriptAlertResultListener* WKPageRunJavaScriptAlertResultListenerRef;
 typedef const struct OpaqueWKPageRunJavaScriptConfirmResultListener* WKPageRunJavaScriptConfirmResultListenerRef;
 typedef const struct OpaqueWKPageRunJavaScriptPromptResultListener* WKPageRunJavaScriptPromptResultListenerRef;
+typedef const struct OpaqueWKPageRequestStorageAccessConfirmResultListener* WKPageRequestStorageAccessConfirmResultListenerRef;
 typedef const struct OpaqueWKResourceLoadStatisticsManager* WKResourceLoadStatisticsManagerRef;
 typedef const struct OpaqueWKTextChecker* WKTextCheckerRef;
 typedef const struct OpaqueWKSession* WKSessionRef;

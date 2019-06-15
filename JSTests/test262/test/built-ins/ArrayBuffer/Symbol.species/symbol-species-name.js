@@ -1,10 +1,11 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-get-arraybuffer-@@species
 es6id: 24.1.3.3
 description: >
   ArrayBuffer[Symbol.species] accessor property get name
-info: >
+info: |
   24.1.3.3 get ArrayBuffer [ @@species ]
 
   ...

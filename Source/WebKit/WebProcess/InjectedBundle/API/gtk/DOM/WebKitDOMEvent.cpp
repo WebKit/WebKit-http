@@ -24,8 +24,7 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTargetPrivate.h"
 #include "WebKitDOMPrivate.h"
@@ -38,6 +37,8 @@
 typedef struct _WebKitDOMEventPrivate {
     RefPtr<WebCore::Event> coreObject;
 } WebKitDOMEventPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,17 +69,17 @@ WebKitDOMEvent* wrapEvent(WebCore::Event* coreObject)
 G_DEFINE_TYPE(WebKitDOMEvent, webkit_dom_event, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_TYPE,
-    PROP_TARGET,
-    PROP_CURRENT_TARGET,
-    PROP_EVENT_PHASE,
-    PROP_BUBBLES,
-    PROP_CANCELABLE,
-    PROP_TIME_STAMP,
-    PROP_SRC_ELEMENT,
-    PROP_RETURN_VALUE,
-    PROP_CANCEL_BUBBLE,
+    DOM_EVENT_PROP_0,
+    DOM_EVENT_PROP_TYPE,
+    DOM_EVENT_PROP_TARGET,
+    DOM_EVENT_PROP_CURRENT_TARGET,
+    DOM_EVENT_PROP_EVENT_PHASE,
+    DOM_EVENT_PROP_BUBBLES,
+    DOM_EVENT_PROP_CANCELABLE,
+    DOM_EVENT_PROP_TIME_STAMP,
+    DOM_EVENT_PROP_SRC_ELEMENT,
+    DOM_EVENT_PROP_RETURN_VALUE,
+    DOM_EVENT_PROP_CANCEL_BUBBLE,
 };
 
 static void webkit_dom_event_finalize(GObject* object)
@@ -96,10 +97,10 @@ static void webkit_dom_event_set_property(GObject* object, guint propertyId, con
     WebKitDOMEvent* self = WEBKIT_DOM_EVENT(object);
 
     switch (propertyId) {
-    case PROP_RETURN_VALUE:
+    case DOM_EVENT_PROP_RETURN_VALUE:
         webkit_dom_event_set_return_value(self, g_value_get_boolean(value));
         break;
-    case PROP_CANCEL_BUBBLE:
+    case DOM_EVENT_PROP_CANCEL_BUBBLE:
         webkit_dom_event_set_cancel_bubble(self, g_value_get_boolean(value));
         break;
     default:
@@ -113,34 +114,34 @@ static void webkit_dom_event_get_property(GObject* object, guint propertyId, GVa
     WebKitDOMEvent* self = WEBKIT_DOM_EVENT(object);
 
     switch (propertyId) {
-    case PROP_TYPE:
+    case DOM_EVENT_PROP_TYPE:
         g_value_take_string(value, webkit_dom_event_get_event_type(self));
         break;
-    case PROP_TARGET:
+    case DOM_EVENT_PROP_TARGET:
         g_value_set_object(value, webkit_dom_event_get_target(self));
         break;
-    case PROP_CURRENT_TARGET:
+    case DOM_EVENT_PROP_CURRENT_TARGET:
         g_value_set_object(value, webkit_dom_event_get_current_target(self));
         break;
-    case PROP_EVENT_PHASE:
+    case DOM_EVENT_PROP_EVENT_PHASE:
         g_value_set_uint(value, webkit_dom_event_get_event_phase(self));
         break;
-    case PROP_BUBBLES:
+    case DOM_EVENT_PROP_BUBBLES:
         g_value_set_boolean(value, webkit_dom_event_get_bubbles(self));
         break;
-    case PROP_CANCELABLE:
+    case DOM_EVENT_PROP_CANCELABLE:
         g_value_set_boolean(value, webkit_dom_event_get_cancelable(self));
         break;
-    case PROP_TIME_STAMP:
+    case DOM_EVENT_PROP_TIME_STAMP:
         g_value_set_uint(value, webkit_dom_event_get_time_stamp(self));
         break;
-    case PROP_SRC_ELEMENT:
+    case DOM_EVENT_PROP_SRC_ELEMENT:
         g_value_set_object(value, webkit_dom_event_get_src_element(self));
         break;
-    case PROP_RETURN_VALUE:
+    case DOM_EVENT_PROP_RETURN_VALUE:
         g_value_set_boolean(value, webkit_dom_event_get_return_value(self));
         break;
-    case PROP_CANCEL_BUBBLE:
+    case DOM_EVENT_PROP_CANCEL_BUBBLE:
         g_value_set_boolean(value, webkit_dom_event_get_cancel_bubble(self));
         break;
     default:
@@ -171,7 +172,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TYPE,
+        DOM_EVENT_PROP_TYPE,
         g_param_spec_string(
             "type",
             "Event:type",
@@ -181,7 +182,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TARGET,
+        DOM_EVENT_PROP_TARGET,
         g_param_spec_object(
             "target",
             "Event:target",
@@ -191,7 +192,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CURRENT_TARGET,
+        DOM_EVENT_PROP_CURRENT_TARGET,
         g_param_spec_object(
             "current-target",
             "Event:current-target",
@@ -201,7 +202,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_EVENT_PHASE,
+        DOM_EVENT_PROP_EVENT_PHASE,
         g_param_spec_uint(
             "event-phase",
             "Event:event-phase",
@@ -211,7 +212,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BUBBLES,
+        DOM_EVENT_PROP_BUBBLES,
         g_param_spec_boolean(
             "bubbles",
             "Event:bubbles",
@@ -221,7 +222,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CANCELABLE,
+        DOM_EVENT_PROP_CANCELABLE,
         g_param_spec_boolean(
             "cancelable",
             "Event:cancelable",
@@ -231,7 +232,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TIME_STAMP,
+        DOM_EVENT_PROP_TIME_STAMP,
         g_param_spec_uint(
             "time-stamp",
             "Event:time-stamp",
@@ -241,7 +242,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SRC_ELEMENT,
+        DOM_EVENT_PROP_SRC_ELEMENT,
         g_param_spec_object(
             "src-element",
             "Event:src-element",
@@ -251,7 +252,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_RETURN_VALUE,
+        DOM_EVENT_PROP_RETURN_VALUE,
         g_param_spec_boolean(
             "return-value",
             "Event:return-value",
@@ -261,7 +262,7 @@ static void webkit_dom_event_class_init(WebKitDOMEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CANCEL_BUBBLE,
+        DOM_EVENT_PROP_CANCEL_BUBBLE,
         g_param_spec_boolean(
             "cancel-bubble",
             "Event:cancel-bubble",
@@ -362,7 +363,7 @@ guint32 webkit_dom_event_get_time_stamp(WebKitDOMEvent* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_EVENT(self), 0);
     WebCore::Event* item = WebKit::core(self);
-    guint32 result = item->timeStamp();
+    guint32 result = item->timeStamp().approximateWallTime().secondsSinceEpoch().milliseconds();
     return result;
 }
 
@@ -371,7 +372,7 @@ WebKitDOMEventTarget* webkit_dom_event_get_src_element(WebKitDOMEvent* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_EVENT(self), 0);
     WebCore::Event* item = WebKit::core(self);
-    RefPtr<WebCore::EventTarget> gobjectResult = WTF::getPtr(item->srcElement());
+    RefPtr<WebCore::EventTarget> gobjectResult = WTF::getPtr(item->target());
     return WebKit::kit(gobjectResult.get());
 }
 
@@ -409,3 +410,4 @@ void webkit_dom_event_set_cancel_bubble(WebKitDOMEvent* self, gboolean value)
     item->setCancelBubble(value);
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

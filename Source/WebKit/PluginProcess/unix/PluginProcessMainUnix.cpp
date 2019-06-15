@@ -41,16 +41,17 @@
 #include <gtk/gtk.h>
 #endif
 
-#if defined(XP_UNIX)
+#if PLATFORM(X11)
 #include <WebCore/PlatformDisplayX11.h>
 #include <WebCore/XErrorTrapper.h>
+#include <wtf/NeverDestroyed.h>
 #endif
 
 namespace WebKit {
 
-#if defined(XP_UNIX)
-static std::unique_ptr<WebCore::XErrorTrapper> xErrorTrapper;
-#endif // XP_UNIX
+#if PLATFORM(X11)
+static LazyNeverDestroyed<WebCore::XErrorTrapper> xErrorTrapper;
+#endif
 
 class PluginProcessMain final: public ChildProcessMainBase {
 public:
@@ -65,25 +66,28 @@ public:
 
     bool parseCommandLine(int argc, char** argv) override
     {
-        ASSERT(argc == 3);
-        if (argc != 3)
+        ASSERT(argc > 2);
+        if (argc < 3)
             return false;
 
-        if (!strcmp(argv[1], "-scanPlugin"))
-#if PLUGIN_ARCHITECTURE(X11)
+        if (!strcmp(argv[1], "-scanPlugin")) {
+            ASSERT(argc == 3);
+#if PLUGIN_ARCHITECTURE(UNIX)
             exit(NetscapePluginModule::scanPlugin(argv[2]) ? EXIT_SUCCESS : EXIT_FAILURE);
 #else
             exit(EXIT_FAILURE);
 #endif
+        }
 
-#if defined(XP_UNIX)
+        ASSERT(argc == 4);
+#if PLATFORM(X11)
         if (WebCore::PlatformDisplay::sharedDisplay().type() == WebCore::PlatformDisplay::Type::X11) {
             auto* display = downcast<WebCore::PlatformDisplayX11>(WebCore::PlatformDisplay::sharedDisplay()).native();
-            xErrorTrapper = std::make_unique<WebCore::XErrorTrapper>(display, WebCore::XErrorTrapper::Policy::Warn);
+            xErrorTrapper.construct(display, WebCore::XErrorTrapper::Policy::Warn);
         }
 #endif
 
-        m_parameters.extraInitializationData.add("plugin-path", argv[2]);
+        m_parameters.extraInitializationData.add("plugin-path", argv[3]);
         return ChildProcessMainBase::parseCommandLine(argc, argv);
     }
 };

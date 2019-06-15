@@ -8,12 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_VIDEO_QUALITY_THRESHOLD_H_
-#define WEBRTC_VIDEO_QUALITY_THRESHOLD_H_
+#ifndef VIDEO_QUALITY_THRESHOLD_H_
+#define VIDEO_QUALITY_THRESHOLD_H_
 
 #include <memory>
 
-#include "webrtc/base/optional.h"
+#include "absl/types/optional.h"
 
 namespace webrtc {
 
@@ -27,9 +27,9 @@ class QualityThreshold {
                    int max_measurements);
 
   void AddMeasurement(int measurement);
-  rtc::Optional<bool> IsHigh() const;
-  rtc::Optional<double> CalculateVariance() const;
-  rtc::Optional<double> FractionHigh(int min_required_samples) const;
+  absl::optional<bool> IsHigh() const;
+  absl::optional<double> CalculateVariance() const;
+  absl::optional<double> FractionHigh(int min_required_samples) const;
 
  private:
   const std::unique_ptr<int[]> buffer_;
@@ -39,7 +39,7 @@ class QualityThreshold {
   const int high_threshold_;
   int until_full_;
   int next_index_;
-  rtc::Optional<bool> is_high_;
+  absl::optional<bool> is_high_;
   int sum_;
   int count_low_;
   int count_high_;
@@ -49,4 +49,4 @@ class QualityThreshold {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_VIDEO_QUALITY_THRESHOLD_H_
+#endif  // VIDEO_QUALITY_THRESHOLD_H_

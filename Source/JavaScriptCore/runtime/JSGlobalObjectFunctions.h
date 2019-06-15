@@ -35,6 +35,8 @@ class JSObject;
 // FIXME: These functions should really be in JSGlobalObject.cpp, but putting them there
 // is a 0.5% reduction.
 
+extern const ASCIILiteral ObjectProtoCalledOnNullOrUndefinedError;
+
 EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncParseInt(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncParseFloat(ExecState*);
@@ -50,6 +52,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncHostPromiseRejectionTracker(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState*);
+EncodedJSValue JSC_HOST_CALL globalFuncBuiltinDescribe(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncPropertyIsEnumerable(ExecState*);
 

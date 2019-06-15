@@ -50,8 +50,9 @@ protected:
     String serializeWithComponents(const DateComponents&) const;
     virtual bool setMillisecondToDateComponents(double, DateComponents*) const = 0;
     String visibleValue() const override;
+    void attributeChanged(const QualifiedName&) override;
 #if PLATFORM(IOS)
-    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    bool isKeyboardFocusable(KeyboardEvent*) const override;
 #endif
 
 private:
@@ -67,7 +68,6 @@ private:
     bool typeMismatch() const override;
     bool valueMissing(const String&) const override;
     Decimal defaultValueForStepUp() const override;
-    void minOrMaxAttributeChanged() override;
     bool isSteppable() const override;
     virtual String serializeWithMilliseconds(double) const;
     String localizeValue(const String&) const override;

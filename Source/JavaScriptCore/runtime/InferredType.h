@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,9 @@
 #pragma once
 
 #include "ConcurrentJSLock.h"
-#include "JSCell.h"
+#include "InferredStructure.h"
+#include "IsoCellSet.h"
+#include "JSCast.h"
 #include "PropertyName.h"
 #include "PutByIdFlags.h"
 #include "Watchpoint.h"
@@ -39,6 +41,12 @@ namespace JSC {
 class InferredType final : public JSCell {
 public:
     typedef JSCell Base;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.inferredTypeSpace;
+    }
 
     static InferredType* create(VM&);
 
@@ -61,6 +69,7 @@ public:
         Number,
         String,
         Symbol,
+        BigInt,
         ObjectWithStructure,
         ObjectWithStructureOrOther,
         Object,
@@ -128,6 +137,8 @@ public:
                 return value.isString();
             case Symbol:
                 return value.isSymbol();
+            case BigInt:
+                return value.isBigInt();
             case ObjectWithStructure:
                 return value.isCell() && value.asCell()->structure() == m_structure;
             case ObjectWithStructureOrOther:
@@ -178,7 +189,7 @@ public:
 
     Descriptor descriptorMainThread() const
     {
-        return Descriptor(m_kind, m_structure ? m_structure->structure() : nullptr);
+        return Descriptor(m_kind, m_structure ? m_structure->structure.get() : nullptr);
     }
     
     Descriptor descriptor(const ConcurrentJSLocker&) const
@@ -222,6 +233,8 @@ public:
     void addWatchpoint(Watchpoint*);
 
     void dump(PrintStream&) const;
+    
+    void finalizeUnconditionally(VM&);
 
 private:
     InferredType(VM&);
@@ -234,45 +247,18 @@ private:
     // watchpoint set.
     bool set(const ConcurrentJSLocker&, VM&, Descriptor);
     
-    void removeStructure();
+    void removeStructure(VM&);
+    
+    friend class InferredStructure;
+    friend class InferredStructureWatchpoint;
 
     mutable ConcurrentJSLock m_lock;
     
     Kind m_kind { Bottom };
 
-    class InferredStructureWatchpoint : public Watchpoint {
-    public:
-        InferredStructureWatchpoint() { }
-    protected:
-        void fireInternal(const FireDetail&) override;
-    };
-
-    class InferredStructureFinalizer : public UnconditionalFinalizer {
-    public:
-        InferredStructureFinalizer() { }
-    protected:
-        void finalizeUnconditionally() override;
-    };
-
-    class InferredStructure : public ThreadSafeRefCounted<InferredStructure> {
-    public:
-        InferredStructure(VM&, InferredType* parent, Structure*);
-
-        Structure* structure() const { return m_structure.get(); };
-
-    private:
-        friend class InferredType;
-        friend class InferredStructureWatchpoint;
-        friend class InferredStructureFinalizer;
-        
-        InferredType* m_parent;
-        WriteBarrier<Structure> m_structure;
-
-        InferredStructureWatchpoint m_watchpoint;
-        InferredStructureFinalizer m_finalizer;
-    };
-
-    RefPtr<InferredStructure> m_structure;
+    // FIXME: This should be Poisoned.
+    // https://bugs.webkit.org/show_bug.cgi?id=180715
+    std::unique_ptr<InferredStructure> m_structure;
 
     // NOTE: If this is being watched, we transform to Top because that implies that it wouldn't be
     // profitable to watch it again. Also, this set is initialized clear, and is never exposed to the DFG

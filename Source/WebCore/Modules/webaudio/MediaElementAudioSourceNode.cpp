@@ -67,6 +67,8 @@ MediaElementAudioSourceNode::~MediaElementAudioSourceNode()
 
 void MediaElementAudioSourceNode::setFormat(size_t numberOfChannels, float sourceSampleRate)
 {
+    m_muted = wouldTaintOrigin();
+
     if (numberOfChannels != m_sourceNumberOfChannels || sourceSampleRate != m_sourceSampleRate) {
         if (!numberOfChannels || numberOfChannels > AudioContext::maxNumberOfChannels() || sourceSampleRate < minSampleRate || sourceSampleRate > maxSampleRate) {
             // process() will generate silence for these uninitialized values.
@@ -100,11 +102,27 @@ void MediaElementAudioSourceNode::setFormat(size_t numberOfChannels, float sourc
     }
 }
 
+bool MediaElementAudioSourceNode::wouldTaintOrigin()
+{
+    if (!m_mediaElement->hasSingleSecurityOrigin())
+        return true;
+
+    if (m_mediaElement->didPassCORSAccessCheck())
+        return false;
+
+    if (auto* scriptExecutionContext = context().scriptExecutionContext()) {
+        if (auto* origin = scriptExecutionContext->securityOrigin())
+            return m_mediaElement->wouldTaintOrigin(*origin);
+    }
+
+    return true;
+}
+
 void MediaElementAudioSourceNode::process(size_t numberOfFrames)
 {
     AudioBus* outputBus = output(0)->bus();
 
-    if (!m_sourceNumberOfChannels || !m_sourceSampleRate) {
+    if (m_muted || !m_sourceNumberOfChannels || !m_sourceSampleRate) {
         outputBus->zero();
         return;
     }

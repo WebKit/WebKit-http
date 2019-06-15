@@ -8,15 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_AUDIO_VECTOR_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_AUDIO_VECTOR_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_AUDIO_VECTOR_H_
+#define MODULES_AUDIO_CODING_NETEQ_AUDIO_VECTOR_H_
 
 #include <string.h>  // Access to size_t.
 #include <memory>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -75,7 +74,8 @@ class AudioVector {
   // them at |position|. The length of the AudioVector is increased by |length|.
   // |position| = 0 means that the new values are prepended to the vector.
   // |position| = Size() means that the new values are appended to the vector.
-  virtual void InsertAt(const int16_t* insert_this, size_t length,
+  virtual void InsertAt(const int16_t* insert_this,
+                        size_t length,
                         size_t position);
 
   // Like InsertAt, but inserts |length| zero elements at |position|.
@@ -140,10 +140,12 @@ class AudioVector {
 
   void Reserve(size_t n);
 
-  void InsertByPushBack(const int16_t* insert_this, size_t length,
+  void InsertByPushBack(const int16_t* insert_this,
+                        size_t length,
                         size_t position);
 
-  void InsertByPushFront(const int16_t* insert_this, size_t length,
+  void InsertByPushFront(const int16_t* insert_this,
+                         size_t length,
                          size_t position);
 
   void InsertZerosByPushBack(size_t length, size_t position);
@@ -165,4 +167,4 @@ class AudioVector {
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_AUDIO_VECTOR_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_AUDIO_VECTOR_H_

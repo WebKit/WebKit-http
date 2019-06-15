@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,7 +46,8 @@ public:
         const ObjectPropertyConditionSet& = ObjectPropertyConditionSet(),
         std::unique_ptr<CallLinkStatus> = nullptr,
         JSFunction* = nullptr,
-        DOMJIT::GetterSetter* = nullptr);
+        FunctionPtr<OperationPtrTag> customAccessorGetter = nullptr,
+        std::optional<DOMAttributeAnnotation> = std::nullopt);
 
     ~GetByIdVariant();
     
@@ -54,7 +55,7 @@ public:
     GetByIdVariant& operator=(const GetByIdVariant&);
     
     bool isSet() const { return !!m_structureSet.size(); }
-    bool operator!() const { return !isSet(); }
+    explicit operator bool() const { return isSet(); }
     const StructureSet& structureSet() const { return m_structureSet; }
     StructureSet& structureSet() { return m_structureSet; }
 
@@ -65,11 +66,15 @@ public:
     CallLinkStatus* callLinkStatus() const { return m_callLinkStatus.get(); }
     JSFunction* intrinsicFunction() const { return m_intrinsicFunction; }
     Intrinsic intrinsic() const { return m_intrinsicFunction ? m_intrinsicFunction->intrinsic() : NoIntrinsic; }
-    DOMJIT::GetterSetter* domJIT() const { return m_domJIT; }
+    FunctionPtr<OperationPtrTag> customAccessorGetter() const { return m_customAccessorGetter; }
+    std::optional<DOMAttributeAnnotation> domAttribute() const { return m_domAttribute; }
 
     bool isPropertyUnset() const { return offset() == invalidOffset; }
 
     bool attemptToMerge(const GetByIdVariant& other);
+    
+    void markIfCheap(SlotVisitor&);
+    bool finalize();
     
     void dump(PrintStream&) const;
     void dumpInContext(PrintStream&, DumpContext*) const;
@@ -84,7 +89,8 @@ private:
     PropertyOffset m_offset;
     std::unique_ptr<CallLinkStatus> m_callLinkStatus;
     JSFunction* m_intrinsicFunction;
-    DOMJIT::GetterSetter* m_domJIT;
+    FunctionPtr<OperationPtrTag> m_customAccessorGetter;
+    std::optional<DOMAttributeAnnotation> m_domAttribute;
 };
 
 } // namespace JSC

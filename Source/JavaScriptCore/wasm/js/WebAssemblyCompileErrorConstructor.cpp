@@ -49,15 +49,16 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyCompileError(ExecState
     auto& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue message = exec->argument(0);
-    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->jsCallee())->globalObject()->WebAssemblyCompileErrorStructure());
+    auto* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->WebAssemblyCompileErrorStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    scope.release();
     return JSValue::encode(JSWebAssemblyCompileError::create(exec, vm, structure, message));
 }
 
 static EncodedJSValue JSC_HOST_CALL callJSWebAssemblyCompileError(ExecState* exec)
 {
     JSValue message = exec->argument(0);
-    Structure* errorStructure = asInternalFunction(exec->jsCallee())->globalObject()->WebAssemblyCompileErrorStructure();
+    Structure* errorStructure = jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm())->WebAssemblyCompileErrorStructure();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
@@ -70,31 +71,19 @@ WebAssemblyCompileErrorConstructor* WebAssemblyCompileErrorConstructor::create(V
 
 Structure* WebAssemblyCompileErrorConstructor::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
-    return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
 }
 
 void WebAssemblyCompileErrorConstructor::finishCreation(VM& vm, WebAssemblyCompileErrorPrototype* prototype)
 {
-    Base::finishCreation(vm, ASCIILiteral("CompileError"));
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, ReadOnly | DontEnum | DontDelete);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
+    Base::finishCreation(vm, "CompileError"_s);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }
 
 WebAssemblyCompileErrorConstructor::WebAssemblyCompileErrorConstructor(VM& vm, Structure* structure)
-    : Base(vm, structure)
+    : Base(vm, structure, callJSWebAssemblyCompileError, constructJSWebAssemblyCompileError)
 {
-}
-
-ConstructType WebAssemblyCompileErrorConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructJSWebAssemblyCompileError;
-    return ConstructType::Host;
-}
-
-CallType WebAssemblyCompileErrorConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callJSWebAssemblyCompileError;
-    return CallType::Host;
 }
 
 } // namespace JSC

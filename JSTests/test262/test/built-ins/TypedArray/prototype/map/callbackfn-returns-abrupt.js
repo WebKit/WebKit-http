@@ -4,10 +4,11 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   Returns abrupt from callbackfn
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -28,18 +28,11 @@
 
 #if USE(CFURLCONNECTION)
 
-#include "CFNetworkSPI.h"
 #include "FormDataStreamCFNet.h"
 #include "NetworkingContext.h"
 #include "ResourceHandle.h"
-
-#if PLATFORM(COCOA)
-#include "WebCoreSystemInterface.h"
-#endif
-
-#if PLATFORM(WIN)
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
-#endif
+#include <pal/spi/cf/CFNetworkSPI.h>
 
 namespace WebCore {
 
@@ -48,9 +41,7 @@ ResourceHandleCFURLConnectionDelegate::ResourceHandleCFURLConnectionDelegate(Res
 {
 }
 
-ResourceHandleCFURLConnectionDelegate::~ResourceHandleCFURLConnectionDelegate()
-{
-}
+ResourceHandleCFURLConnectionDelegate::~ResourceHandleCFURLConnectionDelegate() = default;
 
 void ResourceHandleCFURLConnectionDelegate::releaseHandle()
 {

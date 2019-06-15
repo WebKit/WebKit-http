@@ -5,7 +5,7 @@
 es6id: B.2.3.10
 description: >
   String.prototype.link.name is "link".
-info: >
+info: |
   String.prototype.link ( url )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.link.name, "link");
-
-verifyNotEnumerable(String.prototype.link, "name");
-verifyNotWritable(String.prototype.link, "name");
-verifyConfigurable(String.prototype.link, "name");
+verifyProperty(String.prototype.link, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "link"
+});

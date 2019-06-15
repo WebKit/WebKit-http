@@ -5,7 +5,7 @@ description: >
     Resolving with an object with a "poisoned" `then` property from within the
     executor function
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     8. Let resolvingFunctions be CreateResolvingFunctions(promise).
     9. Let completion be Call(executor, undefined,
@@ -17,6 +17,7 @@ info: >
 flags: [async]
 ---*/
 
+var returnValue = null;
 var value = {};
 var poisonedThen = Object.defineProperty({}, 'then', {
   get: function() {
@@ -24,16 +25,18 @@ var poisonedThen = Object.defineProperty({}, 'then', {
   }
 });
 var promise = new Promise(function(resolve) {
-  resolve(poisonedThen);
+  returnValue = resolve(poisonedThen);
 });
 
-promise.then(function() {
-    $DONE('The promise should not be fulfilled.');
-  }, function(val) {
-    if (val !== value) {
-      $DONE('The promise should be fulfilled with the provided value.');
-      return;
-    }
+assert.sameValue(returnValue, undefined, '"resolve" return value');
 
-    $DONE();
-  });
+promise.then(function() {
+  $DONE('The promise should not be fulfilled.');
+}, function(val) {
+  if (val !== value) {
+    $DONE('The promise should be fulfilled with the provided value.');
+    return;
+  }
+
+  $DONE();
+});

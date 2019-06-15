@@ -8,13 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec3/residual_echo_estimator.h"
+#include "modules/audio_processing/aec3/residual_echo_estimator.h"
 
-#include "webrtc/base/random.h"
-#include "webrtc/modules/audio_processing/aec3/aec_state.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
-#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
-#include "webrtc/test/gtest.h"
+#include "api/audio/echo_canceller3_config.h"
+#include "modules/audio_processing/aec3/aec3_fft.h"
+#include "modules/audio_processing/aec3/aec_state.h"
+#include "modules/audio_processing/aec3/render_delay_buffer.h"
+#include "modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "rtc_base/random.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -22,43 +24,60 @@ namespace webrtc {
 
 // Verifies that the check for non-null output residual echo power works.
 TEST(ResidualEchoEstimator, NullResidualEchoPowerOutput) {
-  AecState aec_state;
-  RenderBuffer render_buffer(Aec3Optimization::kNone, 3, 10,
-                             std::vector<size_t>(1, 10));
+  EchoCanceller3Config config;
+  AecState aec_state(config);
+  std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
+      RenderDelayBuffer::Create(config, 3));
   std::vector<std::array<float, kFftLengthBy2Plus1>> H2;
   std::array<float, kFftLengthBy2Plus1> S2_linear;
   std::array<float, kFftLengthBy2Plus1> Y2;
-  EXPECT_DEATH(ResidualEchoEstimator().Estimate(true, aec_state, render_buffer,
-                                                S2_linear, Y2, nullptr),
+  EXPECT_DEATH(ResidualEchoEstimator(EchoCanceller3Config{})
+                   .Estimate(aec_state, *render_delay_buffer->GetRenderBuffer(),
+                             S2_linear, Y2, nullptr),
                "");
 }
 
 #endif
 
-TEST(ResidualEchoEstimator, BasicTest) {
-  ResidualEchoEstimator estimator;
-  AecState aec_state;
-  RenderBuffer render_buffer(Aec3Optimization::kNone, 3, 10,
-                             std::vector<size_t>(1, 10));
+// TODO(peah): This test is broken in the sense that it not at all tests what it
+// seems to test. Enable the test once that is adressed.
+TEST(ResidualEchoEstimator, DISABLED_BasicTest) {
+  EchoCanceller3Config config;
+  config.ep_strength.default_len = 0.f;
+  config.delay.min_echo_path_delay_blocks = 0;
+  ResidualEchoEstimator estimator(config);
+  AecState aec_state(config);
+  std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
+      RenderDelayBuffer::Create(config, 3));
+
   std::array<float, kFftLengthBy2Plus1> E2_main;
   std::array<float, kFftLengthBy2Plus1> E2_shadow;
   std::array<float, kFftLengthBy2Plus1> S2_linear;
   std::array<float, kFftLengthBy2Plus1> S2_fallback;
   std::array<float, kFftLengthBy2Plus1> Y2;
   std::array<float, kFftLengthBy2Plus1> R2;
-  EchoPathVariability echo_path_variability(false, false);
+  EchoPathVariability echo_path_variability(
+      false, EchoPathVariability::DelayAdjustment::kNone, false);
   std::vector<std::vector<float>> x(3, std::vector<float>(kBlockSize, 0.f));
   std::vector<std::array<float, kFftLengthBy2Plus1>> H2(10);
   Random random_generator(42U);
-  FftData X;
-  std::array<float, kBlockSize> x_old;
+  SubtractorOutput output;
+  std::array<float, kBlockSize> y;
   Aec3Fft fft;
+  absl::optional<DelayEstimate> delay_estimate;
 
   for (auto& H2_k : H2) {
     H2_k.fill(0.01f);
   }
   H2[2].fill(10.f);
   H2[2][0] = 0.1f;
+
+  std::vector<float> h(GetTimeDomainLength(config.filter.main.length_blocks),
+                       0.f);
+
+  output.Reset();
+  output.s_main.fill(100.f);
+  y.fill(0.f);
 
   constexpr float kLevel = 10.f;
   E2_shadow.fill(kLevel);
@@ -67,17 +86,22 @@ TEST(ResidualEchoEstimator, BasicTest) {
   S2_fallback.fill(kLevel);
   Y2.fill(kLevel);
 
-  for (int k = 0; k < 2000; ++k) {
+  for (int k = 0; k < 1993; ++k) {
     RandomizeSampleVector(&random_generator, x[0]);
     std::for_each(x[0].begin(), x[0].end(), [](float& a) { a /= 30.f; });
-    fft.PaddedFft(x[0], x_old, &X);
-    render_buffer.Insert(x);
+    render_delay_buffer->Insert(x);
+    if (k == 0) {
+      render_delay_buffer->Reset();
+    }
+    render_delay_buffer->PrepareCaptureProcessing();
 
     aec_state.HandleEchoPathChange(echo_path_variability);
-    aec_state.Update(H2, rtc::Optional<size_t>(2), render_buffer, E2_main, Y2,
-                     x[0], false);
+    aec_state.Update(delay_estimate, H2, h,
+                     *render_delay_buffer->GetRenderBuffer(), E2_main, Y2,
+                     output, y);
 
-    estimator.Estimate(true, aec_state, render_buffer, S2_linear, Y2, &R2);
+    estimator.Estimate(aec_state, *render_delay_buffer->GetRenderBuffer(),
+                       S2_linear, Y2, &R2);
   }
   std::for_each(R2.begin(), R2.end(),
                 [&](float a) { EXPECT_NEAR(kLevel, a, 0.1f); });

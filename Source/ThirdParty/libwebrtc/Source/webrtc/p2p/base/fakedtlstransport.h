@@ -8,16 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_FAKEDTLSTRANSPORT_H_
-#define WEBRTC_P2P_BASE_FAKEDTLSTRANSPORT_H_
+#ifndef P2P_BASE_FAKEDTLSTRANSPORT_H_
+#define P2P_BASE_FAKEDTLSTRANSPORT_H_
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "webrtc/base/fakesslidentity.h"
-#include "webrtc/p2p/base/dtlstransportinternal.h"
-#include "webrtc/p2p/base/fakeicetransport.h"
+#include "absl/memory/memory.h"
+#include "p2p/base/dtlstransportinternal.h"
+#include "p2p/base/fakeicetransport.h"
+#include "rtc_base/fakesslidentity.h"
 
 namespace cricket {
 
@@ -31,21 +33,30 @@ class FakeDtlsTransport : public DtlsTransportInternal {
         transport_name_(ice_transport->transport_name()),
         component_(ice_transport->component()),
         dtls_fingerprint_("", nullptr, 0) {
+    RTC_DCHECK(ice_transport_);
     ice_transport_->SignalReadPacket.connect(
         this, &FakeDtlsTransport::OnIceTransportReadPacket);
+    ice_transport_->SignalNetworkRouteChanged.connect(
+        this, &FakeDtlsTransport::OnNetworkRouteChanged);
   }
 
-  // If this constructor is called, a new fake ICE transport will be created,
-  // and this FakeDtlsTransport will take the ownership.
-  explicit FakeDtlsTransport(const std::string& name, int component)
-      : owned_ice_transport_(new FakeIceTransport(name, component)),
+  explicit FakeDtlsTransport(std::unique_ptr<FakeIceTransport> ice)
+      : owned_ice_transport_(std::move(ice)),
         transport_name_(owned_ice_transport_->transport_name()),
         component_(owned_ice_transport_->component()),
         dtls_fingerprint_("", nullptr, 0) {
     ice_transport_ = owned_ice_transport_.get();
     ice_transport_->SignalReadPacket.connect(
         this, &FakeDtlsTransport::OnIceTransportReadPacket);
+    ice_transport_->SignalNetworkRouteChanged.connect(
+        this, &FakeDtlsTransport::OnNetworkRouteChanged);
   }
+
+  // If this constructor is called, a new fake ICE transport will be created,
+  // and this FakeDtlsTransport will take the ownership.
+  explicit FakeDtlsTransport(const std::string& name, int component)
+      : FakeDtlsTransport(
+            absl::make_unique<FakeIceTransport>(name, component)) {}
 
   ~FakeDtlsTransport() override {
     if (dest_ && dest_->dest_ == this) {
@@ -86,11 +97,21 @@ class FakeDtlsTransport : public DtlsTransportInternal {
       dest_ = dest;
       if (local_cert_ && dest_->local_cert_) {
         do_dtls_ = true;
+        RTC_LOG(LS_INFO) << "FakeDtlsTransport is doing DTLS";
+      } else {
+        do_dtls_ = false;
+        RTC_LOG(LS_INFO) << "FakeDtlsTransport is not doing DTLS";
       }
       SetWritable(true);
       if (!asymmetric) {
         dest->SetDestination(this, true);
       }
+      dtls_state_ = DTLS_TRANSPORT_CONNECTED;
+      // If the |dtls_role_| is unset, set it to SSL_CLIENT by default.
+      if (!dtls_role_) {
+        dtls_role_ = std::move(rtc::SSL_CLIENT);
+      }
+      SignalDtlsState(this, dtls_state_);
       ice_transport_->SetDestination(
           static_cast<FakeIceTransport*>(dest->ice_transport()), asymmetric);
     } else {
@@ -114,16 +135,29 @@ class FakeDtlsTransport : public DtlsTransportInternal {
     dtls_fingerprint_ = rtc::SSLFingerprint(alg, digest, digest_len);
     return true;
   }
-  bool SetSslRole(rtc::SSLRole role) override {
-    ssl_role_ = role;
+  bool SetSslMaxProtocolVersion(rtc::SSLProtocolVersion version) override {
     return true;
   }
-  bool GetSslRole(rtc::SSLRole* role) const override {
-    *role = ssl_role_;
+  bool SetDtlsRole(rtc::SSLRole role) override {
+    dtls_role_ = std::move(role);
     return true;
+  }
+  bool GetDtlsRole(rtc::SSLRole* role) const override {
+    if (!dtls_role_) {
+      return false;
+    }
+    *role = *dtls_role_;
+    return true;
+  }
+  const rtc::CryptoOptions& crypto_options() const override {
+    return crypto_options_;
+  }
+  void SetCryptoOptions(const rtc::CryptoOptions& crypto_options) {
+    crypto_options_ = crypto_options;
   }
   bool SetLocalCertificate(
       const rtc::scoped_refptr<rtc::RTCCertificate>& certificate) override {
+    do_dtls_ = true;
     local_cert_ = certificate;
     return true;
   }
@@ -135,17 +169,16 @@ class FakeDtlsTransport : public DtlsTransportInternal {
     if (!do_dtls_) {
       return false;
     }
-    *crypto_suite = rtc::SRTP_AES128_CM_SHA1_80;
+    *crypto_suite = crypto_suite_;
     return true;
   }
+  void SetSrtpCryptoSuite(int crypto_suite) { crypto_suite_ = crypto_suite; }
   bool GetSslCipherSuite(int* cipher_suite) override { return false; }
   rtc::scoped_refptr<rtc::RTCCertificate> GetLocalCertificate() const override {
     return local_cert_;
   }
-  std::unique_ptr<rtc::SSLCertificate> GetRemoteSSLCertificate()
-      const override {
-    return remote_cert_ ? std::unique_ptr<rtc::SSLCertificate>(
-                              remote_cert_->GetReference())
+  std::unique_ptr<rtc::SSLCertChain> GetRemoteSSLCertChain() const override {
+    return remote_cert_ ? absl::make_unique<rtc::SSLCertChain>(remote_cert_)
                         : nullptr;
   }
   bool ExportKeyingMaterial(const std::string& label,
@@ -191,6 +224,10 @@ class FakeDtlsTransport : public DtlsTransportInternal {
   }
   int GetError() override { return ice_transport_->GetError(); }
 
+  absl::optional<rtc::NetworkRoute> network_route() const override {
+    return ice_transport_->network_route();
+  }
+
  private:
   void OnIceTransportReadPacket(PacketTransportInternal* ice_,
                                 const char* data,
@@ -219,6 +256,10 @@ class FakeDtlsTransport : public DtlsTransportInternal {
     SignalWritableState(this);
   }
 
+  void OnNetworkRouteChanged(absl::optional<rtc::NetworkRoute> network_route) {
+    SignalNetworkRouteChanged(network_route);
+  }
+
   FakeIceTransport* ice_transport_;
   std::unique_ptr<FakeIceTransport> owned_ice_transport_;
   std::string transport_name_;
@@ -229,7 +270,9 @@ class FakeDtlsTransport : public DtlsTransportInternal {
   bool do_dtls_ = false;
   rtc::SSLProtocolVersion ssl_max_version_ = rtc::SSL_PROTOCOL_DTLS_12;
   rtc::SSLFingerprint dtls_fingerprint_;
-  rtc::SSLRole ssl_role_ = rtc::SSL_CLIENT;
+  absl::optional<rtc::SSLRole> dtls_role_;
+  int crypto_suite_ = rtc::SRTP_AES128_CM_SHA1_80;
+  rtc::CryptoOptions crypto_options_;
 
   DtlsTransportState dtls_state_ = DTLS_TRANSPORT_NEW;
 
@@ -239,4 +282,4 @@ class FakeDtlsTransport : public DtlsTransportInternal {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_P2P_BASE_FAKEDTLSTRANSPORT_H_
+#endif  // P2P_BASE_FAKEDTLSTRANSPORT_H_

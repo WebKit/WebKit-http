@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include "FrameDestructionObserver.h"
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -39,7 +41,7 @@ enum FormSubmissionTrigger { SubmittedByJavaScript, NotSubmittedByJavaScript };
 
 using StringPairVector = Vector<std::pair<String, String>>;
 
-class FormState : public RefCounted<FormState> {
+class FormState : public RefCounted<FormState>, public CanMakeWeakPtr<FormState>, public FrameDestructionObserver {
 public:
     static Ref<FormState> create(HTMLFormElement&, StringPairVector&& textFieldValues, Document&, FormSubmissionTrigger);
 
@@ -50,6 +52,7 @@ public:
 
 private:
     FormState(HTMLFormElement&, StringPairVector&& textFieldValues, Document&, FormSubmissionTrigger);
+    void willDetachPage() override;
 
     Ref<HTMLFormElement> m_form;
     StringPairVector m_textFieldValues;

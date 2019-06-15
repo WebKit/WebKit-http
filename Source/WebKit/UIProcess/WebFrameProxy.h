@@ -28,7 +28,7 @@
 #include "APIObject.h"
 #include "FrameLoadState.h"
 #include "GenericCallback.h"
-#include "WebFrameListenerProxy.h"
+#include "WebFramePolicyListenerProxy.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
@@ -48,11 +48,14 @@ class Decoder;
 }
 
 namespace WebKit {
+class SafeBrowsingResult;
 class WebCertificateInfo;
-class WebFormSubmissionListenerProxy;
 class WebFramePolicyListenerProxy;
 class WebPageProxy;
-struct WebsitePolicies;
+class WebsiteDataStore;
+enum class ShouldExpectSafeBrowsingResult;
+enum class ProcessSwapRequestedByClient;
+struct WebsitePoliciesData;
 
 typedef GenericCallback<API::Data*> DataCallback;
 
@@ -77,14 +80,14 @@ public:
 
     FrameLoadState& frameLoadState() { return m_frameLoadState; }
 
-    void loadURL(const String&);
+    void loadURL(const WebCore::URL&);
     void stopLoading() const;
 
-    const String& url() const { return m_frameLoadState.url(); }
-    const String& provisionalURL() const { return m_frameLoadState.provisionalURL(); }
+    const WebCore::URL& url() const { return m_frameLoadState.url(); }
+    const WebCore::URL& provisionalURL() const { return m_frameLoadState.provisionalURL(); }
 
-    void setUnreachableURL(const String&);
-    const String& unreachableURL() const { return m_frameLoadState.unreachableURL(); }
+    void setUnreachableURL(const WebCore::URL&);
+    const WebCore::URL& unreachableURL() const { return m_frameLoadState.unreachableURL(); }
 
     const String& mimeType() const { return m_MIMEType; }
     bool containsPluginDocument() const { return m_containsPluginDocument; }
@@ -105,19 +108,16 @@ public:
     void getMainResourceData(Function<void (API::Data*, CallbackBase::Error)>&&);
     void getResourceData(API::URL*, Function<void (API::Data*, CallbackBase::Error)>&&);
 
-    void didStartProvisionalLoad(const String& url);
-    void didReceiveServerRedirectForProvisionalLoad(const String& url);
+    void didStartProvisionalLoad(const WebCore::URL&);
+    void didReceiveServerRedirectForProvisionalLoad(const WebCore::URL&);
     void didFailProvisionalLoad();
     void didCommitLoad(const String& contentType, WebCertificateInfo&, bool containsPluginDocument);
     void didFinishLoad();
     void didFailLoad();
-    void didSameDocumentNavigation(const String&); // eg. anchor navigation, session state change.
+    void didSameDocumentNavigation(const WebCore::URL&); // eg. anchor navigation, session state change.
     void didChangeTitle(const String&);
 
-    // Policy operations.
-    void receivedPolicyDecision(WebCore::PolicyAction, uint64_t listenerID, API::Navigation*, const WebsitePolicies&);
-    WebFramePolicyListenerProxy& setUpPolicyListenerProxy(uint64_t listenerID);
-    WebFormSubmissionListenerProxy& setUpFormSubmissionListenerProxy(uint64_t listenerID);
+    WebFramePolicyListenerProxy& setUpPolicyListenerProxy(CompletionHandler<void(WebCore::PolicyAction, API::WebsitePolicies*, ProcessSwapRequestedByClient, Vector<SafeBrowsingResult>&&)>&&, ShouldExpectSafeBrowsingResult);
 
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler contentFilterUnblockHandler) { m_contentFilterUnblockHandler = WTFMove(contentFilterUnblockHandler); }
@@ -140,9 +140,8 @@ private:
     bool m_isFrameSet;
     bool m_containsPluginDocument { false };
     RefPtr<WebCertificateInfo> m_certificateInfo;
-    RefPtr<WebFrameListenerProxy> m_activeListener;
+    RefPtr<WebFramePolicyListenerProxy> m_activeListener;
     uint64_t m_frameID;
-
 #if ENABLE(CONTENT_FILTERING)
     WebCore::ContentFilterUnblockHandler m_contentFilterUnblockHandler;
 #endif

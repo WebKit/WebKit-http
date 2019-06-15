@@ -32,9 +32,13 @@
 #include "HTMLObjectElement.h"
 #include "NodeRareData.h"
 #include "RenderElement.h"
+#include "ScriptDisallowedScope.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLFieldSetElement);
 
 using namespace HTMLNames;
 
@@ -57,7 +61,7 @@ Ref<HTMLFieldSetElement> HTMLFieldSetElement::create(const QualifiedName& tagNam
 
 static void updateFromControlElementsAncestorDisabledStateUnder(HTMLElement& startNode, bool isDisabled)
 {
-    HTMLFormControlElement* control;
+    RefPtr<HTMLFormControlElement> control;
     if (is<HTMLFormControlElement>(startNode))
         control = &downcast<HTMLFormControlElement>(startNode);
     else
@@ -96,7 +100,7 @@ void HTMLFieldSetElement::disabledStateChanged()
 
     bool thisFieldsetIsDisabled = hasAttributeWithoutSynchronization(disabledAttr);
     bool hasSeenFirstLegendElement = false;
-    for (HTMLElement* control = Traversal<HTMLElement>::firstChild(*this); control; control = Traversal<HTMLElement>::nextSibling(*control)) {
+    for (RefPtr<HTMLElement> control = Traversal<HTMLElement>::firstChild(*this); control; control = Traversal<HTMLElement>::nextSibling(*control)) {
         if (!hasSeenFirstLegendElement && is<HTMLLegendElement>(*control)) {
             hasSeenFirstLegendElement = true;
             updateFromControlElementsAncestorDisabledStateUnder(*control, false /* isDisabled */);
@@ -112,7 +116,7 @@ void HTMLFieldSetElement::childrenChanged(const ChildChange& change)
     if (!hasAttributeWithoutSynchronization(disabledAttr))
         return;
 
-    HTMLLegendElement* legend = Traversal<HTMLLegendElement>::firstChild(*this);
+    RefPtr<HTMLLegendElement> legend = Traversal<HTMLLegendElement>::firstChild(*this);
     if (!legend)
         return;
 
@@ -191,16 +195,26 @@ void HTMLFieldSetElement::updateAssociatedElements() const
     }
 }
 
-const Vector<FormAssociatedElement*>& HTMLFieldSetElement::associatedElements() const
+Vector<Ref<FormAssociatedElement>> HTMLFieldSetElement::copyAssociatedElementsVector() const
 {
+    updateAssociatedElements();
+    return WTF::map(m_associatedElements, [] (auto* rawElement) {
+        return Ref<FormAssociatedElement>(*rawElement);
+    });
+}
+
+const Vector<FormAssociatedElement*>& HTMLFieldSetElement::unsafeAssociatedElements() const
+{
+    ASSERT(!ScriptDisallowedScope::InMainThread::isScriptAllowed());
     updateAssociatedElements();
     return m_associatedElements;
 }
 
 unsigned HTMLFieldSetElement::length() const
 {
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
     unsigned length = 0;
-    for (auto* element : associatedElements()) {
+    for (auto* element : unsafeAssociatedElements()) {
         if (element->isEnumeratable())
             ++length;
     }

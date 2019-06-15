@@ -38,9 +38,8 @@
 #include <WebCore/WebAudioBufferList.h>
 #include <wtf/UniqueRef.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 class UserMediaCaptureManagerProxy::SourceProxy : public RealtimeMediaSource::Observer, public SharedRingBufferStorage::Client {
 public:
@@ -65,6 +64,10 @@ public:
     int64_t numberOfFrames() { return m_numberOfFrames; }
 
     void sourceStopped() final {
+        if (m_source->captureDidFail()) {
+            m_manager.process().send(Messages::UserMediaCaptureManager::CaptureFailed(m_id), 0);
+            return;
+        }
         m_manager.process().send(Messages::UserMediaCaptureManager::SourceStopped(m_id), 0);
     }
 
@@ -76,6 +79,7 @@ public:
         m_manager.process().send(Messages::UserMediaCaptureManager::SourceSettingsChanged(m_id, m_source->settings()), 0);
     }
 
+    // May get called on a background thread.
     void audioSamplesAvailable(const MediaTime& time, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t numberOfFrames) final {
         if (m_description != description) {
             ASSERT(description.platformDescription().type == PlatformDescription::CAAudioStreamBasicType);
@@ -121,15 +125,15 @@ UserMediaCaptureManagerProxy::~UserMediaCaptureManagerProxy()
     m_process.removeMessageReceiver(Messages::UserMediaCaptureManagerProxy::messageReceiverName());
 }
 
-void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(uint64_t id, const String& deviceID, WebCore::RealtimeMediaSource::Type type, const MediaConstraints& constraints, bool& succeeded, String& invalidConstraints, WebCore::RealtimeMediaSourceSettings& settings)
+void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(uint64_t id, const CaptureDevice& device, WebCore::RealtimeMediaSource::Type type, const MediaConstraints& constraints, bool& succeeded, String& invalidConstraints, WebCore::RealtimeMediaSourceSettings& settings)
 {
     CaptureSourceOrError sourceOrError;
     switch (type) {
     case WebCore::RealtimeMediaSource::Type::Audio:
-        sourceOrError = RealtimeMediaSourceCenter::singleton().audioFactory().createAudioCaptureSource(deviceID, &constraints);
+        sourceOrError = RealtimeMediaSourceCenter::singleton().audioFactory().createAudioCaptureSource(device, &constraints);
         break;
     case WebCore::RealtimeMediaSource::Type::Video:
-        sourceOrError = RealtimeMediaSourceCenter::singleton().videoFactory().createVideoCaptureSource(deviceID, &constraints);
+        sourceOrError = RealtimeMediaSourceCenter::singleton().videoFactory().createVideoCaptureSource(device, &constraints);
         break;
     case WebCore::RealtimeMediaSource::Type::None:
         ASSERT_NOT_REACHED();

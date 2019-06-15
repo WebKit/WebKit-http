@@ -33,7 +33,7 @@
 #include "RenderView.h"
 #include "Settings.h"
 #include "SimpleLineLayout.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 namespace SimpleLineLayout {
@@ -237,7 +237,7 @@ static void printTextForSubtree(const RenderObject& renderer, unsigned& characte
 static unsigned textLengthForSubtree(const RenderObject& renderer)
 {
     if (is<RenderText>(renderer))
-        return downcast<RenderText>(renderer).textLength();
+        return downcast<RenderText>(renderer).text().length();
     if (!is<RenderElement>(renderer))
         return 0;
     unsigned textLength = 0;
@@ -249,7 +249,7 @@ static unsigned textLengthForSubtree(const RenderObject& renderer)
 static void collectNonEmptyLeafRenderBlockFlows(const RenderObject& renderer, HashSet<const RenderBlockFlow*>& leafRenderers)
 {
     if (is<RenderText>(renderer)) {
-        if (!downcast<RenderText>(renderer).textLength())
+        if (!downcast<RenderText>(renderer).text().length())
             return;
         // Find RenderBlockFlow ancestor.
         for (const auto* current = renderer.parent(); current; current = current->parent()) {
@@ -351,7 +351,7 @@ void printSimpleLineLayoutCoverage()
     stream << "---------------------------------------------------\n";
     stream << "Number of blocks: total(" <<  leafRenderers.size() << ") non-simple(" << numberOfUnsupportedLeafBlocks << ")\nContent length: total(" <<
         textLength << ") non-simple(" << unsupportedTextLength << ")\n";
-    for (const auto reasonEntry : flowStatistics) {
+    for (const auto& reasonEntry : flowStatistics) {
         printReason(reasonEntry.key, stream);
         stream << ": " << (float)reasonEntry.value / (float)textLength * 100 << "%\n";
     }

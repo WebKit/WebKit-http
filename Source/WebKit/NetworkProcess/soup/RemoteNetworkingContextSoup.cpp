@@ -32,43 +32,18 @@
 #include "SessionTracker.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
-#include <WebCore/NotImplemented.h>
-#include <WebCore/ResourceHandle.h>
-
-using namespace WebCore;
 
 namespace WebKit {
+using namespace WebCore;
 
-RemoteNetworkingContext::~RemoteNetworkingContext()
+void RemoteNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&& parameters)
 {
-}
-
-bool RemoteNetworkingContext::isValid() const
-{
-    return true;
-}
-
-void RemoteNetworkingContext::ensurePrivateBrowsingSession(WebsiteDataStoreParameters&& parameters)
-{
-    ASSERT(parameters.sessionID.isEphemeral());
-
-    if (NetworkStorageSession::storageSession(parameters.sessionID))
+    auto sessionID = parameters.networkSessionParameters.sessionID;
+    if (NetworkStorageSession::storageSession(sessionID))
         return;
 
-    NetworkStorageSession::ensurePrivateBrowsingSession(parameters.sessionID, String::number(parameters.sessionID.sessionID()));
-    SessionTracker::setSession(parameters.sessionID, NetworkSession::create(parameters.sessionID));
-}
-
-void RemoteNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&)
-{
-    // FIXME: Implement.
-}
-
-NetworkStorageSession& RemoteNetworkingContext::storageSession() const
-{
-    if (auto session = NetworkStorageSession::storageSession(m_sessionID))
-        return *session;
-    return NetworkStorageSession::defaultStorageSession();
+    NetworkStorageSession::ensureSession(sessionID, String::number(sessionID.sessionID()));
+    SessionTracker::setSession(sessionID, NetworkSession::create(WTFMove(parameters.networkSessionParameters)));
 }
 
 }

@@ -431,6 +431,20 @@ webkit_settings_set_enable_mediasource                         (WebKitSettings *
                                                                 gboolean        enabled);
 
 WEBKIT_API gboolean
+webkit_settings_get_enable_encrypted_media                     (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_encrypted_media                     (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
+webkit_settings_get_enable_media_capabilities                  (WebKitSettings *settings);
+
+WEBKIT_API void
+webkit_settings_set_enable_media_capabilities                  (WebKitSettings *settings,
+                                                                gboolean        enabled);
+
+WEBKIT_API gboolean
 webkit_settings_get_allow_file_access_from_file_urls           (WebKitSettings *settings);
 
 WEBKIT_API void
@@ -450,6 +464,12 @@ webkit_settings_get_hardware_acceleration_policy               (WebKitSettings *
 WEBKIT_API void
 webkit_settings_set_hardware_acceleration_policy               (WebKitSettings *settings,
                                                                 WebKitHardwareAccelerationPolicy policy);
+
+WEBKIT_API guint32
+webkit_settings_font_size_to_points                            (guint32 pixels);
+
+WEBKIT_API guint32
+webkit_settings_font_size_to_pixels                            (guint32 points);
 
 G_END_DECLS
 

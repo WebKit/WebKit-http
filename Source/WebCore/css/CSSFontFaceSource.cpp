@@ -90,10 +90,12 @@ CSSFontFaceSource::CSSFontFaceSource(CSSFontFace& owner, const String& familyNam
 
     if (status() == Status::Pending && m_font && m_font->isLoaded()) {
         setStatus(Status::Loading);
-        if (m_font && m_font->errorOccurred())
-            setStatus(Status::Failure);
-        else
-            setStatus(Status::Success);
+        if (!shouldIgnoreFontLoadCompletions()) {
+            if (m_font && m_font->errorOccurred())
+                setStatus(Status::Failure);
+            else
+                setStatus(Status::Success);
+        }
     }
 }
 
@@ -103,9 +105,23 @@ CSSFontFaceSource::~CSSFontFaceSource()
         m_font->removeClient(*this);
 }
 
+bool CSSFontFaceSource::shouldIgnoreFontLoadCompletions() const
+{
+    return m_face.shouldIgnoreFontLoadCompletions();
+}
+
+void CSSFontFaceSource::opportunisticallyStartFontDataURLLoading(CSSFontSelector& fontSelector)
+{
+    if (status() == Status::Pending && m_font && m_font->url().protocolIsData() && m_familyNameOrURI.length() < MB)
+        load(&fontSelector);
+}
+
 void CSSFontFaceSource::fontLoaded(CachedFont& loadedFont)
 {
     ASSERT_UNUSED(loadedFont, &loadedFont == m_font.get());
+
+    if (shouldIgnoreFontLoadCompletions())
+        return;
 
     Ref<CSSFontFace> protectedFace(m_face);
 
@@ -117,9 +133,6 @@ void CSSFontFaceSource::fontLoaded(CachedFont& loadedFont)
         ASSERT(m_font->errorOccurred());
         return;
     }
-
-    if (m_face.webFontsShouldAlwaysFallBack())
-        return;
 
     if (m_font->errorOccurred() || !m_font->ensureCustomFontData(m_familyNameOrURI))
         setStatus(Status::Failure);
@@ -146,7 +159,7 @@ void CSSFontFaceSource::load(CSSFontSelector* fontSelector)
                 if (auto otfFont = convertSVGToOTFFont(fontElement))
                     m_generatedOTFBuffer = SharedBuffer::create(WTFMove(otfFont.value()));
                 if (m_generatedOTFBuffer) {
-                    m_inDocumentCustomPlatformData = createFontCustomPlatformData(*m_generatedOTFBuffer);
+                    m_inDocumentCustomPlatformData = createFontCustomPlatformData(*m_generatedOTFBuffer, String());
                     success = static_cast<bool>(m_inDocumentCustomPlatformData);
                 }
             }
@@ -157,7 +170,7 @@ void CSSFontFaceSource::load(CSSFontSelector* fontSelector)
             bool wrapping;
             RefPtr<SharedBuffer> buffer = SharedBuffer::create(static_cast<const char*>(m_immediateSource->baseAddress()), m_immediateSource->byteLength());
             ASSERT(buffer);
-            m_immediateFontCustomPlatformData = CachedFont::createCustomFontData(*buffer, wrapping);
+            m_immediateFontCustomPlatformData = CachedFont::createCustomFontData(*buffer, String(), wrapping);
             success = static_cast<bool>(m_immediateFontCustomPlatformData);
         } else {
             // We are only interested in whether or not fontForFamily() returns null or not. Luckily, none of
@@ -166,6 +179,7 @@ void CSSFontFaceSource::load(CSSFontSelector* fontSelector)
             FontCascadeDescription fontDescription;
             fontDescription.setOneFamily(m_familyNameOrURI);
             fontDescription.setComputedSize(1);
+            fontDescription.setShouldAllowUserInstalledFonts(m_face.allowUserInstalledFonts());
             success = FontCache::singleton().fontForFamily(fontDescription, m_familyNameOrURI, nullptr, nullptr, FontSelectionSpecifiedCapabilities(), true);
         }
         setStatus(success ? Status::Success : Status::Failure);

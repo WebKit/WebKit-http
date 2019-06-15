@@ -10,37 +10,64 @@
 
 package org.webrtc;
 
-import java.util.LinkedList;
+import java.util.IdentityHashMap;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Java version of VideoTrackInterface. */
 public class VideoTrack extends MediaStreamTrack {
-  private final LinkedList<VideoRenderer> renderers = new LinkedList<VideoRenderer>();
+  private final IdentityHashMap<VideoSink, Long> sinks = new IdentityHashMap<VideoSink, Long>();
 
   public VideoTrack(long nativeTrack) {
     super(nativeTrack);
   }
 
-  public void addRenderer(VideoRenderer renderer) {
-    renderers.add(renderer);
-    nativeAddRenderer(nativeTrack, renderer.nativeVideoRenderer);
-  }
-
-  public void removeRenderer(VideoRenderer renderer) {
-    if (!renderers.remove(renderer)) {
-      return;
+  /**
+   * Adds a VideoSink to the track.
+   *
+   * A track can have any number of VideoSinks. VideoSinks will replace
+   * renderers. However, converting old style texture frames will involve costly
+   * conversion to I420 so it is not recommended to upgrade before all your
+   * sources produce VideoFrames.
+   */
+  public void addSink(VideoSink sink) {
+    if (sink == null) {
+      throw new IllegalArgumentException("The VideoSink is not allowed to be null");
     }
-    nativeRemoveRenderer(nativeTrack, renderer.nativeVideoRenderer);
-    renderer.dispose();
+    // We allow calling addSink() with the same sink multiple times. This is similar to the C++
+    // VideoTrack::AddOrUpdateSink().
+    if (!sinks.containsKey(sink)) {
+      final long nativeSink = nativeWrapSink(sink);
+      sinks.put(sink, nativeSink);
+      nativeAddSink(nativeTrack, nativeSink);
+    }
   }
 
+  /**
+   * Removes a VideoSink from the track.
+   *
+   * If the VideoSink was not attached to the track, this is a no-op.
+   */
+  public void removeSink(VideoSink sink) {
+    final Long nativeSink = sinks.remove(sink);
+    if (nativeSink != null) {
+      nativeRemoveSink(nativeTrack, nativeSink);
+      nativeFreeSink(nativeSink);
+    }
+  }
+
+  @Override
   public void dispose() {
-    while (!renderers.isEmpty()) {
-      removeRenderer(renderers.getFirst());
+    for (long nativeSink : sinks.values()) {
+      nativeRemoveSink(nativeTrack, nativeSink);
+      nativeFreeSink(nativeSink);
     }
+    sinks.clear();
     super.dispose();
   }
 
-  private static native void nativeAddRenderer(long nativeTrack, long nativeRenderer);
-
-  private static native void nativeRemoveRenderer(long nativeTrack, long nativeRenderer);
+  private static native void nativeAddSink(long track, long nativeSink);
+  private static native void nativeRemoveSink(long track, long nativeSink);
+  private static native long nativeWrapSink(VideoSink sink);
+  private static native void nativeFreeSink(long sink);
 }

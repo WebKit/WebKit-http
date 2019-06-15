@@ -45,8 +45,6 @@ struct ValueProfileBase {
     
     ValueProfileBase()
         : m_bytecodeOffset(-1)
-        , m_prediction(SpecNone)
-        , m_numberOfSamplesInPrediction(0)
     {
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i)
             m_buckets[i] = JSValue::encode(JSValue());
@@ -54,8 +52,6 @@ struct ValueProfileBase {
     
     ValueProfileBase(int bytecodeOffset)
         : m_bytecodeOffset(bytecodeOffset)
-        , m_prediction(SpecNone)
-        , m_numberOfSamplesInPrediction(0)
     {
         for (unsigned i = 0; i < totalNumberOfBuckets; ++i)
             m_buckets[i] = JSValue::encode(JSValue());
@@ -147,9 +143,9 @@ struct ValueProfileBase {
     }
     
     int m_bytecodeOffset; // -1 for prologue
+    unsigned m_numberOfSamplesInPrediction { 0 };
     
-    SpeculatedType m_prediction;
-    unsigned m_numberOfSamplesInPrediction;
+    SpeculatedType m_prediction { SpecNone };
     
     EncodedJSValue m_buckets[totalNumberOfBuckets];
 };
@@ -174,8 +170,8 @@ struct ValueProfileWithLogNumberOfBuckets : public ValueProfileBase<1 << logNumb
 };
 
 struct ValueProfile : public ValueProfileWithLogNumberOfBuckets<0> {
-    ValueProfile(): ValueProfileWithLogNumberOfBuckets<0>() { }
-    ValueProfile(int bytecodeOffset): ValueProfileWithLogNumberOfBuckets<0>(bytecodeOffset) { }
+    ValueProfile() : ValueProfileWithLogNumberOfBuckets<0>() { }
+    ValueProfile(int bytecodeOffset) : ValueProfileWithLogNumberOfBuckets<0>(bytecodeOffset) { }
 };
 
 template<typename T>
@@ -201,5 +197,39 @@ inline int getRareCaseProfileBytecodeOffset(RareCaseProfile* rareCaseProfile)
 {
     return rareCaseProfile->m_bytecodeOffset;
 }
+
+struct ValueProfileAndOperand {
+    ValueProfile m_profile;
+    int m_operand;
+};
+
+struct ValueProfileAndOperandBuffer {
+    ValueProfileAndOperandBuffer(unsigned size)
+        : m_size(size)
+    {
+        // FIXME: ValueProfile has more stuff than we need. We could optimize these value profiles
+        // to be more space efficient.
+        // https://bugs.webkit.org/show_bug.cgi?id=175413
+        m_buffer = MallocPtr<ValueProfileAndOperand>::malloc(m_size * sizeof(ValueProfileAndOperand));
+        for (unsigned i = 0; i < m_size; ++i)
+            new (&m_buffer.get()[i]) ValueProfileAndOperand();
+    }
+
+    ~ValueProfileAndOperandBuffer()
+    {
+        for (unsigned i = 0; i < m_size; ++i)
+            m_buffer.get()[i].~ValueProfileAndOperand();
+    }
+
+    template <typename Function>
+    void forEach(Function function)
+    {
+        for (unsigned i = 0; i < m_size; ++i)
+            function(m_buffer.get()[i]);
+    }
+
+    unsigned m_size;
+    MallocPtr<ValueProfileAndOperand> m_buffer;
+};
 
 } // namespace JSC

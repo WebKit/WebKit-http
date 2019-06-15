@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,22 +28,38 @@
 
 #if ENABLE(ASSEMBLER)
 
+#include "Options.h"
+#include "ProbeContext.h"
 #include <wtf/PrintStream.h>
+#include <wtf/ScopedLambda.h>
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/MacroAssemblerSupport.h>)
+#include <WebKitAdditions/MacroAssemblerSupport.h>
+#endif
 
 namespace JSC {
 
 const double MacroAssembler::twoToThe32 = (double)0x100000000ull;
 
-#if ENABLE(MASM_PROBE)
-static void stdFunctionCallback(ProbeContext* context)
+void MacroAssembler::jitAssert(const ScopedLambda<Jump(void)>& functor)
 {
-    auto func = static_cast<const std::function<void(ProbeContext*)>*>(context->arg);
+    if (Options::enableJITDebugAssertions()) {
+        Jump passed = functor();
+        breakpoint();
+        passed.link(this);
+    }
+}
+
+#if ENABLE(MASM_PROBE)
+static void stdFunctionCallback(Probe::Context& context)
+{
+    auto func = context.arg<const Function<void(Probe::Context&)>*>();
     (*func)(context);
 }
     
-void MacroAssembler::probe(std::function<void(ProbeContext*)> func)
+void MacroAssembler::probe(Function<void(Probe::Context&)> func)
 {
-    probe(stdFunctionCallback, new std::function<void(ProbeContext*)>(func));
+    probe(stdFunctionCallback, new Function<void(Probe::Context&)>(WTFMove(func)));
 }
 #endif // ENABLE(MASM_PROBE)
 

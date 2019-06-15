@@ -28,6 +28,7 @@
 
 #include <sys/resource.h>
 #include <sys/time.h>
+#include <time.h>
 
 namespace WTF {
 
@@ -42,6 +43,14 @@ std::optional<CPUTime> CPUTime::get()
     int ret = getrusage(RUSAGE_SELF, &resource);
     ASSERT_UNUSED(ret, !ret);
     return CPUTime { MonotonicTime::now(), timevalToSeconds(resource.ru_utime), timevalToSeconds(resource.ru_stime) };
+}
+
+Seconds CPUTime::forCurrentThread()
+{
+    struct timespec ts { };
+    int ret = clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+    RELEASE_ASSERT(!ret);
+    return Seconds(ts.tv_sec) + Seconds::fromNanoseconds(ts.tv_nsec);
 }
 
 }

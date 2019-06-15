@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,8 +32,9 @@
 #import "Decoder.h"
 #import "Encoder.h"
 #import "WebCoreArgumentCoders.h"
-#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/TextIndicator.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
+#import <pal/spi/mac/DataDetectorsSPI.h>
 
 namespace WebKit {
 
@@ -44,13 +45,10 @@ void WebHitTestResultData::platformEncode(IPC::Encoder& encoder) const
     if (!hasActionContext)
         return;
 
-    RetainPtr<NSMutableData> data = adoptNS([[NSMutableData alloc] init]);
-    RetainPtr<NSKeyedArchiver> archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-    [archiver setRequiresSecureCoding:YES];
+    auto archiver = secureArchiver();
     [archiver encodeObject:detectedDataActionContext.get() forKey:@"actionContext"];
-    [archiver finishEncoding];
 
-    IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));
+    IPC::encode(encoder, (__bridge CFDataRef)archiver.get().encodedData);
 
     encoder << detectedDataBoundingBox;
     encoder << detectedDataOriginatingPageOverlay;
@@ -75,8 +73,7 @@ bool WebHitTestResultData::platformDecode(IPC::Decoder& decoder, WebHitTestResul
     if (!IPC::decode(decoder, data))
         return false;
 
-    RetainPtr<NSKeyedUnarchiver> unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:(NSData *)data.get()]);
-    [unarchiver setRequiresSecureCoding:YES];
+    auto unarchiver = secureUnarchiverFromData((__bridge NSData *)data.get());
     @try {
         hitTestResultData.detectedDataActionContext = [unarchiver decodeObjectOfClass:getDDActionContextClass() forKey:@"actionContext"];
     } @catch (NSException *exception) {
@@ -97,11 +94,12 @@ bool WebHitTestResultData::platformDecode(IPC::Decoder& decoder, WebHitTestResul
         return false;
 
     if (hasDetectedDataTextIndicator) {
-        WebCore::TextIndicatorData indicatorData;
-        if (!decoder.decode(indicatorData))
+        std::optional<WebCore::TextIndicatorData> indicatorData;
+        decoder >> indicatorData;
+        if (!indicatorData)
             return false;
 
-        hitTestResultData.detectedDataTextIndicator = WebCore::TextIndicator::create(indicatorData);
+        hitTestResultData.detectedDataTextIndicator = WebCore::TextIndicator::create(*indicatorData);
     }
 
     return true;

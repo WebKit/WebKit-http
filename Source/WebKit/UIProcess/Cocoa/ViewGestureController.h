@@ -30,8 +30,8 @@
 #include "SameDocumentNavigationType.h"
 #include <WebCore/Color.h>
 #include <WebCore/FloatRect.h>
-#include <chrono>
 #include <wtf/BlockPtr.h>
+#include <wtf/MonotonicTime.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/RunLoop.h>
 #include <wtf/WeakPtr.h>
@@ -122,6 +122,7 @@ public:
 
     WebCore::Color backgroundColorForCurrentSnapshot() const { return m_backgroundColorForCurrentSnapshot; }
 
+    void didStartProvisionalLoadForMainFrame();
     void didFinishLoadForMainFrame() { didReachMainFrameLoadTerminalState(); }
     void didFailLoadForMainFrame() { didReachMainFrameLoadTerminalState(); }
     void didFirstVisuallyNonEmptyLayoutForMainFrame();
@@ -134,6 +135,10 @@ public:
     void checkForActiveLoads();
 
     void removeSwipeSnapshot();
+
+    // Testing
+    bool beginSimulatedSwipeInDirectionForTesting(SwipeDirection);
+    bool completeSimulatedSwipeInDirectionForTesting(SwipeDirection);
 
 private:
     // IPC::MessageReceiver.
@@ -179,7 +184,7 @@ private:
 
         Events m_outstandingEvents { 0 };
         WTF::Function<void()> m_removalCallback;
-        std::chrono::steady_clock::time_point m_startTime;
+        MonotonicTime m_startTime;
 
         RunLoop::Timer<SnapshotRemovalTracker> m_watchdogTimer;
     };
@@ -187,7 +192,7 @@ private:
 #if PLATFORM(MAC)
     // Message handlers.
     void didCollectGeometryForMagnificationGesture(WebCore::FloatRect visibleContentBounds, bool frameHandlesMagnificationGesture);
-    void didCollectGeometryForSmartMagnificationGesture(WebCore::FloatPoint origin, WebCore::FloatRect renderRect, WebCore::FloatRect visibleContentBounds, bool isReplacedElement, double viewportMinimumScale, double viewportMaximumScale);
+    void didCollectGeometryForSmartMagnificationGesture(WebCore::FloatPoint origin, WebCore::FloatRect renderRect, WebCore::FloatRect visibleContentBounds, bool fitEntireRect, double viewportMinimumScale, double viewportMaximumScale);
 
     void endMagnificationGesture();
 
@@ -291,6 +296,7 @@ private:
     uint64_t m_snapshotRemovalTargetRenderTreeSize { 0 };
 #endif
 
+    WTF::Function<void()> m_provisionalOrSameDocumentLoadCallback;
     SnapshotRemovalTracker m_snapshotRemovalTracker;
 };
 

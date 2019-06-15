@@ -26,10 +26,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
-#endif
-
 // Needed for limit defines, like INTMAX_MAX, which is used by the std C++ library
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
@@ -39,9 +35,38 @@
 #include "cmakeconfig.h"
 #endif
 
+#include <JavaScriptCore/JSExportMacros.h>
+#include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
+
+#if USE(CF)
 #include <CoreFoundation/CoreFoundation.h>
+#endif
+
 #include <WebKit.h>
-#include "config.h"
+
+#ifdef __cplusplus
+
+// These undefs match up with defines in WebCorePrefix.h for Mac OS X.
+// Helps us catch if anyone uses new or delete by accident in code and doesn't include "config.h".
+#undef new
+#undef delete
+#include <wtf/FastMalloc.h>
+
+#endif
+
+#include <wtf/DisallowCType.h>
+
+#if USE(CG)
+#ifndef CGFLOAT_DEFINED
+#if (defined(__LP64__) && __LP64__) || (defined(__x86_64__) && __x86_64__) || defined(_M_X64) || defined(__amd64__)
+typedef double CGFloat;
+#else
+typedef float CGFloat;
+#endif
+#define CGFLOAT_DEFINED 1
+#endif
+#endif /* USE(CG) */
 
 // WebKit.dll is expected to export the symbols in WebCore that have been marked
 // as WEBCORE_EXPORT

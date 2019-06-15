@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,9 @@
 
 #import "WKProcessPool.h"
 #import "_WKAutomationDelegate.h"
+#import "_WKAutomationSessionConfiguration.h"
 #import <JavaScriptCore/RemoteInspector.h>
+#import <wtf/spi/cf/CFBundleSPI.h>
 #import <wtf/text/WTFString.h>
 
 using namespace Inspector;
@@ -44,7 +46,9 @@ AutomationClient::AutomationClient(WKProcessPool *processPool, id <_WKAutomation
     , m_delegate(delegate)
 {
     m_delegateMethods.allowsRemoteAutomation = [delegate respondsToSelector:@selector(_processPoolAllowsRemoteAutomation:)];
-    m_delegateMethods.requestAutomationSession = [delegate respondsToSelector:@selector(_processPool:didRequestAutomationSessionWithIdentifier:)];
+    m_delegateMethods.requestAutomationSession = [delegate respondsToSelector:@selector(_processPool:didRequestAutomationSessionWithIdentifier:configuration:)];
+    m_delegateMethods.browserNameForAutomation = [delegate respondsToSelector:@selector(_processPoolBrowserNameForAutomation:)];
+    m_delegateMethods.browserVersionForAutomation = [delegate respondsToSelector:@selector(_processPoolBrowserVersionForAutomation:)];
 
     RemoteInspector::singleton().setClient(this);
 }
@@ -54,10 +58,14 @@ AutomationClient::~AutomationClient()
     RemoteInspector::singleton().setClient(nullptr);
 }
 
+// MARK: API::AutomationClient
+
 void AutomationClient::didRequestAutomationSession(WebKit::WebProcessPool*, const String& sessionIdentifier)
 {
-    requestAutomationSession(sessionIdentifier);
+    requestAutomationSession(sessionIdentifier, { });
 }
+
+// MARK: RemoteInspector::Client
 
 bool AutomationClient::remoteAutomationAllowed() const
 {
@@ -67,17 +75,44 @@ bool AutomationClient::remoteAutomationAllowed() const
     return false;
 }
 
-void AutomationClient::requestAutomationSession(const String& sessionIdentifier)
+void AutomationClient::requestAutomationSession(const String& sessionIdentifier, const RemoteInspector::Client::SessionCapabilities& sessionCapabilities)
 {
+    _WKAutomationSessionConfiguration *configuration = [[[_WKAutomationSessionConfiguration alloc] init] autorelease];
+    if (sessionCapabilities.allowInsecureMediaCapture)
+        configuration.allowsInsecureMediaCapture = sessionCapabilities.allowInsecureMediaCapture.value();
+    if (sessionCapabilities.suppressICECandidateFiltering)
+        configuration.suppressesICECandidateFiltering = sessionCapabilities.suppressICECandidateFiltering.value();
+
     // Force clients to create and register a session asynchronously. Otherwise,
     // RemoteInspector will try to acquire its lock to register the new session and
     // deadlock because it's already taken while handling XPC messages.
-
-    NSString *retainedIdentifier = sessionIdentifier;
+    NSString *requestedSessionIdentifier = sessionIdentifier;
     dispatch_async(dispatch_get_main_queue(), ^{
         if (m_delegateMethods.requestAutomationSession)
-            [m_delegate.get() _processPool:m_processPool didRequestAutomationSessionWithIdentifier:retainedIdentifier];
+            [m_delegate.get() _processPool:m_processPool didRequestAutomationSessionWithIdentifier:requestedSessionIdentifier configuration:configuration];
     });
+}
+
+String AutomationClient::browserName() const
+{
+    if (m_delegateMethods.browserNameForAutomation)
+        return [m_delegate _processPoolBrowserNameForAutomation:m_processPool];
+
+    // Fall back to using the unlocalized app name (i.e., 'Safari').
+    NSBundle *appBundle = [NSBundle mainBundle];
+    NSString *displayName = appBundle.infoDictionary[(__bridge NSString *)_kCFBundleDisplayNameKey];
+    NSString *readableName = appBundle.infoDictionary[(__bridge NSString *)kCFBundleNameKey];
+    return displayName ?: readableName;
+}
+
+String AutomationClient::browserVersion() const
+{
+    if (m_delegateMethods.browserVersionForAutomation)
+        return [m_delegate _processPoolBrowserVersionForAutomation:m_processPool];
+
+    // Fall back to using the app short version (i.e., '11.1.1').
+    NSBundle *appBundle = [NSBundle mainBundle];
+    return appBundle.infoDictionary[(__bridge NSString *)_kCFBundleShortVersionStringKey];
 }
 
 } // namespace WebKit

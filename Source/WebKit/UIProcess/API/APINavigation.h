@@ -23,12 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APINavigation_h
-#define APINavigation_h
+#pragma once
 
 #include "APIObject.h"
+#include "WebBackForwardListItem.h"
+#include <WebCore/Process.h>
 #include <WebCore/ResourceRequest.h>
 #include <wtf/Ref.h>
+
+namespace WebCore {
+enum class FrameLoadType;
+}
 
 namespace WebKit {
 class WebNavigationState;
@@ -37,32 +42,86 @@ class WebNavigationState;
 namespace API {
 
 class Navigation : public ObjectImpl<Object::Type::Navigation> {
+    WTF_MAKE_NONCOPYABLE(Navigation);
 public:
     static Ref<Navigation> create(WebKit::WebNavigationState& state)
     {
         return adoptRef(*new Navigation(state));
     }
 
-    static Ref<Navigation> create(WebKit::WebNavigationState& state, const WebCore::ResourceRequest& request)
+    static Ref<Navigation> create(WebKit::WebNavigationState& state, WebKit::WebBackForwardListItem& targetItem, WebKit::WebBackForwardListItem* fromItem, WebCore::FrameLoadType backForwardFrameLoadType)
     {
-        return adoptRef(*new Navigation(state, request));
+        return adoptRef(*new Navigation(state, targetItem, fromItem, backForwardFrameLoadType));
+    }
+
+    static Ref<Navigation> create(WebKit::WebNavigationState& state, WebCore::ResourceRequest&& request, WebKit::WebBackForwardListItem* fromItem)
+    {
+        return adoptRef(*new Navigation(state, WTFMove(request), fromItem));
     }
 
     virtual ~Navigation();
 
     uint64_t navigationID() const { return m_navigationID; }
 
-    const WebCore::ResourceRequest& request() const { return m_request; }
+    const WebCore::ResourceRequest& originalRequest() const { return m_originalRequest; }
+    void setCurrentRequest(WebCore::ResourceRequest&&, WebCore::ProcessIdentifier);
+    const WebCore::ResourceRequest& currentRequest() const { return m_currentRequest; }
+    std::optional<WebCore::ProcessIdentifier> currentRequestProcessIdentifier() const { return m_currentRequestProcessIdentifier; }
+
+    void setCurrentRequestIsRedirect(bool isRedirect) { m_isRedirect = isRedirect; }
+    bool currentRequestIsRedirect() const { return m_isRedirect; }
+
+    void setTargetItem(WebKit::WebBackForwardListItem& item) { m_targetItem = &item; }
+    WebKit::WebBackForwardListItem* targetItem() const { return m_targetItem.get(); }
+    WebKit::WebBackForwardListItem* fromItem() const { return m_fromItem.get(); }
+    std::optional<WebCore::FrameLoadType> backForwardFrameLoadType() const { return m_backForwardFrameLoadType; }
+
+    void appendRedirectionURL(const WebCore::URL&);
+    Vector<WebCore::URL> takeRedirectChain() { return WTFMove(m_redirectChain); }
+
+    void setWasUserInitiated(bool value) { m_wasUserInitiated = value; }
+    bool wasUserInitiated() const { return m_wasUserInitiated; }
+
+    void setShouldForceDownload(bool value) { m_shouldForceDownload = value; }
+    bool shouldForceDownload() const { return m_shouldForceDownload; }
+
+    void setTreatAsSameOriginNavigation(bool value) { m_treatAsSameOriginNavigation = value; }
+    bool treatAsSameOriginNavigation() const { return m_treatAsSameOriginNavigation; }
+
+    void setIsCrossOriginWindowOpenNavigation(bool value) { m_isCrossOriginWindowOpenNavigation = value; }
+    bool isCrossOriginWindowOpenNavigation() const { return m_isCrossOriginWindowOpenNavigation; }
+
+    void setHasOpenedFrames(bool value) { m_hasOpenedFrames = value; }
+    bool hasOpenedFrames() const { return m_hasOpenedFrames; }
+
+    void setOpener(const std::optional<std::pair<uint64_t, uint64_t>>& opener) { m_opener = opener; }
+    const std::optional<std::pair<uint64_t, uint64_t>>& opener() const { return m_opener; }
+
+#if !LOG_DISABLED
+    const char* loggingString() const;
+#endif
 
 private:
     explicit Navigation(WebKit::WebNavigationState&);
-    explicit Navigation(WebKit::WebNavigationState&, const WebCore::ResourceRequest&);
+    Navigation(WebKit::WebNavigationState&, WebCore::ResourceRequest&&, WebKit::WebBackForwardListItem* fromItem);
+    Navigation(WebKit::WebNavigationState&, WebKit::WebBackForwardListItem& targetItem, WebKit::WebBackForwardListItem* fromItem, WebCore::FrameLoadType);
 
     uint64_t m_navigationID;
-    WebCore::ResourceRequest m_request;
+    WebCore::ResourceRequest m_originalRequest;
+    WebCore::ResourceRequest m_currentRequest;
+    std::optional<WebCore::ProcessIdentifier> m_currentRequestProcessIdentifier;
+    Vector<WebCore::URL> m_redirectChain;
+    bool m_wasUserInitiated { true };
+    bool m_shouldForceDownload { false };
+    bool m_isRedirect { false };
+
+    RefPtr<WebKit::WebBackForwardListItem> m_targetItem;
+    RefPtr<WebKit::WebBackForwardListItem> m_fromItem;
+    std::optional<WebCore::FrameLoadType> m_backForwardFrameLoadType;
+    bool m_treatAsSameOriginNavigation { false };
+    bool m_isCrossOriginWindowOpenNavigation { false };
+    bool m_hasOpenedFrames { false };
+    std::optional<std::pair<uint64_t, uint64_t>> m_opener;
 };
 
 } // namespace API
-
-
-#endif // APINavigation_h

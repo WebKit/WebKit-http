@@ -2,7 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-array.prototype.concat
+info: |
     When the concat method is called with zero or more arguments item1, item2,
     etc., it returns an array containing the array elements of the object followed by
     the array elements of each argument in order
@@ -11,9 +12,9 @@ description: Checking this algorithm, items are Array object
 ---*/
 
 var x = new Array();
-var y = new Array(0,1);
-var z = new Array(2,3,4);
-var arr = x.concat(y,z);
+var y = new Array(0, 1);
+var z = new Array(2, 3, 4);
+var arr = x.concat(y, z);
 
 //CHECK#0
 arr.getClass = Object.prototype.toString;

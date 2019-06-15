@@ -38,13 +38,10 @@ struct GlyphOverflow;
 typedef HashMap<const InlineTextBox*, std::pair<Vector<const Font*>, GlyphOverflow>> GlyphOverflowAndFallbackFontsMap;
 
 class InlineFlowBox : public InlineBox {
+    WTF_MAKE_ISO_ALLOCATED(InlineFlowBox);
 public:
     explicit InlineFlowBox(RenderBoxModelObject& renderer)
         : InlineBox(renderer)
-        , m_firstChild(nullptr)
-        , m_lastChild(nullptr)
-        , m_prevLineBox(nullptr)
-        , m_nextLineBox(nullptr)
         , m_includeLogicalLeftEdge(false)
         , m_includeLogicalRightEdge(false)
         , m_descendantsHaveSameLineHeightAndBaseline(true)
@@ -52,17 +49,20 @@ public:
         , m_hasAnnotationsBefore(false)
         , m_hasAnnotationsAfter(false)
         , m_isFirstAfterPageBreak(false)
-        , m_hasAnonymousInlineBlock(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
         , m_hasBadChildList(false)
 #endif
+        , m_firstChild(nullptr)
+        , m_lastChild(nullptr)
+        , m_prevLineBox(nullptr)
+        , m_nextLineBox(nullptr)
     {
         // Internet Explorer and Firefox always create a marker for list items, even when the list-style-type is none.  We do not make a marker
         // in the list-style-type: none case, since it is wasteful to do so.  However, in order to match other browsers we have to pretend like
         // an invisible marker exists.  The side effect of having an invisible marker is that the quirks mode behavior of shrinking lines with no
         // text children must not apply.  This change also means that gaps will exist between image bullet list items.  Even when the list bullet
         // is an image, the line is still considered to be immune from the quirk.
-        m_hasTextChildren = renderer.style().display() == LIST_ITEM;
+        m_hasTextChildren = renderer.style().display() == DisplayType::ListItem;
         m_hasTextDescendants = m_hasTextChildren;
     }
 
@@ -71,7 +71,7 @@ public:
 #endif
 
 #if ENABLE(TREE_DEBUGGING)
-    void outputLineTreeAndMark(TextStream&, const InlineBox* markedBox, int depth) const override;
+    void outputLineTreeAndMark(WTF::TextStream&, const InlineBox* markedBox, int depth) const override;
     const char* boxName() const override;
 #endif
 
@@ -211,10 +211,6 @@ public:
     void setHasTextChildren() { m_hasTextChildren = true; setHasTextDescendants(); }
     void setHasTextDescendants() { m_hasTextDescendants = true; }
     
-    bool hasAnonymousInlineBlock() const { return m_hasAnonymousInlineBlock; }
-    void setHasAnonymousInlineBlock(bool b) { m_hasAnonymousInlineBlock = b; }
-    RenderBlockFlow* anonymousInlineBlock() const;
-    
     void checkConsistency() const;
     void setHasBadChildList();
 
@@ -278,8 +274,8 @@ public:
     FloatRect frameRectIncludingLineHeight(LayoutUnit lineTop, LayoutUnit lineBottom) const
     {
         if (isHorizontal())
-            return FloatRect(m_topLeft.x(), lineTop, width(), lineBottom - lineTop);
-        return FloatRect(lineTop, m_topLeft.y(), lineBottom - lineTop, height());
+            return FloatRect(x(), lineTop, width(), lineBottom - lineTop);
+        return FloatRect(lineTop, y(), lineBottom - lineTop, height());
     }
     
     FloatRect logicalFrameRectIncludingLineHeight(LayoutUnit lineTop, LayoutUnit lineBottom) const
@@ -297,9 +293,9 @@ public:
 
     void computeReplacedAndTextLineTopAndBottom(LayoutUnit& lineTop, LayoutUnit& lineBottom) const;
     
-    // Used to calculate the underline offset for TextUnderlinePositionUnder.
-    void maxLogicalBottomForTextDecorationLine(float& maxLogicalBottom, const RenderElement* decorationRenderer, TextDecoration) const;
-    void minLogicalTopForTextDecorationLine(float& minLogicalTop, const RenderElement* decorationRenderer, TextDecoration) const;
+    // Used to calculate the underline offset for TextUnderlinePosition::Under.
+    void maxLogicalBottomForTextDecorationLine(float& maxLogicalBottom, const RenderElement* decorationRenderer, OptionSet<TextDecoration>) const;
+    void minLogicalTopForTextDecorationLine(float& minLogicalTop, const RenderElement* decorationRenderer, OptionSet<TextDecoration>) const;
 
 private:
     bool isInlineFlowBox() const final { return true; }
@@ -311,15 +307,6 @@ private:
     void addOutlineVisualOverflow(LayoutRect& logicalVisualOverflow);
     void addReplacedChildOverflow(const InlineBox*, LayoutRect& logicalLayoutOverflow, LayoutRect& logicalVisualOverflow);
     void constrainToLineTopAndBottomIfNeeded(LayoutRect&) const;
-
-protected:
-    RefPtr<RenderOverflow> m_overflow;
-
-    InlineBox* m_firstChild;
-    InlineBox* m_lastChild;
-    
-    InlineFlowBox* m_prevLineBox; // The previous box that also uses our RenderObject
-    InlineFlowBox* m_nextLineBox; // The next box that also uses our RenderObject
 
 private:
     unsigned m_includeLogicalLeftEdge : 1;
@@ -343,7 +330,6 @@ protected:
     unsigned m_lineBreakBidiStatusLast : 5; // UCharDirection
 
     unsigned m_isFirstAfterPageBreak : 1;
-    unsigned m_hasAnonymousInlineBlock : 1;
 
     // End of RootInlineBox-specific members.
 
@@ -351,6 +337,15 @@ protected:
 private:
     unsigned m_hasBadChildList : 1;
 #endif
+
+protected:
+    RefPtr<RenderOverflow> m_overflow;
+
+    InlineBox* m_firstChild;
+    InlineBox* m_lastChild;
+    
+    InlineFlowBox* m_prevLineBox; // The previous box that also uses our RenderObject
+    InlineFlowBox* m_nextLineBox; // The next box that also uses our RenderObject
 };
 
 #ifdef NDEBUG

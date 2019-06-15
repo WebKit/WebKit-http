@@ -28,7 +28,6 @@
 #include <functional>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -38,11 +37,12 @@ class KeyedDecoder {
 public:
     WEBCORE_EXPORT static std::unique_ptr<KeyedDecoder> decoder(const uint8_t* data, size_t);
 
-    virtual ~KeyedDecoder() { }
+    virtual ~KeyedDecoder() = default;
 
     virtual bool decodeBytes(const String& key, const uint8_t*&, size_t&) = 0;
     virtual bool decodeBool(const String& key, bool&) = 0;
     virtual bool decodeUInt32(const String& key, uint32_t&) = 0;
+    virtual bool decodeUInt64(const String& key, uint64_t&) = 0;
     virtual bool decodeInt32(const String& key, int32_t&) = 0;
     virtual bool decodeInt64(const String& key, int64_t&) = 0;
     virtual bool decodeFloat(const String& key, float&) = 0;
@@ -116,6 +116,7 @@ public:
             typename ContainerType::ValueType element;
             if (!function(*this, element)) {
                 result = false;
+                endArrayElement();
                 break;
             }
             objects.append(WTFMove(element));
@@ -145,11 +146,12 @@ class KeyedEncoder {
 public:
     WEBCORE_EXPORT static std::unique_ptr<KeyedEncoder> encoder();
 
-    virtual ~KeyedEncoder() { }
+    virtual ~KeyedEncoder() = default;
 
     virtual void encodeBytes(const String& key, const uint8_t*, size_t) = 0;
     virtual void encodeBool(const String& key, bool) = 0;
     virtual void encodeUInt32(const String& key, uint32_t) = 0;
+    virtual void encodeUInt64(const String& key, uint64_t) = 0;
     virtual void encodeInt32(const String& key, int32_t) = 0;
     virtual void encodeInt64(const String& key, int64_t) = 0;
     virtual void encodeFloat(const String& key, float) = 0;

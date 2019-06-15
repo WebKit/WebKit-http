@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.values
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.30 %TypedArray%.prototype.values ( )
 
   The following steps are taken:
@@ -17,7 +17,7 @@ info: >
   1. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var values = TypedArray.prototype.values;

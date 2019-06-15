@@ -29,9 +29,12 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "Text.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLScriptElement);
 
 using namespace HTMLNames;
 
@@ -68,15 +71,15 @@ void HTMLScriptElement::parseAttribute(const QualifiedName& name, const AtomicSt
         HTMLElement::parseAttribute(name, value);
 }
 
-Node::InsertionNotificationRequest HTMLScriptElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLScriptElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLElement::insertedInto(insertionPoint);
-    return shouldCallFinishedInsertingSubtree(insertionPoint) ? InsertionShouldCallFinishedInsertingSubtree : InsertionDone;
+    HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    return ScriptElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 }
 
-void HTMLScriptElement::finishedInsertingSubtree()
+void HTMLScriptElement::didFinishInsertingNode()
 {
-    ScriptElement::finishedInsertingSubtree();
+    ScriptElement::didFinishInsertingNode();
 }
 
 // https://html.spec.whatwg.org/multipage/scripting.html#dom-script-text
@@ -173,7 +176,7 @@ void HTMLScriptElement::dispatchLoadEvent()
     ASSERT(!haveFiredLoadEvent());
     setHaveFiredLoadEvent(true);
 
-    dispatchEvent(Event::create(eventNames().loadEvent, false, false));
+    dispatchEvent(Event::create(eventNames().loadEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 Ref<Element> HTMLScriptElement::cloneElementWithoutAttributesAndChildren(Document& targetDocument)

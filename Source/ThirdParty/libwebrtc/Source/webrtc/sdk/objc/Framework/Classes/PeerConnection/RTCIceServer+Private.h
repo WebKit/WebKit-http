@@ -10,7 +10,7 @@
 
 #import "WebRTC/RTCIceServer.h"
 
-#include "webrtc/api/peerconnectioninterface.h"
+#include "api/peerconnectioninterface.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -20,12 +20,10 @@ NS_ASSUME_NONNULL_BEGIN
  * IceServer struct representation of this RTCIceServer object's data.
  * This is needed to pass to the underlying C++ APIs.
  */
-@property(nonatomic, readonly)
-    webrtc::PeerConnectionInterface::IceServer nativeServer;
+@property(nonatomic, readonly) webrtc::PeerConnectionInterface::IceServer nativeServer;
 
 /** Initialize an RTCIceServer from a native IceServer. */
-- (instancetype)initWithNativeServer:
-    (webrtc::PeerConnectionInterface::IceServer)nativeServer;
+- (instancetype)initWithNativeServer:(webrtc::PeerConnectionInterface::IceServer)nativeServer;
 
 @end
 

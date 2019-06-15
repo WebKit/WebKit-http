@@ -49,10 +49,10 @@ function process_definitions () {
 }
 
 function rewrite_headers () {
-    if [[ "${PLATFORM_NAME}" == "macosx" ]]; then
+    if [[ "${WK_PLATFORM_NAME}" == "macosx" ]]; then
         [[ -n ${OSX_VERSION} ]] || OSX_VERSION=${MACOSX_DEPLOYMENT_TARGET}
         [[ -n ${IOS_VERSION} ]] || IOS_VERSION="NA"
-    elif [[ "${PLATFORM_NAME}" =~ "iphone" ]]; then
+    elif [[ "${WK_PLATFORM_NAME}" =~ "iphone" ]]; then
         [[ -n ${IOS_VERSION} ]] || IOS_VERSION=${IPHONEOS_DEPLOYMENT_TARGET}
         [[ -n ${OSX_VERSION} ]] || OSX_VERSION="NA"
     fi
@@ -70,7 +70,10 @@ function rewrite_headers () {
             -e "s/^WK_CLASS_DEPRECATED/WK_EXTERN API_DEPRECATED/"
         )
     else
-        SED_OPTIONS+=(-e 's/WK_(API_|CLASS_)AVAILABLE\(.*\)\s*\)//g' -e 's/WK_(API_|CLASS_)DEPRECATED(_WITH_REPLACEMENT)?\(.*\)\s*\)//g')
+        SED_OPTIONS+=(
+            -e 's/WK_(API_|CLASS_)AVAILABLE\(.*\)\s*\)//g'
+            -e 's/WK_(API_|CLASS_)DEPRECATED(_WITH_REPLACEMENT)?\(.*\)\s*\)//g'
+        )
     fi
 
     SED_OPTIONS+=(${OTHER_SED_OPTIONS[*]})

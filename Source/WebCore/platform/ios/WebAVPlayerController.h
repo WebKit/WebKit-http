@@ -25,11 +25,11 @@
 
 #if PLATFORM(IOS) && HAVE(AVKIT)
 
-#import "AVKitSPI.h"
+#import <pal/spi/cocoa/AVKitSPI.h>
 
 namespace WebCore {
-class WebPlaybackSessionModel;
-class WebPlaybackSessionInterfaceAVKit;
+class PlaybackSessionModel;
+class PlaybackSessionInterfaceAVKit;
 }
 
 @interface WebAVMediaSelectionOption : NSObject
@@ -44,8 +44,8 @@ class WebPlaybackSessionInterfaceAVKit;
 }
 
 @property (retain) AVPlayerController* playerControllerProxy;
-@property (assign) WebCore::WebPlaybackSessionModel* delegate;
-@property (assign) WebCore::WebPlaybackSessionInterfaceAVKit* playbackSessionInterface;
+@property (assign) WebCore::PlaybackSessionModel* delegate;
+@property (assign) WebCore::PlaybackSessionInterfaceAVKit* playbackSessionInterface;
 
 @property (readonly) BOOL canScanForward;
 @property BOOL canScanBackward;
@@ -71,6 +71,8 @@ class WebPlaybackSessionInterfaceAVKit;
 @property (retain) AVValueTiming *timing;
 @property (retain) NSArray *seekableTimeRanges;
 @property (getter=isMuted) BOOL muted;
+@property double volume;
+- (void)volumeChanged:(double)volume;
 
 @property (readonly) BOOL hasMediaSelectionOptions;
 @property (readonly) BOOL hasAudioMediaSelectionOptions;
@@ -81,7 +83,7 @@ class WebPlaybackSessionInterfaceAVKit;
 @property (retain) WebAVMediaSelectionOption *currentLegibleMediaSelectionOption;
 
 @property (readonly, getter=isPlayingOnExternalScreen) BOOL playingOnExternalScreen;
-@property (readonly, getter=isPlayingOnSecondScreen) BOOL playingOnSecondScreen;
+@property (nonatomic, getter=isPlayingOnSecondScreen) BOOL playingOnSecondScreen;
 @property (getter=isExternalPlaybackActive) BOOL externalPlaybackActive;
 @property AVPlayerControllerExternalPlaybackType externalPlaybackType;
 @property (retain) NSString *externalPlaybackAirPlayDeviceLocalizedName;

@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_EXAMPLES_PEERCONNECTION_CLIENT_LINUX_MAIN_WND_H_
-#define WEBRTC_EXAMPLES_PEERCONNECTION_CLIENT_LINUX_MAIN_WND_H_
+#ifndef EXAMPLES_PEERCONNECTION_CLIENT_LINUX_MAIN_WND_H_
+#define EXAMPLES_PEERCONNECTION_CLIENT_LINUX_MAIN_WND_H_
 
 #include <memory>
 #include <string>
 
-#include "webrtc/examples/peerconnection/client/main_wnd.h"
-#include "webrtc/examples/peerconnection/client/peer_connection_client.h"
+#include "examples/peerconnection/client/main_wnd.h"
+#include "examples/peerconnection/client/peer_connection_client.h"
 
 // Forward declarations.
 typedef struct _GtkWidget GtkWidget;
@@ -39,8 +39,7 @@ class GtkMainWnd : public MainWindow {
   virtual void SwitchToConnectUI();
   virtual void SwitchToPeerList(const Peers& peers);
   virtual void SwitchToStreamingUI();
-  virtual void MessageBox(const char* caption, const char* text,
-                          bool is_error);
+  virtual void MessageBox(const char* caption, const char* text, bool is_error);
   virtual MainWindow::UI current_ui();
   virtual void StartLocalRenderer(webrtc::VideoTrackInterface* local_video);
   virtual void StopLocalRenderer();
@@ -67,7 +66,8 @@ class GtkMainWnd : public MainWindow {
 
   // Callback when the user double clicks a peer in order to initiate a
   // connection.
-  void OnRowActivated(GtkTreeView* tree_view, GtkTreePath* path,
+  void OnRowActivated(GtkTreeView* tree_view,
+                      GtkTreePath* path,
                       GtkTreeViewColumn* column);
 
   void OnRedraw();
@@ -86,13 +86,9 @@ class GtkMainWnd : public MainWindow {
 
     const uint8_t* image() const { return image_.get(); }
 
-    int width() const {
-      return width_;
-    }
+    int width() const { return width_; }
 
-    int height() const {
-      return height_;
-    }
+    int height() const { return height_; }
 
    protected:
     void SetSize(int width, int height);
@@ -104,9 +100,9 @@ class GtkMainWnd : public MainWindow {
   };
 
  protected:
-  GtkWidget* window_;  // Our main window.
+  GtkWidget* window_;     // Our main window.
   GtkWidget* draw_area_;  // The drawing surface for rendering video streams.
-  GtkWidget* vbox_;  // Container for the Connect UI.
+  GtkWidget* vbox_;       // Container for the Connect UI.
   GtkWidget* server_edit_;
   GtkWidget* port_edit_;
   GtkWidget* peer_list_;  // The list of peers.
@@ -123,4 +119,4 @@ class GtkMainWnd : public MainWindow {
   int draw_buffer_size_;
 };
 
-#endif  // WEBRTC_EXAMPLES_PEERCONNECTION_CLIENT_LINUX_MAIN_WND_H_
+#endif  // EXAMPLES_PEERCONNECTION_CLIENT_LINUX_MAIN_WND_H_

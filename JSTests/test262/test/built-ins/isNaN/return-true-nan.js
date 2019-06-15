@@ -2,8 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-esid: sec-isnan-number
 es6id: 18.2.3
+esid: sec-isnan-number
 description: >
   Return true if number is NaN
 info: |
@@ -14,6 +14,6 @@ info: |
 includes: [nans.js]
 ---*/
 
-distinctNaNs.forEach(function(v, i) {
+NaNs.forEach(function(v, i) {
   assert.sameValue(isNaN(v), true, "value on position: " + i);
 });

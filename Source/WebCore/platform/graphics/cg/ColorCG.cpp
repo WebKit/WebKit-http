@@ -32,12 +32,8 @@
 #include <wtf/Assertions.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/TinyLRUCache.h>
-#if !PLATFORM(IOS)
-#include <ApplicationServices/ApplicationServices.h>
-#else
-#include "CoreGraphicsSPI.h"
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 #include <wtf/StdLibExtras.h>
-#endif // !PLATFORM(IOS)
 
 namespace WebCore {
 static CGColorRef leakCGColor(const Color&) CF_RETURNS_RETAINED;
@@ -55,21 +51,6 @@ RetainPtr<CGColorRef> TinyLRUCachePolicy<WebCore::Color, RetainPtr<CGColorRef>>:
 
 namespace WebCore {
 
-#if PLATFORM(IOS)
-static CGColorRef createCGColorWithDeviceRGBA(CGColorRef sourceColor)
-{
-    if (!sourceColor || CFEqual(CGColorGetColorSpace(sourceColor), deviceRGBColorSpaceRef()))
-        return CGColorRetain(sourceColor);
-
-    RetainPtr<CGColorTransformRef> colorTransform = adoptCF(CGColorTransformCreate(deviceRGBColorSpaceRef(), nullptr));
-    if (!colorTransform)
-        return CGColorRetain(sourceColor);
-
-    // CGColorTransformConvertColor() returns a +1 retained object.
-    return CGColorTransformConvertColor(colorTransform.get(), sourceColor, kCGRenderingIntentDefault);
-}
-#endif // PLATFORM(IOS)
-
 Color::Color(CGColorRef color)
 {
     if (!color) {
@@ -77,18 +58,8 @@ Color::Color(CGColorRef color)
         return;
     }
 
-#if !PLATFORM(IOS)
     size_t numComponents = CGColorGetNumberOfComponents(color);
     const CGFloat* components = CGColorGetComponents(color);
-#else
-    // FIXME: can we remove this?
-    RetainPtr<CGColorRef> correctedColor = adoptCF(createCGColorWithDeviceRGBA(color));
-    if (!correctedColor)
-        correctedColor = color;
-
-    size_t numComponents = CGColorGetNumberOfComponents(correctedColor.get());
-    const CGFloat* components = CGColorGetComponents(correctedColor.get());
-#endif // !PLATFORM(IOS)
 
     float r = 0;
     float g = 0;
@@ -128,7 +99,6 @@ static CGColorRef leakCGColor(const Color& color)
         case ColorSpaceDisplayP3:
             return CGColorCreate(displayP3ColorSpaceRef(), components);
         case ColorSpaceLinearRGB:
-        case ColorSpaceDeviceRGB:
             // FIXME: Do we ever create CGColorRefs in these spaces? It may only be ImageBuffers.
             return CGColorCreate(sRGBColorSpaceRef(), components);
         }

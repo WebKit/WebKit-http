@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "setMonth" has { DontEnum } attributes
+esid: sec-date.prototype.setmonth
 es5id: 15.9.5.38_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.setMonth;
-if(x === 1)
+if (x === 1)
   Date.prototype.setMonth = 2;
 else
   Date.prototype.setMonth = 1;

@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
+WI.DataGridNode = class DataGridNode extends WI.Object
 {
-    constructor(data, hasChildren)
+    constructor(data, hasChildren, classNames)
     {
         super();
 
@@ -42,6 +42,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         this.previousSibling = null;
         this.nextSibling = null;
         this.disclosureToggleWidth = 10;
+        this._classNames = classNames || [];
     }
 
     get hidden()
@@ -100,6 +101,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
             this._element.classList.add("revealed");
         if (this._hidden)
             this._element.classList.add("hidden");
+        this._element.classList.add(...this._classNames);
 
         this.createCells();
         return this._element;
@@ -371,7 +373,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         if (columnIdentifier === this.dataGrid.disclosureColumnIdentifier) {
             cellElement.classList.add("disclosure");
             if (this.indentPadding) {
-                if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL)
+                if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
                     cellElement.style.setProperty("padding-right", `${this.indentPadding}px`);
                 else
                     cellElement.style.setProperty("padding-left", `${this.indentPadding}px`);
@@ -387,7 +389,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
             return zeroWidthSpace; // Zero width space to keep the cell from collapsing.
 
         let data = this.data[columnIdentifier];
-        return (typeof data === "number") ? data.maxDecimals(2).toLocaleString() : data;
+        return typeof data === "number" ? data.maxDecimals(2).toLocaleString() : data;
     }
 
     elementWithColumnIdentifier(columnIdentifier)
@@ -403,11 +405,11 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
     }
 
     // Share these functions with DataGrid. They are written to work with a DataGridNode this object.
-    appendChild() { return WebInspector.DataGrid.prototype.appendChild.apply(this, arguments); }
-    insertChild() { return WebInspector.DataGrid.prototype.insertChild.apply(this, arguments); }
-    removeChild() { return WebInspector.DataGrid.prototype.removeChild.apply(this, arguments); }
-    removeChildren() { return WebInspector.DataGrid.prototype.removeChildren.apply(this, arguments); }
-    removeChildrenRecursive() { return WebInspector.DataGrid.prototype.removeChildrenRecursive.apply(this, arguments); }
+    appendChild() { return WI.DataGrid.prototype.appendChild.apply(this, arguments); }
+    insertChild() { return WI.DataGrid.prototype.insertChild.apply(this, arguments); }
+    removeChild() { return WI.DataGrid.prototype.removeChild.apply(this, arguments); }
+    removeChildren() { return WI.DataGrid.prototype.removeChildren.apply(this, arguments); }
+    removeChildrenRecursive() { return WI.DataGrid.prototype.removeChildrenRecursive.apply(this, arguments); }
 
     _recalculateSiblings(myIndex)
     {
@@ -444,7 +446,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         this.dispatchEventToListeners("collapsed");
 
         if (this.dataGrid) {
-            this.dataGrid.dispatchEventToListeners(WebInspector.DataGrid.Event.CollapsedNode, {dataGridNode: this});
+            this.dataGrid.dispatchEventToListeners(WI.DataGrid.Event.CollapsedNode, {dataGridNode: this});
             this.dataGrid._noteRowsChanged();
         }
     }
@@ -494,7 +496,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         this.dispatchEventToListeners("expanded");
 
         if (this.dataGrid) {
-            this.dataGrid.dispatchEventToListeners(WebInspector.DataGrid.Event.ExpandedNode, {dataGridNode: this});
+            this.dataGrid.dispatchEventToListeners(WI.DataGrid.Event.ExpandedNode, {dataGridNode: this});
             this.dataGrid._noteRowsChanged();
         }
     }
@@ -564,13 +566,13 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
             this._element.classList.add("selected");
 
         if (!suppressSelectedEvent)
-            this.dataGrid.dispatchEventToListeners(WebInspector.DataGrid.Event.SelectedNodeChanged, {oldSelectedNode});
+            this.dataGrid.dispatchEventToListeners(WI.DataGrid.Event.SelectedNodeChanged, {oldSelectedNode});
     }
 
-    revealAndSelect()
+    revealAndSelect(suppressSelectedEvent)
     {
         this.reveal();
-        this.select();
+        this.select(suppressSelectedEvent);
     }
 
     deselect(suppressDeselectedEvent)
@@ -585,7 +587,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
             this._element.classList.remove("selected");
 
         if (!suppressDeselectedEvent)
-            this.dataGrid.dispatchEventToListeners(WebInspector.DataGrid.Event.SelectedNodeChanged, {oldSelectedNode: this});
+            this.dataGrid.dispatchEventToListeners(WI.DataGrid.Event.SelectedNodeChanged, {oldSelectedNode: this});
     }
 
     traverseNextNode(skipHidden, stayWithin, dontPopulate, info)
@@ -632,7 +634,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         while (node && ((!skipHidden || (node.revealed && node.expanded)) ? node.children.lastValue : null)) {
             if (!dontPopulate && node.hasChildren)
                 node.dispatchEventToListeners("populate");
-            node = ((!skipHidden || (node.revealed && node.expanded)) ? node.children.lastValue : null);
+            node = (!skipHidden || (node.revealed && node.expanded)) ? node.children.lastValue : null;
         }
 
         if (node)
@@ -655,7 +657,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
 
         let computedStyle = window.getComputedStyle(cell);
         let start = 0;
-        if (WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL)
+        if (WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL)
             start += cell.totalOffsetRight - computedStyle.getPropertyCSSValue("padding-right").getFloatValue(CSSPrimitiveValue.CSS_PX) - this.disclosureToggleWidth;
         else
             start += cell.totalOffsetLeft + computedStyle.getPropertyCSSValue("padding-left").getFloatValue(CSSPrimitiveValue.CSS_PX);
@@ -754,7 +756,7 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
 };
 
 // Used to create a new table row when entering new data by editing cells.
-WebInspector.PlaceholderDataGridNode = class PlaceholderDataGridNode extends WebInspector.DataGridNode
+WI.PlaceholderDataGridNode = class PlaceholderDataGridNode extends WI.DataGridNode
 {
     constructor(data)
     {

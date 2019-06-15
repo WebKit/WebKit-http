@@ -22,12 +22,11 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMHTMLFormElementPrivate.h"
@@ -37,6 +36,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -67,8 +68,8 @@ static gboolean webkit_dom_html_option_element_dispatch_event(WebKitDOMEventTarg
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -86,25 +87,25 @@ static gboolean webkit_dom_html_option_element_remove_event_listener(WebKitDOMEv
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_option_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_option_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_option_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_option_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLOptionElement, webkit_dom_html_option_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLOptionElement, webkit_dom_html_option_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_option_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_DISABLED,
-    PROP_FORM,
-    PROP_LABEL,
-    PROP_DEFAULT_SELECTED,
-    PROP_SELECTED,
-    PROP_VALUE,
-    PROP_TEXT,
-    PROP_INDEX,
+    DOM_HTML_OPTION_ELEMENT_PROP_0,
+    DOM_HTML_OPTION_ELEMENT_PROP_DISABLED,
+    DOM_HTML_OPTION_ELEMENT_PROP_FORM,
+    DOM_HTML_OPTION_ELEMENT_PROP_LABEL,
+    DOM_HTML_OPTION_ELEMENT_PROP_DEFAULT_SELECTED,
+    DOM_HTML_OPTION_ELEMENT_PROP_SELECTED,
+    DOM_HTML_OPTION_ELEMENT_PROP_VALUE,
+    DOM_HTML_OPTION_ELEMENT_PROP_TEXT,
+    DOM_HTML_OPTION_ELEMENT_PROP_INDEX,
 };
 
 static void webkit_dom_html_option_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -112,19 +113,19 @@ static void webkit_dom_html_option_element_set_property(GObject* object, guint p
     WebKitDOMHTMLOptionElement* self = WEBKIT_DOM_HTML_OPTION_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_DISABLED:
+    case DOM_HTML_OPTION_ELEMENT_PROP_DISABLED:
         webkit_dom_html_option_element_set_disabled(self, g_value_get_boolean(value));
         break;
-    case PROP_LABEL:
+    case DOM_HTML_OPTION_ELEMENT_PROP_LABEL:
         webkit_dom_html_option_element_set_label(self, g_value_get_string(value));
         break;
-    case PROP_DEFAULT_SELECTED:
+    case DOM_HTML_OPTION_ELEMENT_PROP_DEFAULT_SELECTED:
         webkit_dom_html_option_element_set_default_selected(self, g_value_get_boolean(value));
         break;
-    case PROP_SELECTED:
+    case DOM_HTML_OPTION_ELEMENT_PROP_SELECTED:
         webkit_dom_html_option_element_set_selected(self, g_value_get_boolean(value));
         break;
-    case PROP_VALUE:
+    case DOM_HTML_OPTION_ELEMENT_PROP_VALUE:
         webkit_dom_html_option_element_set_value(self, g_value_get_string(value));
         break;
     default:
@@ -138,28 +139,28 @@ static void webkit_dom_html_option_element_get_property(GObject* object, guint p
     WebKitDOMHTMLOptionElement* self = WEBKIT_DOM_HTML_OPTION_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_DISABLED:
+    case DOM_HTML_OPTION_ELEMENT_PROP_DISABLED:
         g_value_set_boolean(value, webkit_dom_html_option_element_get_disabled(self));
         break;
-    case PROP_FORM:
+    case DOM_HTML_OPTION_ELEMENT_PROP_FORM:
         g_value_set_object(value, webkit_dom_html_option_element_get_form(self));
         break;
-    case PROP_LABEL:
+    case DOM_HTML_OPTION_ELEMENT_PROP_LABEL:
         g_value_take_string(value, webkit_dom_html_option_element_get_label(self));
         break;
-    case PROP_DEFAULT_SELECTED:
+    case DOM_HTML_OPTION_ELEMENT_PROP_DEFAULT_SELECTED:
         g_value_set_boolean(value, webkit_dom_html_option_element_get_default_selected(self));
         break;
-    case PROP_SELECTED:
+    case DOM_HTML_OPTION_ELEMENT_PROP_SELECTED:
         g_value_set_boolean(value, webkit_dom_html_option_element_get_selected(self));
         break;
-    case PROP_VALUE:
+    case DOM_HTML_OPTION_ELEMENT_PROP_VALUE:
         g_value_take_string(value, webkit_dom_html_option_element_get_value(self));
         break;
-    case PROP_TEXT:
+    case DOM_HTML_OPTION_ELEMENT_PROP_TEXT:
         g_value_take_string(value, webkit_dom_html_option_element_get_text(self));
         break;
-    case PROP_INDEX:
+    case DOM_HTML_OPTION_ELEMENT_PROP_INDEX:
         g_value_set_long(value, webkit_dom_html_option_element_get_index(self));
         break;
     default:
@@ -176,7 +177,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DISABLED,
+        DOM_HTML_OPTION_ELEMENT_PROP_DISABLED,
         g_param_spec_boolean(
             "disabled",
             "HTMLOptionElement:disabled",
@@ -186,7 +187,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FORM,
+        DOM_HTML_OPTION_ELEMENT_PROP_FORM,
         g_param_spec_object(
             "form",
             "HTMLOptionElement:form",
@@ -196,7 +197,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LABEL,
+        DOM_HTML_OPTION_ELEMENT_PROP_LABEL,
         g_param_spec_string(
             "label",
             "HTMLOptionElement:label",
@@ -206,7 +207,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DEFAULT_SELECTED,
+        DOM_HTML_OPTION_ELEMENT_PROP_DEFAULT_SELECTED,
         g_param_spec_boolean(
             "default-selected",
             "HTMLOptionElement:default-selected",
@@ -216,7 +217,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SELECTED,
+        DOM_HTML_OPTION_ELEMENT_PROP_SELECTED,
         g_param_spec_boolean(
             "selected",
             "HTMLOptionElement:selected",
@@ -226,7 +227,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_VALUE,
+        DOM_HTML_OPTION_ELEMENT_PROP_VALUE,
         g_param_spec_string(
             "value",
             "HTMLOptionElement:value",
@@ -236,7 +237,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TEXT,
+        DOM_HTML_OPTION_ELEMENT_PROP_TEXT,
         g_param_spec_string(
             "text",
             "HTMLOptionElement:text",
@@ -246,7 +247,7 @@ static void webkit_dom_html_option_element_class_init(WebKitDOMHTMLOptionElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_INDEX,
+        DOM_HTML_OPTION_ELEMENT_PROP_INDEX,
         g_param_spec_long(
             "index",
             "HTMLOptionElement:index",
@@ -377,3 +378,4 @@ glong webkit_dom_html_option_element_get_index(WebKitDOMHTMLOptionElement* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

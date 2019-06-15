@@ -28,6 +28,7 @@
 
 #include "File.h"
 #include "FileMetadata.h"
+#include "FileSystem.h"
 
 namespace WebCore {
 
@@ -37,7 +38,7 @@ BlobDataFileReference::BlobDataFileReference(const String& path)
     , m_replacementShouldBeGenerated(false)
 #endif
     , m_size(0)
-    , m_expectedModificationTime(invalidFileTime())
+    , m_expectedModificationTime(FileSystem::invalidFileTime())
 {
 }
 
@@ -45,7 +46,7 @@ BlobDataFileReference::~BlobDataFileReference()
 {
 #if ENABLE(FILE_REPLACEMENT)
     if (!m_replacementPath.isNull())
-        deleteFile(m_replacementPath);
+        FileSystem::deleteFile(m_replacementPath);
 #endif
 }
 
@@ -78,7 +79,7 @@ double BlobDataFileReference::expectedModificationTime()
     // We do not currently track modifications for generated files, because we have a snapshot.
     // Unfortunately, this is inconsistent with regular file handling - File objects should be invalidated when underlying files change.
     if (m_replacementShouldBeGenerated || !m_replacementPath.isNull())
-        return invalidFileTime();
+        return FileSystem::invalidFileTime();
 #endif
 
     return m_expectedModificationTime;
@@ -95,18 +96,18 @@ void BlobDataFileReference::startTrackingModifications()
 #endif
 
     // FIXME: Some platforms provide better ways to listen for file system object changes, consider using these.
-    FileMetadata metadata;
-    if (!getFileMetadata(m_path, metadata))
+    auto metadata = FileSystem::fileMetadataFollowingSymlinks(m_path);
+    if (!metadata)
         return;
 
-    m_expectedModificationTime = metadata.modificationTime;
+    m_expectedModificationTime = metadata.value().modificationTime;
 
 #if ENABLE(FILE_REPLACEMENT)
     if (m_replacementShouldBeGenerated)
         return;
 #endif
 
-    m_size = metadata.length;
+    m_size = metadata.value().length;
 }
 
 void BlobDataFileReference::prepareForFileAccess()

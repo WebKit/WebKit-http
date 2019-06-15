@@ -28,20 +28,9 @@
 #include "CellContainer.h"
 #include "HeapCell.h"
 #include "LargeAllocation.h"
-#include "MarkedBlockInlines.h"
 #include "VM.h"
 
 namespace JSC {
-
-ALWAYS_INLINE bool HeapCell::isLive()
-{
-    if (isLargeAllocation())
-        return largeAllocation().isLive();
-    auto& markedBlockHandle = markedBlock().handle();
-    if (markedBlockHandle.isFreeListed())
-        return !markedBlockHandle.isFreeListedCell(this);
-    return markedBlockHandle.isLive(this);
-}
 
 ALWAYS_INLINE bool HeapCell::isLargeAllocation() const
 {
@@ -84,7 +73,7 @@ ALWAYS_INLINE size_t HeapCell::cellSize() const
     return markedBlock().cellSize();
 }
 
-ALWAYS_INLINE AllocatorAttributes HeapCell::allocatorAttributes() const
+ALWAYS_INLINE CellAttributes HeapCell::cellAttributes() const
 {
     if (isLargeAllocation())
         return largeAllocation().attributes();
@@ -93,12 +82,19 @@ ALWAYS_INLINE AllocatorAttributes HeapCell::allocatorAttributes() const
 
 ALWAYS_INLINE DestructionMode HeapCell::destructionMode() const
 {
-    return allocatorAttributes().destruction;
+    return cellAttributes().destruction;
 }
 
 ALWAYS_INLINE HeapCell::Kind HeapCell::cellKind() const
 {
-    return allocatorAttributes().cellKind;
+    return cellAttributes().cellKind;
+}
+
+ALWAYS_INLINE Subspace* HeapCell::subspace() const
+{
+    if (isLargeAllocation())
+        return largeAllocation().subspace();
+    return markedBlock().subspace();
 }
 
 } // namespace JSC

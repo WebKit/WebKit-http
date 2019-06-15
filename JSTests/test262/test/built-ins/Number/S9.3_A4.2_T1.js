@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Result of number conversion from number value equals to the input
     argument (no conversion)
 es5id: 9.3_A4.2_T1
@@ -19,7 +19,7 @@ assert.sameValue(Number(NaN), NaN, "NaN");
 if (Number(+0) !== +0) {
   $ERROR('#2.1: Number(+0) === 0. Actual: ' + (Number(+0)));
 } else {
-  if (1/Number(+0) !== Number.POSITIVE_INFINITY) {
+  if (1 / Number(+0) !== Number.POSITIVE_INFINITY) {
     $ERROR('#2.2: Number(+0) === +0. Actual: -0');
   }
 }
@@ -28,7 +28,7 @@ if (Number(+0) !== +0) {
 if (Number(-0) !== -0) {
   $ERROR('#3.1: Number(-0) === 0. Actual: ' + (Number(-0)));
 } else {
-  if (1/Number(-0) !== Number.NEGATIVE_INFINITY) {
+  if (1 / Number(-0) !== Number.NEGATIVE_INFINITY) {
     $ERROR('#3.2: Number(-0) === -0. Actual: +0');
   }
 }

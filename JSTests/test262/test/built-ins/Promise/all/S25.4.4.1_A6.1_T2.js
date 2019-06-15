@@ -2,7 +2,7 @@
 // See LICENSE for details.
 
 /*---
-info: >
+info: |
     Promise.all with 0-element array
     should accept an empty array
 es6id: S25.4.4.1_A6.1_T2
@@ -13,11 +13,11 @@ flags: [async]
 
 var p = Promise.all([]);
 
-p.then(function (result) {
-    if (!(result instanceof Array)) {
-        $ERROR("Expected Promise.all([]) to be Array, actually " + result);
-    }
-    if (result.length !== 0) {
-        $ERROR("Expected Promise.all([]) to be empty Array, actually " + result);
-    }
+p.then(function(result) {
+  if (!(result instanceof Array)) {
+    $ERROR("Expected Promise.all([]) to be Array, actually " + result);
+  }
+  if (result.length !== 0) {
+    $ERROR("Expected Promise.all([]) to be empty Array, actually " + result);
+  }
 }).then($DONE, $DONE);

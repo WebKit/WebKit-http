@@ -3,7 +3,7 @@
 /*---
 description: Resolving with a thenable object value from a pending promise that is later fulfilled
 es6id: 25.4.5.3
-info: >
+info: |
     [...]
     7. Return PerformPromiseThen(promise, onFulfilled, onRejected,
        resultCapability).
@@ -30,23 +30,27 @@ flags: [async]
 
 var value = {};
 var resolve;
-var thenable = new Promise(function(resolve) { resolve(value); });
-var p1 = new Promise(function(_resolve) { resolve = _resolve; });
+var thenable = new Promise(function(resolve) {
+  resolve(value);
+});
+var p1 = new Promise(function(_resolve) {
+  resolve = _resolve;
+});
 var p2;
 
 p2 = p1.then(function() {
-    return thenable;
-  });
+  return thenable;
+});
 
 p2.then(function(x) {
-    if (x !== value) {
-      $DONE('The promise should be fulfilled with the resolution value of the provided promise.');
-      return;
-    }
+  if (x !== value) {
+    $DONE('The promise should be fulfilled with the resolution value of the provided promise.');
+    return;
+  }
 
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});
 
 resolve();

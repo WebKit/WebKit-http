@@ -7,33 +7,40 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_LOGGING_RTC_EVENT_LOG_RTC_EVENT_LOG_PARSER_H_
-#define WEBRTC_LOGGING_RTC_EVENT_LOG_RTC_EVENT_LOG_PARSER_H_
+#ifndef LOGGING_RTC_EVENT_LOG_RTC_EVENT_LOG_PARSER_H_
+#define LOGGING_RTC_EVENT_LOG_RTC_EVENT_LOG_PARSER_H_
 
 #include <map>
 #include <string>
 #include <utility>  // pair
 #include <vector>
 
-#include "webrtc/base/ignore_wundef.h"
-#include "webrtc/logging/rtc_event_log/rtc_event_log.h"
-#include "webrtc/modules/rtp_rtcp/include/rtp_header_extension_map.h"
-#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
-#include "webrtc/video_receive_stream.h"
-#include "webrtc/video_send_stream.h"
+#include "call/video_receive_stream.h"
+#include "call/video_send_stream.h"
+#include "logging/rtc_event_log/events/rtc_event_ice_candidate_pair.h"
+#include "logging/rtc_event_log/events/rtc_event_ice_candidate_pair_config.h"
+#include "logging/rtc_event_log/events/rtc_event_probe_result_failure.h"
+#include "logging/rtc_event_log/rtc_event_log.h"
+#include "logging/rtc_event_log/rtc_stream_config.h"
+#include "modules/rtp_rtcp/include/rtp_header_extension_map.h"
+#include "modules/rtp_rtcp/source/byte_io.h"
+#include "rtc_base/ignore_wundef.h"
 
 // Files generated at build-time by the protobuf compiler.
 RTC_PUSH_IGNORING_WUNDEF()
 #ifdef WEBRTC_ANDROID_PLATFORM_BUILD
 #include "external/webrtc/webrtc/logging/rtc_event_log/rtc_event_log.pb.h"
 #else
-#include "webrtc/logging/rtc_event_log/rtc_event_log.pb.h"
+#include "logging/rtc_event_log/rtc_event_log.pb.h"
 #endif
 RTC_POP_IGNORING_WUNDEF()
 
 namespace webrtc {
 
+enum class BandwidthUsage;
 enum class MediaType;
+
+struct AudioEncoderRuntimeConfig;
 
 class ParsedRtcEventLog {
   friend class RtcEventLogTestHelper;
@@ -50,14 +57,38 @@ class ParsedRtcEventLog {
   struct BweProbeResultEvent {
     uint64_t timestamp;
     uint32_t id;
-    rtc::Optional<uint64_t> bitrate_bps;
-    rtc::Optional<ProbeFailureReason> failure_reason;
+    absl::optional<uint64_t> bitrate_bps;
+    absl::optional<ProbeFailureReason> failure_reason;
   };
 
   struct BweDelayBasedUpdate {
     uint64_t timestamp;
     int32_t bitrate_bps;
     BandwidthUsage detector_state;
+  };
+
+  struct AlrStateEvent {
+    uint64_t timestamp;
+    bool in_alr;
+  };
+
+  struct IceCandidatePairConfig {
+    uint64_t timestamp;
+    IceCandidatePairConfigType type;
+    uint32_t candidate_pair_id;
+    IceCandidateType local_candidate_type;
+    IceCandidatePairProtocol local_relay_protocol;
+    IceCandidateNetworkType local_network_type;
+    IceCandidatePairAddressFamily local_address_family;
+    IceCandidateType remote_candidate_type;
+    IceCandidatePairAddressFamily remote_address_family;
+    IceCandidatePairProtocol candidate_pair_protocol;
+  };
+
+  struct IceCandidatePairEvent {
+    uint64_t timestamp;
+    IceCandidatePairEventType type;
+    uint32_t candidate_pair_id;
   };
 
   enum EventType {
@@ -75,7 +106,10 @@ class ParsedRtcEventLog {
     AUDIO_SENDER_CONFIG_EVENT = 11,
     AUDIO_NETWORK_ADAPTATION_EVENT = 16,
     BWE_PROBE_CLUSTER_CREATED_EVENT = 17,
-    BWE_PROBE_RESULT_EVENT = 18
+    BWE_PROBE_RESULT_EVENT = 18,
+    ALR_STATE_EVENT = 19,
+    ICE_CANDIDATE_PAIR_CONFIG = 20,
+    ICE_CANDIDATE_PAIR_EVENT = 21,
   };
 
   enum class MediaType { ANY, AUDIO, VIDEO, DATA };
@@ -111,7 +145,8 @@ class ParsedRtcEventLog {
                                               PacketDirection* incoming,
                                               uint8_t* header,
                                               size_t* header_length,
-                                              size_t* total_length) const;
+                                              size_t* total_length,
+                                              int* probe_cluster_id) const;
 
   // Reads packet, direction and packet length from the RTCP event at |index|,
   // and stores the values in the corresponding output parameters.
@@ -174,6 +209,11 @@ class ParsedRtcEventLog {
 
   MediaType GetMediaType(uint32_t ssrc, PacketDirection direction) const;
 
+  AlrStateEvent GetAlrState(size_t index) const;
+
+  IceCandidatePairConfig GetIceCandidatePairConfig(size_t index) const;
+  IceCandidatePairEvent GetIceCandidatePairEvent(size_t index) const;
+
  private:
   rtclog::StreamConfig GetVideoReceiveConfig(const rtclog::Event& event) const;
   std::vector<rtclog::StreamConfig> GetVideoSendConfig(
@@ -209,4 +249,4 @@ class ParsedRtcEventLog {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_LOGGING_RTC_EVENT_LOG_RTC_EVENT_LOG_PARSER_H_
+#endif  // LOGGING_RTC_EVENT_LOG_RTC_EVENT_LOG_PARSER_H_

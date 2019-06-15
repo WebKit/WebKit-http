@@ -8,10 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_MIXER_GAIN_CHANGE_CALCULATOR_H_
-#define WEBRTC_MODULES_AUDIO_MIXER_GAIN_CHANGE_CALCULATOR_H_
+#ifndef MODULES_AUDIO_MIXER_GAIN_CHANGE_CALCULATOR_H_
+#define MODULES_AUDIO_MIXER_GAIN_CHANGE_CALCULATOR_H_
 
-#include "webrtc/base/array_view.h"
+#include "api/array_view.h"
 
 namespace webrtc {
 
@@ -22,6 +22,8 @@ class GainChangeCalculator {
   // gain and handles special cases when the samples are small.
   float CalculateGainChange(rtc::ArrayView<const int16_t> in,
                             rtc::ArrayView<const int16_t> out);
+
+  float LatestGain() const;
 
  private:
   void CalculateGain(rtc::ArrayView<const int16_t> in,
@@ -35,4 +37,4 @@ class GainChangeCalculator {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_MIXER_GAIN_CHANGE_CALCULATOR_H_
+#endif  // MODULES_AUDIO_MIXER_GAIN_CHANGE_CALCULATOR_H_

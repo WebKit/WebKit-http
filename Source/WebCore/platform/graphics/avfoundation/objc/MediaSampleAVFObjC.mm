@@ -27,12 +27,17 @@
 #import "MediaSampleAVFObjC.h"
 
 #import "PixelBufferConformerCV.h"
-#import <runtime/JSCInlines.h>
-#import <runtime/TypedArrayInlines.h>
+#import <JavaScriptCore/JSCInlines.h>
+#import <JavaScriptCore/TypedArrayInlines.h>
 #import <wtf/PrintStream.h>
+#import <wtf/cf/TypeCastsCF.h>
 
-#import "CoreMediaSoftLink.h"
+#import <pal/cf/CoreMediaSoftLink.h>
 #import "CoreVideoSoftLink.h"
+
+using namespace PAL;
+
+WTF_DECLARE_CF_TYPE_TRAIT(CMSampleBuffer);
 
 namespace WebCore {
 
@@ -66,7 +71,7 @@ RefPtr<MediaSampleAVFObjC> MediaSampleAVFObjC::createImageSample(Vector<uint8_t>
 
     CFArrayRef attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(sample.get(), true);
     for (CFIndex i = 0; i < CFArrayGetCount(attachmentsArray); ++i) {
-        CFMutableDictionaryRef attachments = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachmentsArray, i);
+        CFMutableDictionaryRef attachments = checked_cf_cast<CFMutableDictionaryRef>(CFArrayGetValueAtIndex(attachmentsArray, i));
         CFDictionarySetValue(attachments, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
     }
     return create(sample.get());
@@ -74,27 +79,27 @@ RefPtr<MediaSampleAVFObjC> MediaSampleAVFObjC::createImageSample(Vector<uint8_t>
 
 MediaTime MediaSampleAVFObjC::presentationTime() const
 {
-    return toMediaTime(CMSampleBufferGetPresentationTimeStamp(m_sample.get()));
+    return PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(m_sample.get()));
 }
 
 MediaTime MediaSampleAVFObjC::outputPresentationTime() const
 {
-    return toMediaTime(CMSampleBufferGetOutputPresentationTimeStamp(m_sample.get()));
+    return PAL::toMediaTime(CMSampleBufferGetOutputPresentationTimeStamp(m_sample.get()));
 }
 
 MediaTime MediaSampleAVFObjC::decodeTime() const
 {
-    return toMediaTime(CMSampleBufferGetDecodeTimeStamp(m_sample.get()));
+    return PAL::toMediaTime(CMSampleBufferGetDecodeTimeStamp(m_sample.get()));
 }
 
 MediaTime MediaSampleAVFObjC::duration() const
 {
-    return toMediaTime(CMSampleBufferGetDuration(m_sample.get()));
+    return PAL::toMediaTime(CMSampleBufferGetDuration(m_sample.get()));
 }
 
 MediaTime MediaSampleAVFObjC::outputDuration() const
 {
-    return toMediaTime(CMSampleBufferGetOutputDuration(m_sample.get()));
+    return PAL::toMediaTime(CMSampleBufferGetOutputDuration(m_sample.get()));
 }
 
 size_t MediaSampleAVFObjC::sizeInBytes() const
@@ -115,7 +120,7 @@ static bool CMSampleBufferIsRandomAccess(CMSampleBufferRef sample)
         return true;
     
     for (CFIndex i = 0, count = CFArrayGetCount(attachments); i < count; ++i) {
-        CFDictionaryRef attachmentDict = (CFDictionaryRef)CFArrayGetValueAtIndex(attachments, i);
+        CFDictionaryRef attachmentDict = checked_cf_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(attachments, i));
         if (CFDictionaryContainsKey(attachmentDict, kCMSampleAttachmentKey_NotSync))
             return false;
     }
@@ -129,7 +134,7 @@ static bool CMSampleBufferIsNonDisplaying(CMSampleBufferRef sample)
         return false;
     
     for (CFIndex i = 0; i < CFArrayGetCount(attachments); ++i) {
-        CFDictionaryRef attachmentDict = (CFDictionaryRef)CFArrayGetValueAtIndex(attachments, i);
+        CFDictionaryRef attachmentDict = checked_cf_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(attachments, i));
         if (CFDictionaryContainsKey(attachmentDict, kCMSampleAttachmentKey_DoNotDisplay))
             return true;
     }
@@ -176,8 +181,8 @@ void MediaSampleAVFObjC::offsetTimestampsBy(const MediaTime& offset)
         return;
     
     for (auto& timing : timingInfoArray) {
-        timing.presentationTimeStamp = toCMTime(toMediaTime(timing.presentationTimeStamp) + offset);
-        timing.decodeTimeStamp = toCMTime(toMediaTime(timing.decodeTimeStamp) + offset);
+        timing.presentationTimeStamp = PAL::toCMTime(PAL::toMediaTime(timing.presentationTimeStamp) + offset);
+        timing.decodeTimeStamp = PAL::toCMTime(PAL::toMediaTime(timing.decodeTimeStamp) + offset);
     }
     
     CMSampleBufferRef newSample;
@@ -199,8 +204,8 @@ void MediaSampleAVFObjC::setTimestamps(const WTF::MediaTime &presentationTimesta
         return;
     
     for (auto& timing : timingInfoArray) {
-        timing.presentationTimeStamp = toCMTime(presentationTimestamp);
-        timing.decodeTimeStamp = toCMTime(decodeTimestamp);
+        timing.presentationTimeStamp = PAL::toCMTime(presentationTimestamp);
+        timing.decodeTimeStamp = PAL::toCMTime(decodeTimestamp);
     }
     
     CMSampleBufferRef newSample;
@@ -229,7 +234,7 @@ std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> MediaSampleAVFObjC::divide(c
     CFIndex samplesBeforePresentationTime = 0;
 
     CMSampleBufferCallBlockForEachSample(m_sample.get(), [&] (CMSampleBufferRef sampleBuffer, CMItemCount) -> OSStatus {
-        if (toMediaTime(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)) >= presentationTime)
+        if (PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)) >= presentationTime)
             return 1;
         ++samplesBeforePresentationTime;
         return noErr;
@@ -265,7 +270,7 @@ Ref<MediaSample> MediaSampleAVFObjC::createNonDisplayingCopy() const
 
     CFArrayRef attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(newSampleBuffer, true);
     for (CFIndex i = 0; i < CFArrayGetCount(attachmentsArray); ++i) {
-        CFMutableDictionaryRef attachments = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachmentsArray, i);
+        CFMutableDictionaryRef attachments = checked_cf_cast<CFMutableDictionaryRef>(CFArrayGetValueAtIndex(attachmentsArray, i));
         CFDictionarySetValue(attachments, kCMSampleAttachmentKey_DoNotDisplay, kCFBooleanTrue);
     }
 
@@ -274,6 +279,7 @@ Ref<MediaSample> MediaSampleAVFObjC::createNonDisplayingCopy() const
 
 RefPtr<JSC::Uint8ClampedArray> MediaSampleAVFObjC::getRGBAImageData() const
 {
+#if HAVE(CORE_VIDEO)
     const OSType imageFormat = kCVPixelFormatType_32RGBA;
     RetainPtr<CFNumberRef> imageFormatNumber = adoptCF(CFNumberCreate(nullptr,  kCFNumberIntType,  &imageFormat));
 
@@ -294,6 +300,9 @@ RefPtr<JSC::Uint8ClampedArray> MediaSampleAVFObjC::getRGBAImageData() const
     ASSERT(status == noErr);
 
     return result;
+#else
+    return nullptr;
+#endif
 }
 
 }

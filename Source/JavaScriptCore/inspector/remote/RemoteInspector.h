@@ -27,9 +27,12 @@
 
 #if ENABLE(REMOTE_INSPECTOR)
 
+#include <utility>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
+#include <wtf/ProcessID.h>
+#include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
 #include "RemoteInspectorXPCConnection.h"
@@ -66,11 +69,26 @@ public:
     public:
         struct Capabilities {
             bool remoteAutomationAllowed : 1;
+            String browserName;
+            String browserVersion;
         };
 
-        virtual ~Client() { }
+        struct SessionCapabilities {
+            bool acceptInsecureCertificates { false };
+#if USE(GLIB)
+            Vector<std::pair<String, String>> certificates;
+#endif
+#if PLATFORM(COCOA)
+            std::optional<bool> allowInsecureMediaCapture;
+            std::optional<bool> suppressICECandidateFiltering;
+#endif
+        };
+
+        virtual ~Client();
         virtual bool remoteAutomationAllowed() const = 0;
-        virtual void requestAutomationSession(const String& sessionIdentifier) = 0;
+        virtual String browserName() const { return { }; }
+        virtual String browserVersion() const { return { }; }
+        virtual void requestAutomationSession(const String& sessionIdentifier, const SessionCapabilities&) = 0;
     };
 
     static void startDisabled();
@@ -85,6 +103,7 @@ public:
     RemoteInspector::Client* client() const { return m_client; }
     void setClient(RemoteInspector::Client*);
     void clientCapabilitiesDidChange();
+    std::optional<RemoteInspector::Client::Capabilities> clientCapabilities() const { return m_clientCapabilities; }
 
     void setupFailed(unsigned targetIdentifier);
     void setupCompleted(unsigned targetIdentifier);
@@ -99,16 +118,16 @@ public:
 
 #if PLATFORM(COCOA)
     bool hasParentProcessInformation() const { return m_parentProcessIdentifier != 0; }
-    pid_t parentProcessIdentifier() const { return m_parentProcessIdentifier; }
+    ProcessID parentProcessIdentifier() const { return m_parentProcessIdentifier; }
     RetainPtr<CFDataRef> parentProcessAuditData() const { return m_parentProcessAuditData; }
-    void setParentProcessInformation(pid_t, RetainPtr<CFDataRef> auditData);
+    void setParentProcessInformation(ProcessID, RetainPtr<CFDataRef> auditData);
     void setParentProcessInfomationIsDelayed();
 #endif
 
     void updateTargetListing(unsigned targetIdentifier);
 
 #if USE(GLIB)
-    void requestAutomationSession(const char* sessionID);
+    void requestAutomationSession(const char* sessionID, const Client::SessionCapabilities&);
     void setup(unsigned targetIdentifier);
     void sendMessageToTarget(unsigned targetIdentifier, const char* message);
 #endif
@@ -198,7 +217,7 @@ private:
     bool m_hasActiveDebugSession { false };
     bool m_pushScheduled { false };
 
-    pid_t m_parentProcessIdentifier { 0 };
+    ProcessID m_parentProcessIdentifier { 0 };
 #if PLATFORM(COCOA)
     RetainPtr<CFDataRef> m_parentProcessAuditData;
 #endif

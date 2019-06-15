@@ -4,9 +4,11 @@
 
 
 /*---
+esid: sec-array.prototype.concat
 es6id: 22.1.3.1_3
 description: Array.prototype.concat array like
 includes: [compareArray.js]
+features: [Symbol.isConcatSpreadable]
 ---*/
 var obj = {
   "length": 6,
@@ -15,7 +17,12 @@ var obj = {
   "5": "C"
 };
 obj[Symbol.isConcatSpreadable] = true;
-var obj2 = { length: 3, "0": "0", "1": "1", "2": "2" };
+var obj2 = {
+  length: 3,
+  "0": "0",
+  "1": "1",
+  "2": "2"
+};
 var arr = ["X", "Y", "Z"];
 
 var expected = [

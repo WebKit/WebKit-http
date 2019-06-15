@@ -41,11 +41,15 @@ CSSFontFeatureValue::CSSFontFeatureValue(FontTag&& tag, int value)
 String CSSFontFeatureValue::customCSSText() const
 {
     StringBuilder builder;
-    builder.append('\'');
+    builder.append('"');
     for (char c : m_tag)
         builder.append(c);
-    builder.appendLiteral("' ");
-    builder.appendNumber(m_value);
+    builder.append('"');
+    // Omit the value if it's 1 as 1 is implied by default.
+    if (m_value != 1) {
+        builder.append(' ');
+        builder.appendNumber(m_value);
+    }
     return builder.toString();
 }
 

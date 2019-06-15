@@ -33,9 +33,7 @@ DOMPluginArray::DOMPluginArray(Frame* frame)
 {
 }
 
-DOMPluginArray::~DOMPluginArray()
-{
-}
+DOMPluginArray::~DOMPluginArray() = default;
 
 unsigned DOMPluginArray::length() const
 {
@@ -73,8 +71,18 @@ RefPtr<DOMPlugin> DOMPluginArray::namedItem(const AtomicString& propertyName)
 
 Vector<AtomicString> DOMPluginArray::supportedPropertyNames()
 {
-    // FIXME: Should be implemented.
-    return Vector<AtomicString>();
+    PluginData* data = pluginData();
+    if (!data)
+        return { };
+
+    const auto& plugins = data->publiclyVisiblePlugins();
+
+    Vector<AtomicString> result;
+    result.reserveInitialCapacity(plugins.size());
+    for (auto& plugin : plugins)
+        result.uncheckedAppend(plugin.name);
+
+    return result;
 }
 
 void DOMPluginArray::refresh(bool reloadPages)

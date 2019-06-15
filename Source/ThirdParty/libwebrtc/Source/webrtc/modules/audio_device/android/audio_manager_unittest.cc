@@ -10,12 +10,12 @@
 
 #include <SLES/OpenSLES_Android.h>
 
-#include "webrtc/base/arraysize.h"
-#include "webrtc/base/format_macros.h"
-#include "webrtc/modules/audio_device/android/audio_manager.h"
-#include "webrtc/modules/audio_device/android/build_info.h"
-#include "webrtc/modules/audio_device/android/ensure_initialized.h"
-#include "webrtc/test/gtest.h"
+#include "modules/audio_device/android/audio_manager.h"
+#include "modules/audio_device/android/build_info.h"
+#include "modules/audio_device/android/ensure_initialized.h"
+#include "rtc_base/arraysize.h"
+#include "rtc_base/format_macros.h"
+#include "test/gtest.h"
 
 #define PRINT(...) fprintf(stderr, __VA_ARGS__);
 
@@ -73,8 +73,7 @@ class AudioManagerTest : public ::testing::Test {
   AudioParameters record_parameters_;
 };
 
-TEST_F(AudioManagerTest, ConstructDestruct) {
-}
+TEST_F(AudioManagerTest, ConstructDestruct) {}
 
 // It should not be possible to create an OpenSL engine object if Java based
 // audio is requested in both directions.
@@ -136,6 +135,16 @@ TEST_F(AudioManagerTest, IsProAudioSupported) {
         audio_manager()->IsProAudioSupported() ? "Yes" : "No");
 }
 
+// Verify that playout side is configured for mono by default.
+TEST_F(AudioManagerTest, IsStereoPlayoutSupported) {
+  EXPECT_FALSE(audio_manager()->IsStereoPlayoutSupported());
+}
+
+// Verify that recording side is configured for mono by default.
+TEST_F(AudioManagerTest, IsStereoRecordSupported) {
+  EXPECT_FALSE(audio_manager()->IsStereoRecordSupported());
+}
+
 TEST_F(AudioManagerTest, ShowAudioParameterInfo) {
   const bool low_latency_out = audio_manager()->IsLowLatencyPlayoutSupported();
   const bool low_latency_in = audio_manager()->IsLowLatencyRecordSupported();
@@ -177,8 +186,8 @@ TEST_F(AudioManagerTest, ShowDeviceInfo) {
   BuildInfo build_info;
   PRINT("%smodel: %s\n", kTag, build_info.GetDeviceModel().c_str());
   PRINT("%sbrand: %s\n", kTag, build_info.GetBrand().c_str());
-  PRINT("%smanufacturer: %s\n",
-        kTag, build_info.GetDeviceManufacturer().c_str());
+  PRINT("%smanufacturer: %s\n", kTag,
+        build_info.GetDeviceManufacturer().c_str());
 }
 
 // Add Android build information to the test for logging purposes.
@@ -228,4 +237,3 @@ TEST_F(AudioManagerTest, AudioParametersWithNonDefaultConstruction) {
 }
 
 }  // namespace webrtc
-

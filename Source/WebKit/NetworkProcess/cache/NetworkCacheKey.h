@@ -26,11 +26,9 @@
 #ifndef NetworkCacheKey_h
 #define NetworkCacheKey_h
 
-#if ENABLE(NETWORK_CACHE)
-
 #include "NetworkCacheData.h"
 #include <wtf/SHA1.h>
-#include <wtf/persistence/Coder.h>
+#include <wtf/persistence/PersistentCoder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebKit {
@@ -137,5 +135,4 @@ template<> struct HashTraits<WebKit::NetworkCache::Key> : SimpleClassHashTraits<
 
 } // namespace WTF
 
-#endif
 #endif

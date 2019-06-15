@@ -41,7 +41,7 @@ def ParsePlotLine(line):
   # The variable name can contain any non-whitespace character except "#:@"
   match = re.match(r'([^\s#:@]+)(?:#\d)?:(\d+)@(\S+)', annotated_var)
 
-  if match == None:
+  if match is None:
     raise ParsePlotLineException("Could not parse variable name, ssrc and \
                                  algorithm name", annotated_var)
   var_name = match.group(1)
@@ -78,7 +78,6 @@ class Figure(object):
       axis = fig.add_subplot(n, 1, i+1)
       self.subplots[i].PlotSubplot(axis)
 
-
 class Subplot(object):
   def __init__(self, var_names, xlabel, ylabel):
     self.xlabel = xlabel
@@ -111,10 +110,12 @@ class Subplot(object):
           y = [sample[1] for sample in self.samples[alg_name][ssrc][var_name]]
           x = numpy.array(x)
           y = numpy.array(y)
-
           ssrc_count = len(self.samples[alg_name].keys())
           l = GenerateLabel(var_name, ssrc, ssrc_count, alg_name)
-          plt.plot(x, y, label=l, linewidth=2.0)
+          if l == 'MaxThroughput_':
+            plt.plot(x, y, label=l, linewidth=4.0)
+          else:
+            plt.plot(x, y, label=l, linewidth=2.0)
           count += 1
 
     plt.grid(True)
@@ -148,8 +149,12 @@ def main():
   target_bitrate.AddSubplot(['target_bitrate_bps', 'acknowledged_bitrate'],
                             "Time (s)", "Bitrate (bps)")
 
+  min_rtt_state = Figure("MinRttState")
+  min_rtt_state.AddSubplot(['MinRtt'], "Time (s)", "Time (ms)")
+
   # Select which figures to plot here.
-  figures = [receiver, detector_state, trendline_state, target_bitrate]
+  figures = [receiver, detector_state, trendline_state, target_bitrate,
+    min_rtt_state]
 
   # Add samples to the figures.
   for line in sys.stdin:

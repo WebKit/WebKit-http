@@ -30,6 +30,7 @@
 #include "JSCJSValue.h"
 #include "JSCJSValueInlines.h"
 #include "JSGlobalObject.h"
+#include "HeapCellInlines.h"
 
 namespace JSC {
     class ExecState;
@@ -83,7 +84,7 @@ inline JSC::JSValue toJS(JSC::ExecState* exec, JSValueRef v)
     if (!result)
         return JSC::jsNull();
     if (result.isCell())
-        RELEASE_ASSERT(result.asCell()->methodTable());
+        RELEASE_ASSERT(result.asCell()->methodTable(exec->vm()));
     return result;
 }
 
@@ -99,7 +100,7 @@ inline JSC::JSValue toJSForGC(JSC::ExecState* exec, JSValueRef v)
     JSC::JSValue result = JSC::JSValue::decode(reinterpret_cast<JSC::EncodedJSValue>(const_cast<OpaqueJSValue*>(v)));
 #endif
     if (result && result.isCell())
-        RELEASE_ASSERT(result.asCell()->methodTable());
+        RELEASE_ASSERT(result.asCell()->methodTable(exec->vm()));
     return result;
 }
 
@@ -113,7 +114,7 @@ inline JSC::JSObject* toJS(JSObjectRef o)
 {
     JSC::JSObject* object = uncheckedToJS(o);
     if (object)
-        RELEASE_ASSERT(object->methodTable());
+        RELEASE_ASSERT(object->methodTable(*object->vm()));
     return object;
 }
 

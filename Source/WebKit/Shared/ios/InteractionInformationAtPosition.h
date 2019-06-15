@@ -56,12 +56,18 @@ struct InteractionInformationAtPosition {
 #if ENABLE(DATA_DETECTION)
     bool isDataDetectorLink { false };
 #endif
+#if ENABLE(DATALIST_ELEMENT)
+    bool preventTextInteraction { false };
+#endif
     WebCore::FloatPoint adjustedPointForNodeRespondingToClickEvents;
     WebCore::URL url;
     WebCore::URL imageURL;
     String title;
     String idAttribute;
     WebCore::IntRect bounds;
+#if PLATFORM(IOSMAC)
+    WebCore::IntRect caretRect;
+#endif
     RefPtr<ShareableBitmap> image;
     String textBefore;
     String textAfter;

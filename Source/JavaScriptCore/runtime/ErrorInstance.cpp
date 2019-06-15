@@ -23,19 +23,19 @@
 
 #include "CodeBlock.h"
 #include "InlineCallFrame.h"
+#include "Interpreter.h"
 #include "JSScope.h"
 #include "JSCInlines.h"
 #include "ParseInt.h"
+#include "StackFrame.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace JSC {
 
-STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ErrorInstance);
-
 const ClassInfo ErrorInstance::s_info = { "Error", &JSNonFinalObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ErrorInstance) };
 
 ErrorInstance::ErrorInstance(VM& vm, Structure* structure)
-    : JSNonFinalObject(vm, structure)
+    : Base(vm, structure)
 {
 }
 
@@ -109,58 +109,34 @@ static void appendSourceToError(CallFrame* callFrame, ErrorInstance* exception, 
 
 }
 
-class FindFirstCallerFrameWithCodeblockFunctor {
-public:
-    FindFirstCallerFrameWithCodeblockFunctor(CallFrame* startCallFrame)
-        : m_startCallFrame(startCallFrame)
-        , m_foundCallFrame(nullptr)
-        , m_foundStartCallFrame(false)
-        , m_index(0)
-    { }
-
-    StackVisitor::Status operator()(StackVisitor& visitor)
-    {
-        if (!m_foundStartCallFrame && (visitor->callFrame() == m_startCallFrame))
-            m_foundStartCallFrame = true;
-
-        if (m_foundStartCallFrame) {
-            if (visitor->callFrame()->codeBlock()) {
-                m_foundCallFrame = visitor->callFrame();
-                return StackVisitor::Done;
-            }
-            m_index++;
-        }
-
-        return StackVisitor::Continue;
-    }
-
-    CallFrame* foundCallFrame() const { return m_foundCallFrame; }
-    unsigned index() const { return m_index; }
-
-private:
-    CallFrame* m_startCallFrame;
-    CallFrame* m_foundCallFrame;
-    bool m_foundStartCallFrame;
-    unsigned m_index;
-};
-
 void ErrorInstance::finishCreation(ExecState* exec, VM& vm, const String& message, bool useCurrentFrame)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
     if (!message.isNull())
-        putDirect(vm, vm.propertyNames->message, jsString(&vm, message), DontEnum);
+        putDirect(vm, vm.propertyNames->message, jsString(&vm, message), static_cast<unsigned>(PropertyAttribute::DontEnum));
 
-    unsigned bytecodeOffset = 0;
-    CallFrame* callFrame = nullptr;
-    bool hasTrace = addErrorInfoAndGetBytecodeOffset(exec, vm, this, useCurrentFrame, callFrame, hasSourceAppender() ? &bytecodeOffset : nullptr);
+    std::unique_ptr<Vector<StackFrame>> stackTrace = getStackTrace(exec, vm, this, useCurrentFrame);
+    {
+        auto locker = holdLock(cellLock());
+        m_stackTrace = WTFMove(stackTrace);
+    }
+    vm.heap.writeBarrier(this);
 
-    if (hasTrace && callFrame && hasSourceAppender()) {
+    if (m_stackTrace && !m_stackTrace->isEmpty() && hasSourceAppender()) {
+        unsigned bytecodeOffset;
+        CallFrame* callFrame;
+        getBytecodeOffset(exec, vm, m_stackTrace.get(), callFrame, bytecodeOffset);
         if (callFrame && callFrame->codeBlock()) {
             ASSERT(!callFrame->callee().isWasm());
             appendSourceToError(callFrame, this, bytecodeOffset);
         }
     }
+}
+
+void ErrorInstance::destroy(JSCell* cell)
+{
+    static_cast<ErrorInstance*>(cell)->ErrorInstance::~ErrorInstance();
 }
 
 // Based on ErrorPrototype's errorProtoFuncToString(), but is modified to
@@ -187,13 +163,13 @@ String ErrorInstance::sanitizedToString(ExecState* exec)
             nameValue = nameSlot.getValue(exec, namePropertName);
             break;
         }
-        currentObj = obj->getPrototypeDirect();
+        currentObj = obj->getPrototypeDirect(vm);
     }
     scope.assertNoException();
 
     String nameString;
     if (!nameValue)
-        nameString = ASCIILiteral("Error");
+        nameString = "Error"_s;
     else {
         nameString = nameValue.toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, String());
@@ -225,6 +201,113 @@ String ErrorInstance::sanitizedToString(ExecState* exec)
     builder.appendLiteral(": ");
     builder.append(messageString);
     return builder.toString();
+}
+
+void ErrorInstance::finalizeUnconditionally(VM& vm)
+{
+    if (!m_stackTrace)
+        return;
+
+    // We don't want to keep our stack traces alive forever if the user doesn't access the stack trace.
+    // If we did, we might end up keeping functions (and their global objects) alive that happened to
+    // get caught in a trace.
+    for (const auto& frame : *m_stackTrace.get()) {
+        if (!frame.isMarked()) {
+            computeErrorInfo(vm);
+            return;
+        }
+    }
+}
+
+void ErrorInstance::computeErrorInfo(VM& vm)
+{
+    ASSERT(!m_errorInfoMaterialized);
+
+    if (m_stackTrace && !m_stackTrace->isEmpty()) {
+        getLineColumnAndSource(m_stackTrace.get(), m_line, m_column, m_sourceURL);
+        m_stackString = Interpreter::stackTraceAsString(vm, *m_stackTrace.get());
+        m_stackTrace = nullptr;
+    }
+}
+
+bool ErrorInstance::materializeErrorInfoIfNeeded(VM& vm)
+{
+    if (m_errorInfoMaterialized)
+        return false;
+
+    computeErrorInfo(vm);
+
+    if (!m_stackString.isNull()) {
+        putDirect(vm, vm.propertyNames->line, jsNumber(m_line));
+        putDirect(vm, vm.propertyNames->column, jsNumber(m_column));
+        if (!m_sourceURL.isEmpty())
+            putDirect(vm, vm.propertyNames->sourceURL, jsString(&vm, WTFMove(m_sourceURL)));
+
+        putDirect(vm, vm.propertyNames->stack, jsString(&vm, WTFMove(m_stackString)), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    }
+
+    m_errorInfoMaterialized = true;
+    return true;
+}
+
+bool ErrorInstance::materializeErrorInfoIfNeeded(VM& vm, PropertyName propertyName)
+{
+    if (propertyName == vm.propertyNames->line
+        || propertyName == vm.propertyNames->column
+        || propertyName == vm.propertyNames->sourceURL
+        || propertyName == vm.propertyNames->stack)
+        return materializeErrorInfoIfNeeded(vm);
+    return false;
+}
+
+bool ErrorInstance::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+{
+    VM& vm = exec->vm();
+    ErrorInstance* thisObject = jsCast<ErrorInstance*>(object);
+    thisObject->materializeErrorInfoIfNeeded(vm, propertyName);
+    return Base::getOwnPropertySlot(thisObject, exec, propertyName, slot);
+}
+
+void ErrorInstance::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNameArray, EnumerationMode enumerationMode)
+{
+    VM& vm = exec->vm();
+    ErrorInstance* thisObject = jsCast<ErrorInstance*>(object);
+    thisObject->materializeErrorInfoIfNeeded(vm);
+    Base::getOwnNonIndexPropertyNames(thisObject, exec, propertyNameArray, enumerationMode);
+}
+
+void ErrorInstance::getStructurePropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNameArray, EnumerationMode enumerationMode)
+{
+    VM& vm = exec->vm();
+    ErrorInstance* thisObject = jsCast<ErrorInstance*>(object);
+    thisObject->materializeErrorInfoIfNeeded(vm);
+    Base::getStructurePropertyNames(thisObject, exec, propertyNameArray, enumerationMode);
+}
+
+bool ErrorInstance::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
+{
+    VM& vm = exec->vm();
+    ErrorInstance* thisObject = jsCast<ErrorInstance*>(object);
+    thisObject->materializeErrorInfoIfNeeded(vm, propertyName);
+    return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
+}
+
+bool ErrorInstance::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+{
+    VM& vm = exec->vm();
+    ErrorInstance* thisObject = jsCast<ErrorInstance*>(cell);
+    bool materializedProperties = thisObject->materializeErrorInfoIfNeeded(vm, propertyName);
+    if (materializedProperties)
+        slot.disableCaching();
+    return Base::put(thisObject, exec, propertyName, value, slot);
+}
+
+bool ErrorInstance::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
+{
+    VM& vm = exec->vm();
+    ErrorInstance* thisObject = jsCast<ErrorInstance*>(cell);
+    thisObject->materializeErrorInfoIfNeeded(vm, propertyName);
+    return Base::deleteProperty(thisObject, exec, propertyName);
 }
 
 } // namespace JSC

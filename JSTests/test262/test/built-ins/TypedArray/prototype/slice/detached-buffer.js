@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.slice
 description: Throws a TypeError if this has a detached buffer
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   1. Let O be the this value.
@@ -15,6 +15,7 @@ info: >
   5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   ...
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 var obj = {

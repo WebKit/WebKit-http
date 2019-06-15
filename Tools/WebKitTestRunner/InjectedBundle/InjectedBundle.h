@@ -97,7 +97,7 @@ public:
 
     // Geolocation.
     void setGeolocationPermission(bool);
-    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed, bool providesFloorLevel, double floorLevel);
     void setMockGeolocationPositionUnavailableError(WKStringRef errorMessage);
     bool isGeolocationProviderActive() const;
 
@@ -133,9 +133,21 @@ public:
     unsigned imageCountInGeneralPasteboard() const;
 
     void setAllowsAnySSLCertificate(bool);
-    
+
+    void statisticsNotifyObserver();
+
+    void textDidChangeInTextField();
+    void textFieldDidBeginEditing();
+    void textFieldDidEndEditing();
+
+    void reportLiveDocuments(WKBundlePageRef);
+
+    void resetUserScriptInjectedCount() { m_userScriptInjectedCount = 0; }
+    void increaseUserScriptInjectedCount() { ++m_userScriptInjectedCount; }
+    size_t userScriptInjectedCount() const { return m_userScriptInjectedCount; }
+
 private:
-    InjectedBundle();
+    InjectedBundle() = default;
     ~InjectedBundle();
 
     static void didCreatePage(WKBundleRef, WKBundlePageRef, const void* clientInfo);
@@ -150,15 +162,18 @@ private:
     void didReceiveMessage(WKStringRef messageName, WKTypeRef messageBody);
     void didReceiveMessageToPage(WKBundlePageRef, WKStringRef messageName, WKTypeRef messageBody);
 
+    void setUpInjectedBundleClients(WKBundlePageRef);
+
     void platformInitialize(WKTypeRef initializationUserData);
     void resetLocalSettings();
 
-    void beginTesting(WKDictionaryRef initialSettings);
+    enum class BegingTestingMode { New, Resume };
+    void beginTesting(WKDictionaryRef initialSettings, BegingTestingMode);
 
     bool booleanForKey(WKDictionaryRef, const char* key);
 
-    WKBundleRef m_bundle;
-    WKBundlePageGroupRef m_pageGroup;
+    WKBundleRef m_bundle { nullptr };
+    WKBundlePageGroupRef m_pageGroup { nullptr };
     Vector<std::unique_ptr<InjectedBundlePage>> m_pages;
 
 #if HAVE(ACCESSIBILITY)
@@ -169,27 +184,30 @@ private:
     RefPtr<EventSendingController> m_eventSendingController;
     RefPtr<TextInputController> m_textInputController;
 
-    WKBundleFrameRef m_topLoadingFrame;
+    WKBundleFrameRef m_topLoadingFrame { nullptr };
 
     enum State {
         Idle,
         Testing,
         Stopping
     };
-    State m_state;
+    State m_state { Idle };
 
-    bool m_dumpPixels;
-    bool m_useWaitToDumpWatchdogTimer;
-    bool m_useWorkQueue;
-    int m_timeout;
+    bool m_dumpPixels { false };
+    bool m_useWaitToDumpWatchdogTimer { true };
+    bool m_useWorkQueue { false };
     bool m_pixelResultIsPending { false };
     bool m_dumpJSConsoleLogInStdErr { false };
+
+    WTF::Seconds m_timeout;
 
     WKRetainPtr<WKDataRef> m_audioResult;
     WKRetainPtr<WKImageRef> m_pixelResult;
     WKRetainPtr<WKArrayRef> m_repaintRects;
 
     Vector<String> m_allowedHosts;
+
+    size_t m_userScriptInjectedCount { 0 };
 };
 
 } // namespace WTR

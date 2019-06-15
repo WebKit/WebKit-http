@@ -49,7 +49,7 @@ class PluginProcessManager;
 class WebProcessProxy;
 struct PluginProcessCreationParameters;
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
 struct RawPluginMetaData {
     String name;
     String description;
@@ -76,20 +76,19 @@ public:
 
     // Asks the plug-in process to create a new connection to a web process. The connection identifier will be
     // encoded in the given argument encoder and sent back to the connection of the given web process.
-    void getPluginProcessConnection(Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&&);
+    void getPluginProcessConnection(Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&&);
 
-    void fetchWebsiteData(WTF::Function<void (Vector<String>)>&& completionHandler);
-    void deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, WTF::Function<void ()>&& completionHandler);
-    void deleteWebsiteDataForHostNames(const Vector<String>& hostNames, WTF::Function<void ()>&& completionHandler);
+    void fetchWebsiteData(CompletionHandler<void (Vector<String>)>&&);
+    void deleteWebsiteData(WallTime modifiedSince, CompletionHandler<void ()>&&);
+    void deleteWebsiteDataForHostNames(const Vector<String>& hostNames, CompletionHandler<void ()>&&);
+
+#if OS(LINUX)
+    void sendMemoryPressureEvent(bool isCritical);
+#endif
 
     bool isValid() const { return m_connection; }
 
-#if PLATFORM(COCOA)
-    void setProcessSuppressionEnabled(bool);
-
-#endif
-
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
     static bool scanPlugin(const String& pluginPath, RawPluginMetaData& result);
 #endif
 
@@ -149,24 +148,24 @@ private:
     // The connection to the plug-in host process.
     RefPtr<IPC::Connection> m_connection;
 
-    Deque<RefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>> m_pendingConnectionReplies;
+    Deque<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> m_pendingConnectionReplies;
 
     Vector<uint64_t> m_pendingFetchWebsiteDataRequests;
-    HashMap<uint64_t, WTF::Function<void (Vector<String>)>> m_pendingFetchWebsiteDataCallbacks;
+    HashMap<uint64_t, CompletionHandler<void (Vector<String>)>> m_pendingFetchWebsiteDataCallbacks;
 
     struct DeleteWebsiteDataRequest {
-        std::chrono::system_clock::time_point modifiedSince;
+        WallTime modifiedSince;
         uint64_t callbackID;
     };
     Vector<DeleteWebsiteDataRequest> m_pendingDeleteWebsiteDataRequests;
-    HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataCallbacks;
+    HashMap<uint64_t, CompletionHandler<void ()>> m_pendingDeleteWebsiteDataCallbacks;
 
     struct DeleteWebsiteDataForHostNamesRequest {
         Vector<String> hostNames;
         uint64_t callbackID;
     };
     Vector<DeleteWebsiteDataForHostNamesRequest> m_pendingDeleteWebsiteDataForHostNamesRequests;
-    HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataForHostNamesCallbacks;
+    HashMap<uint64_t, CompletionHandler<void ()>> m_pendingDeleteWebsiteDataForHostNamesCallbacks;
 
     // If createPluginConnection is called while the process is still launching we'll keep count of it and send a bunch of requests
     // when the process finishes launching.

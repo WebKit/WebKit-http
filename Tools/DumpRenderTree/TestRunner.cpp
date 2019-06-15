@@ -48,12 +48,12 @@
 #include <locale.h>
 #include <stdio.h>
 #include <wtf/Assertions.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/LoggingAccumulator.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RunLoop.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
@@ -1019,8 +1019,15 @@ static JSValueRef setMockGeolocationPositionCallback(JSContextRef context, JSObj
         speed = JSValueToNumber(context, arguments[6], 0);
     }
 
+    bool canProvideFloorLevel = false;
+    double floorLevel = 0.;
+    if (argumentCount > 7 && !JSValueIsUndefined(context, arguments[7])) {
+        canProvideFloorLevel = true;
+        floorLevel = JSValueToNumber(context, arguments[7], 0);
+    }
+
     TestRunner* controller = reinterpret_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->setMockGeolocationPosition(latitude, longitude, accuracy, canProvideAltitude, altitude, canProvideAltitudeAccuracy, altitudeAccuracy, canProvideHeading, heading, canProvideSpeed, speed);
+    controller->setMockGeolocationPosition(latitude, longitude, accuracy, canProvideAltitude, altitude, canProvideAltitudeAccuracy, altitudeAccuracy, canProvideHeading, heading, canProvideSpeed, speed, canProvideFloorLevel, floorLevel);
 
     return JSValueMakeUndefined(context);
 }
@@ -1177,7 +1184,7 @@ static JSValueRef setXSSAuditorEnabledCallback(JSContextRef context, JSObjectRef
 
 static JSValueRef setSpatialNavigationEnabledCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    // Has mac implementation.
+    // Has mac & windows implementation.
     if (argumentCount < 1)
         return JSValueMakeUndefined(context);
 
@@ -1326,21 +1333,6 @@ static JSValueRef setValueForUserCallback(JSContextRef context, JSObjectRef func
 
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     controller->setValueForUser(context, arguments[0], value.get());
-
-    return JSValueMakeUndefined(context);
-}
-
-static JSValueRef setViewModeMediaFeatureCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
-{
-    // Has mac implementation
-    if (argumentCount < 1)
-        return JSValueMakeUndefined(context);
-
-    JSRetainPtr<JSStringRef> mode(Adopt, JSValueToStringCopy(context, arguments[0], exception));
-    ASSERT(!*exception);
-
-    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
-    controller->setViewModeMediaFeature(mode.get());
 
     return JSValueMakeUndefined(context);
 }
@@ -1776,7 +1768,7 @@ static JSValueRef setBackingScaleFactorCallback(JSContextRef context, JSObjectRe
 
 static JSValueRef preciseTimeCallback(JSContextRef context, JSObjectRef, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
-    return JSValueMakeNumber(context, WTF::currentTime());
+    return JSValueMakeNumber(context, WallTime::now().secondsSinceEpoch().seconds());
 }
 
 static JSValueRef imageCountInGeneralPasteboardCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
@@ -1793,6 +1785,16 @@ static JSValueRef setSpellCheckerLoggingEnabledCallback(JSContextRef context, JS
         return JSValueMakeUndefined(context);
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     controller->setSpellCheckerLoggingEnabled(JSValueToBoolean(context, arguments[0]));
+    return JSValueMakeUndefined(context);
+}
+
+static JSValueRef setSpellCheckerResultsCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    if (argumentCount < 1)
+        return JSValueMakeUndefined(context);
+
+    auto* runner = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
+    runner->setSpellCheckerResults(context, JSValueToObject(context, arguments[0], nullptr));
     return JSValueMakeUndefined(context);
 }
 
@@ -1815,6 +1817,12 @@ static JSValueRef getGlobalFlagCallback(JSContextRef context, JSObjectRef thisOb
 {
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     return JSValueMakeBoolean(context, controller->globalFlag());
+}
+
+static JSValueRef getDidCancelClientRedirect(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
+{
+    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
+    return JSValueMakeBoolean(context, controller->didCancelClientRedirect());
 }
 
 static JSValueRef getDatabaseDefaultQuotaCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
@@ -1994,6 +2002,13 @@ static JSValueRef simulateWebNotificationClickCallback(JSContextRef context, JSO
     return JSValueMakeUndefined(context);
 }
 
+static JSValueRef forceImmediateCompletionCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
+    controller->forceImmediateCompletion();
+    return JSValueMakeUndefined(context);
+}
+
 static JSValueRef failNextNewCodeBlock(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
 {
     if (argumentCount < 1)
@@ -2078,6 +2093,7 @@ JSClassRef TestRunner::getJSClass()
 JSStaticValue* TestRunner::staticValues()
 {
     static JSStaticValue staticValues[] = {
+        { "didCancelClientRedirect", getDidCancelClientRedirect, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "timeout", getTimeoutCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "globalFlag", getGlobalFlagCallback, setGlobalFlagCallback, kJSPropertyAttributeNone },
         { "webHistoryItemCount", getWebHistoryItemCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2209,7 +2225,6 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "setUserStyleSheetEnabled", setUserStyleSheetEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setUserStyleSheetLocation", setUserStyleSheetLocationCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setValueForUser", setValueForUserCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "setViewModeMediaFeature", setViewModeMediaFeatureCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setWebViewEditable", setWebViewEditableCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setWillSendRequestClearHeader", setWillSendRequestClearHeaderCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setWillSendRequestReturnsNull", setWillSendRequestReturnsNullCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
@@ -2250,7 +2265,9 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "runUIScript", runUIScriptCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "imageCountInGeneralPasteboard", imageCountInGeneralPasteboardCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setSpellCheckerLoggingEnabled", setSpellCheckerLoggingEnabledCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "setSpellCheckerResults", setSpellCheckerResultsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setOpenPanelFiles", setOpenPanelFilesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "forceImmediateCompletion", forceImmediateCompletionCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { 0, 0, 0 }
     };
 
@@ -2329,9 +2346,16 @@ void TestRunner::addURLToRedirect(std::string origin, std::string destination)
     m_URLsToRedirect[origin] = destination;
 }
 
-const std::string& TestRunner::redirectionDestinationForURL(std::string origin)
+const char* TestRunner::redirectionDestinationForURL(const char* origin)
 {
-    return m_URLsToRedirect[origin];
+    if (!origin)
+        return nullptr;
+
+    auto iterator = m_URLsToRedirect.find(origin);
+    if (iterator == m_URLsToRedirect.end())
+        return nullptr;
+
+    return iterator->second.data();
 }
 
 void TestRunner::setShouldPaintBrokenImage(bool shouldPaintBrokenImage)

@@ -35,10 +35,16 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 
 @property (nonatomic, copy) NSURL *injectedBundleURL;
 @property (nonatomic) NSUInteger maximumProcessCount;
+@property (nonatomic, nullable, copy) NSString *customWebContentServiceBundleIdentifier WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic) BOOL ignoreSynchronousMessagingTimeoutsForTesting WK_API_AVAILABLE(macosx(10.12), ios(10.0));
+@property (nonatomic) BOOL attrStyleEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
-@property (nonatomic, copy) NSArray<NSURL *> *additionalReadAccessAllowedURLs WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, copy) NSArray<NSURL *> *additionalReadAccessAllowedURLs WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+
+#if TARGET_OS_IPHONE && !TARGET_OS_SIMULATOR
+@property (nonatomic) NSUInteger wirelessContextIdentifier;
+#endif
 
 // Network Process properties
 // FIXME: These should be be per-session/data store when we support multiple non-persistent sessions/data stores.
@@ -47,16 +53,21 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @property (nonatomic, copy) NSArray *cachePartitionedURLSchemes;
 @property (nonatomic, copy) NSArray<NSString *> *alwaysRevalidatedURLSchemes WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 @property (nonatomic) BOOL diskCacheSpeculativeValidationEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
-@property (nonatomic, nullable, copy) NSString *sourceApplicationBundleIdentifier WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
-@property (nonatomic, nullable, copy) NSString *sourceApplicationSecondaryIdentifier WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
-@property (nonatomic) BOOL allowsCellularAccess WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-@property (nonatomic) BOOL shouldCaptureAudioInUIProcess WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, nullable, copy) NSString *sourceApplicationBundleIdentifier WK_API_DEPRECATED_WITH_REPLACEMENT("_WKWebsiteDataStoreConfiguration.sourceApplicationBundleIdentifier", macosx(10.12.3, WK_MAC_TBA), ios(10.3, WK_IOS_TBA));
+@property (nonatomic, nullable, copy) NSString *sourceApplicationSecondaryIdentifier WK_API_DEPRECATED_WITH_REPLACEMENT("_WKWebsiteDataStoreConfiguration.sourceApplicationSecondaryIdentifier", macosx(10.12.3, WK_MAC_TBA), ios(10.3, WK_IOS_TBA));
+@property (nonatomic) BOOL shouldCaptureAudioInUIProcess WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 #if TARGET_OS_IPHONE
 @property (nonatomic, nullable, copy) NSString *CTDataConnectionServiceType WK_API_AVAILABLE(ios(10.3));
 @property (nonatomic) BOOL alwaysRunsAtBackgroundPriority WK_API_AVAILABLE(ios(10.3));
-@property (nonatomic) BOOL shouldTakeUIBackgroundAssertion WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic) BOOL shouldTakeUIBackgroundAssertion WK_API_AVAILABLE(ios(11.0));
 #endif
-@property (nonatomic) pid_t presentingApplicationPID WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) pid_t presentingApplicationPID WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+@property (nonatomic) BOOL processSwapsOnNavigation WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL alwaysKeepAndReuseSwappedProcesses WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL processSwapsOnWindowOpenWithOpener WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL prewarmsProcessesAutomatically WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL pageCacheEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic) BOOL suppressesConnectionTerminationOnSystemChange WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 

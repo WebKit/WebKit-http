@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,33 +31,32 @@
 #include "JSString.h"
 #include "MarkedBlock.h"
 #include "JSCInlines.h"
-#include <wtf/CurrentTime.h>
 
 namespace JSC {
 
-static const Seconds sweepTimeSlice = 10_ms; // seconds
+static const Seconds sweepTimeSlice = 10_ms;
 static const double sweepTimeTotal = .10;
 static const double sweepTimeMultiplier = 1.0 / sweepTimeTotal;
 
 void IncrementalSweeper::scheduleTimer()
 {
-    Base::scheduleTimer(sweepTimeSlice * sweepTimeMultiplier);
+    setTimeUntilFire(sweepTimeSlice * sweepTimeMultiplier);
 }
 
 IncrementalSweeper::IncrementalSweeper(Heap* heap)
     : Base(heap->vm())
-    , m_currentAllocator(nullptr)
+    , m_currentDirectory(nullptr)
 {
 }
 
-void IncrementalSweeper::doWork()
+void IncrementalSweeper::doWork(VM& vm)
 {
-    doSweep(MonotonicTime::now());
+    doSweep(vm, MonotonicTime::now());
 }
 
-void IncrementalSweeper::doSweep(MonotonicTime sweepBeginTime)
+void IncrementalSweeper::doSweep(VM& vm, MonotonicTime sweepBeginTime)
 {
-    while (sweepNextBlock()) {
+    while (sweepNextBlock(vm)) {
         Seconds elapsedTime = MonotonicTime::now() - sweepBeginTime;
         if (elapsedTime < sweepTimeSlice)
             continue;
@@ -73,39 +72,38 @@ void IncrementalSweeper::doSweep(MonotonicTime sweepBeginTime)
     cancelTimer();
 }
 
-bool IncrementalSweeper::sweepNextBlock()
+bool IncrementalSweeper::sweepNextBlock(VM& vm)
 {
-    m_vm->heap.stopIfNecessary();
+    vm.heap.stopIfNecessary();
 
     MarkedBlock::Handle* block = nullptr;
     
-    for (; m_currentAllocator; m_currentAllocator = m_currentAllocator->nextAllocator()) {
-        block = m_currentAllocator->findBlockToSweep();
+    for (; m_currentDirectory; m_currentDirectory = m_currentDirectory->nextDirectory()) {
+        block = m_currentDirectory->findBlockToSweep();
         if (block)
             break;
     }
     
     if (block) {
-        DeferGCForAWhile deferGC(m_vm->heap);
+        DeferGCForAWhile deferGC(vm.heap);
         block->sweep(nullptr);
-        m_vm->heap.objectSpace().freeOrShrinkBlock(block);
+        vm.heap.objectSpace().freeOrShrinkBlock(block);
         return true;
     }
 
-    return m_vm->heap.sweepNextLogicallyEmptyWeakBlock();
+    return vm.heap.sweepNextLogicallyEmptyWeakBlock();
 }
 
-void IncrementalSweeper::startSweeping()
+void IncrementalSweeper::startSweeping(Heap& heap)
 {
     scheduleTimer();
-    m_currentAllocator = m_vm->heap.objectSpace().firstAllocator();
+    m_currentDirectory = heap.objectSpace().firstDirectory();
 }
 
 void IncrementalSweeper::stopSweeping()
 {
-    m_currentAllocator = nullptr;
-    if (m_vm)
-        cancelTimer();
+    m_currentDirectory = nullptr;
+    cancelTimer();
 }
 
 } // namespace JSC

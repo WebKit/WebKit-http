@@ -6,7 +6,7 @@ description: >
     Behavior when error is thrown while type coercing `length` property of
     result
 es6id: 21.2.5.8
-info: >
+info: |
     [...]
     13. Repeat, while done is false
         a. Let result be RegExpExec(rx, S).
@@ -14,7 +14,7 @@ info: >
     16. Repeat, for each result in results,
         a. Let nCaptures be ToLength(Get(result, "length")).
         b. ReturnIfAbrupt(nCaptures).
-features: [Symbol.match]
+features: [Symbol.replace]
 ---*/
 
 var r = /./;

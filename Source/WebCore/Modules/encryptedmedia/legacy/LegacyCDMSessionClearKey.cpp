@@ -26,42 +26,36 @@
 #include "config.h"
 #include "LegacyCDMSessionClearKey.h"
 
-#include "JSMainThreadExecState.h"
+#include "JSExecState.h"
 #include "Logging.h"
 #include "TextEncoding.h"
 #include "WebKitMediaKeyError.h"
-#include <runtime/JSGlobalObject.h>
-#include <runtime/JSLock.h>
-#include <runtime/JSONObject.h>
-#include <runtime/VM.h>
-#include <wtf/NeverDestroyed.h>
+#include <JavaScriptCore/JSGlobalObject.h>
+#include <JavaScriptCore/JSLock.h>
+#include <JavaScriptCore/JSONObject.h>
+#include <JavaScriptCore/VM.h>
 #include <wtf/UUID.h>
 #include <wtf/text/Base64.h>
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 static VM& clearKeyVM()
 {
-    static NeverDestroyed<RefPtr<VM>> vm;
-    if (!vm.get())
-        vm.get() = VM::create();
-
-    return *vm.get();
+    static VM& vm = VM::create().leakRef();
+    return vm;
 }
 
-CDMSessionClearKey::CDMSessionClearKey(CDMSessionClient* client)
+CDMSessionClearKey::CDMSessionClearKey(LegacyCDMSessionClient* client)
     : m_client(client)
     , m_sessionId(createCanonicalUUIDString())
 {
 }
 
-CDMSessionClearKey::~CDMSessionClearKey()
-{
-}
+CDMSessionClearKey::~CDMSessionClearKey() = default;
 
 RefPtr<Uint8Array> CDMSessionClearKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {

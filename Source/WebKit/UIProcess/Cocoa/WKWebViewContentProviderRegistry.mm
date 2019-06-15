@@ -30,7 +30,10 @@
 
 #if PLATFORM(IOS)
 
+#import "WKLegacyPDFView.h"
 #import "WKPDFView.h"
+#import "WKSystemPreviewView.h"
+#import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
 #import "WebPageProxy.h"
 #import <WebCore/MIMETypeRegistry.h>
@@ -39,31 +42,41 @@
 #import <wtf/text/StringHash.h>
 #import <wtf/text/WTFString.h>
 
-using namespace WebKit;
-
 @implementation WKWebViewContentProviderRegistry {
     HashMap<String, Class <WKWebViewContentProvider>, ASCIICaseInsensitiveHash> _contentProviderForMIMEType;
-    HashCountedSet<WebPageProxy*> _pages;
+    HashCountedSet<WebKit::WebPageProxy*> _pages;
 }
 
-- (instancetype)init
+- (instancetype)initWithConfiguration:(WKWebViewConfiguration *)configuration
 {
     if (!(self = [super init]))
         return nil;
 
+#if ENABLE(WKPDFVIEW)
     for (auto& mimeType : WebCore::MIMETypeRegistry::getPDFMIMETypes())
         [self registerProvider:[WKPDFView class] forMIMEType:mimeType];
+#elif ENABLE(WKLEGACYPDFVIEW)
+    for (auto& mimeType : WebCore::MIMETypeRegistry::getPDFMIMETypes())
+        [self registerProvider:[WKLegacyPDFView class] forMIMEType:mimeType];
+#endif
+
+#if USE(SYSTEM_PREVIEW)
+    if (configuration._systemPreviewEnabled) {
+        for (auto& mimeType : WebCore::MIMETypeRegistry::getSystemPreviewMIMETypes())
+            [self registerProvider:[WKSystemPreviewView class] forMIMEType:mimeType];
+    }
+#endif
 
     return self;
 }
 
-- (void)addPage:(WebPageProxy&)page
+- (void)addPage:(WebKit::WebPageProxy&)page
 {
     ASSERT(!_pages.contains(&page));
     _pages.add(&page);
 }
 
-- (void)removePage:(WebPageProxy&)page
+- (void)removePage:(WebKit::WebPageProxy&)page
 {
     ASSERT(_pages.contains(&page));
     _pages.remove(&page);
@@ -89,9 +102,7 @@ using namespace WebKit;
 
 - (Vector<String>)_mimeTypesWithCustomContentProviders
 {
-    Vector<String> mimeTypes;
-    copyKeysToVector(_contentProviderForMIMEType, mimeTypes);
-    return mimeTypes;
+    return copyToVector(_contentProviderForMIMEType.keys());
 }
 
 @end

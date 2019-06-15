@@ -5,10 +5,10 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   Integer indexed values changed during iteration
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 includes: [testTypedArray.js]
-features: [Reflect.set]
+features: [Reflect.set, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -34,6 +34,7 @@ testWithTypedArrayConstructors(function(TA) {
     );
 
     newVal++;
+    return 0;
   });
 
   assert.sameValue(sample[0], 7, "changed values after iteration [0] == 7");

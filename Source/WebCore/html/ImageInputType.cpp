@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Google Inc. All rights reserved.
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
@@ -24,7 +24,7 @@
 #include "ImageInputType.h"
 
 #include "CachedImage.h"
-#include "FormDataList.h"
+#include "DOMFormData.h"
 #include "HTMLFormElement.h"
 #include "HTMLImageLoader.h"
 #include "HTMLInputElement.h"
@@ -54,24 +54,26 @@ bool ImageInputType::isFormDataAppendable() const
     return true;
 }
 
-bool ImageInputType::appendFormData(FormDataList& encoding, bool) const
+bool ImageInputType::appendFormData(DOMFormData& formData, bool) const
 {
-    if (!element().isActivatedSubmit())
+    ASSERT(element());
+    if (!element()->isActivatedSubmit())
         return false;
-    const AtomicString& name = element().name();
+
+    auto& name = element()->name();
     if (name.isEmpty()) {
-        encoding.appendData("x", m_clickLocation.x());
-        encoding.appendData("y", m_clickLocation.y());
+        formData.append("x"_s, String::number(m_clickLocation.x()));
+        formData.append("y"_s, String::number(m_clickLocation.y()));
         return true;
     }
 
-    static NeverDestroyed<String> dotXString(MAKE_STATIC_STRING_IMPL(".x"));
-    static NeverDestroyed<String> dotYString(MAKE_STATIC_STRING_IMPL(".y"));
-    encoding.appendData(name + dotXString.get(), m_clickLocation.x());
-    encoding.appendData(name + dotYString.get(), m_clickLocation.y());
+    formData.append(makeString(name, ".x"), String::number(m_clickLocation.x()));
+    formData.append(makeString(name, ".y"), String::number(m_clickLocation.y()));
 
-    if (!element().value().isEmpty())
-        encoding.appendData(name, element().value());
+    auto value = element()->value();
+    if (!value.isEmpty())
+        formData.append(name, value);
+
     return true;
 }
 
@@ -82,10 +84,14 @@ bool ImageInputType::supportsValidation() const
 
 void ImageInputType::handleDOMActivateEvent(Event& event)
 {
-    Ref<HTMLInputElement> element(this->element());
-    if (element->isDisabledFormControl() || !element->form())
+    ASSERT(element());
+    Ref<HTMLInputElement> protectedElement(*element());
+    if (protectedElement->isDisabledFormControl() || !protectedElement->form())
         return;
-    element->setActivatedSubmit(true);
+
+    Ref<HTMLFormElement> protectedForm(*protectedElement->form());
+
+    protectedElement->setActivatedSubmit(true);
 
     m_clickLocation = IntPoint();
     if (event.underlyingEvent()) {
@@ -97,42 +103,49 @@ void ImageInputType::handleDOMActivateEvent(Event& event)
         }
     }
 
-    element->form()->prepareForSubmission(event); // Event handlers can run.
-    element->setActivatedSubmit(false);
+    // Update layout before processing form actions in case the style changes
+    // the Form or button relationships.
+    protectedElement->document().updateLayoutIgnorePendingStylesheets();
+
+    if (auto currentForm = protectedElement->form())
+        currentForm->prepareForSubmission(event); // Event handlers can run.
+
+    protectedElement->setActivatedSubmit(false);
     event.setDefaultHandled();
 }
 
 RenderPtr<RenderElement> ImageInputType::createInputRenderer(RenderStyle&& style)
 {
-    return createRenderer<RenderImage>(element(), WTFMove(style));
+    ASSERT(element());
+    return createRenderer<RenderImage>(*element(), WTFMove(style));
 }
 
-void ImageInputType::altAttributeChanged()
+void ImageInputType::attributeChanged(const QualifiedName& name)
 {
-    if (!is<RenderImage>(element().renderer()))
-        return;
-
-    auto* renderer = downcast<RenderImage>(element().renderer());
-    if (!renderer)
-        return;
-    renderer->updateAltText();
-}
-
-void ImageInputType::srcAttributeChanged()
-{
-    if (!element().renderer())
-        return;
-    element().ensureImageLoader().updateFromElementIgnoringPreviousError();
+    if (name == altAttr) {
+        if (auto* element = this->element()) {
+            auto* renderer = element->renderer();
+            if (is<RenderImage>(renderer))
+                downcast<RenderImage>(*renderer).updateAltText();
+        }
+    } else if (name == srcAttr) {
+        if (auto* element = this->element()) {
+            if (element->renderer())
+                element->ensureImageLoader().updateFromElementIgnoringPreviousError();
+        }
+    }
+    BaseButtonInputType::attributeChanged(name);
 }
 
 void ImageInputType::attach()
 {
     BaseButtonInputType::attach();
 
-    HTMLImageLoader& imageLoader = element().ensureImageLoader();
+    ASSERT(element());
+    HTMLImageLoader& imageLoader = element()->ensureImageLoader();
     imageLoader.updateFromElement();
 
-    auto* renderer = downcast<RenderImage>(element().renderer());
+    auto* renderer = downcast<RenderImage>(element()->renderer());
     if (!renderer)
         return;
 
@@ -175,7 +188,8 @@ bool ImageInputType::shouldRespectHeightAndWidthAttributes()
 
 unsigned ImageInputType::height() const
 {
-    Ref<HTMLInputElement> element(this->element());
+    ASSERT(element());
+    Ref<HTMLInputElement> element(*this->element());
 
     element->document().updateLayout();
 
@@ -196,7 +210,8 @@ unsigned ImageInputType::height() const
 
 unsigned ImageInputType::width() const
 {
-    Ref<HTMLInputElement> element(this->element());
+    ASSERT(element());
+    Ref<HTMLInputElement> element(*this->element());
 
     element->document().updateLayout();
 

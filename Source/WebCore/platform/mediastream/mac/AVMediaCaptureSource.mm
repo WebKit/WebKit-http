@@ -41,7 +41,7 @@
 #import <objc/runtime.h>
 #import <wtf/MainThread.h>
 
-#import "CoreMediaSoftLink.h"
+#import <pal/cf/CoreMediaSoftLink.h>
 
 typedef AVCaptureConnection AVCaptureConnectionType;
 typedef AVCaptureDevice AVCaptureDeviceTypedef;
@@ -69,9 +69,9 @@ SOFT_LINK_CLASS(AVFoundation, AVCaptureVideoDataOutput)
 #define AVCaptureSession getAVCaptureSessionClass()
 #define AVCaptureVideoDataOutput getAVCaptureVideoDataOutputClass()
 
-SOFT_LINK_POINTER(AVFoundation, AVMediaTypeAudio, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVMediaTypeMuxed, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVMediaTypeVideo, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeAudio, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeMuxed, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeVideo, NSString *)
 
 #define AVMediaTypeAudio getAVMediaTypeAudio()
 #define AVMediaTypeMuxed getAVMediaTypeMuxed()
@@ -130,8 +130,7 @@ static dispatch_queue_t globaVideoCaptureSerialQueue()
     static dispatch_queue_t globalQueue;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        globalQueue = dispatch_queue_create("WebCoreAVMediaCaptureSource video capture queue", DISPATCH_QUEUE_SERIAL);
-        dispatch_set_target_queue(globalQueue, dispatch_get_global_queue( DISPATCH_QUEUE_PRIORITY_HIGH, 0));
+        globalQueue = dispatch_queue_create_with_target("WebCoreAVMediaCaptureSource video capture queue", DISPATCH_QUEUE_SERIAL, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));
     });
     return globalQueue;
 }

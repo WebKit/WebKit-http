@@ -50,15 +50,13 @@ public:
         ~WebContent();
 
 #if PLATFORM(COCOA)
+        String contentOrigin;
         bool canSmartCopyOrDelete;
         RefPtr<SharedBuffer> dataInWebArchiveFormat;
         RefPtr<SharedBuffer> dataInRTFDFormat;
         RefPtr<SharedBuffer> dataInRTFFormat;
         RefPtr<SharedBuffer> dataInAttributedStringFormat;
-        // FIXME: Why don't we want this on iOS?
-#if PLATFORM(MAC)
         String dataInHTMLFormat;
-#endif
         String dataInStringFormat;
         Vector<String> clientTypes;
         Vector<RefPtr<SharedBuffer>> clientData;

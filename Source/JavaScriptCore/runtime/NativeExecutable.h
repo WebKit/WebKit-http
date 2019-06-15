@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #pragma once
 
 #include "ExecutableBase.h"
+#include "JSCPoison.h"
 
 namespace JSC {
 namespace DOMJIT {
@@ -39,16 +40,22 @@ public:
     typedef ExecutableBase Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
 
-    static NativeExecutable* create(VM&, Ref<JITCode>&& callThunk, NativeFunction function, Ref<JITCode>&& constructThunk, NativeFunction constructor, Intrinsic, const DOMJIT::Signature*, const String& name);
+    static NativeExecutable* create(VM&, Ref<JITCode>&& callThunk, TaggedNativeFunction, Ref<JITCode>&& constructThunk, TaggedNativeFunction constructor, Intrinsic, const DOMJIT::Signature*, const String& name);
 
     static void destroy(JSCell*);
+    
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.nativeExecutableSpace;
+    }
 
     CodeBlockHash hashFor(CodeSpecializationKind) const;
 
-    NativeFunction function() { return m_function; }
-    NativeFunction constructor() { return m_constructor; }
+    TaggedNativeFunction function() { return m_function.unpoisoned(); }
+    TaggedNativeFunction constructor() { return m_constructor.unpoisoned(); }
         
-    NativeFunction nativeFunctionFor(CodeSpecializationKind kind)
+    TaggedNativeFunction nativeFunctionFor(CodeSpecializationKind kind)
     {
         if (kind == CodeForCall)
             return function();
@@ -83,11 +90,12 @@ protected:
 
 private:
     friend class ExecutableBase;
+    using PoisonedTaggedNativeFunction = Poisoned<NativeCodePoison, TaggedNativeFunction>;
 
-    NativeExecutable(VM&, NativeFunction function, NativeFunction constructor, Intrinsic, const DOMJIT::Signature*);
+    NativeExecutable(VM&, TaggedNativeFunction, TaggedNativeFunction constructor, Intrinsic, const DOMJIT::Signature*);
 
-    NativeFunction m_function;
-    NativeFunction m_constructor;
+    PoisonedTaggedNativeFunction m_function;
+    PoisonedTaggedNativeFunction m_constructor;
     const DOMJIT::Signature* m_signature;
 
     String m_name;

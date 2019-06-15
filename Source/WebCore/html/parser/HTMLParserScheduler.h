@@ -27,7 +27,6 @@
 
 #include "NestingLevelIncrementer.h"
 #include "Timer.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/RefPtr.h>
 
 #if PLATFORM(IOS)
@@ -54,7 +53,7 @@ public:
     ~PumpSession();
 
     unsigned processedTokens;
-    double startTime;
+    MonotonicTime startTime;
     bool didSeeScript;
 };
 
@@ -70,6 +69,9 @@ public:
         if (WebThreadShouldYield())
             return true;
 #endif
+        if (UNLIKELY(m_documentHasActiveParserYieldTokens))
+            return true;
+
         if (UNLIKELY(session.processedTokens > numberOfTokensBeforeCheckingForYield || session.didSeeScript))
             return checkForYield(session);
 
@@ -79,10 +81,25 @@ public:
     bool shouldYieldBeforeExecutingScript(PumpSession&);
 
     void scheduleForResume();
-    bool isScheduledForResume() const { return m_isSuspendedWithActiveTimer || m_continueNextChunkTimer.isActive(); }
+    bool isScheduledForResume() const { return m_isSuspendedWithActiveTimer || m_continueNextChunkTimer.isActive() || m_documentHasActiveParserYieldTokens; }
 
     void suspend();
     void resume();
+
+    void didBeginYieldingParser()
+    {
+        ASSERT(!m_documentHasActiveParserYieldTokens);
+        m_documentHasActiveParserYieldTokens = true;
+    }
+
+    void didEndYieldingParser()
+    {
+        ASSERT(m_documentHasActiveParserYieldTokens);
+        m_documentHasActiveParserYieldTokens = false;
+
+        if (!isScheduledForResume())
+            scheduleForResume();
+    }
 
 private:
     static const unsigned numberOfTokensBeforeCheckingForYield = 4096; // Performance optimization
@@ -94,25 +111,26 @@ private:
         session.processedTokens = 1;
         session.didSeeScript = false;
 
-        // monotonicallyIncreasingTime() can be expensive. By delaying, we avoided calling
-        // monotonicallyIncreasingTime() when constructing non-yielding PumpSessions.
+        // MonotonicTime::now() can be expensive. By delaying, we avoided calling
+        // MonotonicTime::now() when constructing non-yielding PumpSessions.
         if (!session.startTime) {
-            session.startTime = monotonicallyIncreasingTime();
+            session.startTime = MonotonicTime::now();
             return false;
         }
 
-        double elapsedTime = monotonicallyIncreasingTime() - session.startTime;
+        Seconds elapsedTime = MonotonicTime::now() - session.startTime;
         return elapsedTime > m_parserTimeLimit;
     }
 
     HTMLDocumentParser& m_parser;
 
-    double m_parserTimeLimit;
+    Seconds m_parserTimeLimit;
     Timer m_continueNextChunkTimer;
     bool m_isSuspendedWithActiveTimer;
 #if !ASSERT_DISABLED
     bool m_suspended;
 #endif
+    bool m_documentHasActiveParserYieldTokens { false };
 };
 
 } // namespace WebCore

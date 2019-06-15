@@ -52,27 +52,11 @@ void WKContextSetProcessModel(WKContextRef, WKProcessModel)
 {
 }
 
-WKStringRef WKPageGroupCopyIdentifier(WKPageGroupRef)
+void WKPreferencesSetQTKitEnabled(WKPreferencesRef, bool)
 {
-    return nullptr;
 }
 
-void WKPageGroupAddUserContentFilter(WKPageGroupRef pageGroupRef, WKUserContentFilterRef contentFilterRef)
+bool WKPreferencesGetQTKitEnabled(WKPreferencesRef)
 {
-#if ENABLE(CONTENT_EXTENSIONS)
-    toImpl(pageGroupRef)->userContentController().addContentRuleList(*toImpl(contentFilterRef));
-#else
-    UNUSED_PARAM(pageGroupRef);
-    UNUSED_PARAM(contentFilterRef);
-#endif
-}
-
-void WKPageGroupRemoveUserContentFilter(WKPageGroupRef pageGroupRef, WKStringRef contentFilterNameRef)
-{
-#if ENABLE(CONTENT_EXTENSIONS)
-    toImpl(pageGroupRef)->userContentController().removeContentRuleList(toWTFString(contentFilterNameRef));
-#else
-    UNUSED_PARAM(pageGroupRef);
-    UNUSED_PARAM(contentFilterNameRef);
-#endif
+    return false;
 }

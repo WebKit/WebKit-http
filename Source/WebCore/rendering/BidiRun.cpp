@@ -27,9 +27,9 @@
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 DEFINE_DEBUG_ONLY_GLOBAL(RefCountedLeakCounter, bidiRunCounter, ("BidiRun"));
 
@@ -41,7 +41,7 @@ BidiRun::BidiRun(unsigned start, unsigned stop, RenderObject& renderer, BidiCont
 #ifndef NDEBUG
     bidiRunCounter.increment();
 #endif
-    ASSERT(!is<RenderText>(m_renderer) || static_cast<unsigned>(stop) <= downcast<RenderText>(m_renderer).textLength());
+    ASSERT(!is<RenderText>(m_renderer) || static_cast<unsigned>(stop) <= downcast<RenderText>(m_renderer).text().length());
     // Stored in base class to save space.
     m_hasHyphen = false;
 }

@@ -33,13 +33,33 @@
 #import "DOMInternal.h"
 #import "DOMPrivate.h"
 #import "ExceptionHandlers.h"
+
+#if TARGET_OS_IPHONE
+#if __has_include(<UIKit/UITextAutofillSuggestion.h>)
+
+#import <UIKit/UITextAutofillSuggestion.h>
+
+#else
+
+@interface UITextSuggestion : NSObject
+@end
+
+@interface UITextAutofillSuggestion : UITextSuggestion
+@property (nonatomic, assign) NSString *username;
+@property (nonatomic, assign) NSString *password;
+@end
+
+#endif // __has_include(<UIKit/UITextAutofillSuggestion.h>)
+#endif // TARGET_OS_IPHONE
+
+#import <WebCore/AutofillElements.h>
 #import <WebCore/FileList.h>
 #import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/HTMLNames.h>
 #import <WebCore/HitTestResult.h>
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/NameNodeList.h>
 #import <WebCore/NodeList.h>
 #import <WebCore/RenderElement.h>
@@ -665,6 +685,30 @@
     WebCore::JSMainThreadNullState state;
     IMPL->setValueForUser(inValue);
 }
+
+- (NSDictionary *)_autofillContext
+{
+    WebCore::JSMainThreadNullState state;
+    if (!WebCore::AutofillElements::computeAutofillElements(*IMPL))
+        return nil;
+
+    NSURL *documentURL = [NSURL URLWithString:self.ownerDocument.URL];
+    if (!documentURL)
+        return nil;
+
+    return @{ @"_WebViewURL" : documentURL };
+}
+
+#if TARGET_OS_IPHONE
+- (void)insertTextSuggestion:(UITextAutofillSuggestion *)credentialSuggestion
+{
+    WebCore::JSMainThreadNullState state;
+    if (is<WebCore::HTMLInputElement>(IMPL)) {
+        if (auto autofillElements = WebCore::AutofillElements::computeAutofillElements(*IMPL))
+            autofillElements->autofill(credentialSuggestion.username, credentialSuggestion.password);
+    }
+}
+#endif // TARGET_OS_IPHONE
 
 @end
 

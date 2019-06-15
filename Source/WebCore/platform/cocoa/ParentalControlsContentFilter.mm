@@ -32,8 +32,8 @@
 #import "Logging.h"
 #import "ResourceResponse.h"
 #import "SharedBuffer.h"
-#import "WebFilterEvaluatorSPI.h"
 #import <objc/runtime.h>
+#import <pal/spi/cocoa/WebFilterEvaluatorSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(WebContentAnalysis);
@@ -100,7 +100,7 @@ Ref<SharedBuffer> ParentalControlsContentFilter::replacementData() const
 ContentFilterUnblockHandler ParentalControlsContentFilter::unblockHandler() const
 {
 #if PLATFORM(IOS)
-    return ContentFilterUnblockHandler { ASCIILiteral("unblock"), m_webFilterEvaluator };
+    return ContentFilterUnblockHandler { "unblock"_s, m_webFilterEvaluator };
 #else
     return { };
 #endif

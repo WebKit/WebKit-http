@@ -1,9 +1,11 @@
 list(APPEND PAL_SOURCES
-    crypto/win/CryptoDigestWin.cpp
+    system/ClockGeneric.cpp
 
     system/win/SoundWin.cpp
 
-    text/KillRingNone.cpp
+    text/KillRing.cpp
+
+    win/LoggingWin.cpp
 )
 
 list(APPEND PAL_INCLUDE_DIRECTORIES
@@ -11,10 +13,10 @@ list(APPEND PAL_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}/../include/private"
 )
 
-set(PAL_OUTPUT_NAME PAL${DEBUG_SUFFIX})
+if (${WTF_PLATFORM_WIN_CAIRO})
+    include(PlatformWinCairo.cmake)
+else ()
+    include(PlatformAppleWin.cmake)
+endif ()
 
-file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/WebCore/pal)
-file(GLOB _files_PAL "${PAL_DIR}/pal/*.h")
-foreach (_file ${_files_PAL})
-    file(COPY ${_file} DESTINATION ${FORWARDING_HEADERS_DIR}/WebCore/pal/)
-endforeach ()
+set(PAL_OUTPUT_NAME PAL${DEBUG_SUFFIX})

@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-8-c-2
 description: >
     Array.prototype.reduce throws TypeError when elements assigned
@@ -9,13 +10,12 @@ description: >
     not present
 ---*/
 
-  function callbackfn(prevVal, curVal, idx, obj)
-  {
-  }
+function callbackfn(prevVal, curVal, idx, obj)
+{}
 
-  var arr = new Array(10);
-  arr[9] = 1;
-  arr.length = 5;
+var arr = new Array(10);
+arr[9] = 1;
+arr.length = 5;
 assert.throws(TypeError, function() {
-    arr.reduce(callbackfn);
+  arr.reduce(callbackfn);
 });

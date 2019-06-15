@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,9 @@
 #import "config.h"
 #import "LayerHostingContext.h"
 
-#import <WebCore/MachSendRight.h>
-#import <WebCore/QuartzCoreSPI.h>
-#import <WebKitSystemInterface.h>
-
-using namespace WebCore;
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <wtf/MachSendRight.h>
 
 namespace WebKit {
 
@@ -38,8 +36,15 @@ std::unique_ptr<LayerHostingContext> LayerHostingContext::createForPort(const Ma
 {
     auto layerHostingContext = std::make_unique<LayerHostingContext>();
 
+    NSDictionary *options = @{
+        kCAContextPortNumber : @(serverPort.sendRight()),
+#if PLATFORM(MAC)
+        kCAContextCIFilterBehavior : @"ignore",
+#endif
+    };
+
     layerHostingContext->m_layerHostingMode = LayerHostingMode::InProcess;
-    layerHostingContext->m_context = (CAContext *)WKCAContextMakeRemoteWithServerPort(serverPort.sendRight());
+    layerHostingContext->m_context = [CAContext remoteContextWithOptions:options];
 
     return layerHostingContext;
 }
@@ -50,19 +55,35 @@ std::unique_ptr<LayerHostingContext> LayerHostingContext::createForExternalHosti
     auto layerHostingContext = std::make_unique<LayerHostingContext>();
     layerHostingContext->m_layerHostingMode = LayerHostingMode::OutOfProcess;
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
     // Use a very large display ID to ensure that the context is never put on-screen 
     // without being explicitly parented. See <rdar://problem/16089267> for details.
     layerHostingContext->m_context = [CAContext remoteContextWithOptions:@{
+#if HAVE(CORE_ANIMATION_RENDER_SERVER)
         kCAContextIgnoresHitTest : @YES,
-        kCAContextDisplayId : @10000 }];
+        kCAContextDisplayId : @10000
+#endif
+    }];
+#elif !PLATFORM(IOSMAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    [CAContext setAllowsCGSConnections:NO];
+    layerHostingContext->m_context = [CAContext remoteContextWithOptions:@{kCAContextCIFilterBehavior :  @"ignore"}];
 #else
-    layerHostingContext->m_context = (CAContext *)WKCAContextMakeRemoteForWindowServer();
+    layerHostingContext->m_context = [CAContext contextWithCGSConnection:CGSMainConnectionID() options:@{ kCAContextCIFilterBehavior : @"ignore" }];
 #endif
     
     return layerHostingContext;
 }
+
+#if PLATFORM(MAC)
+std::unique_ptr<LayerHostingContext> LayerHostingContext::createForExternalPluginHostingProcess()
+{
+    auto layerHostingContext = std::make_unique<LayerHostingContext>();
+    layerHostingContext->m_layerHostingMode = LayerHostingMode::OutOfProcess;
+    layerHostingContext->m_context = [CAContext contextWithCGSConnection:CGSMainConnectionID() options:@{ kCAContextCIFilterBehavior : @"ignore" }];
+    return layerHostingContext;
+}
 #endif
+#endif // HAVE(OUT_OF_PROCESS_LAYER_HOSTING)
 
 LayerHostingContext::LayerHostingContext()
 {

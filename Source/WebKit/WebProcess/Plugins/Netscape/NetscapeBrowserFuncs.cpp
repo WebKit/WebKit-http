@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,16 +42,15 @@
 #include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(COCOA)
-#include <WebCore/MachSendRight.h>
+#include <wtf/MachSendRight.h>
 #endif
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
 #include <WebCore/PlatformDisplayX11.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 // Helper class for delaying destruction of a plug-in.
 class PluginDestructionProtector {
@@ -507,7 +506,7 @@ static NPError NPN_GetValue(NPP npp, NPNVariable variable, void *value)
             *(NPBool*)value = true;
             break;
 #endif
-#elif PLUGIN_ARCHITECTURE(X11)
+#elif PLATFORM(X11)
         case NPNVxDisplay: {
             if (!npp)
                 return NPERR_GENERIC_ERROR;
@@ -586,7 +585,7 @@ static NPError NPN_SetValue(NPP npp, NPPVariable variable, void *value)
 
 static void NPN_InvalidateRect(NPP npp, NPRect* invalidRect)
 {
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
     // NSPluginWrapper, a plugin wrapper binary that allows running 32-bit plugins
     // on 64-bit architectures typically used in X11, will sometimes give us a null NPP here.
     if (!npp)
@@ -880,9 +879,9 @@ static NPError NPN_SetValueForURL(NPP npp, NPNURLVariable variable, const char* 
 static bool initializeProtectionSpace(const char* protocol, const char* host, int port, const char* scheme, const char* realm, ProtectionSpace& protectionSpace)
 {
     ProtectionSpaceServerType serverType;
-    if (!strcasecmp(protocol, "http"))
+    if (equalLettersIgnoringASCIICase(protocol, "http"))
         serverType = ProtectionSpaceServerHTTP;
-    else if (!strcasecmp(protocol, "https"))
+    else if (equalLettersIgnoringASCIICase(protocol, "https"))
         serverType = ProtectionSpaceServerHTTPS;
     else {
         // We only care about http and https.
@@ -891,9 +890,9 @@ static bool initializeProtectionSpace(const char* protocol, const char* host, in
 
     ProtectionSpaceAuthenticationScheme authenticationScheme = ProtectionSpaceAuthenticationSchemeDefault;
     if (serverType == ProtectionSpaceServerHTTP) {
-        if (!strcasecmp(scheme, "basic"))
+        if (equalLettersIgnoringASCIICase(scheme, "basic"))
             authenticationScheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
-        else if (!strcmp(scheme, "digest"))
+        else if (equalLettersIgnoringASCIICase(scheme, "digest"))
             authenticationScheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
     }
 

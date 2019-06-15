@@ -8,21 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/rtp_rtcp/source/rtcp_nack_stats.h"
+#include "modules/rtp_rtcp/source/rtcp_nack_stats.h"
 
-#include "webrtc/modules/include/module_common_types.h"
+#include "modules/include/module_common_types.h"
 
 namespace webrtc {
 
 RtcpNackStats::RtcpNackStats()
-    : max_sequence_number_(0),
-      requests_(0),
-      unique_requests_(0) {}
+    : max_sequence_number_(0), requests_(0), unique_requests_(0) {}
 
 void RtcpNackStats::ReportRequest(uint16_t sequence_number) {
   if (requests_ == 0 ||
       IsNewerSequenceNumber(sequence_number, max_sequence_number_)) {
-    max_sequence_number_ =  sequence_number;
+    max_sequence_number_ = sequence_number;
     ++unique_requests_;
   }
   ++requests_;

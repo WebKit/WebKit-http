@@ -6,9 +6,11 @@ description: >
     When a generator is paused before a `try..finally` statement, `throw`
     should interrupt control flow as if a `throw` statement had appeared at
     that location in the function body.
+features: [generators]
 ---*/
 
 var unreachable = 0;
+
 function* g() {
   yield 1;
   unreachable += 1;
@@ -32,7 +34,9 @@ assert.sameValue(
   unreachable, 0, 'statement following `yield` not executed (paused at yield)'
 );
 
-assert.throws(Test262Error, function() { iter.throw(new Test262Error()); });
+assert.throws(Test262Error, function() {
+  iter.throw(new Test262Error());
+});
 
 assert.sameValue(
   unreachable,
@@ -44,7 +48,7 @@ result = iter.next();
 assert.sameValue(
   result.value, undefined, 'Result `value` is undefined when done'
 );
-assert.sameValue( result.done, true, 'Result `done` flag is `true` when done');
+assert.sameValue(result.done, true, 'Result `done` flag is `true` when done');
 assert.sameValue(
   unreachable, 0, 'statement following `yield` not executed (once "completed")'
 );

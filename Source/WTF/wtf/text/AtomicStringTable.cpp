@@ -25,41 +25,14 @@
 
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
-#include <wtf/WTFThreadData.h>
+#include <wtf/Threading.h>
 
 namespace WTF {
-
-void AtomicStringTable::create(WTFThreadData& data)
-{
-#if USE(WEB_THREAD)
-    // On iOS, one AtomicStringTable is shared between the main UI thread and the WebThread.
-    static AtomicStringTable* sharedStringTable = new AtomicStringTable;
-
-    bool currentThreadIsWebThread = isWebThread();
-    if (currentThreadIsWebThread || isUIThread())
-        data.m_defaultAtomicStringTable = sharedStringTable;
-    else
-        data.m_defaultAtomicStringTable = new AtomicStringTable;
-
-    // We do the following so that its destruction happens only
-    // once - on the main UI thread.
-    if (!currentThreadIsWebThread)
-        data.m_atomicStringTableDestructor = AtomicStringTable::destroy;
-#else
-    data.m_defaultAtomicStringTable = new AtomicStringTable;
-    data.m_atomicStringTableDestructor = AtomicStringTable::destroy;
-#endif // USE(WEB_THREAD)
-}
 
 AtomicStringTable::~AtomicStringTable()
 {
     for (auto* string : m_table)
         string->setIsAtomic(false);
-}
-
-void AtomicStringTable::destroy(AtomicStringTable* table)
-{
-    delete table;
 }
 
 }

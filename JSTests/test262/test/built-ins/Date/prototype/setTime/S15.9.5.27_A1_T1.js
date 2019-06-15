@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "setTime" has { DontEnum } attributes
+esid: sec-date.prototype.settime
 es5id: 15.9.5.27_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.setTime;
-if(x === 1)
+if (x === 1)
   Date.prototype.setTime = 2;
 else
   Date.prototype.setTime = 1;

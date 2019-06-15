@@ -38,9 +38,9 @@ typedef AVAudioSession AVAudioSessionType;
 SOFT_LINK_FRAMEWORK(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVAudioSession)
 
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionNotification, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVAudioSessionMediaServicesWereResetNotification, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionNotification, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionInterruptionTypeKey, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVAudioSessionMediaServicesWereResetNotification, NSString *)
 
 #define AVAudioSession getAVAudioSessionClass()
 #define AVAudioSessionInterruptionNotification getAVAudioSessionInterruptionNotification()
@@ -50,7 +50,7 @@ SOFT_LINK_POINTER(AVFoundation, AVAudioSessionMediaServicesWereResetNotification
 using namespace WebCore;
 
 @interface WebCoreAudioCaptureSourceIOSListener : NSObject {
-    CoreAudioCaptureSourceIOS* _callback;
+    CoreAudioCaptureSourceFactoryIOS* _callback;
 }
 
 - (void)invalidate;
@@ -59,7 +59,7 @@ using namespace WebCore;
 @end
 
 @implementation WebCoreAudioCaptureSourceIOSListener
-- (id)initWithCallback:(CoreAudioCaptureSourceIOS*)callback
+- (id)initWithCallback:(CoreAudioCaptureSourceFactoryIOS*)callback
 {
     self = [super init];
     if (!self)
@@ -122,16 +122,21 @@ using namespace WebCore;
 
 namespace WebCore {
 
-CoreAudioCaptureSourceIOS::CoreAudioCaptureSourceIOS(const String& deviceID, const String& label)
-    : CoreAudioCaptureSource(deviceID, label, 0)
-    , m_listener(adoptNS([[WebCoreAudioCaptureSourceIOSListener alloc] initWithCallback:this]))
+CoreAudioCaptureSourceFactoryIOS::CoreAudioCaptureSourceFactoryIOS()
+    : m_listener(adoptNS([[WebCoreAudioCaptureSourceIOSListener alloc] initWithCallback:this]))
 {
 }
 
-CoreAudioCaptureSourceIOS::~CoreAudioCaptureSourceIOS()
+CoreAudioCaptureSourceFactoryIOS::~CoreAudioCaptureSourceFactoryIOS()
 {
     [m_listener invalidate];
     m_listener = nullptr;
+}
+
+CoreAudioCaptureSourceFactory& CoreAudioCaptureSourceFactory::singleton()
+{
+    static NeverDestroyed<CoreAudioCaptureSourceFactoryIOS> factory;
+    return factory.get();
 }
 
 }

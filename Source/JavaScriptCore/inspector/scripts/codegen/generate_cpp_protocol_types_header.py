@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014, 2016 Apple Inc. All rights reserved.
+# Copyright (c) 2014-2018 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -50,13 +50,8 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         domains = self.domains_to_generate()
         self.calculate_types_requiring_shape_assertions(domains)
 
-        headers = set([
-            '<inspector/InspectorProtocolTypes.h>',
-            '<wtf/Assertions.h>',
-        ])
-
         header_args = {
-            'includes': '\n'.join(['#include ' + header for header in sorted(headers)]),
+            'includes': self._generate_secondary_header_includes(),
             'typedefs': '',
         }
 
@@ -69,15 +64,24 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         sections.extend(self._generate_enum_constant_value_conversion_methods())
         builder_sections = map(self._generate_builders_for_domain, domains)
         sections.extend(filter(lambda section: len(section) > 0, builder_sections))
-        sections.append(self._generate_forward_declarations_for_binding_traits())
-        sections.extend(self._generate_declarations_for_enum_conversion_methods())
+        sections.append(self._generate_forward_declarations_for_binding_traits(domains))
+        sections.extend(self._generate_declarations_for_enum_conversion_methods(domains))
         sections.append('} // namespace Protocol')
         sections.append(Template(CppTemplates.HeaderPostlude).substitute(None, **header_args))
+        sections.extend(self._generate_hash_declarations(domains))
         return "\n\n".join(sections)
 
     # Private methods.
 
     # FIXME: move builders out of classes, uncomment forward declaration
+
+    def _generate_secondary_header_includes(self):
+        header_includes = [
+            (["JavaScriptCore", "WebKit"], ("JavaScriptCore", "inspector/InspectorProtocolTypes.h")),
+            (["JavaScriptCore", "WebKit"], ("WTF", "wtf/Assertions.h"))
+        ]
+
+        return '\n'.join(self.generate_includes_from_entries(header_includes))
 
     def _generate_forward_declarations(self, domains):
         sections = []
@@ -141,7 +145,7 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
             typedef_lines = []
             if len(declaration.description) > 0:
                 typedef_lines.append('/* %s */' % declaration.description)
-            typedef_lines.append('typedef Inspector::Protocol::Array<%s> %s;' % (element_type, declaration.type_name))
+            typedef_lines.append('typedef JSON::ArrayOf<%s> %s;' % (element_type, declaration.type_name))
             sections.append('\n'.join(typedef_lines))
 
         lines = []
@@ -205,7 +209,7 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         lines = []
         if len(type_declaration.description) > 0:
             lines.append('/* %s */' % type_declaration.description)
-        base_class = 'Inspector::InspectorObject'
+        base_class = 'JSON::Object'
         if not Generator.type_has_open_fields(type_declaration.type):
             base_class = base_class + 'Base'
         lines.append('class %s : public %s {' % (object_name, base_class))
@@ -305,9 +309,9 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         lines.append('            COMPILE_ASSERT(!(STATE & %(camelName)sSet), property_%(name)s_already_set);' % setter_args)
 
         if isinstance(type_member.type, EnumType):
-            lines.append('            m_result->%(keyedSet)s(ASCIILiteral("%(name)s"), Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(value));' % setter_args)
+            lines.append('            m_result->%(keyedSet)s("%(name)s"_s, Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(value));' % setter_args)
         else:
-            lines.append('            m_result->%(keyedSet)s(ASCIILiteral("%(name)s"), value);' % setter_args)
+            lines.append('            m_result->%(keyedSet)s("%(name)s"_s, value);' % setter_args)
         lines.append('            return castState<%(camelName)sSet>();' % setter_args)
         lines.append('        }')
         return '\n'.join(lines)
@@ -326,19 +330,19 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         lines.append('    void set%(camelName)s(%(parameterType)s value)' % setter_args)
         lines.append('    {')
         if isinstance(type_member.type, EnumType):
-            lines.append('        InspectorObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(value));' % setter_args)
+            lines.append('        JSON::ObjectBase::%(keyedSet)s("%(name)s"_s, Inspector::Protocol::%(helpersNamespace)s::getEnumConstantValue(value));' % setter_args)
         elif CppGenerator.should_use_references_for_type(type_member.type):
-            lines.append('        InspectorObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), WTFMove(value));' % setter_args)
+            lines.append('        JSON::ObjectBase::%(keyedSet)s("%(name)s"_s, WTFMove(value));' % setter_args)
         else:
-            lines.append('        InspectorObjectBase::%(keyedSet)s(ASCIILiteral("%(name)s"), value);' % setter_args)
+            lines.append('        JSON::ObjectBase::%(keyedSet)s("%(name)s"_s, value);' % setter_args)
         lines.append('    }')
         return '\n'.join(lines)
 
-    def _generate_forward_declarations_for_binding_traits(self):
+    def _generate_forward_declarations_for_binding_traits(self, domains):
         # A list of (builder_type, needs_runtime_cast)
         type_arguments = []
 
-        for domain in self.domains_to_generate():
+        for domain in domains:
             type_declarations = self.type_declarations_for_domain(domain)
             declarations_to_generate = filter(lambda decl: self.type_needs_shape_assertions(decl.type), type_declarations)
 
@@ -361,14 +365,12 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         for argument in type_arguments:
             lines.append('template<> %s BindingTraits<%s> {' % (' '.join(struct_keywords), argument[0]))
             if argument[1]:
-                lines.append('static RefPtr<%s> runtimeCast(RefPtr<Inspector::InspectorValue>&& value);' % argument[0])
-            lines.append('#if !ASSERT_DISABLED')
-            lines.append('%s assertValueHasExpectedType(Inspector::InspectorValue*);' % ' '.join(function_keywords))
-            lines.append('#endif // !ASSERT_DISABLED')
+                lines.append('static RefPtr<%s> runtimeCast(RefPtr<JSON::Value>&& value);' % argument[0])
+            lines.append('%s assertValueHasExpectedType(JSON::Value*);' % ' '.join(function_keywords))
             lines.append('};')
         return '\n'.join(lines)
 
-    def _generate_declarations_for_enum_conversion_methods(self):
+    def _generate_declarations_for_enum_conversion_methods(self, domains):
         sections = []
         sections.append('\n'.join([
             'namespace %s {' % self.helpers_namespace(),
@@ -388,7 +390,7 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         def type_member_is_anonymous_enum_type(type_member):
             return isinstance(type_member.type, EnumType) and type_member.type.is_anonymous
 
-        for domain in self.domains_to_generate():
+        for domain in domains:
             type_declarations = self.type_declarations_for_domain(domain)
             declaration_types = [decl.type for decl in type_declarations]
             object_types = filter(lambda _type: isinstance(_type, ObjectType), declaration_types)
@@ -423,3 +425,35 @@ class CppProtocolTypesHeaderGenerator(CppGenerator):
         sections.append('} // namespace %s' % self.helpers_namespace())
 
         return ['\n\n'.join(sections)]
+
+    def _generate_hash_declarations(self, domains):
+        lines = []
+
+        for domain in domains:
+            type_declarations = self.type_declarations_for_domain(domain)
+            declaration_types = [decl.type for decl in type_declarations]
+            enum_types = filter(lambda _type: isinstance(_type, EnumType), declaration_types)
+
+            if len(enum_types) == 0:
+                continue
+
+            if len(lines) == 0:
+                lines.append('namespace WTF {')
+                lines.append('')
+                lines.append('template<typename T> struct DefaultHash;')
+
+            lines.append('')
+            lines.append("// Hash declarations in the '%s' Domain" % domain.domain_name)
+
+            for enum_type in enum_types:
+                lines.append('template<>')
+                lines.append('struct DefaultHash<Inspector::Protocol::%s::%s> {' % (domain.domain_name, enum_type.raw_name()))
+                lines.append('    typedef IntHash<Inspector::Protocol::%s::%s> Hash;' % (domain.domain_name, enum_type.raw_name()))
+                lines.append('};')
+
+        if len(lines) == 0:
+            return []
+
+        lines.append('')
+        lines.append('} // namespace WTF')
+        return ['\n'.join(lines)]

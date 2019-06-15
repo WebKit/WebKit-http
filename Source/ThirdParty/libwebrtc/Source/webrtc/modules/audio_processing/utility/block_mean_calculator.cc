@@ -8,17 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/utility/block_mean_calculator.h"
+#include "modules/audio_processing/utility/block_mean_calculator.h"
 
-#include "webrtc/base/checks.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
 BlockMeanCalculator::BlockMeanCalculator(size_t block_length)
-    : block_length_(block_length),
-      count_(0),
-      sum_(0.0),
-      mean_(0.0) {
+    : block_length_(block_length), count_(0), sum_(0.0), mean_(0.0) {
   RTC_DCHECK(block_length_ != 0);
 }
 

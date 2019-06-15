@@ -66,10 +66,10 @@ PluginInfoCache::PluginInfoCache()
     m_saveToFileIdle.setPriority(G_PRIORITY_DEFAULT_IDLE);
 
     GUniquePtr<char> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", nullptr));
-    if (WebCore::makeAllDirectories(cacheDirectory.get())) {
+    if (WebCore::FileSystem::makeAllDirectories(cacheDirectory.get())) {
         // Delete old cache file.
         GUniquePtr<char> oldCachePath(g_build_filename(cacheDirectory.get(), "plugins", nullptr));
-        WebCore::deleteFile(WebCore::stringFromFileSystemRepresentation(oldCachePath.get()));
+        WebCore::FileSystem::deleteFile(WebCore::FileSystem::stringFromFileSystemRepresentation(oldCachePath.get()));
 
         m_cachePath.reset(g_build_filename(cacheDirectory.get(), cacheFilenameForCurrentDisplay(), nullptr));
         g_key_file_load_from_file(m_cacheFile.get(), m_cachePath.get(), G_KEY_FILE_NONE, nullptr);
@@ -113,14 +113,14 @@ bool PluginInfoCache::getPluginInfo(const String& pluginPath, PluginModuleInfo& 
         return false;
 
     time_t lastModified;
-    if (!WebCore::getFileModificationTime(pluginPath, lastModified))
+    if (!WebCore::FileSystem::getFileModificationTime(pluginPath, lastModified))
         return false;
     time_t cachedLastModified = static_cast<time_t>(g_key_file_get_uint64(m_cacheFile.get(), pluginGroup.data(), "mtime", nullptr));
     if (lastModified != cachedLastModified)
         return false;
 
     plugin.path = pluginPath;
-    plugin.info.file = WebCore::pathGetFileName(pluginPath);
+    plugin.info.file = WebCore::FileSystem::pathGetFileName(pluginPath);
 
     GUniquePtr<char> stringValue(g_key_file_get_string(m_cacheFile.get(), pluginGroup.data(), "name", nullptr));
     plugin.info.name = String::fromUTF8(stringValue.get());
@@ -128,7 +128,7 @@ bool PluginInfoCache::getPluginInfo(const String& pluginPath, PluginModuleInfo& 
     stringValue.reset(g_key_file_get_string(m_cacheFile.get(), pluginGroup.data(), "description", nullptr));
     plugin.info.desc = String::fromUTF8(stringValue.get());
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
     stringValue.reset(g_key_file_get_string(m_cacheFile.get(), pluginGroup.data(), "mime-description", nullptr));
     NetscapePluginModule::parseMIMEDescription(String::fromUTF8(stringValue.get()), plugin.info.mimes);
 #endif
@@ -141,7 +141,7 @@ bool PluginInfoCache::getPluginInfo(const String& pluginPath, PluginModuleInfo& 
 void PluginInfoCache::updatePluginInfo(const String& pluginPath, const PluginModuleInfo& plugin)
 {
     time_t lastModified;
-    if (!WebCore::getFileModificationTime(pluginPath, lastModified))
+    if (!WebCore::FileSystem::getFileModificationTime(pluginPath, lastModified))
         return;
 
     CString pluginGroup = pluginPath.utf8();
@@ -149,7 +149,7 @@ void PluginInfoCache::updatePluginInfo(const String& pluginPath, const PluginMod
     g_key_file_set_string(m_cacheFile.get(), pluginGroup.data(), "name", plugin.info.name.utf8().data());
     g_key_file_set_string(m_cacheFile.get(), pluginGroup.data(), "description", plugin.info.desc.utf8().data());
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
     String mimeDescription = NetscapePluginModule::buildMIMEDescription(plugin.info.mimes);
     g_key_file_set_string(m_cacheFile.get(), pluginGroup.data(), "mime-description", mimeDescription.utf8().data());
 #endif

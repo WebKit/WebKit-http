@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SpotLightSource_h
-#define SpotLightSource_h
+#pragma once
 
 #include "LightSource.h"
 #include <wtf/Ref.h>
@@ -36,8 +35,8 @@ public:
         return adoptRef(*new SpotLightSource(position, direction, specularExponent, limitingConeAngle));
     }
 
-    const FloatPoint3D& position() const { return m_position; }
-    const FloatPoint3D& direction() const { return m_direction; }
+    const FloatPoint3D& position() const { return m_userSpacePosition; }
+    const FloatPoint3D& direction() const { return m_userSpacePointsAt; }
     float specularExponent() const { return m_specularExponent; }
     float limitingConeAngle() const { return m_limitingConeAngle; }
 
@@ -51,24 +50,25 @@ public:
     bool setSpecularExponent(float) override;
     bool setLimitingConeAngle(float) override;
 
-    void initPaintingData(PaintingData&) override;
-    void updatePaintingData(PaintingData&, int x, int y, float z) override;
+    void initPaintingData(const FilterEffect&, PaintingData&) override;
+    ComputedLightingData computePixelLightingData(const PaintingData&, int x, int y, float z) const final;
 
-    TextStream& externalRepresentation(TextStream&) const override;
+    WTF::TextStream& externalRepresentation(WTF::TextStream&) const override;
 
 private:
-    SpotLightSource(const FloatPoint3D& position, const FloatPoint3D& direction,
-        float specularExponent, float limitingConeAngle)
+    SpotLightSource(const FloatPoint3D& position, const FloatPoint3D& direction, float specularExponent, float limitingConeAngle)
         : LightSource(LS_SPOT)
-        , m_position(position)
-        , m_direction(direction)
+        , m_userSpacePosition(position)
+        , m_userSpacePointsAt(direction)
         , m_specularExponent(specularExponent)
         , m_limitingConeAngle(limitingConeAngle)
     {
     }
 
-    FloatPoint3D m_position;
-    FloatPoint3D m_direction;
+    FloatPoint3D m_userSpacePosition;
+    FloatPoint3D m_userSpacePointsAt;
+
+    FloatPoint3D m_bufferPosition;
 
     float m_specularExponent;
     float m_limitingConeAngle;
@@ -76,4 +76,4 @@ private:
 
 } // namespace WebCore
 
-#endif // SpotLightSource_h
+SPECIALIZE_TYPE_TRAITS_LIGHTSOURCE(SpotLightSource, LS_SPOT)

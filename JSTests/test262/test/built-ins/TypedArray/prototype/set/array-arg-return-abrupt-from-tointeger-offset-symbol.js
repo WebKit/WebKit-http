@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-array-offset
 description: >
   Return abrupt from ToInteger(Symbol offset)
-info: >
+info: |
   22.2.3.23.1 %TypedArray%.prototype.set (array [ , offset ] )
 
   1. Assert: array is any ECMAScript language value other than an Object with a
@@ -13,7 +13,7 @@ info: >
   ...
   6. Let targetOffset be ? ToInteger(offset).
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol("1");

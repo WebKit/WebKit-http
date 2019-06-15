@@ -13,8 +13,23 @@ MockData = {
     otherPlatformId() { return 101; },
     macosRepositoryId() { return 9; },
     webkitRepositoryId() { return 11; },
+    ownedJSCRepositoryId() { return 213; },
+    jscRepositoryId() { return 222; },
     gitWebkitRepositoryId() { return 111; },
     sharedRepositoryId() { return 14; },
+    buildbotBuildersURL() {return '/api/v2/builders'},
+    pendingBuildsUrl: function (builderName) {
+        const builderId = this.builderIDForName(builderName);
+        return `/api/v2/builders/${builderId}/buildrequests?complete=false&claimed=false&property=*`;
+    },
+    recentBuildsUrl: function (builderName, count) {
+        const builderId = this.builderIDForName(builderName);
+        return `/api/v2/builders/${builderId}/builds?limit=${count}&order=-number&property=*`; 
+    },
+    statusUrl: function (builderName, buildId) {
+        const builderId = this.builderIDForName(builderName);
+        return `http://build.webkit.org/#/builders/${builderId}/builds/${buildId}`; 
+    },
     addMockConfiguration: function (db)
     {
         return Promise.all([
@@ -23,6 +38,8 @@ MockData = {
             db.insert('repositories', {id: this.macosRepositoryId(), name: 'macOS'}),
             db.insert('repositories', {id: this.webkitRepositoryId(), name: 'WebKit'}),
             db.insert('repositories', {id: this.sharedRepositoryId(), name: 'Shared'}),
+            db.insert('repositories', {id: this.ownedJSCRepositoryId(), owner: this.webkitRepositoryId(), name: 'JavaScriptCore'}),
+            db.insert('repositories', {id: this.jscRepositoryId(), name: 'JavaScriptCore'}),
             db.insert('triggerable_repository_groups', {id: 2001, name: 'webkit-svn', triggerable: 1000}),
             db.insert('triggerable_repositories', {repository: this.macosRepositoryId(), group: 2001}),
             db.insert('triggerable_repositories', {repository: this.webkitRepositoryId(), group: 2001}),
@@ -31,6 +48,12 @@ MockData = {
             db.insert('commits', {id: 96336, repository: this.webkitRepositoryId(), revision: '192736', time: (new Date(1448225325650)).toISOString()}),
             db.insert('commits', {id: 111168, repository: this.sharedRepositoryId(), revision: '80229', time: '2016-03-02T23:17:54.3Z'}),
             db.insert('commits', {id: 111169, repository: this.sharedRepositoryId(), revision: '80230', time: '2016-03-02T23:37:18.0Z'}),
+            db.insert('commits', {id: 11797, repository: this.jscRepositoryId(), revision: 'jsc-6161', time: '2016-03-02T23:19:55.3Z'}),
+            db.insert('commits', {id: 12017, repository: this.jscRepositoryId(), revision: 'jsc-9191', time: '2016-05-02T23:13:57.1Z'}),
+            db.insert('commits', {id: 1797, repository: this.ownedJSCRepositoryId(), revision: 'owned-jsc-6161', time: '2016-03-02T23:19:55.3Z'}),
+            db.insert('commits', {id: 2017, repository: this.ownedJSCRepositoryId(), revision: 'owned-jsc-9191', time: '2016-05-02T23:13:57.1Z'}),
+            db.insert('commit_ownerships', {owner: 93116, owned: 1797}),
+            db.insert('commit_ownerships', {owner: 96336, owned: 2017}),
             db.insert('builds', {id: 901, number: '901', time: '2015-10-27T12:05:27.1Z'}),
             db.insert('platforms', {id: MockData.somePlatformId(), name: 'some platform'}),
             db.insert('platforms', {id: MockData.otherPlatformId(), name: 'other platform'}),
@@ -56,11 +79,20 @@ MockData = {
             db.insert('analysis_tasks', {id: 500, platform: 65, metric: 300, name: 'some task',
                 start_run: 801, start_run_time: '2015-10-27T12:05:27.1Z',
                 end_run: 801, end_run_time: '2015-10-27T12:05:27.1Z'}),
-            db.insert('analysis_test_groups', {id: 600, task: 500, name: 'some test group'}),
+            db.insert('analysis_test_groups', {id: 600, task: 500, name: 'some test group', needs_notification: true}),
             db.insert('build_requests', {id: 700, status: statusList[0], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 600, order: 0, commit_set: 401}),
             db.insert('build_requests', {id: 701, status: statusList[1], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 600, order: 1, commit_set: 402}),
             db.insert('build_requests', {id: 702, status: statusList[2], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 600, order: 2, commit_set: 401}),
             db.insert('build_requests', {id: 703, status: statusList[3], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 600, order: 3, commit_set: 402}),
+        ]);
+    },
+    addAnotherTriggerable(db) {
+        return Promise.all([
+            db.insert('build_triggerables', {id: 2345, name: 'build-webkit-jsc'}),
+            db.insert('triggerable_repository_groups', {id: 4002, name: 'mac-svnwebkit-jsc', triggerable: 2345}),
+            db.insert('triggerable_repositories', {repository: this.macosRepositoryId(), group: 4002}),
+            db.insert('triggerable_repositories', {repository: this.webkitRepositoryId(), group: 4002}),
+            db.insert('triggerable_repositories', {repository: this.jscRepositoryId(), group: 4002}),
         ]);
     },
     addEmptyTriggerable(db)
@@ -114,6 +146,48 @@ MockData = {
             db.insert('build_requests', {id: 711, status: statusList[1], triggerable, repository_group, platform, test, group: 601, order: 1, commit_set: 402}),
         ]);
     },
+    addTestGroupWithOwnedCommits(db, statusList)
+    {
+
+        if (!statusList)
+            statusList = ['pending', 'pending', 'pending', 'pending'];
+        return Promise.all([
+            this.addMockConfiguration(db),
+            this.addAnotherTriggerable(db),
+            db.insert('analysis_tasks', {id: 1080, platform: 65, metric: 300, name: 'some task with component test',
+                start_run: 801, start_run_time: '2015-10-27T12:05:27.1Z',
+                end_run: 801, end_run_time: '2015-10-27T12:05:27.1Z'}),
+            db.insert('analysis_test_groups', {id: 900, task: 1080, name: 'some test group with component test'}),
+            db.insert('commit_sets', {id: 403}),
+            db.insert('commit_set_items', {set: 403, commit: 87832}),
+            db.insert('commit_set_items', {set: 403, commit: 93116}),
+            db.insert('commit_set_items', {set: 403, commit: 1797, commit_owner: 93116, requires_build: true}),
+            db.insert('commit_sets', {id: 404}),
+            db.insert('commit_set_items', {set: 404, commit: 87832}),
+            db.insert('commit_set_items', {set: 404, commit: 96336}),
+            db.insert('commit_set_items', {set: 404, commit: 2017, commit_owner: 96336, requires_build: true}),
+            db.insert('build_requests', {id: 704, status: statusList[0], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 900, order: 0, commit_set: 403}),
+            db.insert('build_requests', {id: 705, status: statusList[1], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 900, order: 1, commit_set: 404}),
+            db.insert('build_requests', {id: 706, status: statusList[2], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 900, order: 2, commit_set: 403}),
+            db.insert('build_requests', {id: 707, status: statusList[3], triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 900, order: 3, commit_set: 404}),
+        ]);
+    },
+    addTestGroupWithOwnerCommitNotInCommitSet(db)
+    {
+        return Promise.all([
+            this.addMockConfiguration(db),
+            this.addAnotherTriggerable(db),
+            db.insert('analysis_tasks', {id: 1080, platform: 65, metric: 300, name: 'some task with component test',
+                start_run: 801, start_run_time: '2015-10-27T12:05:27.1Z',
+                end_run: 801, end_run_time: '2015-10-27T12:05:27.1Z'}),
+            db.insert('analysis_test_groups', {id: 900, task: 1080, name: 'some test group with component test'}),
+            db.insert('commit_sets', {id: 404}),
+            db.insert('commit_set_items', {set: 404, commit: 87832}),
+            db.insert('commit_set_items', {set: 404, commit: 96336}),
+            db.insert('commit_set_items', {set: 404, commit: 2017, commit_owner: 93116, requires_build: true}),
+            db.insert('build_requests', {id: 704, status: 'pending', triggerable: 1000, repository_group: 2001, platform: 65, test: 200, group: 900, order: 0, commit_set: 404}),
+        ]);
+    },
     mockTestSyncConfigWithSingleBuilder: function ()
     {
         return {
@@ -133,7 +207,8 @@ MockData = {
                 'some-test': {'test': ['some test']}
             },
             'builders': {
-                'builder-1': {'builder': 'some-builder-1'},
+                'builder-1': {'builder': 'some-builder-1',
+                     properties: {forcescheduler: 'force-some-builder-1'}}
             },
             'testConfigurations': [
                 {
@@ -163,8 +238,8 @@ MockData = {
                 'some-test': {'test': ['some test']},
             },
             'builders': {
-                'builder-1': {'builder': 'some-builder-1'},
-                'builder-2': {'builder': 'some builder 2'},
+                'builder-1': {'builder': 'some-builder-1', properties: {forcescheduler: 'force-some-builder-1'}},
+                'builder-2': {'builder': 'some builder 2', properties: {forcescheduler: 'force-some-builder-2'}},
             },
             'testConfigurations': [
                 {
@@ -175,77 +250,130 @@ MockData = {
             ]
         }
     },
+    mockBuildbotBuilders: function ()
+    {
+        return {
+            "builders": [
+                {
+                    "builderid": 1,
+                    "name": "some builder",
+                },
+                {
+                    "builderid": 2,
+                    "name": "some-builder-1",
+                },
+                {
+                    "builderid": 3,
+                    "name": "some builder 2",
+                },
+                {
+                    "builderid": 4,
+                    "name": "other builder",
+                },
+                {
+                    "builderid": 5,
+                    "name": "some tester",
+                },
+                {
+                    "builderid": 6,
+                    "name": "another tester",
+                }
+            ]
+        }
+    },
+    builderIDForName: function(builderName)
+    {
+        for (let builder of this.mockBuildbotBuilders().builders) {
+            if (builder.name == builderName)
+                return builder.builderid;
+        }
+        return -1;
+    },
+    pendingBuildData(options)
+    {
+        return {
+            "builderid": options.builderId || 2,
+            "buildrequestid": options.buildbotBuildRequestId || 18,
+            "buildsetid": 894720,
+            "claimed": false,
+            "claimed_at": null,
+            "claimed_by_masterid": null,
+            "complete": false,
+            "complete_at": null,
+            "priority": 0,
+            "results": -1,
+            "submitted_at": options.buildTime || (new Date('2016-03-23T03:49:43Z') / 1000),
+            "waited_for": false,
+            "properties": {
+                "build-request-id": [(options.buildRequestId || 702).toString(), "Force Build Form"],
+                "scheduler": ["ABTest-iPad-RunBenchmark-Tests-ForceScheduler", "Scheduler"],
+                "wk": [options.webkitRevision || '191622', "Unknown"],
+                "os": [options.osxRevision || '10.11 15A284', "Unknown"],
+                "slavename": [options.workerName || "bot202", "Worker (deprecated)"],
+                "workername": [options.workerName || "bot202", "Worker"]
+            }
+        };
+    },
     pendingBuild(options)
     {
         options = options || {};
         return {
-            'builderName': options.builder || 'some-builder-1',
-            'builds': [],
-            'properties': [
-                ['wk', options.webkitRevision || '191622'],
-                ['os', options.osxRevision || '10.11 15A284'],
-                ['build-request-id', (options.buildRequestId || 702).toString(), ]
-            ],
-            'source': {
-                'branch': '',
-                'changes': [],
-                'codebase': 'WebKit',
-                'hasPatch': false,
-                'project': '',
-                'repository': '',
-                'revision': ''
-            },
+            "buildrequests": [this.pendingBuildData(options)]
         };
+    },
+    sampleBuildData(options, overrides)
+    {
+        options = options || {};
+        overrides = overrides || {};
+        return {
+            "builderid": options.builderId || 2,
+            "number":  options.buildNumber || 124, 
+            "buildrequestid": options.buildbotBuildRequestId || 19,
+            "complete": 'isComplete' in overrides ? overrides.isComplete : (options.isComplete || false),
+            "complete_at": null,
+            "buildid": options.buildid || 418744,
+            "masterid": 1,
+            "results": null,
+            "started_at": new Date('2017-12-19T23:11:49Z') / 1000,
+            "state_string": "building",
+            "workerid": 41,
+            "properties": {
+                "build-request-id": [(options.buildRequestId || 701).toString(), "Force Build Form"],
+                "os": [options.osxRevision || '10.11 15A284', "Unknown"],
+                "wk": [options.webkitRevision || '192736', "Unknown"],
+                "project": ['', "Unknown"],
+                "repository": ['', "Unknown"],
+                "revision": ['', "Unknown"],
+                "slavename": [options.workerName || "bot202", "Worker (deprecated)"],
+                "workername": [options.workerName || "bot202", "Worker"]
+            }
+        };   
+    },
+    runningBuildData(options)
+    {
+        return this.sampleBuildData(options);
     },
     runningBuild(options)
     {
-        options = options || {};
         return {
-            'builderName': options.builder || 'some-builder-1',
-            'builds': [],
-            'properties': [
-                ['wk', options.webkitRevision || '192736'],
-                ['os', options.osxRevision || '10.11 15A284'],
-                ['build-request-id', (options.buildRequestId || 701).toString(), ]
-            ],
-            'currentStep': {},
-            'eta': 721,
-            'number': options.buildNumber || 124,
-            'source': {
-                'branch': '',
-                'changes': [],
-                'codebase': 'WebKit',
-                'hasPatch': false,
-                'project': '',
-                'repository': '',
-                'revision': ''
-            },
+            "builds": [this.runningBuildData(options)]
         };
+    },
+    finishedBuildData(options)
+    {
+        options = options || {};
+        if (!options.buildRequestId)
+            options.buildRequestId = 700;
+        if (!options.buildNumber)
+            options.buildNumber = 123;
+        if (!options.webkitRevision)
+            options.webkitRevision = '191622';
+        return this.sampleBuildData(options, {isComplete: true});
     },
     finishedBuild(options)
     {
-        options = options || {};
         return {
-            'builderName': options.builder || 'some-builder-1',
-            'builds': [],
-            'properties': [
-                ['wk', options.webkitRevision || '191622'],
-                ['os', options.osxRevision || '10.11 15A284'],
-                ['build-request-id', (options.buildRequestId || 700).toString(), ]
-            ],
-            'currentStep': null,
-            'eta': null,
-            'number': options.buildNumber || 123,
-            'source': {
-                'branch': '',
-                'changes': [],
-                'codebase': 'WebKit',
-                'hasPatch': false,
-                'project': '',
-                'repository': '',
-                'revision': ''
-            },
-            'times': [0, 1],
+            "builds": [this.finishedBuildData(options)]
         };
     }
 }

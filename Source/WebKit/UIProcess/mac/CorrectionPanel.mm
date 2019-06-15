@@ -31,18 +31,16 @@
 #import "WebPageProxy.h"
 #import "WebViewImpl.h"
 
-using namespace WebCore;
-
-static inline NSCorrectionIndicatorType correctionIndicatorType(AlternativeTextType alternativeTextType)
+static inline NSCorrectionIndicatorType correctionIndicatorType(WebCore::AlternativeTextType alternativeTextType)
 {
     switch (alternativeTextType) {
-    case AlternativeTextTypeCorrection:
+    case WebCore::AlternativeTextTypeCorrection:
         return NSCorrectionIndicatorTypeDefault;
-    case AlternativeTextTypeReversion:
+    case WebCore::AlternativeTextTypeReversion:
         return NSCorrectionIndicatorTypeReversion;
-    case AlternativeTextTypeSpellingSuggestions:
+    case WebCore::AlternativeTextTypeSpellingSuggestions:
         return NSCorrectionIndicatorTypeGuesses;
-    case AlternativeTextTypeDictationAlternatives:
+    case WebCore::AlternativeTextTypeDictationAlternatives:
         ASSERT_NOT_REACHED();
         break;
     }
@@ -51,6 +49,7 @@ static inline NSCorrectionIndicatorType correctionIndicatorType(AlternativeTextT
 }
 
 namespace WebKit {
+using namespace WebCore;
 
 CorrectionPanel::CorrectionPanel()
     : m_wasDismissedExternally(false)
@@ -109,8 +108,11 @@ String CorrectionPanel::dismissInternal(ReasonForDismissingAlternativeText reaso
     return m_resultForDismissal.get();
 }
 
-void CorrectionPanel::recordAutocorrectionResponse(NSInteger spellCheckerDocumentTag, NSCorrectionResponse response, const String& replacedString, const String& replacementString)
+void CorrectionPanel::recordAutocorrectionResponse(WebViewImpl& webViewImpl, NSInteger spellCheckerDocumentTag, NSCorrectionResponse response, const String& replacedString, const String& replacementString)
 {
+    if (webViewImpl.page().sessionID().isEphemeral())
+        return;
+
     [[NSSpellChecker sharedSpellChecker] recordResponse:response toCorrection:replacementString forWord:replacedString language:nil inSpellDocumentWithTag:spellCheckerDocumentTag];
 }
 
@@ -122,21 +124,21 @@ void CorrectionPanel::handleAcceptedReplacement(WebViewImpl& webViewImpl, NSStri
     switch (correctionIndicatorType) {
     case NSCorrectionIndicatorTypeDefault:
         if (acceptedReplacement)
-            recordAutocorrectionResponse(m_spellCheckerDocumentTag, NSCorrectionResponseAccepted, replaced, acceptedReplacement);
+            recordAutocorrectionResponse(webViewImpl, m_spellCheckerDocumentTag, NSCorrectionResponseAccepted, replaced, acceptedReplacement);
         else {
             if (!m_wasDismissedExternally || m_reasonForDismissing == ReasonForDismissingAlternativeTextCancelled)
-                recordAutocorrectionResponse(m_spellCheckerDocumentTag, NSCorrectionResponseRejected, replaced, proposedReplacement);
+                recordAutocorrectionResponse(webViewImpl, m_spellCheckerDocumentTag, NSCorrectionResponseRejected, replaced, proposedReplacement);
             else
-                recordAutocorrectionResponse(m_spellCheckerDocumentTag, NSCorrectionResponseIgnored, replaced, proposedReplacement);
+                recordAutocorrectionResponse(webViewImpl, m_spellCheckerDocumentTag, NSCorrectionResponseIgnored, replaced, proposedReplacement);
         }
         break;
     case NSCorrectionIndicatorTypeReversion:
         if (acceptedReplacement)
-            recordAutocorrectionResponse(m_spellCheckerDocumentTag, NSCorrectionResponseReverted, replaced, acceptedReplacement);
+            recordAutocorrectionResponse(webViewImpl, m_spellCheckerDocumentTag, NSCorrectionResponseReverted, replaced, acceptedReplacement);
         break;
     case NSCorrectionIndicatorTypeGuesses:
         if (acceptedReplacement)
-            recordAutocorrectionResponse(m_spellCheckerDocumentTag, NSCorrectionResponseAccepted, replaced, acceptedReplacement);
+            recordAutocorrectionResponse(webViewImpl, m_spellCheckerDocumentTag, NSCorrectionResponseAccepted, replaced, acceptedReplacement);
         break;
     }
 

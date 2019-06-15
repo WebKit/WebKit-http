@@ -33,12 +33,20 @@
 #include "ScrollingCoordinator.h"
 #include "ScrollingTreeNode.h"
 
+#if PLATFORM(IOS)
+class ScrollingTreeScrollingNodeDelegate;
+#endif
+
 namespace WebCore {
 
 class ScrollingTree;
 class ScrollingStateScrollingNode;
 
 class ScrollingTreeScrollingNode : public ScrollingTreeNode {
+#if PLATFORM(IOS)
+    friend class ScrollingTreeScrollingNodeDelegate;
+#endif
+
 public:
     virtual ~ScrollingTreeScrollingNode();
 
@@ -95,7 +103,7 @@ protected:
 
     bool canHaveScrollbars() const { return m_scrollableAreaParameters.horizontalScrollbarMode != ScrollbarAlwaysOff || m_scrollableAreaParameters.verticalScrollbarMode != ScrollbarAlwaysOff; }
 
-    WEBCORE_EXPORT void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const override;
+    WEBCORE_EXPORT void dumpProperties(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
 private:
     FloatSize m_scrollableAreaSize;

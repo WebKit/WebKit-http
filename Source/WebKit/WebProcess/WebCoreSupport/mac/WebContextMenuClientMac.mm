@@ -33,19 +33,18 @@
 #import "WebPageProxyMessages.h"
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/Editor.h>
+#import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
-#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/TextIndicator.h>
 #import <wtf/text/WTFString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebContextMenuClient::lookUpInDictionary(Frame* frame)
 {
-    m_page->performDictionaryLookupForSelection(frame, frame->selection().selection(), TextIndicatorPresentationTransition::BounceAndCrossfade);
+    m_page->performDictionaryLookupForSelection(*frame, frame->selection().selection(), TextIndicatorPresentationTransition::BounceAndCrossfade);
 }
 
 bool WebContextMenuClient::isSpeaking()
@@ -67,7 +66,7 @@ void WebContextMenuClient::searchWithGoogle(const Frame* frame)
 {
     String searchString = frame->editor().selectedText();
     searchString.stripWhiteSpace();
-    
+
     m_page->send(Messages::WebPageProxy::SearchTheWeb(searchString));
 }
 
@@ -78,7 +77,7 @@ void WebContextMenuClient::searchWithSpotlight()
     // If not, can we find a place in WebCore to put this?
 
     Frame& mainFrame = m_page->corePage()->mainFrame();
-    
+
     Frame* selectionFrame = &mainFrame;
     for (; selectionFrame; selectionFrame = selectionFrame->tree().traverseNext()) {
         if (selectionFrame->selection().isRange())
@@ -88,7 +87,7 @@ void WebContextMenuClient::searchWithSpotlight()
         selectionFrame = &mainFrame;
 
     String selectedString = selectionFrame->displayStringModifiedByEncoding(selectionFrame->editor().selectedText());
-    
+
     if (selectedString.isEmpty())
         return;
 

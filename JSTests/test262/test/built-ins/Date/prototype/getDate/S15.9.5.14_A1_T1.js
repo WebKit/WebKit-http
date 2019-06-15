@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "getDate" has { DontEnum } attributes
+esid: sec-date.prototype.getdate
 es5id: 15.9.5.14_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.getDate;
-if(x === 1)
+if (x === 1)
   Date.prototype.getDate = 2;
 else
   Date.prototype.getDate = 1;

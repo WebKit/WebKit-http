@@ -29,6 +29,7 @@
 namespace WebCore {
 
 class HTMLScriptElement final : public HTMLElement, public ScriptElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLScriptElement);
 public:
     static Ref<HTMLScriptElement> create(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted = false);
 
@@ -50,8 +51,8 @@ private:
     HTMLScriptElement(const QualifiedName&, Document&, bool wasInsertedByParser, bool alreadyStarted);
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void finishedInsertingSubtree() final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void didFinishInsertingNode() final;
     void childrenChanged(const ChildChange&) final;
 
     bool isURLAttribute(const Attribute&) const final;

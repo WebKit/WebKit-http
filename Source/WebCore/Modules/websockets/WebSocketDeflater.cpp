@@ -31,13 +31,12 @@
 #include "config.h"
 #include "WebSocketDeflater.h"
 
-#if ENABLE(WEB_SOCKETS) && USE(ZLIB)
+#if USE(ZLIB)
 
 #include "Logging.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/HashMap.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/StringExtras.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 #include <zlib.h>
@@ -111,7 +110,7 @@ bool WebSocketDeflater::finish()
     // Remove 4 octets from the tail as the specification requires.
     if (m_buffer.size() <= 4)
         return false;
-    m_buffer.resize(m_buffer.size() - 4);
+    m_buffer.shrink(m_buffer.size() - 4);
     return true;
 }
 
@@ -206,4 +205,4 @@ void WebSocketInflater::reset()
 
 } // namespace WebCore
 
-#endif // ENABLE(WEB_SOCKETS) && USE(ZLIB)
+#endif // USE(ZLIB)

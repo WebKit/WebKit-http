@@ -24,8 +24,7 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include <WebCore/KeyboardEvent.h>
 #include "WebKitDOMDOMWindowPrivate.h"
 #include "WebKitDOMEventPrivate.h"
@@ -34,6 +33,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -58,15 +59,15 @@ WebKitDOMUIEvent* wrapUIEvent(WebCore::UIEvent* coreObject)
 G_DEFINE_TYPE(WebKitDOMUIEvent, webkit_dom_ui_event, WEBKIT_DOM_TYPE_EVENT)
 
 enum {
-    PROP_0,
-    PROP_VIEW,
-    PROP_DETAIL,
-    PROP_KEY_CODE,
-    PROP_CHAR_CODE,
-    PROP_LAYER_X,
-    PROP_LAYER_Y,
-    PROP_PAGE_X,
-    PROP_PAGE_Y,
+    DOM_UI_EVENT_PROP_0,
+    DOM_UI_EVENT_PROP_VIEW,
+    DOM_UI_EVENT_PROP_DETAIL,
+    DOM_UI_EVENT_PROP_KEY_CODE,
+    DOM_UI_EVENT_PROP_CHAR_CODE,
+    DOM_UI_EVENT_PROP_LAYER_X,
+    DOM_UI_EVENT_PROP_LAYER_Y,
+    DOM_UI_EVENT_PROP_PAGE_X,
+    DOM_UI_EVENT_PROP_PAGE_Y,
 };
 
 static void webkit_dom_ui_event_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
@@ -74,28 +75,28 @@ static void webkit_dom_ui_event_get_property(GObject* object, guint propertyId, 
     WebKitDOMUIEvent* self = WEBKIT_DOM_UI_EVENT(object);
 
     switch (propertyId) {
-    case PROP_VIEW:
+    case DOM_UI_EVENT_PROP_VIEW:
         g_value_set_object(value, webkit_dom_ui_event_get_view(self));
         break;
-    case PROP_DETAIL:
+    case DOM_UI_EVENT_PROP_DETAIL:
         g_value_set_long(value, webkit_dom_ui_event_get_detail(self));
         break;
-    case PROP_KEY_CODE:
+    case DOM_UI_EVENT_PROP_KEY_CODE:
         g_value_set_long(value, webkit_dom_ui_event_get_key_code(self));
         break;
-    case PROP_CHAR_CODE:
+    case DOM_UI_EVENT_PROP_CHAR_CODE:
         g_value_set_long(value, webkit_dom_ui_event_get_char_code(self));
         break;
-    case PROP_LAYER_X:
+    case DOM_UI_EVENT_PROP_LAYER_X:
         g_value_set_long(value, webkit_dom_ui_event_get_layer_x(self));
         break;
-    case PROP_LAYER_Y:
+    case DOM_UI_EVENT_PROP_LAYER_Y:
         g_value_set_long(value, webkit_dom_ui_event_get_layer_y(self));
         break;
-    case PROP_PAGE_X:
+    case DOM_UI_EVENT_PROP_PAGE_X:
         g_value_set_long(value, webkit_dom_ui_event_get_page_x(self));
         break;
-    case PROP_PAGE_Y:
+    case DOM_UI_EVENT_PROP_PAGE_Y:
         g_value_set_long(value, webkit_dom_ui_event_get_page_y(self));
         break;
     default:
@@ -111,7 +112,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_VIEW,
+        DOM_UI_EVENT_PROP_VIEW,
         g_param_spec_object(
             "view",
             "UIEvent:view",
@@ -121,7 +122,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DETAIL,
+        DOM_UI_EVENT_PROP_DETAIL,
         g_param_spec_long(
             "detail",
             "UIEvent:detail",
@@ -131,7 +132,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_KEY_CODE,
+        DOM_UI_EVENT_PROP_KEY_CODE,
         g_param_spec_long(
             "key-code",
             "UIEvent:key-code",
@@ -141,7 +142,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CHAR_CODE,
+        DOM_UI_EVENT_PROP_CHAR_CODE,
         g_param_spec_long(
             "char-code",
             "UIEvent:char-code",
@@ -151,7 +152,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LAYER_X,
+        DOM_UI_EVENT_PROP_LAYER_X,
         g_param_spec_long(
             "layer-x",
             "UIEvent:layer-x",
@@ -161,7 +162,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LAYER_Y,
+        DOM_UI_EVENT_PROP_LAYER_Y,
         g_param_spec_long(
             "layer-y",
             "UIEvent:layer-y",
@@ -171,7 +172,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_PAGE_X,
+        DOM_UI_EVENT_PROP_PAGE_X,
         g_param_spec_long(
             "page-x",
             "UIEvent:page-x",
@@ -181,7 +182,7 @@ static void webkit_dom_ui_event_class_init(WebKitDOMUIEventClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_PAGE_Y,
+        DOM_UI_EVENT_PROP_PAGE_Y,
         g_param_spec_long(
             "page-y",
             "UIEvent:page-y",
@@ -203,8 +204,7 @@ void webkit_dom_ui_event_init_ui_event(WebKitDOMUIEvent* self, const gchar* type
     g_return_if_fail(WEBKIT_DOM_IS_DOM_WINDOW(view));
     WebCore::UIEvent* item = WebKit::core(self);
     WTF::String convertedType = WTF::String::fromUTF8(type);
-    WebCore::DOMWindow* convertedView = WebKit::core(view);
-    item->initUIEvent(convertedType, canBubble, cancelable, convertedView, detail);
+    item->initUIEvent(convertedType, canBubble, cancelable, WebKit::toWindowProxy(view), detail);
 }
 
 WebKitDOMDOMWindow* webkit_dom_ui_event_get_view(WebKitDOMUIEvent* self)
@@ -212,8 +212,7 @@ WebKitDOMDOMWindow* webkit_dom_ui_event_get_view(WebKitDOMUIEvent* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_UI_EVENT(self), 0);
     WebCore::UIEvent* item = WebKit::core(self);
-    RefPtr<WebCore::DOMWindow> gobjectResult = WTF::getPtr(item->view());
-    return WebKit::kit(gobjectResult.get());
+    return WebKit::kit(item->view());
 }
 
 glong webkit_dom_ui_event_get_detail(WebKitDOMUIEvent* self)
@@ -278,3 +277,4 @@ glong webkit_dom_ui_event_get_page_y(WebKitDOMUIEvent* self)
     glong result = item->pageY();
     return result;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

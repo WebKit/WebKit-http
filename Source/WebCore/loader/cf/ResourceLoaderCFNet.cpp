@@ -26,18 +26,16 @@
 #include "config.h"
 #include "ResourceLoader.h"
 
-#if USE(CFURLCONNECTION)
-
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 
 namespace WebCore {
 
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) && USE(CFURLCONNECTION)
 
 bool ResourceLoader::shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef cachedResponse)
 {
-    if (m_options.sendLoadCallbacks == DoNotSendCallbacks)
+    if (m_options.sendLoadCallbacks == SendCallbackPolicy::DoNotSendCallbacks)
         return false;
 
     CFURLResponseRef response = CFCachedURLResponseGetWrappedResponse(cachedResponse);
@@ -48,5 +46,3 @@ bool ResourceLoader::shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef
 #endif
 
 } // namespace WebCore
-
-#endif // USE(CFURLCONNECTION)

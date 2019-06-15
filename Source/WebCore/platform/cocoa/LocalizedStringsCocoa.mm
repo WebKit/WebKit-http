@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "LocalizedStrings.h"
+#import "config.h"
+#import "LocalizedStrings.h"
 
-#include "NotImplemented.h"
-#include "WebCoreSystemInterface.h"
-#include <wtf/Assertions.h>
-#include <wtf/MainThread.h>
-#include <wtf/RetainPtr.h>
-#include <wtf/text/WTFString.h>
+#import "NotImplemented.h"
+#import <pal/system/mac/DefaultSearchProvider.h>
+#import <wtf/Assertions.h>
+#import <wtf/MainThread.h>
+#import <wtf/RetainPtr.h>
+#import <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -50,7 +50,7 @@ NSString *localizedNSString(NSString *key)
 String localizedString(const char* key)
 {
     RetainPtr<CFStringRef> keyString = adoptCF(CFStringCreateWithCStringNoCopy(0, key, kCFStringEncodingUTF8, kCFAllocatorNull));
-    return localizedNSString((NSString *)keyString.get());
+    return localizedNSString((__bridge NSString *)keyString.get());
 }
 
 String copyImageUnknownFileLabel()
@@ -66,7 +66,7 @@ String contextMenuItemTagSearchInSpotlight()
 
 String contextMenuItemTagSearchWeb()
 {
-    auto searchProviderName = adoptCF(wkCopyDefaultSearchProviderDisplayName());
+    auto searchProviderName = PAL::defaultSearchProviderDisplayName();
     return formatLocalizedString(WEB_UI_STRING("Search with %@", "Search with search provider context menu item with provider name inserted"), searchProviderName.get());
 }
 

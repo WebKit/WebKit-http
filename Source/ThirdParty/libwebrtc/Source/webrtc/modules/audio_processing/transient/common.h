@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_TRANSIENT_COMMON_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_TRANSIENT_COMMON_H_
+#ifndef MODULES_AUDIO_PROCESSING_TRANSIENT_COMMON_H_
+#define MODULES_AUDIO_PROCESSING_TRANSIENT_COMMON_H_
 namespace webrtc {
 namespace ts {
 
@@ -22,6 +22,6 @@ enum {
   kSampleRate48kHz = 48000
 };
 
-} // namespace ts
-} // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_TRANSIENT_COMMON_H_
+}  // namespace ts
+}  // namespace webrtc
+#endif  // MODULES_AUDIO_PROCESSING_TRANSIENT_COMMON_H_

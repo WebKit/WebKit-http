@@ -23,41 +23,45 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspector.ContentBrowserTabContentView
+WI.SearchTabContentView = class SearchTabContentView extends WI.ContentBrowserTabContentView
 {
     constructor(identifier)
     {
-        let {image, title} = WebInspector.SearchTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
-        let detailsSidebarPanelConstructors = [WebInspector.ResourceDetailsSidebarPanel, WebInspector.ProbeDetailsSidebarPanel,
-            WebInspector.DOMNodeDetailsSidebarPanel, WebInspector.CSSStyleDetailsSidebarPanel];
+        let tabBarItem;
+        if (WI.settings.experimentalEnableNewTabBar.value)
+            tabBarItem = WI.PinnedTabBarItem.fromTabInfo(WI.SearchTabContentView.tabInfo());
+        else
+            tabBarItem = WI.GeneralTabBarItem.fromTabInfo(WI.SearchTabContentView.tabInfo());
 
-        if (window.LayerTreeAgent)
-            detailsSidebarPanelConstructors.push(WebInspector.LayerTreeDetailsSidebarPanel);
+        let detailsSidebarPanelConstructors = [WI.ResourceDetailsSidebarPanel, WI.ProbeDetailsSidebarPanel,
+            WI.DOMNodeDetailsSidebarPanel, WI.ComputedStyleDetailsSidebarPanel, WI.RulesStyleDetailsSidebarPanel];
 
-        super(identifier || "search", "search", tabBarItem, WebInspector.SearchSidebarPanel, detailsSidebarPanelConstructors);
+        if (window.LayerTreeAgent && !WI.settings.experimentalEnableLayersTab.value)
+            detailsSidebarPanelConstructors.push(WI.LayerTreeDetailsSidebarPanel);
+
+        super(identifier || "search", "search", tabBarItem, WI.SearchSidebarPanel, detailsSidebarPanelConstructors);
+
+        // Ensures that the Search tab is displayable from a pinned tab bar item.
+        tabBarItem.representedObject = this;
 
         this._forcePerformSearch = false;
     }
 
     static tabInfo()
     {
+        let image = WI.settings.experimentalEnableNewTabBar.value ? "Images/Search.svg" : "Images/SearchResults.svg";
         return {
-            image: "Images/SearchResults.svg",
-            title: WebInspector.UIString("Search"),
+            image,
+            title: WI.UIString("Search"),
+            isEphemeral: true,
         };
-    }
-
-    static isEphemeral()
-    {
-        return true;
     }
 
     // Public
 
     get type()
     {
-        return WebInspector.SearchTabContentView.Type;
+        return WI.SearchTabContentView.Type;
     }
 
     shown()
@@ -70,7 +74,10 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
 
     canShowRepresentedObject(representedObject)
     {
-        if (!(representedObject instanceof WebInspector.Resource) && !(representedObject instanceof WebInspector.Script) && !(representedObject instanceof WebInspector.DOMTree))
+        if (representedObject instanceof WI.DOMTree)
+            return true;
+
+        if (!(representedObject instanceof WI.Resource) && !(representedObject instanceof WI.Script))
             return false;
 
         return !!this.navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);
@@ -92,7 +99,11 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
 
     handleCopyEvent(event)
     {
-        let selectedTreeElement = this.navigationSidebarPanel.contentTreeOutline.selectedTreeElement;
+        let contentTreeOutline = this.navigationSidebarPanel.contentTreeOutline;
+        if (contentTreeOutline.element !== document.activeElement)
+            return;
+
+        let selectedTreeElement = contentTreeOutline.selectedTreeElement;
         if (!selectedTreeElement)
             return;
 
@@ -111,4 +122,4 @@ WebInspector.SearchTabContentView = class SearchTabContentView extends WebInspec
     }
 };
 
-WebInspector.SearchTabContentView.Type = "search";
+WI.SearchTabContentView.Type = "search";

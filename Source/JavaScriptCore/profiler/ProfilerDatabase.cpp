@@ -31,14 +31,13 @@
 #include "JSONObject.h"
 #include "ObjectConstructor.h"
 #include "JSCInlines.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/FilePrintStream.h>
 
 namespace JSC { namespace Profiler {
 
 static std::atomic<int> databaseCounter;
 
-static StaticLock registrationLock;
+static Lock registrationLock;
 static std::atomic<int> didRegisterAtExit;
 static Database* firstDatabase;
 
@@ -111,7 +110,7 @@ JSValue Database::toJS(ExecState* exec) const
         bytecodes->putDirectIndex(exec, i, value);
         RETURN_IF_EXCEPTION(scope, { });
     }
-    result->putDirect(vm, exec->propertyNames().bytecodes, bytecodes);
+    result->putDirect(vm, vm.propertyNames->bytecodes, bytecodes);
     
     JSArray* compilations = constructEmptyArray(exec, 0);
     RETURN_IF_EXCEPTION(scope, { });
@@ -121,7 +120,7 @@ JSValue Database::toJS(ExecState* exec) const
         compilations->putDirectIndex(exec, i, value);
         RETURN_IF_EXCEPTION(scope, { });
     }
-    result->putDirect(vm, exec->propertyNames().compilations, compilations);
+    result->putDirect(vm, vm.propertyNames->compilations, compilations);
     
     JSArray* events = constructEmptyArray(exec, 0);
     RETURN_IF_EXCEPTION(scope, { });
@@ -131,7 +130,7 @@ JSValue Database::toJS(ExecState* exec) const
         events->putDirectIndex(exec, i, value);
         RETURN_IF_EXCEPTION(scope, { });
     }
-    result->putDirect(vm, exec->propertyNames().events, events);
+    result->putDirect(vm, vm.propertyNames->events, events);
     
     return result;
 }
@@ -181,7 +180,7 @@ void Database::logEvent(CodeBlock* codeBlock, const char* summary, const CString
     
     Bytecodes* bytecodes = ensureBytecodesFor(locker, codeBlock);
     Compilation* compilation = m_compilationMap.get(codeBlock);
-    m_events.append(Event(currentTime(), bytecodes, compilation, summary, detail));
+    m_events.append(Event(WallTime::now(), bytecodes, compilation, summary, detail));
 }
 
 void Database::addDatabaseToAtExit()

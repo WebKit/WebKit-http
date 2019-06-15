@@ -26,18 +26,15 @@
 #include "config.h"
 #include "DisplayRefreshMonitorMac.h"
 
-#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && PLATFORM(MAC)
 
 #include <QuartzCore/QuartzCore.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
 
 DisplayRefreshMonitorMac::DisplayRefreshMonitorMac(PlatformDisplayID displayID)
     : DisplayRefreshMonitor(displayID)
-    , m_weakFactory(this)
-    , m_displayLink(nullptr)
 {
 }
 
@@ -92,8 +89,7 @@ void DisplayRefreshMonitorMac::displayLinkFired()
 
     setIsPreviousFrameDone(false);
 
-    // FIXME: Is it really okay to create a weakPtr on a background thread and then use it on the main thread?
-    RunLoop::main().dispatch([weakPtr = m_weakFactory.createWeakPtr()] {
+    RunLoop::main().dispatch([weakPtr = makeWeakPtr(*this)] {
         if (auto* monitor = weakPtr.get())
             handleDisplayRefreshedNotificationOnMainThread(monitor);
     });
@@ -101,4 +97,4 @@ void DisplayRefreshMonitorMac::displayLinkFired()
 
 }
 
-#endif // USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+#endif // USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && PLATFORM(MAC)

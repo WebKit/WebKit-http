@@ -28,6 +28,7 @@
 namespace WebCore {
 
 class RenderTextControlSingleLine : public RenderTextControl {
+    WTF_MAKE_ISO_ALLOCATED(RenderTextControlSingleLine);
 public:
     RenderTextControlSingleLine(HTMLInputElement&, RenderStyle&&);
     virtual ~RenderTextControlSingleLine();
@@ -56,8 +57,8 @@ private:
     int scrollTop() const override;
     int scrollWidth() const override;
     int scrollHeight() const override;
-    void setScrollLeft(int) override;
-    void setScrollTop(int) override;
+    void setScrollLeft(int, ScrollClamping) override;
+    void setScrollTop(int, ScrollClamping) override;
     bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = nullptr, RenderBox* startBox = nullptr, const IntPoint& wheelEventAbsolutePoint = IntPoint()) final;
     bool logicalScroll(ScrollLogicalDirection, ScrollGranularity, float multiplier = 1, Element** stopElement = 0) final;
 
@@ -84,6 +85,7 @@ inline HTMLElement* RenderTextControlSingleLine::innerBlockElement() const
 // ----------------------------
 
 class RenderTextControlInnerBlock final : public RenderBlockFlow {
+    WTF_MAKE_ISO_ALLOCATED(RenderTextControlInnerBlock);
 public:
     RenderTextControlInnerBlock(Element& element, RenderStyle&& style)
         : RenderBlockFlow(element, WTFMove(style))
@@ -93,7 +95,13 @@ public:
 private:
     bool hasLineIfEmpty() const override { return true; }
     bool isTextControlInnerBlock() const override { return true; }
-    bool canBeProgramaticallyScrolled() const override { return true; }
+    bool canBeProgramaticallyScrolled() const override
+    {
+        auto* shadowHost = element()->shadowHost();
+        if (is<HTMLInputElement>(shadowHost))
+            return !downcast<HTMLInputElement>(*shadowHost).hasAutoFillStrongPasswordButton();
+        return true;
+    }
 };
 
 } // namespace WebCore

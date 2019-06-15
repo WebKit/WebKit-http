@@ -3,14 +3,14 @@
 const assert = require('assert');
 if (!assert.almostEqual)
     assert.almostEqual = require('./resources/almost-equal.js');
-
-const MockRemoteAPI = require('./resources/mock-remote-api.js').MockRemoteAPI;
 require('../tools/js/v3-models.js');
+const BrowserPrivilegedAPI = require('../public/v3/privileged-api.js').PrivilegedAPI;
+const MockRemoteAPI = require('./resources/mock-remote-api.js').MockRemoteAPI;
 const MockModels = require('./resources/mock-v3-models.js').MockModels;
 
 describe('MeasurementSet', () => {
     MockModels.inject();
-    let requests = MockRemoteAPI.inject();
+    const requests = MockRemoteAPI.inject(null, BrowserPrivilegedAPI);
 
     beforeEach(() => {
         MeasurementSet._set = null;
@@ -18,11 +18,7 @@ describe('MeasurementSet', () => {
 
     function waitForMeasurementSet()
     {
-        return Promise.resolve().then(() => {
-            return Promise.resolve();
-        }).then(() => {
-            return Promise.resolve();
-        });
+        return new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     describe('findSet', () => {
@@ -45,7 +41,7 @@ describe('MeasurementSet', () => {
                 callCount++;
             });
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 946684800000,
@@ -71,7 +67,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             set.fetchBetween(1000, 2000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
             assert.equal(callCount, 0);
         });
 
@@ -81,7 +77,7 @@ describe('MeasurementSet', () => {
             set.fetchBetween(1000, 2000, () => callCount++);
             assert.equal(requests.length, 1);
             assert.equal(callCount, 0);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
             set.fetchBetween(2000, 3000, () => callCount++);
             assert.equal(requests.length, 1);
             assert.equal(callCount, 0);
@@ -92,7 +88,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             const promise = set.fetchBetween(2000, 3000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -116,7 +112,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             const promise = set.fetchBetween(1000, 3000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -132,7 +128,7 @@ describe('MeasurementSet', () => {
             return waitForMeasurementSet().then(() => {
                 assert.equal(callCount, 1);
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-2000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-2000.json');
             });
         });
 
@@ -141,7 +137,7 @@ describe('MeasurementSet', () => {
             let callCountForWaitingCallback = 0;
             set.fetchBetween(2000, 3000, () => callCountForWaitingCallback++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -157,7 +153,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-3000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-3000.json');
 
                 set.fetchBetween(0, 7000, () => callCount++);
 
@@ -166,8 +162,8 @@ describe('MeasurementSet', () => {
                 assert.equal(callCountForWaitingCallback, 0);
                 assert.equal(callCount, 1);
                 assert.equal(requests.length, 4);
-                assert.equal(requests[2].url, '../data/measurement-set-1-1-2000.json');
-                assert.equal(requests[3].url, '../data/measurement-set-1-1-4000.json');
+                assert.equal(requests[2].url, '/data/measurement-set-1-1-2000.json');
+                assert.equal(requests[3].url, '/data/measurement-set-1-1-4000.json');
             });
         });
 
@@ -176,7 +172,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             const promise = set.fetchBetween(2707, 4207, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -191,8 +187,8 @@ describe('MeasurementSet', () => {
 
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 3);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-3000.json');
-                assert.equal(requests[2].url, '../data/measurement-set-1-1-4000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-3000.json');
+                assert.equal(requests[2].url, '/data/measurement-set-1-1-4000.json');
                 assert.equal(callCount, 1); // 4000-4207
             });
         });
@@ -202,7 +198,7 @@ describe('MeasurementSet', () => {
             let callCountForWaitingCallback = 0;
             set.fetchBetween(3200, 3700, () => callCountForWaitingCallback++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -218,21 +214,21 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-4000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-4000.json');
                 set.fetchBetween(1207, 1293, () => callCount++);
                 return waitForMeasurementSet();
             }).then(() => {
                 assert.equal(callCountForWaitingCallback, 0);
                 assert.equal(callCount, 0);
                 assert.equal(requests.length, 3);
-                assert.equal(requests[2].url, '../data/measurement-set-1-1-2000.json');
+                assert.equal(requests[2].url, '/data/measurement-set-1-1-2000.json');
                 set.fetchBetween(1964, 3401, () => callCount++);
                 return waitForMeasurementSet();
             }).then(() => {
                 assert.equal(callCountForWaitingCallback, 0);
                 assert.equal(callCount, 0);
                 assert.equal(requests.length, 4);
-                assert.equal(requests[3].url, '../data/measurement-set-1-1-3000.json');
+                assert.equal(requests[3].url, '/data/measurement-set-1-1-3000.json');
             });
         });
 
@@ -241,7 +237,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             set.fetchBetween(0, 3000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 2000,
@@ -266,7 +262,7 @@ describe('MeasurementSet', () => {
             let rejected = false;
             set.fetchBetween(1000, 3000, () => callCount++).catch(() => rejected = true);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].reject(500);
 
@@ -282,7 +278,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             set.fetchBetween(1000, 2000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -298,7 +294,7 @@ describe('MeasurementSet', () => {
             return waitForMeasurementSet().then(() => {
                 assert.equal(callCount, 0);
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../api/measurement-set?platform=1&metric=1');
+                assert.equal(requests[1].url, '/api/measurement-set?platform=1&metric=1');
             });
         });
 
@@ -307,14 +303,14 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             set.fetchBetween(1000, 2000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].reject(404);
 
             return waitForMeasurementSet().then(() => {
                 assert.equal(callCount, 0);
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../api/measurement-set?platform=1&metric=1');
+                assert.equal(requests[1].url, '/api/measurement-set?platform=1&metric=1');
             });
         });
 
@@ -323,7 +319,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             set.fetchBetween(1000, 3000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -342,7 +338,7 @@ describe('MeasurementSet', () => {
                 assert.equal(noCacheFetchCount, 0);
                 assert.equal(set._sortedClusters.length, 1);
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-2000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-2000.json');
 
                 requests[1].resolve({
                     'clusterStart': 1000,
@@ -363,7 +359,7 @@ describe('MeasurementSet', () => {
                 assert.equal(noCacheFetchCount, 0);
                 assert.equal(set._sortedClusters.length, 2);
                 assert.equal(requests.length, 3);
-                assert.equal(requests[2].url, '../api/measurement-set?platform=1&metric=1');
+                assert.equal(requests[2].url, '/api/measurement-set?platform=1&metric=1');
 
                 requests[2].resolve({
                     'clusterStart': 1000,
@@ -382,7 +378,7 @@ describe('MeasurementSet', () => {
                 assert.equal(noCacheFetchCount, 1);
                 assert.equal(set._sortedClusters.length, 2);
                 assert.equal(requests.length, 4);
-                assert.equal(requests[3].url, '../data/measurement-set-1-1-2000.json');
+                assert.equal(requests[3].url, '/data/measurement-set-1-1-2000.json');
 
                 requests[3].resolve({
                     'clusterStart': 1000,
@@ -409,7 +405,7 @@ describe('MeasurementSet', () => {
             let callCount = 0;
             set.fetchBetween(2000, 3000, () => callCount++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             let alternativeCallCount = 0;
             set.fetchBetween(2000, 3000, () => alternativeCallCount++);
@@ -437,7 +433,7 @@ describe('MeasurementSet', () => {
             let callCountFor4000 = 0;
             set.fetchBetween(3200, 3700, () => callCountFor4000++);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -456,7 +452,7 @@ describe('MeasurementSet', () => {
             return waitForMeasurementSet().then(() => {
                 assert.equal(callCountFor4000, 0);
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-4000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-4000.json');
 
                 set.fetchBetween(3708, 4800, () => callCountFor4000To5000++);
                 return waitForMeasurementSet();
@@ -469,7 +465,7 @@ describe('MeasurementSet', () => {
             }).then(() => {
                 assert.equal(callCountFor2000, 0);
                 assert.equal(requests.length, 3);
-                assert.equal(requests[2].url, '../data/measurement-set-1-1-2000.json');
+                assert.equal(requests[2].url, '/data/measurement-set-1-1-2000.json');
 
                 requests[2].resolve({
                     'formatMap': [],
@@ -490,7 +486,7 @@ describe('MeasurementSet', () => {
             }).then(() => {
                 assert.equal(callCountFor2000To4000, 1);
                 assert.equal(requests.length, 4);
-                assert.equal(requests[3].url, '../data/measurement-set-1-1-3000.json');
+                assert.equal(requests[3].url, '/data/measurement-set-1-1-3000.json');
 
                 requests[3].resolve({
                     'formatMap': [],
@@ -537,7 +533,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 3000);
             const promise = set.fetchBetween(2000, 3000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -560,7 +556,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 3000);
             const promise = set.fetchBetween(2000, 3000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -582,7 +578,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 5000);
             const promise = set.fetchBetween(2000, 3000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -597,7 +593,7 @@ describe('MeasurementSet', () => {
 
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-3000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-3000.json');
                 requests[1].resolve({
                     'clusterStart': 1000,
                     'clusterSize': 1000,
@@ -617,7 +613,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 5000);
             set.fetchBetween(2000, 3000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -632,7 +628,7 @@ describe('MeasurementSet', () => {
 
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-3000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-3000.json');
                 requests[1].resolve({
                     'clusterStart': 1000,
                     'clusterSize': 1000,
@@ -652,7 +648,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 5000);
             set.fetchBetween(2000, 5000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -667,8 +663,8 @@ describe('MeasurementSet', () => {
 
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 3);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-3000.json');
-                assert.equal(requests[2].url, '../data/measurement-set-1-1-4000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-3000.json');
+                assert.equal(requests[2].url, '/data/measurement-set-1-1-4000.json');
                 requests[1].resolve({
                     'clusterStart': 1000,
                     'clusterSize': 1000,
@@ -690,7 +686,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 3000);
             const promise = set.fetchBetween(2000, 3000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -720,37 +716,37 @@ describe('MeasurementSet', () => {
                 "current": [
                     [
                         26530031, 135.26375, 80, 10821.1, 1481628.13, false,
-                        [ [27173, 1, "210096", 1482398562950] ],
+                        [ [27173, 1, "210096", null, 1482398562950] ],
                         1482398562950, 52999, 1482413222311, "10877", 7
                     ],
                     [
                         26530779, 153.2675, 80, 12261.4, 1991987.4, true, // changed to true.
-                        [ [27174,1,"210097",1482424870729] ],
+                        [ [27174,1,"210097", null, 1482424870729] ],
                         1482424870729, 53000, 1482424992735, "10878", 7
                     ],
                     [
                         26532275, 134.2725, 80, 10741.8, 1458311.88, false,
-                        [ [ 27176, 1, "210102", 1482431464371 ] ],
+                        [ [ 27176, 1, "210102", null, 1482431464371 ] ],
                         1482431464371, 53002, 1482436041865, "10879", 7
                     ],
                     [
                         26547226, 150.9625, 80, 12077, 1908614.94, false,
-                        [ [ 27195, 1, "210168", 1482852412735 ] ],
+                        [ [ 27195, 1, "210168", null, 1482852412735 ] ],
                         1482852412735, 53022, 1482852452143, "10902", 7
                     ],
                     [
                         26559915, 141.72, 80, 11337.6, 1633126.8, false,
-                        [ [ 27211, 1, "210222", 1483347732051 ] ],
+                        [ [ 27211, 1, "210222", null, 1483347732051 ] ],
                         1483347732051, 53039, 1483347926429, "10924", 7
                     ],
                     [
                         26564388, 138.13125, 80, 11050.5, 1551157.93, false,
-                        [ [ 27217, 1, "210231", 1483412171531 ] ],
+                        [ [ 27217, 1, "210231", null, 1483412171531 ] ],
                         1483412171531, 53045, 1483415426049, "10930", 7
                     ],
                     [
                         26568867, 144.16, 80, 11532.8, 1694941.1, false,
-                        [ [ 27222, 1, "210240", 1483469584347 ] ],
+                        [ [ 27222, 1, "210240", null, 1483469584347 ] ],
                         1483469584347, 53051, 1483469642993, "10935", 7
                     ]
                 ]
@@ -779,7 +775,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(15, 769, 1484105738736);
             const promise = set.fetchBetween(1476426488465, 1484203801573);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-15-769.json');
+            assert.equal(requests[0].url, '/data/measurement-set-15-769.json');
 
             requests[0].resolve(sampleCluster);
 
@@ -960,6 +956,38 @@ describe('MeasurementSet', () => {
             1587.1390, 1594.5451, 1586.2430, 1596.7310, 1548.1423
         ];
 
+        const segmentableValuesWithSameValueInTheEnd = [
+            58.682259702925, 58.672894300682, 58.631641849076, 58.627144214832, 58.600152967236, 58.494227167544, 58.599711218167,
+            58.547823321802, 58.698848676888, 58.508972506625, 58.469396077128, 58.556437051089, 58.604914035672, 58.571468615261,
+            58.594861298965, 58.579862593826, 58.737724228989, 58.559390128467, 58.662054613527, 58.487359249788, 58.668808926954,
+            58.553303046256, 58.569416814443, 58.626218640839, 58.558458933333, 58.750789167464, 58.510114013725, 58.69285535498,
+            58.485630989257, 58.578345118044, 58.582484886505, 58.532783559929, 58.609545975048, 58.577426480631, 58.646940753247,
+            58.682440825246, 58.690139834194, 58.553030894519, 58.48355532648, 58.562671977345, 58.736913200555, 58.601320380111,
+            58.505524628951, 58.719286182364, 58.58550401243, 58.610740664944, 58.666584852042, 58.65066016161, 58.482425957387,
+            58.661528735444, 58.518979531621, 58.541899532138, 58.682011833211, 58.728042515799, 58.585571499659, 58.514042621815,
+            58.577703157219, 58.599122230584, 58.484605706445, 58.627013987028, 58.732535874422, 58.647810220687, 58.484710879088,
+            58.60018559995, 58.474169516583, 58.556748299505, 58.591036051726, 58.71549080058, 58.665731757591, 58.632681499924,
+            58.552549642854, 58.584740710795, 58.636732559301, 58.53269727482, 58.685214845539, 58.537642664213, 58.539530819775,
+            58.593108102721, 58.677797677387, 58.634261295951, 58.585087893228, 58.595892348834, 58.530958396798, 58.642329444242,
+            58.523362771471, 58.472298233318, 58.608844095124, 58.637822365233, 58.532578586691, 58.561802676135, 58.525325974291,
+            58.546952858346, 58.628146092218, 58.676781325555, 58.537737927017, 58.517186448238, 58.517186448238, 58.48698590938,
+            58.573592928243, 58.51865286684, 58.479829555547, 58.458334022968, 58.523846961495, 58.549153451184, 58.634999646062,
+            58.651469426158, 58.604400895147, 58.520828892369, 58.461372117238, 58.458419659482, 58.558429870762, 58.520353913269,
+            58.505030130601, 58.558693442114, 58.583541042224, 58.635994108477, 58.596789439588, 58.523974765221, 58.578794417346,
+            58.468486231053, 58.498525892758, 58.735390962226, 58.648008111097, 58.466341359719, 58.461193386858, 58.669176655316,
+            58.517108713145, 58.580728461245, 58.566096647056, 58.56041778812, 58.541417728709, 58.508221589085, 58.411457477143,
+            58.451664940683, 58.583113913556, 58.612464741978, 58.620718400402, 58.632099100152, 58.566486756057, 58.624483547469,
+            58.55432867294, 58.563472285719, 58.600277699686, 58.489114861265, 58.614875239224, 58.519637811989, 58.538987481917,
+            58.538522915164, 58.524365991229, 58.527404019557, 58.545873059444, 58.546814673224, 58.5387615282, 58.600516560328,
+            58.599054345431, 58.593909039083, 58.640076570937, 58.522330600933, 58.593842010201, 58.476540680164, 58.436866978957,
+            58.642057826523, 58.639790605443, 58.601606301724, 58.639790605443, 58.632119472725, 58.525704127801, 58.589769044991,
+            58.655170757252, 58.639790605443, 58.665187550878, 58.728890733238, 58.639790605443, 58.522175015522, 58.569765368371,
+            58.504822400604, 58.569230880769, 58.590753393869, 58.628160118689, 58.522175015522, 58.666019881578, 58.522175015522,
+            58.522175015522, 58.522175015522, 58.639790605443, 58.639790605443, 58.425335418429, 58.425335418429, 58.425335418429,
+            58.425335418429, 58.425335418429, 58.425335418429, 58.520895333629, 58.520895333629, 58.520895333629, 58.520895333629,
+            58.520895333629
+        ];
+
         function makeSampleRuns(values, startRunId, startTime, timeIncrement)
         {
             var runId = startRunId;
@@ -979,7 +1007,7 @@ describe('MeasurementSet', () => {
             const set = MeasurementSet.findSet(1, 1, 5000);
             const promise = set.fetchBetween(4000, 5000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -1015,11 +1043,42 @@ describe('MeasurementSet', () => {
             });
         });
 
+        it('should merge last four segments into two if values are identical', async () => {
+            const set = MeasurementSet.findSet(1, 1, 5000);
+            set.fetchBetween(4000, 5000);
+            assert.equal(requests.length, 1);
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
+
+            requests[0].resolve({
+                'clusterStart': 1000,
+                'clusterSize': 1000,
+                'formatMap': ['id', 'mean', 'iterationCount', 'sum', 'squareSum', 'markedOutlier', 'revisions', 'commitTime', 'build', 'buildTime', 'buildNumber', 'builder'],
+                'configurations': {current: makeSampleRuns(segmentableValuesWithSameValueInTheEnd, 6400, 4000, 1000 / 200)},
+                'startTime': 4000,
+                'endTime': 5000,
+                'lastModified': 5000,
+                'clusterCount': 4,
+                'status': 'OK'});
+
+            var timeSeries;
+            assert.equal(set.fetchedTimeSeries('current', false, false).length(), 0);
+
+            await waitForMeasurementSet();
+
+            timeSeries = set.fetchedTimeSeries('current', false, false);
+            assert.equal(timeSeries.length(), 197);
+            assert.equal(timeSeries.firstPoint().time, 4000);
+            assert.equal(timeSeries.lastPoint().time, 4980);
+
+            const segmentation = await set.fetchSegmentation('segmentTimeSeriesByMaximizingSchwarzCriterion', [], 'current', false);
+            assert.equal(segmentation.length, 8);
+        });
+
         it('should be able to segment two clusters', () => {
             const set = MeasurementSet.findSet(1, 1, 5000);
             const promise = set.fetchBetween(3000, 5000);
             assert.equal(requests.length, 1);
-            assert.equal(requests[0].url, '../data/measurement-set-1-1.json');
+            assert.equal(requests[0].url, '/data/measurement-set-1-1.json');
 
             requests[0].resolve({
                 'clusterStart': 1000,
@@ -1034,7 +1093,7 @@ describe('MeasurementSet', () => {
 
             return waitForMeasurementSet().then(() => {
                 assert.equal(requests.length, 2);
-                assert.equal(requests[1].url, '../data/measurement-set-1-1-4000.json');
+                assert.equal(requests[1].url, '/data/measurement-set-1-1-4000.json');
                 return set.fetchSegmentation('segmentTimeSeriesByMaximizingSchwarzCriterion', [], 'current', false);
             }).then((segmentation) => {
                 const timeSeries = set.fetchedTimeSeries('current', false, false);

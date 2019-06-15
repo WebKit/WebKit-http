@@ -16,6 +16,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 RTC_EXPORT
+__attribute__((objc_runtime_name("WK_RTCDataChannelConfiguration")))
 @interface RTCDataChannelConfiguration : NSObject
 
 /** Set to YES if ordered delivery is required. */
@@ -45,7 +46,7 @@ RTC_EXPORT
 @property(nonatomic, assign) int channelId;
 
 /** Set by the application and opaque to the WebRTC implementation. */
-@property(nonatomic) NSString *protocol;
+@property(nonatomic) NSString* protocol;
 
 @end
 

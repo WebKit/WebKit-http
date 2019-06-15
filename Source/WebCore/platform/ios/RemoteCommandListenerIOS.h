@@ -23,12 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef RemoteCommandListenerIOS_h
-#define RemoteCommandListenerIOS_h
+#pragma once
 
 #include "RemoteCommandListener.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && HAVE(MEDIA_PLAYER)
 
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
@@ -39,16 +38,14 @@ typedef void *id;
 
 namespace WebCore {
 
-class RemoteCommandListenerIOS : public RemoteCommandListener {
+class RemoteCommandListenerIOS : public RemoteCommandListener, public CanMakeWeakPtr<RemoteCommandListenerIOS> {
 public:
     RemoteCommandListenerIOS(RemoteCommandListenerClient&);
     virtual ~RemoteCommandListenerIOS();
 
 protected:
-    WeakPtr<RemoteCommandListenerIOS> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
     void updateSupportedCommands() override;
 
-    WeakPtrFactory<RemoteCommandListenerIOS> m_weakPtrFactory;
     RetainPtr<id> m_playTarget;
     RetainPtr<id> m_pauseTarget;
     RetainPtr<id> m_togglePlayPauseTarget;
@@ -59,6 +56,4 @@ protected:
 
 }
 
-#endif
-
-#endif
+#endif // PLATFORM(IOS) && HAVE(MEDIA_PLAYER)

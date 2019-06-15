@@ -27,8 +27,8 @@
 
 #if ENABLE(APPLE_PAY)
 
-#import <WebCore/PassKitSPI.h>
 #import <WebCore/PaymentHeaders.h>
+#import <pal/spi/cocoa/PassKitSPI.h>
 #import <wtf/BlockPtr.h>
 
 namespace WebCore {
@@ -39,7 +39,7 @@ namespace WebKit {
 class WebPageProxy;
 class WebPaymentCoordinatorProxy;
 
-RetainPtr<PKPaymentRequest> toPKPaymentRequest(WebPageProxy&, const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&);
+RetainPtr<PKPaymentRequest> toPKPaymentRequest(WebPageProxy&, const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest&);
 
 }
 

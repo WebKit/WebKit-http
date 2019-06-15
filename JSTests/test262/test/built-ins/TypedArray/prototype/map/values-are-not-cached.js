@@ -5,9 +5,10 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   Integer indexed values changed during iteration
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -21,5 +22,7 @@ testWithTypedArrayConstructors(function(TA) {
     assert.sameValue(
       v, 42, "method does not cache values before callbackfn calls"
     );
+
+    return 0;
   });
 });

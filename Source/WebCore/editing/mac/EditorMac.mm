@@ -26,32 +26,22 @@
 #import "config.h"
 #import "Editor.h"
 
+#if PLATFORM(MAC)
+
 #import "Blob.h"
 #import "CSSPrimitiveValueMappings.h"
 #import "CSSValuePool.h"
-#import "DOMURL.h"
 #import "DataTransfer.h"
 #import "DocumentFragment.h"
-#import "DocumentLoader.h"
 #import "Editing.h"
-#import "Editor.h"
 #import "EditorClient.h"
-#import "File.h"
-#import "FontCascade.h"
 #import "Frame.h"
-#import "FrameLoader.h"
-#import "FrameLoaderClient.h"
 #import "FrameView.h"
-#import "HTMLAnchorElement.h"
-#import "HTMLAttachmentElement.h"
 #import "HTMLConverter.h"
 #import "HTMLElement.h"
-#import "HTMLImageElement.h"
 #import "HTMLNames.h"
+#import "LegacyNSPasteboardTypes.h"
 #import "LegacyWebArchive.h"
-#import "MIMETypeRegistry.h"
-#import "NodeTraversal.h"
-#import "Page.h"
 #import "Pasteboard.h"
 #import "PasteboardStrategy.h"
 #import "PlatformStrategies.h"
@@ -59,12 +49,13 @@
 #import "RenderBlock.h"
 #import "RenderImage.h"
 #import "RuntimeApplicationChecks.h"
-#import "Settings.h"
+#import "RuntimeEnabledFeatures.h"
 #import "StyleProperties.h"
-#import "Text.h"
-#import "TypingCommand.h"
+#import "WebContentReader.h"
+#import "WebCoreNSURLExtras.h"
 #import "WebNSAttributedStringExtras.h"
 #import "markup.h"
+#import <AppKit/AppKit.h>
 #import <pal/system/Sound.h>
 
 namespace WebCore {
@@ -119,11 +110,11 @@ void Editor::takeFindStringFromSelection()
     }
 
     Vector<String> types;
-    types.append(String(NSStringPboardType));
+    types.append(String(legacyStringPasteboardType()));
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     platformStrategies()->pasteboardStrategy()->setTypes(types, NSFindPboard);
-    platformStrategies()->pasteboardStrategy()->setStringForType(m_frame.displayStringModifiedByEncoding(selectedTextForDataTransfer()), NSStringPboardType, NSFindPboard);
+    platformStrategies()->pasteboardStrategy()->setStringForType(m_frame.displayStringModifiedByEncoding(selectedTextForDataTransfer()), legacyStringPasteboardType(), NSFindPboard);
 #pragma clang diagnostic pop
 }
 
@@ -194,11 +185,6 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
     client()->setInsertionPasteboard(String());
 }
 
-String Editor::selectionInHTMLFormat()
-{
-    return createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
-}
-
 RefPtr<SharedBuffer> Editor::imageInWebArchiveFormat(Element& imageElement)
 {
     RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(imageElement);
@@ -220,10 +206,10 @@ RefPtr<SharedBuffer> Editor::dataSelectionForPasteboard(const String& pasteboard
     if (pasteboardType == WebArchivePboardType)
         return selectionInWebArchiveFormat();
 
-    if (pasteboardType == String(NSRTFDPboardType))
+    if (pasteboardType == String(legacyRTFDPasteboardType()))
        return dataInRTFDFormat(attributedStringFromRange(*adjustedSelectionRange()));
 
-    if (pasteboardType == String(NSRTFPboardType)) {
+    if (pasteboardType == String(legacyRTFPasteboardType())) {
         NSAttributedString* attributedString = attributedStringFromRange(*adjustedSelectionRange());
         // FIXME: Why is this attachment character stripping needed here, but not needed in writeSelectionToPasteboard?
         if ([attributedString containsAttachments])
@@ -251,11 +237,6 @@ static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& 
     cachedImage = tentativeCachedImage;
 }
 
-String Editor::userVisibleString(const URL& url)
-{
-    return client()->userVisibleString(url);
-}
-
 void Editor::selectionWillChange()
 {
     if (!hasComposition() || ignoreSelectionChanges() || m_frame.selection().isNone())
@@ -267,12 +248,12 @@ void Editor::selectionWillChange()
 
 String Editor::plainTextFromPasteboard(const PasteboardPlainText& text)
 {
-    String string = text.text;
+    auto string = text.text;
 
     // FIXME: It's not clear this is 100% correct since we know -[NSURL URLWithString:] does not handle
     // all the same cases we handle well in the URL code for creating an NSURL.
     if (text.isURL)
-        string = client()->userVisibleString([NSURL URLWithString:string]);
+        string = userVisibleString([NSURL URLWithString:string]);
 
     // FIXME: WTF should offer a non-Mac-specific way to convert string to precomposed form so we can do it for all platforms.
     return [(NSString *)string precomposedStringWithCanonicalMapping];
@@ -282,7 +263,7 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
 {
     PasteboardImage pasteboardImage;
 
-    CachedImage* cachedImage;
+    CachedImage* cachedImage = nullptr;
     getImage(imageElement, pasteboardImage.image, cachedImage);
     if (!pasteboardImage.image)
         return;
@@ -291,189 +272,11 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
     pasteboardImage.dataInWebArchiveFormat = imageInWebArchiveFormat(imageElement);
     pasteboardImage.url.url = url;
     pasteboardImage.url.title = title;
-    pasteboardImage.url.userVisibleForm = client()->userVisibleString(pasteboardImage.url.url);
+    pasteboardImage.url.userVisibleForm = userVisibleString(pasteboardImage.url.url);
     pasteboardImage.resourceData = cachedImage->resourceBuffer();
     pasteboardImage.resourceMIMEType = cachedImage->response().mimeType();
 
     pasteboard.write(pasteboardImage);
-}
-
-class Editor::WebContentReader final : public PasteboardWebContentReader {
-public:
-    Frame& frame;
-    Range& context;
-    const bool allowPlainText;
-
-    RefPtr<DocumentFragment> fragment;
-    bool madeFragmentFromPlainText;
-
-    WebContentReader(Frame& frame, Range& context, bool allowPlainText)
-        : frame(frame)
-        , context(context)
-        , allowPlainText(allowPlainText)
-        , madeFragmentFromPlainText(false)
-    {
-    }
-
-private:
-    bool readWebArchive(SharedBuffer*) override;
-    bool readFilenames(const Vector<String>&) override;
-    bool readHTML(const String&) override;
-    bool readRTFD(SharedBuffer&) override;
-    bool readRTF(SharedBuffer&) override;
-    bool readImage(Ref<SharedBuffer>&&, const String& type) override;
-    bool readURL(const URL&, const String& title) override;
-    bool readPlainText(const String&) override;
-};
-
-bool Editor::WebContentReader::readWebArchive(SharedBuffer* buffer)
-{
-    if (frame.settings().preferMIMETypeForImages())
-        return false;
-
-    if (!frame.document())
-        return false;
-
-    if (!buffer)
-        return false;
-
-    auto archive = LegacyWebArchive::create(URL(), *buffer);
-    if (!archive)
-        return false;
-
-    RefPtr<ArchiveResource> mainResource = archive->mainResource();
-    if (!mainResource)
-        return false;
-
-    const String& type = mainResource->mimeType();
-
-    if (frame.loader().client().canShowMIMETypeAsHTML(type)) {
-        // FIXME: The code in createFragmentAndAddResources calls setDefersLoading(true). Don't we need that here?
-        if (DocumentLoader* loader = frame.loader().documentLoader())
-            loader->addAllArchiveResources(*archive);
-
-        String markupString = String::fromUTF8(mainResource->data().data(), mainResource->data().size());
-        fragment = createFragmentFromMarkup(*frame.document(), markupString, mainResource->url(), DisallowScriptingAndPluginContent);
-        return true;
-    }
-
-    if (MIMETypeRegistry::isSupportedImageMIMEType(type)) {
-        fragment = frame.editor().createFragmentForImageResourceAndAddResource(WTFMove(mainResource));
-        return true;
-    }
-
-    return false;
-}
-
-bool Editor::WebContentReader::readFilenames(const Vector<String>& paths)
-{
-    if (paths.isEmpty())
-        return false;
-
-    if (!frame.document())
-        return false;
-    Document& document = *frame.document();
-
-    fragment = document.createDocumentFragment();
-
-    for (auto& text : paths) {
-#if ENABLE(ATTACHMENT_ELEMENT)
-        auto attachment = HTMLAttachmentElement::create(attachmentTag, document);
-        attachment->setFile(File::create([[NSURL fileURLWithPath:text] path]).ptr());
-        fragment->appendChild(attachment);
-#else
-        auto paragraph = createDefaultParagraphElement(document);
-        paragraph->appendChild(document.createTextNode(frame.editor().client()->userVisibleString([NSURL fileURLWithPath:text])));
-        fragment->appendChild(paragraph);
-#endif
-    }
-
-    return true;
-}
-
-bool Editor::WebContentReader::readHTML(const String& string)
-{
-    String stringOmittingMicrosoftPrefix = string;
-
-    // This code was added to make HTML paste from Microsoft Word on Mac work, back in 2004.
-    // It's a simple-minded way to ignore the CF_HTML clipboard format, just skipping over the
-    // description part and parsing the entire context plus fragment.
-    if (string.startsWith("Version:")) {
-        size_t location = string.findIgnoringCase("<html");
-        if (location != notFound)
-            stringOmittingMicrosoftPrefix = string.substring(location);
-    }
-
-    if (stringOmittingMicrosoftPrefix.isEmpty())
-        return false;
-
-    if (!frame.document())
-        return false;
-    Document& document = *frame.document();
-
-    fragment = createFragmentFromMarkup(document, stringOmittingMicrosoftPrefix, emptyString(), DisallowScriptingAndPluginContent);
-    return fragment;
-}
-
-bool Editor::WebContentReader::readRTFD(SharedBuffer& buffer)
-{
-    if (frame.settings().preferMIMETypeForImages())
-        return false;
-
-    fragment = frame.editor().createFragmentAndAddResources(adoptNS([[NSAttributedString alloc] initWithRTFD:buffer.createNSData().get() documentAttributes:nullptr]).get());
-    return fragment;
-}
-
-bool Editor::WebContentReader::readRTF(SharedBuffer& buffer)
-{
-    if (frame.settings().preferMIMETypeForImages())
-        return false;
-
-    fragment = frame.editor().createFragmentAndAddResources(adoptNS([[NSAttributedString alloc] initWithRTF:buffer.createNSData().get() documentAttributes:nullptr]).get());
-    return fragment;
-}
-
-bool Editor::WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const String& type)
-{
-    ASSERT(type.contains('/'));
-    String typeAsFilenameWithExtension = type;
-    typeAsFilenameWithExtension.replace('/', '.');
-
-    Vector<uint8_t> data;
-    data.append(buffer->data(), buffer->size());
-    auto blob = Blob::create(WTFMove(data), type);
-    ASSERT(frame.document());
-    String blobURL = DOMURL::createObjectURL(*frame.document(), blob);
-
-    fragment = frame.editor().createFragmentForImageAndURL(blobURL);
-    return fragment;
-}
-
-bool Editor::WebContentReader::readURL(const URL& url, const String& title)
-{
-    if (url.string().isEmpty())
-        return false;
-
-    auto anchor = HTMLAnchorElement::create(*frame.document());
-    anchor->setAttributeWithoutSynchronization(HTMLNames::hrefAttr, url.string());
-    anchor->appendChild(frame.document()->createTextNode([title precomposedStringWithCanonicalMapping]));
-
-    fragment = frame.document()->createDocumentFragment();
-    fragment->appendChild(anchor);
-    return true;
-}
-
-bool Editor::WebContentReader::readPlainText(const String& text)
-{
-    if (!allowPlainText)
-        return false;
-
-    fragment = createFragmentFromText(context, [text precomposedStringWithCanonicalMapping]);
-    if (!fragment)
-        return false;
-
-    madeFragmentFromPlainText = true;
-    return true;
 }
 
 // FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
@@ -486,15 +289,6 @@ RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard
     return WTFMove(reader.fragment);
 }
 
-void Editor::applyFontStyles(const String& fontFamily, double fontSize, unsigned fontTraits)
-{
-    auto& cssValuePool = CSSValuePool::singleton();
-    Ref<MutableStyleProperties> style = MutableStyleProperties::create();
-    style->setProperty(CSSPropertyFontFamily, cssValuePool.createFontFamilyValue(fontFamily));
-    style->setProperty(CSSPropertyFontStyle, (fontTraits & NSFontItalicTrait) ? CSSValueItalic : CSSValueNormal);
-    style->setProperty(CSSPropertyFontWeight, (fontTraits & NSFontBoldTrait) ? CSSValueBold : CSSValueNormal);
-    style->setProperty(CSSPropertyFontSize, cssValuePool.createValue(fontSize, CSSPrimitiveValue::CSS_PX));
-    applyStyleToSelection(style.ptr(), EditActionSetFont);
-}
-
 } // namespace WebCore
+
+#endif // PLATFORM(MAC)

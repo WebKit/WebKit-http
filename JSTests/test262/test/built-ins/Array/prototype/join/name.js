@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.1.3.12
+esid: sec-array.prototype.join
+es6id: 22.1.3.13
 description: >
   Array.prototype.join.name is "join".
-info: >
+info: |
   Array.prototype.join (separator)
 
   17 ECMAScript Standard Built-in Objects:

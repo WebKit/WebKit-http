@@ -28,7 +28,6 @@
 #include "ScrollTypes.h"
 #include "Timer.h"
 #include "Widget.h"
-#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -141,8 +140,6 @@ public:
 
     bool supportsUpdateOnSecondaryThread() const;
 
-    WeakPtr<Scrollbar> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
 protected:
     Scrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize, ScrollbarTheme* = 0, bool isCustomScrollbar = false);
 
@@ -191,8 +188,6 @@ protected:
 
 private:
     bool isScrollbar() const override { return true; }
-
-    WeakPtrFactory<Scrollbar> m_weakPtrFactory;
 };
 
 } // namespace WebCore

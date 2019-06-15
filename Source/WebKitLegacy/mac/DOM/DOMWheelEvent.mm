@@ -30,7 +30,7 @@
 #import "DOMNodeInternal.h"
 #import <WebCore/DOMWindow.h>
 #import "ExceptionHandlers.h"
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <WebCore/WheelEvent.h>
@@ -96,7 +96,7 @@
 - (void)initWheelEvent:(int)inWheelDeltaX wheelDeltaY:(int)inWheelDeltaY view:(DOMAbstractView *)view screenX:(int)screenX screenY:(int)screenY clientX:(int)clientX clientY:(int)clientY ctrlKey:(BOOL)ctrlKey altKey:(BOOL)altKey shiftKey:(BOOL)shiftKey metaKey:(BOOL)metaKey
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->initWheelEvent(inWheelDeltaX, inWheelDeltaY, core(view), screenX, screenY, clientX, clientY, ctrlKey, altKey, shiftKey, metaKey);
+    IMPL->initWebKitWheelEvent(inWheelDeltaX, inWheelDeltaY, toWindowProxy(view), screenX, screenY, clientX, clientY, ctrlKey, altKey, shiftKey, metaKey);
 }
 
 @end

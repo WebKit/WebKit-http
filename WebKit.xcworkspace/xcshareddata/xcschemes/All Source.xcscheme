@@ -4,24 +4,6 @@
    <BuildAction
       parallelizeBuildables = "NO"
       buildImplicitDependencies = "YES">
-      <PreActions>
-         <ExecutionAction
-            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
-            <ActionContent
-               title = "Run Script"
-               scriptText = "&quot;$SRCROOT/../../Tools/Scripts/copy-webkitlibraries-to-product-directory&quot; --wksi --sdk &quot;$SDKROOT&quot;">
-               <EnvironmentBuildable>
-                  <BuildableReference
-                     BuildableIdentifier = "primary"
-                     BlueprintIdentifier = "5D247B6114689B8600E78B76"
-                     BuildableName = "libWTF.a"
-                     BlueprintName = "WTF"
-                     ReferencedContainer = "container:Source/WTF/WTF.xcodeproj">
-                  </BuildableReference>
-               </EnvironmentBuildable>
-            </ActionContent>
-         </ExecutionAction>
-      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry
             buildForTesting = "YES"
@@ -132,7 +114,7 @@
                BlueprintIdentifier = "9398100A0824BF01008DF038"
                BuildableName = "WebKitLegacy.framework"
                BlueprintName = "WebKitLegacy"
-               ReferencedContainer = "container:Source/WebKit/WebKit.xcodeproj">
+               ReferencedContainer = "container:Source/WebKitLegacy/WebKitLegacy.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -146,7 +128,7 @@
                BlueprintIdentifier = "1A50DB38110A3C13000D3FE5"
                BuildableName = "All"
                BlueprintName = "All"
-               ReferencedContainer = "container:Source/WebKit2/WebKit2.xcodeproj">
+               ReferencedContainer = "container:Source/WebKit/WebKit.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -155,6 +137,7 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      language = ""
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
       </Testables>
@@ -174,6 +157,7 @@
       buildConfiguration = "Debug"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      language = ""
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "YES"

@@ -21,8 +21,6 @@
 #include "config.h"
 #include "WebKitTestServer.h"
 #include "WebViewTest.h"
-#include <JavaScriptCore/JSStringRef.h>
-#include <JavaScriptCore/JSValueRef.h>
 #include <glib/gstdio.h>
 #include <wtf/glib/GRefPtr.h>
 
@@ -51,16 +49,25 @@ static void testWebViewWebContext(WebViewTest* test, gconstpointer)
     g_assert(webkit_web_context_get_default() != test->m_webContext.get());
 
     // Check that a web view created with g_object_new has the default context.
-    auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW, nullptr));
+    auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
+        nullptr));
     g_assert(webkit_web_view_get_context(webView.get()) == webkit_web_context_get_default());
 
     // Check that a web view created with a related view has the related view context.
-    webView = Test::adoptView(webkit_web_view_new_with_related_view(test->m_webView));
+    webView = Test::adoptView(Test::createWebView(test->m_webView));
     g_assert(webkit_web_view_get_context(webView.get()) == test->m_webContext.get());
 
     // Check that a web context given as construct parameter is ignored if a related view is also provided.
     webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
-        "web-context", webkit_web_context_get_default(), "related-view", test->m_webView, nullptr));
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
+        "web-context", webkit_web_context_get_default(),
+        "related-view", test->m_webView,
+        nullptr));
     g_assert(webkit_web_view_get_context(webView.get()) == test->m_webContext.get());
 }
 
@@ -69,7 +76,7 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     WebKitWebContext* webContext = webkit_web_context_new();
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webContext));
 
-    auto* webView = webkit_web_view_new_with_context(webContext);
+    auto* webView = Test::createWebView(webContext);
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView));
 
 #if PLATFORM(GTK)
@@ -85,7 +92,7 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     WebKitWebContext* webContext2 = webkit_web_context_new();
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webContext2));
 
-    auto* webView2 = webkit_web_view_new_with_context(webContext2);
+    auto* webView2 = Test::createWebView(webContext2);
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView2));
 
 #if PLATFORM(GTK)
@@ -97,6 +104,86 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     g_assert_true(WEBKIT_IS_WEB_CONTEXT(webContext2));
     g_object_unref(webContext2);
 }
+
+static void testWebViewCloseQuickly(WebViewTest* test, gconstpointer)
+{
+    auto webView = Test::adoptView(Test::createWebView());
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    g_idle_add([](gpointer userData) -> gboolean {
+        static_cast<WebViewTest*>(userData)->quitMainLoop();
+        return G_SOURCE_REMOVE;
+    }, test);
+    g_main_loop_run(test->m_mainLoop);
+    webView = nullptr;
+}
+
+#if PLATFORM(WPE)
+static void testWebViewWebBackend(Test* test, gconstpointer)
+{
+    static struct wpe_view_backend_interface s_testingInterface = {
+        // create
+        [](void*, struct wpe_view_backend*) -> void* { return nullptr; },
+        // destroy
+        [](void*) { },
+        // initialize
+        [](void*) { },
+        // get_renderer_host_fd
+        [](void*) -> int { return -1; },
+        // padding
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
+    };
+
+    // User provided backend with default deleter (we don't have a way to check the backend will be actually freed).
+    GRefPtr<WebKitWebView> webView = adoptGRef(webkit_web_view_new(webkit_web_view_backend_new(wpe_view_backend_create_with_backend_interface(&s_testingInterface, nullptr), nullptr, nullptr)));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    auto* viewBackend = webkit_web_view_get_backend(webView.get());
+    g_assert(viewBackend);
+    auto* wpeBackend = webkit_web_view_backend_get_wpe_backend(viewBackend);
+    g_assert(wpeBackend);
+    webView = nullptr;
+
+    // User provided backend with destroy notify.
+    wpeBackend = wpe_view_backend_create_with_backend_interface(&s_testingInterface, nullptr);
+    webView = adoptGRef(webkit_web_view_new(webkit_web_view_backend_new(wpeBackend, [](gpointer userData) {
+        auto* backend = *static_cast<struct wpe_view_backend**>(userData);
+        wpe_view_backend_destroy(backend);
+        *static_cast<struct wpe_view_backend**>(userData) = nullptr;
+    }, &wpeBackend)));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    webView = nullptr;
+    g_assert(!wpeBackend);
+
+    // User provided backend owned by another object with destroy notify.
+    static bool hasInstance = false;
+    struct BackendOwner {
+        BackendOwner(struct wpe_view_backend* backend)
+            : backend(backend)
+        {
+            hasInstance = true;
+        }
+
+        ~BackendOwner()
+        {
+            wpe_view_backend_destroy(backend);
+            hasInstance = false;
+        }
+
+        struct wpe_view_backend* backend;
+    };
+    auto* owner = new BackendOwner(wpe_view_backend_create_with_backend_interface(&s_testingInterface, nullptr));
+    g_assert(hasInstance);
+    webView = adoptGRef(webkit_web_view_new(webkit_web_view_backend_new(owner->backend, [](gpointer userData) {
+        delete static_cast<BackendOwner*>(userData);
+    }, owner)));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    g_assert(hasInstance);
+    webView = nullptr;
+    g_assert(!hasInstance);
+}
+#endif // PLATFORM(WPE)
 
 static void ephemeralViewloadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent, WebViewTest* test)
 {
@@ -121,6 +208,9 @@ static void testWebViewEphemeral(WebViewTest* test, gconstpointer)
 
     // A WebView on a non ephemeral context can be ephemeral.
     auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
         "web-context", webkit_web_view_get_context(test->m_webView),
         "is-ephemeral", TRUE,
         nullptr));
@@ -177,7 +267,7 @@ static void testWebViewSettings(WebViewTest* test, gconstpointer)
     g_assert(settings != defaultSettings);
     g_assert(!webkit_settings_get_enable_javascript(settings));
 
-    auto webView2 = Test::adoptView(webkit_web_view_new());
+    auto webView2 = Test::adoptView(Test::createWebView());
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView2.get()));
     webkit_web_view_set_settings(WEBKIT_WEB_VIEW(webView2.get()), settings);
     g_assert(webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webView2.get())) == settings);
@@ -189,7 +279,7 @@ static void testWebViewSettings(WebViewTest* test, gconstpointer)
     g_assert(settings == newSettings2.get());
     g_assert(webkit_settings_get_enable_javascript(settings));
 
-    auto webView3 = Test::adoptView(webkit_web_view_new_with_settings(newSettings2.get()));
+    auto webView3 = Test::adoptView(Test::createWebView(newSettings2.get()));
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView3.get()));
     g_assert(webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webView3.get())) == newSettings2.get());
 }
@@ -214,54 +304,64 @@ static void testWebViewRunJavaScript(WebViewTest* test, gconstpointer)
     GUniqueOutPtr<GError> error;
     WebKitJavascriptResult* javascriptResult = test->runJavaScriptAndWaitUntilFinished("window.document.getElementById('WebKitLink').title;", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     GUniquePtr<char> valueString(WebViewTest::javascriptResultToCString(javascriptResult));
     g_assert_cmpstr(valueString.get(), ==, "WebKitGTK+ Title");
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("window.document.getElementById('WebKitLink').href;", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     valueString.reset(WebViewTest::javascriptResultToCString(javascriptResult));
     g_assert_cmpstr(valueString.get(), ==, "http://www.webkitgtk.org/");
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("window.document.getElementById('WebKitLink').textContent", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     valueString.reset(WebViewTest::javascriptResultToCString(javascriptResult));
     g_assert_cmpstr(valueString.get(), ==, "WebKitGTK+ Website");
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("a = 25;", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     g_assert_cmpfloat(WebViewTest::javascriptResultToNumber(javascriptResult), ==, 25);
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("a = 2.5;", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     g_assert_cmpfloat(WebViewTest::javascriptResultToNumber(javascriptResult), ==, 2.5);
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("a = true", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     g_assert(WebViewTest::javascriptResultToBoolean(javascriptResult));
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("a = false", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     g_assert(!WebViewTest::javascriptResultToBoolean(javascriptResult));
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("a = null", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     g_assert(WebViewTest::javascriptResultIsNull(javascriptResult));
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("function Foo() { a = 25; } Foo();", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     g_assert(WebViewTest::javascriptResultIsUndefined(javascriptResult));
 
     javascriptResult = test->runJavaScriptFromGResourceAndWaitUntilFinished("/org/webkit/glib/tests/link-title.js", &error.outPtr());
     g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
     g_assert(!error.get());
     valueString.reset(WebViewTest::javascriptResultToCString(javascriptResult));
     g_assert_cmpstr(valueString.get(), ==, "WebKitGTK+ Title");
@@ -271,6 +371,29 @@ static void testWebViewRunJavaScript(WebViewTest* test, gconstpointer)
     g_assert_error(error.get(), G_RESOURCE_ERROR, G_RESOURCE_ERROR_NOT_FOUND);
 
     javascriptResult = test->runJavaScriptAndWaitUntilFinished("foo();", &error.outPtr());
+    g_assert(!javascriptResult);
+    g_assert_error(error.get(), WEBKIT_JAVASCRIPT_ERROR, WEBKIT_JAVASCRIPT_ERROR_SCRIPT_FAILED);
+
+    // Values of the main world are not available in the isolated one.
+    javascriptResult = test->runJavaScriptInWorldAndWaitUntilFinished("a", "WebExtensionTestScriptWorld", &error.outPtr());
+    g_assert(!javascriptResult);
+    g_assert_error(error.get(), WEBKIT_JAVASCRIPT_ERROR, WEBKIT_JAVASCRIPT_ERROR_SCRIPT_FAILED);
+
+    javascriptResult = test->runJavaScriptInWorldAndWaitUntilFinished("a = 50", "WebExtensionTestScriptWorld", &error.outPtr());
+    g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
+    g_assert(!error.get());
+    g_assert_cmpfloat(WebViewTest::javascriptResultToNumber(javascriptResult), ==, 50);
+
+    // Values of the isolated world are not available in the normal one.
+    javascriptResult = test->runJavaScriptAndWaitUntilFinished("a", &error.outPtr());
+    g_assert(javascriptResult);
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webkit_javascript_result_get_js_value(javascriptResult)));
+    g_assert(!error.get());
+    g_assert_cmpfloat(WebViewTest::javascriptResultToNumber(javascriptResult), ==, 25);
+
+    // Running a script in a world that doesn't exist should fail.
+    javascriptResult = test->runJavaScriptInWorldAndWaitUntilFinished("a", "InvalidScriptWorld", &error.outPtr());
     g_assert(!javascriptResult);
     g_assert_error(error.get(), WEBKIT_JAVASCRIPT_ERROR, WEBKIT_JAVASCRIPT_ERROR_SCRIPT_FAILED);
 }
@@ -341,7 +464,9 @@ public:
 #if ENABLE(FULLSCREEN_API)
 static void testWebViewFullScreen(FullScreenClientTest* test, gconstpointer)
 {
+#if PLATFORM(GTK)
     test->showInWindowAndWaitUntilMapped();
+#endif
     test->loadHtml("<html><body>FullScreen test</body></html>", 0);
     test->waitUntilLoadFinished();
     test->requestFullScreenAndWaitUntilEnteredFullScreen();
@@ -402,10 +527,26 @@ public:
         quitMainLoop();
     }
 
-    GHashTable* waitUntilFormSubmittedAndGetTextFields()
+    GHashTable* getTextFieldsAsHashTable()
     {
-        g_main_loop_run(m_mainLoop);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
         return webkit_form_submission_request_get_text_fields(m_request.get());
+#pragma GCC diagnostic pop
+    }
+
+    GPtrArray* getTextFieldNames()
+    {
+        GPtrArray* names;
+        webkit_form_submission_request_list_text_fields(m_request.get(), &names, nullptr);
+        return names;
+    }
+
+    GPtrArray* getTextFieldValues()
+    {
+        GPtrArray* values;
+        webkit_form_submission_request_list_text_fields(m_request.get(), nullptr, &values);
+        return values;
     }
 
     static gboolean doClickIdleCallback(FormClientTest* test)
@@ -419,6 +560,7 @@ public:
         m_submitPositionX = x;
         m_submitPositionY = y;
         g_idle_add(reinterpret_cast<GSourceFunc>(doClickIdleCallback), this);
+        g_main_loop_run(m_mainLoop);
     }
 
     int m_submitPositionX;
@@ -435,6 +577,8 @@ static void testWebViewSubmitForm(FormClientTest* test, gconstpointer)
         " <form action='#'>"
         "  <input type='text' name='text1' value='value1'>"
         "  <input type='text' name='text2' value='value2'>"
+        "  <input type='text' value='value3'>"
+        "  <input type='text' name='text2'>"
         "  <input type='password' name='password' value='secret'>"
         "  <textarea cols='5' rows='5' name='textarea'>Text</textarea>"
         "  <input type='hidden' name='hidden1' value='hidden1'>"
@@ -446,12 +590,31 @@ static void testWebViewSubmitForm(FormClientTest* test, gconstpointer)
     test->waitUntilLoadFinished();
 
     test->submitFormAtPosition(5, 5);
-    GHashTable* values = test->waitUntilFormSubmittedAndGetTextFields();
+    GHashTable* tableValues = test->getTextFieldsAsHashTable();
+    g_assert(tableValues);
+    g_assert_cmpuint(g_hash_table_size(tableValues), ==, 4);
+    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(tableValues, "text1")), ==, "value1");
+    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(tableValues, "")), ==, "value3");
+    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(tableValues, "text2")), ==, "");
+    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(tableValues, "password")), ==, "secret");
+
+    GPtrArray* names = test->getTextFieldNames();
+    g_assert(names);
+    g_assert_cmpuint(names->len, ==, 5);
+    g_assert_cmpstr(static_cast<char*>(names->pdata[0]), ==, "text1");
+    g_assert_cmpstr(static_cast<char*>(names->pdata[1]), ==, "text2");
+    g_assert_cmpstr(static_cast<char*>(names->pdata[2]), ==, "");
+    g_assert_cmpstr(static_cast<char*>(names->pdata[3]), ==, "text2");
+    g_assert_cmpstr(static_cast<char*>(names->pdata[4]), ==, "password");
+
+    GPtrArray* values = test->getTextFieldValues();
     g_assert(values);
-    g_assert_cmpuint(g_hash_table_size(values), ==, 3);
-    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(values, "text1")), ==, "value1");
-    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(values, "text2")), ==, "value2");
-    g_assert_cmpstr(static_cast<char*>(g_hash_table_lookup(values, "password")), ==, "secret");
+    g_assert_cmpuint(values->len, ==, 5);
+    g_assert_cmpstr(static_cast<char*>(values->pdata[0]), ==, "value1");
+    g_assert_cmpstr(static_cast<char*>(values->pdata[1]), ==, "value2");
+    g_assert_cmpstr(static_cast<char*>(values->pdata[2]), ==, "value3");
+    g_assert_cmpstr(static_cast<char*>(values->pdata[3]), ==, "");
+    g_assert_cmpstr(static_cast<char*>(values->pdata[4]), ==, "secret");
 }
 #endif // PLATFORM(GTK)
 
@@ -1077,6 +1240,10 @@ void beforeAll()
 
     WebViewTest::add("WebKitWebView", "web-context", testWebViewWebContext);
     WebViewTest::add("WebKitWebView", "web-context-lifetime", testWebViewWebContextLifetime);
+    WebViewTest::add("WebKitWebView", "close-quickly", testWebViewCloseQuickly);
+#if PLATFORM(WPE)
+    Test::add("WebKitWebView", "backend", testWebViewWebBackend);
+#endif
     WebViewTest::add("WebKitWebView", "ephemeral", testWebViewEphemeral);
     WebViewTest::add("WebKitWebView", "custom-charset", testWebViewCustomCharset);
     WebViewTest::add("WebKitWebView", "settings", testWebViewSettings);

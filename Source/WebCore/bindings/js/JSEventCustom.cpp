@@ -35,25 +35,12 @@
 #include "EventInterfaces.h"
 #include "JSDOMBinding.h"
 #include "JSDataTransfer.h"
-#include <runtime/JSLock.h>
+#include <JavaScriptCore/JSLock.h>
 #include <wtf/text/AtomicString.h>
 
-using namespace JSC;
 
 namespace WebCore {
-
-#define TRY_TO_WRAP_WITH_INTERFACE(interfaceName) \
-    case interfaceName##InterfaceType: \
-        return createWrapper<interfaceName>(globalObject, WTFMove(event));
-
-JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<Event>&& event)
-{
-    switch (event->eventInterface()) {
-        DOM_EVENT_INTERFACES_FOR_EACH(TRY_TO_WRAP_WITH_INTERFACE)
-    }
-
-    return createWrapper<Event>(globalObject, WTFMove(event));
-}
+using namespace JSC;
 
 JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, Event& event)
 {

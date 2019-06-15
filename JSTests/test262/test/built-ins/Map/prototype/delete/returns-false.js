@@ -4,7 +4,7 @@
 es6id: 23.1.3.3
 description: >
   Returns false when it does not delete an entry.
-info: >
+info: |
   Map.prototype.delete ( key )
 
   4. Let entries be the List that is the value of M’s [[MapData]] internal slot.
@@ -15,7 +15,10 @@ info: >
   6. Return false.
 ---*/
 
-var m = new Map([['a',1], ['b', 2]]);
+var m = new Map([
+  ['a', 1],
+  ['b', 2]
+]);
 
 assert.sameValue(m.delete('not-in-the-map'), false);
 

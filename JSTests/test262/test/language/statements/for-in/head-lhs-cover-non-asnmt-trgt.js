@@ -3,7 +3,7 @@
 
 /*---
 description: Head's LeftHandSideExpression must be a simple assignment target
-info: >
+info: |
     It is a Syntax Error if IsValidSimpleAssignmentTarget of
     LeftHandSideExpression is false.
 
@@ -14,7 +14,11 @@ info: >
     LeftHandSideExpression. This rule is recursively applied.
 esid: sec-for-in-and-for-of-statements-static-semantics-early-errors
 es6id: 13.7.5
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 for ((this) in {}) {}

@@ -31,7 +31,7 @@
 #import "DOMEventListener.h"
 #import <WebCore/Event.h>
 #import <WebCore/EventListener.h>
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <wtf/HashMap.h>
 
 namespace WebCore {
@@ -72,10 +72,10 @@ ObjCEventListener::~ObjCEventListener()
     listenerMap->remove(m_listener.get());
 }
 
-void ObjCEventListener::handleEvent(ScriptExecutionContext*, Event* event)
+void ObjCEventListener::handleEvent(ScriptExecutionContext&, Event& event)
 {
     ObjCListener listener = m_listener.get();
-    [listener handleEvent:kit(event)];
+    [listener handleEvent:kit(&event)];
 }
 
 bool ObjCEventListener::operator==(const EventListener& listener) const

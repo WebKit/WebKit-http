@@ -42,6 +42,7 @@ class TableLayout;
 enum SkipEmptySectionsValue { DoNotSkipEmptySections, SkipEmptySections };
 
 class RenderTable : public RenderBlock {
+    WTF_MAKE_ISO_ALLOCATED(RenderTable);
 public:
     RenderTable(Element&, RenderStyle&&);
     RenderTable(Document&, RenderStyle&&);
@@ -52,7 +53,7 @@ public:
     LayoutUnit hBorderSpacing() const { return m_hSpacing; }
     LayoutUnit vBorderSpacing() const { return m_vSpacing; }
     
-    bool collapseBorders() const { return style().borderCollapse(); }
+    bool collapseBorders() const { return style().borderCollapse() == BorderCollapse::Collapse; }
 
     LayoutUnit borderStart() const override { return m_borderStart; }
     LayoutUnit borderEnd() const override { return m_borderEnd; }
@@ -87,7 +88,7 @@ public:
         return style().isLeftToRightDirection() ? borderEnd() : borderStart();
     }
 
-    Color bgColor() const { return style().visitedDependentColor(CSSPropertyBackgroundColor); }
+    Color bgColor() const { return style().visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor); }
 
     LayoutUnit outerBorderBefore() const;
     LayoutUnit outerBorderAfter() const;
@@ -126,8 +127,6 @@ public:
     LayoutUnit calcBorderEnd() const;
     void recalcBordersInRowDirection();
 
-    void addChild(RenderObject* child, RenderObject* beforeChild = 0) final;
-
     struct ColumnStruct {
         explicit ColumnStruct(unsigned initialSpan = 1)
             : span(initialSpan)
@@ -153,9 +152,9 @@ public:
         m_columnPos[index] = position;
     }
 
-    RenderTableSection* header() const { return m_head; }
-    RenderTableSection* footer() const { return m_foot; }
-    RenderTableSection* firstBody() const { return m_firstBody; }
+    RenderTableSection* header() const { return m_head.get(); }
+    RenderTableSection* footer() const { return m_foot.get(); }
+    RenderTableSection* firstBody() const { return m_firstBody.get(); }
 
     // This function returns 0 if the table has no section.
     RenderTableSection* topSection() const;
@@ -250,14 +249,14 @@ public:
             recalcSections();
     }
 
-    static std::unique_ptr<RenderTable> createAnonymousWithParentRenderer(const RenderElement&);
-    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const override;
+    static RenderPtr<RenderTable> createAnonymousWithParentRenderer(const RenderElement&);
+    RenderPtr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const override;
 
     const BorderValue& tableStartBorderAdjoiningCell(const RenderTableCell&) const;
     const BorderValue& tableEndBorderAdjoiningCell(const RenderTableCell&) const;
 
-    void addCaption(const RenderTableCaption*);
-    void removeCaption(const RenderTableCaption*);
+    void addCaption(RenderTableCaption&);
+    void removeCaption(RenderTableCaption&);
     void addColumn(const RenderTableCol*);
     void removeColumn(const RenderTableCol*);
 
@@ -267,13 +266,16 @@ public:
     LayoutUnit offsetHeightForColumn(const RenderTableCol&) const;
     
     void markForPaginationRelayoutIfNeeded() final;
-    
+
+    void willInsertTableColumn(RenderTableCol& child, RenderObject* beforeChild);
+    void willInsertTableSection(RenderTableSection& child, RenderObject* beforeChild);
+
 protected:
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
     void simplifiedNormalFlowLayout() final;
 
 private:
-    static std::unique_ptr<RenderTable> createTableWithStyle(Document&, const RenderStyle&);
+    static RenderPtr<RenderTable> createTableWithStyle(Document&, const RenderStyle&);
 
     const char* renderName() const override { return "RenderTable"; }
 
@@ -302,15 +304,14 @@ private:
     void invalidateCachedColumnOffsets();
 
     RenderBlock* firstLineBlock() const final;
-    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) final;
     
     void updateLogicalWidth() final;
 
     LayoutUnit convertStyleLogicalWidthToComputedWidth(const Length& styleLogicalWidth, LayoutUnit availableWidth);
     LayoutUnit convertStyleLogicalHeightToComputedHeight(const Length& styleLogicalHeight);
 
-    LayoutRect overflowClipRect(const LayoutPoint& location, RenderRegion*, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhaseBlockBackground) final;
-    LayoutRect overflowClipRectForChildLayers(const LayoutPoint& location, RenderRegion* region, OverlayScrollbarSizeRelevancy relevancy) override { return RenderBox::overflowClipRect(location, region, relevancy); }
+    LayoutRect overflowClipRect(const LayoutPoint& location, RenderFragmentContainer*, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhase::BlockBackground) final;
+    LayoutRect overflowClipRectForChildLayers(const LayoutPoint& location, RenderFragmentContainer* fragment, OverlayScrollbarSizeRelevancy relevancy) override { return RenderBox::overflowClipRect(location, fragment, relevancy); }
 
     void addOverflowFromChildren() final;
 
@@ -326,16 +327,16 @@ private:
 
     mutable Vector<LayoutUnit> m_columnPos;
     mutable Vector<ColumnStruct> m_columns;
-    mutable Vector<RenderTableCaption*> m_captions;
-    mutable Vector<RenderTableCol*> m_columnRenderers;
+    mutable Vector<WeakPtr<RenderTableCaption>> m_captions;
+    mutable Vector<WeakPtr<RenderTableCol>> m_columnRenderers;
 
     unsigned effectiveIndexOfColumn(const RenderTableCol&) const;
     typedef HashMap<const RenderTableCol*, unsigned> EffectiveColumnIndexMap;
     mutable EffectiveColumnIndexMap m_effectiveColumnIndexMap;
 
-    mutable RenderTableSection* m_head;
-    mutable RenderTableSection* m_foot;
-    mutable RenderTableSection* m_firstBody;
+    mutable WeakPtr<RenderTableSection> m_head;
+    mutable WeakPtr<RenderTableSection> m_foot;
+    mutable WeakPtr<RenderTableSection> m_firstBody;
 
     std::unique_ptr<TableLayout> m_tableLayout;
 
@@ -373,15 +374,15 @@ inline RenderTableSection* RenderTable::topSection() const
 {
     ASSERT(!needsSectionRecalc());
     if (m_head)
-        return m_head;
+        return m_head.get();
     if (m_firstBody)
-        return m_firstBody;
-    return m_foot;
+        return m_firstBody.get();
+    return m_foot.get();
 }
 
 inline bool isDirectionSame(const RenderBox* tableItem, const RenderBox* otherTableItem) { return tableItem && otherTableItem ? tableItem->style().direction() == otherTableItem->style().direction() : true; }
 
-inline std::unique_ptr<RenderBox> RenderTable::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+inline RenderPtr<RenderBox> RenderTable::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
 {
     return RenderTable::createTableWithStyle(renderer.document(), renderer.style());
 }

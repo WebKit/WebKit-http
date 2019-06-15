@@ -1,3 +1,4 @@
+
 /*
  *  Copyright 2011 The WebRTC project authors. All Rights Reserved.
  *
@@ -8,23 +9,24 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_PEERCONNECTIONFACTORY_H_
-#define WEBRTC_PC_PEERCONNECTIONFACTORY_H_
+#ifndef PC_PEERCONNECTIONFACTORY_H_
+#define PC_PEERCONNECTIONFACTORY_H_
 
 #include <memory>
 #include <string>
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/peerconnectioninterface.h"
-#include "webrtc/base/scoped_ref_ptr.h"
-#include "webrtc/base/thread.h"
-#include "webrtc/base/rtccertificategenerator.h"
-#include "webrtc/pc/channelmanager.h"
+#include "api/mediastreaminterface.h"
+#include "api/peerconnectioninterface.h"
+#include "media/sctp/sctptransportinternal.h"
+#include "pc/channelmanager.h"
+#include "rtc_base/rtccertificategenerator.h"
+#include "rtc_base/scoped_ref_ptr.h"
+#include "rtc_base/thread.h"
 
 namespace rtc {
 class BasicNetworkManager;
 class BasicPacketSocketFactory;
-}
+}  // namespace rtc
 
 namespace webrtc {
 
@@ -48,24 +50,31 @@ class PeerConnectionFactory : public PeerConnectionFactoryInterface {
       std::unique_ptr<rtc::RTCCertificateGeneratorInterface> cert_generator,
       PeerConnectionObserver* observer) override;
 
-  virtual rtc::scoped_refptr<PeerConnectionInterface> CreatePeerConnection(
+  rtc::scoped_refptr<PeerConnectionInterface> CreatePeerConnection(
       const PeerConnectionInterface::RTCConfiguration& configuration,
       std::unique_ptr<cricket::PortAllocator> allocator,
       std::unique_ptr<rtc::RTCCertificateGeneratorInterface> cert_generator,
       PeerConnectionObserver* observer) override;
 
+  rtc::scoped_refptr<PeerConnectionInterface> CreatePeerConnection(
+      const PeerConnectionInterface::RTCConfiguration& configuration,
+      PeerConnectionDependencies dependencies) override;
+
   bool Initialize();
 
-  rtc::scoped_refptr<MediaStreamInterface>
-      CreateLocalMediaStream(const std::string& label) override;
+  RtpCapabilities GetRtpSenderCapabilities(
+      cricket::MediaType kind) const override;
 
-  virtual rtc::scoped_refptr<AudioSourceInterface> CreateAudioSource(
-      const cricket::AudioOptions& options) override;
-  // Deprecated, use version without constraints.
+  RtpCapabilities GetRtpReceiverCapabilities(
+      cricket::MediaType kind) const override;
+
+  rtc::scoped_refptr<MediaStreamInterface> CreateLocalMediaStream(
+      const std::string& stream_id) override;
+
   rtc::scoped_refptr<AudioSourceInterface> CreateAudioSource(
-      const MediaConstraintsInterface* constraints) override;
+      const cricket::AudioOptions& options) override;
 
-  virtual rtc::scoped_refptr<VideoTrackSourceInterface> CreateVideoSource(
+  rtc::scoped_refptr<VideoTrackSourceInterface> CreateVideoSource(
       std::unique_ptr<cricket::VideoCapturer> capturer) override;
   // This version supports filtering on width, height and frame rate.
   // For the "constraints=null" case, use the version without constraints.
@@ -79,25 +88,16 @@ class PeerConnectionFactory : public PeerConnectionFactoryInterface {
       const std::string& id,
       VideoTrackSourceInterface* video_source) override;
 
-  rtc::scoped_refptr<AudioTrackInterface>
-      CreateAudioTrack(const std::string& id,
-                       AudioSourceInterface* audio_source) override;
+  rtc::scoped_refptr<AudioTrackInterface> CreateAudioTrack(
+      const std::string& id,
+      AudioSourceInterface* audio_source) override;
 
   bool StartAecDump(rtc::PlatformFile file, int64_t max_size_bytes) override;
   void StopAecDump() override;
-  // TODO(ivoc) Remove after Chrome is updated.
-  bool StartRtcEventLog(rtc::PlatformFile) override { return false; }
-  // TODO(ivoc) Remove after Chrome is updated.
-  bool StartRtcEventLog(rtc::PlatformFile,
-                        int64_t) override {
-    return false;
-  }
-  // TODO(ivoc) Remove after Chrome is updated.
-  void StopRtcEventLog() override {}
 
-  virtual cricket::TransportController* CreateTransportController(
-      cricket::PortAllocator* port_allocator,
-      bool redetermine_role_on_ice_restart);
+  virtual std::unique_ptr<cricket::SctpTransportInternalFactory>
+  CreateSctpTransportInternalFactory();
+
   virtual cricket::ChannelManager* channel_manager();
   virtual rtc::Thread* signaling_thread();
   virtual rtc::Thread* worker_thread();
@@ -109,18 +109,33 @@ class PeerConnectionFactory : public PeerConnectionFactoryInterface {
       rtc::Thread* network_thread,
       rtc::Thread* worker_thread,
       rtc::Thread* signaling_thread,
-      AudioDeviceModule* default_adm,
-      rtc::scoped_refptr<webrtc::AudioEncoderFactory> audio_encoder_factory,
-      rtc::scoped_refptr<webrtc::AudioDecoderFactory> audio_decoder_factory,
-      cricket::WebRtcVideoEncoderFactory* video_encoder_factory,
-      cricket::WebRtcVideoDecoderFactory* video_decoder_factory,
-      rtc::scoped_refptr<AudioMixer> audio_mixer,
       std::unique_ptr<cricket::MediaEngineInterface> media_engine,
       std::unique_ptr<webrtc::CallFactoryInterface> call_factory,
       std::unique_ptr<RtcEventLogFactoryInterface> event_log_factory);
+  PeerConnectionFactory(
+      rtc::Thread* network_thread,
+      rtc::Thread* worker_thread,
+      rtc::Thread* signaling_thread,
+      std::unique_ptr<cricket::MediaEngineInterface> media_engine,
+      std::unique_ptr<webrtc::CallFactoryInterface> call_factory,
+      std::unique_ptr<RtcEventLogFactoryInterface> event_log_factory,
+      std::unique_ptr<FecControllerFactoryInterface> fec_controller_factory,
+      std::unique_ptr<NetworkControllerFactoryInterface>
+          network_controller_factory);
+  // Use this implementation for all future use. This structure allows simple
+  // management of all new dependencies being added to the
+  // PeerConnectionFactory.
+  explicit PeerConnectionFactory(
+      PeerConnectionFactoryDependencies dependencies);
+
+  // Hook to let testing framework insert actions between
+  // "new RTCPeerConnection" and "pc.Initialize"
+  virtual void ActionsBeforeInitializeForTesting(PeerConnectionInterface*) {}
+
   virtual ~PeerConnectionFactory();
 
  private:
+  std::unique_ptr<RtcEventLog> CreateRtcEventLog_w();
   std::unique_ptr<Call> CreateCall_w(RtcEventLog* event_log);
 
   bool wraps_current_thread_;
@@ -130,27 +145,19 @@ class PeerConnectionFactory : public PeerConnectionFactoryInterface {
   std::unique_ptr<rtc::Thread> owned_network_thread_;
   std::unique_ptr<rtc::Thread> owned_worker_thread_;
   Options options_;
-  // External Audio device used for audio playback.
-  rtc::scoped_refptr<AudioDeviceModule> default_adm_;
-  rtc::scoped_refptr<AudioEncoderFactory> audio_encoder_factory_;
-  rtc::scoped_refptr<AudioDecoderFactory> audio_decoder_factory_;
   std::unique_ptr<cricket::ChannelManager> channel_manager_;
-  // External Video encoder factory. This can be NULL if the client has not
-  // injected any. In that case, video engine will use the internal SW encoder.
-  std::unique_ptr<cricket::WebRtcVideoEncoderFactory> video_encoder_factory_;
-  // External Video decoder factory. This can be NULL if the client has not
-  // injected any. In that case, video engine will use the internal SW decoder.
-  std::unique_ptr<cricket::WebRtcVideoDecoderFactory> video_decoder_factory_;
   std::unique_ptr<rtc::BasicNetworkManager> default_network_manager_;
   std::unique_ptr<rtc::BasicPacketSocketFactory> default_socket_factory_;
-  // External audio mixer. This can be NULL. In that case, internal audio mixer
-  // will be created and used.
-  rtc::scoped_refptr<AudioMixer> external_audio_mixer_;
   std::unique_ptr<cricket::MediaEngineInterface> media_engine_;
   std::unique_ptr<webrtc::CallFactoryInterface> call_factory_;
   std::unique_ptr<RtcEventLogFactoryInterface> event_log_factory_;
+  std::unique_ptr<FecControllerFactoryInterface> fec_controller_factory_;
+  std::unique_ptr<NetworkControllerFactoryInterface>
+      injected_network_controller_factory_;
+  std::unique_ptr<NetworkControllerFactoryInterface>
+      bbr_network_controller_factory_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_PEERCONNECTIONFACTORY_H_
+#endif  // PC_PEERCONNECTIONFACTORY_H_

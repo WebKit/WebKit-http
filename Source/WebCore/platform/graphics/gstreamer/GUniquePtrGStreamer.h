@@ -21,6 +21,8 @@
 #define GUniquePtrGStreamer_h
 #if USE(GSTREAMER)
 
+#include <gst/base/gstbytereader.h>
+#include <gst/base/gstflowcombiner.h>
 #include <gst/gstsegment.h>
 #include <gst/gststructure.h>
 #include <gst/pbutils/install-plugins.h>
@@ -31,6 +33,8 @@ namespace WTF {
 WTF_DEFINE_GPTR_DELETER(GstStructure, gst_structure_free)
 WTF_DEFINE_GPTR_DELETER(GstInstallPluginsContext, gst_install_plugins_context_free)
 WTF_DEFINE_GPTR_DELETER(GstSegment, gst_segment_free)
+WTF_DEFINE_GPTR_DELETER(GstFlowCombiner, gst_flow_combiner_free)
+WTF_DEFINE_GPTR_DELETER(GstByteReader, gst_byte_reader_free)
 
 }
 

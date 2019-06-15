@@ -53,11 +53,14 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case LazyJSConstant:
     case Int52Constant:
     case MovHint:
+    case InitializeEntrypointArguments:
     case SetLocal:
     case Flush:
     case Phantom:
     case Check:
+    case CheckVarargs:
     case Identity:
+    case IdentityWithProfile:
     case GetLocal:
     case LoopHint:
     case Phi:
@@ -71,18 +74,25 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case KillStack:
     case GetStack:
     case GetCallee:
+    case SetCallee:
     case GetArgumentCountIncludingThis:
+    case SetArgumentCountIncludingThis:
     case GetRestLength:
     case GetScope:
     case PhantomLocal:
     case CountExecution:
+    case SuperSamplerBegin:
+    case SuperSamplerEnd:
     case Jump:
+    case EntrySwitch:
     case Branch:
     case Unreachable:
     case DoubleRep:
     case Int52Rep:
     case ValueRep:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
+    case ClearCatchLocals:
     case LogicalNot:
     case NotifyWrite:
     case PutStructure:
@@ -92,6 +102,10 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case PutClosureVar:
     case RecordRegExpCachedResult:
     case NukeStructureAndSetButterfly:
+    case FilterCallLinkStatus:
+    case FilterGetByIdStatus:
+    case FilterPutByIdStatus:
+    case FilterInByIdStatus:
         break;
 
     case StrCat:
@@ -108,10 +122,19 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case NewFunction:
     case NewGeneratorFunction:
     case NewAsyncFunction:
+    case NewAsyncGeneratorFunction:
     case NewStringObject:
+    case NewRegexp:
     case ToNumber:
+    case RegExpExecNonGlobalOrSticky:
+    case RegExpMatchFastGlobal:
         result = ExitsForExceptions;
         break;
+
+    case SetRegExpObjectLastIndex:
+        if (node->ignoreLastIndexIsWritable())
+            break;
+        return Exits;
 
     default:
         // If in doubt, return true.

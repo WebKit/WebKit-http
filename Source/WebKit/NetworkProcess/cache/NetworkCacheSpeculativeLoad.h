@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkCacheSpeculativeLoad_h
-#define NetworkCacheSpeculativeLoad_h
+#pragma once
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
 
@@ -45,7 +44,7 @@ class SpeculativeLoad final : public NetworkLoadClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     typedef Function<void (std::unique_ptr<NetworkCache::Entry>)> RevalidationCompletionHandler;
-    SpeculativeLoad(const GlobalFrameID&, const WebCore::ResourceRequest&, std::unique_ptr<NetworkCache::Entry>, RevalidationCompletionHandler&&);
+    SpeculativeLoad(Cache&, const GlobalFrameID&, const WebCore::ResourceRequest&, std::unique_ptr<NetworkCache::Entry>, RevalidationCompletionHandler&&);
 
     virtual ~SpeculativeLoad();
 
@@ -54,10 +53,8 @@ public:
 private:
     // NetworkLoadClient.
     void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override { }
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) override;
-#endif
     bool isSynchronous() const override { return false; }
+    bool isAllowedToAskUserForCredentials() const final { return false; }
     void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse) override;
     ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) override;
     void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) override;
@@ -66,7 +63,8 @@ private:
 
     void didComplete();
 
-    GlobalFrameID m_frameID;
+    Ref<Cache> m_cache;
+    GlobalFrameID m_globalFrameID;
     RevalidationCompletionHandler m_completionHandler;
     WebCore::ResourceRequest m_originalRequest;
 
@@ -83,5 +81,3 @@ private:
 } // namespace WebKit
 
 #endif // ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-
-#endif // NetworkCacheSpeculativeLoad_h

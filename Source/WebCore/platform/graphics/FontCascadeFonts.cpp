@@ -113,9 +113,7 @@ FontCascadeFonts::FontCascadeFonts(const FontPlatformData& platformData)
     m_realizedFallbackRanges.append(FontRanges(FontCache::singleton().fontForPlatformData(platformData)));
 }
 
-FontCascadeFonts::~FontCascadeFonts()
-{
-}
+FontCascadeFonts::~FontCascadeFonts() = default;
 
 void FontCascadeFonts::determinePitch(const FontCascadeDescription& description)
 {
@@ -354,7 +352,7 @@ GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 character, const 
     if (systemFallbackShouldBeInvisible)
         systemFallbackFont = const_cast<Font*>(&systemFallbackFont->invisibleFont());
 
-    if (systemFallbackFont->platformData().orientation() == Vertical && !systemFallbackFont->hasVerticalGlyphs() && FontCascade::isCJKIdeographOrSymbol(character))
+    if (systemFallbackFont->platformData().orientation() == FontOrientation::Vertical && !systemFallbackFont->hasVerticalGlyphs() && FontCascade::isCJKIdeographOrSymbol(character))
         variant = BrokenIdeographVariant;
 
     GlyphData fallbackGlyphData;
@@ -363,7 +361,7 @@ GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 character, const 
     else
         fallbackGlyphData = systemFallbackFont->variantFont(description, variant)->glyphDataForCharacter(character);
 
-    if (fallbackGlyphData.font && fallbackGlyphData.font->platformData().orientation() == Vertical && !fallbackGlyphData.font->isTextOrientationFallback()) {
+    if (fallbackGlyphData.font && fallbackGlyphData.font->platformData().orientation() == FontOrientation::Vertical && !fallbackGlyphData.font->isTextOrientationFallback()) {
         if (variant == NormalVariant && !FontCascade::isCJKIdeographOrSymbol(character))
             fallbackGlyphData = glyphDataForNonCJKCharacterWithGlyphOrientation(character, description.nonCJKGlyphOrientation(), fallbackGlyphData);
     }
@@ -375,17 +373,32 @@ GlyphData FontCascadeFonts::glyphDataForSystemFallback(UChar32 character, const 
     return fallbackGlyphData;
 }
 
-enum class SystemFallbackVisibility {
+enum class FallbackVisibility {
     Immaterial,
     Visible,
     Invisible
 };
 
+static void opportunisticallyStartFontDataURLLoading(const FontCascadeDescription& description, FontSelector* fontSelector)
+{
+    // It is a somewhat common practice for a font foundry to break up a single font into two fonts, each having a random half of
+    // the alphabet, and then encoding the two fonts as data: urls (with different font-family names).
+    // Therefore, if these two fonts don't get loaded at (nearly) the same time, there will be a flash of unintelligible text where
+    // only a random half of the letters are visible.
+    // This code attempts to pre-warm these data urls to make them load at closer to the same time. However, font loading is
+    // asynchronous, and this code doesn't actually fix the race - it just makes it more likely for the two fonts to tie in the race.
+    if (!fontSelector)
+        return;
+    for (unsigned i = 0; i < description.familyCount(); ++i)
+        fontSelector->opportunisticallyStartFontDataURLLoading(description, description.familyAt(i));
+}
+
 GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 character, const FontCascadeDescription& description, FontVariant variant, unsigned fallbackIndex)
 {
-    SystemFallbackVisibility systemFallbackVisibility = SystemFallbackVisibility::Immaterial;
+    FallbackVisibility fallbackVisibility = FallbackVisibility::Immaterial;
     ExternalResourceDownloadPolicy policy = ExternalResourceDownloadPolicy::Allow;
     GlyphData loadingResult;
+    opportunisticallyStartFontDataURLLoading(description, m_fontSelector.get());
     for (; ; ++fallbackIndex) {
         auto& fontRanges = realizeFallbackRangesAt(description, fallbackIndex);
         if (fontRanges.isNull())
@@ -397,15 +410,18 @@ GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 character, const FontCas
 
         if (data.font->isInterstitial()) {
             policy = ExternalResourceDownloadPolicy::Forbid;
-            if (systemFallbackVisibility == SystemFallbackVisibility::Immaterial)
-                systemFallbackVisibility = data.font->visibility() == Font::Visibility::Visible ? SystemFallbackVisibility::Visible : SystemFallbackVisibility::Invisible;
+            if (fallbackVisibility == FallbackVisibility::Immaterial)
+                fallbackVisibility = data.font->visibility() == Font::Visibility::Visible ? FallbackVisibility::Visible : FallbackVisibility::Invisible;
             if (!loadingResult.font && data.glyph)
                 loadingResult = data;
             continue;
         }
 
+        if (fallbackVisibility == FallbackVisibility::Invisible && data.font->visibility() == Font::Visibility::Visible)
+            data.font = &data.font->invisibleFont();
+
         if (variant == NormalVariant) {
-            if (data.font->platformData().orientation() == Vertical && !data.font->isTextOrientationFallback()) {
+            if (data.font->platformData().orientation() == FontOrientation::Vertical && !data.font->isTextOrientationFallback()) {
                 if (!FontCascade::isCJKIdeographOrSymbol(character))
                     return glyphDataForNonCJKCharacterWithGlyphOrientation(character, description.nonCJKGlyphOrientation(), data);
 
@@ -427,7 +443,7 @@ GlyphData FontCascadeFonts::glyphDataForVariant(UChar32 character, const FontCas
 
     if (loadingResult.font)
         return loadingResult;
-    return glyphDataForSystemFallback(character, description, variant, systemFallbackVisibility == SystemFallbackVisibility::Invisible);
+    return glyphDataForSystemFallback(character, description, variant, fallbackVisibility == FallbackVisibility::Invisible);
 }
 
 static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const FontRanges& fontRanges)
@@ -436,6 +452,7 @@ static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const Font
     UChar32 pageRangeFrom = pageNumber * GlyphPage::size;
     UChar32 pageRangeTo = pageRangeFrom + GlyphPage::size - 1;
     auto policy = ExternalResourceDownloadPolicy::Allow;
+    FallbackVisibility desiredVisibility = FallbackVisibility::Immaterial;
     for (unsigned i = 0; i < fontRanges.size(); ++i) {
         auto& range = fontRanges.rangeAt(i);
         if (range.from() <= pageRangeFrom && pageRangeTo <= range.to()) {
@@ -443,6 +460,15 @@ static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const Font
             if (!font)
                 continue;
             if (font->isInterstitial()) {
+                if (desiredVisibility == FallbackVisibility::Immaterial) {
+                    auto fontVisibility = font->visibility();
+                    if (fontVisibility == Font::Visibility::Visible)
+                        desiredVisibility = FallbackVisibility::Visible;
+                    else {
+                        ASSERT(fontVisibility == Font::Visibility::Invisible);
+                        desiredVisibility = FallbackVisibility::Invisible;
+                    }
+                }
                 font = nullptr;
                 policy = ExternalResourceDownloadPolicy::Forbid;
                 continue;
@@ -450,9 +476,11 @@ static RefPtr<GlyphPage> glyphPageFromFontRanges(unsigned pageNumber, const Font
         }
         break;
     }
-    if (!font || font->platformData().orientation() == Vertical)
+    if (!font || font->platformData().orientation() == FontOrientation::Vertical)
         return nullptr;
 
+    if (desiredVisibility == FallbackVisibility::Invisible && font->visibility() == Font::Visibility::Visible)
+        return const_cast<GlyphPage*>(font->invisibleFont().glyphPage(pageNumber));
     return const_cast<GlyphPage*>(font->glyphPage(pageNumber));
 }
 

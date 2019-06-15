@@ -23,25 +23,25 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TreeOutlineGroup = class TreeOutlineGroup extends WebInspector.Collection
+WI.TreeOutlineGroup = class TreeOutlineGroup extends WI.Collection
 {
-    constructor()
-    {
-        super((object) => object instanceof WebInspector.TreeOutline);
-    }
-
     // Static
 
     static groupForTreeOutline(treeOutline)
     {
-        return treeOutline[WebInspector.TreeOutlineGroup.GroupForTreeOutlineSymbol] || null;
+        return treeOutline[WI.TreeOutlineGroup.GroupForTreeOutlineSymbol] || null;
     }
 
     // Public
 
+    objectIsRequiredType(object)
+    {
+        return object instanceof WI.TreeOutline;
+    }
+
     get selectedTreeElement()
     {
-        for (let treeOutline of this.items) {
+        for (let treeOutline of this) {
             if (treeOutline.selectedTreeElement)
                 return treeOutline.selectedTreeElement;
         }
@@ -53,8 +53,8 @@ WebInspector.TreeOutlineGroup = class TreeOutlineGroup extends WebInspector.Coll
 
     itemAdded(treeOutline)
     {
-        console.assert(!treeOutline[WebInspector.TreeOutlineGroup.GroupForTreeOutlineSymbol]);
-        treeOutline[WebInspector.TreeOutlineGroup.GroupForTreeOutlineSymbol] = this;
+        console.assert(!treeOutline[WI.TreeOutlineGroup.GroupForTreeOutlineSymbol]);
+        treeOutline[WI.TreeOutlineGroup.GroupForTreeOutlineSymbol] = this;
 
         if (treeOutline.selectedTreeElement)
             this._removeConflictingTreeSelections(treeOutline.selectedTreeElement);
@@ -62,8 +62,8 @@ WebInspector.TreeOutlineGroup = class TreeOutlineGroup extends WebInspector.Coll
 
     itemRemoved(treeOutline)
     {
-        console.assert(treeOutline[WebInspector.TreeOutlineGroup.GroupForTreeOutlineSymbol] === this);
-        treeOutline[WebInspector.TreeOutlineGroup.GroupForTreeOutlineSymbol] = null;
+        console.assert(treeOutline[WI.TreeOutlineGroup.GroupForTreeOutlineSymbol] === this);
+        treeOutline[WI.TreeOutlineGroup.GroupForTreeOutlineSymbol] = null;
     }
 
     didSelectTreeElement(treeElement)
@@ -83,7 +83,7 @@ WebInspector.TreeOutlineGroup = class TreeOutlineGroup extends WebInspector.Coll
         let selectedTreeOutline = treeElement.treeOutline;
         console.assert(selectedTreeOutline, "Should have a parent tree outline.");
 
-        for (let treeOutline of this.items) {
+        for (let treeOutline of this) {
             if (selectedTreeOutline === treeOutline)
                 continue;
 
@@ -93,4 +93,4 @@ WebInspector.TreeOutlineGroup = class TreeOutlineGroup extends WebInspector.Coll
     }
 };
 
-WebInspector.TreeOutlineGroup.GroupForTreeOutlineSymbol = Symbol("group-for-tree-outline");
+WI.TreeOutlineGroup.GroupForTreeOutlineSymbol = Symbol("group-for-tree-outline");

@@ -24,6 +24,13 @@
 #include <wtf/UUID.h>
 #include <wtf/text/StringBuilder.h>
 
+// FIXME: WPE doesn't expose WebKitVersion yet, the numbers defined here don't really matter.
+#if PLATFORM(WPE)
+#define WEBKIT_MAJOR_VERSION 1
+#define WEBKIT_MINOR_VERSION 2
+#define WEBKIT_MICRO_VERSION 3
+#endif
+
 class AutomationTest: public Test {
 public:
     MAKE_GLIB_TEST_FIXTURE(AutomationTest);
@@ -89,6 +96,8 @@ public:
         nullptr,
         // set_property
         nullptr,
+        // padding
+        { 0 }
     };
 
     void registerDBusObject()
@@ -168,6 +177,13 @@ public:
     {
         m_session = session;
         assertObjectIsDeletedWhenTestFinishes(G_OBJECT(m_session));
+        g_assert(!webkit_automation_session_get_application_info(session));
+        WebKitApplicationInfo* info = webkit_application_info_new();
+        webkit_application_info_set_name(info, "AutomationTestBrowser");
+        webkit_application_info_set_version(info, WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION, WEBKIT_MICRO_VERSION);
+        webkit_automation_session_set_application_info(session, info);
+        webkit_application_info_unref(info);
+        g_assert(webkit_automation_session_get_application_info(session) == info);
     }
 
     static void automationStartedCallback(WebKitWebContext* webContext, WebKitAutomationSession* session, AutomationTest* test)
@@ -177,11 +193,37 @@ public:
         test->automationStarted(session);
     }
 
+    static GUniquePtr<char> toVersionString(unsigned major, unsigned minor, unsigned micro)
+    {
+        if (!micro && !minor)
+            return GUniquePtr<char>(g_strdup_printf("%u", major));
+
+        if (!micro)
+            return GUniquePtr<char>(g_strdup_printf("%u.%u", major, minor));
+
+        return GUniquePtr<char>(g_strdup_printf("%u.%u.%u", major, minor, micro));
+    }
+
     WebKitAutomationSession* requestSession(const char* sessionID)
     {
         auto signalID = g_signal_connect(m_webContext.get(), "automation-started", G_CALLBACK(automationStartedCallback), this);
         g_dbus_connection_call(m_connection.get(), nullptr, "/org/webkit/Inspector", "org.webkit.Inspector",
-            "StartAutomationSession", g_variant_new("(s)", sessionID), nullptr, G_DBUS_CALL_FLAGS_NO_AUTO_START, -1, nullptr, nullptr, nullptr);
+            "StartAutomationSession", g_variant_new("(sa{sv})", sessionID, nullptr), nullptr, G_DBUS_CALL_FLAGS_NO_AUTO_START, -1, nullptr,
+            [](GObject* source, GAsyncResult* result, gpointer userData) {
+                auto* test = static_cast<AutomationTest*>(userData);
+                if (!test->m_session)
+                    return;
+
+                GRefPtr<GVariant> capabilities = adoptGRef(g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, nullptr));
+                g_assert(capabilities.get());
+                const char* browserName;
+                const char* browserVersion;
+                g_variant_get(capabilities.get(), "(&s&s)", &browserName, &browserVersion);
+                g_assert_cmpstr(browserName, ==, "AutomationTestBrowser");
+                GUniquePtr<char> versionString = toVersionString(WEBKIT_MAJOR_VERSION, WEBKIT_MINOR_VERSION, WEBKIT_MICRO_VERSION);
+                g_assert_cmpstr(browserVersion, ==, versionString.get());
+            }, this
+        );
         auto timeoutID = g_timeout_add(1000, [](gpointer userData) -> gboolean {
             g_main_loop_quit(static_cast<GMainLoop*>(userData));
             return G_SOURCE_REMOVE;
@@ -266,23 +308,52 @@ static void testAutomationSessionRequestSession(AutomationTest* test, gconstpoin
     g_assert(!test->createTopLevelBrowsingContext(nullptr));
 
     // Will also fail if the web view is not controlled by automation.
-    auto webView = Test::adoptView(webkit_web_view_new_with_context(test->m_webContext.get()));
+    auto webView = Test::adoptView(Test::createWebView(test->m_webContext.get()));
     g_assert(!webkit_web_view_is_controlled_by_automation(webView.get()));
     g_assert(!test->createTopLevelBrowsingContext(webView.get()));
 
     // And will work with a proper web view.
-    webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW, "web-context", test->m_webContext.get(), "is-controlled-by-automation", TRUE, nullptr));
+    webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
+        "web-context", test->m_webContext.get(),
+        "is-controlled-by-automation", TRUE,
+        nullptr));
     g_assert(webkit_web_view_is_controlled_by_automation(webView.get()));
     g_assert(test->createTopLevelBrowsingContext(webView.get()));
 
     webkit_web_context_set_automation_allowed(test->m_webContext.get(), FALSE);
 }
 
+static void testAutomationSessionApplicationInfo(Test* test, gconstpointer)
+{
+    WebKitApplicationInfo* info = webkit_application_info_new();
+    g_assert_cmpstr(webkit_application_info_get_name(info), ==, g_get_prgname());
+    webkit_application_info_set_name(info, "WebKitGTKBrowser");
+    g_assert_cmpstr(webkit_application_info_get_name(info), ==, "WebKitGTKBrowser");
+    webkit_application_info_set_name(info, nullptr);
+    g_assert_cmpstr(webkit_application_info_get_name(info), ==, g_get_prgname());
+
+    guint64 major, minor, micro;
+    webkit_application_info_get_version(info, &major, nullptr, nullptr);
+    g_assert_cmpuint(major, ==, 0);
+    webkit_application_info_set_version(info, 1, 2, 3);
+    webkit_application_info_get_version(info, &major, &minor, &micro);
+    g_assert_cmpuint(major, ==, 1);
+    g_assert_cmpuint(minor, ==, 2);
+    g_assert_cmpuint(micro, ==, 3);
+
+    webkit_application_info_unref(info);
+}
+
+
 void beforeAll()
 {
     g_setenv("WEBKIT_INSPECTOR_SERVER", "127.0.0.1:2229", TRUE);
 
     AutomationTest::add("WebKitAutomationSession", "request-session", testAutomationSessionRequestSession);
+    Test::add("WebKitAutomationSession", "application-info", testAutomationSessionApplicationInfo);
 }
 
 void afterAll()

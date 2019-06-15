@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-dataview.prototype.setint32
 es6id: 24.2.4.17
 description: >
   DataView.prototype.setInt32.name is "setInt32".
-info: >
+info: |
   DataView.prototype.setInt32 ( byteOffset, value [ , littleEndian ] )
 
   17 ECMAScript Standard Built-in Objects:

@@ -11,20 +11,24 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/base/gunit.h"
-#include "webrtc/base/thread.h"
-#include "webrtc/media/base/fakevideocapturer.h"
-#include "webrtc/media/engine/webrtccommon.h"
-#include "webrtc/media/engine/webrtcvoe.h"
-#include "webrtc/p2p/base/fakeportallocator.h"
-#include "webrtc/pc/peerconnectionfactory.h"
+#include "api/audio_codecs/builtin_audio_decoder_factory.h"
+#include "api/audio_codecs/builtin_audio_encoder_factory.h"
+#include "api/mediastreaminterface.h"
+#include "api/video_codecs/builtin_video_decoder_factory.h"
+#include "api/video_codecs/builtin_video_encoder_factory.h"
+#include "media/base/fakevideocapturer.h"
+#include "p2p/base/fakeportallocator.h"
+#include "pc/peerconnectionfactory.h"
+#include "pc/test/fakeaudiocapturemodule.h"
+#include "rtc_base/gunit.h"
+
 #ifdef WEBRTC_ANDROID
-#include "webrtc/pc/test/androidtestinitializer.h"
+#include "pc/test/androidtestinitializer.h"
 #endif
-#include "webrtc/pc/test/fakertccertificategenerator.h"
-#include "webrtc/pc/test/fakevideotrackrenderer.h"
+#include "pc/test/fakertccertificategenerator.h"
+#include "pc/test/fakevideotrackrenderer.h"
 
 using webrtc::DataChannelInterface;
 using webrtc::FakeVideoTrackRenderer;
@@ -41,14 +45,12 @@ static const char kStunIceServer[] = "stun:stun.l.google.com:19302";
 static const char kTurnIceServer[] = "turn:test%40hello.com@test.com:1234";
 static const char kTurnIceServerWithTransport[] =
     "turn:test@hello.com?transport=tcp";
-static const char kSecureTurnIceServer[] =
-    "turns:test@hello.com?transport=tcp";
+static const char kSecureTurnIceServer[] = "turns:test@hello.com?transport=tcp";
 static const char kSecureTurnIceServerWithoutTransportParam[] =
     "turns:test_no_transport@hello.com:443";
 static const char kSecureTurnIceServerWithoutTransportAndPortParam[] =
     "turns:test_no_transport@hello.com";
-static const char kTurnIceServerWithNoUsernameInUri[] =
-    "turn:test.com:1234";
+static const char kTurnIceServerWithNoUsernameInUri[] = "turn:test.com:1234";
 static const char kTurnPassword[] = "turnpassword";
 static const int kDefaultStunPort = 3478;
 static const int kDefaultStunTlsPort = 5349;
@@ -76,8 +78,8 @@ class NullPeerConnectionObserver : public PeerConnectionObserver {
       PeerConnectionInterface::IceConnectionState new_state) override {}
   void OnIceGatheringChange(
       PeerConnectionInterface::IceGatheringState new_state) override {}
-  void OnIceCandidate(
-      const webrtc::IceCandidateInterface* candidate) override {}
+  void OnIceCandidate(const webrtc::IceCandidateInterface* candidate) override {
+  }
 };
 
 }  // namespace
@@ -87,9 +89,18 @@ class PeerConnectionFactoryTest : public testing::Test {
 #ifdef WEBRTC_ANDROID
     webrtc::InitializeAndroidObjects();
 #endif
+    // Use fake audio device module since we're only testing the interface
+    // level, and using a real one could make tests flaky e.g. when run in
+    // parallel.
     factory_ = webrtc::CreatePeerConnectionFactory(
         rtc::Thread::Current(), rtc::Thread::Current(), rtc::Thread::Current(),
-        nullptr, nullptr, nullptr);
+        rtc::scoped_refptr<webrtc::AudioDeviceModule>(
+            FakeAudioCaptureModule::Create()),
+        webrtc::CreateBuiltinAudioEncoderFactory(),
+        webrtc::CreateBuiltinAudioDecoderFactory(),
+        webrtc::CreateBuiltinVideoEncoderFactory(),
+        webrtc::CreateBuiltinVideoDecoderFactory(), nullptr /* audio_mixer */,
+        nullptr /* audio_processing */);
 
     ASSERT_TRUE(factory_.get() != NULL);
     port_allocator_.reset(
@@ -119,6 +130,19 @@ class PeerConnectionFactoryTest : public testing::Test {
     }
   }
 
+  void VerifyAudioCodecCapability(const webrtc::RtpCodecCapability& codec) {
+    EXPECT_EQ(codec.kind, cricket::MEDIA_TYPE_AUDIO);
+    EXPECT_FALSE(codec.name.empty());
+    EXPECT_GT(codec.clock_rate, 0);
+    EXPECT_GT(codec.num_channels, 0);
+  }
+
+  void VerifyVideoCodecCapability(const webrtc::RtpCodecCapability& codec) {
+    EXPECT_EQ(codec.kind, cricket::MEDIA_TYPE_VIDEO);
+    EXPECT_FALSE(codec.name.empty());
+    EXPECT_GT(codec.clock_rate, 0);
+  }
+
   rtc::scoped_refptr<PeerConnectionFactoryInterface> factory_;
   NullPeerConnectionObserver observer_;
   std::unique_ptr<cricket::FakePortAllocator> port_allocator_;
@@ -129,13 +153,24 @@ class PeerConnectionFactoryTest : public testing::Test {
 
 // Verify creation of PeerConnection using internal ADM, video factory and
 // internal libjingle threads.
-TEST(PeerConnectionFactoryTestInternal, CreatePCUsingInternalModules) {
+// TODO(henrika): disabling this test since relying on real audio can result in
+// flaky tests and focus on details that are out of scope for you might expect
+// for a PeerConnectionFactory unit test.
+// See https://bugs.chromium.org/p/webrtc/issues/detail?id=7806 for details.
+TEST(PeerConnectionFactoryTestInternal, DISABLED_CreatePCUsingInternalModules) {
 #ifdef WEBRTC_ANDROID
   webrtc::InitializeAndroidObjects();
 #endif
 
   rtc::scoped_refptr<PeerConnectionFactoryInterface> factory(
-      webrtc::CreatePeerConnectionFactory());
+      webrtc::CreatePeerConnectionFactory(
+          nullptr /* network_thread */, nullptr /* worker_thread */,
+          nullptr /* signaling_thread */, nullptr /* default_adm */,
+          webrtc::CreateBuiltinAudioEncoderFactory(),
+          webrtc::CreateBuiltinAudioDecoderFactory(),
+          webrtc::CreateBuiltinVideoEncoderFactory(),
+          webrtc::CreateBuiltinVideoDecoderFactory(), nullptr /* audio_mixer */,
+          nullptr /* audio_processing */));
 
   NullPeerConnectionObserver observer;
   webrtc::PeerConnectionInterface::RTCConfiguration config;
@@ -146,6 +181,72 @@ TEST(PeerConnectionFactoryTestInternal, CreatePCUsingInternalModules) {
       config, nullptr, nullptr, std::move(cert_generator), &observer));
 
   EXPECT_TRUE(pc.get() != nullptr);
+}
+
+TEST_F(PeerConnectionFactoryTest, CheckRtpSenderAudioCapabilities) {
+  webrtc::RtpCapabilities audio_capabilities =
+      factory_->GetRtpSenderCapabilities(cricket::MEDIA_TYPE_AUDIO);
+  EXPECT_FALSE(audio_capabilities.codecs.empty());
+  for (const auto& codec : audio_capabilities.codecs) {
+    VerifyAudioCodecCapability(codec);
+  }
+  EXPECT_FALSE(audio_capabilities.header_extensions.empty());
+  for (const auto& header_extension : audio_capabilities.header_extensions) {
+    EXPECT_FALSE(header_extension.uri.empty());
+  }
+}
+
+TEST_F(PeerConnectionFactoryTest, CheckRtpSenderVideoCapabilities) {
+  webrtc::RtpCapabilities video_capabilities =
+      factory_->GetRtpSenderCapabilities(cricket::MEDIA_TYPE_VIDEO);
+  EXPECT_FALSE(video_capabilities.codecs.empty());
+  for (const auto& codec : video_capabilities.codecs) {
+    VerifyVideoCodecCapability(codec);
+  }
+  EXPECT_FALSE(video_capabilities.header_extensions.empty());
+  for (const auto& header_extension : video_capabilities.header_extensions) {
+    EXPECT_FALSE(header_extension.uri.empty());
+  }
+}
+
+TEST_F(PeerConnectionFactoryTest, CheckRtpSenderDataCapabilities) {
+  webrtc::RtpCapabilities data_capabilities =
+      factory_->GetRtpSenderCapabilities(cricket::MEDIA_TYPE_DATA);
+  EXPECT_TRUE(data_capabilities.codecs.empty());
+  EXPECT_TRUE(data_capabilities.header_extensions.empty());
+}
+
+TEST_F(PeerConnectionFactoryTest, CheckRtpReceiverAudioCapabilities) {
+  webrtc::RtpCapabilities audio_capabilities =
+      factory_->GetRtpReceiverCapabilities(cricket::MEDIA_TYPE_AUDIO);
+  EXPECT_FALSE(audio_capabilities.codecs.empty());
+  for (const auto& codec : audio_capabilities.codecs) {
+    VerifyAudioCodecCapability(codec);
+  }
+  EXPECT_FALSE(audio_capabilities.header_extensions.empty());
+  for (const auto& header_extension : audio_capabilities.header_extensions) {
+    EXPECT_FALSE(header_extension.uri.empty());
+  }
+}
+
+TEST_F(PeerConnectionFactoryTest, CheckRtpReceiverVideoCapabilities) {
+  webrtc::RtpCapabilities video_capabilities =
+      factory_->GetRtpReceiverCapabilities(cricket::MEDIA_TYPE_VIDEO);
+  EXPECT_FALSE(video_capabilities.codecs.empty());
+  for (const auto& codec : video_capabilities.codecs) {
+    VerifyVideoCodecCapability(codec);
+  }
+  EXPECT_FALSE(video_capabilities.header_extensions.empty());
+  for (const auto& header_extension : video_capabilities.header_extensions) {
+    EXPECT_FALSE(header_extension.uri.empty());
+  }
+}
+
+TEST_F(PeerConnectionFactoryTest, CheckRtpReceiverDataCapabilities) {
+  webrtc::RtpCapabilities data_capabilities =
+      factory_->GetRtpReceiverCapabilities(cricket::MEDIA_TYPE_DATA);
+  EXPECT_TRUE(data_capabilities.codecs.empty());
+  EXPECT_TRUE(data_capabilities.header_extensions.empty());
 }
 
 // This test verifies creation of PeerConnection with valid STUN and TURN
@@ -328,7 +429,8 @@ TEST_F(PeerConnectionFactoryTest, CreatePCUsingIPLiteralAddress) {
 // This test verifies the captured stream is rendered locally using a
 // local video track.
 TEST_F(PeerConnectionFactoryTest, LocalRendering) {
-  cricket::FakeVideoCapturer* capturer = new cricket::FakeVideoCapturer();
+  cricket::FakeVideoCapturerWithTaskQueue* capturer =
+      new cricket::FakeVideoCapturerWithTaskQueue();
   // The source takes ownership of |capturer|, but we keep a raw pointer to
   // inject fake frames.
   rtc::scoped_refptr<VideoTrackSourceInterface> source(

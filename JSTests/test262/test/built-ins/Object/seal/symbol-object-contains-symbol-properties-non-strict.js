@@ -5,6 +5,7 @@ es6id: 19.4
 description: >
     Object.seal(obj) where obj contains symbol properties.
 flags: [noStrict]
+features: [Symbol]
 ---*/
 var symA = Symbol("A");
 var symB = Symbol("B");
@@ -17,4 +18,3 @@ obj[symB] = 1;
 assert.sameValue(obj[symA], 2, "The value of `obj[symA]` is `2`");
 assert.sameValue(delete obj[symA], false, "`delete obj[symA]` is `false`");
 assert.sameValue(obj[symB], undefined, "The value of `obj[symB]` is `undefined`");
-

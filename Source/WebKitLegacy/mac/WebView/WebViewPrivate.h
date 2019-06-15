@@ -75,7 +75,6 @@
 #endif
 @protocol WebDeviceOrientationProvider;
 @protocol WebFormDelegate;
-@protocol WebUserMediaClient;
 
 #if !TARGET_OS_IPHONE
 extern NSString *_WebCanGoBackKey;
@@ -466,8 +465,6 @@ Could be worth adding to the API.
 - (void)_setResourceLoadSchedulerSuspended:(BOOL)suspend;
 + (void)_setTileCacheLayerPoolCapacity:(unsigned)capacity;
 
-+ (void)_setAllowCookies:(BOOL)allow;
-+ (BOOL)_allowCookies;
 + (void)_releaseMemoryNow;
 
 - (void)_replaceCurrentHistoryItem:(WebHistoryItem *)item;
@@ -485,7 +482,7 @@ Could be worth adding to the API.
 - (void)_exitedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
 - (void)_performDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
 - (BOOL)_tryToPerformDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation;
-- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)clientPosition;
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition;
 
 @property (nonatomic, readonly, getter=_dataInteractionCaretRect) CGRect dataInteractionCaretRect;
 #endif
@@ -929,6 +926,8 @@ typedef struct WebEdgeInsets {
 
 @property (nonatomic, assign, setter=_setUnobscuredSafeAreaInsets:) WebEdgeInsets _unobscuredSafeAreaInsets;
 
+@property (nonatomic, assign, setter=_setUseSystemAppearance:) BOOL _useSystemAppearance;
+
 @end
 
 #if !TARGET_OS_IPHONE
@@ -1008,11 +1007,6 @@ typedef struct WebEdgeInsets {
 @end
 
 #endif
-
-@interface WebView (WebViewUserMedia)
-- (void)_setUserMediaClient:(id<WebUserMediaClient>)userMediaClient;
-- (id<WebUserMediaClient>)_userMediaClient;
-@end
 
 @protocol WebGeolocationProvider <NSObject>
 - (void)registerWebView:(WebView *)webView;

@@ -29,6 +29,7 @@
 #include "RuntimeType.h"
 #include "StructureSet.h"
 #include <wtf/HashSet.h>
+#include <wtf/JSONValues.h>
 #include <wtf/RefCounted.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -36,7 +37,6 @@
 
 namespace Inspector {
 namespace Protocol  {
-template<typename T> class Array;
 
 namespace Runtime {
 class StructureDescription;
@@ -61,7 +61,7 @@ public:
     String stringRepresentation();
     String toJSONString() const;
     Ref<Inspector::Protocol::Runtime::StructureDescription> inspectorRepresentation();
-    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? ASCIILiteral("Object") : name); }
+    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? "Object"_s : name); }
     String constructorName() { return m_constructorName; }
     void setProto(Ref<StructureShape>&& shape) { m_proto = WTFMove(shape); }
     void enterDictionaryMode();
@@ -85,11 +85,11 @@ class TypeSet : public ThreadSafeRefCounted<TypeSet> {
 public:
     static Ref<TypeSet> create() { return adoptRef(*new TypeSet); }
     TypeSet();
-    void addTypeInformation(RuntimeType, RefPtr<StructureShape>&&, Structure*);
+    void addTypeInformation(RuntimeType, RefPtr<StructureShape>&&, Structure*, bool sawPolyProtoStructure);
     void invalidateCache();
     String dumpTypes() const;
     String displayName() const;
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::Runtime::StructureDescription>> allStructureRepresentations() const;
+    Ref<JSON::ArrayOf<Inspector::Protocol::Runtime::StructureDescription>> allStructureRepresentations() const;
     String toJSONString() const;
     bool isOverflown() const { return m_isOverflown; }
     String leastCommonAncestor() const;

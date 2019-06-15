@@ -8,25 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_DTMFSENDER_H_
-#define WEBRTC_PC_DTMFSENDER_H_
+#ifndef PC_DTMFSENDER_H_
+#define PC_DTMFSENDER_H_
 
 #include <string>
 
-#include "webrtc/api/dtmfsenderinterface.h"
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/proxy.h"
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/messagehandler.h"
-#include "webrtc/base/refcount.h"
+#include "api/dtmfsenderinterface.h"
+#include "api/proxy.h"
+#include "rtc_base/constructormagic.h"
+#include "rtc_base/messagehandler.h"
+#include "rtc_base/refcount.h"
+#include "rtc_base/thread.h"
 
 // DtmfSender is the native implementation of the RTCDTMFSender defined by
 // the WebRTC W3C Editor's Draft.
 // http://dev.w3.org/2011/webrtc/editor/webrtc.html
-
-namespace rtc {
-class Thread;
-}
 
 namespace webrtc {
 
@@ -49,17 +45,12 @@ class DtmfProviderInterface {
   virtual ~DtmfProviderInterface() {}
 };
 
-class DtmfSender
-    : public DtmfSenderInterface,
-      public sigslot::has_slots<>,
-      public rtc::MessageHandler {
+class DtmfSender : public DtmfSenderInterface,
+                   public sigslot::has_slots<>,
+                   public rtc::MessageHandler {
  public:
-  // |track| is only there for backwards compatibility, since there's a track
-  // accessor method.
-  static rtc::scoped_refptr<DtmfSender> Create(
-      AudioTrackInterface* track,
-      rtc::Thread* signaling_thread,
-      DtmfProviderInterface* provider);
+  static rtc::scoped_refptr<DtmfSender> Create(rtc::Thread* signaling_thread,
+                                               DtmfProviderInterface* provider);
 
   // Implements DtmfSenderInterface.
   void RegisterObserver(DtmfSenderObserverInterface* observer) override;
@@ -68,15 +59,12 @@ class DtmfSender
   bool InsertDtmf(const std::string& tones,
                   int duration,
                   int inter_tone_gap) override;
-  const AudioTrackInterface* track() const override;
   std::string tones() const override;
   int duration() const override;
   int inter_tone_gap() const override;
 
  protected:
-  DtmfSender(AudioTrackInterface* track,
-             rtc::Thread* signaling_thread,
-             DtmfProviderInterface* provider);
+  DtmfSender(rtc::Thread* signaling_thread, DtmfProviderInterface* provider);
   virtual ~DtmfSender();
 
  private:
@@ -92,7 +80,6 @@ class DtmfSender
 
   void StopSending();
 
-  rtc::scoped_refptr<AudioTrackInterface> track_;
   DtmfSenderObserverInterface* observer_;
   rtc::Thread* signaling_thread_;
   DtmfProviderInterface* provider_;
@@ -105,15 +92,14 @@ class DtmfSender
 
 // Define proxy for DtmfSenderInterface.
 BEGIN_SIGNALING_PROXY_MAP(DtmfSender)
-  PROXY_SIGNALING_THREAD_DESTRUCTOR()
-  PROXY_METHOD1(void, RegisterObserver, DtmfSenderObserverInterface*)
-  PROXY_METHOD0(void, UnregisterObserver)
-  PROXY_METHOD0(bool, CanInsertDtmf)
-  PROXY_METHOD3(bool, InsertDtmf, const std::string&, int, int)
-  PROXY_CONSTMETHOD0(const AudioTrackInterface*, track)
-  PROXY_CONSTMETHOD0(std::string, tones)
-  PROXY_CONSTMETHOD0(int, duration)
-  PROXY_CONSTMETHOD0(int, inter_tone_gap)
+PROXY_SIGNALING_THREAD_DESTRUCTOR()
+PROXY_METHOD1(void, RegisterObserver, DtmfSenderObserverInterface*)
+PROXY_METHOD0(void, UnregisterObserver)
+PROXY_METHOD0(bool, CanInsertDtmf)
+PROXY_METHOD3(bool, InsertDtmf, const std::string&, int, int)
+PROXY_CONSTMETHOD0(std::string, tones)
+PROXY_CONSTMETHOD0(int, duration)
+PROXY_CONSTMETHOD0(int, inter_tone_gap)
 END_PROXY_MAP()
 
 // Get DTMF code from the DTMF event character.
@@ -121,4 +107,4 @@ bool GetDtmfCode(char tone, int* code);
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_DTMFSENDER_H_
+#endif  // PC_DTMFSENDER_H_

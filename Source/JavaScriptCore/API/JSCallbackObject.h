@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,9 +27,11 @@
 #ifndef JSCallbackObject_h
 #define JSCallbackObject_h
 
+#include "JSCPoison.h"
 #include "JSObjectRef.h"
 #include "JSValueRef.h"
 #include "JSObject.h"
+#include <wtf/PoisonedUniquePtr.h>
 
 namespace JSC {
 
@@ -122,7 +124,7 @@ public:
 
     
 template <class Parent>
-class JSCallbackObject : public Parent {
+class JSCallbackObject final : public Parent {
 protected:
     JSCallbackObject(ExecState*, Structure*, JSClassRef, void* data);
     JSCallbackObject(VM&, JSClassRef, Structure*);
@@ -132,14 +134,15 @@ protected:
 
 public:
     typedef Parent Base;
-    static const unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesGetPropertyNames | TypeOfShouldCallGetCallData;
+    static const unsigned StructureFlags = Base::StructureFlags | ProhibitsPropertyCaching | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | ImplementsHasInstance | OverridesGetPropertyNames | OverridesGetCallData;
 
     ~JSCallbackObject();
 
     static JSCallbackObject* create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, JSClassRef classRef, void* data)
     {
+        VM& vm = exec->vm();
         ASSERT_UNUSED(globalObject, !structure->globalObject() || structure->globalObject() == globalObject);
-        JSCallbackObject* callbackObject = new (NotNull, allocateCell<JSCallbackObject>(*exec->heap())) JSCallbackObject(exec, structure, classRef, data);
+        JSCallbackObject* callbackObject = new (NotNull, allocateCell<JSCallbackObject>(vm.heap)) JSCallbackObject(exec, structure, classRef, data);
         callbackObject->finishCreation(exec);
         return callbackObject;
     }
@@ -191,7 +194,7 @@ public:
     using Parent::methodTable;
 
 private:
-    static String className(const JSObject*);
+    static String className(const JSObject*, VM&);
 
     static JSValue defaultValue(const JSObject*, ExecState*, PreferredPrimitiveType);
 
@@ -231,8 +234,8 @@ private:
     static EncodedJSValue staticFunctionGetter(ExecState*, EncodedJSValue, PropertyName);
     static EncodedJSValue callbackGetter(ExecState*, EncodedJSValue, PropertyName);
 
-    std::unique_ptr<JSCallbackObjectData> m_callbackObjectData;
-    const ClassInfo* m_classInfo;
+    WTF::PoisonedUniquePtr<JSCallbackObjectPoison, JSCallbackObjectData> m_callbackObjectData;
+    PoisonedClassInfoPtr m_classInfo;
 };
 
 } // namespace JSC

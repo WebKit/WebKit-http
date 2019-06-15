@@ -26,3 +26,11 @@
 :matches(.navigation-bar, .toolbar) .item.flexible-space {
     flex: 1;
 }
+
+:matches(.navigation-bar, .toolbar) .item.flexible-space.align-start > .item {
+    -webkit-margin-end: auto;
+}
+
+:matches(.navigation-bar, .toolbar) .item.flexible-space.align-end > .item {
+    -webkit-margin-start: auto;
+}

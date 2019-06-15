@@ -41,7 +41,7 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
-#include <CoreText/CTFont.h>
+#include "FontCacheCoreText.h"
 #endif
 
 #if OS(WINDOWS)
@@ -74,6 +74,7 @@ struct FontDescriptionKey {
         : m_size(description.computedPixelSize())
         , m_fontSelectionRequest(description.fontSelectionRequest())
         , m_flags(makeFlagsKey(description))
+        , m_locale(description.locale())
         , m_featureSettings(description.featureSettings())
 #if ENABLE(VARIATION_FONTS)
         , m_variationSettings(description.variationSettings())
@@ -89,6 +90,7 @@ struct FontDescriptionKey {
         return m_size == other.m_size
             && m_fontSelectionRequest == other.m_fontSelectionRequest
             && m_flags == other.m_flags
+            && m_locale == other.m_locale
 #if ENABLE(VARIATION_FONTS)
             && m_variationSettings == other.m_variationSettings
 #endif
@@ -108,7 +110,8 @@ struct FontDescriptionKey {
         hasher.add(m_size);
         hasher.add(m_fontSelectionRequest.weight);
         hasher.add(m_fontSelectionRequest.width);
-        hasher.add(m_fontSelectionRequest.slope);
+        hasher.add(m_fontSelectionRequest.slope.value_or(normalItalicValue()));
+        hasher.add(m_locale.existingHash());
         for (unsigned flagItem : m_flags)
             hasher.add(flagItem);
         hasher.add(m_featureSettings.hash());
@@ -121,7 +124,8 @@ struct FontDescriptionKey {
 private:
     static std::array<unsigned, 2> makeFlagsKey(const FontDescription& description)
     {
-        unsigned first = static_cast<unsigned>(description.script()) << 13
+        unsigned first = static_cast<unsigned>(description.script()) << 14
+            | static_cast<unsigned>(description.shouldAllowUserInstalledFonts()) << 13
             | static_cast<unsigned>(description.fontStyleAxis() == FontStyleAxis::slnt) << 12
             | static_cast<unsigned>(description.opticalSizing()) << 11
             | static_cast<unsigned>(description.textRenderingMode()) << 9
@@ -154,6 +158,7 @@ private:
     unsigned m_size { 0 };
     FontSelectionRequest m_fontSelectionRequest;
     std::array<unsigned, 2> m_flags {{ 0, 0 }};
+    AtomicString m_locale;
     FontFeatureSettings m_featureSettings;
 #if ENABLE(VARIATION_FONTS)
     FontVariationSettings m_variationSettings;
@@ -198,7 +203,7 @@ public:
 
     // This function exists so CSSFontSelector can have a unified notion of preinstalled fonts and @font-face.
     // It comes into play when you create an @font-face which shares a family name as a preinstalled font.
-    Vector<FontSelectionCapabilities> getFontSelectionCapabilitiesInFamily(const AtomicString&);
+    Vector<FontSelectionCapabilities> getFontSelectionCapabilitiesInFamily(const AtomicString&, AllowUserInstalledFonts);
 
     WEBCORE_EXPORT RefPtr<Font> fontForFamily(const FontDescription&, const AtomicString&, const FontFeatureSettings* fontFaceFeatures = nullptr, const FontVariantSettings* fontFaceVariantSettings = nullptr, FontSelectionSpecifiedCapabilities fontFaceCapabilities = { }, bool checkingAlternateName = false);
     WEBCORE_EXPORT Ref<Font> lastResortFallbackFont(const FontDescription&);
@@ -262,32 +267,7 @@ inline std::unique_ptr<FontPlatformData> FontCache::createFontPlatformDataForTes
     return createFontPlatformData(fontDescription, family, nullptr, nullptr, { });
 }
 
-#if PLATFORM(COCOA)
-
-struct SynthesisPair {
-    SynthesisPair(bool needsSyntheticBold, bool needsSyntheticOblique)
-        : needsSyntheticBold(needsSyntheticBold)
-        , needsSyntheticOblique(needsSyntheticOblique)
-    {
-    }
-
-    std::pair<bool, bool> boldObliquePair() const
-    {
-        return std::make_pair(needsSyntheticBold, needsSyntheticOblique);
-    }
-
-    bool needsSyntheticBold;
-    bool needsSyntheticOblique;
-};
-
-RetainPtr<CTFontRef> preparePlatformFont(CTFontRef, const FontDescription&, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, float size, bool applyWeightWidthSlopeVariations = true);
-SynthesisPair computeNecessarySynthesis(CTFontRef, const FontDescription&, bool isPlatformFont = false);
-RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest, float size);
-RetainPtr<CTFontRef> platformFontWithFamily(const AtomicString& family, FontSelectionRequest, TextRenderingMode, float size);
-bool requiresCustomFallbackFont(UChar32 character);
-FontSelectionCapabilities capabilitiesForFontDescriptor(CTFontDescriptorRef);
-
-#else
+#if !PLATFORM(COCOA)
 
 inline void FontCache::platformPurgeInactiveFontData()
 {

@@ -24,6 +24,8 @@ import logging
 
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.crashlogs import CrashLogs
+from webkitpy.common.version import Version
+from webkitpy.common.version_name_map import VersionNameMap
 from webkitpy.port.config import apple_additions
 from webkitpy.port.ios import IOSPort
 
@@ -45,9 +47,6 @@ class IOSDevicePort(IOSPort):
             return apple_additions().ios_device_default_child_processes(self)
         return 1
 
-    def using_multiple_devices(self):
-        return True
-
     def _device_for_worker_number_map(self):
         if not apple_additions():
             raise RuntimeError(self.NO_ON_DEVICE_TESTING)
@@ -64,8 +63,7 @@ class IOSDevicePort(IOSPort):
             iphoneos_sdk_version = host.platform.xcode_sdk_version(cls.SDK)
             if not iphoneos_sdk_version:
                 raise Exception("Please install the iOS SDK.")
-            major_version_number = iphoneos_sdk_version.split('.')[0]
-            port_name = port_name + '-' + major_version_number
+            port_name = port_name + '-' + str(iphoneos_sdk_version.major)
         return port_name
 
     def path_to_crash_logs(self):
@@ -93,12 +91,13 @@ class IOSDevicePort(IOSPort):
 
     @memoized
     def ios_version(self):
+        if self.get_option('version'):
+            return Version.from_string(self.get_option('version'))
+
         if not apple_additions():
             raise RuntimeError(self.NO_ON_DEVICE_TESTING)
 
-        # FIXME: We should replace --runtime with something which makes sense for both Simulator and Device
-        # https://bugs.webkit.org/show_bug.cgi?id=173775
-        if len(self._device_for_worker_number_map()) == 0:
+        if not self._device_for_worker_number_map():
             raise RuntimeError('No devices are available')
         version = None
         for device in self._device_for_worker_number_map():
@@ -107,7 +106,6 @@ class IOSDevicePort(IOSPort):
             else:
                 if device.platform.os_version != version:
                     raise RuntimeError('Multiple connected devices have different iOS versions')
-
         return version
 
     # FIXME: These need device implementations <rdar://problem/30497991>.

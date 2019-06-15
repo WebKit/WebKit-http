@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,9 +37,7 @@
 
 namespace JSC { namespace FTL {
 
-using namespace DFG;
-
-JITFinalizer::JITFinalizer(Plan& plan)
+JITFinalizer::JITFinalizer(DFG::Plan& plan)
     : Finalizer(plan)
 {
 }
@@ -75,23 +73,23 @@ bool JITFinalizer::finalizeCommon()
 {
     bool dumpDisassembly = shouldDumpDisassembly() || Options::asyncDisassembly();
     
-    jitCode->initializeB3Code(
-        FINALIZE_CODE_IF(
-            dumpDisassembly, *b3CodeLinkBuffer,
-            ("FTL B3 code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data())));
+    MacroAssemblerCodeRef<JSEntryPtrTag> b3CodeRef =
+        FINALIZE_CODE_IF(dumpDisassembly, *b3CodeLinkBuffer, JSEntryPtrTag,
+            "FTL B3 code for %s", toCString(CodeBlockWithJITType(m_plan.codeBlock(), JITCode::FTLJIT)).data());
 
-    if (entrypointLinkBuffer) {
-        jitCode->initializeArityCheckEntrypoint(
-            FINALIZE_CODE_IF(
-                dumpDisassembly, *entrypointLinkBuffer,
-                ("FTL entrypoint thunk for %s with B3 generated code at %p", toCString(CodeBlockWithJITType(m_plan.codeBlock, JITCode::FTLJIT)).data(), function)));
-    }
-    
-    m_plan.codeBlock->setJITCode(*jitCode);
+    MacroAssemblerCodeRef<JSEntryPtrTag> arityCheckCodeRef = entrypointLinkBuffer
+        ? FINALIZE_CODE_IF(dumpDisassembly, *entrypointLinkBuffer, JSEntryPtrTag,
+            "FTL entrypoint thunk for %s with B3 generated code at %p", toCString(CodeBlockWithJITType(m_plan.codeBlock(), JITCode::FTLJIT)).data(), function)
+        : MacroAssemblerCodeRef<JSEntryPtrTag>::createSelfManagedCodeRef(b3CodeRef.code());
 
-    if (m_plan.compilation)
-        m_plan.vm->m_perBytecodeProfiler->addCompilation(m_plan.codeBlock, *m_plan.compilation);
-    
+    jitCode->initializeB3Code(b3CodeRef);
+    jitCode->initializeArityCheckEntrypoint(arityCheckCodeRef);
+
+    m_plan.codeBlock()->setJITCode(*jitCode);
+
+    if (UNLIKELY(m_plan.compilation()))
+        m_plan.vm()->m_perBytecodeProfiler->addCompilation(m_plan.codeBlock(), *m_plan.compilation());
+
     return true;
 }
 

@@ -60,7 +60,7 @@ static unsigned fontSelectorId;
 
 CSSFontSelector::CSSFontSelector(Document& document)
     : m_document(&document)
-    , m_cssFontFaceSet(CSSFontFaceSet::create())
+    , m_cssFontFaceSet(CSSFontFaceSet::create(this))
     , m_beginLoadingTimer(*this, &CSSFontSelector::beginLoadTimerFired)
     , m_uniqueId(++fontSelectorId)
     , m_version(0)
@@ -157,7 +157,8 @@ void CSSFontSelector::addFontFaceRule(StyleRuleFontFace& fontFaceRule, bool isIn
     RefPtr<CSSValue> variantNumeric = style.getPropertyCSSValue(CSSPropertyFontVariantNumeric);
     RefPtr<CSSValue> variantAlternates = style.getPropertyCSSValue(CSSPropertyFontVariantAlternates);
     RefPtr<CSSValue> variantEastAsian = style.getPropertyCSSValue(CSSPropertyFontVariantEastAsian);
-    if (!is<CSSValueList>(fontFamily.get()) || !is<CSSValueList>(src.get()) || (unicodeRange && !is<CSSValueList>(*unicodeRange)))
+    RefPtr<CSSValue> loadingBehavior = style.getPropertyCSSValue(CSSPropertyFontDisplay);
+    if (!is<CSSValueList>(fontFamily) || !is<CSSValueList>(src) || (unicodeRange && !is<CSSValueList>(*unicodeRange)))
         return;
 
     CSSValueList& familyList = downcast<CSSValueList>(*fontFamily);
@@ -197,9 +198,11 @@ void CSSFontSelector::addFontFaceRule(StyleRuleFontFace& fontFaceRule, bool isIn
         return;
     if (featureSettings)
         fontFace->setFeatureSettings(*featureSettings);
+    if (loadingBehavior)
+        fontFace->setLoadingBehavior(*loadingBehavior);
 
     CSSFontFace::appendSources(fontFace, srcList, m_document, isInitiatingElementInUserAgentShadowTree);
-    if (fontFace->allSourcesFailed())
+    if (fontFace->computeFailureState())
         return;
 
     if (RefPtr<CSSFontFace> existingFace = m_cssFontFaceSet->lookUpByCSSConnection(fontFaceRule)) {
@@ -236,10 +239,17 @@ void CSSFontSelector::dispatchInvalidationCallbacks()
 {
     ++m_version;
 
-    Vector<FontSelectorClient*> clients;
-    copyToVector(m_clients, clients);
-    for (size_t i = 0; i < clients.size(); ++i)
-        clients[i]->fontsNeedUpdate(*this);
+    for (auto& client : copyToVector(m_clients))
+        client->fontsNeedUpdate(*this);
+}
+
+void CSSFontSelector::opportunisticallyStartFontDataURLLoading(const FontCascadeDescription& description, const AtomicString& familyName)
+{
+    const auto& segmentedFontFace = m_cssFontFaceSet->fontFace(description.fontSelectionRequest(), familyName);
+    if (!segmentedFontFace)
+        return;
+    for (auto& face : segmentedFontFace->constituentFaces())
+        face->opportunisticallyStartFontDataURLLoading(*this);
 }
 
 void CSSFontSelector::fontLoaded()
@@ -331,13 +341,12 @@ void CSSFontSelector::beginLoadingFontSoon(CachedFont& font)
     if (!m_document)
         return;
 
-    if (!m_document->settings().webFontsAlwaysFallBack()) {
-        m_fontsToBeginLoading.append(&font);
-        // Increment the request count now, in order to prevent didFinishLoad from being dispatched
-        // after this font has been requested but before it began loading. Balanced by
-        // decrementRequestCount() in beginLoadTimerFired() and in clearDocument().
-        m_document->cachedResourceLoader().incrementRequestCount(font);
-    }
+    m_fontsToBeginLoading.append(&font);
+    // Increment the request count now, in order to prevent didFinishLoad from being dispatched
+    // after this font has been requested but before it began loading. Balanced by
+    // decrementRequestCount() in beginLoadTimerFired() and in clearDocument().
+    m_document->cachedResourceLoader().incrementRequestCount(font);
+
     m_beginLoadingTimer.startOneShot(0_s);
 }
 
@@ -356,11 +365,11 @@ void CSSFontSelector::beginLoadTimerFired()
         cachedResourceLoader.decrementRequestCount(*fontHandle);
     }
     // Ensure that if the request count reaches zero, the frame loader will know about it.
-    cachedResourceLoader.loadDone();
     // New font loads may be triggered by layout after the document load is complete but before we have dispatched
     // didFinishLoading for the frame. Make sure the delegate is always dispatched by checking explicitly.
     if (m_document && m_document->frame())
         m_document->frame()->loader().checkLoadComplete();
+    cachedResourceLoader.loadDone(LoadCompletionType::Finish);
 }
 
 

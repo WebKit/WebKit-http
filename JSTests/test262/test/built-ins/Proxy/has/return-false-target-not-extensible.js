@@ -5,7 +5,7 @@ es6id: 9.5.7
 description: >
     A property cannot be reported as non-existent, if it exists as an own
     property of the target object and the target object is not extensible.
-info: >
+info: |
     [[HasProperty]] (P)
 
     ...
@@ -22,19 +22,19 @@ info: >
 
 var target = {};
 var handler = {
-    has: function(t, prop) {
-        return 0;
-    }
+  has: function(t, prop) {
+    return 0;
+  }
 };
 var p = new Proxy(target, handler);
 
 Object.defineProperty(target, "attr", {
-    configurable: true,
-    value: 1
+  configurable: true,
+  value: 1
 });
 
 Object.preventExtensions(target);
 
 assert.throws(TypeError, function() {
-    "attr" in p;
+  "attr" in p;
 });

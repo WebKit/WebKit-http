@@ -19,8 +19,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
-#include "SVGException.h"
 #include "SVGPropertyTearOff.h"
 #include "SVGPropertyTraits.h"
 #include <wtf/Ref.h>
@@ -39,7 +37,7 @@ template<typename PropertyType>
 class SVGAnimatedListPropertyTearOff;
 
 template<typename PropertyType>
-class SVGListProperty : public SVGProperty {
+class SVGListProperty : public SVGProperty, public CanMakeWeakPtr<SVGListProperty<PropertyType>> {
 public:
     typedef SVGListProperty<PropertyType> Self;
 
@@ -51,7 +49,7 @@ public:
     ExceptionOr<bool> canAlterList() const
     {
         if (m_role == AnimValRole)
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         return true;
     }
@@ -164,7 +162,7 @@ public:
         m_values->clear();
 
         m_values->append(newItem->propertyReference());
-        m_wrappers->append(newItem.ptr());
+        m_wrappers->append(makeWeakPtr(newItem.get()));
 
         commitChange();
         return WTFMove(newItem);
@@ -174,7 +172,7 @@ public:
     ExceptionOr<bool> canGetItem(unsigned index)
     {
         if (index >= m_values->size())
-            return Exception { INDEX_SIZE_ERR };
+            return Exception { IndexSizeError };
 
         return true;
     }
@@ -202,13 +200,13 @@ public:
         // Spec: Returns the specified item from the list. The returned item is the item itself and not a copy.
         // Any changes made to the item are immediately reflected in the list.
         ASSERT(m_values->size() == m_wrappers->size());
-        RefPtr<ListItemTearOff> wrapper = m_wrappers->at(index);
+        RefPtr<ListItemTearOff> wrapper = static_cast<ListItemTearOff*>(m_wrappers->at(index).get());
         if (!wrapper) {
             // Create new wrapper, which is allowed to directly modify the item in the list, w/o copying and cache the wrapper in our map.
             // It is also associated with our animated property, so it can notify the SVG Element which holds the SVGAnimated*List
             // that it has been modified (and thus can call svgAttributeChanged(associatedAttributeName)).
             wrapper = ListItemTearOff::create(animatedList, UndefinedRole, m_values->at(index));
-            m_wrappers->at(index) = wrapper;
+            m_wrappers->at(index) = makeWeakPtr(*wrapper);
         }
 
         return wrapper.releaseNonNull();
@@ -266,7 +264,7 @@ public:
         m_values->insert(index, newItem->propertyReference());
 
         // Store new wrapper at position 'index', change its underlying value, so mutations of newItem, directly affect the item in the list.
-        m_wrappers->insert(index, newItem.ptr());
+        m_wrappers->insert(index, makeWeakPtr(newItem.get()));
 
         commitChange();
         return WTFMove(newItem);
@@ -281,7 +279,7 @@ public:
         ASSERT(result.releaseReturnValue());
 
         if (index >= m_values->size())
-            return Exception { INDEX_SIZE_ERR };
+            return Exception { IndexSizeError };
 
         return true;
     }
@@ -302,7 +300,7 @@ public:
 
         if (m_values->isEmpty()) {
             // 'newItem' already lived in our list, we removed it, and now we're empty, which means there's nothing to replace.
-            return Exception { INDEX_SIZE_ERR };
+            return Exception { IndexSizeError };
         }
 
         // Update the value at the desired position 'index'. 
@@ -333,17 +331,17 @@ public:
         if (m_values->isEmpty()) {
             ASSERT(m_wrappers->isEmpty());
             // 'newItem' already lived in our list, we removed it, and now we're empty, which means there's nothing to replace.
-            return Exception { INDEX_SIZE_ERR };
+            return Exception { IndexSizeError };
         }
 
         // Detach the existing wrapper.
-        RefPtr<ListItemTearOff> oldItem = m_wrappers->at(index);
+        RefPtr<ListItemTearOff> oldItem = static_cast<ListItemTearOff*>(m_wrappers->at(index).get());
         if (oldItem)
             oldItem->detachWrapper();
 
         // Update the value and the wrapper at the desired position 'index'. 
         m_values->at(index) = newItem->propertyReference();
-        m_wrappers->at(index) = newItem.ptr();
+        m_wrappers->at(index) = makeWeakPtr(newItem.get());
 
         commitChange();
         return WTFMove(newItem);
@@ -358,7 +356,7 @@ public:
         ASSERT(result.releaseReturnValue());
 
         if (index >= m_values->size())
-            return Exception { INDEX_SIZE_ERR };
+            return Exception { IndexSizeError };
 
         return true;
     }
@@ -389,7 +387,7 @@ public:
         ASSERT(m_values->size() == m_wrappers->size());
 
         // Detach the existing wrapper.
-        RefPtr<ListItemTearOff> oldItem = m_wrappers->at(index);
+        RefPtr<ListItemTearOff> oldItem = static_cast<ListItemTearOff*>(m_wrappers->at(index).get());
         if (!oldItem)
             oldItem = ListItemTearOff::create(animatedList, UndefinedRole, m_values->at(index));
 
@@ -437,7 +435,7 @@ public:
 
         // Append the value and wrapper at the end of the list.
         m_values->append(newItem->propertyReference());
-        m_wrappers->append(newItem.ptr());
+        m_wrappers->append(makeWeakPtr(newItem.get()));
 
         commitChange(ListModificationAppend);
         return WTFMove(newItem);

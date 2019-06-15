@@ -35,8 +35,8 @@
 #include "Settings.h"
 
 #include "JSDOMWindowBase.h"
-#include <runtime/JSCInlines.h>
-#include <runtime/JSLock.h>
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/JSLock.h>
 
 namespace WebCore {
 
@@ -45,9 +45,7 @@ HTMLImageLoader::HTMLImageLoader(Element& element)
 {
 }
 
-HTMLImageLoader::~HTMLImageLoader()
-{
-}
+HTMLImageLoader::~HTMLImageLoader() = default;
 
 void HTMLImageLoader::dispatchLoadEvent()
 {
@@ -60,7 +58,7 @@ void HTMLImageLoader::dispatchLoadEvent()
     bool errorOccurred = image()->errorOccurred();
     if (!errorOccurred && image()->response().httpStatusCode() >= 400)
         errorOccurred = is<HTMLObjectElement>(element()); // An <object> considers a 404 to be an error and should fire onerror.
-    element().dispatchEvent(Event::create(errorOccurred ? eventNames().errorEvent : eventNames().loadEvent, false, false));
+    element().dispatchEvent(Event::create(errorOccurred ? eventNames().errorEvent : eventNames().loadEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 String HTMLImageLoader::sourceURI(const AtomicString& attr) const

@@ -8,16 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_video/include/i420_buffer_pool.h"
+#include "common_video/include/i420_buffer_pool.h"
 
-#include "webrtc/base/checks.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
+I420BufferPool::I420BufferPool() : I420BufferPool(false) {}
+I420BufferPool::I420BufferPool(bool zero_initialize)
+    : I420BufferPool(zero_initialize, std::numeric_limits<size_t>::max()) {}
 I420BufferPool::I420BufferPool(bool zero_initialize,
                                size_t max_number_of_buffers)
     : zero_initialize_(zero_initialize),
       max_number_of_buffers_(max_number_of_buffers) {}
+I420BufferPool::~I420BufferPool() = default;
 
 void I420BufferPool::Release() {
   buffers_.clear();

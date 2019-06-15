@@ -49,6 +49,8 @@ public:
 
     void dumpBackForwardList(WTF::StringBuilder&);
 
+    static uint64_t responseHeaderCount(WKURLResponseRef);
+
 private:
     // Loader Client
     static void didStartProvisionalLoadForFrame(WKBundlePageRef, WKBundleFrameRef, WKTypeRef*, const void*);
@@ -75,6 +77,7 @@ private:
     static void didFinishLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, const void*);
     static void didFailLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, WKErrorRef, const void*);
     static bool shouldCacheResponse(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, const void*);
+    static void willInjectUserScriptForFrame(WKBundlePageRef, WKBundleFrameRef, WKBundleScriptWorldRef, const void*);
 
     void didStartProvisionalLoadForFrame(WKBundleFrameRef);
     void didReceiveServerRedirectForProvisionalLoadForFrame(WKBundleFrameRef);
@@ -93,6 +96,7 @@ private:
     void didDisplayInsecureContentForFrame(WKBundleFrameRef);
     void didRunInsecureContentForFrame(WKBundleFrameRef);
     void didDetectXSSForFrame(WKBundleFrameRef);
+    void willInjectUserScriptForFrame();
 
     // Resource Load Client
     void didInitiateLoadForResource(WKBundlePageRef, WKBundleFrameRef, uint64_t identifier, WKURLRequestRef, bool pageLoadIsProvisional);
@@ -171,7 +175,7 @@ private:
     void platformDidStartProvisionalLoadForFrame(WKBundleFrameRef);
     String platformResponseMimeType(WKURLResponseRef);
 
-    void frameDidChangeLocation(WKBundleFrameRef, bool shouldDump = false);
+    void frameDidChangeLocation(WKBundleFrameRef);
 
     WKBundlePageRef m_page;
     WKRetainPtr<WKBundleScriptWorldRef> m_world;

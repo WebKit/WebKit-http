@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 # Copyright (C) 2010 Andras Becsi (abecsi@inf.u-szeged.hu), University of Szeged
 # All rights reserved.
 #
@@ -27,6 +27,7 @@
 # and generates forwarding headers for these headers.
 
 use strict;
+use warnings;
 use Cwd qw(abs_path realpath);
 use File::Find;
 use File::Basename;
@@ -35,12 +36,11 @@ use File::Spec::Functions;
 use Getopt::Long;
 
 my $srcRoot = realpath(File::Spec->catfile(dirname(abs_path($0)), "../.."));
-my @platformPrefixes = ("ca", "cf", "cocoa", "Cocoa", "CoordinatedGraphics", "curl", "gtk", "ios", "mac", "soup", "win", "qt", "wpe");
-my @frameworks = ("JavaScriptCore", "WebCore", "WebKit");
-my @skippedPrefixes;
+my @platformPrefixes = ("ca", "cf", "cocoa", "Cocoa", "curl", "gtk", "ios", "mac", "soup", "qt", "win", "wpe");
+my @frameworks = ("WebCore", "WebKit");
+my @skippedPrefixes = ("PAL");
 my @frameworkHeaders;
 my $framework;
-my $frameworkDirectoryName;
 my %neededHeaders;
 my $verbose = 0; # enable it for debugging purpose
 
@@ -62,12 +62,11 @@ foreach my $prefix (@platformPrefixes) {
 
 foreach (@frameworks) {
     $framework = $_;
-    $frameworkDirectoryName = ($framework eq "WebKit") ? "WebKit2" : $framework;
     @frameworkHeaders = ();
     %neededHeaders = ();
 
     foreach (@incFromRoot) { find(\&collectNeededHeaders, abs_path($_) ); };
-    find(\&collectFrameworkHeaderPaths, File::Spec->catfile($srcRoot, $frameworkDirectoryName));
+    find(\&collectFrameworkHeaderPaths, File::Spec->catfile($srcRoot, $framework));
     createForwardingHeadersForFramework();
 }
 
@@ -89,7 +88,7 @@ sub collectFrameworkHeaderPaths {
     my $filePath = $File::Find::name;
     my $file = $_;
     if ($filePath =~ '\.h$' && $filePath !~ "ForwardingHeaders" && grep{$file eq $_} keys %neededHeaders) {
-        my $headerPath = substr($filePath, length(File::Spec->catfile($srcRoot, $frameworkDirectoryName)) + 1 );
+        my $headerPath = substr($filePath, length(File::Spec->catfile($srcRoot, $framework)) + 1 );
         push(@frameworkHeaders, $headerPath) unless (grep($headerPath =~ "$_/", @skippedPrefixes) || $headerPath =~ "config.h");
     }
 }
@@ -109,7 +108,7 @@ sub createForwardingHeadersForFramework {
         }
 
         my $forwardingHeaderPath = File::Spec->catfile($targetDirectory, $headerName);
-        my $expectedIncludeStatement = "#include \"$frameworkDirectoryName/$header\"";
+        my $expectedIncludeStatement = "#include \"$framework/$header\"";
         my $foundIncludeStatement = 0;
 
         $foundIncludeStatement = <EXISTING_HEADER> if open(EXISTING_HEADER, "<$forwardingHeaderPath");

@@ -28,10 +28,12 @@
 #if WK_API_ENABLED
 
 #import "AppDelegate.h"
+#import "AppKitCompatibilityDeclarations.h"
 #import "SettingsController.h"
 #import <WebKit/WKFrameInfo.h>
 #import <WebKit/WKNavigationActionPrivate.h>
 #import <WebKit/WKNavigationDelegate.h>
+#import <WebKit/WKPage.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKUIDelegate.h>
 #import <WebKit/WKUIDelegatePrivate.h>
@@ -40,6 +42,7 @@
 #import <WebKit/WKWebsiteDataStorePrivate.h>
 #import <WebKit/WebNSURLExtras.h>
 #import <WebKit/_WKIconLoadingDelegate.h>
+#import <WebKit/_WKInspector.h>
 #import <WebKit/_WKLinkIconParameters.h>
 #import <WebKit/_WKUserInitiatedAction.h>
 
@@ -202,9 +205,15 @@ static BOOL areEssentiallyEqual(double a, double b)
     else if (action == @selector(removeReinsertWebView:))
         [menuItem setTitle:[_webView window] ? @"Remove Web View" : @"Insert Web View"];
     else if (action == @selector(toggleZoomMode:))
-        [menuItem setState:_zoomTextOnly ? NSOnState : NSOffState];
+        [menuItem setState:_zoomTextOnly ? NSControlStateValueOn : NSControlStateValueOff];
     else if (action == @selector(toggleEditable:))
-        [menuItem setState:self.isEditable ? NSOnState : NSOffState];
+        [menuItem setState:self.isEditable ? NSControlStateValueOn : NSControlStateValueOff];
+    else if (action == @selector(showHideWebInspector:))
+        [menuItem setTitle:_webView._inspector.isVisible ? @"Close Web Inspector" : @"Show Web Inspector"];
+    else if (action == @selector(toggleAlwaysShowsHorizontalScroller:))
+        menuItem.state = _webView._alwaysShowsHorizontalScroller ? NSControlStateValueOn : NSControlStateValueOff;
+    else if (action == @selector(toggleAlwaysShowsVerticalScroller:))
+        menuItem.state = _webView._alwaysShowsVerticalScroller ? NSControlStateValueOn : NSControlStateValueOff;
 
     if (action == @selector(setPageScale:))
         [menuItem setState:areEssentiallyEqual([_webView _pageScale], [self pageScaleForMenuItemTag:[menuItem tag]])];
@@ -276,6 +285,25 @@ static BOOL areEssentiallyEqual(double a, double b)
 
 - (IBAction)dumpSourceToConsole:(id)sender
 {
+}
+
+- (IBAction)showHideWebInspector:(id)sender
+{
+    _WKInspector *inspector = _webView._inspector;
+    if (inspector.isVisible)
+        [inspector hide];
+    else
+        [inspector show];
+}
+
+- (IBAction)toggleAlwaysShowsHorizontalScroller:(id)sender
+{
+    _webView._alwaysShowsHorizontalScroller = !_webView._alwaysShowsHorizontalScroller;
+}
+
+- (IBAction)toggleAlwaysShowsVerticalScroller:(id)sender
+{
+    _webView._alwaysShowsVerticalScroller = !_webView._alwaysShowsVerticalScroller;
 }
 
 - (NSURL *)currentURL
@@ -368,6 +396,8 @@ static BOOL areEssentiallyEqual(double a, double b)
     SettingsController *settings = [SettingsController shared];
     WKPreferences *preferences = _webView.configuration.preferences;
 
+    _webView._useSystemAppearance = settings.useSystemAppearance;
+
     preferences._tiledScrollingIndicatorVisible = settings.tiledScrollingIndicatorVisible;
     preferences._compositingBordersVisible = settings.layerBordersVisible;
     preferences._compositingRepaintCountersVisible = settings.layerBordersVisible;
@@ -380,6 +410,8 @@ static BOOL areEssentiallyEqual(double a, double b)
     preferences._visualViewportEnabled = settings.visualViewportEnabled;
     preferences._largeImageAsyncDecodingEnabled = settings.largeImageAsyncDecodingEnabled;
     preferences._animatedImageAsyncDecodingEnabled = settings.animatedImageAsyncDecodingEnabled;
+    preferences._colorFilterEnabled = settings.appleColorFilterEnabled;
+    preferences._punchOutWhiteBackgroundsInDarkMode = settings.punchOutWhiteBackgroundsInDarkMode;
 
     _webView.configuration.websiteDataStore._resourceLoadStatisticsEnabled = settings.resourceLoadStatisticsEnabled;
 

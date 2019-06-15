@@ -24,6 +24,7 @@
 #include "CustomElementReactionQueue.h"
 #include "DOMTokenList.h"
 #include "DatasetDOMStringMap.h"
+#include "IntersectionObserver.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include "PseudoElement.h"
@@ -51,9 +52,6 @@ public:
     bool tabIndexSetExplicitly() const { return m_tabIndexWasSetExplicitly; }
     void clearTabIndexExplicitly() { m_tabIndex = 0; m_tabIndexWasSetExplicitly = false; }
 
-    bool needsFocusAppearanceUpdateSoonAfterAttach() const { return m_needsFocusAppearanceUpdateSoonAfterAttach; }
-    void setNeedsFocusAppearanceUpdateSoonAfterAttach(bool needs) { m_needsFocusAppearanceUpdateSoonAfterAttach = needs; }
-
     bool styleAffectedByActive() const { return m_styleAffectedByActive; }
     void setStyleAffectedByActive(bool value) { m_styleAffectedByActive = value; }
 
@@ -62,12 +60,6 @@ public:
 
     bool styleAffectedByFocusWithin() const { return m_styleAffectedByFocusWithin; }
     void setStyleAffectedByFocusWithin(bool value) { m_styleAffectedByFocusWithin = value; }
-
-    RegionOversetState regionOversetState() const { return m_regionOversetState; }
-    void setRegionOversetState(RegionOversetState state) { m_regionOversetState = state; }
-
-    bool isNamedFlowContentElement() const { return m_isNamedFlowContentElement; }
-    void setIsNamedFlowContentElement(bool value) { m_isNamedFlowContentElement = value; }
 
 #if ENABLE(FULLSCREEN_API)
     bool containsFullScreenElement() { return m_containsFullScreenElement; }
@@ -79,8 +71,14 @@ public:
 
     bool childrenAffectedByLastChildRules() const { return m_childrenAffectedByLastChildRules; }
     void setChildrenAffectedByLastChildRules(bool value) { m_childrenAffectedByLastChildRules = value; }
+    bool childrenAffectedByForwardPositionalRules() const { return m_childrenAffectedByForwardPositionalRules; }
+    void setChildrenAffectedByForwardPositionalRules(bool value) { m_childrenAffectedByForwardPositionalRules = value; }
+    bool descendantsAffectedByForwardPositionalRules() const { return m_descendantsAffectedByForwardPositionalRules; }
+    void setDescendantsAffectedByForwardPositionalRules(bool value) { m_descendantsAffectedByForwardPositionalRules = value; }
     bool childrenAffectedByBackwardPositionalRules() const { return m_childrenAffectedByBackwardPositionalRules; }
     void setChildrenAffectedByBackwardPositionalRules(bool value) { m_childrenAffectedByBackwardPositionalRules = value; }
+    bool descendantsAffectedByBackwardPositionalRules() const { return m_descendantsAffectedByBackwardPositionalRules; }
+    void setDescendantsAffectedByBackwardPositionalRules(bool value) { m_descendantsAffectedByBackwardPositionalRules = value; }
     bool childrenAffectedByPropertyBasedBackwardPositionalRules() const { return m_childrenAffectedByPropertyBasedBackwardPositionalRules; }
     void setChildrenAffectedByPropertyBasedBackwardPositionalRules(bool value) { m_childrenAffectedByPropertyBasedBackwardPositionalRules = value; }
 
@@ -116,11 +114,18 @@ public:
     bool hasPendingResources() const { return m_hasPendingResources; }
     void setHasPendingResources(bool has) { m_hasPendingResources = has; }
 
+    bool hasCSSAnimation() const { return m_hasCSSAnimation; }
+    void setHasCSSAnimation(bool value) { m_hasCSSAnimation = value; }
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    IntersectionObserverData* intersectionObserverData() { return m_intersectionObserverData.get(); }
+    void setIntersectionObserverData(std::unique_ptr<IntersectionObserverData>&& data) { m_intersectionObserverData = WTFMove(data); }
+#endif
+
 private:
     int m_tabIndex;
     unsigned short m_childIndex;
     unsigned m_tabIndexWasSetExplicitly : 1;
-    unsigned m_needsFocusAppearanceUpdateSoonAfterAttach : 1;
     unsigned m_styleAffectedByActive : 1;
     unsigned m_styleAffectedByEmpty : 1;
     unsigned m_styleAffectedByFocusWithin : 1;
@@ -128,17 +133,18 @@ private:
     unsigned m_containsFullScreenElement : 1;
 #endif
     unsigned m_hasPendingResources : 1;
+    unsigned m_hasCSSAnimation : 1;
     unsigned m_childrenAffectedByHover : 1;
     unsigned m_childrenAffectedByDrag : 1;
     // Bits for dynamic child matching.
     // We optimize for :first-child and :last-child. The other positional child selectors like nth-child or
     // *-child-of-type, we will just give up and re-evaluate whenever children change at all.
     unsigned m_childrenAffectedByLastChildRules : 1;
+    unsigned m_childrenAffectedByForwardPositionalRules : 1;
+    unsigned m_descendantsAffectedByForwardPositionalRules : 1;
     unsigned m_childrenAffectedByBackwardPositionalRules : 1;
+    unsigned m_descendantsAffectedByBackwardPositionalRules : 1;
     unsigned m_childrenAffectedByPropertyBasedBackwardPositionalRules : 1;
-    unsigned m_isNamedFlowContentElement : 1;
-
-    RegionOversetState m_regionOversetState;
 
     LayoutSize m_minimumSizeForResizing;
     IntPoint m_savedLayerScrollPosition;
@@ -149,6 +155,9 @@ private:
     RefPtr<ShadowRoot> m_shadowRoot;
     std::unique_ptr<CustomElementReactionQueue> m_customElementReactionQueue;
     std::unique_ptr<NamedNodeMap> m_attributeMap;
+#if ENABLE(INTERSECTION_OBSERVER)
+    std::unique_ptr<IntersectionObserverData> m_intersectionObserverData;
+#endif
 
     RefPtr<PseudoElement> m_beforePseudoElement;
     RefPtr<PseudoElement> m_afterPseudoElement;
@@ -166,7 +175,6 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_tabIndex(0)
     , m_childIndex(0)
     , m_tabIndexWasSetExplicitly(false)
-    , m_needsFocusAppearanceUpdateSoonAfterAttach(false)
     , m_styleAffectedByActive(false)
     , m_styleAffectedByEmpty(false)
     , m_styleAffectedByFocusWithin(false)
@@ -174,13 +182,15 @@ inline ElementRareData::ElementRareData(RenderElement* renderer)
     , m_containsFullScreenElement(false)
 #endif
     , m_hasPendingResources(false)
+    , m_hasCSSAnimation(false)
     , m_childrenAffectedByHover(false)
     , m_childrenAffectedByDrag(false)
     , m_childrenAffectedByLastChildRules(false)
+    , m_childrenAffectedByForwardPositionalRules(false)
+    , m_descendantsAffectedByForwardPositionalRules(false)
     , m_childrenAffectedByBackwardPositionalRules(false)
+    , m_descendantsAffectedByBackwardPositionalRules(false)
     , m_childrenAffectedByPropertyBasedBackwardPositionalRules(false)
-    , m_isNamedFlowContentElement(false)
-    , m_regionOversetState(RegionUndefined)
     , m_minimumSizeForResizing(defaultMinimumSizeForResizing())
 {
 }
@@ -217,7 +227,10 @@ inline void ElementRareData::resetStyleRelations()
     setStyleAffectedByActive(false);
     setChildrenAffectedByDrag(false);
     setChildrenAffectedByLastChildRules(false);
+    setChildrenAffectedByForwardPositionalRules(false);
+    setDescendantsAffectedByForwardPositionalRules(false);
     setChildrenAffectedByBackwardPositionalRules(false);
+    setDescendantsAffectedByBackwardPositionalRules(false);
     setChildrenAffectedByPropertyBasedBackwardPositionalRules(false);
 }
 

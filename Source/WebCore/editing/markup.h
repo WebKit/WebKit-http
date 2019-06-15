@@ -29,19 +29,31 @@
 #include "FragmentScriptingPermission.h"
 #include "HTMLInterchange.h"
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
+#include <wtf/Function.h>
+#include <wtf/HashMap.h>
 
 namespace WebCore {
 
+class ArchiveResource;
 class ContainerNode;
 class Document;
 class DocumentFragment;
 class Element;
+class Frame;
 class HTMLElement;
 class URL;
 class Node;
+class Page;
 class QualifiedName;
 class Range;
+
+void replaceSubresourceURLs(Ref<DocumentFragment>&&, HashMap<AtomicString, AtomicString>&&);
+void removeSubresourceURLAttributes(Ref<DocumentFragment>&&, WTF::Function<bool(const URL&)> shouldRemoveURL);
+
+enum class MSOListQuirks { CheckIfNeeded, Disabled };
+std::unique_ptr<Page> createPageForSanitizingWebContent();
+String sanitizeMarkup(const String&, MSOListQuirks = MSOListQuirks::Disabled, std::optional<WTF::Function<void(DocumentFragment&)>> fragmentSanitizer = std::nullopt);
+String sanitizedMarkupForFragmentInDocument(Ref<DocumentFragment>&&, Document&, MSOListQuirks, const String& originalMarkup);
 
 enum EChildrenOnly { IncludeNode, ChildrenOnly };
 enum EAbsoluteURLs { DoNotResolveURLs, ResolveAllURLs, ResolveNonLocalURLs };
@@ -51,6 +63,7 @@ WEBCORE_EXPORT Ref<DocumentFragment> createFragmentFromText(Range& context, cons
 WEBCORE_EXPORT Ref<DocumentFragment> createFragmentFromMarkup(Document&, const String& markup, const String& baseURL, ParserContentPolicy = AllowScriptingContent);
 ExceptionOr<Ref<DocumentFragment>> createFragmentForInnerOuterHTML(Element&, const String& markup, ParserContentPolicy);
 RefPtr<DocumentFragment> createFragmentForTransformToFragment(Document&, const String& sourceString, const String& sourceMIMEType);
+Ref<DocumentFragment> createFragmentForImageAndURL(Document&, const String&);
 ExceptionOr<Ref<DocumentFragment>> createContextualFragment(Element&, const String& markup, ParserContentPolicy);
 
 bool isPlainTextMarkup(Node*);

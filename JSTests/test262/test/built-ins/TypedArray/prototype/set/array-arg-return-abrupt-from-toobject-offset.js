@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-array-offset
 description: >
   Return abrupt from ToObject(array)
-info: >
+info: |
   22.2.3.23.1 %TypedArray%.prototype.set (array [ , offset ] )
 
   1. Assert: array is any ECMAScript language value other than an Object with a
@@ -14,6 +14,7 @@ info: >
   15. Let src be ? ToObject(array).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

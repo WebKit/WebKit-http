@@ -25,11 +25,11 @@
 
 #pragma once
 
-#include <wpe/input.h>
+#include <wpe/wpe.h>
 
 namespace WebKit {
 
-struct ScrollGestureController {
+class ScrollGestureController {
 public:
     ScrollGestureController() = default;
 

@@ -195,18 +195,15 @@ FontPlatformData& FontPlatformData::operator=(const FontPlatformData& other)
     m_fixedWidth = other.m_fixedWidth;
     m_pattern = other.m_pattern;
 
-    // This will be re-created on demand.
-    m_fallbacks = nullptr;
-
     m_scaledFont = other.m_scaledFont;
-    m_harfBuzzFace = other.m_harfBuzzFace;
+
+    // This will be re-created on demand.
+    m_harfBuzzFace = nullptr;
 
     return *this;
 }
 
-FontPlatformData::~FontPlatformData()
-{
-}
+FontPlatformData::~FontPlatformData() = default;
 
 FontPlatformData FontPlatformData::cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation)
 {
@@ -240,27 +237,11 @@ FontPlatformData FontPlatformData::cloneWithSize(const FontPlatformData& source,
     return copy;
 }
 
-HarfBuzzFace* FontPlatformData::harfBuzzFace() const
+HarfBuzzFace& FontPlatformData::harfBuzzFace() const
 {
     if (!m_harfBuzzFace)
-        m_harfBuzzFace = HarfBuzzFace::create(const_cast<FontPlatformData*>(this), hash());
-
-    return m_harfBuzzFace.get();
-}
-
-FcFontSet* FontPlatformData::fallbacks() const
-{
-    if (m_fallbacks)
-        return m_fallbacks.get();
-
-    if (m_pattern) {
-        FcResult fontConfigResult;
-        FcUniquePtr<FcFontSet> unpreparedFallbacks(FcFontSort(nullptr, m_pattern.get(), FcTrue, nullptr, &fontConfigResult));
-        m_fallbacks.reset(FcFontSetCreate());
-        for (int i = 0; i < unpreparedFallbacks.get()->nfont; i++)
-            FcFontSetAdd(m_fallbacks.get(), FcFontRenderPrepare(nullptr, m_pattern.get(), unpreparedFallbacks.get()->fonts[i]));
-    }
-    return m_fallbacks.get();
+        m_harfBuzzFace = std::make_unique<HarfBuzzFace>(const_cast<FontPlatformData&>(*this), hash());
+    return *m_harfBuzzFace;
 }
 
 bool FontPlatformData::isFixedPitch() const
@@ -309,11 +290,11 @@ void FontPlatformData::buildScaledFont(cairo_font_face_t* fontFace)
     // These matrices may be stacked in the pattern, so it's our job to get them all and multiply them.
     for (int i = 0; FcPatternGetMatrix(optionsPattern, FC_MATRIX, i, &tempFontConfigMatrix) == FcResultMatch; i++)
         FcMatrixMultiply(&fontConfigMatrix, &fontConfigMatrix, tempFontConfigMatrix);
-    cairo_matrix_init(&fontMatrix, fontConfigMatrix.xx, -fontConfigMatrix.yx,
-        -fontConfigMatrix.xy, fontConfigMatrix.yy, 0, 0);
+
+    cairo_matrix_init(&fontMatrix, 1, -fontConfigMatrix.yx, -fontConfigMatrix.xy, 1, 0, 0);
 
     // The matrix from FontConfig does not include the scale. Scaling a font with width zero size leads
-    // to a failed cairo_scaled_font_t instantiations. Instead we scale we scale the font to a very tiny
+    // to a failed cairo_scaled_font_t instantiations. Instead we scale the font to a very tiny
     // size and just abort rendering later on.
     float realSize = m_size ? m_size : 1;
     cairo_matrix_scale(&fontMatrix, realSize, realSize);
@@ -322,10 +303,10 @@ void FontPlatformData::buildScaledFont(cairo_font_face_t* fontFace)
         static const float syntheticObliqueSkew = -tanf(14 * acosf(0) / 90);
         static const cairo_matrix_t skew = {1, 0, syntheticObliqueSkew, 1, 0, 0};
         static const cairo_matrix_t verticalSkew = {1, -syntheticObliqueSkew, 0, 1, 0, 0};
-        cairo_matrix_multiply(&fontMatrix, m_orientation == Vertical ? &verticalSkew : &skew, &fontMatrix);
+        cairo_matrix_multiply(&fontMatrix, m_orientation == FontOrientation::Vertical ? &verticalSkew : &skew, &fontMatrix);
     }
 
-    if (m_orientation == Vertical) {
+    if (m_orientation == FontOrientation::Vertical) {
         // The resulting transformation matrix for vertical glyphs (V) is a
         // combination of rotation (R) and translation (T) applied on the
         // horizontal matrix (H). V = H . R . T, where R rotates by -90 degrees

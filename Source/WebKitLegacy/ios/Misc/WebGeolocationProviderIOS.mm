@@ -27,6 +27,7 @@
 
 #import "WebGeolocationProviderIOS.h"
 
+#import "WebDelegateImplementationCaching.h"
 #import "WebGeolocationCoreLocationProvider.h"
 #import <WebGeolocationPosition.h>
 #import <WebCore/GeolocationPosition.h>
@@ -37,14 +38,10 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
 
-#if PLATFORM(IOS)
-#import "WebDelegateImplementationCaching.h"
-#endif
-
 using namespace WebCore;
 
 @interface WebGeolocationPosition (Internal)
-- (id)initWithGeolocationPosition:(RefPtr<GeolocationPosition>&&)coreGeolocationPosition;
+- (id)initWithGeolocationPosition:(GeolocationPosition&&)coreGeolocationPosition;
 @end
 
 // CoreLocation runs in the main thread. WebGeolocationProviderIOS lives on the WebThread.
@@ -160,10 +157,8 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
     ASSERT(WebThreadIsCurrent());
 
     if (_lastPosition) {
-        Vector<WebView*> webViewsCopy;
-        copyToVector(_pendingInitialPositionWebView, webViewsCopy);
-        for (size_t i = 0; i < webViewsCopy.size(); ++i)
-            [webViewsCopy[i] _geolocationDidChangePosition:_lastPosition.get()];
+        for (auto& webView : copyToVector(_pendingInitialPositionWebView))
+            [webView _geolocationDidChangePosition:_lastPosition.get()];
     }
     abortSendLastPosition(self);
 }
@@ -178,10 +173,8 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
         return;
 
     _registeredWebViews.add(webView);
-#if PLATFORM(IOS)
     if (!CallUIDelegateReturningBoolean(YES, webView, @selector(webViewCanCheckGeolocationAuthorizationStatus:)))
         return;
-#endif
 
     if (!_isSuspended) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -241,10 +234,9 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
 {
     ASSERT(WebThreadIsLockedOrDisabled());
 
-#if PLATFORM(IOS)
     if (!CallUIDelegateReturningBoolean(YES, webView, @selector(webViewCanCheckGeolocationAuthorizationStatus:)))
         return;
-#endif
+
     _webViewsWaitingForCoreLocationAuthorization.add(webView, listener);
     _trackedWebViews.add(webView);
 
@@ -295,10 +287,8 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
     abortSendLastPosition(self);
 
     _lastPosition = position;
-    Vector<WebView*> webViewsCopy;
-    copyToVector(_registeredWebViews, webViewsCopy);
-    for (size_t i = 0; i < webViewsCopy.size(); ++i)
-        [webViewsCopy.at(i) _geolocationDidChangePosition:_lastPosition.get()];
+    for (auto& webView : copyToVector(_registeredWebViews))
+        [webView _geolocationDidChangePosition:_lastPosition.get()];
 }
 
 - (void)errorOccurred:(NSString *)errorMessage
@@ -307,10 +297,8 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
 
     _lastPosition.clear();
 
-    Vector<WebView*> webViewsCopy;
-    copyToVector(_registeredWebViews, webViewsCopy);
-    for (size_t i = 0; i < webViewsCopy.size(); ++i)
-        [webViewsCopy.at(i) _geolocationDidFailWithMessage:errorMessage];
+    for (auto& webView : copyToVector(_registeredWebViews))
+        [webView _geolocationDidFailWithMessage:errorMessage];
 }
 
 - (void)resetGeolocation
@@ -327,10 +315,8 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
     abortSendLastPosition(self);
 
     // 2) Reset the views, each frame will register back if needed.
-    Vector<WebView*> webViewsCopy;
-    copyToVector(_trackedWebViews, webViewsCopy);
-    for (size_t i = 0; i < webViewsCopy.size(); ++i)
-        [webViewsCopy.at(i) _resetAllGeolocationPermission];
+    for (auto& webView : copyToVector(_trackedWebViews))
+        [webView _resetAllGeolocationPermission];
 }
 @end
 
@@ -361,9 +347,9 @@ static inline void abortSendLastPosition(WebGeolocationProviderIOS* provider)
     });
 }
 
-- (void)positionChanged:(WebCore::GeolocationPosition*)position
+- (void)positionChanged:(WebCore::GeolocationPosition&&)position
 {
-    RetainPtr<WebGeolocationPosition> webPosition = adoptNS([[WebGeolocationPosition alloc] initWithGeolocationPosition:position]);
+    RetainPtr<WebGeolocationPosition> webPosition = adoptNS([[WebGeolocationPosition alloc] initWithGeolocationPosition:WTFMove(position)]);
     WebThreadRun(^{
         [_provider positionChanged:webPosition.get()];
     });

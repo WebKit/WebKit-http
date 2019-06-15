@@ -23,20 +23,37 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CertificateInfo_h
-#define CertificateInfo_h
+#pragma once
 
 #include "NotImplemented.h"
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class CertificateInfo {
 public:
-    CertificateInfo() { }
+    using Certificate = Vector<uint8_t>;
+
+    CertificateInfo() = default;
+    WEBCORE_EXPORT CertificateInfo(int verificationError, Vector<Certificate>&&);
+
+    WEBCORE_EXPORT CertificateInfo isolatedCopy() const;
+
+    int verificationError() const { return m_verificationError; }
+    const Vector<Certificate>& certificateChain() const { return m_certificateChain; }
 
     bool containsNonRootSHA1SignedCertificate() const { notImplemented(); return false; }
+
+    static Certificate makeCertificate(const char*, size_t);
+
+private:
+    int m_verificationError { 0 };
+    Vector<Certificate> m_certificateChain;
 };
 
+inline bool operator==(const CertificateInfo& a, const CertificateInfo& b)
+{
+    return a.verificationError() == b.verificationError() && a.certificateChain() == b.certificateChain();
 }
 
-#endif
+} // namespace WebCore

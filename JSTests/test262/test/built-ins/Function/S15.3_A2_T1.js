@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Since applying the "call" method to Function constructor themself leads
     to creating a new function instance, the second argument must be a valid
     function body
@@ -11,10 +11,10 @@ description: Checking if executing "Function.call(this, "var x / = 1;")" fails
 ---*/
 
 //CHECK#
-try{
+try {
   Function.call(this, "var x / = 1;");
-} catch(e){
+} catch (e) {
   if (!(e instanceof SyntaxError)) {
-  	$ERROR('#1: function body must be valid');
+    $ERROR('#1: function body must be valid');
   }
 }

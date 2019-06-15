@@ -3,11 +3,12 @@
 
 /*---
 info: The Date.prototype property "getDate" has { DontEnum } attributes
+esid: sec-date.prototype.getdate
 es5id: 15.9.5.14_A1_T2
 description: Checking absence of DontDelete attribute
 ---*/
 
-if (delete Date.prototype.getDate  === false) {
+if (delete Date.prototype.getDate === false) {
   $ERROR('#1: The Date.prototype.getDate property has not the attributes DontDelete');
 }
 

@@ -36,75 +36,69 @@
 #include <WebCore/GeolocationPosition.h>
 #include <WebCore/Page.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 const char* WebGeolocationManager::supplementName()
 {
     return "WebGeolocationManager";
 }
 
-WebGeolocationManager::WebGeolocationManager(WebProcess* process)
+WebGeolocationManager::WebGeolocationManager(WebProcess& process)
     : m_process(process)
 {
-    m_process->addMessageReceiver(Messages::WebGeolocationManager::messageReceiverName(), *this);
+    m_process.addMessageReceiver(Messages::WebGeolocationManager::messageReceiverName(), *this);
 }
 
-void WebGeolocationManager::registerWebPage(WebPage* page)
+void WebGeolocationManager::registerWebPage(WebPage& page)
 {
     bool wasUpdating = isUpdating();
 
-    m_pageSet.add(page);
+    m_pageSet.add(&page);
 
     if (!wasUpdating)
-        m_process->parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::StartUpdating(), 0);
+        m_process.parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::StartUpdating(), 0);
 }
 
-void WebGeolocationManager::unregisterWebPage(WebPage* page)
+void WebGeolocationManager::unregisterWebPage(WebPage& page)
 {
     bool highAccuracyWasEnabled = isHighAccuracyEnabled();
 
-    m_pageSet.remove(page);
-    m_highAccuracyPageSet.remove(page);
+    m_pageSet.remove(&page);
+    m_highAccuracyPageSet.remove(&page);
 
     if (!isUpdating())
-        m_process->parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::StopUpdating(), 0);
+        m_process.parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::StopUpdating(), 0);
     else {
         bool highAccuracyShouldBeEnabled = isHighAccuracyEnabled();
         if (highAccuracyWasEnabled != highAccuracyShouldBeEnabled)
-            m_process->parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::SetEnableHighAccuracy(highAccuracyShouldBeEnabled), 0);
+            m_process.parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::SetEnableHighAccuracy(highAccuracyShouldBeEnabled), 0);
     }
 }
 
-void WebGeolocationManager::setEnableHighAccuracyForPage(WebPage* page, bool enabled)
+void WebGeolocationManager::setEnableHighAccuracyForPage(WebPage& page, bool enabled)
 {
     bool highAccuracyWasEnabled = isHighAccuracyEnabled();
 
     if (enabled)
-        m_highAccuracyPageSet.add(page);
+        m_highAccuracyPageSet.add(&page);
     else
-        m_highAccuracyPageSet.remove(page);
+        m_highAccuracyPageSet.remove(&page);
 
     bool highAccuracyShouldBeEnabled = isHighAccuracyEnabled();
     if (highAccuracyWasEnabled != highAccuracyShouldBeEnabled)
-        m_process->parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::SetEnableHighAccuracy(highAccuracyShouldBeEnabled), 0);
+        m_process.parentProcessConnection()->send(Messages::WebGeolocationManagerProxy::SetEnableHighAccuracy(highAccuracyShouldBeEnabled), 0);
 }
 
-void WebGeolocationManager::didChangePosition(const WebGeolocationPosition::Data& data)
+void WebGeolocationManager::didChangePosition(const GeolocationPosition& position)
 {
 #if ENABLE(GEOLOCATION)
-    RefPtr<GeolocationPosition> position = GeolocationPosition::create(data.timestamp, data.latitude, data.longitude, data.accuracy, data.canProvideAltitude, data.altitude, data.canProvideAltitudeAccuracy, data.altitudeAccuracy, data.canProvideHeading, data.heading, data.canProvideSpeed, data.speed);
-
-    Vector<RefPtr<WebPage>> webPageCopy;
-    copyToVector(m_pageSet, webPageCopy);
-    for (size_t i = 0; i < webPageCopy.size(); ++i) {
-        WebPage* page = webPageCopy[i].get();
+    for (auto& page : copyToVector(m_pageSet)) {
         if (page->corePage())
-            GeolocationController::from(page->corePage())->positionChanged(position.get());
+            GeolocationController::from(page->corePage())->positionChanged(position);
     }
 #else
-    UNUSED_PARAM(data);
+    UNUSED_PARAM(position);
 #endif // ENABLE(GEOLOCATION)
 }
 
@@ -112,12 +106,9 @@ void WebGeolocationManager::didFailToDeterminePosition(const String& errorMessag
 {
 #if ENABLE(GEOLOCATION)
     // FIXME: Add localized error string.
-    RefPtr<GeolocationError> error = GeolocationError::create(GeolocationError::PositionUnavailable, errorMessage);
+    auto error = GeolocationError::create(GeolocationError::PositionUnavailable, errorMessage);
 
-    Vector<RefPtr<WebPage>> webPageCopy;
-    copyToVector(m_pageSet, webPageCopy);
-    for (size_t i = 0; i < webPageCopy.size(); ++i) {
-        WebPage* page = webPageCopy[i].get();
+    for (auto& page : copyToVector(m_pageSet)) {
         if (page->corePage())
             GeolocationController::from(page->corePage())->errorOccurred(error.get());
     }
@@ -129,7 +120,7 @@ void WebGeolocationManager::didFailToDeterminePosition(const String& errorMessag
 #if PLATFORM(IOS)
 void WebGeolocationManager::resetPermissions()
 {
-    m_process->resetAllGeolocationPermissions();
+    m_process.resetAllGeolocationPermissions();
 }
 #endif // PLATFORM(IOS)
 

@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.indexof
 description: handle Infinity values for fromIndex
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.indexOf (searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.indexOf is a distinct function that implements the same
@@ -28,6 +28,7 @@ info: >
       iii. If same is true, return k.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

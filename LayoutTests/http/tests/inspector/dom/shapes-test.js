@@ -3,10 +3,10 @@ TestPage.registerInitializer(function() {
 InspectorTest.Shapes = {
     getShapeOutsideInfoForSelector: function(selector, callback)
     {
-        WebInspector.domTreeManager.requestDocument(requestDocumentCallback);
+        WI.domTreeManager.requestDocument(requestDocumentCallback);
 
         function requestDocumentCallback(node) {
-            InspectorTest.assert(node instanceof WebInspector.DOMNode, "Unexpected argument to requestDocument callback.")
+            InspectorTest.assert(node instanceof WI.DOMNode, "Unexpected argument to requestDocument callback.")
             DOMAgent.querySelector.invoke({nodeId: node.id, selector: selector}, querySelectorCallback);
         }
 
@@ -30,11 +30,11 @@ InspectorTest.Shapes = {
             InspectorTest.evaluateInPage("window.internals.inspectorHighlightObject()", receivedHighlightObject);
         }
 
-        function receivedHighlightObject(error, payload, wasThrown) {
+        function receivedHighlightObject(error, value, wasThrown) {
             InspectorTest.assert(!error, "When evaluating code, received unexpected error:" + error);
             InspectorTest.assert(!error, "When evaluating code, an exception was thrown:" + wasThrown);
 
-            var data = JSON.parse(payload.value);
+            var data = JSON.parse(value);
             callback(data[0].elementData.shapeOutsideData);
         }
     },

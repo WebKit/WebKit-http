@@ -8,10 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/neteq/tools/neteq_replacement_input.h"
+#include "modules/audio_coding/neteq/tools/neteq_replacement_input.h"
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/audio_coding/neteq/tools/fake_decode_from_file.h"
+#include "modules/audio_coding/neteq/tools/fake_decode_from_file.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 namespace test {
@@ -28,16 +28,15 @@ NetEqReplacementInput::NetEqReplacementInput(
   RTC_CHECK(source_);
   packet_ = source_->PopPacket();
   ReplacePacket();
-  RTC_CHECK(packet_);
 }
 
-rtc::Optional<int64_t> NetEqReplacementInput::NextPacketTime() const {
+absl::optional<int64_t> NetEqReplacementInput::NextPacketTime() const {
   return packet_
-             ? rtc::Optional<int64_t>(static_cast<int64_t>(packet_->time_ms))
-             : rtc::Optional<int64_t>();
+             ? absl::optional<int64_t>(static_cast<int64_t>(packet_->time_ms))
+             : absl::nullopt;
 }
 
-rtc::Optional<int64_t> NetEqReplacementInput::NextOutputEventTime() const {
+absl::optional<int64_t> NetEqReplacementInput::NextOutputEventTime() const {
   return source_->NextOutputEventTime();
 }
 
@@ -56,7 +55,7 @@ bool NetEqReplacementInput::ended() const {
   return source_->ended();
 }
 
-rtc::Optional<RTPHeader> NetEqReplacementInput::NextHeader() const {
+absl::optional<RTPHeader> NetEqReplacementInput::NextHeader() const {
   return source_->NextHeader();
 }
 
@@ -82,7 +81,7 @@ void NetEqReplacementInput::ReplacePacket() {
     return;
   }
 
-  rtc::Optional<RTPHeader> next_hdr = source_->NextHeader();
+  absl::optional<RTPHeader> next_hdr = source_->NextHeader();
   RTC_DCHECK(next_hdr);
   uint8_t payload[12];
   RTC_DCHECK_LE(last_frame_size_timestamps_, 120 * 48);

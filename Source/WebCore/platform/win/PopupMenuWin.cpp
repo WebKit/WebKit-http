@@ -322,7 +322,7 @@ void PopupMenuWin::calculatePositionAndSize(const IntRect& r, FrameView* v)
     m_font = client()->menuStyle().font();
     auto d = m_font.fontDescription();
     d.setComputedSize(d.computedSize() * m_scaleFactor);
-    m_font = FontCascade(d, m_font.letterSpacing(), m_font.wordSpacing());
+    m_font = FontCascade(WTFMove(d), m_font.letterSpacing(), m_font.wordSpacing());
     m_font.update(m_popupClient->fontSelector());
 
     // First, determine the popup's height
@@ -345,7 +345,7 @@ void PopupMenuWin::calculatePositionAndSize(const IntRect& r, FrameView* v)
         if (client()->itemIsLabel(i)) {
             auto d = itemFont.fontDescription();
             d.setWeight(d.bolderWeight());
-            itemFont = FontCascade(d, itemFont.letterSpacing(), itemFont.wordSpacing());
+            itemFont = FontCascade(WTFMove(d), itemFont.letterSpacing(), itemFont.wordSpacing());
             itemFont.update(m_popupClient->fontSelector());
         }
 
@@ -572,8 +572,7 @@ void PopupMenuWin::updateFromElement()
     m_focusedIndex = client()->selectedIndex();
 
     ::InvalidateRect(m_popup, 0, TRUE);
-    if (!scrollToRevealSelection())
-        ::UpdateWindow(m_popup);
+    scrollToRevealSelection();
 }
 
 const int separatorPadding = 4;
@@ -622,8 +621,8 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
         Color optionBackgroundColor, optionTextColor;
         PopupMenuStyle itemStyle = client()->itemStyle(index);
         if (index == focusedIndex()) {
-            optionBackgroundColor = RenderTheme::singleton().activeListBoxSelectionBackgroundColor();
-            optionTextColor = RenderTheme::singleton().activeListBoxSelectionForegroundColor();
+            optionBackgroundColor = RenderTheme::singleton().activeListBoxSelectionBackgroundColor({ });
+            optionTextColor = RenderTheme::singleton().activeListBoxSelectionForegroundColor({ });
         } else {
             optionBackgroundColor = itemStyle.backgroundColor();
             optionTextColor = itemStyle.foregroundColor();
@@ -651,14 +650,14 @@ void PopupMenuWin::paint(const IntRect& damageRect, HDC hdc)
         if (client()->itemIsLabel(index)) {
             auto d = itemFont.fontDescription();
             d.setWeight(d.bolderWeight());
-            itemFont = FontCascade(d, itemFont.letterSpacing(), itemFont.wordSpacing());
+            itemFont = FontCascade(WTFMove(d), itemFont.letterSpacing(), itemFont.wordSpacing());
             itemFont.update(m_popupClient->fontSelector());
         }
         
         // Draw the item text
         if (itemStyle.isVisible()) {
             int textX = 0;
-            if (client()->menuStyle().textDirection() == LTR) {
+            if (client()->menuStyle().textDirection() == TextDirection::LTR) {
                 textX = std::max<int>(0, client()->clientPaddingLeft() - client()->clientInsetLeft());
                 if (RenderTheme::singleton().popupOptionSupportsTextIndent())
                     textX += minimumIntValueForLength(itemStyle.textIndent(), itemRect.width());
@@ -1097,9 +1096,7 @@ AccessiblePopupMenu::AccessiblePopupMenu(const PopupMenuWin& popupMenu)
 {
 }
 
-AccessiblePopupMenu::~AccessiblePopupMenu()
-{
-}
+AccessiblePopupMenu::~AccessiblePopupMenu() = default;
 
 HRESULT AccessiblePopupMenu::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject)
 {

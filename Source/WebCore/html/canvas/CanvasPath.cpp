@@ -36,7 +36,6 @@
 #include "CanvasPath.h"
 
 #include "AffineTransform.h"
-#include "ExceptionCode.h"
 #include "FloatRect.h"
 #include <wtf/MathExtras.h>
 
@@ -117,7 +116,7 @@ ExceptionOr<void> CanvasPath::arcTo(float x1, float y1, float x2, float y2, floa
         return { };
 
     if (r < 0)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     if (!hasInvertibleTransform())
         return { };
@@ -160,7 +159,7 @@ ExceptionOr<void> CanvasPath::arc(float x, float y, float radius, float startAng
         return { };
 
     if (radius < 0)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     if (!hasInvertibleTransform())
         return { };
@@ -183,7 +182,7 @@ ExceptionOr<void> CanvasPath::ellipse(float x, float y, float radiusX, float rad
         return { };
 
     if (radiusX < 0 || radiusY < 0)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     if (!hasInvertibleTransform())
         return { };
@@ -235,4 +234,15 @@ void CanvasPath::rect(float x, float y, float width, float height)
 
     m_path.addRect(FloatRect(x, y, width, height));
 }
+
+float CanvasPath::currentX() const
+{
+    return m_path.currentPoint().x();
+}
+
+float CanvasPath::currentY() const
+{
+    return m_path.currentPoint().y();
+}
+
 }

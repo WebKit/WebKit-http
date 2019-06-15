@@ -30,7 +30,7 @@
 #import "DOMMediaListInternal.h"
 #import "DOMNodeInternal.h"
 #import "ExceptionHandlers.h"
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/MediaList.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/URL.h>
@@ -85,7 +85,7 @@
 - (void)appendMedium:(NSString *)newMedium
 {
     WebCore::JSMainThreadNullState state;
-    raiseOnDOMError(IMPL->appendMedium(newMedium));
+    IMPL->appendMedium(newMedium);
 }
 
 @end

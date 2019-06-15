@@ -2,14 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The Date.prototype.setSeconds property "length" has { ReadOnly, !
     DontDelete, DontEnum } attributes
+esid: sec-date.prototype.setseconds
 es5id: 15.9.5.30_A3_T2
 description: Checking DontDelete attribute
 ---*/
 
-if (delete Date.prototype.setSeconds.length  !== true) {
+if (delete Date.prototype.setSeconds.length !== true) {
   $ERROR('#1: The Date.prototype.setSeconds.length property does not have the attributes DontDelete');
 }
 

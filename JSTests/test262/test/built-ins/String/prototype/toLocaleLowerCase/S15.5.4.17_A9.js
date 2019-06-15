@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The String.prototype.toLocaleLowerCase.length property does not have the
     attribute DontDelete
 es5id: 15.5.4.17_A9
@@ -14,7 +14,7 @@ description: >
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#0
 if (!(String.prototype.toLocaleLowerCase.hasOwnProperty('length'))) {
-  $ERROR('#0: String.prototype.toLocaleLowerCase.hasOwnProperty(\'length\') return true. Actual: '+String.prototype.toLocaleLowerCase.hasOwnProperty('length'));
+  $ERROR('#0: String.prototype.toLocaleLowerCase.hasOwnProperty(\'length\') return true. Actual: ' + String.prototype.toLocaleLowerCase.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ if (!delete String.prototype.toLocaleLowerCase.length) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (String.prototype.toLocaleLowerCase.hasOwnProperty('length')) {
-  $ERROR('#2: delete String.prototype.toLocaleLowerCase.length; String.prototype.toLocaleLowerCase.hasOwnProperty(\'length\') return false. Actual: '+String.prototype.toLocaleLowerCase.hasOwnProperty('length'));
+  $ERROR('#2: delete String.prototype.toLocaleLowerCase.length; String.prototype.toLocaleLowerCase.hasOwnProperty(\'length\') return false. Actual: ' + String.prototype.toLocaleLowerCase.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////

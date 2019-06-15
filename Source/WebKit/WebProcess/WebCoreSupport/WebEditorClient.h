@@ -59,17 +59,28 @@ private:
     void didApplyStyle() final;
     bool shouldMoveRangeAfterDelete(WebCore::Range*, WebCore::Range*) final;
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& preferredFileName, Ref<WebCore::SharedBuffer>&&) final;
+    void registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& filePath) final;
+    void cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier) final;
+    void didInsertAttachmentWithIdentifier(const String& identifier, const String& source) final;
+    void didRemoveAttachmentWithIdentifier(const String& identifier) final;
+    bool supportsClientSideAttachmentData() const final { return true; }
+#endif
+
     void didBeginEditing() final;
     void respondToChangedContents() final;
     void respondToChangedSelection(WebCore::Frame*) final;
-    void didChangeSelectionAndUpdateLayout() final;
+    void didEndUserTriggeredSelectionChanges() final;
     void updateEditorStateAfterLayoutIfEditabilityChanged() final;
     void discardedComposition(WebCore::Frame*) final;
     void canceledComposition() final;
+    void didUpdateComposition() final;
     void didEndEditing() final;
     void willWriteSelectionToPasteboard(WebCore::Range*) final;
     void didWriteSelectionToPasteboard() final;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
+    String replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType) final;
     
     void registerUndoStep(WebCore::UndoStep&) final;
     void registerRedoStep(WebCore::UndoStep&) final;
@@ -95,10 +106,7 @@ private:
     void overflowScrollPositionChanged() final;
 
 #if PLATFORM(COCOA)
-    NSString *userVisibleString(NSURL *) final;
     void setInsertionPasteboard(const String& pasteboardName) final;
-    NSURL *canonicalizeURL(NSURL *) final;
-    NSURL *canonicalizeURLString(NSString *) final;
 #endif
 
 #if USE(APPKIT)
@@ -141,7 +149,7 @@ private:
     void checkGrammarOfString(StringView, Vector<WebCore::GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
 
 #if USE(UNIFIED_TEXT_CHECKING)
-    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, WebCore::TextCheckingTypeMask checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
+    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, OptionSet<WebCore::TextCheckingType> checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
 #endif
 
     void updateSpellingUIWithGrammarString(const String&, const WebCore::GrammarDetail&) final;
@@ -160,14 +168,10 @@ private:
 #if PLATFORM(IOS)
     void startDelayingAndCoalescingContentChangeNotifications() final;
     void stopDelayingAndCoalescingContentChangeNotifications() final;
-    void writeDataToPasteboard(NSDictionary*) final;
-    NSArray *supportedPasteboardTypesForCurrentSelection() final;
-    NSArray *readDataFromPasteboard(NSString* type, int index) final;
     bool hasRichlyEditableSelection() final;
     int getPasteboardItemsCount() final;
     RefPtr<WebCore::DocumentFragment> documentFragmentFromDelegate(int index) final;
     bool performsTwoStepPaste(WebCore::DocumentFragment*) final;
-    int pasteboardChangeCount() final;
 #endif
 
     bool performTwoStepDrop(WebCore::DocumentFragment&, WebCore::Range&, bool isMove) final;

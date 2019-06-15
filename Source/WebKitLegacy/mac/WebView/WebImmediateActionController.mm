@@ -32,12 +32,11 @@
 #import "DOMRangeInternal.h"
 #import "WebElementDictionary.h"
 #import "WebFrameInternal.h"
-#import "WebHTMLView.h"
+#import "WebFrameView.h"
 #import "WebHTMLViewInternal.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
 #import <WebCore/DataDetection.h>
-#import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
@@ -47,16 +46,18 @@
 #import <WebCore/FrameView.h>
 #import <WebCore/GeometryUtilities.h>
 #import <WebCore/HTMLConverter.h>
-#import <WebCore/LookupSPI.h>
-#import <WebCore/NSMenuSPI.h>
+#import <WebCore/NodeRenderStyle.h>
 #import <WebCore/Page.h>
-#import <WebCore/QuickLookMacSPI.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/TextIndicator.h>
 #import <objc/objc-class.h>
 #import <objc/objc.h>
+#import <pal/spi/mac/DataDetectorsSPI.h>
+#import <pal/spi/mac/LookupSPI.h>
+#import <pal/spi/mac/NSMenuSPI.h>
+#import <pal/spi/mac/QuickLookMacSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_IN_UMBRELLA(Quartz, QuickLookUI)
@@ -144,11 +145,12 @@ using namespace WebCore;
 
 - (void)performHitTestAtPoint:(NSPoint)viewPoint
 {
-    Frame* coreFrame = core([[[[_webView _selectedOrMainFrame] frameView] documentView] _frame]);
+    Frame* coreFrame = core([_webView _selectedOrMainFrame]);
     if (!coreFrame)
         return;
+
     _hitTestResult = coreFrame->eventHandler().hitTestResultAtPoint(IntPoint(viewPoint));
-    coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
+    coreFrame->mainFrame().eventHandler().setImmediateActionStage(ImmediateActionStage::PerformedHitTest);
 
     if (Element* element = _hitTestResult.targetElement())
         _contentPreventsDefault = element->dispatchMouseForceWillBegin();
@@ -204,10 +206,9 @@ using namespace WebCore;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
-    Frame* coreFrame = core([[[[_webView _selectedOrMainFrame] frameView] documentView] _frame]);
-    if (!coreFrame)
-        return;
-    coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
+    if (Frame* coreFrame = [_webView _mainCoreFrame])
+        coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionUpdated);
+
     if (_contentPreventsDefault)
         return;
 
@@ -219,12 +220,7 @@ using namespace WebCore;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
-    NSView *documentView = [[[_webView _selectedOrMainFrame] frameView] documentView];
-    if (![documentView isKindOfClass:[WebHTMLView class]])
-        return;
-
-    Frame* coreFrame = core([(WebHTMLView *)documentView _frame]);
-    if (coreFrame) {
+    if (Frame* coreFrame = [_webView _mainCoreFrame]) {
         ImmediateActionStage lastStage = coreFrame->eventHandler().immediateActionStage();
         if (lastStage == ImmediateActionStage::ActionUpdated)
             coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCancelledAfterUpdate);
@@ -243,10 +239,8 @@ using namespace WebCore;
     if (immediateActionRecognizer != _immediateActionRecognizer)
         return;
 
-    Frame* coreFrame = core([[[[_webView _selectedOrMainFrame] frameView] documentView] _frame]);
-    if (!coreFrame)
-        return;
-    coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
+    if (Frame* coreFrame = [_webView _mainCoreFrame])
+        coreFrame->eventHandler().setImmediateActionStage(ImmediateActionStage::ActionCompleted);
 
     [_webView _setTextIndicatorAnimationProgress:1];
     [_webView _setMaintainsInactiveSelection:NO];
@@ -511,8 +505,8 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
         return popupInfo;
     }
 
-    RenderObject* renderer = range.startContainer().renderer();
-    const RenderStyle& style = renderer->style();
+    const RenderStyle* style = range.startContainer().renderStyle();
+    float scaledDescent = style ? style->fontMetrics().descent() * frame->page()->pageScaleFactor() : 0;
 
     Vector<FloatQuad> quads;
     range.absoluteTextQuads(quads);
@@ -523,7 +517,7 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
     IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
-    popupInfo.origin = NSMakePoint(rangeRect.x(), rangeRect.y() + (style.fontMetrics().descent() * frame->page()->pageScaleFactor()));
+    popupInfo.origin = NSMakePoint(rangeRect.x(), rangeRect.y() + scaledDescent);
     popupInfo.options = lookupOptions;
 
     NSAttributedString *nsAttributedString = editingAttributedStringFromRange(range, IncludeImagesInAttributedString::No);
@@ -534,10 +528,10 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
         RetainPtr<NSMutableDictionary> scaledAttributes = adoptNS([attributes mutableCopy]);
 
         NSFont *font = [scaledAttributes objectForKey:NSFontAttributeName];
-        if (font) {
-            font = [fontManager convertFont:font toSize:[font pointSize] * frame->page()->pageScaleFactor()];
+        if (font)
+            font = [fontManager convertFont:font toSize:font.pointSize * frame->page()->pageScaleFactor()];
+        if (font)
             [scaledAttributes setObject:font forKey:NSFontAttributeName];
-        }
 
         [scaledNSAttributedString addAttributes:scaledAttributes.get() range:attributeRange];
     }];
@@ -564,12 +558,13 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
     if (!frame)
         return nil;
 
-    NSDictionary *options = nil;
-    RefPtr<Range> dictionaryRange = DictionaryLookup::rangeAtHitTestResult(_hitTestResult, &options);
+    RefPtr<Range> dictionaryRange;
+    NSDictionary *options;
+    std::tie(dictionaryRange, options) = DictionaryLookup::rangeAtHitTestResult(_hitTestResult);
     if (!dictionaryRange)
         return nil;
 
-    DictionaryPopupInfo dictionaryPopupInfo = [WebImmediateActionController _dictionaryPopupInfoForRange:*dictionaryRange inFrame:frame withLookupOptions:options indicatorOptions:TextIndicatorOptionDefault transition: TextIndicatorPresentationTransition::FadeIn];
+    auto dictionaryPopupInfo = [WebImmediateActionController _dictionaryPopupInfoForRange:*dictionaryRange inFrame:frame withLookupOptions:options indicatorOptions:TextIndicatorOptionDefault transition: TextIndicatorPresentationTransition::FadeIn];
     if (!dictionaryPopupInfo.attributedString)
         return nil;
 

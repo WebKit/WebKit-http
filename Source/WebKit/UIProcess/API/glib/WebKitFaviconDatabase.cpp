@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2012, 2017 Igalia S.L.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,6 +29,7 @@
 #include <WebCore/RefPtrCairo.h>
 #include <glib/gi18n-lib.h>
 #include <wtf/RunLoop.h>
+#include <wtf/SetForScope.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/glib/WTFGType.h>
@@ -70,16 +71,12 @@ typedef Vector<GRefPtr<GTask> > PendingIconRequestVector;
 typedef HashMap<String, PendingIconRequestVector*> PendingIconRequestMap;
 
 struct _WebKitFaviconDatabasePrivate {
-    ~_WebKitFaviconDatabasePrivate()
-    {
-        iconDatabase->setClient(nullptr);
-    }
-
     std::unique_ptr<IconDatabase> iconDatabase;
     Vector<std::pair<String, Function<void(bool)>>> pendingLoadDecisions;
     PendingIconRequestMap pendingIconRequests;
     HashMap<String, String> pageURLToIconURLMap;
     bool isURLImportCompleted;
+    bool isSettingIcon;
 };
 
 WEBKIT_DEFINE_TYPE(WebKitFaviconDatabase, webkit_favicon_database, G_TYPE_OBJECT)
@@ -123,6 +120,7 @@ static void webkit_favicon_database_class_init(WebKitFaviconDatabaseClass* favic
         G_TYPE_STRING);
 }
 
+#if PLATFORM(GTK)
 struct GetFaviconSurfaceAsyncData {
     ~GetFaviconSurfaceAsyncData()
     {
@@ -144,19 +142,18 @@ static RefPtr<cairo_surface_t> getIconSurfaceSynchronously(WebKitFaviconDatabase
 
     // The exact size we pass is irrelevant to the iconDatabase code.
     // We must pass something greater than 0x0 to get an icon.
-    WebCore::Image* iconImage = database->priv->iconDatabase->synchronousIconForPageURL(pageURL, WebCore::IntSize(1, 1));
-    if (!iconImage) {
+    auto iconData = database->priv->iconDatabase->synchronousIconForPageURL(pageURL, WebCore::IntSize(1, 1));
+    if (iconData.second == IconDatabase::IsKnownIcon::No) {
         g_set_error(error, WEBKIT_FAVICON_DATABASE_ERROR, WEBKIT_FAVICON_DATABASE_ERROR_FAVICON_UNKNOWN, _("Unknown favicon for page %s"), pageURL.utf8().data());
         return nullptr;
     }
 
-    RefPtr<cairo_surface_t> surface = iconImage->nativeImageForCurrentFrame();
-    if (!surface) {
+    if (!iconData.first) {
         g_set_error(error, WEBKIT_FAVICON_DATABASE_ERROR, WEBKIT_FAVICON_DATABASE_ERROR_FAVICON_NOT_FOUND, _("Page %s does not have a favicon"), pageURL.utf8().data());
         return nullptr;
     }
 
-    return surface;
+    return iconData.first;
 }
 
 static void deletePendingIconRequests(WebKitFaviconDatabase* database, PendingIconRequestVector* requests, const String& pageURL)
@@ -187,6 +184,7 @@ static void processPendingIconsForPageURL(WebKitFaviconDatabase* database, const
     }
     deletePendingIconRequests(database, pendingIconRequests, pageURL);
 }
+#endif
 
 static void webkitFaviconDatabaseSetIconURLForPageURL(WebKitFaviconDatabase* database, const String& iconURL, const String& pageURL)
 {
@@ -194,11 +192,17 @@ static void webkitFaviconDatabaseSetIconURLForPageURL(WebKitFaviconDatabase* dat
     if (!priv->isURLImportCompleted)
         return;
 
+    if (pageURL.isEmpty())
+        return;
+
     const String& currentIconURL = priv->pageURLToIconURLMap.get(pageURL);
     if (iconURL == currentIconURL)
         return;
 
     priv->pageURLToIconURLMap.set(pageURL, iconURL);
+    if (priv->isSettingIcon)
+        return;
+
     g_signal_emit(database, signals[FAVICON_CHANGED], 0, pageURL.utf8().data(), iconURL.utf8().data());
 }
 
@@ -218,13 +222,17 @@ private:
 
     void didChangeIconForPageURL(const String& pageURL) override
     {
+        if (m_database->priv->isSettingIcon)
+            return;
         String iconURL = m_database->priv->iconDatabase->synchronousIconURLForPageURL(pageURL);
         webkitFaviconDatabaseSetIconURLForPageURL(m_database, iconURL, pageURL);
     }
 
     void didImportIconDataForPageURL(const String& pageURL) override
     {
+#if PLATFORM(GTK)
         processPendingIconsForPageURL(m_database, pageURL);
+#endif
         String iconURL = m_database->priv->iconDatabase->synchronousIconURLForPageURL(pageURL);
         webkitFaviconDatabaseSetIconURLForPageURL(m_database, iconURL, pageURL);
     }
@@ -264,7 +272,7 @@ void webkitFaviconDatabaseOpen(WebKitFaviconDatabase* database, const String& pa
     priv->iconDatabase->setEnabled(true);
     priv->iconDatabase->setPrivateBrowsingEnabled(WebPreferences::anyPagesAreUsingPrivateBrowsing());
 
-    if (!priv->iconDatabase->open(WebCore::directoryName(path), WebCore::pathGetFileName(path))) {
+    if (!priv->iconDatabase->open(WebCore::FileSystem::directoryName(path), WebCore::FileSystem::pathGetFileName(path))) {
         priv->iconDatabase = nullptr;
         IconDatabase::allowDatabaseCleanup();
     }
@@ -281,6 +289,7 @@ void webkitFaviconDatabaseSetPrivateBrowsingEnabled(WebKitFaviconDatabase* datab
         database->priv->iconDatabase->setPrivateBrowsingEnabled(enabled);
 }
 
+#if PLATFORM(GTK)
 void webkitFaviconDatabaseGetLoadDecisionForIcon(WebKitFaviconDatabase* database, const LinkIcon& icon, const String& pageURL, Function<void(bool)>&& completionHandler)
 {
     if (!webkitFaviconDatabaseIsOpen(database)) {
@@ -310,7 +319,11 @@ void webkitFaviconDatabaseSetIconForPageURL(WebKitFaviconDatabase* database, con
     if (!webkitFaviconDatabaseIsOpen(database))
         return;
 
+    if (pageURL.isEmpty())
+        return;
+
     WebKitFaviconDatabasePrivate* priv = database->priv;
+    SetForScope<bool> change(priv->isSettingIcon, true);
     priv->iconDatabase->setIconURLForPageURL(icon.url.string(), pageURL);
     priv->iconDatabase->setIconDataForIconURL(SharedBuffer::create(iconData.bytes(), iconData.size()), icon.url.string());
     webkitFaviconDatabaseSetIconURLForPageURL(database, icon.url.string(), pageURL);
@@ -328,12 +341,14 @@ static PendingIconRequestVector* getOrCreatePendingIconRequests(WebKitFaviconDat
 
     return icons;
 }
+#endif
 
 GQuark webkit_favicon_database_error_quark(void)
 {
     return g_quark_from_static_string("WebKitFaviconDatabaseError");
 }
 
+#if PLATFORM(GTK)
 /**
  * webkit_favicon_database_get_favicon:
  * @database: a #WebKitFaviconDatabase
@@ -440,6 +455,7 @@ cairo_surface_t* webkit_favicon_database_get_favicon_finish(WebKitFaviconDatabas
     GetFaviconSurfaceAsyncData* data = static_cast<GetFaviconSurfaceAsyncData*>(g_task_get_task_data(task));
     return cairo_surface_reference(data->icon.get());
 }
+#endif
 
 /**
  * webkit_favicon_database_get_favicon_uri:

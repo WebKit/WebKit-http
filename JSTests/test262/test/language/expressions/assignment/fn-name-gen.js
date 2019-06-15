@@ -1,10 +1,10 @@
-// Copyright (C) Copyright 2015 the V8 project authors. All rights reserved.
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
 es6id: 12.14.4
 description: Assignment of function `name` attribute (GeneratorExpression)
-info: >
+info: |
     AssignmentExpression[In, Yield] :
         LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
 

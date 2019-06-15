@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.fill
-es6id: 22.2.3.8
 description: >
   Throws a TypeError if value is a Symbol
-info: >
+info: |
   22.2.3.8 %TypedArray%.prototype.fill (value [ , start [ , end ] ] )
 
   %TypedArray%.prototype.fill is a distinct function that implements the same
@@ -33,8 +32,8 @@ info: >
   3. Let numValue be ? ToNumber(value).
   ...
 
-features: [Symbol]
 includes: [testTypedArray.js]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol('1');

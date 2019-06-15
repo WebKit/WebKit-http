@@ -73,7 +73,7 @@ static int verticalScrollLines()
 }
 
 PlatformWheelEvent::PlatformWheelEvent(HWND hWnd, const FloatSize& delta, const FloatPoint& location)
-    : PlatformEvent(PlatformEvent::Wheel, false, false, false, false, ::GetTickCount() * 0.001)
+    : PlatformEvent(PlatformEvent::Wheel, false, false, false, false, WallTime::fromRawSeconds(::GetTickCount() * 0.001))
     , m_directionInvertedFromDevice(false)
 {
     m_deltaX = delta.width();
@@ -95,21 +95,13 @@ PlatformWheelEvent::PlatformWheelEvent(HWND hWnd, const FloatSize& delta, const 
 }
 
 PlatformWheelEvent::PlatformWheelEvent(HWND hWnd, WPARAM wParam, LPARAM lParam, bool isMouseHWheel)
-    : PlatformEvent(PlatformEvent::Wheel, wParam & MK_SHIFT, wParam & MK_CONTROL, GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT, GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT, ::GetTickCount() * 0.001)
+    : PlatformEvent(PlatformEvent::Wheel, wParam & MK_SHIFT, wParam & MK_CONTROL, GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT, GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT, WallTime::fromRawSeconds(::GetTickCount() * 0.001))
     , m_position(positionForEvent(hWnd, lParam))
     , m_globalPosition(globalPositionForEvent(hWnd, lParam))
     , m_directionInvertedFromDevice(false)
 {
     float scaleFactor = deviceScaleFactorForWindow(hWnd);
 
-    // How many pixels should we scroll per line?  Gecko uses the height of the
-    // current line, which means scroll distance changes as you go through the
-    // page or go to different pages.  IE 7 is ~50 px/line, although the value
-    // seems to vary slightly by page and zoom level.  Since IE 7 has a
-    // smoothing algorithm on scrolling, it can get away with slightly larger
-    // scroll values without feeling jerky.  Here we use 100 px per three lines
-    // (the default scroll amount on Windows is three lines per wheel tick).
-    static const float cScrollbarPixelsPerLine = scaleFactor * 100.0f / 3.0f;
     float delta = GET_WHEEL_DELTA_WPARAM(wParam) / (scaleFactor * static_cast<float>(WHEEL_DELTA));
     if (isMouseHWheel) {
         // Windows is <-- -/+ -->, WebKit wants <-- +/- -->, so we negate

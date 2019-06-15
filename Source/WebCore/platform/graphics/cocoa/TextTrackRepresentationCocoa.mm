@@ -32,12 +32,12 @@
 #include "GraphicsContextCG.h"
 #include "IntRect.h"
 
-#import "QuartzCoreSPI.h"
-
 #if PLATFORM(IOS)
 #include "WebCoreThread.h"
 #include "WebCoreThreadRun.h"
 #endif
+
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 
 using namespace WebCore;
 
@@ -129,7 +129,7 @@ TextTrackRepresentationCocoa::~TextTrackRepresentationCocoa()
 void TextTrackRepresentationCocoa::update()
 {
     if (auto representation = m_client.createTextTrackRepresentationImage())
-        [m_layer.get() setContents:(id)representation->nativeImage().get()];
+        [m_layer.get() setContents:(__bridge id)representation->nativeImage().get()];
 }
 
 void TextTrackRepresentationCocoa::setContentScale(float scale)

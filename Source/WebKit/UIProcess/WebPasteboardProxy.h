@@ -23,19 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPasteboardProxy_h
-#define WebPasteboardProxy_h
+#pragma once
 
 #include "MessageReceiver.h"
+#include "SandboxExtension.h"
 #include "SharedMemory.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/NeverDestroyed.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 class Color;
+struct PasteboardCustomData;
 struct PasteboardImage;
+struct PasteboardItemInfo;
 struct PasteboardURL;
 struct PasteboardWebContent;
 }
@@ -48,7 +48,7 @@ struct WebSelectionData;
 
 class WebPasteboardProxy : public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebPasteboardProxy);
-    friend class LazyNeverDestroyed<WebPasteboardProxy>;
+    friend LazyNeverDestroyed<WebPasteboardProxy>;
 public:
     static WebPasteboardProxy& singleton();
 
@@ -74,17 +74,19 @@ public:
     void writeImageToPasteboard(const WebCore::PasteboardImage&, const String& pasteboardName);
     void writeStringToPasteboard(const String& pasteboardType, const String&, const String& pasteboardName);
     void readStringFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, WTF::String&);
-    void readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String& url, String& title);
+    void readURLFromPasteboard(uint64_t index, const String& pasteboardName, String& url, String& title);
     void readBufferFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, SharedMemory::Handle&, uint64_t& size);
     void getPasteboardItemsCount(const String& pasteboardName, uint64_t& itemsCount);
-    void getFilenamesForDataInteraction(const String& pasteboardName, Vector<String>& filenames);
+    void allPasteboardItemInfo(const String& pasteboardName, Vector<WebCore::PasteboardItemInfo>&);
+    void informationForItemAtIndex(int index, const String& pasteboardName, WebCore::PasteboardItemInfo& filename);
     void updateSupportedTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName);
 #endif
 #if PLATFORM(COCOA)
     void getNumberOfFiles(const String& pasteboardName, uint64_t& numberOfFiles);
     void getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes);
-    void getPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames);
+    void getPasteboardPathnamesForType(IPC::Connection&, const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames, SandboxExtension::HandleArray&);
     void getPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, String&);
+    void getPasteboardStringsForType(const String& pasteboardName, const String& pasteboardType, Vector<String>&);
     void getPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, SharedMemory::Handle&, uint64_t& size);
     void pasteboardCopy(const String& fromPasteboard, const String& toPasteboard, uint64_t& newChangeCount);
     void getPasteboardChangeCount(const String& pasteboardName, uint64_t& changeCount);
@@ -93,10 +95,14 @@ public:
     void getPasteboardURL(const String& pasteboardName, WTF::String&);
     void addPasteboardTypes(const String& pasteboardName, const Vector<String>& pasteboardTypes, uint64_t& newChangeCount);
     void setPasteboardTypes(const String& pasteboardName, const Vector<String>& pasteboardTypes, uint64_t& newChangeCount);
-    void setPasteboardPathnamesForType(IPC::Connection&, const String& pasteboardName, const String& pasteboardType, const Vector<String>& pathnames, uint64_t& newChangeCount);
+    void setPasteboardURL(IPC::Connection&, const WebCore::PasteboardURL&, const String& pasteboardName, uint64_t& newChangeCount);
+    void setPasteboardColor(const String&, const WebCore::Color&, uint64_t&);
     void setPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, const String&, uint64_t& newChangeCount);
     void setPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, const SharedMemory::Handle&, uint64_t size, uint64_t& newChangeCount);
 #endif
+
+    void writeCustomData(const WebCore::PasteboardCustomData&, const String& pasteboardName, uint64_t& newChangeCount);
+    void typesSafeForDOMToReadAndWrite(const String& pasteboardName, const String& origin, Vector<String>& types);
 
 #if PLATFORM(GTK)
     void writeToClipboard(const String& pasteboardName, const WebSelectionData&);
@@ -117,5 +123,3 @@ public:
 };
 
 } // namespace WebKit
-
-#endif // WebPasteboardProxy_h

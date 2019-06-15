@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.2.3.30
+esid: sec-%typedarray%.prototype-@@iterator
 description: >
   Initial state of the Symbol.iterator property
-info: >
+info: |
   The initial value of the @@iterator property is the same function object
   as the initial value of the %TypedArray%.prototype.values property.
 

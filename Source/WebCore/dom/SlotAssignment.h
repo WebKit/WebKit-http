@@ -30,6 +30,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -49,8 +50,12 @@ public:
 
     HTMLSlotElement* findAssignedSlot(const Node&, ShadowRoot&);
 
+    void renameSlotElement(HTMLSlotElement&, const AtomicString& oldName, const AtomicString& newName, ShadowRoot&);
     void addSlotElementByName(const AtomicString&, HTMLSlotElement&, ShadowRoot&);
-    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&, ShadowRoot&);
+    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&, ContainerNode* oldParentOfRemovedTreeForRemoval, ShadowRoot&);
+    void slotFallbackDidChange(HTMLSlotElement&, ShadowRoot&);
+    void resolveSlotsBeforeNodeInsertionOrRemoval(ShadowRoot&);
+    void willRemoveAllChildren(ShadowRoot&);
 
     void didChangeSlot(const AtomicString&, ShadowRoot&);
     void enqueueSlotChangeEvent(const AtomicString&, ShadowRoot&);
@@ -60,41 +65,58 @@ public:
     virtual void hostChildElementDidChange(const Element&, ShadowRoot&);
 
 private:
-    struct SlotInfo {
+    struct Slot {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        SlotInfo() { }
-        SlotInfo(HTMLSlotElement& slotElement)
-            : element(&slotElement)
-            , elementCount(1)
-        { }
+        Slot() { }
 
         bool hasSlotElements() { return !!elementCount; }
         bool hasDuplicatedSlotElements() { return elementCount > 1; }
         bool shouldResolveSlotElement() { return !element && elementCount; }
 
-        HTMLSlotElement* element { nullptr };
+        WeakPtr<HTMLSlotElement> element;
+        WeakPtr<HTMLSlotElement> oldElement;
         unsigned elementCount { 0 };
+        bool seenFirstElement { false };
         Vector<Node*> assignedNodes;
     };
-    
+
+    bool hasAssignedNodes(ShadowRoot&, Slot&);
+    enum class SlotMutationType { Insertion, Removal };
+    void resolveSlotsAfterSlotMutation(ShadowRoot&, SlotMutationType, ContainerNode* oldParentOfRemovedTree = nullptr);
+
     virtual const AtomicString& slotNameForHostChild(const Node&) const;
 
-    HTMLSlotElement* findFirstSlotElement(SlotInfo&, ShadowRoot&);
+    HTMLSlotElement* findFirstSlotElement(Slot&, ShadowRoot&);
     void resolveAllSlotElements(ShadowRoot&);
 
     void assignSlots(ShadowRoot&);
     void assignToSlot(Node& child, const AtomicString& slotName);
 
-    HashMap<AtomicString, std::unique_ptr<SlotInfo>> m_slots;
+    HashMap<AtomicString, std::unique_ptr<Slot>> m_slots;
 
 #ifndef NDEBUG
     HashSet<HTMLSlotElement*> m_slotElementsForConsistencyCheck;
-    bool m_needsToResolveSlotElements { false };
 #endif
 
+    bool m_needsToResolveSlotElements { false };
     bool m_slotAssignmentsIsValid { false };
+    bool m_willBeRemovingAllChildren { false };
+    unsigned m_slotMutationVersion { 0 };
+    unsigned m_slotResolutionVersion { 0 };
 };
+
+inline void ShadowRoot::resolveSlotsBeforeNodeInsertionOrRemoval()
+{
+    if (UNLIKELY(shouldFireSlotchangeEvent() && m_slotAssignment))
+        m_slotAssignment->resolveSlotsBeforeNodeInsertionOrRemoval(*this);
+}
+
+inline void ShadowRoot::willRemoveAllChildren(ContainerNode&)
+{
+    if (UNLIKELY(shouldFireSlotchangeEvent() && m_slotAssignment))
+        m_slotAssignment->willRemoveAllChildren(*this);
+}
 
 inline void ShadowRoot::didRemoveAllChildrenOfShadowHost()
 {

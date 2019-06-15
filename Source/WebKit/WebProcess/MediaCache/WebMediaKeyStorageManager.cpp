@@ -32,9 +32,8 @@
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/URL.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebMediaKeyStorageManager::initialize(const WebProcessCreationParameters &parameters)
 {
@@ -52,7 +51,7 @@ String WebMediaKeyStorageManager::mediaKeyStorageDirectoryForOrigin(const Securi
     if (!m_mediaKeyStorageDirectory)
         return emptyString();
 
-    return pathByAppendingComponent(m_mediaKeyStorageDirectory, originData.databaseIdentifier());
+    return FileSystem::pathByAppendingComponent(m_mediaKeyStorageDirectory, originData.databaseIdentifier());
 }
 
 Vector<SecurityOriginData> WebMediaKeyStorageManager::getMediaKeyOrigins()
@@ -62,10 +61,10 @@ Vector<SecurityOriginData> WebMediaKeyStorageManager::getMediaKeyOrigins()
     if (m_mediaKeyStorageDirectory.isEmpty())
         return results;
 
-    Vector<String> originPaths = listDirectory(m_mediaKeyStorageDirectory, "*");
+    Vector<String> originPaths = FileSystem::listDirectory(m_mediaKeyStorageDirectory, "*");
     for (const auto& originPath : originPaths) {
         URL url;
-        url.setProtocol(ASCIILiteral("file"));
+        url.setProtocol("file"_s);
         url.setPath(originPath);
 
         String mediaKeyIdentifier = url.lastPathComponent();
@@ -82,25 +81,25 @@ Vector<SecurityOriginData> WebMediaKeyStorageManager::getMediaKeyOrigins()
 
 static void removeAllMediaKeyStorageForOriginPath(const String& originPath, double startDate, double endDate)
 {
-    Vector<String> mediaKeyPaths = listDirectory(originPath, "*");
+    Vector<String> mediaKeyPaths = FileSystem::listDirectory(originPath, "*");
 
     for (const auto& mediaKeyPath : mediaKeyPaths) {
-        String mediaKeyFile = pathByAppendingComponent(mediaKeyPath, "SecureStop.plist");
+        String mediaKeyFile = FileSystem::pathByAppendingComponent(mediaKeyPath, "SecureStop.plist");
 
-        if (!fileExists(mediaKeyFile))
+        if (!FileSystem::fileExists(mediaKeyFile))
             continue;
 
         time_t modTime;
-        getFileModificationTime(mediaKeyFile, modTime);
+        FileSystem::getFileModificationTime(mediaKeyFile, modTime);
 
         if (modTime < startDate || modTime > endDate)
             continue;
 
-        deleteFile(mediaKeyFile);
-        deleteEmptyDirectory(mediaKeyPath);
+        FileSystem::deleteFile(mediaKeyFile);
+        FileSystem::deleteEmptyDirectory(mediaKeyPath);
     }
     
-    deleteEmptyDirectory(originPath);
+    FileSystem::deleteEmptyDirectory(originPath);
 }
 
 void WebMediaKeyStorageManager::deleteMediaKeyEntriesForOrigin(const SecurityOriginData& originData)
@@ -117,7 +116,7 @@ void WebMediaKeyStorageManager::deleteMediaKeyEntriesModifiedBetweenDates(double
     if (m_mediaKeyStorageDirectory.isEmpty())
         return;
 
-    Vector<String> originPaths = listDirectory(m_mediaKeyStorageDirectory, "*");
+    Vector<String> originPaths = FileSystem::listDirectory(m_mediaKeyStorageDirectory, "*");
     for (auto& originPath : originPaths)
         removeAllMediaKeyStorageForOriginPath(originPath, startDate, endDate);
 }
@@ -127,7 +126,7 @@ void WebMediaKeyStorageManager::deleteAllMediaKeyEntries()
     if (m_mediaKeyStorageDirectory.isEmpty())
         return;
 
-    Vector<String> originPaths = listDirectory(m_mediaKeyStorageDirectory, "*");
+    Vector<String> originPaths = FileSystem::listDirectory(m_mediaKeyStorageDirectory, "*");
     for (auto& originPath : originPaths)
         removeAllMediaKeyStorageForOriginPath(originPath, std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max());
 }

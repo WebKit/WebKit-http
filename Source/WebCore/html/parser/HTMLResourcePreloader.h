@@ -72,23 +72,19 @@ private:
 
 typedef Vector<std::unique_ptr<PreloadRequest>> PreloadRequestStream;
 
-class HTMLResourcePreloader {
+class HTMLResourcePreloader : public CanMakeWeakPtr<HTMLResourcePreloader> {
     WTF_MAKE_NONCOPYABLE(HTMLResourcePreloader); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit HTMLResourcePreloader(Document& document)
         : m_document(document)
-        , m_weakFactory(this)
     {
     }
 
     void preload(PreloadRequestStream);
     void preload(std::unique_ptr<PreloadRequest>);
 
-    WeakPtr<HTMLResourcePreloader> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
-
 private:
     Document& m_document;
-    WeakPtrFactory<HTMLResourcePreloader> m_weakFactory;
 };
 
 } // namespace WebCore

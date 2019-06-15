@@ -33,6 +33,7 @@ class TextRun;
 // Renderer for embeds and objects, often, but not always, rendered via plug-ins.
 // For example, <embed src="foo.html"> does not invoke a plug-in.
 class RenderEmbeddedObject : public RenderWidget {
+    WTF_MAKE_ISO_ALLOCATED(RenderEmbeddedObject);
 public:
     RenderEmbeddedObject(HTMLFrameOwnerElement&, RenderStyle&&);
     virtual ~RenderEmbeddedObject();
@@ -44,6 +45,7 @@ public:
         PluginCrashed,
         PluginBlockedByContentSecurityPolicy,
         InsecurePluginVersion,
+        UnsupportedPlugin
     };
     WEBCORE_EXPORT void setPluginUnavailabilityReason(PluginUnavailabilityReason);
     WEBCORE_EXPORT void setPluginUnavailabilityReasonWithDescription(PluginUnavailabilityReason, const String& description);
@@ -57,6 +59,9 @@ public:
     bool allowsAcceleratedCompositing() const;
 
     LayoutRect unavailablePluginIndicatorBounds(const LayoutPoint& accumulatedOffset) const;
+
+    const String& pluginReplacementTextIfUnavailable() const { return m_unavailablePluginReplacementText; }
+
 protected:
     void paintReplaced(PaintInfo&, const LayoutPoint&) final;
     void paint(PaintInfo&, const LayoutPoint&) override;

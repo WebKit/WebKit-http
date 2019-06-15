@@ -25,18 +25,19 @@
 
 #pragma once
 
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include "CSSStyleDeclaration.h"
+#include "DeprecatedCSSOMValue.h"
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
 class CSSRule;
 class CSSProperty;
 class CSSValue;
-class DeprecatedCSSOMValue;
 class MutableStyleProperties;
 class StyleSheetContents;
 class StyledElement;
@@ -57,7 +58,7 @@ protected:
     virtual CSSParserContext cssParserContext() const;
 
     MutableStyleProperties* m_propertySet;
-    std::unique_ptr<HashMap<CSSValue*, RefPtr<DeprecatedCSSOMValue>>> m_cssomValueWrappers;
+    std::unique_ptr<HashMap<CSSValue*, WeakPtr<DeprecatedCSSOMValue>>> m_cssomValueWrappers;
 
 private:
     void ref() override;
@@ -81,7 +82,7 @@ private:
     
     Ref<MutableStyleProperties> copyProperties() const final;
 
-    DeprecatedCSSOMValue* wrapForDeprecatedCSSOM(CSSValue*);
+    RefPtr<DeprecatedCSSOMValue> wrapForDeprecatedCSSOM(CSSValue*);
     
     virtual bool willMutate() WARN_UNUSED_RETURN { return true; }
     virtual void didMutate(MutationType) { }

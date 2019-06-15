@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,13 +41,17 @@
 #include <WebCore/MediaProducer.h>
 #include <WebCore/Pagination.h>
 #include <WebCore/ScrollTypes.h>
-#include <WebCore/SessionID.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
+#include <pal/SessionID.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
 #include "ColorSpaceData.h"
+#endif
+
+#if ENABLE(APPLICATION_MANIFEST)
+#include <WebCore/ApplicationManifest.h>
 #endif
 
 namespace IPC {
@@ -59,11 +63,11 @@ namespace WebKit {
 
 struct WebPageCreationParameters {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, WebPageCreationParameters&);
+    static std::optional<WebPageCreationParameters> decode(IPC::Decoder&);
 
     WebCore::IntSize viewSize;
 
-    WebCore::ActivityState::Flags activityState;
+    OptionSet<WebCore::ActivityState::Flag> activityState;
     
     WebPreferencesStore store;
     DrawingAreaType drawingAreaType;
@@ -77,6 +81,9 @@ struct WebPageCreationParameters {
     bool useFixedLayout;
     WebCore::IntSize fixedLayoutSize;
 
+    bool alwaysShowsHorizontalScroller;
+    bool alwaysShowsVerticalScroller;
+
     bool suppressScrollbarAnimations;
 
     WebCore::Pagination::Mode paginationMode;
@@ -88,10 +95,9 @@ struct WebPageCreationParameters {
     String userAgent;
 
     Vector<BackForwardListItemState> itemStates;
-    WebCore::SessionID sessionID;
-    uint64_t highestUsedBackForwardItemID;
+    PAL::SessionID sessionID;
 
-    uint64_t userContentControllerID;
+    UserContentControllerIdentifier userContentControllerID;
     uint64_t visitedLinkTableID;
     uint64_t websiteDataStoreID;
     bool canRunBeforeUnloadConfirmPanel;
@@ -106,7 +112,7 @@ struct WebPageCreationParameters {
     WebCore::MediaProducer::MutedStateFlags muted;
     bool mayStartMediaWhenInWindow;
 
-    WebCore::IntSize minimumLayoutSize;
+    WebCore::IntSize viewLayoutSize;
     bool autoSizingShouldExpandToViewHeight;
     std::optional<WebCore::IntSize> viewportSizeForCSSViewportUnits;
     
@@ -131,18 +137,24 @@ struct WebPageCreationParameters {
 
 #if PLATFORM(MAC)
     ColorSpaceData colorSpace;
+    bool useSystemAppearance;
+    bool useDarkAppearance;
 #endif
 #if PLATFORM(IOS)
     WebCore::FloatSize screenSize;
     WebCore::FloatSize availableScreenSize;
+    WebCore::FloatSize overrideScreenSize;
     float textAutosizingWidth;
     bool ignoresViewportScaleLimits;
-    bool allowsBlockSelection;
+    WebCore::FloatSize viewportConfigurationViewLayoutSize;
+    WebCore::FloatSize viewportConfigurationViewSize;
+    WebCore::FloatSize maximumUnobscuredSize;
 #endif
 #if PLATFORM(COCOA)
     bool smartInsertDeleteEnabled;
 #endif
     bool appleMailPaginationQuirkEnabled;
+    bool appleMailLinesClampEnabled;
     bool shouldScaleViewToFitDocument;
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection;
@@ -152,6 +164,14 @@ struct WebPageCreationParameters {
     std::optional<double> cpuLimit;
 
     HashMap<String, uint64_t> urlSchemeHandlers;
+
+#if ENABLE(APPLICATION_MANIFEST)
+    std::optional<WebCore::ApplicationManifest> applicationManifest;
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    bool hasRegisteredServiceWorkers { true };
+#endif
 
     // WebRTC members.
     bool iceCandidateFilteringEnabled { true };

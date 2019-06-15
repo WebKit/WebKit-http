@@ -23,6 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
 #include "CustomGlobalObjectClassTest.h"
 
 #include <JavaScriptCore/JSObjectRefPrivate.h>
@@ -110,19 +111,11 @@ void globalObjectSetPrototypeTest()
     JSGlobalContextRef context = JSGlobalContextCreate(global);
     JSObjectRef object = JSContextGetGlobalObject(context);
 
+    JSValueRef originalPrototype = JSObjectGetPrototype(context, object);
     JSObjectRef above = JSObjectMake(context, 0, 0);
-    JSStringRef test = JSStringCreateWithUTF8CString("test");
-    JSValueRef value = JSValueMakeString(context, test);
-    JSObjectSetProperty(context, above, test, value, kJSPropertyAttributeDontEnum, 0);
-
     JSObjectSetPrototype(context, object, above);
-    JSStringRef script = JSStringCreateWithUTF8CString("test === \"test\"");
-    JSValueRef result = JSEvaluateScript(context, script, 0, 0, 0, 0);
-
-    assertTrue(JSValueToBoolean(context, result), "test === \"test\"");
-
-    JSStringRelease(test);
-    JSStringRelease(script);
+    JSValueRef prototypeAfterChangingAttempt = JSObjectGetPrototype(context, object);
+    assertTrue(JSValueIsStrictEqual(context, prototypeAfterChangingAttempt, originalPrototype), "Global object's [[Prototype]] cannot be changed after instantiating it");
 }
 
 void globalObjectPrivatePropertyTest()

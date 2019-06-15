@@ -30,32 +30,36 @@
 // libepoxy headers have to be included before <ANGLE/ShaderLang.h> in order to avoid
 // picking up khrplatform.h inclusion that's done in ANGLE.
 #include <epoxy/gl.h>
+#elif PLATFORM(QT)
+#include <qopengl.h> // QTFIXME: check if this place is right
+
+#ifndef GL_SAMPLER_2D_RECT_ARB
+#define GL_SAMPLER_2D_RECT_ARB            0x8B63
+#endif
 #endif
 
 #include <ANGLE/ShaderLang.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA)
+
+#if USE(OPENGL_ES)
 #import <OpenGLES/ES2/glext.h>
-#elif PLATFORM(MAC)
+#else
 #include <OpenGL/gl.h>
+#endif
+
 #elif PLATFORM(WIN)
 #include "OpenGLESShims.h"
-#elif PLATFORM(QT)
-#include <qopengl.h>
 
-#ifndef GL_SAMPLER_2D_RECT_ARB
-#define GL_SAMPLER_2D_RECT_ARB            0x8B63
-#endif
-
-#elif PLATFORM(GTK) || PLATFORM(WPE)
-#if USE(LIBEPOXY)
+#elif USE(LIBEPOXY)
 // <epoxy/gl.h> already included above.
-#elif USE(OPENGL_ES_2)
+
+#elif USE(OPENGL_ES)
 #include <GLES2/gl2.h>
+
 #else
 #include "OpenGLShims.h"
-#endif
 #endif
 
 namespace WebCore {
@@ -80,7 +84,7 @@ public:
     const ShBuiltInResources& getResources() { return m_resources; }
     void setResources(const ShBuiltInResources&);
     
-    bool compileShaderSource(const char* shaderSource, ANGLEShaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, int extraCompileOptions = 0);
+    bool compileShaderSource(const char* shaderSource, ANGLEShaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, uint64_t extraCompileOptions = 0);
 
 private:
 

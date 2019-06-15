@@ -30,7 +30,6 @@
 
 #include "Assertions.h"
 #include "DataLog.h"
-#include "WTFThreadData.h"
 
 // Define the following flag if you want to collect stats on every single
 // checkpoint. By default, we only log checkpoints that establish new
@@ -42,7 +41,7 @@
 namespace WTF {
 
 // CheckPoint management:
-StaticLock StackStats::s_sharedMutex;
+Lock StackStats::s_sharedMutex;
 StackStats::CheckPoint* StackStats::s_topCheckPoint = 0;
 StackStats::LayoutCheckPoint* StackStats::s_firstLayoutCheckPoint = 0;
 StackStats::LayoutCheckPoint* StackStats::s_topLayoutCheckPoint = 0;
@@ -59,7 +58,7 @@ int StackStats::s_maxLayoutReentryDepth = 0;
 
 StackStats::PerThreadStats::PerThreadStats()
 {
-    const StackBounds& stack = wtfThreadData().stack();
+    const StackBounds& stack = Thread::current().stack();
     m_reentryDepth = 0;
     m_stackStart = (char*)stack.origin();
     m_currentCheckPoint = 0;
@@ -69,10 +68,10 @@ StackStats::PerThreadStats::PerThreadStats()
 
 StackStats::CheckPoint::CheckPoint()
 {
-    std::lock_guard<StaticLock> lock(StackStats::s_sharedMutex);
-    WTFThreadData* threadData = const_cast<WTFThreadData*>(&wtfThreadData());
-    StackStats::PerThreadStats& t = threadData->stackStats();
-    const StackBounds& stack = threadData->stack();
+    std::lock_guard<Lock> lock(StackStats::s_sharedMutex);
+    Thread& thread = Thread::current();
+    StackStats::PerThreadStats& t = thread.stackStats();
+    const StackBounds& stack = thread.stack();
 
     bool isGrowingDownward = stack.isGrowingDownward();
     bool needToLog = false;
@@ -127,9 +126,9 @@ StackStats::CheckPoint::CheckPoint()
 
 StackStats::CheckPoint::~CheckPoint()
 {
-    std::lock_guard<StaticLock> lock(StackStats::s_sharedMutex);
-    WTFThreadData* threadData = const_cast<WTFThreadData*>(&wtfThreadData());
-    StackStats::PerThreadStats& t = threadData->stackStats();
+    std::lock_guard<Lock> lock(StackStats::s_sharedMutex);
+    Thread& thread = Thread::current();
+    StackStats::PerThreadStats& t = thread.stackStats();
 
     // Pop to previous checkpoint:
     t.m_currentCheckPoint = m_prev;
@@ -138,7 +137,7 @@ StackStats::CheckPoint::~CheckPoint()
     // Log this checkpoint if needed:
 #if ENABLE(VERBOSE_STACK_STATS)
     if (!m_prev) {
-        const StackBounds& stack = threadData->stack();
+        const StackBounds& stack = thread.stack();
         bool isGrowingDownward = stack.isGrowingDownward();
 
         char* current = reinterpret_cast<char*>(this);
@@ -158,10 +157,10 @@ StackStats::CheckPoint::~CheckPoint()
 
 void StackStats::probe()
 {
-    std::lock_guard<StaticLock> lock(StackStats::s_sharedMutex);
-    WTFThreadData* threadData = const_cast<WTFThreadData*>(&wtfThreadData());
-    StackStats::PerThreadStats& t = threadData->stackStats();
-    const StackBounds& stack = threadData->stack();
+    std::lock_guard<Lock> lock(StackStats::s_sharedMutex);
+    Thread& thread = Thread::current();
+    StackStats::PerThreadStats& t = thread.stackStats();
+    const StackBounds& stack = thread.stack();
 
     bool isGrowingDownward = stack.isGrowingDownward();
 
@@ -219,10 +218,10 @@ StackStats::LayoutCheckPoint::LayoutCheckPoint()
     // probe first, we can avoid re-entering the lock.
     StackStats::probe();
 
-    std::lock_guard<StaticLock> lock(StackStats::s_sharedMutex);
-    WTFThreadData* threadData = const_cast<WTFThreadData*>(&wtfThreadData());
-    StackStats::PerThreadStats& t = threadData->stackStats();
-    const StackBounds& stack = threadData->stack();
+    std::lock_guard<Lock> lock(StackStats::s_sharedMutex);
+    Thread& thread = Thread::current();
+    StackStats::PerThreadStats& t = thread.stackStats();
+    const StackBounds& stack = thread.stack();
 
     bool isGrowingDownward = stack.isGrowingDownward();
 
@@ -288,7 +287,7 @@ StackStats::LayoutCheckPoint::LayoutCheckPoint()
 
 StackStats::LayoutCheckPoint::~LayoutCheckPoint()
 {
-    std::lock_guard<StaticLock> lock(StackStats::s_sharedMutex);
+    std::lock_guard<Lock> lock(StackStats::s_sharedMutex);
 
     // Pop to the previous layout checkpoint:
     StackStats::s_topLayoutCheckPoint = m_prev;

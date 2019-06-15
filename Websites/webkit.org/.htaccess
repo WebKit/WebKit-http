@@ -67,6 +67,7 @@ Redirect 301 /security/ /security-policy/
 Redirect 301 /security /security-policy/
 Redirect 301 /status.html /status/
 Redirect 301 /team.html /team/
+Redirect 301 /nightly /downloads/
 
 # Old B3 Documentation
 Redirect 301 /documentation/b3/air/ /docs/b3/assembly-intermediate-representation.html
@@ -104,6 +105,9 @@ Redirect 301 /priority-bugs https://bugs.webkit.org/buglist.cgi?product=WebKit&b
 
 RewriteRule ^css/(.*)$ /old/css/$1 [NC,L]
 RewriteRule ^images/(.*)$ /old/images/$1 [NC,L]
+
+# Pixar USD support. Change to model/vnd.usdz+zip once WebKit support is in the wild.
+AddType model/vnd.pixar.usd usdz
 
 # BEGIN WordPress
 <IfModule mod_rewrite.c>

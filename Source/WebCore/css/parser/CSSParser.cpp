@@ -40,6 +40,7 @@
 #include "CSSVariableReferenceValue.h"
 #include "Document.h"
 #include "Element.h"
+#include "Page.h"
 #include "RenderTheme.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
@@ -49,77 +50,15 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
 
-using namespace WTF;
-
 namespace WebCore {
-
-const CSSParserContext& strictCSSParserContext()
-{
-    static NeverDestroyed<CSSParserContext> strictContext(HTMLStandardMode);
-    return strictContext;
-}
-
-CSSParserContext::CSSParserContext(CSSParserMode mode, const URL& baseURL)
-    : baseURL(baseURL)
-    , mode(mode)
-    , cssGridLayoutEnabled(RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled())
-{
-#if PLATFORM(IOS)
-    // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
-    // to see if we can enable the preference all together is to be handled by:
-    // <rdar://problem/8493309> Investigate Enabling Site Specific Quirks in MobileSafari and UIWebView
-    needsSiteSpecificQuirks = true;
-#endif
-}
-
-CSSParserContext::CSSParserContext(Document& document, const URL& baseURL, const String& charset)
-    : baseURL(baseURL.isNull() ? document.baseURL() : baseURL)
-    , charset(charset)
-    , mode(document.inQuirksMode() ? HTMLQuirksMode : HTMLStandardMode)
-    , isHTMLDocument(document.isHTMLDocument())
-    , cssGridLayoutEnabled(document.isCSSGridLayoutEnabled())
-{
-    needsSiteSpecificQuirks = document.settings().needsSiteSpecificQuirks();
-    enforcesCSSMIMETypeInNoQuirksMode = document.settings().enforceCSSMIMETypeInNoQuirksMode();
-    useLegacyBackgroundSizeShorthandBehavior = document.settings().useLegacyBackgroundSizeShorthandBehavior();
-#if ENABLE(TEXT_AUTOSIZING)
-    textAutosizingEnabled = document.settings().textAutosizingEnabled();
-#endif
-    springTimingFunctionEnabled = document.settings().springTimingFunctionEnabled();
-    constantPropertiesEnabled = document.settings().constantPropertiesEnabled();
-    deferredCSSParserEnabled = document.settings().deferredCSSParserEnabled();
-
-#if PLATFORM(IOS)
-    // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
-    // to see if we can enable the preference all together is to be handled by:
-    // <rdar://problem/8493309> Investigate Enabling Site Specific Quirks in MobileSafari and UIWebView
-    needsSiteSpecificQuirks = true;
-#endif
-}
-
-bool operator==(const CSSParserContext& a, const CSSParserContext& b)
-{
-    return a.baseURL == b.baseURL
-        && a.charset == b.charset
-        && a.mode == b.mode
-        && a.isHTMLDocument == b.isHTMLDocument
-        && a.cssGridLayoutEnabled == b.cssGridLayoutEnabled
-        && a.needsSiteSpecificQuirks == b.needsSiteSpecificQuirks
-        && a.enforcesCSSMIMETypeInNoQuirksMode == b.enforcesCSSMIMETypeInNoQuirksMode
-        && a.useLegacyBackgroundSizeShorthandBehavior == b.useLegacyBackgroundSizeShorthandBehavior
-        && a.springTimingFunctionEnabled == b.springTimingFunctionEnabled
-        && a.constantPropertiesEnabled == b.constantPropertiesEnabled
-        && a.deferredCSSParserEnabled == b.deferredCSSParserEnabled;
-}
+using namespace WTF;
 
 CSSParser::CSSParser(const CSSParserContext& context)
     : m_context(context)
 {
 }
 
-CSSParser::~CSSParser()
-{
-}
+CSSParser::~CSSParser() = default;
 
 void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, RuleParsing ruleParsing)
 {
@@ -172,13 +111,16 @@ Color CSSParser::parseColor(const String& string, bool strict)
     return primitiveValue.color();
 }
 
-Color CSSParser::parseSystemColor(const String& string)
+Color CSSParser::parseSystemColor(const String& string, const CSSParserContext* context)
 {
     CSSValueID id = cssValueKeywordID(string);
     if (!StyleColor::isSystemColor(id))
         return Color();
-    
-    return RenderTheme::singleton().systemColor(id);
+
+    OptionSet<StyleColor::Options> options;
+    if (context && context->useSystemAppearance)
+        options.add(StyleColor::Options::UseSystemAppearance);
+    return RenderTheme::singleton().systemColor(id, options);
 }
 
 RefPtr<CSSValue> CSSParser::parseSingleValue(CSSPropertyID propertyID, const String& string, const CSSParserContext& context)
@@ -218,10 +160,8 @@ void CSSParser::parseSelector(const String& string, CSSSelectorList& selectorLis
     selectorList = CSSSelectorParser::parseSelector(tokenizer.tokenRange(), m_context, nullptr);
 }
 
-Ref<ImmutableStyleProperties> CSSParser::parseInlineStyleDeclaration(const String& string, Element* element)
+Ref<ImmutableStyleProperties> CSSParser::parseInlineStyleDeclaration(const String& string, const Element* element)
 {
-    CSSParserContext context(element->document());
-    context.mode = strictToCSSParserMode(element->isHTMLElement() && !element->document().inQuirksMode());
     return CSSParserImpl::parseInlineStyleDeclaration(string, element);
 }
 

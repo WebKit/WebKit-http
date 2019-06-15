@@ -25,12 +25,13 @@
 
 #include "config.h"
 
-#if USE(MEDIAREMOTE)
-
-#include "MediaRemoteSPI.h"
+#include <pal/spi/mac/MediaRemoteSPI.h>
 #include <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK_FOR_SOURCE(WebCore, MediaRemote)
+
+#if USE(MEDIAREMOTE)
+
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, MediaRemote, MRMediaRemoteGetLocalOrigin, MROriginRef, (), ())
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, MediaRemote, MRMediaRemoteAddAsyncCommandHandlerBlock, void*, (MRMediaRemoteAsyncCommandHandlerBlock block), (block))
 SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, MediaRemote, MRMediaRemoteRemoveCommandHandlerBlock, void, (void* observer), (observer))
@@ -49,5 +50,10 @@ SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfo
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfoElapsedTime, CFStringRef);
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfoPlaybackRate, CFStringRef);
 SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, MediaRemote, kMRMediaRemoteOptionPlaybackPosition, CFStringRef);
+SOFT_LINK_CONSTANT_FOR_SOURCE(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfoUniqueIdentifier, CFStringRef);
 
 #endif // USE(MEDIAREMOTE)
+
+#if PLATFORM(IOS)
+SOFT_LINK_FUNCTION_FOR_SOURCE(WebCore, MediaRemote, MRMediaRemoteCopyPickableRoutes, CFArrayRef, (), ());
+#endif

@@ -31,8 +31,8 @@
 #include "FloatQuad.h"
 #include "FloatRect.h"
 #include "IntRect.h"
-#include "TextStream.h"
 #include "TransformationMatrix.h"
+#include <wtf/text/TextStream.h>
 
 #include <wtf/MathExtras.h>
 
@@ -202,6 +202,11 @@ AffineTransform& AffineTransform::translate(const FloatPoint& t)
     return translate(t.x(), t.y());
 }
 
+AffineTransform& AffineTransform::translate(const FloatSize& t)
+{
+    return translate(t.width(), t.height());
+}
+
 AffineTransform& AffineTransform::rotateFromVector(double x, double y)
 {
     return rotate(rad2deg(atan2(y, x)));
@@ -249,7 +254,7 @@ AffineTransform makeMapBetweenRects(const FloatRect& source, const FloatRect& de
 {
     AffineTransform transform;
     transform.translate(dest.x() - source.x(), dest.y() - source.y());
-    transform.scale(dest.width() / source.width(), dest.height() / source.height());
+    transform.scale(dest.size() / source.size());
     return transform;
 }
 

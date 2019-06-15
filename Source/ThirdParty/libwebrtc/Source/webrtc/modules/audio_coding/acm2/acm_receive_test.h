@@ -8,16 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_ACM2_ACM_RECEIVE_TEST_H_
-#define WEBRTC_MODULES_AUDIO_CODING_ACM2_ACM_RECEIVE_TEST_H_
+#ifndef MODULES_AUDIO_CODING_ACM2_ACM_RECEIVE_TEST_H_
+#define MODULES_AUDIO_CODING_ACM2_ACM_RECEIVE_TEST_H_
 
+#include <stddef.h>  // for size_t
 #include <memory>
 #include <string>
 
-#include "webrtc/api/audio_codecs/audio_decoder_factory.h"
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/scoped_ref_ptr.h"
-#include "webrtc/system_wrappers/include/clock.h"
+#include "api/audio_codecs/audio_decoder_factory.h"
+#include "rtc_base/constructormagic.h"
+#include "rtc_base/scoped_ref_ptr.h"
+#include "system_wrappers/include/clock.h"
 
 namespace webrtc {
 class AudioCodingModule;
@@ -30,7 +31,7 @@ class PacketSource;
 
 class AcmReceiveTestOldApi {
  public:
-  enum NumOutputChannels {
+  enum NumOutputChannels : size_t {
     kArbitraryChannels = 0,
     kMonoOutput = 1,
     kStereoOutput = 2
@@ -93,4 +94,4 @@ class AcmReceiveTestToggleOutputFreqOldApi : public AcmReceiveTestOldApi {
 
 }  // namespace test
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_ACM2_ACM_RECEIVE_TEST_H_
+#endif  // MODULES_AUDIO_CODING_ACM2_ACM_RECEIVE_TEST_H_

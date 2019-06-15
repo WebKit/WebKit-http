@@ -26,7 +26,7 @@ import org.junit.runner.RunWith;
 public class Camera1CapturerUsingByteBufferTest {
   static final String TAG = "Camera1CapturerUsingByteBufferTest";
 
-  private class TestObjectFactory extends CameraVideoCapturerTestFixtures.TestObjectFactory {
+  private static class TestObjectFactory extends CameraVideoCapturerTestFixtures.TestObjectFactory {
     @Override
     public boolean isCapturingToTexture() {
       return false;
@@ -119,12 +119,6 @@ public class Camera1CapturerUsingByteBufferTest {
   @MediumTest
   public void testCameraEvents() throws InterruptedException {
     fixtures.cameraEventsInvoked();
-  }
-
-  @Test
-  @MediumTest
-  public void testUpdateMediaRecorder() throws InterruptedException, IOException {
-    fixtures.updateMediaRecorder(false /* useSurfaceCapture */);
   }
 
   // Test what happens when attempting to call e.g. switchCamera() after camera has been stopped.

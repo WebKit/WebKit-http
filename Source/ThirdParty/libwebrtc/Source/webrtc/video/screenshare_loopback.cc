@@ -10,12 +10,14 @@
 
 #include <stdio.h>
 
-#include "webrtc/base/flags.h"
-#include "webrtc/base/stringencode.h"
-#include "webrtc/test/field_trial.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/run_test.h"
-#include "webrtc/video/video_quality_test.h"
+#include "rtc_base/flags.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/stringencode.h"
+#include "system_wrappers/include/field_trial_default.h"
+#include "test/field_trial.h"
+#include "test/gtest.h"
+#include "test/run_test.h"
+#include "video/video_quality_test.h"
 
 namespace webrtc {
 namespace flags {
@@ -41,9 +43,7 @@ int MinBitrateKbps() {
   return static_cast<int>(FLAG_min_bitrate);
 }
 
-DEFINE_int(start_bitrate,
-           Call::Config::kDefaultStartBitrateBps / 1000,
-           "Call start bitrate in kbps.");
+DEFINE_int(start_bitrate, 300, "Call start bitrate in kbps.");
 int StartBitrateKbps() {
   return static_cast<int>(FLAG_start_bitrate);
 }
@@ -53,7 +53,7 @@ int TargetBitrateKbps() {
   return static_cast<int>(FLAG_target_bitrate);
 }
 
-DEFINE_int(max_bitrate, 2000, "Call and stream max bitrate in kbps.");
+DEFINE_int(max_bitrate, 1000, "Call and stream max bitrate in kbps.");
 int MaxBitrateKbps() {
   return static_cast<int>(FLAG_max_bitrate);
 }
@@ -67,6 +67,19 @@ int NumTemporalLayers() {
 DEFINE_string(codec, "VP8", "Video codec to use.");
 std::string Codec() {
   return static_cast<std::string>(FLAG_codec);
+}
+
+DEFINE_string(rtc_event_log_name,
+              "",
+              "Filename for rtc event log. Two files "
+              "with \"_send\" and \"_recv\" suffixes will be created.");
+std::string RtcEventLogName() {
+  return static_cast<std::string>(FLAG_rtc_event_log_name);
+}
+
+DEFINE_string(rtp_dump_name, "", "Filename for dumped received RTP stream.");
+std::string RtpDumpName() {
+  return static_cast<std::string>(FLAG_rtp_dump_name);
 }
 
 DEFINE_int(selected_tl,
@@ -127,7 +140,15 @@ int StdPropagationDelayMs() {
   return static_cast<int>(FLAG_std_propagation_delay_ms);
 }
 
-DEFINE_int(selected_stream, 0, "ID of the stream to show or analyze.");
+DEFINE_int(num_streams, 0, "Number of streams to show or analyze.");
+int NumStreams() {
+  return static_cast<int>(FLAG_num_streams);
+}
+
+DEFINE_int(selected_stream,
+           0,
+           "ID of the stream to show or analyze. "
+           "Set to the number of streams to show them all.");
 int SelectedStream() {
   return static_cast<int>(FLAG_selected_stream);
 }
@@ -135,6 +156,21 @@ int SelectedStream() {
 DEFINE_int(num_spatial_layers, 1, "Number of spatial layers to use.");
 int NumSpatialLayers() {
   return static_cast<int>(FLAG_num_spatial_layers);
+}
+
+DEFINE_int(inter_layer_pred,
+           0,
+           "Inter-layer prediction mode. "
+           "0 - enabled, 1 - disabled, 2 - enabled only for key pictures.");
+InterLayerPredMode InterLayerPred() {
+  if (FLAG_inter_layer_pred == 0) {
+    return InterLayerPredMode::kOn;
+  } else if (FLAG_inter_layer_pred == 1) {
+    return InterLayerPredMode::kOff;
+  } else {
+    RTC_DCHECK_EQ(FLAG_inter_layer_pred, 2);
+    return InterLayerPredMode::kOnKeyPic;
+  }
 }
 
 DEFINE_int(selected_sl,
@@ -200,6 +236,14 @@ int MinTransmitBitrateKbps() {
   return FLAG_min_transmit_bitrate;
 }
 
+DEFINE_bool(
+    generate_slides,
+    false,
+    "Whether to use randomly generated slides or read them from files.");
+bool GenerateSlides() {
+  return static_cast<int>(FLAG_generate_slides);
+}
+
 DEFINE_int(slide_change_interval,
            10,
            "Interval (in seconds) between simulated slide changes.");
@@ -238,35 +282,46 @@ void Loopback() {
   pipe_config.delay_standard_deviation_ms = flags::StdPropagationDelayMs();
   pipe_config.allow_reordering = flags::FLAG_allow_reordering;
 
-  Call::Config::BitrateConfig call_bitrate_config;
+  BitrateConstraints call_bitrate_config;
   call_bitrate_config.min_bitrate_bps = flags::MinBitrateKbps() * 1000;
   call_bitrate_config.start_bitrate_bps = flags::StartBitrateKbps() * 1000;
-  call_bitrate_config.max_bitrate_bps = flags::MaxBitrateKbps() * 1000;
+  call_bitrate_config.max_bitrate_bps = -1;  // Don't cap bandwidth estimate.
 
   VideoQualityTest::Params params;
   params.call = {flags::FLAG_send_side_bwe, call_bitrate_config};
-  params.video = {true,
-                  flags::Width(),
-                  flags::Height(),
-                  flags::Fps(),
-                  flags::MinBitrateKbps() * 1000,
-                  flags::TargetBitrateKbps() * 1000,
-                  flags::MaxBitrateKbps() * 1000,
-                  false,
-                  flags::Codec(),
-                  flags::NumTemporalLayers(),
-                  flags::SelectedTL(),
-                  flags::MinTransmitBitrateKbps() * 1000,
-                  false,  // ULPFEC disabled.
-                  false,  // FlexFEC disabled.
-                  flags::EncodedFramePath(),
-                  ""};
-  params.screenshare = {true, flags::SlideChangeInterval(),
-                        flags::ScrollDuration(), flags::Slides()};
-  params.analyzer = {"screenshare", 0.0, 0.0, flags::DurationSecs(),
-      flags::OutputFilename(), flags::GraphTitle()};
+  params.video[0] = {true,
+                     flags::Width(),
+                     flags::Height(),
+                     flags::Fps(),
+                     flags::MinBitrateKbps() * 1000,
+                     flags::TargetBitrateKbps() * 1000,
+                     flags::MaxBitrateKbps() * 1000,
+                     false,
+                     flags::Codec(),
+                     flags::NumTemporalLayers(),
+                     flags::SelectedTL(),
+                     flags::MinTransmitBitrateKbps() * 1000,
+                     false,  // ULPFEC disabled.
+                     false,  // FlexFEC disabled.
+                     false,  // Automatic scaling disabled.
+                     ""};
+  params.screenshare[0] = {true, flags::GenerateSlides(),
+                           flags::SlideChangeInterval(),
+                           flags::ScrollDuration(), flags::Slides()};
+  params.analyzer = {"screenshare",
+                     0.0,
+                     0.0,
+                     flags::DurationSecs(),
+                     flags::OutputFilename(),
+                     flags::GraphTitle()};
   params.pipe = pipe_config;
-  params.logs = flags::FLAG_logs;
+  params.logging = {flags::RtcEventLogName(), flags::RtpDumpName(),
+                    flags::EncodedFramePath()};
+
+  if (flags::NumStreams() > 1 && flags::Stream0().empty() &&
+      flags::Stream1().empty()) {
+    params.ss[0].infer_streams = true;
+  }
 
   std::vector<std::string> stream_descriptors;
   stream_descriptors.push_back(flags::Stream0());
@@ -275,14 +330,15 @@ void Loopback() {
   SL_descriptors.push_back(flags::SL0());
   SL_descriptors.push_back(flags::SL1());
   VideoQualityTest::FillScalabilitySettings(
-      &params, stream_descriptors, flags::SelectedStream(),
-      flags::NumSpatialLayers(), flags::SelectedSL(), SL_descriptors);
+      &params, 0, stream_descriptors, flags::NumStreams(),
+      flags::SelectedStream(), flags::NumSpatialLayers(), flags::SelectedSL(),
+      flags::InterLayerPred(), SL_descriptors);
 
-  VideoQualityTest test;
+  auto fixture = absl::make_unique<VideoQualityTest>(nullptr);
   if (flags::DurationSecs()) {
-    test.RunWithAnalyzer(params);
+    fixture->RunWithAnalyzer(params);
   } else {
-    test.RunWithRenderers(params);
+    fixture->RunWithRenderers(params);
   }
 }
 }  // namespace webrtc
@@ -295,8 +351,15 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  webrtc::test::InitFieldTrialsFromString(
+  rtc::LogMessage::SetLogToStderr(webrtc::flags::FLAG_logs);
+
+  webrtc::test::ValidateFieldTrialsStringOrDie(
       webrtc::flags::FLAG_force_fieldtrials);
+  // InitFieldTrialsFromString stores the char*, so the char array must outlive
+  // the application.
+  webrtc::field_trial::InitFieldTrialsFromString(
+      webrtc::flags::FLAG_force_fieldtrials);
+
   webrtc::test::RunTest(webrtc::Loopback);
   return 0;
 }

@@ -10,10 +10,10 @@
 
 #include <memory>
 
-#include "webrtc/modules/audio_coding/acm2/codec_manager.h"
-#include "webrtc/modules/audio_coding/acm2/rent_a_codec.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/mock_audio_encoder.h"
+#include "modules/audio_coding/acm2/codec_manager.h"
+#include "modules/audio_coding/acm2/rent_a_codec.h"
+#include "test/gtest.h"
+#include "test/mock_audio_encoder.h"
 
 namespace webrtc {
 namespace acm2 {
@@ -28,7 +28,6 @@ std::unique_ptr<MockAudioEncoder> CreateMockEncoder() {
   EXPECT_CALL(*enc, SampleRateHz()).WillRepeatedly(Return(8000));
   EXPECT_CALL(*enc, NumChannels()).WillRepeatedly(Return(1));
   EXPECT_CALL(*enc, Max10MsFramesInAPacket()).WillRepeatedly(Return(1));
-  EXPECT_CALL(*enc, Die());
   return enc;
 }
 

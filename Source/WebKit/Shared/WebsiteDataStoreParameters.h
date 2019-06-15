@@ -25,9 +25,10 @@
 
 #pragma once
 
+#include "NetworkSessionCreationParameters.h"
 #include "SandboxExtension.h"
 #include <WebCore/Cookie.h>
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -41,15 +42,19 @@ namespace WebKit {
 struct WebsiteDataStoreParameters {
     WebsiteDataStoreParameters() = default;
     WebsiteDataStoreParameters(WebsiteDataStoreParameters&&) = default;
+    WebsiteDataStoreParameters& operator=(WebsiteDataStoreParameters&&) = default;
     ~WebsiteDataStoreParameters();
+
+    static WebsiteDataStoreParameters legacyPrivateSessionParameters() { return privateSessionParameters(PAL::SessionID::legacyPrivateSessionID()); }
+    static WebsiteDataStoreParameters privateSessionParameters(PAL::SessionID);
     
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, WebsiteDataStoreParameters&);
+    static std::optional<WebsiteDataStoreParameters> decode(IPC::Decoder&);
 
-    WebCore::SessionID sessionID;
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
     SandboxExtension::Handle cookieStoragePathExtensionHandle;
     Vector<WebCore::Cookie> pendingCookies;
+    NetworkSessionCreationParameters networkSessionParameters;
 };
 
 } // namespace WebKit

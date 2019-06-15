@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "FontCascade.h"
 #include "MockRealtimeAudioSource.h"
 #include <CoreAudio/CoreAudioTypes.h>
 #include <wtf/Vector.h>
@@ -49,13 +48,13 @@ class WebAudioSourceProviderAVFObjC;
 class MockRealtimeAudioSourceMac final : public MockRealtimeAudioSource {
 private:
     friend class MockRealtimeAudioSource;
-    explicit MockRealtimeAudioSourceMac(const String&);
+    MockRealtimeAudioSourceMac(const String& deviceID, const String& name);
 
-    bool applySampleRate(int) final;
-    bool applySampleSize(int) final { return false; }
+    void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) final;
+    std::optional<Vector<int>> discreteSampleRates() const final { return { { 44100, 48000 } }; }
 
     void emitSampleBuffers(uint32_t);
-    void render(double) final;
+    void render(Seconds) final;
     void reconfigure();
 
     std::unique_ptr<WebAudioBufferList> m_audioBufferList;

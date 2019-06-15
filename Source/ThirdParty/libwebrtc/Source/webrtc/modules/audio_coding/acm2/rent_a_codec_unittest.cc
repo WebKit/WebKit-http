@@ -10,10 +10,11 @@
 
 #include <memory>
 
-#include "webrtc/base/arraysize.h"
-#include "webrtc/modules/audio_coding/acm2/rent_a_codec.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/mock_audio_encoder.h"
+#include "common_types.h"
+#include "modules/audio_coding/acm2/rent_a_codec.h"
+#include "rtc_base/arraysize.h"
+#include "test/gtest.h"
+#include "test/mock_audio_encoder.h"
 
 namespace webrtc {
 namespace acm2 {
@@ -53,8 +54,7 @@ class RentACodecTestF : public ::testing::Test {
                        int expected_send_even_if_empty) {
     rtc::Buffer out;
     AudioEncoder::EncodedInfo encoded_info;
-    encoded_info =
-        encoder_->Encode(timestamp_, kZeroData, &out);
+    encoded_info = encoder_->Encode(timestamp_, kZeroData, &out);
     timestamp_ += kDataLengthSamples;
     EXPECT_TRUE(encoded_info.redundant.empty());
     EXPECT_EQ(expected_out_length, encoded_info.encoded_bytes);
@@ -131,13 +131,11 @@ TEST(RentACodecTest, ExternalEncoder) {
   {
     ::testing::InSequence s;
     info.encoded_timestamp = 0;
-    EXPECT_CALL(
-        *external_encoder,
-        EncodeImpl(0, rtc::ArrayView<const int16_t>(audio), &encoded))
+    EXPECT_CALL(*external_encoder,
+                EncodeImpl(0, rtc::ArrayView<const int16_t>(audio), &encoded))
         .WillOnce(Return(info));
     EXPECT_CALL(marker, Mark("A"));
     EXPECT_CALL(marker, Mark("B"));
-    EXPECT_CALL(*external_encoder, Die());
     EXPECT_CALL(marker, Mark("C"));
   }
 
@@ -180,11 +178,9 @@ void TestCngAndRedResetSpeechEncoder(bool use_cng, bool use_red) {
   {
     ::testing::InSequence s;
     EXPECT_CALL(marker, Mark("disabled"));
-    EXPECT_CALL(*speech_encoder1, Die());
     EXPECT_CALL(marker, Mark("enabled"));
     if (use_cng || use_red)
       EXPECT_CALL(*speech_encoder2, Reset());
-    EXPECT_CALL(*speech_encoder2, Die());
   }
 
   RentACodec::StackParameters param1, param2;

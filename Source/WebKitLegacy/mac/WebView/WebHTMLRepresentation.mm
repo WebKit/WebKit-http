@@ -42,6 +42,7 @@
 #import "WebTypesInternal.h"
 #import "WebView.h"
 #import <Foundation/NSURLResponse.h>
+#import <JavaScriptCore/RegularExpression.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/Editor.h>
@@ -58,9 +59,9 @@
 #import <WebCore/NodeTraversal.h>
 #import <WebCore/Range.h>
 #import <WebCore/RenderElement.h>
+#import <WebCore/ScriptDisallowedScope.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebKitLegacy/DOMHTMLInputElement.h>
-#import <yarr/RegularExpression.h>
 #import <wtf/Assertions.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
@@ -89,8 +90,7 @@ using JSC::Yarr::RegularExpression;
 
 static RetainPtr<NSArray> newArrayWithStrings(const HashSet<String, ASCIICaseInsensitiveHash>& set)
 {
-    Vector<NSString *> vector;
-    copyToVector(set, vector);
+    auto vector = copyToVectorOf<NSString *>(set);
     return adoptNS([[NSArray alloc] initWithObjects:vector.data() count:vector.size()]);
 }
 
@@ -282,7 +282,9 @@ static HTMLFormElement* formElementFromDOMElement(DOMElement *element)
     HTMLFormElement* formElement = formElementFromDOMElement(form);
     if (!formElement)
         return nil;
-    const Vector<FormAssociatedElement*>& elements = formElement->associatedElements();
+
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+    auto& elements = formElement->unsafeAssociatedElements();
     AtomicString targetName = name;
     for (unsigned i = 0; i < elements.size(); i++) {
         FormAssociatedElement& element = *elements[i];
@@ -330,7 +332,9 @@ static HTMLInputElement* inputElementFromDOMElement(DOMElement* element)
     if (!formElement)
         return nil;
     NSMutableArray *results = nil;
-    const Vector<FormAssociatedElement*>& elements = formElement->associatedElements();
+
+    ScriptDisallowedScope::InMainThread scriptDisallowedScope;
+    auto& elements = formElement->unsafeAssociatedElements();
     for (unsigned i = 0; i < elements.size(); i++) {
         if (elements[i]->isEnumeratable()) { // Skip option elements, other duds
             DOMElement *element = kit(&elements[i]->asHTMLElement());
@@ -355,7 +359,7 @@ static RegularExpression* regExpForLabels(NSArray *labels)
     static const unsigned int regExpCacheSize = 4;
     static NSMutableArray* regExpLabels = nil;
     static NeverDestroyed<Vector<RegularExpression*>> regExps;
-    static NeverDestroyed<RegularExpression> wordRegExp("\\w", TextCaseSensitive);
+    static NeverDestroyed<RegularExpression> wordRegExp("\\w");
 
     RegularExpression* result;
     if (!regExpLabels)
@@ -390,7 +394,7 @@ static RegularExpression* regExpForLabels(NSArray *labels)
                 pattern.appendLiteral("\\b");
         }
         pattern.append(')');
-        result = new RegularExpression(pattern.toString(), TextCaseInsensitive);
+        result = new RegularExpression(pattern.toString(), JSC::Yarr::TextCaseInsensitive);
     }
 
     // add regexp to the cache, making sure it is at the front for LRU ordering
@@ -451,7 +455,7 @@ static NSString* searchForLabelsBeforeElement(Frame* frame, NSArray* labels, Ele
                 return result;
             }
             searchedCellAbove = true;
-        } else if (n->isTextNode() && n->renderer() && n->renderer()->style().visibility() == VISIBLE) {
+        } else if (n->isTextNode() && n->renderer() && n->renderer()->style().visibility() == Visibility::Visible) {
             // For each text chunk, run the regexp
             String nodeString = n->nodeValue();
             // add 100 for slop, to make it more likely that we'll search whole nodes
@@ -489,7 +493,7 @@ static NSString *matchLabelsAgainstString(NSArray *labels, const String& stringT
     String mutableStringToMatch = stringToMatch;
     
     // Make numbers and _'s in field names behave like word boundaries, e.g., "address2"
-    replace(mutableStringToMatch, RegularExpression("\\d", TextCaseSensitive), " ");
+    replace(mutableStringToMatch, RegularExpression("\\d"), " ");
     mutableStringToMatch.replace('_', ' ');
     
     RegularExpression* regExp = regExpForLabels(labels);

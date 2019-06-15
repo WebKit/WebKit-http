@@ -1,5 +1,7 @@
 "use strict";
 
+var createCustomGetterObject = $vm.createCustomGetterObject;
+
 function assert(a) {
     if (!a)
         throw new Error("Bad!");
@@ -44,9 +46,9 @@ let numPolymorphicClasses = 4;
 let subclasses = new Array(numPolymorphicClasses);
 for (let i = 0; i < numPolymorphicClasses; i++) {
     let BaseCode = `
-       class Base${i} {
+        (class Base${i} {
             get value() { return this._value; }
-        };
+        });
     `;
 
     let Base = eval(BaseCode);
@@ -72,9 +74,9 @@ class MegamorphicSubclass {
 subclasses = new Array(nClasses);
 for (let i = 0; i < nClasses; i++) {
     let BaseCode = `
-       class Base${i + 4} {
+        (class Base${i + 4} {
             get value() { return this._value; }
-        };
+        });
     `;
 
     let Base = eval(BaseCode);

@@ -24,14 +24,15 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMBlobPrivate.h"
 #include "WebKitDOMFilePrivate.h"
 #include "WebKitDOMPrivate.h"
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -56,8 +57,8 @@ WebKitDOMFile* wrapFile(WebCore::File* coreObject)
 G_DEFINE_TYPE(WebKitDOMFile, webkit_dom_file, WEBKIT_DOM_TYPE_BLOB)
 
 enum {
-    PROP_0,
-    PROP_NAME,
+    DOM_FILE_PROP_0,
+    DOM_FILE_PROP_NAME,
 };
 
 static void webkit_dom_file_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
@@ -65,7 +66,7 @@ static void webkit_dom_file_get_property(GObject* object, guint propertyId, GVal
     WebKitDOMFile* self = WEBKIT_DOM_FILE(object);
 
     switch (propertyId) {
-    case PROP_NAME:
+    case DOM_FILE_PROP_NAME:
         g_value_take_string(value, webkit_dom_file_get_name(self));
         break;
     default:
@@ -81,7 +82,7 @@ static void webkit_dom_file_class_init(WebKitDOMFileClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_NAME,
+        DOM_FILE_PROP_NAME,
         g_param_spec_string(
             "name",
             "File:name",
@@ -103,3 +104,4 @@ gchar* webkit_dom_file_get_name(WebKitDOMFile* self)
     gchar* result = convertToUTF8String(item->name());
     return result;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

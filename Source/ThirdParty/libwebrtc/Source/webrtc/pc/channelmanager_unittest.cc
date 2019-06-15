@@ -9,17 +9,16 @@
  */
 
 #include <memory>
+#include <utility>
 
-#include "webrtc/base/gunit.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/thread.h"
-#include "webrtc/logging/rtc_event_log/rtc_event_log.h"
-#include "webrtc/media/base/fakemediaengine.h"
-#include "webrtc/media/base/fakevideocapturer.h"
-#include "webrtc/media/base/testutils.h"
-#include "webrtc/media/engine/fakewebrtccall.h"
-#include "webrtc/p2p/base/faketransportcontroller.h"
-#include "webrtc/pc/channelmanager.h"
+#include "media/base/fakemediaengine.h"
+#include "media/base/testutils.h"
+#include "media/engine/fakewebrtccall.h"
+#include "p2p/base/fakedtlstransport.h"
+#include "pc/channelmanager.h"
+#include "rtc_base/gunit.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/thread.h"
 
 namespace {
 const bool kDefaultSrtpRequired = true;
@@ -38,28 +37,59 @@ static const VideoCodec kVideoCodecs[] = {
 class ChannelManagerTest : public testing::Test {
  protected:
   ChannelManagerTest()
-      : fme_(new cricket::FakeMediaEngine()),
+      : network_(rtc::Thread::CreateWithSocketServer()),
+        worker_(rtc::Thread::Create()),
+        fme_(new cricket::FakeMediaEngine()),
         fdme_(new cricket::FakeDataEngine()),
         cm_(new cricket::ChannelManager(
             std::unique_ptr<MediaEngineInterface>(fme_),
             std::unique_ptr<DataEngineInterface>(fdme_),
+            rtc::Thread::Current(),
             rtc::Thread::Current())),
-        fake_call_(webrtc::Call::Config(&event_log_)),
-        transport_controller_(
-            new cricket::FakeTransportController(ICEROLE_CONTROLLING)) {
+        fake_call_() {
     fme_->SetAudioCodecs(MAKE_VECTOR(kAudioCodecs));
     fme_->SetVideoCodecs(MAKE_VECTOR(kVideoCodecs));
   }
 
-  webrtc::RtcEventLogNullImpl event_log_;
-  rtc::Thread network_;
-  rtc::Thread worker_;
+  std::unique_ptr<webrtc::RtpTransportInternal> CreateDtlsSrtpTransport() {
+    rtp_dtls_transport_ = absl::make_unique<FakeDtlsTransport>(
+        "fake_dtls_transport", cricket::ICE_CANDIDATE_COMPONENT_RTP);
+    auto dtls_srtp_transport = absl::make_unique<webrtc::DtlsSrtpTransport>(
+        /*rtcp_mux_required=*/true);
+    dtls_srtp_transport->SetDtlsTransports(rtp_dtls_transport_.get(),
+                                           /*rtcp_dtls_transport=*/nullptr);
+    return dtls_srtp_transport;
+  }
+
+  void TestCreateDestroyChannels(webrtc::RtpTransportInternal* rtp_transport) {
+    cricket::VoiceChannel* voice_channel = cm_->CreateVoiceChannel(
+        &fake_call_, cricket::MediaConfig(), rtp_transport,
+        rtc::Thread::Current(), cricket::CN_AUDIO, kDefaultSrtpRequired,
+        rtc::CryptoOptions(), AudioOptions());
+    EXPECT_TRUE(voice_channel != nullptr);
+    cricket::VideoChannel* video_channel = cm_->CreateVideoChannel(
+        &fake_call_, cricket::MediaConfig(), rtp_transport,
+        rtc::Thread::Current(), cricket::CN_VIDEO, kDefaultSrtpRequired,
+        rtc::CryptoOptions(), VideoOptions());
+    EXPECT_TRUE(video_channel != nullptr);
+    cricket::RtpDataChannel* rtp_data_channel = cm_->CreateRtpDataChannel(
+        cricket::MediaConfig(), rtp_transport, rtc::Thread::Current(),
+        cricket::CN_DATA, kDefaultSrtpRequired, rtc::CryptoOptions());
+    EXPECT_TRUE(rtp_data_channel != nullptr);
+    cm_->DestroyVideoChannel(video_channel);
+    cm_->DestroyVoiceChannel(voice_channel);
+    cm_->DestroyRtpDataChannel(rtp_data_channel);
+    cm_->Terminate();
+  }
+
+  std::unique_ptr<DtlsTransportInternal> rtp_dtls_transport_;
+  std::unique_ptr<rtc::Thread> network_;
+  std::unique_ptr<rtc::Thread> worker_;
   // |fme_| and |fdme_| are actually owned by |cm_|.
   cricket::FakeMediaEngine* fme_;
   cricket::FakeDataEngine* fdme_;
   std::unique_ptr<cricket::ChannelManager> cm_;
   cricket::FakeCall fake_call_;
-  std::unique_ptr<cricket::FakeTransportController> transport_controller_;
 };
 
 // Test that we startup/shutdown properly.
@@ -74,14 +104,14 @@ TEST_F(ChannelManagerTest, StartupShutdown) {
 
 // Test that we startup/shutdown properly with a worker thread.
 TEST_F(ChannelManagerTest, StartupShutdownOnThread) {
-  network_.Start();
-  worker_.Start();
+  network_->Start();
+  worker_->Start();
   EXPECT_FALSE(cm_->initialized());
   EXPECT_EQ(rtc::Thread::Current(), cm_->worker_thread());
-  EXPECT_TRUE(cm_->set_network_thread(&network_));
-  EXPECT_EQ(&network_, cm_->network_thread());
-  EXPECT_TRUE(cm_->set_worker_thread(&worker_));
-  EXPECT_EQ(&worker_, cm_->worker_thread());
+  EXPECT_TRUE(cm_->set_network_thread(network_.get()));
+  EXPECT_EQ(network_.get(), cm_->network_thread());
+  EXPECT_TRUE(cm_->set_worker_thread(worker_.get()));
+  EXPECT_EQ(worker_.get(), cm_->worker_thread());
   EXPECT_TRUE(cm_->Init());
   EXPECT_TRUE(cm_->initialized());
   // Setting the network or worker thread while initialized should fail.
@@ -89,68 +119,6 @@ TEST_F(ChannelManagerTest, StartupShutdownOnThread) {
   EXPECT_FALSE(cm_->set_worker_thread(rtc::Thread::Current()));
   cm_->Terminate();
   EXPECT_FALSE(cm_->initialized());
-}
-
-// Test that we can create and destroy a voice and video channel.
-TEST_F(ChannelManagerTest, CreateDestroyChannels) {
-  EXPECT_TRUE(cm_->Init());
-  cricket::DtlsTransportInternal* rtp_transport =
-      transport_controller_->CreateDtlsTransport(
-          cricket::CN_AUDIO, cricket::ICE_CANDIDATE_COMPONENT_RTP);
-  cricket::VoiceChannel* voice_channel = cm_->CreateVoiceChannel(
-      &fake_call_, cricket::MediaConfig(),
-      rtp_transport, nullptr /*rtcp_transport*/,
-      rtc::Thread::Current(), cricket::CN_AUDIO, kDefaultSrtpRequired,
-      AudioOptions());
-  EXPECT_TRUE(voice_channel != nullptr);
-  cricket::VideoChannel* video_channel = cm_->CreateVideoChannel(
-      &fake_call_, cricket::MediaConfig(),
-      rtp_transport, nullptr /*rtcp_transport*/,
-      rtc::Thread::Current(), cricket::CN_VIDEO, kDefaultSrtpRequired,
-      VideoOptions());
-  EXPECT_TRUE(video_channel != nullptr);
-  cricket::RtpDataChannel* rtp_data_channel = cm_->CreateRtpDataChannel(
-      cricket::MediaConfig(), rtp_transport, nullptr /*rtcp_transport*/,
-      rtc::Thread::Current(), cricket::CN_DATA, kDefaultSrtpRequired);
-  EXPECT_TRUE(rtp_data_channel != nullptr);
-  cm_->DestroyVideoChannel(video_channel);
-  cm_->DestroyVoiceChannel(voice_channel);
-  cm_->DestroyRtpDataChannel(rtp_data_channel);
-  cm_->Terminate();
-}
-
-// Test that we can create and destroy a voice and video channel with a worker.
-TEST_F(ChannelManagerTest, CreateDestroyChannelsOnThread) {
-  network_.Start();
-  worker_.Start();
-  EXPECT_TRUE(cm_->set_worker_thread(&worker_));
-  EXPECT_TRUE(cm_->set_network_thread(&network_));
-  EXPECT_TRUE(cm_->Init());
-  transport_controller_.reset(
-      new cricket::FakeTransportController(&network_, ICEROLE_CONTROLLING));
-  cricket::DtlsTransportInternal* rtp_transport =
-      transport_controller_->CreateDtlsTransport(
-          cricket::CN_AUDIO, cricket::ICE_CANDIDATE_COMPONENT_RTP);
-  cricket::VoiceChannel* voice_channel = cm_->CreateVoiceChannel(
-      &fake_call_, cricket::MediaConfig(),
-      rtp_transport, nullptr /*rtcp_transport*/,
-      rtc::Thread::Current(), cricket::CN_AUDIO, kDefaultSrtpRequired,
-      AudioOptions());
-  EXPECT_TRUE(voice_channel != nullptr);
-  cricket::VideoChannel* video_channel = cm_->CreateVideoChannel(
-      &fake_call_, cricket::MediaConfig(),
-      rtp_transport, nullptr /*rtcp_transport*/,
-      rtc::Thread::Current(), cricket::CN_VIDEO, kDefaultSrtpRequired,
-      VideoOptions());
-  EXPECT_TRUE(video_channel != nullptr);
-  cricket::RtpDataChannel* rtp_data_channel = cm_->CreateRtpDataChannel(
-      cricket::MediaConfig(), rtp_transport, nullptr /*rtcp_transport*/,
-      rtc::Thread::Current(), cricket::CN_DATA, kDefaultSrtpRequired);
-  EXPECT_TRUE(rtp_data_channel != nullptr);
-  cm_->DestroyVideoChannel(video_channel);
-  cm_->DestroyVoiceChannel(voice_channel);
-  cm_->DestroyRtpDataChannel(rtp_data_channel);
-  cm_->Terminate();
 }
 
 TEST_F(ChannelManagerTest, SetVideoRtxEnabled) {
@@ -181,6 +149,22 @@ TEST_F(ChannelManagerTest, SetVideoRtxEnabled) {
   EXPECT_TRUE(cm_->SetVideoRtxEnabled(true));
   cm_->GetSupportedVideoCodecs(&codecs);
   EXPECT_TRUE(ContainsMatchingCodec(codecs, rtx_codec));
+}
+
+TEST_F(ChannelManagerTest, CreateDestroyChannels) {
+  EXPECT_TRUE(cm_->Init());
+  auto rtp_transport = CreateDtlsSrtpTransport();
+  TestCreateDestroyChannels(rtp_transport.get());
+}
+
+TEST_F(ChannelManagerTest, CreateDestroyChannelsOnThread) {
+  network_->Start();
+  worker_->Start();
+  EXPECT_TRUE(cm_->set_worker_thread(worker_.get()));
+  EXPECT_TRUE(cm_->set_network_thread(network_.get()));
+  EXPECT_TRUE(cm_->Init());
+  auto rtp_transport = CreateDtlsSrtpTransport();
+  TestCreateDestroyChannels(rtp_transport.get());
 }
 
 }  // namespace cricket

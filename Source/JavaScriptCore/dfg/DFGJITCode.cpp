@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -117,7 +117,7 @@ RegisterSet JITCode::liveRegistersToPreserveAtExceptionHandlingCallSite(CodeBloc
         }
     }
 
-    return RegisterSet();
+    return { };
 }
 
 #if ENABLE(FTL_JIT)
@@ -229,12 +229,28 @@ std::optional<CodeOrigin> JITCode::findPC(CodeBlock*, void* pc)
 {
     for (OSRExit& exit : osrExit) {
         if (ExecutableMemoryHandle* handle = exit.m_code.executableMemory()) {
-            if (handle->start() <= pc && pc < handle->end())
+            if (handle->start().untaggedPtr() <= pc && pc < handle->end().untaggedPtr())
                 return std::optional<CodeOrigin>(exit.m_codeOriginForExitProfile);
         }
     }
 
     return std::nullopt;
+}
+
+void JITCode::finalizeOSREntrypoints()
+{
+    auto comparator = [] (const auto& a, const auto& b) {
+        return a.m_bytecodeIndex < b.m_bytecodeIndex;
+    };
+    std::sort(osrEntry.begin(), osrEntry.end(), comparator);
+
+#if !ASSERT_DISABLED
+    auto verifyIsSorted = [&] (auto& osrVector) {
+        for (unsigned i = 0; i + 1 < osrVector.size(); ++i)
+            ASSERT(osrVector[i].m_bytecodeIndex <= osrVector[i + 1].m_bytecodeIndex);
+    };
+    verifyIsSorted(osrEntry);
+#endif
 }
 
 } } // namespace JSC::DFG

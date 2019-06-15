@@ -2,13 +2,17 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     EscapeSequence :: UnicodeEscapeSequence :: u HexDigit HexDigit HexDigit
     HexDigit
 es5id: 7.8.4_A7.1_T4
 description: "UnicodeEscapeSequence :: u000G is incorrect"
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 //CHECK#
 "\u000G"

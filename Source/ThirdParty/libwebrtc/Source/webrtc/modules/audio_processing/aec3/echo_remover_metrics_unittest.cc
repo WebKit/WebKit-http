@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec3/echo_remover_metrics.h"
+#include "modules/audio_processing/aec3/echo_remover_metrics.h"
 
 #include <math.h>
 
-#include "webrtc/modules/audio_processing/aec3/aec_state.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
-#include "webrtc/test/gtest.h"
+#include "modules/audio_processing/aec3/aec3_fft.h"
+#include "modules/audio_processing/aec3/aec_state.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -64,8 +64,8 @@ TEST(TransformDbMetricForReporting, DbFsScaling) {
   std::array<float, kFftLengthBy2Plus1> X2;
   Aec3Fft fft;
   x.fill(1000.f);
-  fft.ZeroPaddedFft(x, &X);
-  X.Spectrum(Aec3Optimization::kNone, &X2);
+  fft.ZeroPaddedFft(x, Aec3Fft::Window::kRectangular, &X);
+  X.Spectrum(Aec3Optimization::kNone, X2);
 
   float offset = -10.f * log10(32768.f * 32768.f);
   EXPECT_NEAR(offset, -90.3f, 0.1f);
@@ -78,23 +78,19 @@ TEST(TransformDbMetricForReporting, DbFsScaling) {
 // Verifies that the TransformDbMetricForReporting method is able to properly
 // limit the output.
 TEST(TransformDbMetricForReporting, Limits) {
-  EXPECT_EQ(
-      0,
-      aec3::TransformDbMetricForReporting(false, 0.f, 10.f, 0.f, 1.f, 0.001f));
-  EXPECT_EQ(
-      10,
-      aec3::TransformDbMetricForReporting(false, 0.f, 10.f, 0.f, 1.f, 100.f));
+  EXPECT_EQ(0, aec3::TransformDbMetricForReporting(false, 0.f, 10.f, 0.f, 1.f,
+                                                   0.001f));
+  EXPECT_EQ(10, aec3::TransformDbMetricForReporting(false, 0.f, 10.f, 0.f, 1.f,
+                                                    100.f));
 }
 
 // Verifies that the TransformDbMetricForReporting method is able to properly
 // negate output.
 TEST(TransformDbMetricForReporting, Negate) {
-  EXPECT_EQ(
-      10,
-      aec3::TransformDbMetricForReporting(true, -20.f, 20.f, 0.f, 1.f, 0.1f));
-  EXPECT_EQ(
-      -10,
-      aec3::TransformDbMetricForReporting(true, -20.f, 20.f, 0.f, 1.f, 10.f));
+  EXPECT_EQ(10, aec3::TransformDbMetricForReporting(true, -20.f, 20.f, 0.f, 1.f,
+                                                    0.1f));
+  EXPECT_EQ(-10, aec3::TransformDbMetricForReporting(true, -20.f, 20.f, 0.f,
+                                                     1.f, 10.f));
 }
 
 // Verify the Update functionality of DbMetric.
@@ -108,6 +104,20 @@ TEST(DbMetric, Update) {
   EXPECT_FLOAT_EQ(kValue * kNumValues, metric.sum_value);
   EXPECT_FLOAT_EQ(kValue, metric.ceil_value);
   EXPECT_FLOAT_EQ(kValue, metric.floor_value);
+}
+
+// Verify the Update functionality of DbMetric.
+TEST(DbMetric, UpdateInstant) {
+  EchoRemoverMetrics::DbMetric metric(0.f, 20.f, -20.f);
+  constexpr float kMinValue = -77.f;
+  constexpr float kMaxValue = 33.f;
+  constexpr float kLastValue = (kMinValue + kMaxValue) / 2.0f;
+  for (float value = kMinValue; value <= kMaxValue; value++)
+    metric.UpdateInstant(value);
+  metric.UpdateInstant(kLastValue);
+  EXPECT_FLOAT_EQ(kLastValue, metric.sum_value);
+  EXPECT_FLOAT_EQ(kMaxValue, metric.ceil_value);
+  EXPECT_FLOAT_EQ(kMinValue, metric.floor_value);
 }
 
 // Verify the constructor functionality of DbMetric.
@@ -126,7 +136,7 @@ TEST(DbMetric, Constructor) {
 // Verify the general functionality of EchoRemoverMetrics.
 TEST(EchoRemoverMetrics, NormalUsage) {
   EchoRemoverMetrics metrics;
-  AecState aec_state;
+  AecState aec_state(EchoCanceller3Config{});
   std::array<float, kFftLengthBy2Plus1> comfort_noise_spectrum;
   std::array<float, kFftLengthBy2Plus1> suppressor_gain;
   comfort_noise_spectrum.fill(10.f);

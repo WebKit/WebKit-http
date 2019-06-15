@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.tostring
 description: Throws a TypeError if this has a detached buffer
-info: >
+info: |
   22.2.3.29 %TypedArray%.prototype.toString ()
 
   ...
@@ -20,6 +20,7 @@ info: >
   5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   ...
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

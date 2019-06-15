@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-8-b-i-4
 description: >
     Array.prototype.lastIndexOf - element to be retrieved is own data
@@ -9,6 +10,10 @@ description: >
     Array-like object
 ---*/
 
-            Object.prototype[0] = false;
+Object.prototype[0] = false;
 
-assert.sameValue(Array.prototype.lastIndexOf.call({ 0: true, 1: 1, length: 2 }, true), 0, 'Array.prototype.lastIndexOf.call({ 0: true, 1: 1, length: 2 }, true)');
+assert.sameValue(Array.prototype.lastIndexOf.call({
+  0: true,
+  1: 1,
+  length: 2
+}, true), 0, 'Array.prototype.lastIndexOf.call({ 0: true, 1: 1, length: 2 }, true)');

@@ -4,21 +4,21 @@
 es6id: 9.5.14
 description: >
     Throws a TypeError if trap result is not an Object: undefined
-info: >
+info: |
     [[Construct]] ( argumentsList, newTarget)
 
     11. If Type(newObj) is not Object, throw a TypeError exception.
 ---*/
 
 function Target() {
-    this.attr = "done";
+  this.attr = "done";
 };
 var P = new Proxy(Target, {
-    construct: function() {
-        return undefined;
-    }
+  construct: function() {
+    return undefined;
+  }
 });
 
 assert.throws(TypeError, function() {
-    new P();
+  new P();
 });

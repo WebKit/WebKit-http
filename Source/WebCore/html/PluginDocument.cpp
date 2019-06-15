@@ -36,9 +36,12 @@
 #include "HTMLNames.h"
 #include "RawDataDocumentParser.h"
 #include "RenderEmbeddedObject.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
-    
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(PluginDocument);
+
 using namespace HTMLNames;
 
 // FIXME: Share more code with MediaDocumentParser.
@@ -74,7 +77,7 @@ void PluginDocumentParser::createDocumentStructure()
 
 #if PLATFORM(IOS)
     // Should not be able to zoom into standalone plug-in documents.
-    document.processViewport(ASCIILiteral("user-scalable=no"), ViewportArguments::PluginDocument);
+    document.processViewport("user-scalable=no"_s, ViewportArguments::PluginDocument);
 #endif
 
     auto body = HTMLBodyElement::create(document);
@@ -98,7 +101,7 @@ void PluginDocumentParser::createDocumentStructure()
     embedElement->setAttributeWithoutSynchronization(srcAttr, document.url().string());
     
     ASSERT(document.loader());
-    if (auto* loader = document.loader())
+    if (auto loader = makeRefPtr(document.loader()))
         m_embedElement->setAttributeWithoutSynchronization(typeAttr, loader->writer().mimeType());
 
     document.setPluginElement(*m_embedElement);
@@ -113,7 +116,7 @@ void PluginDocumentParser::appendBytes(DocumentWriter&, const char*, size_t)
 
     createDocumentStructure();
 
-    auto* frame = document()->frame();
+    auto frame = makeRefPtr(document()->frame());
     if (!frame)
         return;
 
@@ -127,12 +130,12 @@ void PluginDocumentParser::appendBytes(DocumentWriter&, const char*, size_t)
     frame->view()->flushAnyPendingPostLayoutTasks();
 
     if (RenderWidget* renderer = m_embedElement->renderWidget()) {
-        if (Widget* widget = renderer->widget()) {
+        if (RefPtr<Widget> widget = renderer->widget()) {
             frame->loader().client().redirectDataToPlugin(*widget);
             // In a plugin document, the main resource is the plugin. If we have a null widget, that means
             // the loading of the plugin was cancelled, which gives us a null mainResourceLoader(), so we
             // need to have this call in a null check of the widget or of mainResourceLoader().
-            frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DoNotBufferData);
+            frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DataBufferingPolicy::DoNotBufferData);
         }
     }
 }

@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec3/fft_data.h"
+#include "modules/audio_processing/aec3/fft_data.h"
 
-#include "webrtc/system_wrappers/include/cpu_features_wrapper.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/system/arch.h"
+#include "system_wrappers/include/cpu_features_wrapper.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -34,8 +34,8 @@ TEST(FftData, TestOptimizations) {
 
     std::array<float, kFftLengthBy2Plus1> spectrum;
     std::array<float, kFftLengthBy2Plus1> spectrum_sse2;
-    x.Spectrum(Aec3Optimization::kNone, &spectrum);
-    x.Spectrum(Aec3Optimization::kSse2, &spectrum_sse2);
+    x.Spectrum(Aec3Optimization::kNone, spectrum);
+    x.Spectrum(Aec3Optimization::kSse2, spectrum_sse2);
     EXPECT_EQ(spectrum, spectrum_sse2);
   }
 }
@@ -102,7 +102,7 @@ TEST(FftData, Spectrum) {
   }
 
   std::array<float, kFftLengthBy2Plus1> spectrum;
-  x.Spectrum(Aec3Optimization::kNone, &spectrum);
+  x.Spectrum(Aec3Optimization::kNone, spectrum);
 
   EXPECT_EQ(x.re[0] * x.re[0], spectrum[0]);
   EXPECT_EQ(x.re[spectrum.size() - 1] * x.re[spectrum.size() - 1],

@@ -26,19 +26,22 @@
 #include "config.h"
 #include "NetworkCacheData.h"
 
-#if ENABLE(NETWORK_CACHE)
-
 #include <WebCore/FileSystem.h>
 #include <fcntl.h>
+#include <wtf/CryptographicallyRandomNumber.h>
+
+#if !OS(WINDOWS)
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <wtf/CryptographicallyRandomNumber.h>
+#include <unistd.h>
+#endif
 
 namespace WebKit {
 namespace NetworkCache {
 
 Data Data::mapToFile(const char* path) const
 {
+#if !OS(WINDOWS)
     int fd = open(path, O_CREAT | O_EXCL | O_RDWR , S_IRUSR | S_IWUSR);
     if (fd < 0)
         return { };
@@ -68,10 +71,14 @@ Data Data::mapToFile(const char* path) const
     msync(map, m_size, MS_ASYNC);
 
     return Data::adoptMap(map, m_size, fd);
+#else
+    return Data();
+#endif
 }
 
 Data mapFile(const char* path)
 {
+#if !OS(WINDOWS)
     int fd = open(path, O_RDONLY, 0);
     if (fd < 0)
         return { };
@@ -87,10 +94,14 @@ Data mapFile(const char* path)
     }
 
     return adoptAndMapFile(fd, 0, size);
+#else
+    return Data();
+#endif
 }
 
 Data adoptAndMapFile(int fd, size_t offset, size_t size)
 {
+#if !OS(WINDOWS)
     if (!size) {
         close(fd);
         return Data::empty();
@@ -103,6 +114,9 @@ Data adoptAndMapFile(int fd, size_t offset, size_t size)
     }
 
     return Data::adoptMap(map, size, fd);
+#else
+    return Data();
+#endif
 }
 
 SHA1::Digest computeSHA1(const Data& data, const Salt& salt)
@@ -139,7 +153,8 @@ static Salt makeSalt()
 
 std::optional<Salt> readOrMakeSalt(const String& path)
 {
-    auto cpath = WebCore::fileSystemRepresentation(path);
+#if !OS(WINDOWS)
+    auto cpath = WebCore::FileSystem::fileSystemRepresentation(path);
     auto fd = open(cpath.data(), O_RDONLY, 0);
     Salt salt;
     auto bytesRead = read(fd, salt.data(), salt.size());
@@ -155,9 +170,10 @@ std::optional<Salt> readOrMakeSalt(const String& path)
             return { };
     }
     return salt;
+#else
+    return Salt();
+#endif
 }
 
 } // namespace NetworkCache
 } // namespace WebKit
-
-#endif // #if ENABLE(NETWORK_CACHE)

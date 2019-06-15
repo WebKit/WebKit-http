@@ -5,8 +5,11 @@ perkj@webrtc.org
 solenberg@webrtc.org
 tkchin@webrtc.org
 tommi@webrtc.org
-deadbeef@webrtc.org
 kwiberg@webrtc.org
+steveanton@webrtc.org
+shampson@webrtc.org
 
-per-file *.gn=kjellander@webrtc.org
-per-file *.gni=kjellander@webrtc.org
+per-file peerconnection*=hbos@webrtc.org
+
+per-file *.gn=phoglund@webrtc.org
+per-file *.gni=phoglund@webrtc.org

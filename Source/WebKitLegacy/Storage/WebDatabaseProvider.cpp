@@ -25,7 +25,7 @@
 
 #include "WebDatabaseProvider.h"
 
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 
 WebDatabaseProvider& WebDatabaseProvider::singleton()
 {
@@ -43,7 +43,7 @@ WebDatabaseProvider::~WebDatabaseProvider()
 }
 
 #if ENABLE(INDEXED_DATABASE)
-WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToServerForSession(const WebCore::SessionID& sessionID)
+WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToServerForSession(const PAL::SessionID& sessionID)
 {
     auto result = m_idbServerMap.add(sessionID.sessionID(), nullptr);
     if (result.isNewEntry) {
@@ -59,6 +59,6 @@ WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToS
 void WebDatabaseProvider::deleteAllDatabases()
 {
     for (auto& server : m_idbServerMap.values())
-        server->idbServer().closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::time_point::min(), [] { });
+        server->idbServer().closeAndDeleteDatabasesModifiedSince(-WallTime::infinity(), [] { });
 }
 #endif

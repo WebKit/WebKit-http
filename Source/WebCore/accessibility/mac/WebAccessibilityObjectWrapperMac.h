@@ -30,6 +30,12 @@
 
 #import "WebAccessibilityObjectWrapperBase.h"
 
+#if PLATFORM(MAC)
+
+#ifndef NSAccessibilityPrimaryScreenHeightAttribute
+#define NSAccessibilityPrimaryScreenHeightAttribute @"_AXPrimaryScreenHeight"
+#endif
+
 @interface WebAccessibilityObjectWrapper : WebAccessibilityObjectWrapperBase
 
 - (id)textMarkerRangeFromVisiblePositions:(const WebCore::VisiblePosition&)startPosition endPosition:(const WebCore::VisiblePosition&)endPosition;
@@ -40,3 +46,5 @@
 - (id)associatedPluginParent;
 
 @end
+
+#endif // PLATFORM(MAC)

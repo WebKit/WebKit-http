@@ -8,24 +8,25 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/gmock.h"
+#include "test/gmock.h"
+#include "test/gtest.h"
 
-#include "webrtc/base/bytebuffer.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/common_video/h264/h264_common.h"
-#include "webrtc/media/base/mediaconstants.h"
-#include "webrtc/modules/pacing/packet_router.h"
-#include "webrtc/modules/video_coding/include/video_coding_defines.h"
-#include "webrtc/modules/video_coding/frame_object.h"
-#include "webrtc/modules/video_coding/packet.h"
-#include "webrtc/modules/video_coding/rtp_frame_reference_finder.h"
-#include "webrtc/modules/video_coding/timing.h"
-#include "webrtc/modules/utility/include/process_thread.h"
-#include "webrtc/system_wrappers/include/clock.h"
-#include "webrtc/system_wrappers/include/field_trial_default.h"
-#include "webrtc/test/field_trial.h"
-#include "webrtc/video/rtp_video_stream_receiver.h"
+#include "absl/memory/memory.h"
+#include "common_video/h264/h264_common.h"
+#include "media/base/mediaconstants.h"
+#include "modules/pacing/packet_router.h"
+#include "modules/rtp_rtcp/source/rtp_packet_received.h"
+#include "modules/utility/include/process_thread.h"
+#include "modules/video_coding/frame_object.h"
+#include "modules/video_coding/include/video_coding_defines.h"
+#include "modules/video_coding/packet.h"
+#include "modules/video_coding/rtp_frame_reference_finder.h"
+#include "rtc_base/bytebuffer.h"
+#include "rtc_base/logging.h"
+#include "system_wrappers/include/clock.h"
+#include "system_wrappers/include/field_trial_default.h"
+#include "test/field_trial.h"
+#include "video/rtp_video_stream_receiver.h"
 
 using testing::_;
 
@@ -33,8 +34,6 @@ namespace webrtc {
 
 namespace {
 
-const char kNewJitterBufferFieldTrialEnabled[] =
-    "WebRTC-NewVideoJitterBuffer/Enabled/";
 const uint8_t kH264StartCode[] = {0x00, 0x00, 0x00, 0x01};
 
 class MockTransport : public Transport {
@@ -61,14 +60,14 @@ class MockOnCompleteFrameCallback
  public:
   MockOnCompleteFrameCallback() : buffer_(rtc::ByteBuffer::ORDER_NETWORK) {}
 
-  MOCK_METHOD1(DoOnCompleteFrame, void(video_coding::FrameObject* frame));
+  MOCK_METHOD1(DoOnCompleteFrame, void(video_coding::EncodedFrame* frame));
   MOCK_METHOD1(DoOnCompleteFrameFailNullptr,
-               void(video_coding::FrameObject* frame));
+               void(video_coding::EncodedFrame* frame));
   MOCK_METHOD1(DoOnCompleteFrameFailLength,
-               void(video_coding::FrameObject* frame));
+               void(video_coding::EncodedFrame* frame));
   MOCK_METHOD1(DoOnCompleteFrameFailBitstream,
-               void(video_coding::FrameObject* frame));
-  void OnCompleteFrame(std::unique_ptr<video_coding::FrameObject> frame) {
+               void(video_coding::EncodedFrame* frame));
+  void OnCompleteFrame(std::unique_ptr<video_coding::EncodedFrame> frame) {
     if (!frame) {
       DoOnCompleteFrameFailNullptr(nullptr);
       return;
@@ -93,59 +92,83 @@ class MockOnCompleteFrameCallback
   rtc::ByteBufferWriter buffer_;
 };
 
+class MockRtpPacketSink : public RtpPacketSinkInterface {
+ public:
+  MOCK_METHOD1(OnRtpPacket, void(const RtpPacketReceived&));
+};
+
+constexpr uint32_t kSsrc = 111;
+constexpr uint16_t kSequenceNumber = 222;
+std::unique_ptr<RtpPacketReceived> CreateRtpPacketReceived(
+    uint32_t ssrc = kSsrc,
+    uint16_t sequence_number = kSequenceNumber) {
+  auto packet = absl::make_unique<RtpPacketReceived>();
+  packet->SetSsrc(ssrc);
+  packet->SetSequenceNumber(sequence_number);
+  return packet;
+}
+
+MATCHER_P(SamePacketAs, other, "") {
+  return arg.Ssrc() == other.Ssrc() &&
+         arg.SequenceNumber() == other.SequenceNumber();
+}
+
 }  // namespace
 
 class RtpVideoStreamReceiverTest : public testing::Test {
  public:
-  RtpVideoStreamReceiverTest()
-      : config_(CreateConfig()),
-        timing_(Clock::GetRealTimeClock()),
+  RtpVideoStreamReceiverTest() : RtpVideoStreamReceiverTest("") {}
+  explicit RtpVideoStreamReceiverTest(std::string field_trials)
+      : override_field_trials_(field_trials),
+        config_(CreateConfig()),
         process_thread_(ProcessThread::Create("TestThread")) {}
 
   void SetUp() {
-    rtp_video_stream_receiver_.reset(new RtpVideoStreamReceiver(
+    rtp_receive_statistics_ =
+        absl::WrapUnique(ReceiveStatistics::Create(Clock::GetRealTimeClock()));
+    rtp_video_stream_receiver_ = absl::make_unique<RtpVideoStreamReceiver>(
         &mock_transport_, nullptr, &packet_router_, &config_,
-        nullptr, process_thread_.get(), &mock_nack_sender_,
-        &mock_key_frame_request_sender_, &mock_on_complete_frame_callback_,
-        &timing_));
+        rtp_receive_statistics_.get(), nullptr, process_thread_.get(),
+        &mock_nack_sender_, &mock_key_frame_request_sender_,
+        &mock_on_complete_frame_callback_);
   }
 
   WebRtcRTPHeader GetDefaultPacket() {
-    WebRtcRTPHeader packet;
-    memset(&packet, 0, sizeof(packet));
-    packet.type.Video.codec = kRtpVideoH264;
+    WebRtcRTPHeader packet = {};
+    packet.video_header().codec = kVideoCodecH264;
+    packet.video_header().video_type_header.emplace<RTPVideoHeaderH264>();
     return packet;
   }
 
   // TODO(Johan): refactor h264_sps_pps_tracker_unittests.cc to avoid duplicate
   // code.
-  void AddSps(WebRtcRTPHeader* packet, int sps_id, std::vector<uint8_t>* data) {
+  void AddSps(WebRtcRTPHeader* packet,
+              uint8_t sps_id,
+              std::vector<uint8_t>* data) {
     NaluInfo info;
     info.type = H264::NaluType::kSps;
     info.sps_id = sps_id;
     info.pps_id = -1;
-    info.offset = data->size();
-    info.size = 2;
     data->push_back(H264::NaluType::kSps);
     data->push_back(sps_id);
-    packet->type.Video.codecHeader.H264
-        .nalus[packet->type.Video.codecHeader.H264.nalus_length++] = info;
+    auto& h264 =
+        absl::get<RTPVideoHeaderH264>(packet->video_header().video_type_header);
+    h264.nalus[h264.nalus_length++] = info;
   }
 
   void AddPps(WebRtcRTPHeader* packet,
-              int sps_id,
-              int pps_id,
+              uint8_t sps_id,
+              uint8_t pps_id,
               std::vector<uint8_t>* data) {
     NaluInfo info;
     info.type = H264::NaluType::kPps;
     info.sps_id = sps_id;
     info.pps_id = pps_id;
-    info.offset = data->size();
-    info.size = 2;
     data->push_back(H264::NaluType::kPps);
     data->push_back(pps_id);
-    packet->type.Video.codecHeader.H264
-        .nalus[packet->type.Video.codecHeader.H264.nalus_length++] = info;
+    auto& h264 =
+        absl::get<RTPVideoHeaderH264>(packet->video_header().video_type_header);
+    h264.nalus[h264.nalus_length++] = info;
   }
 
   void AddIdr(WebRtcRTPHeader* packet, int pps_id) {
@@ -153,8 +176,9 @@ class RtpVideoStreamReceiverTest : public testing::Test {
     info.type = H264::NaluType::kIdr;
     info.sps_id = -1;
     info.pps_id = pps_id;
-    packet->type.Video.codecHeader.H264
-        .nalus[packet->type.Video.codecHeader.H264.nalus_length++] = info;
+    auto& h264 =
+        absl::get<RTPVideoHeaderH264>(packet->video_header().video_type_header);
+    h264.nalus[h264.nalus_length++] = info;
   }
 
  protected:
@@ -165,28 +189,26 @@ class RtpVideoStreamReceiverTest : public testing::Test {
     return config;
   }
 
-  webrtc::test::ScopedFieldTrials override_field_trials_{
-      kNewJitterBufferFieldTrialEnabled};
+  const webrtc::test::ScopedFieldTrials override_field_trials_;
   VideoReceiveStream::Config config_;
   MockNackSender mock_nack_sender_;
   MockKeyFrameRequestSender mock_key_frame_request_sender_;
   MockTransport mock_transport_;
   MockOnCompleteFrameCallback mock_on_complete_frame_callback_;
   PacketRouter packet_router_;
-  VCMTiming timing_;
   std::unique_ptr<ProcessThread> process_thread_;
+  std::unique_ptr<ReceiveStatistics> rtp_receive_statistics_;
   std::unique_ptr<RtpVideoStreamReceiver> rtp_video_stream_receiver_;
 };
 
 TEST_F(RtpVideoStreamReceiverTest, GenericKeyFrame) {
-  WebRtcRTPHeader rtp_header;
+  WebRtcRTPHeader rtp_header = {};
   const std::vector<uint8_t> data({1, 2, 3, 4});
-  memset(&rtp_header, 0, sizeof(rtp_header));
   rtp_header.header.sequenceNumber = 1;
   rtp_header.header.markerBit = 1;
-  rtp_header.type.Video.is_first_packet_in_frame = true;
+  rtp_header.video_header().is_first_packet_in_frame = true;
   rtp_header.frameType = kVideoFrameKey;
-  rtp_header.type.Video.codec = kRtpVideoGeneric;
+  rtp_header.video_header().codec = kVideoCodecGeneric;
   mock_on_complete_frame_callback_.AppendExpectedBitstream(data.data(),
                                                            data.size());
   EXPECT_CALL(mock_on_complete_frame_callback_, DoOnCompleteFrame(_));
@@ -194,15 +216,56 @@ TEST_F(RtpVideoStreamReceiverTest, GenericKeyFrame) {
                                                     &rtp_header);
 }
 
+TEST_F(RtpVideoStreamReceiverTest, NoInfiniteRecursionOnEncapsulatedRedPacket) {
+  const uint8_t kRedPayloadType = 125;
+  VideoCodec codec;
+  codec.plType = kRedPayloadType;
+  rtp_video_stream_receiver_->AddReceiveCodec(codec, {});
+  const std::vector<uint8_t> data({
+      0x80,              // RTP version.
+      kRedPayloadType,   // Payload type.
+      0, 0, 0, 0, 0, 0,  // Don't care.
+      0, 0, 0x4, 0x57,   // SSRC
+      kRedPayloadType,   // RED header.
+      0, 0, 0, 0, 0      // Don't care.
+  });
+  RtpPacketReceived packet;
+  EXPECT_TRUE(packet.Parse(data.data(), data.size()));
+  rtp_video_stream_receiver_->StartReceive();
+  rtp_video_stream_receiver_->OnRtpPacket(packet);
+}
+
+TEST_F(RtpVideoStreamReceiverTest,
+       DropsPacketWithRedPayloadTypeAndEmptyPayload) {
+  const uint8_t kRedPayloadType = 125;
+  config_.rtp.red_payload_type = kRedPayloadType;
+  SetUp();  // re-create rtp_video_stream_receiver with red payload type.
+  // clang-format off
+  const uint8_t data[] = {
+      0x80,              // RTP version.
+      kRedPayloadType,   // Payload type.
+      0, 0, 0, 0, 0, 0,  // Don't care.
+      0, 0, 0x4, 0x57,   // SSRC
+      // Empty rtp payload.
+  };
+  // clang-format on
+  RtpPacketReceived packet;
+  // Manually convert to CopyOnWriteBuffer to be sure capacity == size
+  // and asan bot can catch read buffer overflow.
+  EXPECT_TRUE(packet.Parse(rtc::CopyOnWriteBuffer(data)));
+  rtp_video_stream_receiver_->StartReceive();
+  rtp_video_stream_receiver_->OnRtpPacket(packet);
+  // Expect asan doesn't find anything.
+}
+
 TEST_F(RtpVideoStreamReceiverTest, GenericKeyFrameBitstreamError) {
-  WebRtcRTPHeader rtp_header;
+  WebRtcRTPHeader rtp_header = {};
   const std::vector<uint8_t> data({1, 2, 3, 4});
-  memset(&rtp_header, 0, sizeof(rtp_header));
   rtp_header.header.sequenceNumber = 1;
   rtp_header.header.markerBit = 1;
-  rtp_header.type.Video.is_first_packet_in_frame = true;
+  rtp_header.video_header().is_first_packet_in_frame = true;
   rtp_header.frameType = kVideoFrameKey;
-  rtp_header.type.Video.codec = kRtpVideoGeneric;
+  rtp_header.video_header().codec = kVideoCodecGeneric;
   constexpr uint8_t expected_bitsteam[] = {1, 2, 3, 0xff};
   mock_on_complete_frame_callback_.AppendExpectedBitstream(
       expected_bitsteam, sizeof(expected_bitsteam));
@@ -212,11 +275,24 @@ TEST_F(RtpVideoStreamReceiverTest, GenericKeyFrameBitstreamError) {
                                                     &rtp_header);
 }
 
-TEST_F(RtpVideoStreamReceiverTest, InBandSpsPps) {
+class RtpVideoStreamReceiverTestH264
+    : public RtpVideoStreamReceiverTest,
+      public testing::WithParamInterface<std::string> {
+ protected:
+  RtpVideoStreamReceiverTestH264() : RtpVideoStreamReceiverTest(GetParam()) {}
+};
+
+INSTANTIATE_TEST_CASE_P(
+    SpsPpsIdrIsKeyframe,
+    RtpVideoStreamReceiverTestH264,
+    ::testing::Values("", "WebRTC-SpsPpsIdrIsH264Keyframe/Enabled/"));
+
+TEST_P(RtpVideoStreamReceiverTestH264, InBandSpsPps) {
   std::vector<uint8_t> sps_data;
   WebRtcRTPHeader sps_packet = GetDefaultPacket();
   AddSps(&sps_packet, 0, &sps_data);
   sps_packet.header.sequenceNumber = 0;
+  sps_packet.video_header().is_first_packet_in_frame = true;
   mock_on_complete_frame_callback_.AppendExpectedBitstream(
       kH264StartCode, sizeof(kH264StartCode));
   mock_on_complete_frame_callback_.AppendExpectedBitstream(sps_data.data(),
@@ -228,6 +304,7 @@ TEST_F(RtpVideoStreamReceiverTest, InBandSpsPps) {
   WebRtcRTPHeader pps_packet = GetDefaultPacket();
   AddPps(&pps_packet, 0, 1, &pps_data);
   pps_packet.header.sequenceNumber = 1;
+  pps_packet.video_header().is_first_packet_in_frame = true;
   mock_on_complete_frame_callback_.AppendExpectedBitstream(
       kH264StartCode, sizeof(kH264StartCode));
   mock_on_complete_frame_callback_.AppendExpectedBitstream(pps_data.data(),
@@ -238,12 +315,10 @@ TEST_F(RtpVideoStreamReceiverTest, InBandSpsPps) {
   std::vector<uint8_t> idr_data;
   WebRtcRTPHeader idr_packet = GetDefaultPacket();
   AddIdr(&idr_packet, 1);
-  idr_packet.type.Video.is_first_packet_in_frame = true;
+  idr_packet.video_header().is_first_packet_in_frame = true;
   idr_packet.header.sequenceNumber = 2;
   idr_packet.header.markerBit = 1;
-  idr_packet.type.Video.is_first_packet_in_frame = true;
   idr_packet.frameType = kVideoFrameKey;
-  idr_packet.type.Video.codec = kRtpVideoH264;
   idr_data.insert(idr_data.end(), {0x65, 1, 2, 3});
   mock_on_complete_frame_callback_.AppendExpectedBitstream(
       kH264StartCode, sizeof(kH264StartCode));
@@ -254,7 +329,7 @@ TEST_F(RtpVideoStreamReceiverTest, InBandSpsPps) {
       idr_data.data(), idr_data.size(), &idr_packet);
 }
 
-TEST_F(RtpVideoStreamReceiverTest, OutOfBandFmtpSpsPps) {
+TEST_P(RtpVideoStreamReceiverTestH264, OutOfBandFmtpSpsPps) {
   constexpr int kPayloadType = 99;
   VideoCodec codec;
   codec.plType = kPayloadType;
@@ -280,12 +355,12 @@ TEST_F(RtpVideoStreamReceiverTest, OutOfBandFmtpSpsPps) {
   WebRtcRTPHeader idr_packet = GetDefaultPacket();
   AddIdr(&idr_packet, 0);
   idr_packet.header.payloadType = kPayloadType;
-  idr_packet.type.Video.is_first_packet_in_frame = true;
+  idr_packet.video_header().is_first_packet_in_frame = true;
   idr_packet.header.sequenceNumber = 2;
   idr_packet.header.markerBit = 1;
-  idr_packet.type.Video.is_first_packet_in_frame = true;
+  idr_packet.video_header().is_first_packet_in_frame = true;
   idr_packet.frameType = kVideoFrameKey;
-  idr_packet.type.Video.codec = kRtpVideoH264;
+  idr_packet.video_header().codec = kVideoCodecH264;
   data.insert(data.end(), {1, 2, 3});
   mock_on_complete_frame_callback_.AppendExpectedBitstream(
       kH264StartCode, sizeof(kH264StartCode));
@@ -301,11 +376,11 @@ TEST_F(RtpVideoStreamReceiverTest, PaddingInMediaStream) {
   std::vector<uint8_t> data;
   data.insert(data.end(), {1, 2, 3});
   header.header.payloadType = 99;
-  header.type.Video.is_first_packet_in_frame = true;
+  header.video_header().is_first_packet_in_frame = true;
   header.header.sequenceNumber = 2;
   header.header.markerBit = true;
   header.frameType = kVideoFrameKey;
-  header.type.Video.codec = kRtpVideoGeneric;
+  header.video_header().codec = kVideoCodecGeneric;
   mock_on_complete_frame_callback_.AppendExpectedBitstream(data.data(),
                                                            data.size());
 
@@ -332,18 +407,108 @@ TEST_F(RtpVideoStreamReceiverTest, PaddingInMediaStream) {
 }
 
 TEST_F(RtpVideoStreamReceiverTest, RequestKeyframeIfFirstFrameIsDelta) {
-  WebRtcRTPHeader rtp_header;
+  WebRtcRTPHeader rtp_header = {};
   const std::vector<uint8_t> data({1, 2, 3, 4});
-  memset(&rtp_header, 0, sizeof(rtp_header));
   rtp_header.header.sequenceNumber = 1;
   rtp_header.header.markerBit = 1;
-  rtp_header.type.Video.is_first_packet_in_frame = true;
+  rtp_header.video_header().is_first_packet_in_frame = true;
   rtp_header.frameType = kVideoFrameDelta;
-  rtp_header.type.Video.codec = kRtpVideoGeneric;
+  rtp_header.video_header().codec = kVideoCodecGeneric;
 
   EXPECT_CALL(mock_key_frame_request_sender_, RequestKeyFrame());
   rtp_video_stream_receiver_->OnReceivedPayloadData(data.data(), data.size(),
                                                     &rtp_header);
 }
+
+TEST_F(RtpVideoStreamReceiverTest, SecondarySinksGetRtpNotifications) {
+  rtp_video_stream_receiver_->StartReceive();
+
+  MockRtpPacketSink secondary_sink_1;
+  MockRtpPacketSink secondary_sink_2;
+
+  rtp_video_stream_receiver_->AddSecondarySink(&secondary_sink_1);
+  rtp_video_stream_receiver_->AddSecondarySink(&secondary_sink_2);
+
+  auto rtp_packet = CreateRtpPacketReceived();
+  EXPECT_CALL(secondary_sink_1, OnRtpPacket(SamePacketAs(*rtp_packet)));
+  EXPECT_CALL(secondary_sink_2, OnRtpPacket(SamePacketAs(*rtp_packet)));
+
+  rtp_video_stream_receiver_->OnRtpPacket(*rtp_packet);
+
+  // Test tear-down.
+  rtp_video_stream_receiver_->StopReceive();
+  rtp_video_stream_receiver_->RemoveSecondarySink(&secondary_sink_1);
+  rtp_video_stream_receiver_->RemoveSecondarySink(&secondary_sink_2);
+}
+
+TEST_F(RtpVideoStreamReceiverTest, RemovedSecondarySinksGetNoRtpNotifications) {
+  rtp_video_stream_receiver_->StartReceive();
+
+  MockRtpPacketSink secondary_sink;
+
+  rtp_video_stream_receiver_->AddSecondarySink(&secondary_sink);
+  rtp_video_stream_receiver_->RemoveSecondarySink(&secondary_sink);
+
+  auto rtp_packet = CreateRtpPacketReceived();
+
+  EXPECT_CALL(secondary_sink, OnRtpPacket(_)).Times(0);
+
+  rtp_video_stream_receiver_->OnRtpPacket(*rtp_packet);
+
+  // Test tear-down.
+  rtp_video_stream_receiver_->StopReceive();
+}
+
+TEST_F(RtpVideoStreamReceiverTest,
+       OnlyRemovedSecondarySinksExcludedFromNotifications) {
+  rtp_video_stream_receiver_->StartReceive();
+
+  MockRtpPacketSink kept_secondary_sink;
+  MockRtpPacketSink removed_secondary_sink;
+
+  rtp_video_stream_receiver_->AddSecondarySink(&kept_secondary_sink);
+  rtp_video_stream_receiver_->AddSecondarySink(&removed_secondary_sink);
+  rtp_video_stream_receiver_->RemoveSecondarySink(&removed_secondary_sink);
+
+  auto rtp_packet = CreateRtpPacketReceived();
+  EXPECT_CALL(kept_secondary_sink, OnRtpPacket(SamePacketAs(*rtp_packet)));
+
+  rtp_video_stream_receiver_->OnRtpPacket(*rtp_packet);
+
+  // Test tear-down.
+  rtp_video_stream_receiver_->StopReceive();
+  rtp_video_stream_receiver_->RemoveSecondarySink(&kept_secondary_sink);
+}
+
+TEST_F(RtpVideoStreamReceiverTest,
+       SecondariesOfNonStartedStreamGetNoNotifications) {
+  // Explicitly showing that the stream is not in the |started| state,
+  // regardless of whether streams start out |started| or |stopped|.
+  rtp_video_stream_receiver_->StopReceive();
+
+  MockRtpPacketSink secondary_sink;
+  rtp_video_stream_receiver_->AddSecondarySink(&secondary_sink);
+
+  auto rtp_packet = CreateRtpPacketReceived();
+  EXPECT_CALL(secondary_sink, OnRtpPacket(_)).Times(0);
+
+  rtp_video_stream_receiver_->OnRtpPacket(*rtp_packet);
+
+  // Test tear-down.
+  rtp_video_stream_receiver_->RemoveSecondarySink(&secondary_sink);
+}
+
+#if RTC_DCHECK_IS_ON && GTEST_HAS_DEATH_TEST && !defined(WEBRTC_ANDROID)
+TEST_F(RtpVideoStreamReceiverTest, RepeatedSecondarySinkDisallowed) {
+  MockRtpPacketSink secondary_sink;
+
+  rtp_video_stream_receiver_->AddSecondarySink(&secondary_sink);
+  EXPECT_DEATH(rtp_video_stream_receiver_->AddSecondarySink(&secondary_sink),
+               "");
+
+  // Test tear-down.
+  rtp_video_stream_receiver_->RemoveSecondarySink(&secondary_sink);
+}
+#endif
 
 }  // namespace webrtc

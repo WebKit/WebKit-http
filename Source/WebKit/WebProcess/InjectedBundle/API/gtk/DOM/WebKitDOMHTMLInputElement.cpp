@@ -22,12 +22,11 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMFileListPrivate.h"
@@ -40,6 +39,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -70,8 +71,8 @@ static gboolean webkit_dom_html_input_element_dispatch_event(WebKitDOMEventTarge
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -89,41 +90,41 @@ static gboolean webkit_dom_html_input_element_remove_event_listener(WebKitDOMEve
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_input_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_input_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_input_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_input_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLInputElement, webkit_dom_html_input_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLInputElement, webkit_dom_html_input_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_input_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_ACCEPT,
-    PROP_ALT,
-    PROP_AUTOFOCUS,
-    PROP_DEFAULT_CHECKED,
-    PROP_CHECKED,
-    PROP_DISABLED,
-    PROP_FORM,
-    PROP_FILES,
-    PROP_HEIGHT,
-    PROP_INDETERMINATE,
-    PROP_MAX_LENGTH,
-    PROP_MULTIPLE,
-    PROP_NAME,
-    PROP_READ_ONLY,
-    PROP_SIZE,
-    PROP_SRC,
-    PROP_TYPE,
-    PROP_DEFAULT_VALUE,
-    PROP_VALUE,
-    PROP_WIDTH,
-    PROP_WILL_VALIDATE,
-    PROP_ALIGN,
-    PROP_USE_MAP,
-    PROP_CAPTURE,
+    DOM_HTML_INPUT_ELEMENT_PROP_0,
+    DOM_HTML_INPUT_ELEMENT_PROP_ACCEPT,
+    DOM_HTML_INPUT_ELEMENT_PROP_ALT,
+    DOM_HTML_INPUT_ELEMENT_PROP_AUTOFOCUS,
+    DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_CHECKED,
+    DOM_HTML_INPUT_ELEMENT_PROP_CHECKED,
+    DOM_HTML_INPUT_ELEMENT_PROP_DISABLED,
+    DOM_HTML_INPUT_ELEMENT_PROP_FORM,
+    DOM_HTML_INPUT_ELEMENT_PROP_FILES,
+    DOM_HTML_INPUT_ELEMENT_PROP_HEIGHT,
+    DOM_HTML_INPUT_ELEMENT_PROP_INDETERMINATE,
+    DOM_HTML_INPUT_ELEMENT_PROP_MAX_LENGTH,
+    DOM_HTML_INPUT_ELEMENT_PROP_MULTIPLE,
+    DOM_HTML_INPUT_ELEMENT_PROP_NAME,
+    DOM_HTML_INPUT_ELEMENT_PROP_READ_ONLY,
+    DOM_HTML_INPUT_ELEMENT_PROP_SIZE,
+    DOM_HTML_INPUT_ELEMENT_PROP_SRC,
+    DOM_HTML_INPUT_ELEMENT_PROP_TYPE,
+    DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_VALUE,
+    DOM_HTML_INPUT_ELEMENT_PROP_VALUE,
+    DOM_HTML_INPUT_ELEMENT_PROP_WIDTH,
+    DOM_HTML_INPUT_ELEMENT_PROP_WILL_VALIDATE,
+    DOM_HTML_INPUT_ELEMENT_PROP_ALIGN,
+    DOM_HTML_INPUT_ELEMENT_PROP_USE_MAP,
+    DOM_HTML_INPUT_ELEMENT_PROP_CAPTURE,
 };
 
 static void webkit_dom_html_input_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -131,67 +132,67 @@ static void webkit_dom_html_input_element_set_property(GObject* object, guint pr
     WebKitDOMHTMLInputElement* self = WEBKIT_DOM_HTML_INPUT_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_ACCEPT:
+    case DOM_HTML_INPUT_ELEMENT_PROP_ACCEPT:
         webkit_dom_html_input_element_set_accept(self, g_value_get_string(value));
         break;
-    case PROP_ALT:
+    case DOM_HTML_INPUT_ELEMENT_PROP_ALT:
         webkit_dom_html_input_element_set_alt(self, g_value_get_string(value));
         break;
-    case PROP_AUTOFOCUS:
+    case DOM_HTML_INPUT_ELEMENT_PROP_AUTOFOCUS:
         webkit_dom_html_input_element_set_autofocus(self, g_value_get_boolean(value));
         break;
-    case PROP_DEFAULT_CHECKED:
+    case DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_CHECKED:
         webkit_dom_html_input_element_set_default_checked(self, g_value_get_boolean(value));
         break;
-    case PROP_CHECKED:
+    case DOM_HTML_INPUT_ELEMENT_PROP_CHECKED:
         webkit_dom_html_input_element_set_checked(self, g_value_get_boolean(value));
         break;
-    case PROP_DISABLED:
+    case DOM_HTML_INPUT_ELEMENT_PROP_DISABLED:
         webkit_dom_html_input_element_set_disabled(self, g_value_get_boolean(value));
         break;
-    case PROP_HEIGHT:
+    case DOM_HTML_INPUT_ELEMENT_PROP_HEIGHT:
         webkit_dom_html_input_element_set_height(self, g_value_get_ulong(value));
         break;
-    case PROP_INDETERMINATE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_INDETERMINATE:
         webkit_dom_html_input_element_set_indeterminate(self, g_value_get_boolean(value));
         break;
-    case PROP_MAX_LENGTH:
+    case DOM_HTML_INPUT_ELEMENT_PROP_MAX_LENGTH:
         webkit_dom_html_input_element_set_max_length(self, g_value_get_long(value), nullptr);
         break;
-    case PROP_MULTIPLE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_MULTIPLE:
         webkit_dom_html_input_element_set_multiple(self, g_value_get_boolean(value));
         break;
-    case PROP_NAME:
+    case DOM_HTML_INPUT_ELEMENT_PROP_NAME:
         webkit_dom_html_input_element_set_name(self, g_value_get_string(value));
         break;
-    case PROP_READ_ONLY:
+    case DOM_HTML_INPUT_ELEMENT_PROP_READ_ONLY:
         webkit_dom_html_input_element_set_read_only(self, g_value_get_boolean(value));
         break;
-    case PROP_SIZE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_SIZE:
         webkit_dom_html_input_element_set_size(self, g_value_get_ulong(value), nullptr);
         break;
-    case PROP_SRC:
+    case DOM_HTML_INPUT_ELEMENT_PROP_SRC:
         webkit_dom_html_input_element_set_src(self, g_value_get_string(value));
         break;
-    case PROP_TYPE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_TYPE:
         webkit_dom_html_input_element_set_input_type(self, g_value_get_string(value));
         break;
-    case PROP_DEFAULT_VALUE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_VALUE:
         webkit_dom_html_input_element_set_default_value(self, g_value_get_string(value));
         break;
-    case PROP_VALUE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_VALUE:
         webkit_dom_html_input_element_set_value(self, g_value_get_string(value));
         break;
-    case PROP_WIDTH:
+    case DOM_HTML_INPUT_ELEMENT_PROP_WIDTH:
         webkit_dom_html_input_element_set_width(self, g_value_get_ulong(value));
         break;
-    case PROP_ALIGN:
+    case DOM_HTML_INPUT_ELEMENT_PROP_ALIGN:
         webkit_dom_html_input_element_set_align(self, g_value_get_string(value));
         break;
-    case PROP_USE_MAP:
+    case DOM_HTML_INPUT_ELEMENT_PROP_USE_MAP:
         webkit_dom_html_input_element_set_use_map(self, g_value_get_string(value));
         break;
-    case PROP_CAPTURE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_CAPTURE:
         webkit_dom_html_input_element_set_capture_type(self, g_value_get_string(value));
         break;
     default:
@@ -205,76 +206,76 @@ static void webkit_dom_html_input_element_get_property(GObject* object, guint pr
     WebKitDOMHTMLInputElement* self = WEBKIT_DOM_HTML_INPUT_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_ACCEPT:
+    case DOM_HTML_INPUT_ELEMENT_PROP_ACCEPT:
         g_value_take_string(value, webkit_dom_html_input_element_get_accept(self));
         break;
-    case PROP_ALT:
+    case DOM_HTML_INPUT_ELEMENT_PROP_ALT:
         g_value_take_string(value, webkit_dom_html_input_element_get_alt(self));
         break;
-    case PROP_AUTOFOCUS:
+    case DOM_HTML_INPUT_ELEMENT_PROP_AUTOFOCUS:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_autofocus(self));
         break;
-    case PROP_DEFAULT_CHECKED:
+    case DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_CHECKED:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_default_checked(self));
         break;
-    case PROP_CHECKED:
+    case DOM_HTML_INPUT_ELEMENT_PROP_CHECKED:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_checked(self));
         break;
-    case PROP_DISABLED:
+    case DOM_HTML_INPUT_ELEMENT_PROP_DISABLED:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_disabled(self));
         break;
-    case PROP_FORM:
+    case DOM_HTML_INPUT_ELEMENT_PROP_FORM:
         g_value_set_object(value, webkit_dom_html_input_element_get_form(self));
         break;
-    case PROP_FILES:
+    case DOM_HTML_INPUT_ELEMENT_PROP_FILES:
         g_value_set_object(value, webkit_dom_html_input_element_get_files(self));
         break;
-    case PROP_HEIGHT:
+    case DOM_HTML_INPUT_ELEMENT_PROP_HEIGHT:
         g_value_set_ulong(value, webkit_dom_html_input_element_get_height(self));
         break;
-    case PROP_INDETERMINATE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_INDETERMINATE:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_indeterminate(self));
         break;
-    case PROP_MAX_LENGTH:
+    case DOM_HTML_INPUT_ELEMENT_PROP_MAX_LENGTH:
         g_value_set_long(value, webkit_dom_html_input_element_get_max_length(self));
         break;
-    case PROP_MULTIPLE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_MULTIPLE:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_multiple(self));
         break;
-    case PROP_NAME:
+    case DOM_HTML_INPUT_ELEMENT_PROP_NAME:
         g_value_take_string(value, webkit_dom_html_input_element_get_name(self));
         break;
-    case PROP_READ_ONLY:
+    case DOM_HTML_INPUT_ELEMENT_PROP_READ_ONLY:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_read_only(self));
         break;
-    case PROP_SIZE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_SIZE:
         g_value_set_ulong(value, webkit_dom_html_input_element_get_size(self));
         break;
-    case PROP_SRC:
+    case DOM_HTML_INPUT_ELEMENT_PROP_SRC:
         g_value_take_string(value, webkit_dom_html_input_element_get_src(self));
         break;
-    case PROP_TYPE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_TYPE:
         g_value_take_string(value, webkit_dom_html_input_element_get_input_type(self));
         break;
-    case PROP_DEFAULT_VALUE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_VALUE:
         g_value_take_string(value, webkit_dom_html_input_element_get_default_value(self));
         break;
-    case PROP_VALUE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_VALUE:
         g_value_take_string(value, webkit_dom_html_input_element_get_value(self));
         break;
-    case PROP_WIDTH:
+    case DOM_HTML_INPUT_ELEMENT_PROP_WIDTH:
         g_value_set_ulong(value, webkit_dom_html_input_element_get_width(self));
         break;
-    case PROP_WILL_VALIDATE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_WILL_VALIDATE:
         g_value_set_boolean(value, webkit_dom_html_input_element_get_will_validate(self));
         break;
-    case PROP_ALIGN:
+    case DOM_HTML_INPUT_ELEMENT_PROP_ALIGN:
         g_value_take_string(value, webkit_dom_html_input_element_get_align(self));
         break;
-    case PROP_USE_MAP:
+    case DOM_HTML_INPUT_ELEMENT_PROP_USE_MAP:
         g_value_take_string(value, webkit_dom_html_input_element_get_use_map(self));
         break;
-    case PROP_CAPTURE:
+    case DOM_HTML_INPUT_ELEMENT_PROP_CAPTURE:
         g_value_take_string(value, webkit_dom_html_input_element_get_capture_type(self));
         break;
     default:
@@ -291,7 +292,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ACCEPT,
+        DOM_HTML_INPUT_ELEMENT_PROP_ACCEPT,
         g_param_spec_string(
             "accept",
             "HTMLInputElement:accept",
@@ -301,7 +302,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALT,
+        DOM_HTML_INPUT_ELEMENT_PROP_ALT,
         g_param_spec_string(
             "alt",
             "HTMLInputElement:alt",
@@ -311,7 +312,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_AUTOFOCUS,
+        DOM_HTML_INPUT_ELEMENT_PROP_AUTOFOCUS,
         g_param_spec_boolean(
             "autofocus",
             "HTMLInputElement:autofocus",
@@ -321,7 +322,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DEFAULT_CHECKED,
+        DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_CHECKED,
         g_param_spec_boolean(
             "default-checked",
             "HTMLInputElement:default-checked",
@@ -331,7 +332,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CHECKED,
+        DOM_HTML_INPUT_ELEMENT_PROP_CHECKED,
         g_param_spec_boolean(
             "checked",
             "HTMLInputElement:checked",
@@ -341,7 +342,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DISABLED,
+        DOM_HTML_INPUT_ELEMENT_PROP_DISABLED,
         g_param_spec_boolean(
             "disabled",
             "HTMLInputElement:disabled",
@@ -351,7 +352,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FORM,
+        DOM_HTML_INPUT_ELEMENT_PROP_FORM,
         g_param_spec_object(
             "form",
             "HTMLInputElement:form",
@@ -361,7 +362,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FILES,
+        DOM_HTML_INPUT_ELEMENT_PROP_FILES,
         g_param_spec_object(
             "files",
             "HTMLInputElement:files",
@@ -371,7 +372,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_HEIGHT,
+        DOM_HTML_INPUT_ELEMENT_PROP_HEIGHT,
         g_param_spec_ulong(
             "height",
             "HTMLInputElement:height",
@@ -381,7 +382,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_INDETERMINATE,
+        DOM_HTML_INPUT_ELEMENT_PROP_INDETERMINATE,
         g_param_spec_boolean(
             "indeterminate",
             "HTMLInputElement:indeterminate",
@@ -391,7 +392,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_MAX_LENGTH,
+        DOM_HTML_INPUT_ELEMENT_PROP_MAX_LENGTH,
         g_param_spec_long(
             "max-length",
             "HTMLInputElement:max-length",
@@ -401,7 +402,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_MULTIPLE,
+        DOM_HTML_INPUT_ELEMENT_PROP_MULTIPLE,
         g_param_spec_boolean(
             "multiple",
             "HTMLInputElement:multiple",
@@ -411,7 +412,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_NAME,
+        DOM_HTML_INPUT_ELEMENT_PROP_NAME,
         g_param_spec_string(
             "name",
             "HTMLInputElement:name",
@@ -421,7 +422,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_READ_ONLY,
+        DOM_HTML_INPUT_ELEMENT_PROP_READ_ONLY,
         g_param_spec_boolean(
             "read-only",
             "HTMLInputElement:read-only",
@@ -431,7 +432,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SIZE,
+        DOM_HTML_INPUT_ELEMENT_PROP_SIZE,
         g_param_spec_ulong(
             "size",
             "HTMLInputElement:size",
@@ -441,7 +442,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SRC,
+        DOM_HTML_INPUT_ELEMENT_PROP_SRC,
         g_param_spec_string(
             "src",
             "HTMLInputElement:src",
@@ -451,7 +452,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TYPE,
+        DOM_HTML_INPUT_ELEMENT_PROP_TYPE,
         g_param_spec_string(
             "type",
             "HTMLInputElement:type",
@@ -461,7 +462,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DEFAULT_VALUE,
+        DOM_HTML_INPUT_ELEMENT_PROP_DEFAULT_VALUE,
         g_param_spec_string(
             "default-value",
             "HTMLInputElement:default-value",
@@ -471,7 +472,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_VALUE,
+        DOM_HTML_INPUT_ELEMENT_PROP_VALUE,
         g_param_spec_string(
             "value",
             "HTMLInputElement:value",
@@ -481,7 +482,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_WIDTH,
+        DOM_HTML_INPUT_ELEMENT_PROP_WIDTH,
         g_param_spec_ulong(
             "width",
             "HTMLInputElement:width",
@@ -491,7 +492,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_WILL_VALIDATE,
+        DOM_HTML_INPUT_ELEMENT_PROP_WILL_VALIDATE,
         g_param_spec_boolean(
             "will-validate",
             "HTMLInputElement:will-validate",
@@ -501,7 +502,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALIGN,
+        DOM_HTML_INPUT_ELEMENT_PROP_ALIGN,
         g_param_spec_string(
             "align",
             "HTMLInputElement:align",
@@ -511,7 +512,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_USE_MAP,
+        DOM_HTML_INPUT_ELEMENT_PROP_USE_MAP,
         g_param_spec_string(
             "use-map",
             "HTMLInputElement:use-map",
@@ -521,7 +522,7 @@ static void webkit_dom_html_input_element_class_init(WebKitDOMHTMLInputElementCl
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CAPTURE,
+        DOM_HTML_INPUT_ELEMENT_PROP_CAPTURE,
         g_param_spec_string(
             "capture",
             "HTMLInputElement:capture",
@@ -729,8 +730,8 @@ void webkit_dom_html_input_element_set_max_length(WebKitDOMHTMLInputElement* sel
     WebCore::HTMLInputElement* item = WebKit::core(self);
     auto result = item->setMaxLength(value);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -804,8 +805,8 @@ void webkit_dom_html_input_element_set_size(WebKitDOMHTMLInputElement* self, gul
     WebCore::HTMLInputElement* item = WebKit::core(self);
     auto result = item->setSize(value);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -1008,3 +1009,4 @@ void webkit_dom_html_input_element_set_editing_value(WebKitDOMHTMLInputElement* 
 
   WebKit::core(self)->setEditingValue(WTF::String::fromUTF8(value));
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

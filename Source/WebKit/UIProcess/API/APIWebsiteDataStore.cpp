@@ -31,13 +31,21 @@
 
 namespace API {
 
+static WebsiteDataStore* globalDefaultDataStore;
+
 Ref<WebsiteDataStore> WebsiteDataStore::defaultDataStore()
 {
     WebKit::InitializeWebKit2();
 
-    static WebsiteDataStore* defaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), WebCore::SessionID::defaultSessionID())).leakRef();
+    if (!globalDefaultDataStore)
+        globalDefaultDataStore = adoptRef(new WebsiteDataStore(defaultDataStoreConfiguration(), PAL::SessionID::defaultSessionID())).leakRef();
 
-    return *defaultDataStore;
+    return *globalDefaultDataStore;
+}
+
+bool WebsiteDataStore::defaultDataStoreExists()
+{
+    return globalDefaultDataStore;
 }
 
 Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
@@ -47,7 +55,7 @@ Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistentDataStore()
 
 Ref<WebsiteDataStore> WebsiteDataStore::createLegacy(WebKit::WebsiteDataStore::Configuration configuration)
 {
-    return adoptRef(*new WebsiteDataStore(WTFMove(configuration), WebCore::SessionID::defaultSessionID()));
+    return adoptRef(*new WebsiteDataStore(WTFMove(configuration), PAL::SessionID::defaultSessionID()));
 }
 
 WebsiteDataStore::WebsiteDataStore()
@@ -55,7 +63,7 @@ WebsiteDataStore::WebsiteDataStore()
 {
 }
 
-WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration, WebCore::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(WebKit::WebsiteDataStore::Configuration configuration, PAL::SessionID sessionID)
     : m_websiteDataStore(WebKit::WebsiteDataStore::create(WTFMove(configuration), sessionID))
 {
 }
@@ -87,77 +95,45 @@ void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
     m_websiteDataStore->setResourceLoadStatisticsEnabled(enabled);
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(QT)
-WebKit::WebsiteDataStore::Configuration WebsiteDataStore::defaultDataStoreConfiguration()
+bool WebsiteDataStore::resourceLoadStatisticsDebugMode() const
 {
-    // FIXME: Fill everything in.
-    WebKit::WebsiteDataStore::Configuration configuration;
+    return m_websiteDataStore->resourceLoadStatisticsDebugMode();
+}
 
+void WebsiteDataStore::setResourceLoadStatisticsDebugMode(bool enabled)
+{
+    m_websiteDataStore->setResourceLoadStatisticsDebugMode(enabled);
+}
+
+#if !PLATFORM(COCOA)
+WTF::String WebsiteDataStore::defaultMediaCacheDirectory()
+{
+    // FIXME: Implement. https://bugs.webkit.org/show_bug.cgi?id=156369 and https://bugs.webkit.org/show_bug.cgi?id=156370
+    return WTF::String();
+}
+
+WTF::String WebsiteDataStore::defaultJavaScriptConfigurationDirectory()
+{
+    // FIXME: Implement.
+    return WTF::String();
+}
+#endif
+
+WebKit::WebsiteDataStore::Configuration WebsiteDataStore::legacyDefaultDataStoreConfiguration()
+{
+    WebKit::WebsiteDataStore::Configuration configuration = defaultDataStoreConfiguration();
+
+    configuration.applicationCacheDirectory = legacyDefaultApplicationCacheDirectory();
+    configuration.applicationCacheFlatFileSubdirectoryName = "ApplicationCache";
+    configuration.networkCacheDirectory = legacyDefaultNetworkCacheDirectory();
+    configuration.mediaCacheDirectory = legacyDefaultMediaCacheDirectory();
+    configuration.mediaKeysStorageDirectory = legacyDefaultMediaKeysStorageDirectory();
+    configuration.indexedDBDatabaseDirectory = legacyDefaultIndexedDBDatabaseDirectory();
+    configuration.webSQLDatabaseDirectory = legacyDefaultWebSQLDatabaseDirectory();
+    configuration.localStorageDirectory = legacyDefaultLocalStorageDirectory();
+    configuration.javaScriptConfigurationDirectory = legacyDefaultJavaScriptConfigurationDirectory();
+    
     return configuration;
 }
 
-String WebsiteDataStore::websiteDataDirectoryFileSystemRepresentation(const String&)
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultLocalStorageDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultWebSQLDatabaseDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultNetworkCacheDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultApplicationCacheDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultMediaKeysStorageDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultIndexedDBDatabaseDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-String WebsiteDataStore::defaultResourceLoadStatisticsDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-
-#endif
-    
-#if !PLATFORM(COCOA)
-String WebsiteDataStore::defaultMediaCacheDirectory()
-{
-    // FIXME: Implement. https://bugs.webkit.org/show_bug.cgi?id=156369 and https://bugs.webkit.org/show_bug.cgi?id=156370
-    return String();
-}
-
-String WebsiteDataStore::defaultJavaScriptConfigurationDirectory()
-{
-    // FIXME: Implement.
-    return String();
-}
-#endif
-
-}
+} // namespace API

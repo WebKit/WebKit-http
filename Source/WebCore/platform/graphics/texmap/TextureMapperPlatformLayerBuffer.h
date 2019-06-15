@@ -25,12 +25,12 @@
 
 #pragma once
 
-#include "BitmapTextureGL.h"
-#include "GraphicsTypes3D.h"
-#include "TextureMapperPlatformLayer.h"
-#include <wtf/CurrentTime.h>
-
 #if USE(COORDINATED_GRAPHICS_THREADED)
+
+#include "BitmapTextureGL.h"
+#include "TextureMapperGLHeaders.h"
+#include "TextureMapperPlatformLayer.h"
+#include <wtf/MonotonicTime.h>
 
 namespace WebCore {
 
@@ -39,17 +39,17 @@ class TextureMapperPlatformLayerBuffer : public TextureMapperPlatformLayer {
     WTF_MAKE_FAST_ALLOCATED();
 public:
     TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&&, TextureMapperGL::Flags = 0);
-    TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize&, TextureMapperGL::Flags, GC3Dint internalFormat);
+    TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize&, TextureMapperGL::Flags, GLint internalFormat);
 
     virtual ~TextureMapperPlatformLayerBuffer() = default;
 
     void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix& modelViewMatrix = TransformationMatrix(), float opacity = 1.0) final;
 
-    bool canReuseWithoutReset(const IntSize&, GC3Dint internalFormat);
+    bool canReuseWithoutReset(const IntSize&, GLint internalFormat);
     BitmapTextureGL& textureGL() { return static_cast<BitmapTextureGL&>(*m_texture); }
 
-    inline void markUsed() { m_timeLastUsed = monotonicallyIncreasingTime(); }
-    double lastUsedTime() const { return m_timeLastUsed; }
+    inline void markUsed() { m_timeLastUsed = MonotonicTime::now(); }
+    MonotonicTime lastUsedTime() const { return m_timeLastUsed; }
 
     class UnmanagedBufferDataHolder {
         WTF_MAKE_NONCOPYABLE(UnmanagedBufferDataHolder);
@@ -63,16 +63,16 @@ public:
     void setUnmanagedBufferDataHolder(std::unique_ptr<UnmanagedBufferDataHolder> holder) { m_unmanagedBufferDataHolder = WTFMove(holder); }
     void setExtraFlags(TextureMapperGL::Flags flags) { m_extraFlags = flags; }
 
-    std::unique_ptr<TextureMapperPlatformLayerBuffer> clone(TextureMapperGL&);
+    std::unique_ptr<TextureMapperPlatformLayerBuffer> clone();
 
 private:
 
     RefPtr<BitmapTexture> m_texture;
-    double m_timeLastUsed { 0 };
+    MonotonicTime m_timeLastUsed;
 
     GLuint m_textureID;
     IntSize m_size;
-    GC3Dint m_internalFormat;
+    GLint m_internalFormat;
     TextureMapperGL::Flags m_extraFlags;
     bool m_hasManagedTexture;
     std::unique_ptr<UnmanagedBufferDataHolder> m_unmanagedBufferDataHolder;
@@ -80,4 +80,4 @@ private:
 
 } // namespace WebCore
 
-#endif // COORDINATED_GRAPHICS_THREADED
+#endif // USE(COORDINATED_GRAPHICS_THREADED)

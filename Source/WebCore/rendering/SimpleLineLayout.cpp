@@ -40,9 +40,9 @@
 #include "PaintInfo.h"
 #include "RenderBlockFlow.h"
 #include "RenderChildIterator.h"
-#include "RenderFlowThread.h"
+#include "RenderFragmentedFlow.h"
 #include "RenderLineBreak.h"
-#include "RenderMultiColumnFlowThread.h"
+#include "RenderMultiColumnFlow.h"
 #include "RenderStyle.h"
 #include "RenderText.h"
 #include "RenderTextControl.h"
@@ -50,9 +50,11 @@
 #include "Settings.h"
 #include "SimpleLineLayoutFlowContents.h"
 #include "SimpleLineLayoutFunctions.h"
+#include "SimpleLineLayoutResolver.h"
 #include "SimpleLineLayoutTextFragmentIterator.h"
 #include "Text.h"
 #include "TextPaintStyle.h"
+#include <pal/Logging.h>
 
 namespace WebCore {
 namespace SimpleLineLayout {
@@ -161,10 +163,10 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
     std::optional<float> lineHeightConstraint;
     if (style.lineBoxContain() & LineBoxContainGlyphs)
         lineHeightConstraint = lineHeightFromFlow(flow).toFloat();
-    bool flowIsJustified = style.textAlign() == JUSTIFY;
+    bool flowIsJustified = style.textAlign() == TextAlignMode::Justify;
     for (const auto& textRenderer : childrenOfType<RenderText>(flow)) {
         // FIXME: Do not return until after checking all children.
-        if (!textRenderer.textLength())
+        if (textRenderer.text().isEmpty())
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsEmpty, reasons, includeReasons);
         if (textRenderer.isCombineText())
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsCombineText, reasons, includeReasons);
@@ -180,7 +182,7 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
             // No need to check the code path at this point. We already know it can't be simple.
             SET_REASON_AND_RETURN_IF_NEEDED(FlowHasComplexFontCodePath, reasons, includeReasons);
         } else {
-            TextRun run(textRenderer.text());
+            TextRun run(String(textRenderer.text()));
             run.setCharacterScanForCodePath(false);
             if (style.fontCascade().codePath(run) != FontCascade::Simple)
                 SET_REASON_AND_RETURN_IF_NEEDED(FlowHasComplexFontCodePath, reasons, includeReasons);
@@ -196,12 +198,12 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
 static AvoidanceReasonFlags canUseForStyle(const RenderStyle& style, IncludeReasons includeReasons)
 {
     AvoidanceReasonFlags reasons = { };
-    if (style.textOverflow())
+    if (style.textOverflow() == TextOverflow::Ellipsis)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextOverflow, reasons, includeReasons);
-    if ((style.textDecorationsInEffect() & TextDecorationUnderline) && style.textUnderlinePosition() == TextUnderlinePositionUnder)
+    if ((style.textDecorationsInEffect() & TextDecoration::Underline) && style.textUnderlinePosition() == TextUnderlinePosition::Under)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedUnderlineDecoration, reasons, includeReasons);
     // Non-visible overflow should be pretty easy to support.
-    if (style.overflowX() != OVISIBLE || style.overflowY() != OVISIBLE)
+    if (style.overflowX() != Overflow::Visible || style.overflowY() != Overflow::Visible)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasOverflowNotVisible, reasons, includeReasons);
     if (!style.isLeftToRightDirection())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsNotLTR, reasons, includeReasons);
@@ -209,39 +211,39 @@ static AvoidanceReasonFlags canUseForStyle(const RenderStyle& style, IncludeReas
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasLineBoxContainProperty, reasons, includeReasons);
     if (style.writingMode() != TopToBottomWritingMode)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsNotTopToBottom, reasons, includeReasons);
-    if (style.lineBreak() != LineBreakAuto)
+    if (style.lineBreak() != LineBreak::Auto)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasLineBreak, reasons, includeReasons);
     if (style.unicodeBidi() != UBNormal)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNonNormalUnicodeBiDi, reasons, includeReasons);
-    if (style.rtlOrdering() != LogicalOrder)
+    if (style.rtlOrdering() != Order::Logical)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasRTLOrdering, reasons, includeReasons);
-    if (style.lineAlign() != LineAlignNone)
+    if (style.lineAlign() != LineAlign::None)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasLineAlignEdges, reasons, includeReasons);
-    if (style.lineSnap() != LineSnapNone)
+    if (style.lineSnap() != LineSnap::None)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasLineSnap, reasons, includeReasons);
-    if (style.textEmphasisFill() != TextEmphasisFillFilled || style.textEmphasisMark() != TextEmphasisMarkNone)
+    if (style.textEmphasisFill() != TextEmphasisFill::Filled || style.textEmphasisMark() != TextEmphasisMark::None)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextEmphasisFillOrMark, reasons, includeReasons);
     if (style.textShadow())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextShadow, reasons, includeReasons);
-    if (style.hasPseudoStyle(FIRST_LINE))
+    if (style.hasPseudoStyle(PseudoId::FirstLine))
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasPseudoFirstLine, reasons, includeReasons);
-    if (style.hasPseudoStyle(FIRST_LETTER))
+    if (style.hasPseudoStyle(PseudoId::FirstLetter))
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasPseudoFirstLetter, reasons, includeReasons);
     if (style.hasTextCombine())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextCombine, reasons, includeReasons);
-    if (style.backgroundClip() == TextFillBox)
+    if (style.backgroundClip() == FillBox::Text)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextFillBox, reasons, includeReasons);
-    if (style.borderFit() == BorderFitLines)
+    if (style.borderFit() == BorderFit::Lines)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasBorderFitLines, reasons, includeReasons);
-    if (style.lineBreak() != LineBreakAuto)
+    if (style.lineBreak() != LineBreak::Auto)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNonAutoLineBreak, reasons, includeReasons);
-    if (style.nbspMode() != NBNORMAL)
+    if (style.nbspMode() != NBSPMode::Normal)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasWebKitNBSPMode, reasons, includeReasons);
 #if ENABLE(CSS_TRAILING_WORD)
     if (style.trailingWord() != TrailingWord::Auto)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNonAutoTrailingWord, reasons, includeReasons);
 #endif
-    if (style.hyphens() == HyphensAuto) {
+    if (style.hyphens() == Hyphens::Auto) {
         auto textReasons = canUseForText(style.hyphenString(), style.fontCascade(), std::nullopt, false, includeReasons);
         if (textReasons != NoReason)
             SET_REASON_AND_RETURN_IF_NEEDED(textReasons, reasons, includeReasons);
@@ -254,9 +256,9 @@ AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, IncludeRea
 #ifndef NDEBUG
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
-        registerNotifyCallback("com.apple.WebKit.showSimpleLineLayoutCoverage", WTF::Function<void()> { printSimpleLineLayoutCoverage });
-        registerNotifyCallback("com.apple.WebKit.showSimpleLineLayoutReasons", WTF::Function<void()> { printSimpleLineLayoutBlockList });
-        registerNotifyCallback("com.apple.WebKit.toggleSimpleLineLayout", WTF::Function<void()> { toggleSimpleLineLayout });
+        PAL::registerNotifyCallback("com.apple.WebKit.showSimpleLineLayoutCoverage", WTF::Function<void()> { printSimpleLineLayoutCoverage });
+        PAL::registerNotifyCallback("com.apple.WebKit.showSimpleLineLayoutReasons", WTF::Function<void()> { printSimpleLineLayoutBlockList });
+        PAL::registerNotifyCallback("com.apple.WebKit.toggleSimpleLineLayout", WTF::Function<void()> { toggleSimpleLineLayout });
     });
 #endif
     AvoidanceReasonFlags reasons = { };
@@ -266,17 +268,17 @@ AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, IncludeRea
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNoParent, reasons, includeReasons);
     if (!flow.firstChild())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNoChild, reasons, includeReasons);
-    if (flow.flowThreadState() != RenderObject::NotInsideFlowThread) {
-        auto* flowThread = flow.flowThreadContainingBlock();
-        if (!is<RenderMultiColumnFlowThread>(flowThread))
+    if (flow.fragmentedFlowState() != RenderObject::NotInsideFragmentedFlow) {
+        auto* fragmentedFlow = flow.enclosingFragmentedFlow();
+        if (!is<RenderMultiColumnFlow>(fragmentedFlow))
             SET_REASON_AND_RETURN_IF_NEEDED(FlowIsInsideANonMultiColumnThread, reasons, includeReasons);
-        auto& columnThread = downcast<RenderMultiColumnFlowThread>(*flowThread);
+        auto& columnThread = downcast<RenderMultiColumnFlow>(*fragmentedFlow);
         if (columnThread.parent() != &flow.view())
             SET_REASON_AND_RETURN_IF_NEEDED(MultiColumnFlowIsNotTopLevel, reasons, includeReasons);
         if (columnThread.hasColumnSpanner())
             SET_REASON_AND_RETURN_IF_NEEDED(MultiColumnFlowHasColumnSpanner, reasons, includeReasons);
         auto& style = flow.style();
-        if (style.verticalAlign() != BASELINE)
+        if (style.verticalAlign() != VerticalAlign::Baseline)
             SET_REASON_AND_RETURN_IF_NEEDED(MultiColumnFlowVerticalAlign, reasons, includeReasons);
         if (style.isFloating())
             SET_REASON_AND_RETURN_IF_NEEDED(MultiColumnFlowIsFloating, reasons, includeReasons);
@@ -287,7 +289,7 @@ AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, IncludeRea
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasOutline, reasons, includeReasons);
     if (flow.isRubyText() || flow.isRubyBase())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsRuby, reasons, includeReasons);
-    if (flow.style().hangingPunctuation() != NoHangingPunctuation)
+    if (!flow.style().hangingPunctuation().isEmpty())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasHangingPunctuation, reasons, includeReasons);
     
     // Printing does pagination without a flow thread.
@@ -295,7 +297,7 @@ AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, IncludeRea
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsPaginated, reasons, includeReasons);
     if (flow.firstLineBlock())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasPseudoFirstLine, reasons, includeReasons);
-    if (flow.isAnonymousBlock() && flow.parent()->style().textOverflow())
+    if (flow.isAnonymousBlock() && flow.parent()->style().textOverflow() == TextOverflow::Ellipsis)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasTextOverflow, reasons, includeReasons);
     if (flow.parent()->isDeprecatedFlexibleBox())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsDepricatedFlexBox, reasons, includeReasons);
@@ -314,7 +316,7 @@ AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, IncludeRea
             child = child->nextSibling();
             continue;
         }
-        if (is<RenderLineBreak>(child) && !downcast<RenderLineBreak>(*child).isWBR() && child->style().clear() == CNONE) {
+        if (is<RenderLineBreak>(child) && !downcast<RenderLineBreak>(*child).isWBR() && child->style().clear() == Clear::None) {
             child = child->nextSibling();
             continue;
         }
@@ -353,23 +355,23 @@ bool canUseFor(const RenderBlockFlow& flow)
     return canUseForWithReason(flow, IncludeReasons::First) == NoReason;
 }
 
-static float computeLineLeft(ETextAlign textAlign, float availableWidth, float committedWidth, float logicalLeftOffset)
+static float computeLineLeft(TextAlignMode textAlign, float availableWidth, float committedWidth, float logicalLeftOffset)
 {
     float remainingWidth = availableWidth - committedWidth;
     float left = logicalLeftOffset;
     switch (textAlign) {
-    case LEFT:
-    case WEBKIT_LEFT:
-    case TASTART:
+    case TextAlignMode::Left:
+    case TextAlignMode::WebKitLeft:
+    case TextAlignMode::Start:
         return left;
-    case RIGHT:
-    case WEBKIT_RIGHT:
-    case TAEND:
+    case TextAlignMode::Right:
+    case TextAlignMode::WebKitRight:
+    case TextAlignMode::End:
         return left + std::max<float>(remainingWidth, 0);
-    case CENTER:
-    case WEBKIT_CENTER:
+    case TextAlignMode::Center:
+    case TextAlignMode::WebKitCenter:
         return left + std::max<float>(remainingWidth / 2, 0);
-    case JUSTIFY:
+    case TextAlignMode::Justify:
         ASSERT_NOT_REACHED();
         break;
     }
@@ -600,10 +602,11 @@ static void updateLineConstrains(const RenderBlockFlow& flow, LineState& line, c
 {
     bool shouldApplyTextIndent = !flow.isAnonymous() || flow.parent()->firstChild() == &flow;
     LayoutUnit height = flow.logicalHeight();
-    line.setLogicalLeftOffset(flow.logicalLeftOffsetForLine(height, DoNotIndentText) + (shouldApplyTextIndent && isFirstLine ? flow.textIndentOffset() : LayoutUnit(0)));
-    float logicalRightOffset = flow.logicalRightOffsetForLine(height, DoNotIndentText);
+    LayoutUnit logicalHeight = flow.minLineHeightForReplacedRenderer(false, 0);
+    line.setLogicalLeftOffset(flow.logicalLeftOffsetForLine(height, DoNotIndentText, logicalHeight) + (shouldApplyTextIndent && isFirstLine ? flow.textIndentOffset() : LayoutUnit(0)));
+    float logicalRightOffset = flow.logicalRightOffsetForLine(height, DoNotIndentText, logicalHeight);
     line.setAvailableWidth(std::max<float>(0, logicalRightOffset - line.logicalLeftOffset()));
-    if (style.textAlign == JUSTIFY)
+    if (style.textAlign == TextAlignMode::Justify)
         line.setNeedsAllFragments();
     numberOfPrecedingLinesWithHyphen = (previousLine.isEmpty() || !previousLine.lastFragment().hasHyphen()) ? 0 : numberOfPrecedingLinesWithHyphen + 1;
     if (style.hyphenLimitLines && numberOfPrecedingLinesWithHyphen >= *style.hyphenLimitLines)
@@ -788,7 +791,7 @@ static bool createLineRuns(LineState& line, const LineState& previousLine, Layou
         if (fragment.isLineBreak()) {
             // Add the new line fragment only if there's nothing on the line. (otherwise the extra new line character would show up at the end of the content.)
             if (line.isEmpty() || fragment.type() == TextFragmentIterator::TextFragment::HardLineBreak) {
-                if (style.textAlign == RIGHT || style.textAlign == WEBKIT_RIGHT)
+                if (style.textAlign == TextAlignMode::Right || style.textAlign == TextAlignMode::WebKitRight)
                     line.removeTrailingWhitespace(runs);
                 line.appendFragmentAndCreateRunIfNeeded(fragment, runs);
             }
@@ -900,12 +903,12 @@ static void justifyRuns(const LineState& line, Layout::RunVector& runs, unsigned
     }
 }
 
-static ETextAlign textAlignForLine(const TextFragmentIterator::Style& style, bool lastLine)
+static TextAlignMode textAlignForLine(const TextFragmentIterator::Style& style, bool lastLine)
 {
-    // Fallback to LEFT (START) alignment for non-collapsable content and for the last line before a forced break or the end of the block.
+    // Fallback to TextAlignMode::Left (START) alignment for non-collapsable content and for the last line before a forced break or the end of the block.
     auto textAlign = style.textAlign;
-    if (textAlign == JUSTIFY && (!style.collapseWhitespace || lastLine))
-        textAlign = LEFT;
+    if (textAlign == TextAlignMode::Justify && (!style.collapseWhitespace || lastLine))
+        textAlign = TextAlignMode::Left;
     return textAlign;
 }
 
@@ -922,7 +925,7 @@ static void closeLineEndingAndAdjustRuns(LineState& line, Layout::RunVector& run
     auto firstRunIndex = lastRunIndexOfPreviousLine ? lastRunIndexOfPreviousLine.value() + 1 : 0;
     auto lineLogicalLeft = line.logicalLeftOffset();
     auto textAlign = textAlignForLine(style, lastLineInFlow || (line.lastFragment().isValid() && line.lastFragment().type() == TextFragmentIterator::TextFragment::HardLineBreak));
-    if (textAlign == JUSTIFY)
+    if (textAlign == TextAlignMode::Justify)
         justifyRuns(line, runs, firstRunIndex);
     else
         lineLogicalLeft = computeLineLeft(textAlign, line.availableWidth(), line.width(), line.logicalLeftOffset());
@@ -960,20 +963,33 @@ std::unique_ptr<Layout> create(RenderBlockFlow& flow)
     unsigned lineCount = 0;
     Layout::RunVector runs;
     createTextRuns(runs, flow, lineCount);
-    return Layout::create(runs, lineCount);
+    return Layout::create(runs, lineCount, flow);
 }
 
-std::unique_ptr<Layout> Layout::create(const RunVector& runVector, unsigned lineCount)
+std::unique_ptr<Layout> Layout::create(const RunVector& runVector, unsigned lineCount, const RenderBlockFlow& blockFlow)
 {
     void* slot = WTF::fastMalloc(sizeof(Layout) + sizeof(Run) * runVector.size());
-    return std::unique_ptr<Layout>(new (NotNull, slot) Layout(runVector, lineCount));
+    return std::unique_ptr<Layout>(new (NotNull, slot) Layout(runVector, lineCount, blockFlow));
 }
 
-Layout::Layout(const RunVector& runVector, unsigned lineCount)
+Layout::Layout(const RunVector& runVector, unsigned lineCount, const RenderBlockFlow& blockFlow)
     : m_lineCount(lineCount)
     , m_runCount(runVector.size())
+    , m_blockFlowRenderer(blockFlow)
 {
     memcpy(m_runs, runVector.data(), m_runCount * sizeof(Run));
+}
+
+const RunResolver& Layout::runResolver() const
+{
+    if (!m_runResolver)
+        m_runResolver = std::make_unique<RunResolver>(m_blockFlowRenderer, *this);
+    return *m_runResolver;
+}
+
+Layout::~Layout()
+{
+    simpleLineLayoutWillBeDeleted(*this);
 }
 
 }

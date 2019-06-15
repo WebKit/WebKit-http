@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The [[Class]] property of the newly constructed object
     is set to "Boolean"
+esid: sec-boolean-constructor
 es5id: 15.6.2.1_A4
 description: For testing toString function is used
 ---*/

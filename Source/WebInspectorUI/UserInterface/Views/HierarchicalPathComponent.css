@@ -30,7 +30,7 @@
     min-width: 32px;
 
     font-size: 11px;
-    font-family: -apple-system, sans-serif;
+    font-family: -webkit-system-font, sans-serif;
 
     --path-component-icon-margin-start: 4px;
     --path-component-icon-margin-end: 3px;
@@ -82,7 +82,6 @@ body[dir=rtl] .hierarchical-path-component > :matches(.icon, .selector-arrows) {
     width: 5px;
     height: 16px;
     opacity: 0.6;
-    content: url(../Images/UpDownArrows.svg);
 }
 
 .hierarchical-path-component > .title {
@@ -91,7 +90,6 @@ body[dir=rtl] .hierarchical-path-component > :matches(.icon, .selector-arrows) {
 
     vertical-align: top;
 
-    text-shadow: hsla(0, 0%, 100%, 0.5) 0 1px 0;
     line-height: 20px;
     height: 20px;
 
@@ -146,7 +144,7 @@ body[dir=rtl] .hierarchical-path-component > select {
     width: 7px;
     height: 20px;
 
-    --path-component-separator-margin-start: 2px;
+    --path-component-separator-margin-start: 3px;
 }
 
 body[dir=ltr] .hierarchical-path-component > .separator {

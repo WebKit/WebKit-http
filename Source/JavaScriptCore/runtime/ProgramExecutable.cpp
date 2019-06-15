@@ -87,7 +87,7 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
 {
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     RELEASE_ASSERT(scope);
-    JSGlobalObject* globalObject = scope->globalObject();
+    JSGlobalObject* globalObject = scope->globalObject(vm);
     RELEASE_ASSERT(globalObject);
     ASSERT(&globalObject->vm() == &vm);
 
@@ -104,13 +104,13 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
     if (error.isValid())
         return error.toErrorObject(globalObject, source());
 
-    JSValue nextPrototype = globalObject->getPrototypeDirect();
+    JSValue nextPrototype = globalObject->getPrototypeDirect(vm);
     while (nextPrototype && nextPrototype.isObject()) {
         if (UNLIKELY(asObject(nextPrototype)->type() == ProxyObjectType)) {
             ExecState* exec = globalObject->globalExec();
-            return createTypeError(exec, ASCIILiteral("Proxy is not allowed in the global prototype chain."));
+            return createTypeError(exec, "Proxy is not allowed in the global prototype chain."_s);
         }
-        nextPrototype = asObject(nextPrototype)->getPrototypeDirect();
+        nextPrototype = asObject(nextPrototype)->getPrototypeDirect(vm);
     }
     
     JSGlobalLexicalEnvironment* globalLexicalEnvironment = globalObject->globalLexicalEnvironment();
@@ -130,10 +130,12 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
         // It's an error to introduce a shadow.
         for (auto& entry : lexicalDeclarations) {
             // The ES6 spec says that RestrictedGlobalProperty can't be shadowed.
-            if (hasRestrictedGlobalProperty(exec, globalObject, entry.key.get()))
+            bool hasProperty = hasRestrictedGlobalProperty(exec, globalObject, entry.key.get());
+            RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+            if (hasProperty)
                 return createSyntaxError(exec, makeString("Can't create duplicate variable that shadows a global property: '", String(entry.key.get()), "'"));
 
-            bool hasProperty = globalLexicalEnvironment->hasProperty(exec, entry.key.get());
+            hasProperty = globalLexicalEnvironment->hasProperty(exec, entry.key.get());
             RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
             if (hasProperty) {
                 if (UNLIKELY(entry.value.isConst() && !vm.globalConstRedeclarationShouldThrow() && !isStrictMode())) {
@@ -190,7 +192,7 @@ JSObject* ProgramExecutable::initializeGlobalProperties(VM& vm, CallFrame* callF
                     continue;
             }
             ScopeOffset offset = symbolTable->takeNextScopeOffset(locker);
-            SymbolTableEntry newEntry(VarOffset(offset), entry.value.isConst() ? ReadOnly : 0);
+            SymbolTableEntry newEntry(VarOffset(offset), static_cast<unsigned>(entry.value.isConst() ? PropertyAttribute::ReadOnly : PropertyAttribute::None));
             newEntry.prepareToWatch();
             symbolTable->add(locker, entry.key.get(), newEntry);
             
@@ -205,10 +207,9 @@ void ProgramExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     ProgramExecutable* thisObject = jsCast<ProgramExecutable*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    ScriptExecutable::visitChildren(thisObject, visitor);
+    Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_unlinkedProgramCodeBlock);
-    if (ProgramCodeBlock* programCodeBlock = thisObject->m_programCodeBlock.get())
-        programCodeBlock->visitWeakly(visitor);
+    visitor.append(thisObject->m_programCodeBlock);
 }
 
 } // namespace JSC

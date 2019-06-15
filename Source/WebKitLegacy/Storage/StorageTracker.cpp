@@ -41,7 +41,7 @@
 #include <wtf/text/CString.h>
 
 #if PLATFORM(IOS)
-#include <sqlite3_private.h>
+#include <pal/spi/ios/SQLite3SPI.h>
 #endif
 
 using namespace WebCore;
@@ -104,15 +104,15 @@ StorageTracker::StorageTracker(const String& storagePath)
 String StorageTracker::trackerDatabasePath()
 {
     ASSERT(!m_databaseMutex.tryLock());
-    return pathByAppendingComponent(m_storageDirectoryPath, "StorageTracker.db");
+    return FileSystem::pathByAppendingComponent(m_storageDirectoryPath, "StorageTracker.db");
 }
 
 static bool ensureDatabaseFileExists(const String& fileName, bool createIfDoesNotExist)
 {
     if (createIfDoesNotExist)
-        return makeAllDirectories(directoryName(fileName));
+        return FileSystem::makeAllDirectories(FileSystem::directoryName(fileName));
 
-    return fileExists(fileName);
+    return FileSystem::fileExists(fileName);
 }
 
 void StorageTracker::openTrackerDatabase(bool createIfDoesNotExist)
@@ -236,7 +236,7 @@ void StorageTracker::syncFileSystemAndTrackerDatabase()
     Vector<String> paths;
     {
         LockHolder locker(m_databaseMutex);
-        paths = listDirectory(m_storageDirectoryPath, "*.localstorage");
+        paths = FileSystem::listDirectory(m_storageDirectoryPath, "*.localstorage");
     }
 
     // Use a copy of m_originSet to find expired entries and to schedule their
@@ -250,13 +250,13 @@ void StorageTracker::syncFileSystemAndTrackerDatabase()
     
     // Add missing StorageTracker records.
     OriginSet foundOrigins;
-    String fileExtension = ASCIILiteral(".localstorage");
+    String fileExtension = ".localstorage"_s;
 
     for (Vector<String>::const_iterator it = paths.begin(), end = paths.end(); it != end; ++it) {
         const String& path = *it;
 
         if (path.length() > fileExtension.length() && path.endsWith(fileExtension)) {
-            String file = pathGetFileName(path);
+            String file = FileSystem::pathGetFileName(path);
             String originIdentifier = file.substring(0, file.length() - fileExtension.length());
             if (!originSetCopy.contains(originIdentifier))
                 syncSetOriginDetails(originIdentifier, path);
@@ -418,7 +418,7 @@ void StorageTracker::syncDeleteAllOrigins()
         if (!canDeleteOrigin(statement.getColumnText(0)))
             continue;
 
-        deleteFile(statement.getColumnText(1));
+        FileSystem::deleteFile(statement.getColumnText(1));
 
         {
             LockHolder locker(m_clientMutex);
@@ -438,7 +438,7 @@ void StorageTracker::syncDeleteAllOrigins()
     }
 
 #if !PLATFORM(IOS)
-    if (!deleteFile(trackerDatabasePath())) {
+    if (!FileSystem::deleteFile(trackerDatabasePath())) {
         // In the case where it is not possible to delete the database file (e.g some other program
         // like a virus scanner is accessing it), make sure to remove all entries.
         openTrackerDatabase(false);
@@ -454,7 +454,7 @@ void StorageTracker::syncDeleteAllOrigins()
             return;
         }
     }
-    deleteEmptyDirectory(m_storageDirectoryPath);
+    FileSystem::deleteEmptyDirectory(m_storageDirectoryPath);
 #endif
 }
 
@@ -533,7 +533,7 @@ void StorageTracker::syncDeleteOrigin(const String& originIdentifier)
         return;
     }
 
-    deleteFile(path);
+    FileSystem::deleteFile(path);
     
     bool shouldDeleteTrackerFiles = false;
     {
@@ -548,8 +548,8 @@ void StorageTracker::syncDeleteOrigin(const String& originIdentifier)
 #endif
         m_database.close();
 #if !PLATFORM(IOS)
-        deleteFile(trackerDatabasePath());
-        deleteEmptyDirectory(m_storageDirectoryPath);
+        FileSystem::deleteFile(trackerDatabasePath());
+        FileSystem::deleteEmptyDirectory(m_storageDirectoryPath);
 #endif
     }
 
@@ -637,12 +637,12 @@ long long StorageTracker::diskUsageForOrigin(SecurityOrigin* origin)
 
     LockHolder locker(m_databaseMutex);
 
-    String path = databasePathForOrigin(SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
+    String path = databasePathForOrigin(origin->data().databaseIdentifier());
     if (path.isEmpty())
         return 0;
 
     long long size;
-    return getFileSize(path, size) ? size : 0;
+    return FileSystem::getFileSize(path, size) ? size : 0;
 }
 
 } // namespace WebCore

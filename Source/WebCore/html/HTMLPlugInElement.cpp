@@ -50,6 +50,7 @@
 #include "ShadowRoot.h"
 #include "SubframeLoader.h"
 #include "Widget.h"
+#include <wtf/IsoMallocInlines.h>
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 #include "npruntime_impl.h"
@@ -61,6 +62,8 @@
 #endif
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLPlugInElement);
 
 using namespace HTMLNames;
 
@@ -98,7 +101,7 @@ void HTMLPlugInElement::willDetachRenderers()
     m_instance = nullptr;
 
     if (m_isCapturingMouseEvents) {
-        if (Frame* frame = document().frame())
+        if (RefPtr<Frame> frame = document().frame())
             frame->eventHandler().setCapturingMouseEventsElement(nullptr);
         m_isCapturingMouseEvents = false;
     }
@@ -111,7 +114,7 @@ void HTMLPlugInElement::resetInstance()
 
 JSC::Bindings::Instance* HTMLPlugInElement::bindingsInstance()
 {
-    auto* frame = document().frame();
+    auto frame = makeRefPtr(document().frame());
     if (!frame)
         return nullptr;
 
@@ -119,8 +122,8 @@ JSC::Bindings::Instance* HTMLPlugInElement::bindingsInstance()
     // the cached allocated Bindings::Instance.  Not supporting this edge-case is OK.
 
     if (!m_instance) {
-        if (auto* widget = pluginWidget())
-            m_instance = frame->script().createScriptInstanceForWidget(widget);
+        if (auto widget = makeRefPtr(pluginWidget()))
+            m_instance = frame->script().createScriptInstanceForWidget(widget.get());
     }
     return m_instance.get();
 }
@@ -213,20 +216,20 @@ void HTMLPlugInElement::defaultEventHandler(Event& event)
         RefPtr<Widget> widget = downcast<RenderWidget>(*renderer).widget();
         if (!widget)
             return;
-        widget->handleEvent(&event);
+        widget->handleEvent(event);
         if (event.defaultHandled())
             return;
     }
     HTMLFrameOwnerElement::defaultEventHandler(event);
 }
 
-bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent&) const
+bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent*) const
 {
     // FIXME: Why is this check needed?
     if (!document().page())
         return false;
 
-    Widget* widget = pluginWidget();
+    RefPtr<Widget> widget = pluginWidget();
     if (!is<PluginViewBase>(widget))
         return false;
 
@@ -241,7 +244,7 @@ bool HTMLPlugInElement::isPluginElement() const
 bool HTMLPlugInElement::isUserObservable() const
 {
     // No widget - can't be anything to see or hear here.
-    Widget* widget = pluginWidget(PluginLoadingPolicy::DoNotLoad);
+    RefPtr<Widget> widget = pluginWidget(PluginLoadingPolicy::DoNotLoad);
     if (!is<PluginViewBase>(widget))
         return false;
 
@@ -286,19 +289,23 @@ void HTMLPlugInElement::swapRendererTimerFired()
 
 void HTMLPlugInElement::setDisplayState(DisplayState state)
 {
+    if (state == m_displayState)
+        return;
+
     m_displayState = state;
     
-    if ((state == DisplayingSnapshot || displayState() == PreparingPluginReplacement) && !m_swapRendererTimer.isActive())
+    m_swapRendererTimer.stop();
+    if (state == DisplayingSnapshot || displayState() == PreparingPluginReplacement)
         m_swapRendererTimer.startOneShot(0_s);
 }
 
-void HTMLPlugInElement::didAddUserAgentShadowRoot(ShadowRoot* root)
+void HTMLPlugInElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 {
     if (!m_pluginReplacement || !document().page() || displayState() != PreparingPluginReplacement)
         return;
     
-    root->setResetStyleInheritance(true);
-    if (m_pluginReplacement->installReplacement(*root)) {
+    root.setResetStyleInheritance(true);
+    if (m_pluginReplacement->installReplacement(root)) {
         setDisplayState(DisplayingPluginReplacement);
         invalidateStyleAndRenderersForSubtree();
     }
@@ -399,13 +406,16 @@ JSC::JSObject* HTMLPlugInElement::scriptObjectForPluginReplacement()
     return nullptr;
 }
 
-// Return whether or not the replacement content for blocked plugins is accessible to the user.
-bool HTMLPlugInElement::isReplacementObscured(const String& unavailabilityDescription)
+bool HTMLPlugInElement::setReplacement(RenderEmbeddedObject::PluginUnavailabilityReason reason, const String& unavailabilityDescription)
 {
     if (!is<RenderEmbeddedObject>(renderer()))
         return false;
+
+    if (reason == RenderEmbeddedObject::UnsupportedPlugin)
+        document().addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "Tried to use an unsupported plug-in."_s);
+
     Ref<HTMLPlugInElement> protectedThis(*this);
-    downcast<RenderEmbeddedObject>(*renderer()).setPluginUnavailabilityReasonWithDescription(RenderEmbeddedObject::InsecurePluginVersion, unavailabilityDescription);
+    downcast<RenderEmbeddedObject>(*renderer()).setPluginUnavailabilityReasonWithDescription(reason, unavailabilityDescription);
     bool replacementIsObscured = isReplacementObscured();
     // hittest in isReplacementObscured() method could destroy the renderer. Let's refetch it.
     if (is<RenderEmbeddedObject>(renderer()))

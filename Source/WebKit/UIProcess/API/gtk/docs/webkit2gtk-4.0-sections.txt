@@ -96,9 +96,11 @@ WebKitUserScriptInjectionTime
 webkit_user_style_sheet_ref
 webkit_user_style_sheet_unref
 webkit_user_style_sheet_new
+webkit_user_style_sheet_new_for_world
 webkit_user_script_ref
 webkit_user_script_unref
 webkit_user_script_new
+webkit_user_script_new_for_world
 
 <SUBSECTION Standard>
 WEBKIT_TYPE_USER_STYLE_SHEET
@@ -120,6 +122,8 @@ webkit_user_content_manager_add_script
 webkit_user_content_manager_remove_all_scripts
 webkit_user_content_manager_register_script_message_handler
 webkit_user_content_manager_unregister_script_message_handler
+webkit_user_content_manager_register_script_message_handler_in_world
+webkit_user_content_manager_unregister_script_message_handler_in_world
 
 <SUBSECTION Standard>
 WEBKIT_IS_USER_CONTENT_MANAGER
@@ -145,6 +149,7 @@ WebKitSaveMode
 WebKitInsecureContentEvent
 WebKitSnapshotOptions
 WebKitSnapshotRegion
+WebKitWebProcessTerminationReason
 
 <SUBSECTION Editing Commands>
 WEBKIT_EDITING_COMMAND_CUT
@@ -206,6 +211,8 @@ webkit_web_view_get_inspector
 webkit_web_view_get_javascript_global_context
 webkit_web_view_run_javascript
 webkit_web_view_run_javascript_finish
+webkit_web_view_run_javascript_in_world
+webkit_web_view_run_javascript_in_world_finish
 webkit_web_view_run_javascript_from_gresource
 webkit_web_view_run_javascript_from_gresource_finish
 webkit_web_view_can_show_mime_type
@@ -231,6 +238,7 @@ webkit_javascript_result_ref
 webkit_javascript_result_unref
 webkit_javascript_result_get_global_context
 webkit_javascript_result_get_value
+webkit_javascript_result_get_js_value
 
 <SUBSECTION WebKitScriptDialog>
 WebKitScriptDialog
@@ -462,12 +470,18 @@ webkit_settings_get_enable_spatial_navigation
 webkit_settings_set_enable_spatial_navigation
 webkit_settings_get_enable_mediasource
 webkit_settings_set_enable_mediasource
+webkit_settings_get_enable_encrypted_media
+webkit_settings_set_enable_encrypted_media
+webkit_settings_get_enable_media_capabilities
+webkit_settings_set_enable_media_capabilities
 webkit_settings_get_allow_file_access_from_file_urls
 webkit_settings_set_allow_file_access_from_file_urls
 webkit_settings_get_allow_universal_access_from_file_urls
 webkit_settings_set_allow_universal_access_from_file_urls
 webkit_settings_get_hardware_acceleration_policy
 webkit_settings_set_hardware_acceleration_policy
+webkit_settings_font_size_to_points
+webkit_settings_font_size_to_pixels
 
 <SUBSECTION Standard>
 WebKitSettingsClass
@@ -649,6 +663,7 @@ webkit_navigation_action_get_mouse_button
 webkit_navigation_action_get_modifiers
 webkit_navigation_action_get_request
 webkit_navigation_action_is_user_gesture
+webkit_navigation_action_is_redirect
 
 <SUBSECTION Standard>
 WEBKIT_TYPE_NAVIGATION_ACTION
@@ -796,12 +811,12 @@ webkit_hit_test_result_context_is_image
 webkit_hit_test_result_context_is_media
 webkit_hit_test_result_context_is_editable
 webkit_hit_test_result_context_is_selection
+webkit_hit_test_result_context_is_scrollbar
 webkit_hit_test_result_get_link_uri
 webkit_hit_test_result_get_link_title
 webkit_hit_test_result_get_link_label
 webkit_hit_test_result_get_image_uri
 webkit_hit_test_result_get_media_uri
-webkit_hit_test_result_context_is_scrollbar
 
 <SUBSECTION Standard>
 WebKitHitTestResultClass
@@ -822,6 +837,11 @@ webkit_hit_test_result_get_type
 WebKitEditorState
 WebKitEditorTypingAttributes
 webkit_editor_state_get_typing_attributes
+webkit_editor_state_is_cut_available
+webkit_editor_state_is_copy_available
+webkit_editor_state_is_paste_available
+webkit_editor_state_is_undo_available
+webkit_editor_state_is_redo_available
 
 <SUBSECTION Standard>
 WebKitEditorStateClass
@@ -998,6 +1018,12 @@ webkit_cookie_manager_get_accept_policy
 webkit_cookie_manager_get_accept_policy_finish
 webkit_cookie_manager_get_domains_with_cookies
 webkit_cookie_manager_get_domains_with_cookies_finish
+webkit_cookie_manager_add_cookie
+webkit_cookie_manager_add_cookie_finish
+webkit_cookie_manager_get_cookies
+webkit_cookie_manager_get_cookies_finish
+webkit_cookie_manager_delete_cookie
+webkit_cookie_manager_delete_cookie_finish
 webkit_cookie_manager_delete_cookies_for_domain
 webkit_cookie_manager_delete_all_cookies
 
@@ -1221,6 +1247,7 @@ webkit_option_menu_item_get_type
 <FILE>WebKitFormSubmissionRequest</FILE>
 WebKitFormSubmissionRequest
 webkit_form_submission_request_get_text_fields
+webkit_form_submission_request_list_text_fields
 webkit_form_submission_request_submit
 
 <SUBSECTION Standard>
@@ -1358,6 +1385,8 @@ WEBKIT_TYPE_NETWORK_NETWORK_PROXY_SETTINGS
 <FILE>WebKitAutomationSession</FILE>
 WebKitAutomationSession
 webkit_automation_session_get_id
+webkit_automation_session_set_application_info
+webkit_automation_session_get_application_info
 
 <SUBSECTION Private>
 WebKitAutomationSessionPrivate
@@ -1371,6 +1400,24 @@ WEBKIT_IS_AUTOMATION_SESSION
 WEBKIT_AUTOMATION_SESSION_CLASS
 WEBKIT_IS_AUTOMATION_SESSION_CLASS
 WEBKIT_AUTOMATION_SESSION_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>WebKitApplicationInfo</FILE>
+WebKitApplicationInfo
+webkit_application_info_new
+webkit_application_info_ref
+webkit_application_info_unref
+webkit_application_info_set_name
+webkit_application_info_get_name
+webkit_application_info_set_version
+webkit_application_info_get_version
+
+<SUBSECTION Private>
+webkit_application_info_get_type
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_APPLICATION_INFO
 </SECTION>
 
 <SECTION>
@@ -1397,6 +1444,7 @@ webkit_web_extension_get_type
 <SECTION>
 <FILE>WebKitWebPage</FILE>
 WebKitWebPage
+WebKitFormSubmissionStep
 webkit_web_page_get_dom_document
 webkit_web_page_get_id
 webkit_web_page_get_uri
@@ -1411,10 +1459,12 @@ WEBKIT_IS_WEB_PAGE
 WEBKIT_WEB_PAGE_CLASS
 WEBKIT_IS_WEB_PAGE_CLASS
 WEBKIT_WEB_PAGE_GET_CLASS
+WEBKIT_TYPE_FORM_SUBMISSION_STEP
 
 <SUBSECTION Private>
 WebKitWebPagePrivate
 webkit_web_page_get_type
+webkit_form_submission_step_get_type
 </SECTION>
 
 <SECTION>
@@ -1443,6 +1493,10 @@ webkit_frame_is_main_frame
 webkit_frame_get_uri
 webkit_frame_get_javascript_global_context
 webkit_frame_get_javascript_context_for_script_world
+webkit_frame_get_js_context
+webkit_frame_get_js_context_for_script_world
+webkit_frame_get_js_value_for_dom_object
+webkit_frame_get_js_value_for_dom_object_in_script_world
 
 <SUBSECTION Standard>
 WebKitFrameClass
@@ -1463,6 +1517,8 @@ webkit_frame_get_type
 WebKitScriptWorld
 webkit_script_world_get_default
 webkit_script_world_new
+webkit_script_world_new_with_name
+webkit_script_world_get_name
 
 <SUBSECTION Standard>
 WebKitScriptWorldClass
@@ -1512,9 +1568,13 @@ webkit_console_message_get_source_id
 
 <SUBSECTION Standard>
 WEBKIT_TYPE_CONSOLE_MESSAGE
+WEBKIT_TYPE_CONSOLE_MESSAGE_LEVEL
+WEBKIT_TYPE_CONSOLE_MESSAGE_SOURCE
 
 <SUBSECTION Private>
 webkit_console_message_get_type
+webkit_console_message_level_get_type
+webkit_console_message_source_get_type
 </SECTION>
 
 <SECTION>

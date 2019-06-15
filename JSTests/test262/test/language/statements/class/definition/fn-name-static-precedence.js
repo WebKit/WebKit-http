@@ -1,11 +1,11 @@
-// Copyright (C) Copyright 2015 the V8 project authors. All rights reserved.
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
 es6id: 14.5.15
 description: >
     Function `name` attribute not inferred in presence of static `name` method
-info: >
+info: |
     ClassDeclaration : class BindingIdentifier ClassTail
 
     [...]
@@ -13,7 +13,7 @@ info: >
     5. ReturnIfAbrupt(hasNameProperty).
     6. If hasNameProperty is false, then perform SetFunctionName(value,
        className).
-includes: [propertyHelper.js]
+features: [generators]
 ---*/
 
 class A {
@@ -36,15 +36,18 @@ class B {
 
 assert.sameValue(typeof B.name, 'function');
 
+var isDefined = false;
 class C {
   static get name() {
+    if (isDefined) {
+      return 'pass';
+    }
     $ERROR('Static `get` accessor should not be executed during definition');
   }
 }
 
-assert.throws(Test262Error, function() {
-  C.name;
-});
+isDefined = true;
+assert.sameValue(C.name, 'pass');
 
 class D {
   static set name(_) {

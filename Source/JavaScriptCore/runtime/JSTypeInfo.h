@@ -35,13 +35,17 @@ namespace JSC {
 
 class LLIntOffsetsExtractor;
 
+// Inline flags.
+
 static const unsigned MasqueradesAsUndefined = 1; // WebCore uses MasqueradesAsUndefined to make document.all undetectable.
 static const unsigned ImplementsDefaultHasInstance = 1 << 1;
-static const unsigned TypeOfShouldCallGetCallData = 1 << 2; // Need this flag if you override getCallData() and you want typeof to use this to determine if it should say "function". Currently we always set this flag when we override getCallData().
+static const unsigned OverridesGetCallData = 1 << 2; // Need this flag if you implement [[Callable]] interface, which means overriding getCallData. The object may not be callable since getCallData can say it is not callable.
 static const unsigned OverridesGetOwnPropertySlot = 1 << 3;
-static const unsigned StructureIsImmortal = 1 << 5;
-static const unsigned OverridesToThis = 1 << 6; // If this is false then this returns something other than 'this'. Non-object cells that are visible to JS have this set as do some exotic objects.
-static const unsigned HasStaticPropertyTable = 1 << 7;
+static const unsigned OverridesToThis = 1 << 4; // If this is false then this returns something other than 'this'. Non-object cells that are visible to JS have this set as do some exotic objects.
+static const unsigned HasStaticPropertyTable = 1 << 5;
+static const unsigned TypeInfoMayBePrototype = 1 << 7; // Unlike other inline flags, this will only be set on the cell itself and will not be set on the Structure.
+
+// Out of line flags.
 
 static const unsigned ImplementsHasInstance = 1 << 8;
 static const unsigned OverridesGetPropertyNames = 1 << 9;
@@ -51,6 +55,7 @@ static const unsigned NewImpurePropertyFiresWatchpoints = 1 << 12;
 static const unsigned IsImmutablePrototypeExoticObject = 1 << 13;
 static const unsigned GetOwnPropertySlotIsImpureForPropertyAbsence = 1 << 14;
 static const unsigned InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero = 1 << 15;
+static const unsigned StructureIsImmortal = 1 << 16;
 
 class TypeInfo {
 public:
@@ -80,12 +85,13 @@ public:
     bool masqueradesAsUndefined() const { return isSetOnFlags1(MasqueradesAsUndefined); }
     bool implementsHasInstance() const { return isSetOnFlags2(ImplementsHasInstance); }
     bool implementsDefaultHasInstance() const { return isSetOnFlags1(ImplementsDefaultHasInstance); }
-    bool typeOfShouldCallGetCallData() const { return isSetOnFlags1(TypeOfShouldCallGetCallData); }
+    bool overridesGetCallData() const { return isSetOnFlags1(OverridesGetCallData); }
     bool overridesGetOwnPropertySlot() const { return overridesGetOwnPropertySlot(inlineTypeFlags()); }
     static bool overridesGetOwnPropertySlot(InlineTypeFlags flags) { return flags & OverridesGetOwnPropertySlot; }
     static bool hasStaticPropertyTable(InlineTypeFlags flags) { return flags & HasStaticPropertyTable; }
-    bool structureIsImmortal() const { return isSetOnFlags1(StructureIsImmortal); }
+    static bool mayBePrototype(InlineTypeFlags flags) { return flags & TypeInfoMayBePrototype; }
     bool overridesToThis() const { return isSetOnFlags1(OverridesToThis); }
+    bool structureIsImmortal() const { return isSetOnFlags2(StructureIsImmortal); }
     bool overridesGetPropertyNames() const { return isSetOnFlags2(OverridesGetPropertyNames); }
     bool prohibitsPropertyCaching() const { return isSetOnFlags2(ProhibitsPropertyCaching); }
     bool getOwnPropertySlotIsImpure() const { return isSetOnFlags2(GetOwnPropertySlotIsImpure); }
@@ -109,6 +115,12 @@ public:
     static ptrdiff_t typeOffset()
     {
         return OBJECT_OFFSETOF(TypeInfo, m_type);
+    }
+
+    // Since the Structure doesn't track TypeInfoMayBePrototype, we need to make sure we copy it.
+    static InlineTypeFlags mergeInlineTypeFlags(InlineTypeFlags structureFlags, InlineTypeFlags oldCellFlags)
+    {
+        return structureFlags | (oldCellFlags & static_cast<InlineTypeFlags>(TypeInfoMayBePrototype));
     }
 
     InlineTypeFlags inlineTypeFlags() const { return m_flags; }

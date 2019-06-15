@@ -32,6 +32,7 @@ class RenderTextControlMultiLine;
 class VisibleSelection;
 
 class HTMLTextAreaElement final : public HTMLTextFormControlElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLTextAreaElement);
 public:
     static Ref<HTMLTextAreaElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
@@ -53,8 +54,8 @@ public:
     bool tooLong() const final;
     bool isValidValue(const String&) const;
     
-    TextControlInnerTextElement* innerTextElement() const final;
-    RenderStyle createInnerTextStyle(const RenderStyle&) const final;
+    RefPtr<TextControlInnerTextElement> innerTextElement() const final;
+    RenderStyle createInnerTextStyle(const RenderStyle&) final;
     void copyNonAttributePropertiesFromElement(const Element&) final;
 
     void rendererWillBeDestroyed();
@@ -71,7 +72,7 @@ private:
 
     enum WrapMethod { NoWrap, SoftWrap, HardWrap };
 
-    void didAddUserAgentShadowRoot(ShadowRoot*) final;
+    void didAddUserAgentShadowRoot(ShadowRoot&) final;
 
     void maxLengthAttributeChanged(const AtomicString& newValue);
     void minLengthAttributeChanged(const AtomicString& newValue);
@@ -102,18 +103,18 @@ private:
     FormControlState saveFormControlState() const final;
     void restoreFormControlState(const FormControlState&) final;
 
-    bool isTextFormControl() const final { return true; }
+    bool isTextField() const final { return true; }
 
     void childrenChanged(const ChildChange&) final;
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
     void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
-    bool appendFormData(FormDataList&, bool) final;
+    bool appendFormData(DOMFormData&, bool) final;
     void reset() final;
     bool hasCustomFocusLogic() const final;
     bool isMouseFocusable() const final;
-    bool isKeyboardFocusable(KeyboardEvent&) const final;
+    bool isKeyboardFocusable(KeyboardEvent*) const final;
     void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode) final;
 
     void accessKeyAction(bool sendMouseEvents) final;

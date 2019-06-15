@@ -45,9 +45,7 @@ public:
         IgnoreMailBlockquote = 1 << 6,
     };
 
-    typedef unsigned CommandOptions;
-
-    static Ref<ReplaceSelectionCommand> create(Document& document, RefPtr<DocumentFragment>&& fragment, CommandOptions options, EditAction editingAction = EditActionInsert)
+    static Ref<ReplaceSelectionCommand> create(Document& document, RefPtr<DocumentFragment>&& fragment, OptionSet<CommandOption> options, EditAction editingAction = EditAction::Insert)
     {
         return adoptRef(*new ReplaceSelectionCommand(document, WTFMove(fragment), options, editingAction));
     }
@@ -55,7 +53,7 @@ public:
     VisibleSelection visibleSelectionForInsertedText() const { return m_visibleSelectionForInsertedText; }
 
 private:
-    ReplaceSelectionCommand(Document&, RefPtr<DocumentFragment>&&, CommandOptions, EditAction);
+    ReplaceSelectionCommand(Document&, RefPtr<DocumentFragment>&&, OptionSet<CommandOption>, EditAction);
 
     String inputEventData() const final;
     RefPtr<DataTransfer> inputEventDataTransfer() const final;
@@ -69,15 +67,17 @@ private:
         void willRemoveNode(Node*);
         void didReplaceNode(Node*, Node* newNode);
 
+        bool isEmpty() { return !m_firstNodeInserted; }
         Node* firstNodeInserted() const { return m_firstNodeInserted.get(); }
-        Node* lastLeafInserted() const { return m_lastNodeInserted->lastDescendant(); }
+        Node* lastLeafInserted() const
+        {
+            ASSERT(m_lastNodeInserted);
+            return m_lastNodeInserted->lastDescendant();
+        }
         Node* pastLastLeaf() const
         {
-            if (m_lastNodeInserted) {
-                ASSERT(lastLeafInserted());
-                return NodeTraversal::next(*lastLeafInserted());
-            }
-            return nullptr;
+            ASSERT(m_lastNodeInserted);
+            return NodeTraversal::next(*lastLeafInserted());
         }
 
     private:

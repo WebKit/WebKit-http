@@ -59,14 +59,13 @@
             return;                                             \
     } while (0);
 
-#define CONVERT_NSNULL_TO_NIL(expr)          \
-    do {                                     \
-        if ([expr isEqual:[NSNull null]])    \
-            expr = nil;                      \
-    } while (0);
-
-
 namespace Inspector {
+
+static void convertNSNullToNil(__strong NSNumber *& number)
+{
+    if ([number isEqual:[NSNull null]])
+        number = nil;
+}
 
 static bool canAccessWebInspectorMachPort()
 {
@@ -392,6 +391,11 @@ RetainPtr<NSDictionary> RemoteInspector::listingForInspectionTarget(const Remote
         [listing setObject:target.name() forKey:WIRTitleKey];
         [listing setObject:WIRTypeJavaScript forKey:WIRTypeKey];
         break;
+    case RemoteInspectionTarget::Type::ServiceWorker:
+        [listing setObject:target.url() forKey:WIRURLKey];
+        [listing setObject:target.name() forKey:WIRTitleKey];
+        [listing setObject:WIRTypeServiceWorker forKey:WIRTypeKey];
+        break;
     case RemoteInspectionTarget::Type::Web:
         [listing setObject:target.url() forKey:WIRURLKey];
         [listing setObject:target.name() forKey:WIRTitleKey];
@@ -422,6 +426,10 @@ RetainPtr<NSDictionary> RemoteInspector::listingForAutomationTarget(const Remote
     [listing setObject:target.name() forKey:WIRSessionIdentifierKey];
     [listing setObject:WIRTypeAutomation forKey:WIRTypeKey];
     [listing setObject:@(target.isPaired()) forKey:WIRAutomationTargetIsPairedKey];
+    if (m_clientCapabilities) {
+        [listing setObject:m_clientCapabilities->browserName forKey:WIRAutomationTargetNameKey];
+        [listing setObject:m_clientCapabilities->browserVersion forKey:WIRAutomationTargetVersionKey];
+    }
 
     if (auto connectionToTarget = m_targetConnectionMap.get(target.targetIdentifier()))
         [listing setObject:connectionToTarget->connectionIdentifier() forKey:WIRConnectionIdentifierKey];
@@ -482,7 +490,7 @@ void RemoteInspector::receivedSetupMessage(NSDictionary *userInfo)
     BAIL_IF_UNEXPECTED_TYPE(sender, [NSString class]);
 
     NSNumber *automaticallyPauseNumber = userInfo[WIRAutomaticallyPause];
-    CONVERT_NSNULL_TO_NIL(automaticallyPauseNumber);
+    convertNSNullToNil(automaticallyPauseNumber);
     BAIL_IF_UNEXPECTED_TYPE_ALLOWING_NIL(automaticallyPauseNumber, [NSNumber class]);
     BOOL automaticallyPause = automaticallyPauseNumber.boolValue;
 
@@ -622,7 +630,7 @@ void RemoteInspector::receivedProxyApplicationSetupMessage(NSDictionary *)
 
     m_relayConnection->sendMessage(WIRProxyApplicationSetupResponseMessage, @{
         WIRProxyApplicationParentPIDKey: @(m_parentProcessIdentifier),
-        WIRProxyApplicationParentAuditDataKey: (NSData *)m_parentProcessAuditData.get(),
+        WIRProxyApplicationParentAuditDataKey: (__bridge NSData *)m_parentProcessAuditData.get(),
     });
 }
 
@@ -678,13 +686,27 @@ void RemoteInspector::receivedAutomationSessionRequestMessage(NSDictionary *user
     NSString *suggestedSessionIdentifier = userInfo[WIRSessionIdentifierKey];
     BAIL_IF_UNEXPECTED_TYPE(suggestedSessionIdentifier, [NSString class]);
 
+    NSDictionary *forwardedCapabilities = userInfo[WIRSessionCapabilitiesKey];
+    BAIL_IF_UNEXPECTED_TYPE_ALLOWING_NIL(forwardedCapabilities, [NSDictionary class]);
+
+    Client::SessionCapabilities sessionCapabilities;
+    if (NSNumber *value = forwardedCapabilities[WIRAllowInsecureMediaCaptureCapabilityKey]) {
+        if ([value isKindOfClass:[NSNumber class]])
+            sessionCapabilities.allowInsecureMediaCapture = value.boolValue;
+    }
+
+    if (NSNumber *value = forwardedCapabilities[WIRSuppressICECandidateFilteringCapabilityKey]) {
+        if ([value isKindOfClass:[NSNumber class]])
+            sessionCapabilities.suppressICECandidateFiltering = value.boolValue;
+    }
+
     if (!m_client)
         return;
 
     if (!m_clientCapabilities || !m_clientCapabilities->remoteAutomationAllowed)
         return;
 
-    m_client->requestAutomationSession(suggestedSessionIdentifier);
+    m_client->requestAutomationSession(suggestedSessionIdentifier, sessionCapabilities);
 }
 
 } // namespace Inspector

@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The MV of StrDecimalLiteral::: + StrUnsignedDecimalLiteral is the MV of
     StrUnsignedDecimalLiteral
 es5id: 9.3.1_A4_T1
@@ -14,7 +14,7 @@ if (Number("+0") !== Number("0")) {
   $ERROR('#1.1: Number("+0") === Number("0")');
 } else {
   // CHECK#2
-  if (1/Number("+0") !== 1/Number("0")) {
+  if (1 / Number("+0") !== 1 / Number("0")) {
     $ERROR('#2.2: 1/Number("+0") === 1/Number("0")');
   }
 }

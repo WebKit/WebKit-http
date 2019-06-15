@@ -31,7 +31,6 @@
 #include "DatabaseContext.h"
 #include "DatabaseTask.h"
 #include "DatabaseTracker.h"
-#include "ExceptionCode.h"
 #include "InspectorInstrumentation.h"
 #include "Logging.h"
 #include "PlatformStrategies.h"
@@ -78,6 +77,7 @@ DatabaseManager& DatabaseManager::singleton()
 
 void DatabaseManager::initialize(const String& databasePath)
 {
+    platformInitialize(databasePath);
     DatabaseTracker::initializeTracker(databasePath);
 }
 
@@ -124,7 +124,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabaseBackend(ScriptExecutionC
     auto backend = tryToOpenDatabaseBackend(context, name, expectedVersion, displayName, estimatedSize, setVersionInNewDatabase, FirstTryToOpenDatabase);
 
     if (backend.hasException()) {
-        if (backend.exception().code() == QUOTA_EXCEEDED_ERR) {
+        if (backend.exception().code() == QuotaExceededError) {
             // Notify the client that we've exceeded the database quota.
             // The client may want to increase the quota, and we'll give it
             // one more try after if that is the case.
@@ -138,7 +138,7 @@ ExceptionOr<Ref<Database>> DatabaseManager::openDatabaseBackend(ScriptExecutionC
     }
 
     if (backend.hasException()) {
-        if (backend.exception().code() == INVALID_STATE_ERR)
+        if (backend.exception().code() == InvalidStateError)
             logErrorMessage(context, backend.exception().message());
         else
             logOpenDatabaseError(context, name);
@@ -153,12 +153,12 @@ ExceptionOr<Ref<Database>> DatabaseManager::tryToOpenDatabaseBackend(ScriptExecu
     if (is<Document>(&scriptContext)) {
         auto* page = downcast<Document>(scriptContext).page();
         if (!page || page->usesEphemeralSession())
-            return Exception { SECURITY_ERR };
+            return Exception { SecurityError };
     }
 
     if (scriptContext.isWorkerGlobalScope()) {
         ASSERT_NOT_REACHED();
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
     }
 
     auto backendContext = this->databaseContext(scriptContext);
@@ -249,7 +249,7 @@ String DatabaseManager::fullPathForDatabase(SecurityOrigin& origin, const String
                 return String();
         }
     }
-    return DatabaseTracker::singleton().fullPathForDatabase(SecurityOriginData::fromSecurityOrigin(origin), name, createIfDoesNotExist);
+    return DatabaseTracker::singleton().fullPathForDatabase(origin.data(), name, createIfDoesNotExist);
 }
 
 DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, SecurityOrigin& origin)
@@ -258,18 +258,25 @@ DatabaseDetails DatabaseManager::detailsForNameAndOrigin(const String& name, Sec
         std::lock_guard<Lock> lock { m_proposedDatabasesMutex };
         for (auto* proposedDatabase : m_proposedDatabases) {
             if (proposedDatabase->details().name() == name && proposedDatabase->origin().equal(&origin)) {
-                ASSERT(proposedDatabase->details().threadID() == std::this_thread::get_id() || isMainThread());
+                ASSERT(&proposedDatabase->details().thread() == &Thread::current() || isMainThread());
                 return proposedDatabase->details();
             }
         }
     }
 
-    return DatabaseTracker::singleton().detailsForNameAndOrigin(name, SecurityOriginData::fromSecurityOrigin(origin));
+    return DatabaseTracker::singleton().detailsForNameAndOrigin(name, origin.data());
 }
 
 void DatabaseManager::logErrorMessage(ScriptExecutionContext& context, const String& message)
 {
     context.addConsoleMessage(MessageSource::Storage, MessageLevel::Error, message);
 }
+
+#if !PLATFORM(COCOA)
+void DatabaseManager::platformInitialize(const String& databasePath)
+{
+    UNUSED_PARAM(databasePath);
+}
+#endif
 
 } // namespace WebCore

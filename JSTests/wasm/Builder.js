@@ -44,7 +44,7 @@ const _unknownSectionId = 0;
 const _normalizeFunctionSignature = (params, ret) => {
     assert.isArray(params);
     for (const p of params)
-        assert.truthy(WASM.isValidValueType(p), `Type parameter ${p} needs a valid value type`);
+        assert.truthy(WASM.isValidValueType(p) || p === "void", `Type parameter ${p} needs a valid value type`);
     if (typeof(ret) === "undefined")
         ret = "void";
     assert.isNotArray(ret, `Multiple return values not supported by WebAssembly yet`);
@@ -575,7 +575,7 @@ export default class Builder {
 
             case "Element":
                 this[section] = function(...args) {
-                    if (args.length !== 0)
+                    if (args.length !== 0 && this._checked)
                         throw new Error("You're doing it wrong. This element does not take arguments. You must chain the call with another Element()");
 
                     const s = this._addSection(section);

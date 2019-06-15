@@ -5,7 +5,7 @@
 es6id: B.2.3.1
 description: >
   String.prototype.substr.name is "substr".
-info: >
+info: |
   String.prototype.substr (start, length)
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.substr.name, "substr");
-
-verifyNotEnumerable(String.prototype.substr, "name");
-verifyNotWritable(String.prototype.substr, "name");
-verifyConfigurable(String.prototype.substr, "name");
+verifyProperty(String.prototype.substr, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "substr"
+});

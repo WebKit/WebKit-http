@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: Returns abrupt from comparefn
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   When the TypedArray SortCompare abstract operation is called with two
@@ -22,6 +22,7 @@ info: >
   - If an abrupt completion is returned from any of these operations, it is
   immediately returned as the value of this function.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

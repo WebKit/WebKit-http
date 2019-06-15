@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The value of the internal [[Prototype]] property of the Date
     constructor is the Function prototype object
+esid: sec-date-constructor
 es5id: 15.9.4_A4
 description: Checking Function.prototype.isPrototypeOf(Date)
 ---*/

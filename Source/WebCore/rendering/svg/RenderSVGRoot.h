@@ -33,6 +33,7 @@ class RenderSVGResourceContainer;
 class SVGSVGElement;
 
 class RenderSVGRoot final : public RenderReplaced {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGRoot);
 public:
     RenderSVGRoot(SVGSVGElement&, RenderStyle&&);
     virtual ~RenderSVGRoot();
@@ -81,8 +82,6 @@ private:
     void willBeRemovedFromTree() override;
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    void addChild(RenderObject* child, RenderObject* beforeChild = 0) override;
-    void removeChild(RenderObject&) override;
 
     const AffineTransform& localToParentTransform() const override;
 

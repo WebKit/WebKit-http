@@ -46,9 +46,12 @@
 #include "SVGURIReference.h"
 #include "TransformState.h"
 #include "VisiblePosition.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGText);
 
 RenderSVGText::RenderSVGText(SVGTextElement& element, RenderStyle&& style)
     : RenderSVGBlock(element, WTFMove(style))
@@ -385,7 +388,7 @@ void RenderSVGText::layout()
     ASSERT(!simplifiedLayout());
     ASSERT(!scrollsOverflow());
     ASSERT(!hasControlClip());
-    ASSERT(!multiColumnFlowThread());
+    ASSERT(!multiColumnFlow());
     ASSERT(!positionedObjects());
     ASSERT(!m_overflow);
     ASSERT(!isAnonymousBlock());
@@ -429,7 +432,7 @@ std::unique_ptr<RootInlineBox> RenderSVGText::createRootInlineBox()
 bool RenderSVGText::nodeAtFloatPoint(const HitTestRequest& request, HitTestResult& result, const FloatPoint& pointInParent, HitTestAction hitTestAction)
 {
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_TEXT_HITTESTING, request, style().pointerEvents());
-    bool isVisible = (style().visibility() == VISIBLE);
+    bool isVisible = (style().visibility() == Visibility::Visible);
     if (isVisible || !hitRules.requireVisible) {
         if ((hitRules.canHitStroke && (style().svgStyle().hasStroke() || !hitRules.requireStroke))
             || (hitRules.canHitFill && (style().svgStyle().hasFill() || !hitRules.requireFill))) {
@@ -452,7 +455,7 @@ bool RenderSVGText::nodeAtPoint(const HitTestRequest&, HitTestResult&, const Hit
     return false;
 }
 
-VisiblePosition RenderSVGText::positionForPoint(const LayoutPoint& pointInContents, const RenderRegion* region)
+VisiblePosition RenderSVGText::positionForPoint(const LayoutPoint& pointInContents, const RenderFragmentContainer* fragment)
 {
     RootInlineBox* rootBox = firstRootBox();
     if (!rootBox)
@@ -465,7 +468,7 @@ VisiblePosition RenderSVGText::positionForPoint(const LayoutPoint& pointInConten
     if (!closestBox)
         return createVisiblePosition(0, DOWNSTREAM);
 
-    return closestBox->renderer().positionForPoint(LayoutPoint(pointInContents.x(), closestBox->y()), region);
+    return closestBox->renderer().positionForPoint(LayoutPoint(pointInContents.x(), closestBox->y()), fragment);
 }
 
 void RenderSVGText::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
@@ -478,8 +481,7 @@ void RenderSVGText::paint(PaintInfo& paintInfo, const LayoutPoint&)
     if (paintInfo.context().paintingDisabled())
         return;
 
-    if (paintInfo.phase != PaintPhaseForeground
-     && paintInfo.phase != PaintPhaseSelection)
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection)
          return;
 
     PaintInfo blockInfo(paintInfo);
@@ -488,8 +490,8 @@ void RenderSVGText::paint(PaintInfo& paintInfo, const LayoutPoint&)
     RenderBlock::paint(blockInfo, LayoutPoint());
 
     // Paint the outlines, if any
-    if (paintInfo.phase == PaintPhaseForeground) {
-        blockInfo.phase = PaintPhaseSelfOutline;
+    if (paintInfo.phase == PaintPhase::Foreground) {
+        blockInfo.phase = PaintPhase::SelfOutline;
         RenderBlock::paint(blockInfo, LayoutPoint());
     }
 }
@@ -517,35 +519,11 @@ FloatRect RenderSVGText::repaintRectInLocalCoordinates() const
     return repaintRect;
 }
 
-void RenderSVGText::addChild(RenderObject* child, RenderObject* beforeChild)
-{
-    RenderSVGBlock::addChild(child, beforeChild);
-
-    SVGResourcesCache::clientWasAddedToTree(*child);
-    subtreeChildWasAdded(child);
-}
-
-void RenderSVGText::removeChild(RenderObject& child)
-{
-    SVGResourcesCache::clientWillBeRemovedFromTree(child);
-
-    Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
-    subtreeChildWillBeRemoved(&child, affectedAttributes);
-    RenderSVGBlock::removeChild(child);
-    subtreeChildWasRemoved(affectedAttributes);
-}
-
 // Fix for <rdar://problem/8048875>. We should not render :first-line CSS Style
 // in a SVG text element context.
 RenderBlock* RenderSVGText::firstLineBlock() const
 {
     return 0;
-}
-
-// Fix for <rdar://problem/8048875>. We should not render :first-letter CSS Style
-// in a SVG text element context.
-void RenderSVGText::updateFirstLetter(RenderTreeMutationIsAllowed)
-{
 }
 
 }

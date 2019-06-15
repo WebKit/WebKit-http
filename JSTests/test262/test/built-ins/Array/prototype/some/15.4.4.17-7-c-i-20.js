@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.some
 es5id: 15.4.4.17-7-c-i-20
 description: >
     Array.prototype.some - element to be retrieved is own accessor
@@ -9,20 +10,20 @@ description: >
     accessor property on an Array
 ---*/
 
-        function callbackfn(val, idx, obj) {
-            if (idx === 0) {
-                return typeof val === "undefined";
-            }
-            return false;
-        }
+function callbackfn(val, idx, obj) {
+  if (idx === 0) {
+    return typeof val === "undefined";
+  }
+  return false;
+}
 
-        var arr = [];
+var arr = [];
 
-        Object.defineProperty(arr, "0", {
-            set: function () { },
-            configurable: true
-        });
+Object.defineProperty(arr, "0", {
+  set: function() {},
+  configurable: true
+});
 
-            Array.prototype[0] = 100;
+Array.prototype[0] = 100;
 
 assert(arr.some(callbackfn), 'arr.some(callbackfn) !== true');

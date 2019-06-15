@@ -30,11 +30,12 @@ namespace WebCore {
 class HTMLSelectElement;
 
 class HTMLOptGroupElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLOptGroupElement);
 public:
     static Ref<HTMLOptGroupElement> create(const QualifiedName&, Document&);
 
     bool isDisabledFormControl() const final;
-    HTMLSelectElement* ownerSelectElement() const;
+    WEBCORE_EXPORT HTMLSelectElement* ownerSelectElement() const;
     
     WEBCORE_EXPORT String groupLabelText() const;
 

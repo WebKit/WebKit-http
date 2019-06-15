@@ -8,21 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_TEST_LINUX_GLX_RENDERER_H_
-#define WEBRTC_TEST_LINUX_GLX_RENDERER_H_
+#ifndef TEST_LINUX_GLX_RENDERER_H_
+#define TEST_LINUX_GLX_RENDERER_H_
 
 #include <GL/glx.h>
 #include <X11/Xlib.h>
 
-#include "webrtc/test/gl/gl_renderer.h"
-#include "webrtc/typedefs.h"
+#include "test/gl/gl_renderer.h"
 
 namespace webrtc {
 namespace test {
 
 class GlxRenderer : public GlRenderer {
  public:
-  static GlxRenderer* Create(const char* window_title, size_t width,
+  static GlxRenderer* Create(const char* window_title,
+                             size_t width,
                              size_t height);
   virtual ~GlxRenderer();
 
@@ -41,7 +41,7 @@ class GlxRenderer : public GlRenderer {
   Window window_;
   GLXContext context_;
 };
-}  // test
-}  // webrtc
+}  // namespace test
+}  // namespace webrtc
 
-#endif  // WEBRTC_TEST_LINUX_GLX_RENDERER_H_
+#endif  // TEST_LINUX_GLX_RENDERER_H_

@@ -1,23 +1,25 @@
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/TestWebKitAPI")
 set(TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY_WTF "${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WTF")
 
-# This is necessary because it is possible to build TestWebKitAPI with WebKit2
-# disabled and this triggers the inclusion of the WebKit2 headers.
+# This is necessary because it is possible to build TestWebKitAPI with WebKit
+# disabled and this triggers the inclusion of the WebKit headers.
 add_definitions(-DBUILDING_WEBKIT2__)
 
 add_custom_target(TestWebKitAPI-forwarding-headers
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${TESTWEBKITAPI_DIR} --output ${FORWARDING_HEADERS_DIR} --platform gtk --platform soup
-    DEPENDS WebKit2-forwarding-headers
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${TESTWEBKITAPI_DIR} --output ${FORWARDING_HEADERS_DIR} --platform gtk --platform soup
+    DEPENDS WebKit-forwarding-headers
 )
 
-set(ForwardingHeadersForTestWebKitAPI_NAME TestWebKitAPI-forwarding-headers)
+list(APPEND TestWebKitAPI_DEPENDENCIES TestWebKitAPI-forwarding-headers)
 
 include_directories(
     ${FORWARDING_HEADERS_DIR}
     ${FORWARDING_HEADERS_DIR}/JavaScriptCore
-    ${WEBKIT2_DIR}/UIProcess/API/C/soup
-    ${WEBKIT2_DIR}/UIProcess/API/C/gtk
-    ${WEBKIT2_DIR}/UIProcess/API/gtk
+    ${FORWARDING_HEADERS_DIR}/JavaScriptCore/glib
+    ${DERIVED_SOURCES_JAVASCRIPCOREGTK_DIR}
+    ${WEBKIT_DIR}/UIProcess/API/C/soup
+    ${WEBKIT_DIR}/UIProcess/API/C/gtk
+    ${WEBKIT_DIR}/UIProcess/API/gtk
 )
 
 include_directories(SYSTEM
@@ -32,11 +34,13 @@ set(test_main_SOURCES
 )
 
 set(bundle_harness_SOURCES
+    ${TESTWEBKITAPI_DIR}/glib/UtilitiesGLib.cpp
     ${TESTWEBKITAPI_DIR}/gtk/InjectedBundleControllerGtk.cpp
     ${TESTWEBKITAPI_DIR}/gtk/PlatformUtilitiesGtk.cpp
 )
 
-set(webkit2_api_harness_SOURCES
+set(webkit_api_harness_SOURCES
+    ${TESTWEBKITAPI_DIR}/glib/UtilitiesGLib.cpp
     ${TESTWEBKITAPI_DIR}/gtk/PlatformUtilitiesGtk.cpp
     ${TESTWEBKITAPI_DIR}/gtk/PlatformWebViewGtk.cpp
 )
@@ -46,7 +50,7 @@ list(APPEND test_wtf_LIBRARIES
     ${GTK3_LIBRARIES}
 )
 
-list(APPEND test_webkit2_api_LIBRARIES
+list(APPEND test_webkit_api_LIBRARIES
     ${GDK3_LIBRARIES}
     ${GTK3_LIBRARIES}
 )
@@ -68,74 +72,30 @@ list(APPEND TestJavaScriptCore_LIBRARIES
     ${GTK3_LIBRARIES}
 )
 
-add_executable(TestWebKit2
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/AboutBlankLoad.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/CanHandleRequest.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/CookieManager.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DocumentStartUserScriptAlertCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionNoCache.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DownloadDecideDestinationCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/EnumerateMediaDevices.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/EvaluateJavaScript.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/FailedLoad.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/Find.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ForceRepaint.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/FrameMIMETypeHTML.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/FrameMIMETypePNG.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/Geolocation.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/GetInjectedBundleInitializationUserDataCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/HitTestResultNodeHandle.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/InjectedBundleBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/InjectedBundleFrameHitTest.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/InjectedBundleInitializationUserDataCallbackWins.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/LoadAlternateHTMLStringWithNonDirectoryURL.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/LoadCanceledNoServerRedirectCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/LoadPageOnCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/MouseMoveAfterCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayout.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFails.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutForImages.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFrames.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PageLoadBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PageLoadDidChangeLocationWithinPageForFrame.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ParentFrame.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PendingAPIRequestURL.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PreventEmptyUserAgent.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/PrivateBrowsingPushStateNoHistoryCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ProvisionalURLAfterWillSendRequestCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ReloadPageAfterCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ResizeWindowAfterCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/RestoreSessionStateContainingFormData.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ShouldGoToBackForwardListItem.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/TextFieldDidBeginAndEndEditing.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/UserMedia.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/UserMessage.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WillSendSubmitEvent.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKPageCopySessionStateWithFiltering.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKPageGetScaleFactorNotZero.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKPreferences.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKRetainPtr.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKString.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKStringJSString.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/WKURL.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/gtk/InputMethodFilter.cpp
+list(APPEND test_webkit_api_SOURCES
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit/gtk/InputMethodFilter.cpp
 )
 
-target_link_libraries(TestWebKit2 ${test_webkit2_api_LIBRARIES})
-add_test(TestWebKit2 ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2/TestWebKit2)
-set_tests_properties(TestWebKit2 PROPERTIES TIMEOUT 60)
-set_target_properties(TestWebKit2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit2)
+add_executable(TestWebKit ${test_webkit_api_SOURCES})
+
+target_link_libraries(TestWebKit ${test_webkit_api_LIBRARIES})
+add_test(TestWebKit ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit/TestWebKit)
+set_tests_properties(TestWebKit PROPERTIES TIMEOUT 60)
+set_target_properties(TestWebKit PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit)
 
 add_executable(TestWebCore
     ${test_main_SOURCES}
+    ${TESTWEBKITAPI_DIR}/glib/UtilitiesGLib.cpp
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/CSSParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/ComplexTextController.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/DNS.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileMonitor.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileSystem.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/GridPosition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/MIMETypeRegistry.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SecurityOrigin.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
@@ -143,16 +103,43 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URLParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/UserAgentQuirks.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SampleMap.cpp
 )
 
 target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})
-add_dependencies(TestWebCore ${ForwardingHeadersForTestWebKitAPI_NAME})
+add_dependencies(TestWebCore ${TestWebKitAPI_DEPENDENCIES})
 
 add_test(TestWebCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore/TestWebCore)
 set_tests_properties(TestWebCore PROPERTIES TIMEOUT 60)
 set_target_properties(TestWebCore PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore)
 
 list(APPEND TestWTF_SOURCES
+    ${TESTWEBKITAPI_DIR}/glib/UtilitiesGLib.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/glib/GUniquePtr.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/glib/WorkQueueGLib.cpp
 )
+
+add_definitions(-DWEBKIT_SRC_DIR="${CMAKE_SOURCE_DIR}")
+add_executable(TestJSC ${TESTWEBKITAPI_DIR}/Tests/JavaScriptCore/glib/TestJSC.cpp)
+target_link_libraries(TestJSC
+    ${GLIB_LIBRARIES}
+    JavaScriptCore
+)
+add_dependencies(TestJSC ${TestWebKitAPI_DEPENDENCIES})
+add_test(TestJSC ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/JavaScriptCore/TestJSC)
+set_tests_properties(TestJSC PROPERTIES TIMEOUT 60)
+set_target_properties(TestJSC PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/JavaScriptCore)
+
+if (COMPILER_IS_GCC_OR_CLANG)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebKit -Wno-sign-compare
+                                           -Wno-undef
+                                           -Wno-unused-parameter)
+
+    WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebCore -Wno-sign-compare
+                                            -Wno-undef
+                                            -Wno-unused-parameter)
+
+    WEBKIT_ADD_TARGET_CXX_FLAGS(TestJSC -Wno-sign-compare
+                                        -Wno-undef
+                                        -Wno-unused-parameter)
+endif ()

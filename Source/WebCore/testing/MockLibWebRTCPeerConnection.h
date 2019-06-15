@@ -27,8 +27,15 @@
 #if USE(LIBWEBRTC)
 
 #include "LibWebRTCMacros.h"
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
 #include <webrtc/api/mediastreaminterface.h>
 #include <webrtc/api/peerconnectioninterface.h>
+
+#pragma GCC diagnostic pop
+
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -37,11 +44,11 @@ class LibWebRTCProvider;
 class MockRtpSender;
 
 void useMockRTCPeerConnectionFactory(LibWebRTCProvider*, const String&);
-void useRealRTCPeerConnectionFactory();
+void useRealRTCPeerConnectionFactory(LibWebRTCProvider&);
 
 class MockLibWebRTCPeerConnection : public webrtc::PeerConnectionInterface {
 public:
-    virtual ~MockLibWebRTCPeerConnection() { }
+    ~MockLibWebRTCPeerConnection();
 
 protected:
     explicit MockLibWebRTCPeerConnection(webrtc::PeerConnectionObserver& observer) : m_observer(observer) { }
@@ -49,11 +56,9 @@ protected:
 private:
     rtc::scoped_refptr<webrtc::StreamCollectionInterface> local_streams() override { return nullptr; }
     rtc::scoped_refptr<webrtc::StreamCollectionInterface> remote_streams() override { return nullptr; }
-    rtc::scoped_refptr<webrtc::DtmfSenderInterface> CreateDtmfSender(webrtc::AudioTrackInterface*) override { return nullptr; }
     const webrtc::SessionDescriptionInterface* local_description() const override { return nullptr; }
     const webrtc::SessionDescriptionInterface* remote_description() const override { return nullptr; }
     bool AddIceCandidate(const webrtc::IceCandidateInterface*) override { return true; }
-    void RegisterUMAObserver(webrtc::UMAObserver*) override { }
     SignalingState signaling_state() override { return kStable; }
     IceConnectionState ice_connection_state() override { return kIceConnectionNew; }
     IceGatheringState ice_gathering_state() override { return kIceGatheringNew; }
@@ -67,8 +72,10 @@ protected:
     void SetRemoteDescription(webrtc::SetSessionDescriptionObserver*, webrtc::SessionDescriptionInterface*) final;
     void CreateAnswer(webrtc::CreateSessionDescriptionObserver*, const webrtc::MediaConstraintsInterface*) final;
     rtc::scoped_refptr<webrtc::DataChannelInterface> CreateDataChannel(const std::string&, const webrtc::DataChannelInit*) final;
-    rtc::scoped_refptr<webrtc::RtpSenderInterface> AddTrack(webrtc::MediaStreamTrackInterface*, std::vector<webrtc::MediaStreamInterface*> streams) final;
+    webrtc::RTCErrorOr<rtc::scoped_refptr<webrtc::RtpSenderInterface>> AddTrack(rtc::scoped_refptr<webrtc::MediaStreamTrackInterface>, const std::vector<std::string>& streams) final;
     bool RemoveTrack(webrtc::RtpSenderInterface*) final;
+    webrtc::RTCError SetBitrate(const BitrateParameters&) final { return { }; }
+
 
     void SetLocalDescription(webrtc::SetSessionDescriptionObserver*, webrtc::SessionDescriptionInterface*) override;
     bool GetStats(webrtc::StatsObserver*, webrtc::MediaStreamTrackInterface*, StatsOutputLevel) override { return false; }
@@ -149,7 +156,7 @@ private:
 
     bool m_enabled { true };
     std::string m_id;
-    webrtc::AudioSourceInterface* m_source { nullptr };
+    rtc::scoped_refptr<webrtc::AudioSourceInterface> m_source;
 };
 
 class MockLibWebRTCVideoTrack : public webrtc::VideoTrackInterface {
@@ -171,7 +178,7 @@ private:
 
     bool m_enabled;
     std::string m_id;
-    webrtc::VideoTrackSourceInterface* m_source { nullptr };
+    rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> m_source;
 };
 
 class MockLibWebRTCDataChannel : public webrtc::DataChannelInterface {
@@ -208,16 +215,19 @@ private:
 class MockRtpSender : public webrtc::RtpSenderInterface {
 public:
     MockRtpSender(rtc::scoped_refptr<webrtc::MediaStreamTrackInterface>&& track) : m_track(WTFMove(track)) { }
-
-    bool SetTrack(webrtc::MediaStreamTrackInterface*) final { return false; }
+    bool SetTrack(webrtc::MediaStreamTrackInterface* track) final
+    {
+        m_track = track;
+        return true;
+    }
     rtc::scoped_refptr<webrtc::MediaStreamTrackInterface> track() const final { return m_track; }
     
     uint32_t ssrc() const { return 0; }
     cricket::MediaType media_type() const { return cricket::MEDIA_TYPE_VIDEO; }
     std::string id() const { return ""; }
     std::vector<std::string> stream_ids() const { return { }; }
-    webrtc::RtpParameters GetParameters() const { return { }; }
-    bool SetParameters(const webrtc::RtpParameters&) { return false; }
+    webrtc::RtpParameters GetParameters() { return { }; }
+    webrtc::RTCError SetParameters(const webrtc::RtpParameters&) { return { }; }
     rtc::scoped_refptr<webrtc::DtmfSenderInterface> GetDtmfSender() const { return nullptr; }
 
 private:
@@ -240,7 +250,6 @@ private:
 
     void SetOptions(const Options&) final { }
     rtc::scoped_refptr<webrtc::AudioSourceInterface> CreateAudioSource(const cricket::AudioOptions&) final { return nullptr; }
-    rtc::scoped_refptr<webrtc::AudioSourceInterface> CreateAudioSource(const webrtc::MediaConstraintsInterface*) final { return nullptr; }
 
     rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> CreateVideoSource(cricket::VideoCapturer*) final { return nullptr; }
     rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> CreateVideoSource(cricket::VideoCapturer*, const webrtc::MediaConstraintsInterface*) final { return nullptr; }
@@ -250,10 +259,6 @@ private:
 
     bool StartAecDump(rtc::PlatformFile, int64_t) final { return false; }
     void StopAecDump() final { }
-
-    bool StartRtcEventLog(rtc::PlatformFile, int64_t) final { return false; }
-    bool StartRtcEventLog(rtc::PlatformFile) final { return false; }
-    void StopRtcEventLog() final { }
 
 private:
     String m_testCase;

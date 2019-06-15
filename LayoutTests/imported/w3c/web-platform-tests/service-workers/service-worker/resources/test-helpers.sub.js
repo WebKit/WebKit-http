@@ -52,6 +52,7 @@ function unreached_rejection(test, prefix) {
 function with_iframe(url) {
   return new Promise(function(resolve) {
       var frame = document.createElement('iframe');
+      frame.className = 'test-iframe';
       frame.src = url;
       frame.onload = function() { resolve(frame); };
       document.body.appendChild(frame);
@@ -121,11 +122,14 @@ function wait_for_state(test, worker, state) {
     }
   }
 
-  return new Promise(test.step_func(function(resolve) {
+  return new Promise(test.step_func(function(resolve, reject) {
       worker.addEventListener('statechange', test.step_func(function() {
           if (worker.state === state)
             resolve(state);
         }));
+        test.step_timeout(() => {
+            reject("wait_for_state timed out, waiting for state " + state + ", worker state is " + worker.state);
+        }, 10000);
     }));
 }
 
@@ -201,19 +205,21 @@ function test_websocket(test, frame, url) {
 }
 
 function login(test) {
-  return test_login(test, 'http://{{domains[www1]}}:{{ports[http][0]}}',
-                    'username1', 'password1', 'cookie1')
+  var host_info = get_host_info();
+  return test_login(test, host_info.HTTP_REMOTE_ORIGIN,
+                    'username1s', 'password1s', 'cookie1')
     .then(function() {
-        return test_login(test, 'http://{{host}}:{{ports[http][0]}}',
-                          'username2', 'password2', 'cookie2');
+        return test_login(test, host_info.HTTP_ORIGIN,
+                          'username2s', 'password2s', 'cookie2');
       });
 }
 
 function login_https(test) {
-  return test_login(test, 'https://{{domains[www1]}}:{{ports[https][0]}}',
+  var host_info = get_host_info();
+  return test_login(test, host_info.HTTPS_REMOTE_ORIGIN,
                     'username1s', 'password1s', 'cookie1')
     .then(function() {
-        return test_login(test, 'https://{{host}}:{{ports[https][0]}}',
+        return test_login(test, host_info.HTTPS_ORIGIN,
                           'username2s', 'password2s', 'cookie2');
       });
 }
@@ -225,3 +231,43 @@ function websocket(test, frame) {
 function get_websocket_url() {
   return 'wss://{{host}}:{{ports[wss][0]}}/echo';
 }
+
+// The navigator.serviceWorker.register() method guarantees that the newly
+// installing worker is available as registration.installing when its promise
+// resolves. However some tests test installation using a <link> element where
+// it is possible for the installing worker to have already become the waiting
+// or active worker. So this method is used to get the newest worker when these
+// tests need access to the ServiceWorker itself.
+function get_newest_worker(registration) {
+  if (registration.installing)
+    return registration.installing;
+  if (registration.waiting)
+    return registration.waiting;
+  if (registration.active)
+    return registration.active;
+}
+
+function register_using_link(script, options) {
+  var scope = options.scope;
+  var link = document.createElement('link');
+  link.setAttribute('rel', 'serviceworker');
+  link.setAttribute('href', script);
+  link.setAttribute('scope', scope);
+  document.getElementsByTagName('head')[0].appendChild(link);
+  return new Promise(function(resolve, reject) {
+        link.onload = resolve;
+        link.onerror = reject;
+      })
+    .then(() => navigator.serviceWorker.getRegistration(scope));
+}
+
+function with_sandboxed_iframe(url, sandbox) {
+  return new Promise(function(resolve) {
+      var frame = document.createElement('iframe');
+      frame.sandbox = sandbox;
+      frame.src = url;
+      frame.onload = function() { resolve(frame); };
+      document.body.appendChild(frame);
+    });
+}
+

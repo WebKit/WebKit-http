@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "PlatformExportMacros.h"
 #include <algorithm>
 
 #if PLATFORM(MAC) && defined __OBJC__
@@ -67,10 +66,13 @@ class QSize;
 QT_END_NAMESPACE
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class FloatSize;
-class TextStream;
 
 class IntSize {
 public:
@@ -225,7 +227,7 @@ inline bool operator!=(const IntSize& a, const IntSize& b)
     return a.width() != b.width() || a.height() != b.height();
 }
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const IntSize&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntSize&);
 
 } // namespace WebCore
 

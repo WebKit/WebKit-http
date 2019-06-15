@@ -35,10 +35,14 @@
 #include "WebProcessProxy.h"
 #include "WebProtectionSpace.h"
 
+#if HAVE(SEC_KEY_PROXY)
+#include "SecKeyProxyStore.h"
+#endif
+
 namespace WebKit {
 
-AuthenticationChallengeProxy::AuthenticationChallengeProxy(const WebCore::AuthenticationChallenge& authenticationChallenge, uint64_t challengeID, IPC::Connection* connection)
-    : m_coreAuthenticationChallenge(authenticationChallenge)
+AuthenticationChallengeProxy::AuthenticationChallengeProxy(WebCore::AuthenticationChallenge&& authenticationChallenge, uint64_t challengeID, IPC::Connection* connection)
+    : m_coreAuthenticationChallenge(WTFMove(authenticationChallenge))
     , m_challengeID(challengeID)
     , m_connection(connection)
 {
@@ -70,11 +74,18 @@ void AuthenticationChallengeProxy::useCredential(WebCredential* credential)
         return;
     }
 
-    WebCore::CertificateInfo certificateInfo;
-    if (credential->certificateInfo())
-        certificateInfo = credential->certificateInfo()->certificateInfo();
-
-    m_connection->send(Messages::AuthenticationManager::UseCredentialForChallenge(challengeID, credential->credential(), certificateInfo), 0);
+#if HAVE(SEC_KEY_PROXY)
+    if (protectionSpace()->authenticationScheme() == WebCore::ProtectionSpaceAuthenticationSchemeClientCertificateRequested) {
+        if (!m_secKeyProxyStore) {
+            m_connection->send(Messages::AuthenticationManager::ContinueWithoutCredentialForChallenge(challengeID), 0);
+            return;
+        }
+        m_secKeyProxyStore->initialize(credential->credential());
+        sendClientCertificateCredentialOverXpc(challengeID, credential->credential());
+        return;
+    }
+#endif
+    m_connection->send(Messages::AuthenticationManager::UseCredentialForChallenge(challengeID, credential->credential()), 0);
 }
 
 void AuthenticationChallengeProxy::cancel()
@@ -122,5 +133,12 @@ WebProtectionSpace* AuthenticationChallengeProxy::protectionSpace() const
         
     return m_webProtectionSpace.get();
 }
+
+#if HAVE(SEC_KEY_PROXY)
+void AuthenticationChallengeProxy::setSecKeyProxyStore(SecKeyProxyStore& store)
+{
+    m_secKeyProxyStore = makeWeakPtr(store);
+}
+#endif
 
 } // namespace WebKit

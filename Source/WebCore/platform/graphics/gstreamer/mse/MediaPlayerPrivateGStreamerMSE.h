@@ -26,11 +26,10 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) 
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "MediaPlayerPrivateGStreamer.h"
 #include "MediaSample.h"
 #include "MediaSourceGStreamer.h"
-#include "PlaybackPipeline.h"
 #include "WebKitMediaSourceGStreamer.h"
 
 namespace WebCore {
@@ -60,7 +59,7 @@ public:
 
     void pause() override;
     bool seeking() const override;
-    void seek(float) override;
+    void seek(const MediaTime&) override;
     void configurePlaySink() override;
     bool changePipelineState(GstState) override;
 
@@ -69,9 +68,9 @@ public:
 
     void setRate(float) override;
     std::unique_ptr<PlatformTimeRanges> buffered() const override;
-    float maxTimeSeekable() const override;
+    MediaTime maxMediaTimeSeekable() const override;
 
-    void sourceChanged() override;
+    void sourceSetup(GstElement*) override;
 
     void setReadyState(MediaPlayer::ReadyState);
     void waitForSeekCompleted();
@@ -80,31 +79,30 @@ public:
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
-    void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
+    void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase>, bool firstTrackDetected);
     void notifySeekNeedsDataForTime(const MediaTime&);
 
-    static bool supportsCodecs(const String& codecs);
+    static bool supportsCodec(String codec);
+    static bool supportsAllCodecs(const Vector<String>& codecs);
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void attemptToDecryptWithInstance(CDMInstance&) final;
+#endif
 
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
-    static bool isAvailable();
-
     // FIXME: Reduce code duplication.
     void updateStates() override;
 
-    bool doSeek(gint64, float, GstSeekFlags) override;
+    bool doSeek(const MediaTime&, float, GstSeekFlags) override;
     bool doSeek();
     void maybeFinishSeek();
     void updatePlaybackRate() override;
     void asyncStateChangeDone() override;
 
-    // FIXME: Implement.
-    unsigned long totalVideoFrames() override { return 0; }
-    unsigned long droppedVideoFrames() override { return 0; }
-    unsigned long corruptedVideoFrames() override { return 0; }
-    MediaTime totalFrameDelay() override { return MediaTime::zeroTime(); }
+    // FIXME: Implement videoPlaybackQualityMetrics.
     bool isTimeBuffered(const MediaTime&) const;
 
     bool isMediaSource() const override { return true; }

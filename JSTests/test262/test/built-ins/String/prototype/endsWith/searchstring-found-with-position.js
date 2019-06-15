@@ -5,7 +5,7 @@ es6id: 21.1.3.6
 description: >
   Returns true if searchString appears as a substring of the given string with a
   given position.
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   ...
@@ -19,6 +19,7 @@ info: >
   16. If the sequence of elements of S starting at start of length searchLength
   is the same as the full element sequence of searchStr, return true.
   ...
+features: [String.prototype.endsWith]
 ---*/
 
 var str = 'The future is cool!';

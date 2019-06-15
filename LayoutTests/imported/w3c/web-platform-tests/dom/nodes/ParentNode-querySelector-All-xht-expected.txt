@@ -103,6 +103,8 @@ PASS Document.querySelector: Unknown pseudo-element: ::example
 PASS Document.querySelectorAll: Unknown pseudo-element: ::example 
 PASS Document.querySelector: Invalid pseudo-element: :::before 
 PASS Document.querySelectorAll: Invalid pseudo-element: :::before 
+PASS Document.querySelector: Invalid pseudo-element: :: before 
+PASS Document.querySelectorAll: Invalid pseudo-element: :: before 
 PASS Document.querySelector: Undeclared namespace: ns|div 
 PASS Document.querySelectorAll: Undeclared namespace: ns|div 
 PASS Document.querySelector: Undeclared namespace: :not(ns|div) 
@@ -111,6 +113,8 @@ PASS Document.querySelector: Invalid namespace: ^|div
 PASS Document.querySelectorAll: Invalid namespace: ^|div 
 PASS Document.querySelector: Invalid namespace: $|div 
 PASS Document.querySelectorAll: Invalid namespace: $|div 
+PASS Document.querySelector: Relative selector: >* 
+PASS Document.querySelectorAll: Relative selector: >* 
 PASS Detached Element.querySelector: Empty String:  
 PASS Detached Element.querySelectorAll: Empty String:  
 PASS Detached Element.querySelector: Invalid character: [ 
@@ -165,6 +169,8 @@ PASS Detached Element.querySelector: Unknown pseudo-element: ::example
 PASS Detached Element.querySelectorAll: Unknown pseudo-element: ::example 
 PASS Detached Element.querySelector: Invalid pseudo-element: :::before 
 PASS Detached Element.querySelectorAll: Invalid pseudo-element: :::before 
+PASS Detached Element.querySelector: Invalid pseudo-element: :: before 
+PASS Detached Element.querySelectorAll: Invalid pseudo-element: :: before 
 PASS Detached Element.querySelector: Undeclared namespace: ns|div 
 PASS Detached Element.querySelectorAll: Undeclared namespace: ns|div 
 PASS Detached Element.querySelector: Undeclared namespace: :not(ns|div) 
@@ -173,6 +179,8 @@ PASS Detached Element.querySelector: Invalid namespace: ^|div
 PASS Detached Element.querySelectorAll: Invalid namespace: ^|div 
 PASS Detached Element.querySelector: Invalid namespace: $|div 
 PASS Detached Element.querySelectorAll: Invalid namespace: $|div 
+PASS Detached Element.querySelector: Relative selector: >* 
+PASS Detached Element.querySelectorAll: Relative selector: >* 
 PASS Fragment.querySelector: Empty String:  
 PASS Fragment.querySelectorAll: Empty String:  
 PASS Fragment.querySelector: Invalid character: [ 
@@ -227,6 +235,8 @@ PASS Fragment.querySelector: Unknown pseudo-element: ::example
 PASS Fragment.querySelectorAll: Unknown pseudo-element: ::example 
 PASS Fragment.querySelector: Invalid pseudo-element: :::before 
 PASS Fragment.querySelectorAll: Invalid pseudo-element: :::before 
+PASS Fragment.querySelector: Invalid pseudo-element: :: before 
+PASS Fragment.querySelectorAll: Invalid pseudo-element: :: before 
 PASS Fragment.querySelector: Undeclared namespace: ns|div 
 PASS Fragment.querySelectorAll: Undeclared namespace: ns|div 
 PASS Fragment.querySelector: Undeclared namespace: :not(ns|div) 
@@ -235,6 +245,8 @@ PASS Fragment.querySelector: Invalid namespace: ^|div
 PASS Fragment.querySelectorAll: Invalid namespace: ^|div 
 PASS Fragment.querySelector: Invalid namespace: $|div 
 PASS Fragment.querySelectorAll: Invalid namespace: $|div 
+PASS Fragment.querySelector: Relative selector: >* 
+PASS Fragment.querySelectorAll: Relative selector: >* 
 PASS In-document Element.querySelector: Empty String:  
 PASS In-document Element.querySelectorAll: Empty String:  
 PASS In-document Element.querySelector: Invalid character: [ 
@@ -289,6 +301,8 @@ PASS In-document Element.querySelector: Unknown pseudo-element: ::example
 PASS In-document Element.querySelectorAll: Unknown pseudo-element: ::example 
 PASS In-document Element.querySelector: Invalid pseudo-element: :::before 
 PASS In-document Element.querySelectorAll: Invalid pseudo-element: :::before 
+PASS In-document Element.querySelector: Invalid pseudo-element: :: before 
+PASS In-document Element.querySelectorAll: Invalid pseudo-element: :: before 
 PASS In-document Element.querySelector: Undeclared namespace: ns|div 
 PASS In-document Element.querySelectorAll: Undeclared namespace: ns|div 
 PASS In-document Element.querySelector: Undeclared namespace: :not(ns|div) 
@@ -297,6 +311,8 @@ PASS In-document Element.querySelector: Invalid namespace: ^|div
 PASS In-document Element.querySelectorAll: Invalid namespace: ^|div 
 PASS In-document Element.querySelector: Invalid namespace: $|div 
 PASS In-document Element.querySelectorAll: Invalid namespace: $|div 
+PASS In-document Element.querySelector: Relative selector: >* 
+PASS In-document Element.querySelectorAll: Relative selector: >* 
 PASS Document.querySelectorAll: Type selector, matching html element: html 
 PASS Document.querySelector: Type selector, matching html element: html 
 PASS Document.querySelectorAll: Type selector, matching body element: body 
@@ -329,6 +345,8 @@ PASS Document.querySelectorAll: Attribute presence selector, matching multiple o
 PASS Document.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected] 
 PASS Document.querySelectorAll: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
 PASS Document.querySelector: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
+FAIL Document.querySelectorAll: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
+FAIL Document.querySelector: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
 PASS Document.querySelectorAll: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS Document.querySelector: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS Document.querySelectorAll: Attribute value selector, not matching align attribute with partial value: #attr-value [align="c"] 
@@ -379,6 +397,8 @@ PASS Document.querySelectorAll: Attribute begins with selector, matching href at
 PASS Document.querySelector: Attribute begins with selector, matching href attributes beginning with specified substring: #attr-begins a[href^="http://www"] 
 PASS Document.querySelectorAll: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
 PASS Document.querySelector: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
+PASS Document.querySelectorAll: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
+PASS Document.querySelector: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
 PASS Document.querySelectorAll: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS Document.querySelector: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS Document.querySelectorAll: Attribute begins with selector with single-quoted value, matching class attribute beginning with specified substring: #attr-begins [class^=' apple'] 
@@ -391,6 +411,8 @@ PASS Document.querySelectorAll: Attribute ends with selector, matching href attr
 PASS Document.querySelector: Attribute ends with selector, matching href attributes ending with specified substring: #attr-ends a[href$=".org"] 
 PASS Document.querySelectorAll: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
 PASS Document.querySelector: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
+PASS Document.querySelectorAll: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
+PASS Document.querySelector: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
 PASS Document.querySelectorAll: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS Document.querySelector: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS Document.querySelectorAll: Attribute ends with selector with single-quoted value, matching class attribute ending with specified substring: #attr-ends [class$='apple '] 
@@ -409,6 +431,8 @@ PASS Document.querySelectorAll: Attribute contains selector, matching lang attri
 PASS Document.querySelector: Attribute contains selector, matching lang attributes beginning with specified substring, : #attr-contains [lang*="en-"] 
 PASS Document.querySelectorAll: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
 PASS Document.querySelector: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
+PASS Document.querySelectorAll: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
+PASS Document.querySelector: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
 PASS Document.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS Document.querySelector: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS Document.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute ending with specified substring: #attr-contains [class*='orange '] 
@@ -601,20 +625,6 @@ PASS Document.querySelectorAll: Descendant combinator, whitespace characters: #d
 #descendant-div2 
 PASS Document.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Document.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS Document.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Document.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Document.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Document.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Document.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Document.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Document.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS Document.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS Document.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Document.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Document.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 
@@ -755,6 +765,8 @@ PASS Detached Element.querySelectorAll: Attribute presence selector, matching mu
 PASS Detached Element.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected] 
 PASS Detached Element.querySelectorAll: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
 PASS Detached Element.querySelector: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
+FAIL Detached Element.querySelectorAll: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
+FAIL Detached Element.querySelector: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
 PASS Detached Element.querySelectorAll: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS Detached Element.querySelector: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS Detached Element.querySelectorAll: Attribute value selector, not matching align attribute with partial value: #attr-value [align="c"] 
@@ -805,6 +817,8 @@ PASS Detached Element.querySelectorAll: Attribute begins with selector, matching
 PASS Detached Element.querySelector: Attribute begins with selector, matching href attributes beginning with specified substring: #attr-begins a[href^="http://www"] 
 PASS Detached Element.querySelectorAll: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
 PASS Detached Element.querySelector: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
+PASS Detached Element.querySelectorAll: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
+PASS Detached Element.querySelector: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
 PASS Detached Element.querySelectorAll: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS Detached Element.querySelector: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS Detached Element.querySelectorAll: Attribute begins with selector with single-quoted value, matching class attribute beginning with specified substring: #attr-begins [class^=' apple'] 
@@ -817,6 +831,8 @@ PASS Detached Element.querySelectorAll: Attribute ends with selector, matching h
 PASS Detached Element.querySelector: Attribute ends with selector, matching href attributes ending with specified substring: #attr-ends a[href$=".org"] 
 PASS Detached Element.querySelectorAll: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
 PASS Detached Element.querySelector: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
+PASS Detached Element.querySelectorAll: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
+PASS Detached Element.querySelector: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
 PASS Detached Element.querySelectorAll: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS Detached Element.querySelector: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS Detached Element.querySelectorAll: Attribute ends with selector with single-quoted value, matching class attribute ending with specified substring: #attr-ends [class$='apple '] 
@@ -835,6 +851,8 @@ PASS Detached Element.querySelectorAll: Attribute contains selector, matching la
 PASS Detached Element.querySelector: Attribute contains selector, matching lang attributes beginning with specified substring, : #attr-contains [lang*="en-"] 
 PASS Detached Element.querySelectorAll: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
 PASS Detached Element.querySelector: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
+PASS Detached Element.querySelectorAll: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
+PASS Detached Element.querySelector: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
 PASS Detached Element.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS Detached Element.querySelector: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS Detached Element.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute ending with specified substring: #attr-contains [class*='orange '] 
@@ -1027,18 +1045,6 @@ PASS Detached Element.querySelectorAll: Descendant combinator, whitespace charac
 #descendant-div2 
 PASS Detached Element.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Detached Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Detached Element.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS Detached Element.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS Detached Element.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Detached Element.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Detached Element.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 
@@ -1179,6 +1185,8 @@ PASS Fragment.querySelectorAll: Attribute presence selector, matching multiple o
 PASS Fragment.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected] 
 PASS Fragment.querySelectorAll: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
 PASS Fragment.querySelector: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
+FAIL Fragment.querySelectorAll: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
+FAIL Fragment.querySelector: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
 PASS Fragment.querySelectorAll: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS Fragment.querySelector: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS Fragment.querySelectorAll: Attribute value selector, not matching align attribute with partial value: #attr-value [align="c"] 
@@ -1229,6 +1237,8 @@ PASS Fragment.querySelectorAll: Attribute begins with selector, matching href at
 PASS Fragment.querySelector: Attribute begins with selector, matching href attributes beginning with specified substring: #attr-begins a[href^="http://www"] 
 PASS Fragment.querySelectorAll: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
 PASS Fragment.querySelector: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
+PASS Fragment.querySelectorAll: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
+PASS Fragment.querySelector: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
 PASS Fragment.querySelectorAll: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS Fragment.querySelector: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS Fragment.querySelectorAll: Attribute begins with selector with single-quoted value, matching class attribute beginning with specified substring: #attr-begins [class^=' apple'] 
@@ -1241,6 +1251,8 @@ PASS Fragment.querySelectorAll: Attribute ends with selector, matching href attr
 PASS Fragment.querySelector: Attribute ends with selector, matching href attributes ending with specified substring: #attr-ends a[href$=".org"] 
 PASS Fragment.querySelectorAll: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
 PASS Fragment.querySelector: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
+PASS Fragment.querySelectorAll: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
+PASS Fragment.querySelector: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
 PASS Fragment.querySelectorAll: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS Fragment.querySelector: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS Fragment.querySelectorAll: Attribute ends with selector with single-quoted value, matching class attribute ending with specified substring: #attr-ends [class$='apple '] 
@@ -1259,6 +1271,8 @@ PASS Fragment.querySelectorAll: Attribute contains selector, matching lang attri
 PASS Fragment.querySelector: Attribute contains selector, matching lang attributes beginning with specified substring, : #attr-contains [lang*="en-"] 
 PASS Fragment.querySelectorAll: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
 PASS Fragment.querySelector: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
+PASS Fragment.querySelectorAll: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
+PASS Fragment.querySelector: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
 PASS Fragment.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS Fragment.querySelector: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS Fragment.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute ending with specified substring: #attr-contains [class*='orange '] 
@@ -1451,18 +1465,6 @@ PASS Fragment.querySelectorAll: Descendant combinator, whitespace characters: #d
 #descendant-div2 
 PASS Fragment.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Fragment.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS Fragment.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS Fragment.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS Fragment.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Fragment.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS Fragment.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 
@@ -1603,6 +1605,8 @@ PASS In-document Element.querySelectorAll: Attribute presence selector, matching
 PASS In-document Element.querySelector: Attribute presence selector, matching multiple options with selected attributes: #attr-presence-select3 option[selected] 
 PASS In-document Element.querySelectorAll: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
 PASS In-document Element.querySelector: Attribute value selector, matching align attribute with value: #attr-value [align="center"] 
+FAIL In-document Element.querySelectorAll: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
+FAIL In-document Element.querySelector: Attribute value selector, matching align attribute with value, unclosed bracket: #attr-value [align="center" The string did not match the expected pattern.
 PASS In-document Element.querySelectorAll: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS In-document Element.querySelector: Attribute value selector, matching align attribute with empty value: #attr-value [align=""] 
 PASS In-document Element.querySelectorAll: Attribute value selector, not matching align attribute with partial value: #attr-value [align="c"] 
@@ -1653,6 +1657,8 @@ PASS In-document Element.querySelectorAll: Attribute begins with selector, match
 PASS In-document Element.querySelector: Attribute begins with selector, matching href attributes beginning with specified substring: #attr-begins a[href^="http://www"] 
 PASS In-document Element.querySelectorAll: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
 PASS In-document Element.querySelector: Attribute begins with selector, matching lang attributes beginning with specified substring, : #attr-begins [lang^="en-"] 
+PASS In-document Element.querySelectorAll: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
+PASS In-document Element.querySelector: Attribute begins with selector, not matching class attribute with empty value: #attr-begins [class^=""] 
 PASS In-document Element.querySelectorAll: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS In-document Element.querySelector: Attribute begins with selector, not matching class attribute not beginning with specified substring: #attr-begins [class^=apple] 
 PASS In-document Element.querySelectorAll: Attribute begins with selector with single-quoted value, matching class attribute beginning with specified substring: #attr-begins [class^=' apple'] 
@@ -1665,6 +1671,8 @@ PASS In-document Element.querySelectorAll: Attribute ends with selector, matchin
 PASS In-document Element.querySelector: Attribute ends with selector, matching href attributes ending with specified substring: #attr-ends a[href$=".org"] 
 PASS In-document Element.querySelectorAll: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
 PASS In-document Element.querySelector: Attribute ends with selector, matching lang attributes ending with specified substring, : #attr-ends [lang$="-CH"] 
+PASS In-document Element.querySelectorAll: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
+PASS In-document Element.querySelector: Attribute ends with selector, not matching class attribute with empty value: #attr-ends [class$=""] 
 PASS In-document Element.querySelectorAll: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS In-document Element.querySelector: Attribute ends with selector, not matching class attribute not ending with specified substring: #attr-ends [class$=apple] 
 PASS In-document Element.querySelectorAll: Attribute ends with selector with single-quoted value, matching class attribute ending with specified substring: #attr-ends [class$='apple '] 
@@ -1683,6 +1691,8 @@ PASS In-document Element.querySelectorAll: Attribute contains selector, matching
 PASS In-document Element.querySelector: Attribute contains selector, matching lang attributes beginning with specified substring, : #attr-contains [lang*="en-"] 
 PASS In-document Element.querySelectorAll: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
 PASS In-document Element.querySelector: Attribute contains selector, matching lang attributes ending with specified substring, : #attr-contains [lang*="-CH"] 
+PASS In-document Element.querySelectorAll: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
+PASS In-document Element.querySelector: Attribute contains selector, not matching class attribute with empty value: #attr-contains [class*=""] 
 PASS In-document Element.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS In-document Element.querySelector: Attribute contains selector with single-quoted value, matching class attribute beginning with specified substring: #attr-contains [class*=' apple'] 
 PASS In-document Element.querySelectorAll: Attribute contains selector with single-quoted value, matching class attribute ending with specified substring: #attr-contains [class*='orange '] 
@@ -1877,20 +1887,6 @@ PASS In-document Element.querySelectorAll: Descendant combinator, whitespace cha
 #descendant-div2 
 PASS In-document Element.querySelector: Descendant combinator, whitespace characters: #descendant	\r
 #descendant-div2 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element that is a descendant of an element with id: #descendant>>div 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: body>>#descendant-div1 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element: div>>#descendant-div1 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id: #descendant>>#descendant-div2 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id: #descendant>>.descendant-div2 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS In-document Element.querySelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class: .descendant-div1>>.descendant-div3 
-PASS In-document Element.querySelectorAll: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
-PASS In-document Element.querySelector: Descendant combinator '>>', not matching element with id that is not a descendant of an element with id: #descendant-div1>>#descendant-div4 
 PASS In-document Element.querySelectorAll: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS In-document Element.querySelector: Child combinator, matching element that is a child of an element with id: #child>div 
 PASS In-document Element.querySelectorAll: Child combinator, matching element with id that is a child of an element: div>#child-div1 

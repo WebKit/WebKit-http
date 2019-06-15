@@ -52,8 +52,8 @@ public:
     std::optional<Seconds> updateAnimations(SetChanged callSetChanged = DoNotCallSetChanged);
     void updateAnimationTimer(SetChanged callSetChanged = DoNotCallSetChanged);
 
-    CompositeAnimation& ensureCompositeAnimation(RenderElement&);
-    bool clear(RenderElement&);
+    CompositeAnimation& ensureCompositeAnimation(Element&);
+    bool clear(Element&);
 
     void updateStyleIfNeededDispatcherFired();
     void startUpdateStyleIfNeededDispatcher();
@@ -79,19 +79,19 @@ public:
     bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;
     bool isRunningAcceleratedAnimationOnRenderer(RenderElement&, CSSPropertyID, AnimationBase::RunningState) const;
 
-    bool pauseAnimationAtTime(RenderElement*, const AtomicString& name, double t);
-    bool pauseTransitionAtTime(RenderElement*, const String& property, double t);
+    bool pauseAnimationAtTime(Element&, const AtomicString& name, double t);
+    bool pauseTransitionAtTime(Element&, const String& property, double t);
     unsigned numberOfActiveAnimations(Document*) const;
 
-    std::unique_ptr<RenderStyle> getAnimatedStyleForRenderer(RenderElement&);
+    std::unique_ptr<RenderStyle> animatedStyleForElement(Element&);
 
-    bool computeExtentOfAnimation(RenderElement&, LayoutRect&) const;
+    bool computeExtentOfAnimation(Element&, LayoutRect&) const;
 
-    double beginAnimationUpdateTime();
+    MonotonicTime beginAnimationUpdateTime();
     
     void beginAnimationUpdate();
     void endAnimationUpdate();
-    void receivedStartTimeResponse(double);
+    void receivedStartTimeResponse(MonotonicTime);
     
     void addToAnimationsWaitingForStyle(AnimationBase*);
     void removeFromAnimationsWaitingForStyle(AnimationBase*);
@@ -101,7 +101,7 @@ public:
 
     void animationWillBeRemoved(AnimationBase*);
 
-    void updateAnimationTimerForRenderer(RenderElement&);
+    void updateAnimationTimerForElement(Element&);
 
     bool allowsNewAnimationsWhileSuspended() const { return m_allowsNewAnimationsWhileSuspended; }
     void setAllowsNewAnimationsWhileSuspended(bool);
@@ -122,9 +122,9 @@ private:
 
     void styleAvailable();
     void fireEventsAndUpdateStyle();
-    void startTimeResponse(double t);
+    void startTimeResponse(MonotonicTime);
 
-    HashMap<RenderElement*, RefPtr<CompositeAnimation>> m_compositeAnimations;
+    HashMap<RefPtr<Element>, RefPtr<CompositeAnimation>> m_compositeAnimations;
     Timer m_animationTimer;
     Timer m_updateStyleIfNeededDispatcher;
     Frame& m_frame;
@@ -139,7 +139,7 @@ private:
     Vector<Ref<Element>> m_elementChangesToDispatch;
     HashSet<Document*> m_suspendedDocuments;
 
-    std::optional<double> m_beginAnimationUpdateTime;
+    std::optional<MonotonicTime> m_beginAnimationUpdateTime;
 
     using AnimationsSet = HashSet<RefPtr<AnimationBase>>;
     AnimationsSet m_animationsWaitingForStyle;

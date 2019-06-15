@@ -5,7 +5,7 @@
 es6id: B.2.3.8
 description: >
   String.prototype.fontsize.length is 1.
-info: >
+info: |
   String.prototype.fontsize ( size )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.fontsize.length, 1);
-
-verifyNotEnumerable(String.prototype.fontsize, "length");
-verifyNotWritable(String.prototype.fontsize, "length");
-verifyConfigurable(String.prototype.fontsize, "length");
+verifyProperty(String.prototype.fontsize, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 1
+});

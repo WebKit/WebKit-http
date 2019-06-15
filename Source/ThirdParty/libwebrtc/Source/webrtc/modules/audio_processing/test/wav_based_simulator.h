@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_TEST_WAV_BASED_SIMULATOR_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_TEST_WAV_BASED_SIMULATOR_H_
+#ifndef MODULES_AUDIO_PROCESSING_TEST_WAV_BASED_SIMULATOR_H_
+#define MODULES_AUDIO_PROCESSING_TEST_WAV_BASED_SIMULATOR_H_
 
 #include <vector>
 
-#include "webrtc/modules/audio_processing/test/audio_processing_simulator.h"
+#include "modules/audio_processing/test/audio_processing_simulator.h"
 
-#include "webrtc/base/constructormagic.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 namespace test {
@@ -23,7 +23,8 @@ namespace test {
 // Used to perform an audio processing simulation from wav files.
 class WavBasedSimulator final : public AudioProcessingSimulator {
  public:
-  explicit WavBasedSimulator(const SimulationSettings& settings);
+  WavBasedSimulator(const SimulationSettings& settings,
+                    std::unique_ptr<AudioProcessingBuilder> ap_builder);
   ~WavBasedSimulator() override;
 
   // Processes the WAV input.
@@ -45,7 +46,6 @@ class WavBasedSimulator final : public AudioProcessingSimulator {
       const std::string& filename);
 
   std::vector<SimulationEventType> call_chain_;
-  int last_specified_microphone_level_ = 100;
 
   RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(WavBasedSimulator);
 };
@@ -53,4 +53,4 @@ class WavBasedSimulator final : public AudioProcessingSimulator {
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_TEST_WAV_BASED_SIMULATOR_H_
+#endif  // MODULES_AUDIO_PROCESSING_TEST_WAV_BASED_SIMULATOR_H_

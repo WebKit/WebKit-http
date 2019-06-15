@@ -19,8 +19,8 @@ PASS Check out how the DOM's root element recomputes its descendant's style when
 PASS Shadow Node inherits from ShadowHost to resolve the 'auto' values for align-self. 
 PASS Shadow Node inherits from ShadowHost to resolve the 'auto' values for justify-self. 
 PASS Check out how the 'legacy' keyword in justify-items propagates from the DOM Tree to the Shadow Node. 
-PASS Check out how align-self uses the 'shadowHost' as 'slotted' element's parent while 'slot' is not assigned. 
-PASS Check out how justify-self uses the 'shadowHost' as 'slotted' element's parent while 'slot' is not assigned. 
+FAIL Check out how align-self uses the 'shadowHost' as 'slotted' element's parent while 'slot' is not assigned. assert_equals: alignItems is not what is should. expected "normal" but got "end"
+FAIL Check out how justify-self uses the 'shadowHost' as 'slotted' element's parent while 'slot' is not assigned. assert_equals: justifyItems is not what is should. expected "left" but got "normal"
 PASS Check out how the 'legacy' keyword in justify-items affects the 'slotted' elements while 'slot' is not assigned. 
 PASS Check out how align-self uses the 'slot' element's parent (Shadow Node) as 'slotted' element' s parent after the 'slot' is assigned. 
 PASS Check out how justify-self uses the 'slot' element's parent (Shadow Node) as 'slotted' element' s parent after the 'slot' is assigned. 

@@ -8,14 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/utility/include/helpers_android.h"
+#include "modules/utility/include/helpers_android.h"
 
 #include <android/log.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stddef.h>
 #include <unistd.h>
+
+#include "rtc_base/checks.h"
+#include "rtc_base/platform_thread.h"
 
 #define TAG "HelpersAndroid"
 #define ALOGD(...) __android_log_print(ANDROID_LOG_DEBUG, TAG, __VA_ARGS__)
@@ -45,8 +47,10 @@ jlong PointerTojlong(void* ptr) {
   return ret;
 }
 
-jmethodID GetMethodID (
-    JNIEnv* jni, jclass c, const char* name, const char* signature) {
+jmethodID GetMethodID(JNIEnv* jni,
+                      jclass c,
+                      const char* name,
+                      const char* signature) {
   jmethodID m = jni->GetMethodID(c, name, signature);
   CHECK_EXCEPTION(jni) << "Error during GetMethodID: " << name << ", "
                        << signature;
@@ -54,8 +58,10 @@ jmethodID GetMethodID (
   return m;
 }
 
-jmethodID GetStaticMethodID (
-    JNIEnv* jni, jclass c, const char* name, const char* signature) {
+jmethodID GetStaticMethodID(JNIEnv* jni,
+                            jclass c,
+                            const char* name,
+                            const char* signature) {
   jmethodID m = jni->GetStaticMethodID(c, name, signature);
   CHECK_EXCEPTION(jni) << "Error during GetStaticMethodID: " << name << ", "
                        << signature;
@@ -82,19 +88,6 @@ void DeleteGlobalRef(JNIEnv* jni, jobject o) {
   CHECK_EXCEPTION(jni) << "Error during DeleteGlobalRef";
 }
 
-std::string GetThreadId() {
-  char buf[21];  // Big enough to hold a kuint64max plus terminating NULL.
-  int thread_id = gettid();
-  RTC_CHECK_LT(snprintf(buf, sizeof(buf), "%i", thread_id),
-               static_cast<int>(sizeof(buf)))
-      << "Thread id is bigger than uint64??";
-  return std::string(buf);
-}
-
-std::string GetThreadInfo() {
-  return "@[tid=" + GetThreadId() + "]";
-}
-
 AttachThreadScoped::AttachThreadScoped(JavaVM* jvm)
     : attached_(false), jvm_(jvm), env_(NULL) {
   env_ = GetEnv(jvm);
@@ -102,7 +95,7 @@ AttachThreadScoped::AttachThreadScoped(JavaVM* jvm)
     // Adding debug log here so we can track down potential leaks and figure
     // out why we sometimes see "Native thread exiting without having called
     // DetachCurrentThread" in logcat outputs.
-    ALOGD("Attaching thread to JVM%s", GetThreadInfo().c_str());
+    ALOGD("Attaching thread to JVM[tid=%d]", rtc::CurrentThreadId());
     jint res = jvm->AttachCurrentThread(&env_, NULL);
     attached_ = (res == JNI_OK);
     RTC_CHECK(attached_) << "AttachCurrentThread failed: " << res;
@@ -111,13 +104,15 @@ AttachThreadScoped::AttachThreadScoped(JavaVM* jvm)
 
 AttachThreadScoped::~AttachThreadScoped() {
   if (attached_) {
-    ALOGD("Detaching thread from JVM%s", GetThreadInfo().c_str());
+    ALOGD("Detaching thread from JVM[tid=%d]", rtc::CurrentThreadId());
     jint res = jvm_->DetachCurrentThread();
     RTC_CHECK(res == JNI_OK) << "DetachCurrentThread failed: " << res;
     RTC_CHECK(!GetEnv(jvm_));
   }
 }
 
-JNIEnv* AttachThreadScoped::env() { return env_; }
+JNIEnv* AttachThreadScoped::env() {
+  return env_;
+}
 
 }  // namespace webrtc

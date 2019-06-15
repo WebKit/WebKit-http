@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -109,20 +109,24 @@ public:
 
     LValue weakPointer(DFG::Graph& graph, JSCell* cell)
     {
-        ASSERT(graph.m_plan.weakReferences.contains(cell));
+        ASSERT(graph.m_plan.weakReferences().contains(cell));
 
-        if (sizeof(void*) == 8)
-            return constInt64(bitwise_cast<intptr_t>(cell));
-        return constInt32(bitwise_cast<intptr_t>(cell));
+        return constIntPtr(bitwise_cast<intptr_t>(cell));
+    }
+
+    template<typename Key>
+    LValue weakPoisonedPointer(DFG::Graph& graph, JSCell* cell)
+    {
+        ASSERT(graph.m_plan.weakReferences().contains(cell));
+
+        return constIntPtr(bitwise_cast<intptr_t>(cell) ^ Key::key());
     }
 
     LValue weakPointer(DFG::FrozenValue* value)
     {
         RELEASE_ASSERT(value->value().isCell());
 
-        if (sizeof(void*) == 8)
-            return constInt64(bitwise_cast<intptr_t>(value->cell()));
-        return constInt32(bitwise_cast<intptr_t>(value->cell()));
+        return constIntPtr(bitwise_cast<intptr_t>(value->cell()));
     }
 
     template<typename T>
@@ -151,6 +155,8 @@ public:
     void addIncomingToPhi(LValue phi, ValueFromBlock);
     template<typename... Params>
     void addIncomingToPhi(LValue phi, ValueFromBlock, Params... theRest);
+    
+    LValue opaque(LValue);
 
     LValue add(LValue, LValue);
     LValue sub(LValue, LValue);
@@ -301,9 +307,9 @@ public:
     {
         return TypedPointer(heap, baseIndex(base, index, scale, offset));
     }
-    TypedPointer baseIndex(IndexedAbstractHeap& heap, LValue base, LValue index, JSValue indexAsConstant = JSValue(), ptrdiff_t offset = 0)
+    TypedPointer baseIndex(IndexedAbstractHeap& heap, LValue base, LValue index, JSValue indexAsConstant = JSValue(), ptrdiff_t offset = 0, LValue mask = nullptr)
     {
-        return heap.baseIndex(*this, base, index, indexAsConstant, offset);
+        return heap.baseIndex(*this, base, index, indexAsConstant, offset, mask);
     }
 
     TypedPointer absolute(const void* address);
@@ -316,6 +322,8 @@ public:
     LValue load64(LValue base, const AbstractHeap& field) { return load64(address(base, field)); }
     LValue loadPtr(LValue base, const AbstractHeap& field) { return loadPtr(address(base, field)); }
     LValue loadDouble(LValue base, const AbstractHeap& field) { return loadDouble(address(base, field)); }
+    void store32As8(LValue value, LValue base, const AbstractHeap& field) { store32As8(value, address(base, field)); }
+    void store32As16(LValue value, LValue base, const AbstractHeap& field) { store32As16(value, address(base, field)); }
     void store32(LValue value, LValue base, const AbstractHeap& field) { store32(value, address(base, field)); }
     void store64(LValue value, LValue base, const AbstractHeap& field) { store64(value, address(base, field)); }
     void storePtr(LValue value, LValue base, const AbstractHeap& field) { storePtr(value, address(base, field)); }
@@ -395,11 +403,13 @@ public:
     LValue callWithoutSideEffects(B3::Type type, Function function, LValue arg1, Args... args)
     {
         return m_block->appendNew<B3::CCallValue>(m_proc, type, origin(), B3::Effects::none(),
-            constIntPtr(bitwise_cast<void*>(function)), arg1, args...);
+            constIntPtr(tagCFunctionPtr<void*>(function, B3CCallPtrTag)), arg1, args...);
     }
 
+    // FIXME: Consider enhancing this to allow the client to choose the target PtrTag to use.
+    // https://bugs.webkit.org/show_bug.cgi?id=184324
     template<typename FunctionType>
-    LValue operation(FunctionType function) { return constIntPtr(bitwise_cast<void*>(function)); }
+    LValue operation(FunctionType function) { return constIntPtr(tagCFunctionPtr<void*>(function, B3CCallPtrTag)); }
 
     void jump(LBasicBlock);
     void branch(LValue condition, LBasicBlock taken, Weight takenWeight, LBasicBlock notTaken, Weight notTakenWeight);
@@ -426,6 +436,8 @@ public:
             switchValue->appendCase(B3::SwitchCase(value, target));
         }
     }
+
+    void entrySwitch(const Vector<LBasicBlock>&);
 
     void ret(LValue);
 

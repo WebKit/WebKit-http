@@ -27,6 +27,9 @@
 #include "EditorState.h"
 
 #include "WebCoreArgumentCoders.h"
+#include <wtf/text/TextStream.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -42,10 +45,8 @@ void EditorState::encode(IPC::Encoder& encoder) const
     encoder << hasComposition;
     encoder << isMissingPostLayoutData;
 
-#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
     if (!isMissingPostLayoutData)
         m_postLayoutData.encode(encoder);
-#endif
 
 #if PLATFORM(IOS)
     encoder << firstMarkedRect;
@@ -63,6 +64,8 @@ void EditorState::encode(IPC::Encoder& encoder) const
     encoder << selectedText;
     encoder << surroundingText;
 #endif
+
+    encoder << originIdentifierForPasteboard;
 }
 
 bool EditorState::decode(IPC::Decoder& decoder, EditorState& result)
@@ -94,12 +97,10 @@ bool EditorState::decode(IPC::Decoder& decoder, EditorState& result)
     if (!decoder.decode(result.isMissingPostLayoutData))
         return false;
 
-#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
     if (!result.isMissingPostLayoutData) {
         if (!PostLayoutData::decode(decoder, result.postLayoutData()))
             return false;
     }
-#endif
 
 #if PLATFORM(IOS)
     if (!decoder.decode(result.firstMarkedRect))
@@ -136,10 +137,12 @@ bool EditorState::decode(IPC::Decoder& decoder, EditorState& result)
         return false;
 #endif
 
+    if (!decoder.decode(result.originIdentifierForPasteboard))
+        return false;
+
     return true;
 }
 
-#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 void EditorState::PostLayoutData::encode(IPC::Encoder& encoder) const
 {
     encoder << typingAttributes;
@@ -164,12 +167,17 @@ void EditorState::PostLayoutData::encode(IPC::Encoder& encoder) const
     encoder << hasContent;
     encoder << isStableStateUpdate;
     encoder << insideFixedPosition;
+    encoder << hasPlainText;
+    encoder << caretColor;
 #endif
 #if PLATFORM(MAC)
     encoder << candidateRequestStartPosition;
     encoder << paragraphContextForCandidateRequest;
     encoder << stringForCandidateRequest;
 #endif
+    encoder << canCut;
+    encoder << canCopy;
+    encoder << canPaste;
 }
 
 bool EditorState::PostLayoutData::decode(IPC::Decoder& decoder, PostLayoutData& result)
@@ -213,6 +221,10 @@ bool EditorState::PostLayoutData::decode(IPC::Decoder& decoder, PostLayoutData& 
         return false;
     if (!decoder.decode(result.insideFixedPosition))
         return false;
+    if (!decoder.decode(result.hasPlainText))
+        return false;
+    if (!decoder.decode(result.caretColor))
+        return false;
 #endif
 #if PLATFORM(MAC)
     if (!decoder.decode(result.candidateRequestStartPosition))
@@ -225,8 +237,110 @@ bool EditorState::PostLayoutData::decode(IPC::Decoder& decoder, PostLayoutData& 
         return false;
 #endif
 
+    if (!decoder.decode(result.canCut))
+        return false;
+    if (!decoder.decode(result.canCopy))
+        return false;
+    if (!decoder.decode(result.canPaste))
+        return false;
+
     return true;
 }
-#endif // PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 
+TextStream& operator<<(TextStream& ts, const EditorState& editorState)
+{
+#if PLATFORM(IOS)
+    if (editorState.firstMarkedRect != IntRect())
+        ts.dumpProperty("firstMarkedRect", editorState.firstMarkedRect);
+    if (editorState.lastMarkedRect != IntRect())
+        ts.dumpProperty("lastMarkedRect", editorState.lastMarkedRect);
+    if (editorState.markedText.length())
+        ts.dumpProperty("markedText", editorState.markedText);
+#endif
+
+    if (editorState.shouldIgnoreSelectionChanges)
+        ts.dumpProperty("shouldIgnoreSelectionChanges", editorState.shouldIgnoreSelectionChanges);
+    if (!editorState.selectionIsNone)
+        ts.dumpProperty("selectionIsNone", editorState.selectionIsNone);
+    if (editorState.selectionIsRange)
+        ts.dumpProperty("selectionIsRange", editorState.selectionIsRange);
+    if (editorState.isContentEditable)
+        ts.dumpProperty("isContentEditable", editorState.isContentEditable);
+    if (editorState.isContentRichlyEditable)
+        ts.dumpProperty("isContentRichlyEditable", editorState.isContentRichlyEditable);
+    if (editorState.isInPasswordField)
+        ts.dumpProperty("isInPasswordField", editorState.isInPasswordField);
+    if (editorState.isInPlugin)
+        ts.dumpProperty("isInPlugin", editorState.isInPlugin);
+    if (editorState.hasComposition)
+        ts.dumpProperty("hasComposition", editorState.hasComposition);
+    if (editorState.isMissingPostLayoutData)
+        ts.dumpProperty("isMissingPostLayoutData", editorState.isMissingPostLayoutData);
+
+    if (editorState.isMissingPostLayoutData)
+        return ts;
+
+    TextStream::GroupScope scope(ts);
+    ts << "postLayoutData";
+    if (editorState.postLayoutData().typingAttributes != AttributeNone)
+        ts.dumpProperty("typingAttributes", editorState.postLayoutData().typingAttributes);
+#if PLATFORM(IOS) || PLATFORM(GTK)
+    if (editorState.postLayoutData().caretRectAtStart != IntRect())
+        ts.dumpProperty("caretRectAtStart", editorState.postLayoutData().caretRectAtStart);
+#endif
+#if PLATFORM(IOS) || PLATFORM(MAC)
+    if (editorState.postLayoutData().selectionClipRect != IntRect())
+        ts.dumpProperty("selectionClipRect", editorState.postLayoutData().selectionClipRect);
+    if (editorState.postLayoutData().selectedTextLength)
+        ts.dumpProperty("selectedTextLength", editorState.postLayoutData().selectedTextLength);
+    if (editorState.postLayoutData().textAlignment != NoAlignment)
+        ts.dumpProperty("textAlignment", editorState.postLayoutData().textAlignment);
+    if (editorState.postLayoutData().textColor.isValid())
+        ts.dumpProperty("textColor", editorState.postLayoutData().textColor);
+    if (editorState.postLayoutData().enclosingListType != NoList)
+        ts.dumpProperty("enclosingListType", editorState.postLayoutData().enclosingListType);
+#endif
+#if PLATFORM(IOS)
+    if (editorState.postLayoutData().caretRectAtEnd != IntRect())
+        ts.dumpProperty("caretRectAtEnd", editorState.postLayoutData().caretRectAtEnd);
+    if (editorState.postLayoutData().selectionRects.size())
+        ts.dumpProperty("selectionRects", editorState.postLayoutData().selectionRects);
+    if (editorState.postLayoutData().wordAtSelection.length())
+        ts.dumpProperty("wordAtSelection", editorState.postLayoutData().wordAtSelection);
+    if (editorState.postLayoutData().characterAfterSelection)
+        ts.dumpProperty("characterAfterSelection", editorState.postLayoutData().characterAfterSelection);
+    if (editorState.postLayoutData().characterBeforeSelection)
+        ts.dumpProperty("characterBeforeSelection", editorState.postLayoutData().characterBeforeSelection);
+    if (editorState.postLayoutData().twoCharacterBeforeSelection)
+        ts.dumpProperty("twoCharacterBeforeSelection", editorState.postLayoutData().twoCharacterBeforeSelection);
+
+    if (editorState.postLayoutData().isReplaceAllowed)
+        ts.dumpProperty("isReplaceAllowed", editorState.postLayoutData().isReplaceAllowed);
+    if (editorState.postLayoutData().hasContent)
+        ts.dumpProperty("hasContent", editorState.postLayoutData().hasContent);
+    ts.dumpProperty("isStableStateUpdate", editorState.postLayoutData().isStableStateUpdate);
+    if (editorState.postLayoutData().insideFixedPosition)
+        ts.dumpProperty("insideFixedPosition", editorState.postLayoutData().insideFixedPosition);
+    if (editorState.postLayoutData().caretColor.isValid())
+        ts.dumpProperty("caretColor", editorState.postLayoutData().caretColor);
+#endif
+#if PLATFORM(MAC)
+    if (editorState.postLayoutData().candidateRequestStartPosition)
+        ts.dumpProperty("candidateRequestStartPosition", editorState.postLayoutData().candidateRequestStartPosition);
+    if (editorState.postLayoutData().paragraphContextForCandidateRequest.length())
+        ts.dumpProperty("paragraphContextForCandidateRequest", editorState.postLayoutData().paragraphContextForCandidateRequest);
+    if (editorState.postLayoutData().stringForCandidateRequest.length())
+        ts.dumpProperty("stringForCandidateRequest", editorState.postLayoutData().stringForCandidateRequest);
+#endif
+
+    if (editorState.postLayoutData().canCut)
+        ts.dumpProperty("canCut", editorState.postLayoutData().canCut);
+    if (editorState.postLayoutData().canCopy)
+        ts.dumpProperty("canCopy", editorState.postLayoutData().canCopy);
+    if (editorState.postLayoutData().canPaste)
+        ts.dumpProperty("canPaste", editorState.postLayoutData().canPaste);
+
+    return ts;
 }
+
+} // namespace WebKit

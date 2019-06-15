@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 #include "CatchScope.h"
 #include "CodeBlock.h"
 #include "Disassembler.h"
+#include "EntryFrame.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
@@ -38,32 +39,25 @@
 #include "LLIntThunks.h"
 #include "Opcode.h"
 #include "ShadowChicken.h"
-#include "VM.h"
+#include "VMInlines.h"
 
 namespace JSC {
 
-void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
+void genericUnwind(VM* vm, ExecState* callFrame)
 {
     auto scope = DECLARE_CATCH_SCOPE(*vm);
+    CallFrame* topJSCallFrame = vm->topJSCallFrame();
     if (Options::breakOnThrow()) {
-        CodeBlock* codeBlock = callFrame->codeBlock();
-        if (codeBlock)
-            dataLog("In call frame ", RawPointer(callFrame), " for code block ", *codeBlock, "\n");
-        else
-            dataLog("In call frame ", RawPointer(callFrame), " with null CodeBlock\n");
+        CodeBlock* codeBlock = topJSCallFrame->codeBlock();
+        dataLog("In call frame ", RawPointer(topJSCallFrame), " for code block ", codeBlock, "\n");
         CRASH();
     }
     
-    ExecState* shadowChickenTopFrame = callFrame;
-    if (unwindStart == UnwindFromCallerFrame) {
-        VMEntryFrame* topVMEntryFrame = vm->topVMEntryFrame;
-        shadowChickenTopFrame = callFrame->callerFrame(topVMEntryFrame);
-    }
-    vm->shadowChicken().log(*vm, shadowChickenTopFrame, ShadowChicken::Packet::throwPacket());
-    
+    vm->shadowChicken().log(*vm, topJSCallFrame, ShadowChicken::Packet::throwPacket());
+
     Exception* exception = scope.exception();
     RELEASE_ASSERT(exception);
-    HandlerInfo* handler = vm->interpreter->unwind(*vm, callFrame, exception, unwindStart); // This may update callFrame.
+    HandlerInfo* handler = vm->interpreter->unwind(*vm, callFrame, exception); // This may update callFrame.
 
     void* catchRoutine;
     Instruction* catchPCForInterpreter = 0;
@@ -82,20 +76,16 @@ void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
         catchRoutine = catchPCForInterpreter->u.pointer;
 #endif
     } else
-        catchRoutine = LLInt::getCodePtr(handleUncaughtException);
-    
-    ASSERT(bitwise_cast<uintptr_t>(callFrame) < bitwise_cast<uintptr_t>(vm->topVMEntryFrame));
+        catchRoutine = LLInt::getCodePtr<ExceptionHandlerPtrTag>(handleUncaughtException).executableAddress();
 
+    ASSERT(bitwise_cast<uintptr_t>(callFrame) < bitwise_cast<uintptr_t>(vm->topEntryFrame));
+
+    assertIsTaggedWith(catchRoutine, ExceptionHandlerPtrTag);
     vm->callFrameForCatch = callFrame;
     vm->targetMachinePCForThrow = catchRoutine;
     vm->targetInterpreterPCForThrow = catchPCForInterpreter;
     
     RELEASE_ASSERT(catchRoutine);
-}
-
-void genericUnwind(VM* vm, ExecState* callFrame)
-{
-    genericUnwind(vm, callFrame, UnwindFromCurrentFrame);
 }
 
 } // namespace JSC

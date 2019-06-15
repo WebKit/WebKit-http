@@ -63,6 +63,11 @@ bool IntrinsicGetterAccessCase::canEmitIntrinsicGetter(JSFunction* getter, Struc
         
         return true;
     }
+    case UnderscoreProtoIntrinsic: {
+        auto getPrototypeMethod = structure->classInfo()->methodTable.getPrototype;
+        MethodTable::GetPrototypeFunctionPtr defaultGetPrototype = JSObject::getPrototype;
+        return getPrototypeMethod == defaultGetPrototype;
+    }
     default:
         return false;
     }
@@ -116,11 +121,20 @@ void IntrinsicGetterAccessCase::emitIntrinsicGetter(AccessGenerationState& state
         CCallHelpers::Jump done = jit.jump();
         
         emptyByteOffset.link(&jit);
-        jit.move(TrustedImmPtr(0), valueGPR);
+        jit.move(TrustedImmPtr(nullptr), valueGPR);
         
         done.link(&jit);
         
         jit.boxInt32(valueGPR, valueRegs);
+        state.succeed();
+        return;
+    }
+
+    case UnderscoreProtoIntrinsic: {
+        if (structure()->hasPolyProto())
+            jit.loadValue(CCallHelpers::Address(baseGPR, offsetRelativeToBase(knownPolyProtoOffset)), valueRegs);
+        else
+            jit.moveValue(structure()->storedPrototype(), valueRegs);
         state.succeed();
         return;
     }

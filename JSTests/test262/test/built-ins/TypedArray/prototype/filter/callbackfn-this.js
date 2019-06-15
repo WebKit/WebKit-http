@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.filter
 description: >
   callbackfn `this` value
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -15,6 +15,7 @@ info: >
     c. Let selected be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var expected = (function() { return this; })();

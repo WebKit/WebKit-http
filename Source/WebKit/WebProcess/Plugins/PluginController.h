@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginController_h
-#define PluginController_h
+#pragma once
 
 #include <wtf/Forward.h>
 
@@ -36,10 +35,13 @@ struct NPObject;
 typedef struct _NPVariant NPVariant;
 typedef void* NPIdentifier;
 
+namespace WTF {
+class MachSendRight;
+}
+
 namespace WebCore {
 class HTTPHeaderMap;
 class IntRect;
-class MachSendRight;
 class ProtectionSpace;
 class URL;
 }
@@ -107,7 +109,7 @@ public:
     virtual void setComplexTextInputState(PluginComplexTextInputState) = 0;
 
     // Returns the mach port of the compositing render server.
-    virtual const WebCore::MachSendRight& compositingRenderServerPort() = 0;
+    virtual const WTF::MachSendRight& compositingRenderServerPort() = 0;
 #endif
 
     // Returns the contents scale factor.
@@ -143,7 +145,7 @@ public:
     // Decrements a counter that, when it reaches 0, stops preventing the plug-in from being destroyed.
     virtual void unprotectPluginFromDestruction() = 0;
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     // Create a plugin container for windowed plugins
     virtual uint64_t createPluginContainer() = 0;
     virtual void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID) = 0;
@@ -179,5 +181,3 @@ protected:
 };
 
 } // namespace WebKit
-
-#endif // PluginController_h

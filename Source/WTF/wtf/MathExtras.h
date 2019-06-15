@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,10 +33,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <wtf/StdLibExtras.h>
-
-#if OS(SOLARIS)
-#include <ieeefp.h>
-#endif
 
 #if OS(OPENBSD)
 #include <sys/types.h>
@@ -73,24 +69,6 @@ const float sqrtOfTwoFloat = 1.41421356237309504880f;
 #else
 const double sqrtOfTwoDouble = M_SQRT2;
 const float sqrtOfTwoFloat = static_cast<float>(M_SQRT2);
-#endif
-
-#if OS(SOLARIS)
-
-namespace std {
-
-#ifndef isfinite
-inline bool isfinite(double x) { return finite(x) && !isnand(x); }
-#endif
-#ifndef signbit
-inline bool signbit(double x) { return copysign(1.0, x) < 0; }
-#endif
-#ifndef isinf
-inline bool isinf(double x) { return !finite(x) && !isnand(x); }
-#endif
-
-} // namespace std
-
 #endif
 
 #if COMPILER(MSVC)
@@ -214,17 +192,17 @@ inline float normalizedFloat(float value)
     return value;
 }
 
-template<typename T> inline bool hasOneBitSet(T value)
+template<typename T> constexpr bool hasOneBitSet(T value)
 {
     return !((value - 1) & value) && value;
 }
 
-template<typename T> inline bool hasZeroOrOneBitsSet(T value)
+template<typename T> constexpr bool hasZeroOrOneBitsSet(T value)
 {
     return !((value - 1) & value);
 }
 
-template<typename T> inline bool hasTwoOrMoreBitsSet(T value)
+template<typename T> constexpr bool hasTwoOrMoreBitsSet(T value)
 {
     return !hasZeroOrOneBitsSet(value);
 }
@@ -356,7 +334,7 @@ inline void doubleToInteger(double d, unsigned long long& value)
 namespace WTF {
 
 // From http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-inline uint32_t roundUpToPowerOfTwo(uint32_t v)
+inline constexpr uint32_t roundUpToPowerOfTwo(uint32_t v)
 {
     v--;
     v |= v >> 1;
@@ -366,6 +344,13 @@ inline uint32_t roundUpToPowerOfTwo(uint32_t v)
     v |= v >> 16;
     v++;
     return v;
+}
+
+inline constexpr unsigned maskForSize(unsigned size)
+{
+    if (!size)
+        return 0;
+    return roundUpToPowerOfTwo(size) - 1;
 }
 
 inline unsigned fastLog2(unsigned i)
@@ -488,6 +473,116 @@ inline bool rangesOverlap(T leftMin, T leftMax, T rightMin, T rightMax)
     return nonEmptyRangesOverlap(leftMin, leftMax, rightMin, rightMax);
 }
 
+// This mask is not necessarily the minimal mask, specifically if size is
+// a power of 2. It has the advantage that it's fast to compute, however.
+inline uint32_t computeIndexingMask(uint32_t size)
+{
+    return static_cast<uint64_t>(static_cast<uint32_t>(-1)) >> std::clz(size);
+}
+
+constexpr unsigned preciseIndexMaskShiftForSize(unsigned size)
+{
+    return size * 8 - 1;
+}
+
+template<typename T>
+constexpr unsigned preciseIndexMaskShift()
+{
+    return preciseIndexMaskShiftForSize(sizeof(T));
+}
+
+template<typename T>
+T opaque(T pointer)
+{
+#if !OS(WINDOWS)
+    asm("" : "+r"(pointer));
+#endif
+    return pointer;
+}
+
+// This masks the given pointer with 0xffffffffffffffff (ptrwidth) if `index <
+// length`. Otherwise, it masks the pointer with 0. Similar to Linux kernel's array_ptr.
+template<typename T>
+inline T* preciseIndexMaskPtr(uintptr_t index, uintptr_t length, T* value)
+{
+    uintptr_t result = bitwise_cast<uintptr_t>(value) & static_cast<uintptr_t>(
+        static_cast<intptr_t>(index - opaque(length)) >>
+        static_cast<intptr_t>(preciseIndexMaskShift<T*>()));
+    return bitwise_cast<T*>(result);
+}
+
+template<typename VectorType, typename RandomFunc>
+void shuffleVector(VectorType& vector, size_t size, const RandomFunc& randomFunc)
+{
+    for (size_t i = 0; i + 1 < size; ++i)
+        std::swap(vector[i], vector[i + randomFunc(size - i)]);
+}
+
+template<typename VectorType, typename RandomFunc>
+void shuffleVector(VectorType& vector, const RandomFunc& randomFunc)
+{
+    shuffleVector(vector, vector.size(), randomFunc);
+}
+
+inline unsigned clz32(uint32_t number)
+{
+#if COMPILER(GCC_OR_CLANG)
+    if (number)
+        return __builtin_clz(number);
+    return 32;
+#elif COMPILER(MSVC)
+    // Visual Studio 2008 or upper have __lzcnt, but we can't detect Intel AVX at compile time.
+    // So we use bit-scan-reverse operation to calculate clz.
+    unsigned long ret = 0;
+    if (_BitScanReverse(&ret, number))
+        return 31 - ret;
+    return 32;
+#else
+    unsigned zeroCount = 0;
+    for (int i = 31; i >= 0; i--) {
+        if (!(number >> i))
+            zeroCount++;
+        else
+            break;
+    }
+    return zeroCount;
+#endif
+}
+
+inline unsigned clz64(uint64_t number)
+{
+#if COMPILER(GCC_OR_CLANG)
+    if (number)
+        return __builtin_clzll(number);
+    return 64;
+#elif COMPILER(MSVC) && !CPU(X86)
+    // Visual Studio 2008 or upper have __lzcnt, but we can't detect Intel AVX at compile time.
+    // So we use bit-scan-reverse operation to calculate clz.
+    // _BitScanReverse64 is defined in X86_64 and ARM in MSVC supported environments.
+    unsigned long ret = 0;
+    if (_BitScanReverse64(&ret, number))
+        return 63 - ret;
+    return 64;
+#else
+    unsigned zeroCount = 0;
+    for (int i = 63; i >= 0; i--) {
+        if (!(number >> i))
+            zeroCount++;
+        else
+            break;
+    }
+    return zeroCount;
+#endif
+}
+
 } // namespace WTF
+
+using WTF::opaque;
+using WTF::preciseIndexMaskPtr;
+using WTF::preciseIndexMaskShift;
+using WTF::preciseIndexMaskShiftForSize;
+using WTF::shuffleVector;
+using WTF::clz32;
+using WTF::clz64;
 
 #endif // #ifndef WTF_MathExtras_h

@@ -9,13 +9,13 @@
  *
  */
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_BYE_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_BYE_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_BYE_H_
+#define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_BYE_H_
 
 #include <string>
 #include <vector>
 
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet.h"
+#include "modules/rtp_rtcp/source/rtcp_packet.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -44,7 +44,7 @@ class Bye : public RtcpPacket {
   bool Create(uint8_t* packet,
               size_t* index,
               size_t max_length,
-              RtcpPacket::PacketReadyCallback* callback) const override;
+              PacketReadyCallback callback) const override;
 
  private:
   static const int kMaxNumberOfCsrcs = 0x1f - 1;  // First item is sender SSRC.
@@ -56,4 +56,4 @@ class Bye : public RtcpPacket {
 
 }  // namespace rtcp
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_BYE_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_BYE_H_

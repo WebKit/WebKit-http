@@ -32,22 +32,12 @@ SVGAnimatedAngleAnimator::SVGAnimatedAngleAnimator(SVGAnimationElement* animatio
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedAngleAnimator::constructFromString(const String& string)
 {
-    auto animatedType = SVGAnimatedType::createAngleAndEnumeration(std::make_unique<std::pair<SVGAngleValue, unsigned>>());
-    auto& animatedPair = animatedType->angleAndEnumeration();
-
-    SVGAngleValue angle;
-    SVGMarkerOrientType orientType = SVGPropertyTraits<SVGMarkerOrientType>::fromString(string, angle);
-    if (orientType > 0)
-        animatedPair.second = orientType;
-    if (orientType == SVGMarkerOrientAngle)
-        animatedPair.first = angle;
-
-    return animatedType;
+    return SVGAnimatedType::create(SVGPropertyTraits<std::pair<SVGAngleValue, unsigned>>::fromString(string));
 }
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedAngleAnimator::startAnimValAnimation(const SVGElementAnimatedPropertyList& animatedTypes)
 {
-    return SVGAnimatedType::createAngleAndEnumeration(constructFromBaseValues<SVGAnimatedAngle, SVGAnimatedEnumeration>(animatedTypes));
+    return constructFromBaseValues<SVGAnimatedAngle, SVGAnimatedEnumeration>(animatedTypes);
 }
 
 void SVGAnimatedAngleAnimator::stopAnimValAnimation(const SVGElementAnimatedPropertyList& animatedTypes)
@@ -57,7 +47,7 @@ void SVGAnimatedAngleAnimator::stopAnimValAnimation(const SVGElementAnimatedProp
 
 void SVGAnimatedAngleAnimator::resetAnimValToBaseVal(const SVGElementAnimatedPropertyList& animatedTypes, SVGAnimatedType& type)
 {
-    resetFromBaseValues<SVGAnimatedAngle, SVGAnimatedEnumeration>(animatedTypes, type, &SVGAnimatedType::angleAndEnumeration);
+    resetFromBaseValues<SVGAnimatedAngle, SVGAnimatedEnumeration>(animatedTypes, type);
 }
 
 void SVGAnimatedAngleAnimator::animValWillChange(const SVGElementAnimatedPropertyList& animatedTypes)
@@ -75,8 +65,8 @@ void SVGAnimatedAngleAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAnimat
     ASSERT(from->type() == AnimatedAngle);
     ASSERT(from->type() == to->type());
 
-    const auto& fromAngleAndEnumeration = from->angleAndEnumeration();
-    auto& toAngleAndEnumeration = to->angleAndEnumeration();
+    const auto& fromAngleAndEnumeration = from->as<std::pair<SVGAngleValue, unsigned>>();
+    auto& toAngleAndEnumeration = to->as<std::pair<SVGAngleValue, unsigned>>();
     // Only respect by animations, if from and by are both specified in angles (and not eg. 'auto').
     if (fromAngleAndEnumeration.second != toAngleAndEnumeration.second || fromAngleAndEnumeration.second != SVGMarkerOrientAngle)
         return;
@@ -90,10 +80,10 @@ void SVGAnimatedAngleAnimator::calculateAnimatedValue(float percentage, unsigned
     ASSERT(m_animationElement);
     ASSERT(m_contextElement);
 
-    const auto& fromAngleAndEnumeration = m_animationElement->animationMode() == ToAnimation ? animated->angleAndEnumeration() : from->angleAndEnumeration();
-    auto& toAngleAndEnumeration = to->angleAndEnumeration();
-    auto& toAtEndOfDurationAngleAndEnumeration = toAtEndOfDuration->angleAndEnumeration();
-    auto& animatedAngleAndEnumeration = animated->angleAndEnumeration();
+    const auto& fromAngleAndEnumeration = (m_animationElement->animationMode() == ToAnimation ? animated : from)->as<std::pair<SVGAngleValue, unsigned>>();
+    auto& toAngleAndEnumeration = to->as<std::pair<SVGAngleValue, unsigned>>();
+    auto& toAtEndOfDurationAngleAndEnumeration = toAtEndOfDuration->as<std::pair<SVGAngleValue, unsigned>>();
+    auto& animatedAngleAndEnumeration = animated->as<std::pair<SVGAngleValue, unsigned>>();
 
     if (fromAngleAndEnumeration.second != toAngleAndEnumeration.second) {
         // Discrete animation - no linear interpolation possible between values (e.g. auto to angle).

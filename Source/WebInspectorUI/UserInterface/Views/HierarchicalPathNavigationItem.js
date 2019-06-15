@@ -23,11 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationItem extends WebInspector.NavigationItem
+WI.HierarchicalPathNavigationItem = class HierarchicalPathNavigationItem extends WI.NavigationItem
 {
     constructor(identifier, components)
     {
         super(identifier);
+
+        this._collapsedComponent = null;
+        this._needsUpdate = false;
 
         this.components = components;
     }
@@ -60,20 +63,18 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
         if (this._components && componentsEqual(this._components, newComponents))
             return;
 
-        for (var i = 0; this._components && i < this._components.length; ++i)
-            this._components[i].removeEventListener(WebInspector.HierarchicalPathComponent.Event.SiblingWasSelected, this._siblingPathComponentWasSelected, this);
+        if (this._components) {
+            for (let component of this._components)
+                component.removeEventListener(WI.HierarchicalPathComponent.Event.SiblingWasSelected, this._siblingPathComponentWasSelected, this);
+        }
 
-        // Make a shallow copy of the newComponents array using slice.
         this._components = newComponents.slice(0);
 
-        for (var i = 0; i < this._components.length; ++i)
-            this._components[i].addEventListener(WebInspector.HierarchicalPathComponent.Event.SiblingWasSelected, this._siblingPathComponentWasSelected, this);
+        for (let component of this._components)
+            component.addEventListener(WI.HierarchicalPathComponent.Event.SiblingWasSelected, this._siblingPathComponentWasSelected, this);
 
-        this.element.removeChildren();
-        delete this._collapsedComponent;
-
-        for (var i = 0; i < newComponents.length; ++i)
-            this.element.appendChild(newComponents[i].element);
+        // Wait until layout to update the DOM.
+        this._needsUpdate = true;
 
         // Update layout for the so other items can adjust to the extra space (or lack thereof) too.
         if (this.parentNavigationBar)
@@ -87,32 +88,37 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
 
     get alwaysShowLastPathComponentSeparator()
     {
-        return this.element.classList.contains(WebInspector.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName);
+        return this.element.classList.contains(WI.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName);
     }
 
     set alwaysShowLastPathComponentSeparator(flag)
     {
         if (flag)
-            this.element.classList.add(WebInspector.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName);
+            this.element.classList.add(WI.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName);
         else
-            this.element.classList.remove(WebInspector.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName);
+            this.element.classList.remove(WI.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName);
     }
 
     updateLayout(expandOnly)
     {
+        this._updateComponentsIfNeeded();
+
+        super.updateLayout(expandOnly);
+
         var navigationBar = this.parentNavigationBar;
         if (!navigationBar)
             return;
 
         if (this._collapsedComponent) {
             this.element.removeChild(this._collapsedComponent.element);
-            delete this._collapsedComponent;
+            this._collapsedComponent = null;
         }
 
         // Expand our components to full width to test if the items can fit at full width.
         for (var i = 0; i < this._components.length; ++i) {
             this._components[i].hidden = false;
             this._components[i].forcedWidth = null;
+            this._components[i].hideTooltip = true;
         }
 
         if (expandOnly)
@@ -129,7 +135,7 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
                 continue;
 
             // Skip flexible space items since they can take up no space at the minimum width.
-            if (navigationBar.navigationItems[i] instanceof WebInspector.FlexibleSpaceNavigationItem)
+            if (navigationBar.navigationItems[i] instanceof WI.FlexibleSpaceNavigationItem)
                 continue;
 
             totalOtherItemsWidth += navigationBar.navigationItems[i].element.realOffsetWidth;
@@ -156,6 +162,8 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
         for (var i = 0; i < this._components.length; ++i) {
             var componentWidth = componentWidths[i];
 
+            this._components[i].hideTooltip = false;
+
             // Try to take the whole width we need to remove from each component.
             var forcedWidth = componentWidth - widthToRemove;
             this._components[i].forcedWidth = forcedWidth;
@@ -163,7 +171,7 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
             // Since components have a minimum width, we need to see how much was actually
             // removed and subtract that from what remans to be removed.
             componentWidths[i] = Math.max(this._components[i].minimumWidth, forcedWidth);
-            widthToRemove -= (componentWidth - componentWidths[i]);
+            widthToRemove -= componentWidth - componentWidths[i];
 
             // If there is nothing else to remove, then we can stop.
             if (widthToRemove <= 0)
@@ -186,7 +194,7 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
         var i = middle;
 
         // Create a component that will represent the hidden components with a ellipse as the display name.
-        this._collapsedComponent = new WebInspector.HierarchicalPathComponent(ellipsis, []);
+        this._collapsedComponent = new WI.HierarchicalPathComponent(ellipsis, []);
         this._collapsedComponent.collapsed = true;
 
         // Insert it in the middle, it doesn't matter exactly where since the elements around it will be hidden soon.
@@ -242,14 +250,28 @@ WebInspector.HierarchicalPathNavigationItem = class HierarchicalPathNavigationIt
 
     // Private
 
+    _updateComponentsIfNeeded()
+    {
+        if (!this._needsUpdate)
+            return;
+
+        this._needsUpdate = false;
+
+        this.element.removeChildren();
+        this._collapsedComponent = null;
+
+        for (let component of this._components)
+            this.element.appendChild(component.element);
+    }
+
     _siblingPathComponentWasSelected(event)
     {
-        this.dispatchEventToListeners(WebInspector.HierarchicalPathNavigationItem.Event.PathComponentWasSelected, event.data);
+        this.dispatchEventToListeners(WI.HierarchicalPathNavigationItem.Event.PathComponentWasSelected, event.data);
     }
 };
 
-WebInspector.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName = "always-show-last-path-component-separator";
+WI.HierarchicalPathNavigationItem.AlwaysShowLastPathComponentSeparatorStyleClassName = "always-show-last-path-component-separator";
 
-WebInspector.HierarchicalPathNavigationItem.Event = {
+WI.HierarchicalPathNavigationItem.Event = {
     PathComponentWasSelected: "hierarchical-path-navigation-item-path-component-was-selected"
 };

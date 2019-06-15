@@ -29,14 +29,26 @@
 
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
+#import "UIKitSPI.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <UIKit/UIPasteboard.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/SoftLinking.h>
 
-SOFT_LINK_FRAMEWORK(UIKit)
-SOFT_LINK(UIKit, UIApplicationInitialize, void, (void), ())
+typedef void (^DataLoadCompletionBlock)(NSData *, NSError *);
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
+
+static void checkJSONWithLogging(NSString *jsonString, NSDictionary *expected)
+{
+    BOOL success = TestWebKitAPI::Util::jsonMatchesExpectedValues(jsonString, expected);
+    EXPECT_TRUE(success);
+    if (!success)
+        NSLog(@"Expected JSON: %@ to match values: %@", jsonString, expected);
+}
+
+#endif // __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
 
 namespace TestWebKitAPI {
 
@@ -45,7 +57,7 @@ NSData *dataForPasteboardType(CFStringRef type)
     return [[UIPasteboard generalPasteboard] dataForPasteboardType:(NSString *)type inItemSet:[NSIndexSet indexSetWithIndex:0]].firstObject;
 }
 
-RetainPtr<TestWKWebView> setUpWebViewForPasteboardTests()
+RetainPtr<TestWKWebView> setUpWebViewForPasteboardTests(NSString *pageName)
 {
     // UIPasteboard's type coercion codepaths only take effect when the UIApplication has been initialized.
     UIApplicationInitialize();
@@ -58,39 +70,33 @@ RetainPtr<TestWKWebView> setUpWebViewForPasteboardTests()
     WKPreferences *preferences = [webView configuration].preferences;
     preferences._javaScriptCanAccessClipboard = YES;
     preferences._domPasteAllowed = YES;
-    [webView synchronouslyLoadTestPageNamed:@"rich-and-plain-text"];
+    [webView synchronouslyLoadTestPageNamed:pageName];
     return webView;
 }
 
 TEST(UIPasteboardTests, CopyPlainTextWritesConcreteTypes)
 {
-    auto webView = setUpWebViewForPasteboardTests();
+    auto webView = setUpWebViewForPasteboardTests(@"rich-and-plain-text");
     [webView stringByEvaluatingJavaScript:@"selectPlainText()"];
     [webView stringByEvaluatingJavaScript:@"document.execCommand('copy')"];
 
     auto utf8Result = adoptNS([[NSString alloc] initWithData:dataForPasteboardType(kUTTypeUTF8PlainText) encoding:NSUTF8StringEncoding]);
-    auto utf16Result = adoptNS([[NSString alloc] initWithData:dataForPasteboardType(kUTTypeUTF16PlainText) encoding:NSUTF16StringEncoding]);
     EXPECT_WK_STREQ("Hello world", [utf8Result UTF8String]);
-    EXPECT_WK_STREQ("Hello world", [utf16Result UTF8String]);
 }
 
 TEST(UIPasteboardTests, CopyRichTextWritesConcreteTypes)
 {
-    auto webView = setUpWebViewForPasteboardTests();
+    auto webView = setUpWebViewForPasteboardTests(@"rich-and-plain-text");
     [webView stringByEvaluatingJavaScript:@"selectRichText()"];
     [webView stringByEvaluatingJavaScript:@"document.execCommand('copy')"];
 
     auto utf8Result = adoptNS([[NSString alloc] initWithData:dataForPasteboardType(kUTTypeUTF8PlainText) encoding:NSUTF8StringEncoding]);
-    auto utf16Result = adoptNS([[NSString alloc] initWithData:dataForPasteboardType(kUTTypeUTF16PlainText) encoding:NSUTF16StringEncoding]);
     EXPECT_WK_STREQ("Hello world", [utf8Result UTF8String]);
-    EXPECT_WK_STREQ("Hello world", [utf16Result UTF8String]);
 }
-
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
 
 TEST(UIPasteboardTests, DoNotPastePlainTextAsURL)
 {
-    auto webView = setUpWebViewForPasteboardTests();
+    auto webView = setUpWebViewForPasteboardTests(@"rich-and-plain-text");
 
     NSString *testString = @"[helloworld]";
     [UIPasteboard generalPasteboard].string = testString;
@@ -107,7 +113,7 @@ TEST(UIPasteboardTests, DoNotPastePlainTextAsURL)
 
 TEST(UIPasteboardTests, PastePlainTextAsURL)
 {
-    auto webView = setUpWebViewForPasteboardTests();
+    auto webView = setUpWebViewForPasteboardTests(@"rich-and-plain-text");
 
     NSString *testString = @"https://www.apple.com/iphone";
     [UIPasteboard generalPasteboard].string = testString;
@@ -124,7 +130,7 @@ TEST(UIPasteboardTests, PastePlainTextAsURL)
 
 TEST(UIPasteboardTests, PasteURLWithPlainTextAsURL)
 {
-    auto webView = setUpWebViewForPasteboardTests();
+    auto webView = setUpWebViewForPasteboardTests(@"rich-and-plain-text");
 
     NSString *testString = @"thisisdefinitelyaurl";
     [UIPasteboard generalPasteboard].URL = [NSURL URLWithString:testString];
@@ -139,7 +145,145 @@ TEST(UIPasteboardTests, PasteURLWithPlainTextAsURL)
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"!!rich.querySelector('a')"].boolValue);
 }
 
-#endif // __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
+
+TEST(UIPasteboardTests, DataTransferGetDataWhenPastingURL)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"dump-datatransfer-types");
+
+    NSString *testURLString = @"https://www.apple.com/";
+    [UIPasteboard generalPasteboard].URL = [NSURL URLWithString:testURLString];
+
+    [webView stringByEvaluatingJavaScript:@"destination.focus()"];
+    [webView stringByEvaluatingJavaScript:@"document.execCommand('paste')"];
+    checkJSONWithLogging([webView stringByEvaluatingJavaScript:@"output.value"], @{
+        @"paste" : @{
+            @"text/plain" : testURLString,
+            @"text/uri-list" : testURLString
+        }
+    });
+}
+
+TEST(UIPasteboardTests, DataTransferGetDataWhenPastingPlatformRepresentations)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"dump-datatransfer-types");
+    [webView stringByEvaluatingJavaScript:@"ignoreInlineStyles = true"];
+
+    // This simulates how a native app on iOS might write to the pasteboard when copying.
+    RetainPtr<NSURL> testURL = [NSURL URLWithString:@"https://www.apple.com/"];
+    RetainPtr<NSString> testPlainTextString = @"WebKit";
+    RetainPtr<NSString> testMarkupString = @"<a href=\"https://www.webkit.org/\">The WebKit Project</a>";
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypeHTML visibility:NSItemProviderRepresentationVisibilityAll loadHandler:^NSProgress *(DataLoadCompletionBlock completionHandler)
+    {
+        completionHandler([testMarkupString dataUsingEncoding:NSUTF8StringEncoding], nil);
+        return nil;
+    }];
+    [itemProvider registerObject:testURL.get() visibility:NSItemProviderRepresentationVisibilityAll];
+    [itemProvider registerObject:testPlainTextString.get() visibility:NSItemProviderRepresentationVisibilityAll];
+
+    [UIPasteboard generalPasteboard].itemProviders = @[ itemProvider.get() ];
+    [webView stringByEvaluatingJavaScript:@"destination.focus()"];
+    [webView stringByEvaluatingJavaScript:@"document.execCommand('paste')"];
+    checkJSONWithLogging([webView stringByEvaluatingJavaScript:@"output.value"], @{
+        @"paste" : @{
+            @"text/plain" : testPlainTextString.get(),
+            @"text/uri-list" : [testURL absoluteString],
+            @"text/html" : testMarkupString.get()
+        }
+    });
+}
+
+TEST(UIPasteboardTests, DataTransferGetDataWhenPastingImageAndText)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"DataTransfer");
+    auto copiedText = retainPtr(@"Apple Inc.");
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypePNG visibility:NSItemProviderRepresentationVisibilityAll loadHandler:[] (DataLoadCompletionBlock completionHandler) -> NSProgress * {
+        completionHandler([NSData dataWithContentsOfURL:[[NSBundle mainBundle] URLForResource:@"icon" withExtension:@"png" subdirectory:@"TestWebKitAPI.resources"]], nil);
+        return nil;
+    }];
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypeUTF8PlainText visibility:NSItemProviderRepresentationVisibilityAll loadHandler:[copiedText] (DataLoadCompletionBlock completionHandler) -> NSProgress * {
+        completionHandler([copiedText dataUsingEncoding:NSUTF8StringEncoding], nil);
+        return nil;
+    }];
+    [UIPasteboard generalPasteboard].itemProviders = @[ itemProvider.get() ];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("Files, text/plain", [webView stringByEvaluatingJavaScript:@"types.textContent"]);
+    EXPECT_WK_STREQ("(STRING, text/plain), (FILE, image/png)", [webView stringByEvaluatingJavaScript:@"items.textContent"]);
+    EXPECT_WK_STREQ("('image.png', image/png)", [webView stringByEvaluatingJavaScript:@"files.textContent"]);
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"urlData.textContent"]);
+    EXPECT_WK_STREQ("Apple Inc.", [webView stringByEvaluatingJavaScript:@"textData.textContent"]);
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"htmlData.textContent"]);
+}
+
+TEST(UIPasteboardTests, DataTransferSetDataCannotWritePlatformTypes)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"dump-datatransfer-types");
+
+    [webView stringByEvaluatingJavaScript:@"customData = { 'text/plain' : '年年年', '年年年年年年' : 'test', 'com.adobe.pdf' : '🔥🔥🔥', 'text/rtf' : 'not actually rich text!' }"];
+    [webView stringByEvaluatingJavaScript:@"writeCustomData = true"];
+    [webView stringByEvaluatingJavaScript:@"select(rich)"];
+    [webView stringByEvaluatingJavaScript:@"document.execCommand('copy')"];
+    [webView stringByEvaluatingJavaScript:@"destination.focus()"];
+    [webView stringByEvaluatingJavaScript:@"document.execCommand('paste')"];
+    checkJSONWithLogging([webView stringByEvaluatingJavaScript:@"output.value"], @{
+        @"paste": @{
+            @"text/plain": @"年年年",
+            @"年年年年年年": @"test",
+            @"com.adobe.pdf": @"🔥🔥🔥",
+            @"text/rtf": @"not actually rich text!"
+        }
+    });
+
+    // Most importantly, the system pasteboard should not contain the PDF UTI.
+    NSData *pdfData = [[UIPasteboard generalPasteboard] dataForPasteboardType:(__bridge NSString *)kUTTypePDF];
+    EXPECT_EQ(0UL, pdfData.length);
+
+    // However, the system pasteboard should contain a plain text string.
+    EXPECT_WK_STREQ("年年年", [UIPasteboard generalPasteboard].string);
+}
+
+TEST(UIPasteboardTests, DataTransferGetDataCannotReadArbitraryPlatformTypes)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"dump-datatransfer-types");
+    auto itemProvider = adoptNS([[NSItemProvider alloc] init]);
+    [itemProvider registerDataRepresentationForTypeIdentifier:(__bridge NSString *)kUTTypeMP3 visibility:NSItemProviderRepresentationVisibilityAll loadHandler:^NSProgress *(DataLoadCompletionBlock completionHandler)
+    {
+        completionHandler([@"this is a test" dataUsingEncoding:NSUTF8StringEncoding], nil);
+        return nil;
+    }];
+    [itemProvider registerDataRepresentationForTypeIdentifier:@"org.WebKit.TestWebKitAPI.custom-pasteboard-type" visibility:NSItemProviderRepresentationVisibilityAll loadHandler:^NSProgress *(DataLoadCompletionBlock completionHandler)
+    {
+        completionHandler([@"this is another test" dataUsingEncoding:NSUTF8StringEncoding], nil);
+        return nil;
+    }];
+
+    [webView stringByEvaluatingJavaScript:@"destination.focus()"];
+    [webView stringByEvaluatingJavaScript:@"document.execCommand('paste')"];
+    checkJSONWithLogging([webView stringByEvaluatingJavaScript:@"output.value"], @{
+        @"paste": @{ }
+    });
+}
+
+TEST(UIPasteboardTests, DataTransferURIListContainsMultipleURLs)
+{
+    auto webView = setUpWebViewForPasteboardTests(@"DataTransfer");
+
+    NSURL *firstURL = [NSURL URLWithString:@"https://www.apple.com/"];
+    NSURL *secondURL = [NSURL URLWithString:@"https://webkit.org/"];
+    [UIPasteboard generalPasteboard].URLs = @[ firstURL, secondURL ];
+
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("text/uri-list, text/plain", [webView stringByEvaluatingJavaScript:@"types.textContent"]);
+    EXPECT_WK_STREQ("(STRING, text/uri-list), (STRING, text/plain)", [webView stringByEvaluatingJavaScript:@"items.textContent"]);
+    EXPECT_WK_STREQ("https://www.apple.com/\nhttps://webkit.org/", [webView stringByEvaluatingJavaScript:@"urlData.textContent"]);
+    EXPECT_WK_STREQ("https://www.apple.com/", [webView stringByEvaluatingJavaScript:@"textData.textContent"]);
+}
+
+#endif // __IPHONE_OS_VERSION_MIN_REQUIRED >= 110300
 
 } // namespace TestWebKitAPI
 

@@ -8,14 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_FAKEICETRANSPORT_H_
-#define WEBRTC_P2P_BASE_FAKEICETRANSPORT_H_
+#ifndef P2P_BASE_FAKEICETRANSPORT_H_
+#define P2P_BASE_FAKEICETRANSPORT_H_
 
+#include <map>
 #include <string>
+#include <utility>
 
-#include "webrtc/base/asyncinvoker.h"
-#include "webrtc/base/copyonwritebuffer.h"
-#include "webrtc/p2p/base/icetransportinternal.h"
+#include "p2p/base/icetransportinternal.h"
+#include "rtc_base/asyncinvoker.h"
+#include "rtc_base/copyonwritebuffer.h"
 
 namespace cricket {
 
@@ -83,7 +85,9 @@ class FakeIceTransport : public IceTransportInternal {
   }
 
   // Convenience functions for accessing ICE config and other things.
-  int receiving_timeout() const { return ice_config_.receiving_timeout; }
+  int receiving_timeout() const {
+    return ice_config_.receiving_timeout_or_default();
+  }
   bool gather_continually() const { return ice_config_.gather_continually(); }
   const Candidates& remote_candidates() const { return remote_candidates_; }
 
@@ -142,25 +146,38 @@ class FakeIceTransport : public IceTransportInternal {
   void AddRemoteCandidate(const Candidate& candidate) override {
     remote_candidates_.push_back(candidate);
   }
-  void RemoveRemoteCandidate(const Candidate& candidate) override {}
+  void RemoveRemoteCandidate(const Candidate& candidate) override {
+    auto it = std::find(remote_candidates_.begin(), remote_candidates_.end(),
+                        candidate);
+    if (it == remote_candidates_.end()) {
+      RTC_LOG(LS_INFO) << "Trying to remove a candidate which doesn't exist.";
+      return;
+    }
 
-  bool GetStats(ConnectionInfos* infos) override {
-    ConnectionInfo info;
-    infos->clear();
-    infos->push_back(info);
+    remote_candidates_.erase(it);
+  }
+
+  bool GetStats(ConnectionInfos* candidate_pair_stats_list,
+                CandidateStatsList* candidate_stats_list) override {
+    CandidateStats candidate_stats;
+    ConnectionInfo candidate_pair_stats;
+    candidate_stats_list->clear();
+    candidate_stats_list->push_back(candidate_stats);
+    candidate_pair_stats_list->clear();
+    candidate_pair_stats_list->push_back(candidate_pair_stats);
     return true;
   }
 
-  rtc::Optional<int> GetRttEstimate() override {
-    return rtc::Optional<int>();
-  }
-
-  void SetMetricsObserver(webrtc::MetricsObserverInterface* observer) override {
-  }
+  absl::optional<int> GetRttEstimate() override { return absl::nullopt; }
 
   // Fake PacketTransportInternal implementation.
   bool writable() const override { return writable_; }
   bool receiving() const override { return receiving_; }
+  // If combine is enabled, every two consecutive packets to be sent with
+  // "SendPacket" will be combined into one outgoing packet.
+  void combine_outgoing_packets(bool combine) {
+    combine_outgoing_packets_ = combine;
+  }
   int SendPacket(const char* data,
                  size_t len,
                  const rtc::PacketOptions& options,
@@ -168,29 +185,55 @@ class FakeIceTransport : public IceTransportInternal {
     if (!dest_) {
       return -1;
     }
-    rtc::CopyOnWriteBuffer packet(data, len);
-    if (async_) {
-      invoker_.AsyncInvokeDelayed<void>(
-          RTC_FROM_HERE, rtc::Thread::Current(),
-          rtc::Bind(&FakeIceTransport::SendPacketInternal, this, packet),
-          async_delay_ms_);
-    } else {
-      SendPacketInternal(packet);
+
+    send_packet_.AppendData(data, len);
+    if (!combine_outgoing_packets_ || send_packet_.size() > len) {
+      rtc::CopyOnWriteBuffer packet(std::move(send_packet_));
+      if (async_) {
+        invoker_.AsyncInvokeDelayed<void>(
+            RTC_FROM_HERE, rtc::Thread::Current(),
+            rtc::Bind(&FakeIceTransport::SendPacketInternal, this, packet),
+            async_delay_ms_);
+      } else {
+        SendPacketInternal(packet);
+      }
     }
     rtc::SentPacket sent_packet(options.packet_id, rtc::TimeMillis());
     SignalSentPacket(this, sent_packet);
     return static_cast<int>(len);
   }
-  int SetOption(rtc::Socket::Option opt, int value) override { return true; }
-  bool GetOption(rtc::Socket::Option opt, int* value) override { return true; }
+
+  int SetOption(rtc::Socket::Option opt, int value) override {
+    socket_options_[opt] = value;
+    return true;
+  }
+  bool GetOption(rtc::Socket::Option opt, int* value) override {
+    auto it = socket_options_.find(opt);
+    if (it != socket_options_.end()) {
+      *value = it->second;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   int GetError() override { return 0; }
+
+  rtc::CopyOnWriteBuffer last_sent_packet() { return last_sent_packet_; }
+
+  absl::optional<rtc::NetworkRoute> network_route() const override {
+    return network_route_;
+  }
+  void SetNetworkRoute(absl::optional<rtc::NetworkRoute> network_route) {
+    network_route_ = network_route;
+  }
 
  private:
   void set_writable(bool writable) {
     if (writable_ == writable) {
       return;
     }
-    LOG(INFO) << "set_writable from:" << writable_ << " to " << writable;
+    RTC_LOG(INFO) << "Change writable_ to " << writable;
     writable_ = writable;
     if (writable_) {
       SignalReadyToSend(this);
@@ -208,6 +251,7 @@ class FakeIceTransport : public IceTransportInternal {
 
   void SendPacketInternal(const rtc::CopyOnWriteBuffer& packet) {
     if (dest_) {
+      last_sent_packet_ = packet;
       dest_->SignalReadPacket(dest_, packet.data<char>(), packet.size(),
                               rtc::CreatePacketTime(0), 0);
     }
@@ -233,8 +277,13 @@ class FakeIceTransport : public IceTransportInternal {
   bool had_connection_ = false;
   bool writable_ = false;
   bool receiving_ = false;
+  bool combine_outgoing_packets_ = false;
+  rtc::CopyOnWriteBuffer send_packet_;
+  absl::optional<rtc::NetworkRoute> network_route_;
+  std::map<rtc::Socket::Option, int> socket_options_;
+  rtc::CopyOnWriteBuffer last_sent_packet_;
 };
 
 }  // namespace cricket
 
-#endif  // WEBRTC_P2P_BASE_FAKEICETRANSPORT_H_
+#endif  // P2P_BASE_FAKEICETRANSPORT_H_

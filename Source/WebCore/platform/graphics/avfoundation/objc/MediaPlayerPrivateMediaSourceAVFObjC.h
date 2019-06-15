@@ -52,12 +52,10 @@ class MediaSourcePrivateAVFObjC;
 class PixelBufferConformerCV;
 class PlatformClockCM;
 class TextureCacheCV;
+class VideoFullscreenLayerManagerObjC;
 class VideoTextureCopierCV;
 class WebCoreDecompressionSession;
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-class VideoFullscreenLayerManager;
-#endif
 
 class MediaPlayerPrivateMediaSourceAVFObjC : public MediaPlayerPrivateInterface {
 public:
@@ -71,8 +69,12 @@ public:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void addAudioRenderer(AVSampleBufferAudioRenderer*);
     void removeAudioRenderer(AVSampleBufferAudioRenderer*);
+#pragma clang diagnostic pop
 
     MediaPlayer::NetworkState networkState() const override;
     MediaPlayer::ReadyState readyState() const override;
@@ -85,7 +87,11 @@ public:
     void setLoadingProgresssed(bool flag) { m_loadingProgressed = flag; }
     void setHasAvailableVideoFrame(bool);
     bool hasAvailableVideoFrame() const override;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void setHasAvailableAudioSample(AVSampleBufferAudioRenderer*, bool);
+#pragma clang diagnostic pop
     bool allRenderersHaveAvailableSamples() const { return m_allRenderersHaveAvailableSamples; }
     void updateAllRenderersHaveAvailableSamples();
     void durationChanged();
@@ -100,28 +106,42 @@ public:
     AVSampleBufferDisplayLayer* sampleBufferDisplayLayer() const { return m_sampleBufferDisplayLayer.get(); }
     WebCoreDecompressionSession* decompressionSession() const { return m_decompressionSession.get(); }
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
     void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
-#endif
 
-#if ENABLE(VIDEO_TRACK)
     bool requiresTextTrackRepresentation() const override;
     void setTextTrackRepresentation(TextTrackRepresentation*) override;
     void syncTextTrackBounds() override;
-#endif
     
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     bool hasStreamSession() { return m_streamSession; }
     AVStreamSession *streamSession();
-    void setCDMSession(CDMSession*) override;
+    void setCDMSession(LegacyCDMSession*) override;
     CDMSessionMediaSourceAVFObjC* cdmSession() const { return m_session; }
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void cdmInstanceAttached(CDMInstance&) final;
+    void cdmInstanceDetached(CDMInstance&) final;
+    void attemptToDecryptWithInstance(CDMInstance&) final;
+    CDMInstance* cdmInstance() const { return m_cdmInstance.get(); }
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     void keyNeeded(Uint8Array*);
+
+    void outputObscuredDueToInsufficientExternalProtectionChanged(bool);
+    void beginSimulatedHDCPError() override { outputObscuredDueToInsufficientExternalProtectionChanged(true); }
+    void endSimulatedHDCPError() override { outputObscuredDueToInsufficientExternalProtectionChanged(false); }
+#endif
+#if ENABLE(ENCRYPTED_MEDIA)
+    void initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
 #endif
 
     const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
+    bool shouldCheckHardwareSupport() const;
 
-    WeakPtr<MediaPlayerPrivateMediaSourceAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<MediaPlayerPrivateMediaSourceAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
 private:
     // MediaPlayerPrivateInterface
@@ -133,7 +153,6 @@ private:
     void cancelLoad() override;
 
     void prepareToPlay() override;
-    PlatformMedia platformMedia() const override;
     PlatformLayer* platformLayer() const override;
 
     bool supportsPictureInPicture() const override { return true; }
@@ -207,10 +226,7 @@ private:
 
     size_t extraMemoryCost() const override;
 
-    unsigned long totalVideoFrames() override;
-    unsigned long droppedVideoFrames() override;
-    unsigned long corruptedVideoFrames() override;
-    MediaTime totalFrameDelay() override;
+    std::optional<VideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     bool isCurrentPlaybackTargetWireless() const override;
@@ -251,8 +267,12 @@ private:
     struct AudioRendererProperties {
         bool hasAudibleSample { false };
     };
-    HashMap<RetainPtr<AVSampleBufferAudioRenderer>, AudioRendererProperties> m_sampleBufferAudioRendererMap;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
+    HashMap<RetainPtr<CFTypeRef>, AudioRendererProperties> m_sampleBufferAudioRendererMap;
     RetainPtr<AVSampleBufferRenderSynchronizer> m_synchronizer;
+#pragma clang diagnostic pop
     RetainPtr<id> m_timeJumpedObserver;
     RetainPtr<id> m_durationObserver;
     RetainPtr<AVStreamSession> m_streamSession;
@@ -281,7 +301,6 @@ private:
     bool m_hasBeenAskedToPaintGL { false };
     bool m_hasAvailableVideoFrame { false };
     bool m_allRenderersHaveAvailableSamples { false };
-    RetainPtr<PlatformLayer> m_textTrackRepresentationLayer;
     std::unique_ptr<TextureCacheCV> m_textureCache;
     std::unique_ptr<VideoTextureCopierCV> m_videoTextureCopier;
     RetainPtr<CVOpenGLTextureRef> m_lastTexture;
@@ -289,8 +308,9 @@ private:
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
     bool m_shouldPlayToTarget { false };
 #endif
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-    std::unique_ptr<VideoFullscreenLayerManager> m_videoFullscreenLayerManager;
+    std::unique_ptr<VideoFullscreenLayerManagerObjC> m_videoFullscreenLayerManager;
+#if ENABLE(ENCRYPTED_MEDIA)
+    RefPtr<CDMInstance> m_cdmInstance;
 #endif
 };
 

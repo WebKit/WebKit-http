@@ -21,17 +21,18 @@
 #include "config.h"
 #include "RenderSVGResourceLinearGradient.h"
 
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGResourceLinearGradient);
 
 RenderSVGResourceLinearGradient::RenderSVGResourceLinearGradient(SVGLinearGradientElement& element, RenderStyle&& style)
     : RenderSVGResourceGradient(element, WTFMove(style))
 {
 }
 
-RenderSVGResourceLinearGradient::~RenderSVGResourceLinearGradient()
-{
-}
+RenderSVGResourceLinearGradient::~RenderSVGResourceLinearGradient() = default;
 
 bool RenderSVGResourceLinearGradient::collectGradientAttributes()
 {
@@ -49,11 +50,11 @@ FloatPoint RenderSVGResourceLinearGradient::endPoint(const LinearGradientAttribu
     return SVGLengthContext::resolvePoint(&linearGradientElement(), attributes.gradientUnits(), attributes.x2(), attributes.y2());
 }
 
-void RenderSVGResourceLinearGradient::buildGradient(GradientData* gradientData) const
+void RenderSVGResourceLinearGradient::buildGradient(GradientData* gradientData, const RenderStyle& style) const
 {
-    gradientData->gradient = Gradient::create(startPoint(m_attributes), endPoint(m_attributes));
+    gradientData->gradient = Gradient::create(Gradient::LinearData { startPoint(m_attributes), endPoint(m_attributes) });
     gradientData->gradient->setSpreadMethod(platformSpreadMethodFromSVGType(m_attributes.spreadMethod()));
-    addStops(gradientData, m_attributes.stops());
+    addStops(gradientData, m_attributes.stops(), style);
 }
 
 }

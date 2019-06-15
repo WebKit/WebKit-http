@@ -3,9 +3,13 @@
 /*---
 description: Statement cannot contain an `export` declaration
 esid: sec-modules
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 flags: [module]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 try { } finally {
   export default null;

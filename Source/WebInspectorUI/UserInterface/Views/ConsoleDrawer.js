@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBrowser
+WI.ConsoleDrawer = class ConsoleDrawer extends WI.ContentBrowser
 {
     constructor(element)
     {
@@ -34,20 +34,27 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
 
         this.element.classList.add("console-drawer");
 
-        this._drawerHeightSetting = new WebInspector.Setting("console-drawer-height", 150);
+        this._drawerHeightSetting = new WI.Setting("console-drawer-height", 150);
 
         this.navigationBar.element.addEventListener("mousedown", this._consoleResizerMouseDown.bind(this));
 
-        this._toggleDrawerButton = new WebInspector.ToggleButtonNavigationItem("toggle-drawer", WebInspector.UIString("Hide Console"), WebInspector.UIString("Show Console"), "Images/HideConsoleDrawer.svg", "Images/ShowConsoleDrawer.svg");
-        this._toggleDrawerButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, () => { WebInspector.toggleSplitConsole(); });
+        this._toggleDrawerButton = new WI.ToggleButtonNavigationItem("toggle-drawer", WI.UIString("Hide Console"), WI.UIString("Show Console"), "Images/HideConsoleDrawer.svg", "Images/ShowConsoleDrawer.svg");
+
+        this._toggleDrawerButton.visibilityPriority = WI.NavigationItem.VisibilityPriority.High;
+        this._toggleDrawerButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, () => { WI.toggleSplitConsole(); });
         this.navigationBar.insertNavigationItem(this._toggleDrawerButton, 0);
 
         this.collapsed = true;
 
-        WebInspector.TabBrowser.addEventListener(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange, this._selectedTabContentViewDidChange, this);
+        WI.TabBrowser.addEventListener(WI.TabBrowser.Event.SelectedTabContentViewDidChange, this._selectedTabContentViewDidChange, this);
     }
 
     // Public
+
+    toggleButtonShortcutTooltip(keyboardShortcut)
+    {
+        this._toggleDrawerButton.defaultToolTip = WI.UIString("Hide Console (%s)").format(keyboardShortcut.displayName);
+    }
 
     get collapsed()
     {
@@ -69,7 +76,7 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
         else
             this.shown();
 
-        this.dispatchEventToListeners(WebInspector.ConsoleDrawer.Event.CollapsedStateChanged);
+        this.dispatchEventToListeners(WI.ConsoleDrawer.Event.CollapsedStateChanged);
     }
 
     get height()
@@ -91,7 +98,7 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
         if (this._collapsed)
             return;
 
-        if (this.layoutReason !== WebInspector.View.LayoutReason.Resize)
+        if (this.layoutReason !== WI.View.LayoutReason.Resize)
             return;
 
         super.layout();
@@ -100,7 +107,7 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
         this._restoreDrawerHeight();
 
         if (height !== this.height)
-            this.dispatchEventToListeners(WebInspector.ConsoleDrawer.Event.Resized);
+            this.dispatchEventToListeners(WI.ConsoleDrawer.Event.Resized);
     }
 
     // Private
@@ -115,7 +122,8 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
             return;
 
         let resizerElement = event.target;
-        let mouseOffset = resizerElement.offsetHeight - (event.pageY - resizerElement.totalOffsetTop);
+        let quickConsoleHeight = window.innerHeight - (this.element.totalOffsetTop + this.height);
+        let mouseOffset = quickConsoleHeight - (event.pageY - resizerElement.totalOffsetTop);
 
         function dockedResizerDrag(event)
         {
@@ -130,10 +138,10 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
             if (event.button !== 0)
                 return;
 
-            WebInspector.elementDragEnd(event);
+            WI.elementDragEnd(event);
         }
 
-        WebInspector.elementDragStart(resizerElement, dockedResizerDrag.bind(this), dockedResizerDragEnd.bind(this), event, "row-resize");
+        WI.elementDragStart(resizerElement, dockedResizerDrag.bind(this), dockedResizerDragEnd.bind(this), event, "row-resize");
     }
 
     _restoreDrawerHeight()
@@ -146,25 +154,25 @@ WebInspector.ConsoleDrawer = class ConsoleDrawer extends WebInspector.ContentBro
         const minimumHeight = 64;
         const maximumHeight = this.element.parentNode.offsetHeight - 100;
 
-        height = Number.constrain(height, minimumHeight, maximumHeight);
-        if (height === this.element.style.height)
+        let heightCSSValue = Number.constrain(height, minimumHeight, maximumHeight) + "px";
+        if (this.element.style.height === heightCSSValue)
             return;
 
-        this.element.style.height = height + "px";
+        this.element.style.height = heightCSSValue;
 
-        this.dispatchEventToListeners(WebInspector.ConsoleDrawer.Event.Resized);
+        this.dispatchEventToListeners(WI.ConsoleDrawer.Event.Resized);
     }
 
     _selectedTabContentViewDidChange()
     {
-        if (WebInspector.doesCurrentTabSupportSplitContentBrowser())
+        if (WI.doesCurrentTabSupportSplitContentBrowser())
             return;
 
         this.element.classList.add("hidden");
     }
 };
 
-WebInspector.ConsoleDrawer.Event = {
+WI.ConsoleDrawer.Event = {
     CollapsedStateChanged: "console-drawer-collapsed-state-changed",
     Resized: "console-drawer-resized",
 };

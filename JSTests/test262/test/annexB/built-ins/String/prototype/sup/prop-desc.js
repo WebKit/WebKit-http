@@ -4,13 +4,15 @@
 esid: sec-string.prototype.sup
 es6id: B.2.3.14
 description: Property descriptor for String.prototype.sup
-info: >
+info: |
     Every other data property described in clauses 18 through 26 and in Annex
     B.2 has the attributes { [[Writable]]: true, [[Enumerable]]: false,
     [[Configurable]]: true } unless otherwise specified.
 includes: [propertyHelper.js]
 ---*/
 
-verifyNotEnumerable(String.prototype, 'sup');
-verifyWritable(String.prototype, 'sup');
-verifyConfigurable(String.prototype, 'sup');
+verifyProperty(String.prototype, "sup", {
+  enumerable: false,
+  writable: true,
+  configurable: true
+});

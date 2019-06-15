@@ -31,14 +31,13 @@
 #include "WebPageProxy.h"
 #include <WebCore/DragData.h>
 #include <WebCore/GRefPtrGtk.h>
+#include <WebCore/GUniquePtrGtk.h>
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/PasteboardHelper.h>
 #include <wtf/RunLoop.h>
-#include <wtf/glib/GUniquePtr.h>
-
-using namespace WebCore;
 
 namespace WebKit {
+using namespace WebCore;
 
 DragAndDropHandler::DragAndDropHandler(WebPageProxy& page)
     : m_page(page)
@@ -258,8 +257,8 @@ void DragAndDropHandler::dragLeave(GdkDragContext* context)
     // During a drop GTK+ will fire a drag-leave signal right before firing
     // the drag-drop signal. We want the actions for drag-leave to happen after
     // those for drag-drop, so schedule them to happen asynchronously here.
-    RunLoop::main().dispatch([this, droppingContext]() {
-        auto it = m_droppingContexts.find(droppingContext->gdkContext);
+    RunLoop::main().dispatch([this, context, droppingContext]() {
+        auto it = m_droppingContexts.find(context);
         if (it == m_droppingContexts.end())
             return;
 
@@ -293,9 +292,7 @@ bool DragAndDropHandler::drop(GdkDragContext* context, const IntPoint& position,
     if (gdk_drag_context_get_selected_action(context) == GDK_ACTION_COPY)
         flags |= WebCore::DragApplicationIsCopyKeyDown;
     DragData dragData(droppingContext->selectionData.ptr(), position, convertWidgetPointToScreenPoint(m_page.viewWidget(), position), gdkDragActionToDragOperation(gdk_drag_context_get_actions(context)), static_cast<WebCore::DragApplicationFlags>(flags));
-    SandboxExtension::Handle handle;
-    SandboxExtension::HandleArray sandboxExtensionForUpload;
-    m_page.performDragOperation(dragData, String(), handle, sandboxExtensionForUpload);
+    m_page.performDragOperation(dragData, String(), { }, { });
     gtk_drag_finish(context, TRUE, FALSE, time);
     return true;
 }

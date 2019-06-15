@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
 # Copyright (C) 2009 Google Inc. All rights reserved.
@@ -33,6 +33,7 @@
 # Build script wrapper for the WebKit Open Source Project.
 
 use strict;
+use warnings;
 use File::Basename;
 use File::Find;
 use File::Spec;
@@ -44,15 +45,23 @@ use List::Util qw(first);
 use webkitperl::FeatureList qw(getFeatureOptionList);
 use POSIX;
 
-sub cMakeArgsFromFeatures();
 sub writeCongrats();
+
+checkRequiredSystemConfig();
+setConfiguration();
+
+if (shouldUseFlatpak()) {
+    print "Building flatpak based environment\n";
+
+    runInFlatpak("/app/webkit/Tools/Scripts/build-webkit");
+}
 
 my $originalWorkingDirectory = getcwd();
 chdirWebKit();
 
 my $showHelp = 0;
+my $verbose = 0;
 my $clean = 0;
-my $defaultCMakeFeatures = 0;
 my $minimal = 0;
 my $installHeaders;
 my $installLibs;
@@ -63,8 +72,12 @@ my @cmakeArgs;
 my $onlyWebKitProject = 0;
 my $coverageSupport = 0;
 my $shouldRunStaticAnalyzer = 0;
+my $noExperimentalFeatures = 0;
+my $ltoMode = "default";
 my $startTime = time();
 my $archs32bit = 0;
+my $skipLibraryUpdate = 0;
+my $useCCache = -1;
 
 my @features = getFeatureOptionList();
 
@@ -80,25 +93,29 @@ foreach (@ARGV) {
     }
 }
 
-# Initialize values from defaults
+# Feature flags default to undefined, where they will inherit the default value
+# specified by the build system, or to 'off' if --minimal is specified.
 foreach (@features) {
-    ${$_->{value}} = ($minimal ? 0 : $_->{default});
+    ${$_->{value}} = ($minimal ? 0 : undef);
 }
 
 my $programName = basename($0);
 my $usage = <<EOF;
 Usage: $programName [options] [options to pass to build system]
   --help                            Show this help message
+  --verbose                         Show verbose build output
   --clean                           Cleanup the build directory
+  --generate-project-only           Only generate project files
   --debug                           Compile with Debug configuration
   --release                         Compile with Release configuration
   --sdk=<sdk>                       Use a specific Xcode SDK (iOS and Mac only)
   --ios-device                      Use "iphoneos.internal" SDK if installed, else "iphoneos" SDK (iOS only)
   --device                          DEPRECATED alias of --ios-device
-  --ios-simulator                   Use the current iphonesimulator SDK (iOS only)
+  --ios-simulator                   Use "iphonesimulator.internal" SDK if installed, else "iphonesimulator" SDK (iOS only)
   --simulator                       DEPRECATED alias of --ios-simulator
   --coverage                        Enable code coverage support (Mac only)
   --analyze                         Enable static anaylsis (iOS and Mac only)
+  --lto-mode=<mode>                 Set Link Time Optimization mode (full, thin, or none) (Xcode only)
 
   --gtk                             Build the GTK+ port
   --qt                              Build the Qt port
@@ -107,19 +124,25 @@ Usage: $programName [options] [options to pass to build system]
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
 
-  --prefix=<path>                   Set installation prefix to the given path (Gtk/Efl/Qt only)
+  --prefix=<path>                   Set installation prefix to the given path (CMake only, except Windows)
   --install                         Install into given prefix after compilation
   --makeargs=<arguments>            Optional Makefile flags
   --cmakeargs=<arguments>           One or more optional CMake flags (e.g. --cmakeargs="-DFOO=bar -DCMAKE_PREFIX_PATH=/usr/local")
 
   --minimal                         No optional features, unless explicitly enabled
-  --default-cmake-features          Use the default CMake features enabled for the port (CMake based ports)
+  --no-experimental-features        No experimental features, unless explicitly enabled (CMake only)
 
   --only-webkit                     Build only the WebKit project
+
+  --skip-library-update             Skip the check to see if windows libraries are up to date
+
+  --[no-]use-ccache                 Enable (or disable) CCache, if available
+
 EOF
 
 my %options = (
     'help' => \$showHelp,
+    'v|verbose' => \$verbose,
     'clean' => \$clean,
     'install-headers=s' => \$installHeaders,
     'install-libs=s' => \$installLibs,
@@ -131,13 +154,16 @@ my %options = (
     'only-webkit' => \$onlyWebKitProject,
     'coverage' => \$coverageSupport,
     'analyze' => \$shouldRunStaticAnalyzer,
-    'default-cmake-features' => \$defaultCMakeFeatures,
+    'no-experimental-features' => \$noExperimentalFeatures,
+    'lto-mode=s' => \$ltoMode,
+    'skip-library-update' => \$skipLibraryUpdate,
+    'use-ccache!' => \$useCCache,
 );
 
 # Build usage text and options list from features
 foreach (@features) {
     my $opt = sprintf("%-35s", "  --[no-]$_->{option}");
-    $usage .= "$opt $_->{desc} (default: $_->{default})\n";
+    $usage .= "$opt $_->{desc}\n";
     $options{"$_->{option}!"} = $_->{value};
 }
 
@@ -148,13 +174,19 @@ if ($showHelp) {
    exit 1;
 }
 
-checkRequiredSystemConfig();
-setConfiguration();
+$ENV{'VERBOSE'} = 1 if $verbose;
+
+if ($useCCache == 1) {
+    $ENV{'WK_USE_CCACHE'} = "YES";
+} elsif ($useCCache == 0) {
+    $ENV{'WK_USE_CCACHE'} = "NO";
+}
+
 
 my $productDir = productDir();
 
 # Check that all the project directories are there.
-my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKit");
+my @projects = ("Source/JavaScriptCore", "Source/WebCore", "Source/WebKitLegacy");
 
 # Build WTF as a separate static library on ports which support it.
 splice @projects, 0, 0, "Source/WTF" if isAppleWebKit() or isWinCairo();
@@ -178,15 +210,15 @@ my @options = ();
 
 if (isAppleCocoaWebKit()) {
     push @options, XcodeOptions();
-    sub option($$$)
+    sub option($$)
     {
-        my ($feature, $isEnabled, $defaultValue) = @_;
-        return "" if $defaultValue == $isEnabled;
+        my ($feature, $isEnabled) = @_;
+        return "" if not defined $isEnabled;
         return $feature . "=" . ($isEnabled ? $feature : "");
     }
 
     foreach (@features) {
-        my $option = option($_->{define}, ${$_->{value}}, $_->{default});
+        my $option = option($_->{define}, ${$_->{value}});
         push @options, $option unless $option eq "";
     }
 
@@ -197,13 +229,13 @@ if (isAppleCocoaWebKit()) {
         splice @projects, 0, 0, ("Source/ThirdParty/libwebrtc");
     }
 
-    push @projects, ("Source/WebKit2");
+    push @projects, ("Source/WebKit");
 
     if (!isIOSWebKit()) {
         push @projects, ("Tools/MiniBrowser");
 
         # WebInspectorUI must come after JavaScriptCore and WebCore but before WebKit and WebKit2
-        my $webKitIndex = first { $projects[$_] eq "Source/WebKit" } 0..$#projects;
+        my $webKitIndex = first { $projects[$_] eq "Source/WebKitLegacy" } 0..$#projects;
         splice(@projects, $webKitIndex, 0, "Source/WebInspectorUI");
 
         # Copy library and header from WebKitLibraries to a findable place in the product directory.
@@ -220,20 +252,26 @@ if (isAppleCocoaWebKit()) {
     # Build Tools needed for Apple ports
     push @projects, ("Tools/DumpRenderTree", "Tools/WebKitTestRunner", "Source/ThirdParty/gtest", "Tools/TestWebKitAPI");
 
-} elsif (isWinCairo()) {
-    (system("perl Tools/Scripts/update-webkit-wincairo-libs") == 0) or die;
-} elsif (isAppleWinWebKit()) {
+} elsif (isWinCairo() && !$skipLibraryUpdate) {
+    (system("python Tools/Scripts/update-webkit-wincairo-libs.py") == 0) or die;
+} elsif (isAppleWinWebKit() && !$skipLibraryUpdate) {
     # Copy WebKitSupportLibrary to the correct location in WebKitLibraries so it can be found.
     # Will fail if WebKitSupportLibrary.zip is not in source root.
     (system("perl Tools/Scripts/update-webkit-support-libs") == 0) or die;
+    (system("perl Tools/Scripts/update-webkit-auxiliary-libs") == 0) or die;
+    setupAppleWinEnv()
 } elsif (isQt() && isAnyWindows()) {
     (system("perl Tools/Scripts/update-qtwebkit-win-libs") == 0) or die;
+}
+
+if (isAnyWindows()) {
+    system("python Tools/Scripts/update-vswhere.py");
 }
 
 # If asked to build just the WebKit project, overwrite the projects
 # list after all of the port specific tweaks have been made to
 # build options, etc.
-@projects = ("Source/WebKit") if $onlyWebKitProject;
+@projects = ("Source/WebKitLegacy") if $onlyWebKitProject;
 
 my $result = 0;
 
@@ -247,17 +285,19 @@ if (isCMakeBuild() && (!isAnyWindows() || isQt())) {
         $makeArgs .= ($makeArgs ? " " : "") . "install";
     }
 
-    # Visual Studio generator doesn't support -j switch
-    if (canUseNinja() || !isAnyWindows()) {
-        # By default we build using all of the available CPUs.
+    if (!canUseNinja() || defined($ENV{NUMBER_OF_PROCESSORS})) {
+        # If the user environment is not setting a specific number of process,
+        # then don't pass the number of jobs to Ninja. Because Ninja will
+        # automatically determine the number of jobs to run in parallel.
         $makeArgs .= ($makeArgs ? " " : "") . "-j" . numberOfCPUs() if $makeArgs !~ /-j\s*\d+/;
-        my $maxCPULoad = maxCPULoad() if $makeArgs !~ /-l\s*\d+\.?\d*/;
-        $makeArgs .= " -l" . maxCPULoad() if defined $maxCPULoad;
     }
 
-    # We remove CMakeCache to avoid the bots to reuse cached flags when
+    my $maxCPULoad = maxCPULoad() if $makeArgs !~ /-l\s*\d+\.?\d*/;
+    $makeArgs .= " -l" . maxCPULoad() if defined $maxCPULoad;
+
+    # We remove CMakeCache to avoid the bots reusing cached flags when
     # we enable new features. This forces a reconfiguration.
-    my @featureArgs = cMakeArgsFromFeatures();
+    my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 
     buildCMakeProjectOrExit($clean, $prefixPath, $makeArgs, (cmakeBasedPortArguments(), @featureArgs), @cmakeArgs);
@@ -265,13 +305,16 @@ if (isCMakeBuild() && (!isAnyWindows() || isQt())) {
 
 my $baseProductDir = baseProductDir();
 if (isAppleWinWebKit() || isWinCairo()) {
-    my @featureArgs = cMakeArgsFromFeatures();
+    my @featureArgs = cmakeArgsFromFeatures(@features, !$noExperimentalFeatures);
     removeCMakeCache(@featureArgs);
 
     chdirWebKit();
     if (exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs))) {
-        die "Run \"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcvarsall.bat\" before build-webkit when using ninja";
+        die "Run Visual Studio 2017 installation vcvars.bat before build-webkit when using ninja";
     }
+
+    exit 0 if isGenerateProjectOnly();
+
     chdirWebKit();
     if (canUseNinja()) {
         chdir File::Spec->catdir($baseProductDir, configuration());
@@ -289,6 +332,8 @@ if (isAppleWinWebKit() || isWinCairo()) {
         exit exitStatus($result);
     }
 } elsif (isAppleCocoaWebKit() && !isCMakeBuild()) {
+    exit 0 if isGenerateProjectOnly();
+
     # Build, and abort if the build fails.
     for my $dir (@projects) {
         chdir $dir or die;
@@ -299,6 +344,7 @@ if (isAppleWinWebKit() || isWinCairo()) {
         my @local_options = @options;
         push @local_options, XcodeCoverageSupportOptions() if $coverageSupport;
         push @local_options, XcodeStaticAnalyzerOption() if $shouldRunStaticAnalyzer;
+        push @local_options, "WK_LTO_MODE=$ltoMode" if ($ltoMode ne "default");
         my $projectPath = $project =~ /gtest/ ? "xcode/gtest" : $project;
         $result = buildXCodeProject($projectPath, $clean, @local_options, @ARGV);
 
@@ -343,21 +389,6 @@ chdir $originalWorkingDirectory;
 writeCongrats();
 
 exit 0;
-
-sub cMakeArgsFromFeatures()
-{
-    my @args;
-    if (!$defaultCMakeFeatures) {
-        foreach (@features) {
-            my $featureName = $_->{define};
-            if ($featureName) {
-                my $featureEnabled = ${$_->{value}} ? "ON" : "OFF";
-                push @args, "-D$featureName=$featureEnabled";
-            }
-        }
-    }
-    return @args;
-}
 
 sub writeCongrats()
 {

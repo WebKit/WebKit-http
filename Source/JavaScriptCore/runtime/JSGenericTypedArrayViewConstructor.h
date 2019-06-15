@@ -30,7 +30,7 @@
 namespace JSC {
 
 template<typename ViewClass>
-class JSGenericTypedArrayViewConstructor : public InternalFunction {
+class JSGenericTypedArrayViewConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
 
@@ -57,10 +57,6 @@ public:
 #endif
     
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
-
-protected:
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 };
 
 } // namespace JSC

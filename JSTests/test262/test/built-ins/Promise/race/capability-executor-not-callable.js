@@ -5,7 +5,7 @@
 es6id: 25.4.4.3
 description: >
   Throws a TypeError if either resolve or reject capability is not callable.
-info: >
+info: |
   Promise.race ( iterable )
 
   ...
@@ -56,7 +56,7 @@ var checkPoint = "";
 assert.throws(TypeError, function() {
   Promise.race.call(function(executor) {
     checkPoint += "a";
-    executor(undefined, function(){});
+    executor(undefined, function() {});
     checkPoint += "b";
   }, []);
 }, "executor called with (undefined, function)");
@@ -66,7 +66,7 @@ var checkPoint = "";
 assert.throws(TypeError, function() {
   Promise.race.call(function(executor) {
     checkPoint += "a";
-    executor(function(){}, undefined);
+    executor(function() {}, undefined);
     checkPoint += "b";
   }, []);
 }, "executor called with (function, undefined)");

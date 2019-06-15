@@ -32,9 +32,15 @@ namespace JSC {
 
 // A HashMap with Weak<JSCell> values, which automatically removes values once they're garbage collected.
 
+class WeakGCMapBase {
+public:
+    virtual ~WeakGCMapBase() { }
+    virtual void pruneStaleEntries() = 0;
+};
+
 template<typename KeyArg, typename ValueArg, typename HashArg = typename DefaultHash<KeyArg>::Hash,
     typename KeyTraitsArg = HashTraits<KeyArg>>
-class WeakGCMap {
+class WeakGCMap : public WeakGCMapBase {
     WTF_MAKE_FAST_ALLOCATED;
     typedef Weak<ValueArg> ValueType;
     typedef HashMap<KeyArg, ValueType, HashArg, KeyTraitsArg> HashMapType;
@@ -83,18 +89,9 @@ public:
 
     inline const_iterator find(const KeyType& key) const;
 
-    template<typename Functor>
-    void forEach(Functor functor)
-    {
-        for (auto& pair : m_map) {
-            if (pair.value)
-                functor(pair.key, pair.value.get());
-        }
-    }
-
     inline bool contains(const KeyType& key) const;
 
-    void pruneStaleEntries();
+    void pruneStaleEntries() override;
 
 private:
     HashMapType m_map;

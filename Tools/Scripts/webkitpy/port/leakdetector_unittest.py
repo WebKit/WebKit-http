@@ -41,6 +41,9 @@ class LeakDetectorTest(unittest.TestCase):
                 self._filesystem = MockFileSystem()
                 self._executive = MockExecutive()
 
+            def results_directory(self):
+                return "/tmp/"
+
         return MockPort()
 
     def _make_detector(self):
@@ -49,9 +52,9 @@ class LeakDetectorTest(unittest.TestCase):
     def test_leaks_args(self):
         detector = self._make_detector()
         detector._callstacks_to_exclude_from_leaks = lambda: ['foo bar', 'BAZ']
-        detector._types_to_exlude_from_leaks = lambda: ['abcdefg', 'hi jklmno']
-        expected_args = ['--exclude-callstack=foo bar', '--exclude-callstack=BAZ', '--exclude-type=abcdefg', '--exclude-type=hi jklmno', 1234]
-        self.assertEqual(detector._leaks_args(1234), expected_args)
+        detector._types_to_exclude_from_leaks = lambda: ['abcdefg', 'hi jklmno']
+        expected_args = ['--exclude-callstack=foo bar', '--exclude-callstack=BAZ', '--exclude-type=abcdefg', '--exclude-type=hi jklmno', '--output-file=/tmp/DumpRenderTree-1234-leaks.txt', '--memgraph-file=/tmp/DumpRenderTree-1234.memgraph', 1234]
+        self.assertEqual(detector._leaks_args("DumpRenderTree", 1234), expected_args)
 
     example_leaks_output = """Process 5122: 663744 nodes malloced for 78683 KB
 Process 5122: 337301 leaks for 6525216 total leaked bytes.
@@ -127,7 +130,7 @@ Binary Images:
         detector = self._make_detector()
 
         def mock_run_script(name, args, include_configuration_arguments=False):
-            print "MOCK _run_script: %s %s" % (name, args)
+            print("MOCK _run_script: %s %s" % (name, args))
             return """1 calls for 16 bytes: -[NSURLRequest mutableCopyWithZone:] | +[NSObject(NSObject) allocWithZone:] | _internal_class_createInstanceFromZone | calloc | malloc_zone_calloc
 
 147 calls for 9,408 bytes: _CFRuntimeCreateInstance | _ZN3WTF24StringWrapperCFAllocatorL8allocateElmPv StringImplCF.cpp:67 | WTF::fastMalloc(unsigned long) FastMalloc.cpp:268 | malloc | malloc_zone_malloc 

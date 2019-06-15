@@ -89,6 +89,13 @@ export const eq = (lhs, rhs, msg) => {
     }
 };
 
+export const matches = (lhs, rhs, msg) => {
+    if (typeof lhs !== "string" || !(rhs instanceof RegExp))
+        _fail(`Expected string and regex object, got ${typeof lhs} and ${typeof rhs}`, msg);
+    if (!rhs.test(lhs))
+        _fail(`"${msg}" does not match ${rhs}`, msg);
+};
+
 const canonicalizeI32 = (number) => {
     if (Math.round(number) === number && number >= 2 ** 31)
         number = number - 2 ** 32;
@@ -134,6 +141,28 @@ const _throws = (func, type, message, ...args) => {
     }
     _fail(`Expected to throw a ${type.name} with message "${message}"`);
 };
+
+export async function throwsAsync(promise, type, message) {
+    try {
+        await promise;
+    } catch (e) {
+        if (e instanceof type) {
+            if (e.message === message)
+                return e;
+            // Ignore source information at the end of the error message if the
+            // expected message didn't specify that information. Sometimes it
+            // changes, or it's tricky to get just right.
+            const evaluatingIndex = e.message.indexOf(" (evaluating '");
+            if (evaluatingIndex !== -1) {
+                const cleanMessage = e.message.substring(0, evaluatingIndex);
+                if (cleanMessage === message)
+                    return e;
+            }
+        }
+        _fail(`Expected to throw a ${type.name} with message "${message}", got ${e.name} with message "${e.message}"`);
+    }
+    _fail(`Expected to throw a ${type.name} with message "${message}"`);
+}
 
 const _instanceof = (obj, type, msg) => {
     if (!(obj instanceof type))

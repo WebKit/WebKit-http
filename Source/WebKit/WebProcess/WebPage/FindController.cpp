@@ -36,10 +36,10 @@
 #include <WebCore/DocumentMarkerController.h>
 #include <WebCore/FloatQuad.h>
 #include <WebCore/FocusController.h>
+#include <WebCore/Frame.h>
 #include <WebCore/FrameSelection.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsContext.h>
-#include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageOverlayController.h>
 #include <WebCore/PlatformMouseEvent.h>
@@ -49,24 +49,27 @@
 #include <WebCore/TextIndicatorWindow.h>
 #endif
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
-static WebCore::FindOptions core(FindOptions options)
+WebCore::FindOptions core(FindOptions options)
 {
-    return (options & FindOptionsCaseInsensitive ? CaseInsensitive : 0)
-        | (options & FindOptionsAtWordStarts ? AtWordStarts : 0)
-        | (options & FindOptionsTreatMedialCapitalAsWordStart ? TreatMedialCapitalAsWordStart : 0)
-        | (options & FindOptionsBackwards ? Backwards : 0)
-        | (options & FindOptionsWrapAround ? WrapAround : 0);
+    WebCore::FindOptions result;
+    if (options & FindOptionsCaseInsensitive)
+        result.add(WebCore::CaseInsensitive);
+    if (options & FindOptionsAtWordStarts)
+        result.add(WebCore::AtWordStarts);
+    if (options & FindOptionsTreatMedialCapitalAsWordStart)
+        result.add(WebCore::TreatMedialCapitalAsWordStart);
+    if (options & FindOptionsBackwards)
+        result.add(WebCore::Backwards);
+    if (options & FindOptionsWrapAround)
+        result.add(WebCore::WrapAround);
+    return result;
 }
 
 FindController::FindController(WebPage* webPage)
     : m_webPage(webPage)
-    , m_findPageOverlay(nullptr)
-    , m_isShowingFindIndicator(false)
-    , m_foundStringMatchIndex(-1)
 {
 }
 
@@ -74,24 +77,14 @@ FindController::~FindController()
 {
 }
 
-static PluginView* pluginViewForFrame(Frame* frame)
-{
-    if (!frame->document()->isPluginDocument())
-        return 0;
-
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(frame->document());
-    return static_cast<PluginView*>(pluginDocument->pluginWidget());
-}
-
 void FindController::countStringMatches(const String& string, FindOptions options, unsigned maxMatchCount)
 {
     if (maxMatchCount == std::numeric_limits<unsigned>::max())
         --maxMatchCount;
     
-    PluginView* pluginView = pluginViewForFrame(m_webPage->mainFrame());
+    auto* pluginView = WebPage::pluginViewForFrame(m_webPage->mainFrame());
     
     unsigned matchCount;
-
     if (pluginView)
         matchCount = pluginView->countFindMatches(string, core(options), maxMatchCount + 1);
     else {
@@ -119,7 +112,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
 {
     Frame* selectedFrame = frameWithSelection(m_webPage->corePage());
     
-    PluginView* pluginView = pluginViewForFrame(m_webPage->mainFrame());
+    auto* pluginView = WebPage::pluginViewForFrame(m_webPage->mainFrame());
 
     bool shouldShowOverlay = false;
 
@@ -170,7 +163,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
             m_foundStringMatchIndex = -1;
         else {
             if (m_foundStringMatchIndex < 0)
-                m_foundStringMatchIndex += matchCount;
+                m_foundStringMatchIndex += matchCount; // FIXME: Shouldn't this just be "="? Why is it correct to add to -1 here?
             if (m_foundStringMatchIndex >= (int) matchCount)
                 m_foundStringMatchIndex -= matchCount;
         }
@@ -190,12 +183,12 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
 
     if (!shouldShowOverlay) {
         if (m_findPageOverlay)
-            m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_findPageOverlay, PageOverlay::FadeMode::Fade);
+            m_webPage->corePage()->pageOverlayController().uninstallPageOverlay(*m_findPageOverlay, PageOverlay::FadeMode::Fade);
     } else {
         if (!m_findPageOverlay) {
             auto findPageOverlay = PageOverlay::create(*this, PageOverlay::OverlayType::Document);
             m_findPageOverlay = findPageOverlay.ptr();
-            m_webPage->mainFrame()->pageOverlayController().installPageOverlay(WTFMove(findPageOverlay), PageOverlay::FadeMode::Fade);
+            m_webPage->corePage()->pageOverlayController().installPageOverlay(WTFMove(findPageOverlay), PageOverlay::FadeMode::Fade);
         }
         m_findPageOverlay->setNeedsDisplay();
     }
@@ -203,7 +196,7 @@ void FindController::updateFindUIAfterPageScroll(bool found, const String& strin
 
 void FindController::findString(const String& string, FindOptions options, unsigned maxMatchCount)
 {
-    PluginView* pluginView = pluginViewForFrame(m_webPage->mainFrame());
+    auto* pluginView = WebPage::pluginViewForFrame(m_webPage->mainFrame());
 
     WebCore::FindOptions coreOptions = core(options);
 
@@ -211,7 +204,7 @@ void FindController::findString(const String& string, FindOptions options, unsig
     // we need to avoid sending the non-painted selection change to the UI process
     // so that it does not clear the selection out from under us.
 #if PLATFORM(IOS)
-    coreOptions = static_cast<FindOptions>(coreOptions | DoNotRevealSelection);
+    coreOptions.add(DoNotRevealSelection);
 #endif
 
     willFindString();
@@ -314,12 +307,10 @@ void FindController::hideFindUI()
 {
     m_findMatches.clear();
     if (m_findPageOverlay)
-        m_webPage->mainFrame()->pageOverlayController().uninstallPageOverlay(*m_findPageOverlay, PageOverlay::FadeMode::Fade);
+        m_webPage->corePage()->pageOverlayController().uninstallPageOverlay(*m_findPageOverlay, PageOverlay::FadeMode::Fade);
 
-    PluginView* pluginView = pluginViewForFrame(m_webPage->mainFrame());
-    
-    if (pluginView)
-        pluginView->findString(emptyString(), 0, 0);
+    if (auto* pluginView = WebPage::pluginViewForFrame(m_webPage->mainFrame()))
+        pluginView->findString(emptyString(), { }, 0);
     else
         m_webPage->corePage()->unmarkAllTextMatches();
     

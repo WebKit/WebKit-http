@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,14 +26,17 @@
 #include "config.h"
 #include "ResourceLoadObserver.h"
 
+#include "DeprecatedGlobalSettings.h"
 #include "Document.h"
 #include "Frame.h"
+#include "FrameLoader.h"
+#include "HTMLFrameOwnerElement.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "ResourceLoadStatistics.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "URL.h"
@@ -45,7 +48,6 @@ template<typename T> static inline String primaryDomain(const T& value)
     return ResourceLoadStatistics::primaryDomain(value);
 }
 
-static Seconds timestampResolution { 1_h };
 static const Seconds minimumNotificationInterval { 5_s };
 
 ResourceLoadObserver& ResourceLoadObserver::shared()
@@ -54,27 +56,20 @@ ResourceLoadObserver& ResourceLoadObserver::shared()
     return resourceLoadObserver;
 }
 
-void ResourceLoadObserver::setShouldThrottleObserverNotifications(bool shouldThrottle)
-{
-    m_shouldThrottleNotifications = shouldThrottle;
-
-    if (!m_notificationTimer.isActive())
-        return;
-
-    // If we change the notification state, we need to restart any notifications
-    // so they will be on the right schedule.
-    m_notificationTimer.stop();
-    scheduleNotificationIfNeeded();
-}
-
 void ResourceLoadObserver::setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&& notificationCallback)
 {
     ASSERT(!m_notificationCallback);
     m_notificationCallback = WTFMove(notificationCallback);
 }
 
+void ResourceLoadObserver::setRequestStorageAccessUnderOpenerCallback(WTF::Function<void(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, const String& openerDomain, bool isTriggeredByUserGesture)>&& callback)
+{
+    ASSERT(!m_requestStorageAccessUnderOpenerCallback);
+    m_requestStorageAccessUnderOpenerCallback = WTFMove(callback);
+}
+
 ResourceLoadObserver::ResourceLoadObserver()
-    : m_notificationTimer(*this, &ResourceLoadObserver::notificationTimerFired)
+    : m_notificationTimer(*this, &ResourceLoadObserver::notifyObserver)
 {
 }
 
@@ -83,64 +78,17 @@ static inline bool is3xxRedirect(const ResourceResponse& response)
     return response.httpStatusCode() >= 300 && response.httpStatusCode() <= 399;
 }
 
-bool ResourceLoadObserver::shouldLog(Page* page) const
+bool ResourceLoadObserver::shouldLog(bool usesEphemeralSession) const
 {
-    // FIXME: Err on the safe side until we have sorted out what to do in worker contexts
-    if (!page)
-        return false;
-
-    return Settings::resourceLoadStatisticsEnabled() && !page->usesEphemeralSession() && m_notificationCallback;
+    return DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() && !usesEphemeralSession && m_notificationCallback;
 }
 
-static WallTime reduceToHourlyTimeResolution(WallTime time)
-{
-    return WallTime::fromRawSeconds(std::floor(time.secondsSinceEpoch() / timestampResolution) * timestampResolution.seconds());
-}
-
-void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest)
-{
-    ASSERT(frame.document());
-    ASSERT(topFrame.document());
-    ASSERT(topFrame.page());
-
-    if (frame.isMainFrame())
-        return;
-    
-    if (!shouldLog(topFrame.page()))
-        return;
-
-    auto& sourceURL = frame.document()->url();
-    auto& targetURL = newRequest.url();
-    auto& mainFrameURL = topFrame.document()->url();
-    
-    if (!targetURL.isValid() || !mainFrameURL.isValid())
-        return;
-
-    auto targetHost = targetURL.host();
-    auto mainFrameHost = mainFrameURL.host();
-
-    if (targetHost.isEmpty() || mainFrameHost.isEmpty() || targetHost == mainFrameHost || targetHost == sourceURL.host())
-        return;
-
-    auto targetPrimaryDomain = primaryDomain(targetURL);
-    auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
-    auto sourcePrimaryDomain = primaryDomain(sourceURL);
-    
-    if (targetPrimaryDomain == mainFramePrimaryDomain || targetPrimaryDomain == sourcePrimaryDomain)
-        return;
-
-    auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-    targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
-    auto subframeUnderTopFrameOriginsResult = targetStatistics.subframeUnderTopFrameOrigins.add(mainFramePrimaryDomain);
-    if (subframeUnderTopFrameOriginsResult.isNewEntry)
-        scheduleNotificationIfNeeded();
-}
-    
 void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
 {
     ASSERT(frame->page());
 
-    if (!shouldLog(frame->page()))
+    auto* page = frame->page();
+    if (!shouldLog(page->usesEphemeralSession()))
         return;
 
     bool isRedirect = is3xxRedirect(redirectResponse);
@@ -157,21 +105,25 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     auto targetPrimaryDomain = primaryDomain(targetURL);
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
     auto sourcePrimaryDomain = primaryDomain(sourceURL);
-    
+
     if (targetPrimaryDomain == mainFramePrimaryDomain || (isRedirect && targetPrimaryDomain == sourcePrimaryDomain))
         return;
 
     bool shouldCallNotificationCallback = false;
     {
         auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-        targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+        targetStatistics.lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
         if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
             shouldCallNotificationCallback = true;
     }
 
     if (isRedirect) {
         auto& redirectingOriginStatistics = ensureResourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
-        if (redirectingOriginStatistics.subresourceUniqueRedirectsTo.add(targetPrimaryDomain).isNewEntry)
+        bool isNewRedirectToEntry = redirectingOriginStatistics.subresourceUniqueRedirectsTo.add(targetPrimaryDomain).isNewEntry;
+        auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
+        bool isNewRedirectFromEntry = targetStatistics.subresourceUniqueRedirectsFrom.add(sourcePrimaryDomain).isNewEntry;
+
+        if (isNewRedirectToEntry || isNewRedirectFromEntry)
             shouldCallNotificationCallback = true;
     }
 
@@ -179,17 +131,10 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
         scheduleNotificationIfNeeded();
 }
 
-void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& targetURL)
+void ResourceLoadObserver::logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL, bool usesEphemeralSession)
 {
-    // FIXME: Web sockets can run in detached frames. Decide how to count such connections.
-    // See LayoutTests/http/tests/websocket/construct-in-detached-frame.html
-    if (!frame)
+    if (!shouldLog(usesEphemeralSession))
         return;
-
-    if (!shouldLog(frame->page()))
-        return;
-
-    auto& mainFrameURL = frame->mainFrame().document()->url();
 
     auto targetHost = targetURL.host();
     auto mainFrameHost = mainFrameURL.host();
@@ -199,12 +144,12 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
     
     auto targetPrimaryDomain = primaryDomain(targetURL);
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
-    
+
     if (targetPrimaryDomain == mainFramePrimaryDomain)
         return;
 
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-    targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+    targetStatistics.lastSeen = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
     if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
         scheduleNotificationIfNeeded();
 }
@@ -213,24 +158,89 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
 {
     ASSERT(document.page());
 
-    if (!shouldLog(document.page()))
+    if (!shouldLog(document.page()->usesEphemeralSession()))
         return;
 
     auto& url = document.url();
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
-    auto newTime = reduceToHourlyTimeResolution(WallTime::now());
-    if (newTime == statistics.mostRecentUserInteractionTime)
+    auto domain = primaryDomain(url);
+    auto newTime = ResourceLoadStatistics::reduceTimeResolution(WallTime::now());
+    auto lastReportedUserInteraction = m_lastReportedUserInteractionMap.get(domain);
+    if (newTime == lastReportedUserInteraction)
         return;
 
+    m_lastReportedUserInteractionMap.set(domain, newTime);
+
+    auto& statistics = ensureResourceStatisticsForPrimaryDomain(domain);
     statistics.hadUserInteraction = true;
     statistics.lastSeen = newTime;
     statistics.mostRecentUserInteractionTime = newTime;
 
-    scheduleNotificationIfNeeded();
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    if (auto* opener = document.frame()->loader().opener()) {
+        if (auto* openerDocument = opener->document()) {
+            if (auto* openerFrame = openerDocument->frame()) {
+                if (auto openerPageID = openerFrame->loader().client().pageID()) {
+                    requestStorageAccessUnderOpener(domain, openerPageID.value(), *openerDocument, true);
+                }
+            }
+        }
+    }
+#endif
+
+    m_notificationTimer.stop();
+    notifyObserver();
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    if (shouldLogUserInteraction()) {
+        auto counter = ++m_loggingCounter;
+#define LOCAL_LOG(str, ...) \
+        RELEASE_LOG(ResourceLoadStatistics, "ResourceLoadObserver::logUserInteraction: counter = %" PRIu64 ": " str, counter, ##__VA_ARGS__)
+
+        auto escapeForJSON = [](String s) {
+            s.replace('\\', "\\\\").replace('"', "\\\"");
+            return s;
+        };
+        auto escapedURL = escapeForJSON(url.string());
+        auto escapedDomain = escapeForJSON(domain);
+
+        LOCAL_LOG(R"({ "url": "%{public}s",)", escapedURL.utf8().data());
+        LOCAL_LOG(R"(  "domain" : "%{public}s",)", escapedDomain.utf8().data());
+        LOCAL_LOG(R"(  "until" : %f })", newTime.secondsSinceEpoch().seconds());
+
+#undef LOCAL_LOG
+    }
+#endif
 }
+
+void ResourceLoadObserver::logWindowCreation(const URL& popupUrl, uint64_t openerPageID, Document& openerDocument)
+{
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    requestStorageAccessUnderOpener(primaryDomain(popupUrl), openerPageID, openerDocument, false);
+#else
+    UNUSED_PARAM(popupUrl);
+    UNUSED_PARAM(openerPageID);
+    UNUSED_PARAM(openerDocument);
+#endif
+}
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void ResourceLoadObserver::requestStorageAccessUnderOpener(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, Document& openerDocument, bool isTriggeredByUserGesture)
+{
+    auto openerUrl = openerDocument.url();
+    auto openerPrimaryDomain = primaryDomain(openerUrl);
+    if (domainInNeedOfStorageAccess != openerPrimaryDomain
+        && !openerDocument.hasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess)
+        && !equalIgnoringASCIICase(openerUrl.string(), blankURL())) {
+        m_requestStorageAccessUnderOpenerCallback(domainInNeedOfStorageAccess, openerPageID, openerPrimaryDomain, isTriggeredByUserGesture);
+        // Remember user interaction-based requests since they don't need to be repeated.
+        if (isTriggeredByUserGesture)
+            openerDocument.setHasRequestedPageSpecificStorageAccessWithUserInteraction(domainInNeedOfStorageAccess);
+    }
+}
+#endif
 
 ResourceLoadStatistics& ResourceLoadObserver::ensureResourceStatisticsForPrimaryDomain(const String& primaryDomain)
 {
@@ -249,12 +259,13 @@ void ResourceLoadObserver::scheduleNotificationIfNeeded()
     }
 
     if (!m_notificationTimer.isActive())
-        m_notificationTimer.startOneShot(m_shouldThrottleNotifications ? minimumNotificationInterval : 0_s);
+        m_notificationTimer.startOneShot(minimumNotificationInterval);
 }
 
-void ResourceLoadObserver::notificationTimerFired()
+void ResourceLoadObserver::notifyObserver()
 {
     ASSERT(m_notificationCallback);
+    m_notificationTimer.stop();
     m_notificationCallback(takeStatistics());
 }
 
@@ -277,6 +288,33 @@ Vector<ResourceLoadStatistics> ResourceLoadObserver::takeStatistics()
     m_resourceStatisticsMap.clear();
 
     return statistics;
+}
+
+void ResourceLoadObserver::clearState()
+{
+    m_notificationTimer.stop();
+    m_resourceStatisticsMap.clear();
+    m_lastReportedUserInteractionMap.clear();
+}
+
+URL ResourceLoadObserver::nonNullOwnerURL(const Document& document) const
+{
+    auto url = document.url();
+    auto* frame = document.frame();
+    auto host = document.url().host();
+
+    while ((host.isNull() || host.isEmpty()) && frame && !frame->isMainFrame()) {
+        auto* ownerElement = frame->ownerElement();
+
+        ASSERT(ownerElement != nullptr);
+        
+        auto& doc = ownerElement->document();
+        frame = doc.frame();
+        url = doc.url();
+        host = url.host();
+    }
+
+    return url;
 }
 
 } // namespace WebCore

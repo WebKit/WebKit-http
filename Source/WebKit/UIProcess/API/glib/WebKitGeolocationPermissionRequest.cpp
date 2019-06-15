@@ -39,12 +39,28 @@ using namespace WebKit;
  *
  * When a WebKitGeolocationPermissionRequest is not handled by the user,
  * it is denied by default.
+ *
+ * When embedding web views in your application, you *must* configure an
+ * application identifier to allow web content to use geolocation services.
+ * The identifier *must* match the name of the `.desktop` file which describes
+ * the application, sans the suffix.
+ *
+ * If your application uses #GApplication (or any subclass like
+ * #GtkApplication), WebKit will automatically use the identifier returned by
+ * g_application_get_application_id(). This is the recommended approach for
+ * enabling geolocation in applications.
+ *
+ * If an identifier cannot be obtained through #GApplication, the value
+ * returned by g_get_prgname() will be used instead as a fallback. For
+ * programs which cannot use #GApplication, calling g_set_prgname() early
+ * during initialization is needed when the name of the executable on disk
+ * does not match the name of a valid `.desktop` file.
  */
 
 static void webkit_permission_request_interface_init(WebKitPermissionRequestIface*);
 
 struct _WebKitGeolocationPermissionRequestPrivate {
-    RefPtr<GeolocationPermissionRequestProxy> request;
+    RefPtr<GeolocationPermissionRequest> request;
     bool madeDecision;
 };
 
@@ -99,7 +115,7 @@ static void webkit_geolocation_permission_request_class_init(WebKitGeolocationPe
     objectClass->dispose = webkitGeolocationPermissionRequestDispose;
 }
 
-WebKitGeolocationPermissionRequest* webkitGeolocationPermissionRequestCreate(GeolocationPermissionRequestProxy* request)
+WebKitGeolocationPermissionRequest* webkitGeolocationPermissionRequestCreate(GeolocationPermissionRequest* request)
 {
     WebKitGeolocationPermissionRequest* geolocationPermissionRequest = WEBKIT_GEOLOCATION_PERMISSION_REQUEST(g_object_new(WEBKIT_TYPE_GEOLOCATION_PERMISSION_REQUEST, NULL));
     geolocationPermissionRequest->priv->request = request;

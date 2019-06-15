@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-typedarray-offset
 description: >
   Return abrupt from ToInteger(Symbol offset)
-info: >
+info: |
   22.2.3.23.2 %TypedArray%.prototype.set(typedArray [ , offset ] )
 
   1. Assert: typedArray has a [[TypedArrayName]] internal slot. If it does not,
@@ -12,7 +12,7 @@ info: >
   ...
   6. Let targetOffset be ? ToInteger(offset).
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol("1");

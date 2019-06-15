@@ -32,11 +32,6 @@
 namespace TestWebKitAPI {
 namespace Util {
 
-void sleep(double seconds)
-{
-    g_usleep(seconds * 1000000);
-}
-
 static char* getFilenameFromEnvironmentVariableAsUTF8(const char* variableName)
 {
     const char* value = g_getenv(variableName);
@@ -63,6 +58,17 @@ WKURLRef createURLForResource(const char* resource, const char* extension)
     GRefPtr<GFile> resourceFile = adoptGRef(g_file_new_for_path(resourceFilename.get()));
     GUniquePtr<char> resourceURI(g_file_get_uri(resourceFile.get()));
     return WKURLCreateWithUTF8CString(resourceURI.get());
+}
+
+WKURLRef URLForNonExistentResource()
+{
+    return WKURLCreateWithUTF8CString("file:///does-not-exist.html");
+}
+
+bool isKeyDown(WKNativeEventPtr event)
+{
+    // FIXME: WKNativeEventPtr is not properly defined in WPE.
+    return false;
 }
 
 } // namespace Util

@@ -35,14 +35,13 @@
 #include <gtk/gtk.h>
 #include <wtf/glib/GUniquePtr.h>
 
+namespace IPC {
 using namespace WebCore;
 using namespace WebKit;
 
-namespace IPC {
-
 static void encodeImage(Encoder& encoder, Image& image)
 {
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(IntSize(image.size()), ShareableBitmap::SupportsAlpha);
+    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(IntSize(image.size()), { });
     bitmap->createGraphicsContext()->drawImage(image, IntPoint());
 
     ShareableBitmap::Handle handle;

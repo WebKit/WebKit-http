@@ -36,6 +36,8 @@ class VM;
 template<typename T>
 class AuxiliaryBarrier {
 public:
+    typedef T Type;
+    
     AuxiliaryBarrier(): m_value() { }
     
     template<typename U>
@@ -54,6 +56,8 @@ public:
     
     template<typename U>
     void setWithoutBarrier(U&& value) { m_value = std::forward<U>(value); }
+
+    T operator->() const { return get(); }
     
 private:
     T m_value;

@@ -26,15 +26,9 @@
 #include "config.h"
 #include "WebPreferencesStore.h"
 
-#include "FontSmoothingLevel.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPreferencesKeys.h"
-#include <WebCore/LibWebRTCProvider.h>
-#include <WebCore/Settings.h>
-#include <WebCore/TextEncodingRegistry.h>
 #include <wtf/NeverDestroyed.h>
-
-using namespace WebCore;
 
 namespace WebKit {
 
@@ -46,72 +40,6 @@ static BoolOverridesMap& boolTestRunnerOverridesMap()
     return map;
 }
 
-void WebPreferencesStore::Value::encode(IPC::Encoder& encoder) const
-{
-    encoder.encodeEnum(m_type);
-    
-    switch (m_type) {
-    case Type::None:
-        break;
-    case Type::String:
-        encoder << m_string;
-        break;
-    case Type::Bool:
-        encoder << m_bool;
-        break;
-    case Type::UInt32:
-        encoder << m_uint32;
-        break;
-    case Type::Double:
-        encoder << m_double;
-        break;
-    }
-}
-
-bool WebPreferencesStore::Value::decode(IPC::Decoder& decoder, Value& result)
-{
-    Value::Type type;
-    if (!decoder.decodeEnum(type))
-        return false;
-    
-    switch (type) {
-    case Type::None:
-        break;
-    case Type::String: {
-        String value;
-        if (!decoder.decode(value))
-            return false;
-        result = Value(value);
-        break;
-    }
-    case Type::Bool: {
-        bool value;
-        if (!decoder.decode(value))
-            return false;
-        result = Value(value);
-        break;
-    }
-    case Type::UInt32: {
-        uint32_t value;
-        if (!decoder.decode(value))
-            return false;
-        result = Value(value);
-        break;
-    }
-    case Type::Double: {
-        double value;
-        if (!decoder.decode(value))
-            return false;
-        result = Value(value);
-        break;
-    }
-    default:
-        return false;
-    }
-
-    return true;
-}
-
 WebPreferencesStore::WebPreferencesStore()
 {
 }
@@ -119,15 +47,22 @@ WebPreferencesStore::WebPreferencesStore()
 void WebPreferencesStore::encode(IPC::Encoder& encoder) const
 {
     encoder << m_values;
-    encoder << m_overridenDefaults;
+    encoder << m_overriddenDefaults;
 }
 
 bool WebPreferencesStore::decode(IPC::Decoder& decoder, WebPreferencesStore& result)
 {
-    if (!decoder.decode(result.m_values))
+    std::optional<HashMap<String, Value>> values;
+    decoder >> values;
+    if (!values)
         return false;
-    if (!decoder.decode(result.m_overridenDefaults))
+    result.m_values = WTFMove(*values);
+
+    std::optional<HashMap<String, Value>> overriddenDefaults;
+    decoder >> overriddenDefaults;
+    if (!overriddenDefaults)
         return false;
+    result.m_overriddenDefaults = WTFMove(*overriddenDefaults);
     return true;
 }
 
@@ -141,59 +76,29 @@ void WebPreferencesStore::removeTestRunnerOverrides()
     boolTestRunnerOverridesMap().clear();
 }
 
-template <typename T> struct ToType { };
-
-template<> struct ToType<String> { static const auto value = WebPreferencesStore::Value::Type::String; };
-template<> struct ToType<bool> { static const auto value = WebPreferencesStore::Value::Type::Bool; };
-template<> struct ToType<uint32_t> { static const auto value = WebPreferencesStore::Value::Type::UInt32; };
-template<> struct ToType<double> { static const auto value = WebPreferencesStore::Value::Type::Double; };
-
-
-template<typename MappedType> MappedType as(const WebPreferencesStore::Value&);
-
-template<> String as<String>(const WebPreferencesStore::Value& value) { return value.asString(); }
-template<> bool as<bool>(const WebPreferencesStore::Value& value) { return value.asBool(); }
-template<> uint32_t as<uint32_t>(const WebPreferencesStore::Value& value) { return value.asUInt32(); }
-template<> double as<double>(const WebPreferencesStore::Value& value) { return value.asDouble(); }
-
-
-static WebPreferencesStore::ValueMap& defaults()
-{
-    static NeverDestroyed<WebPreferencesStore::ValueMap> defaults;
-    if (defaults.get().isEmpty()) {
-#define DEFINE_DEFAULTS(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) defaults.get().set(WebPreferencesKey::KeyLower##Key(), WebPreferencesStore::Value((Type)DefaultValue));
-        FOR_EACH_WEBKIT_PREFERENCE(DEFINE_DEFAULTS)
-        FOR_EACH_WEBKIT_DEBUG_PREFERENCE(DEFINE_DEFAULTS)
-        FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(DEFINE_DEFAULTS)
-#undef DEFINE_DEFAULTS
-    }
-
-    return defaults;
-}
-
 template<typename MappedType>
-static MappedType valueForKey(const WebPreferencesStore::ValueMap& values, const WebPreferencesStore::ValueMap& overridenDefaults, const String& key)
+static MappedType valueForKey(const WebPreferencesStore::ValueMap& values, const WebPreferencesStore::ValueMap& overriddenDefaults, const String& key)
 {
     auto valuesIt = values.find(key);
-    if (valuesIt != values.end() && valuesIt->value.type() == ToType<MappedType>::value)
-        return as<MappedType>(valuesIt->value);
+    if (valuesIt != values.end() && WTF::holds_alternative<MappedType>(valuesIt->value))
+        return WTF::get<MappedType>(valuesIt->value);
 
-    auto overridenDefaultsIt = overridenDefaults.find(key);
-    if (overridenDefaultsIt != overridenDefaults.end() && overridenDefaultsIt->value.type() == ToType<MappedType>::value)
-        return as<MappedType>(overridenDefaultsIt->value);
+    auto overriddenDefaultsIt = overriddenDefaults.find(key);
+    if (overriddenDefaultsIt != overriddenDefaults.end() && WTF::holds_alternative<MappedType>(overriddenDefaultsIt->value))
+        return WTF::get<MappedType>(overriddenDefaultsIt->value);
 
-    auto& defaultsMap = defaults();
+    auto& defaultsMap = WebPreferencesStore::defaults();
     auto defaultsIt = defaultsMap.find(key);
-    if (defaultsIt != defaultsMap.end() && defaultsIt->value.type() == ToType<MappedType>::value)
-        return as<MappedType>(defaultsIt->value);
+    if (defaultsIt != defaultsMap.end() && WTF::holds_alternative<MappedType>(defaultsIt->value))
+        return WTF::get<MappedType>(defaultsIt->value);
 
     return MappedType();
 }
 
 template<typename MappedType>
-static bool setValueForKey(WebPreferencesStore::ValueMap& map, const WebPreferencesStore::ValueMap& overridenDefaults, const String& key, const MappedType& value)
+static bool setValueForKey(WebPreferencesStore::ValueMap& map, const WebPreferencesStore::ValueMap& overriddenDefaults, const String& key, const MappedType& value)
 {
-    MappedType existingValue = valueForKey<MappedType>(map, overridenDefaults, key);
+    MappedType existingValue = valueForKey<MappedType>(map, overriddenDefaults, key);
     if (existingValue == value)
         return false;
 
@@ -203,17 +108,17 @@ static bool setValueForKey(WebPreferencesStore::ValueMap& map, const WebPreferen
 
 bool WebPreferencesStore::setStringValueForKey(const String& key, const String& value)
 {
-    return setValueForKey<String>(m_values, m_overridenDefaults, key, value);
+    return setValueForKey<String>(m_values, m_overriddenDefaults, key, value);
 }
 
 String WebPreferencesStore::getStringValueForKey(const String& key) const
 {
-    return valueForKey<String>(m_values, m_overridenDefaults, key);
+    return valueForKey<String>(m_values, m_overriddenDefaults, key);
 }
 
 bool WebPreferencesStore::setBoolValueForKey(const String& key, bool value)
 {
-    return setValueForKey<bool>(m_values, m_overridenDefaults, key, value);
+    return setValueForKey<bool>(m_values, m_overriddenDefaults, key, value);
 }
 
 bool WebPreferencesStore::getBoolValueForKey(const String& key) const
@@ -223,49 +128,49 @@ bool WebPreferencesStore::getBoolValueForKey(const String& key) const
     if (it != boolTestRunnerOverridesMap().end())
         return it->value;
 
-    return valueForKey<bool>(m_values, m_overridenDefaults, key);
+    return valueForKey<bool>(m_values, m_overriddenDefaults, key);
 }
 
 bool WebPreferencesStore::setUInt32ValueForKey(const String& key, uint32_t value) 
 {
-    return setValueForKey<uint32_t>(m_values, m_overridenDefaults, key, value);
+    return setValueForKey<uint32_t>(m_values, m_overriddenDefaults, key, value);
 }
 
 uint32_t WebPreferencesStore::getUInt32ValueForKey(const String& key) const
 {
-    return valueForKey<uint32_t>(m_values, m_overridenDefaults, key);
+    return valueForKey<uint32_t>(m_values, m_overriddenDefaults, key);
 }
 
 bool WebPreferencesStore::setDoubleValueForKey(const String& key, double value) 
 {
-    return setValueForKey<double>(m_values, m_overridenDefaults, key, value);
+    return setValueForKey<double>(m_values, m_overriddenDefaults, key, value);
 }
 
 double WebPreferencesStore::getDoubleValueForKey(const String& key) const
 {
-    return valueForKey<double>(m_values, m_overridenDefaults, key);
+    return valueForKey<double>(m_values, m_overriddenDefaults, key);
 }
 
-// Overriden Defaults
+// Overridden Defaults
 
 void WebPreferencesStore::setOverrideDefaultsStringValueForKey(const String& key, String value)
 {
-    m_overridenDefaults.set(key, Value(value));
+    m_overriddenDefaults.set(key, Value(value));
 }
 
 void WebPreferencesStore::setOverrideDefaultsBoolValueForKey(const String& key, bool value)
 {
-    m_overridenDefaults.set(key, Value(value));
+    m_overriddenDefaults.set(key, Value(value));
 }
 
 void WebPreferencesStore::setOverrideDefaultsUInt32ValueForKey(const String& key, uint32_t value)
 {
-    m_overridenDefaults.set(key, Value(value));
+    m_overriddenDefaults.set(key, Value(value));
 }
 
 void WebPreferencesStore::setOverrideDefaultsDoubleValueForKey(const String& key, double value)
 {
-    m_overridenDefaults.set(key, Value(value));
+    m_overriddenDefaults.set(key, Value(value));
 }
 
 } // namespace WebKit

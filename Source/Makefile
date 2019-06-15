@@ -1,10 +1,24 @@
-MODULES = bmalloc WTF JavaScriptCore ThirdParty/ANGLE ThirdParty/libwebrtc WebCore WebInspectorUI WebKit WebKit2
+LIBWEBRTC_MODULE = 
+WEBINSPECTORUI_MODULE =
 
 ifneq (,$(SDKROOT))
-	ifeq (,$(findstring macosx,$(SDKROOT)))
-		MODULES = bmalloc WTF JavaScriptCore ThirdParty/ANGLE ThirdParty/libwebrtc WebCore WebKit WebKit2
+	ifneq (,$(findstring iphone,$(SDKROOT)))
+		LIBWEBRTC_MODULE = ThirdParty/libwebrtc
 	endif
+	ifneq (,$(findstring macosx,$(SDKROOT)))
+		LIBWEBRTC_MODULE = ThirdParty/libwebrtc
+		WEBINSPECTORUI_MODULE = WebInspectorUI
+	endif
+else
+	LIBWEBRTC_MODULE = ThirdParty/libwebrtc
+	WEBINSPECTORUI_MODULE = WebInspectorUI
 endif
+
+ifneq (,$(DISABLE_LIBWEBRTC))
+	LIBWEBRTC_MODULE =
+endif
+
+MODULES = bmalloc WTF JavaScriptCore ThirdParty/ANGLE $(LIBWEBRTC_MODULE) WebCore $(WEBINSPECTORUI_MODULE) WebKitLegacy WebKit
 
 all:
 	@for dir in $(MODULES); do ${MAKE} $@ -C $$dir; exit_status=$$?; \

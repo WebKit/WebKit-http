@@ -43,7 +43,7 @@ class ImportanceAssertion;
 class Decoder {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    Decoder(const uint8_t* buffer, size_t bufferSize, void (*bufferDeallocator)(const uint8_t*, size_t), Vector<Attachment>);
+    Decoder(const uint8_t* buffer, size_t bufferSize, void (*bufferDeallocator)(const uint8_t*, size_t), Vector<Attachment>&&);
     ~Decoder();
 
     Decoder(const Decoder&) = delete;
@@ -78,14 +78,25 @@ public:
     bool decodeVariableLengthByteArray(DataReference&);
 
     bool decode(bool&);
+    Decoder& operator>>(std::optional<bool>&);
     bool decode(uint8_t&);
+    Decoder& operator>>(std::optional<uint8_t>&);
     bool decode(uint16_t&);
+    Decoder& operator>>(std::optional<uint16_t>&);
     bool decode(uint32_t&);
+    Decoder& operator>>(std::optional<uint32_t>&);
     bool decode(uint64_t&);
+    Decoder& operator>>(std::optional<uint64_t>&);
+    bool decode(int16_t&);
+    Decoder& operator>>(std::optional<int16_t>&);
     bool decode(int32_t&);
+    Decoder& operator>>(std::optional<int32_t>&);
     bool decode(int64_t&);
+    Decoder& operator>>(std::optional<int64_t>&);
     bool decode(float&);
+    Decoder& operator>>(std::optional<float>&);
     bool decode(double&);
+    Decoder& operator>>(std::optional<double>&);
 
     template<typename E>
     auto decode(E& e) -> std::enable_if_t<std::is_enum<E>::value, bool>
@@ -98,6 +109,16 @@ public:
 
         e = static_cast<E>(value);
         return true;
+    }
+
+    template<typename E, std::enable_if_t<std::is_enum<E>::value>* = nullptr>
+    Decoder& operator>>(std::optional<E>& optional)
+    {
+        std::optional<uint64_t> value;
+        *this >> value;
+        if (value && isValidEnum<E>(*value))
+            optional = static_cast<E>(*value);
+        return *this;
     }
 
     template<typename T> bool decodeEnum(T& result)
@@ -123,10 +144,17 @@ public:
         return bufferIsLargeEnoughToContain(alignof(T), numElements * sizeof(T));
     }
 
-    template<typename T>
-    auto decode(T& t) -> std::enable_if_t<!std::is_enum<T>::value, bool>
+    template<typename T, std::enable_if_t<!std::is_enum<T>::value && UsesLegacyDecoder<T>::value>* = nullptr>
+    bool decode(T& t)
     {
         return ArgumentCoder<T>::decode(*this, t);
+    }
+
+    template<typename T, std::enable_if_t<UsesModernDecoder<T>::value>* = nullptr>
+    Decoder& operator>>(std::optional<T>& t)
+    {
+        t = ArgumentCoder<T>::decode(*this);
+        return *this;
     }
 
     bool removeAttachment(Attachment&);
@@ -136,6 +164,7 @@ public:
 private:
     bool alignBufferPosition(unsigned alignment, size_t);
     bool bufferIsLargeEnoughToContain(unsigned alignment, size_t) const;
+    template<typename Type> Decoder& getOptional(std::optional<Type>&);
 
     const uint8_t* m_buffer;
     const uint8_t* m_bufferPos;

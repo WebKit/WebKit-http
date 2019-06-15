@@ -58,7 +58,7 @@ ModuleProgramExecutable* ModuleProgramExecutable::create(ExecState* exec, const 
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-    ModuleProgramExecutable* executable = new (NotNull, allocateCell<ModuleProgramExecutable>(*exec->heap())) ModuleProgramExecutable(exec, source);
+    ModuleProgramExecutable* executable = new (NotNull, allocateCell<ModuleProgramExecutable>(vm.heap)) ModuleProgramExecutable(exec, source);
     executable->finishCreation(exec->vm());
 
     ParserError error;
@@ -90,11 +90,10 @@ void ModuleProgramExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     ModuleProgramExecutable* thisObject = jsCast<ModuleProgramExecutable*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    ScriptExecutable::visitChildren(thisObject, visitor);
+    Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_unlinkedModuleProgramCodeBlock);
     visitor.append(thisObject->m_moduleEnvironmentSymbolTable);
-    if (ModuleProgramCodeBlock* moduleProgramCodeBlock = thisObject->m_moduleProgramCodeBlock.get())
-        moduleProgramCodeBlock->visitWeakly(visitor);
+    visitor.append(thisObject->m_moduleProgramCodeBlock);
 }
 
 } // namespace JSC

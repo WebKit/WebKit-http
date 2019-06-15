@@ -30,8 +30,6 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoKeyAES.h"
-#include "ExceptionCode.h"
-#include "NotImplemented.h"
 #include <pal/crypto/gcrypt/Handle.h>
 #include <pal/crypto/gcrypt/Utilities.h>
 
@@ -117,40 +115,20 @@ static std::optional<Vector<uint8_t>> gcryptUnwrapKey(const Vector<uint8_t>& key
     return output;
 }
 
-void CryptoAlgorithmAES_KW::platformWrapKey(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmAES_KW::platformWrapKey(const CryptoKeyAES& key, const Vector<uint8_t>& data)
 {
-    auto& aesKey = downcast<CryptoKeyAES>(key.get());
-    auto output = gcryptWrapKey(aesKey.key(), data);
-    if (!output) {
-        exceptionCallback(OperationError);
-        return;
-    }
-
-    callback(*output);
+    auto output = gcryptWrapKey(key.key(), data);
+    if (!output)
+        return Exception { OperationError };
+    return WTFMove(*output);
 }
 
-void CryptoAlgorithmAES_KW::platformUnwrapKey(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmAES_KW::platformUnwrapKey(const CryptoKeyAES& key, const Vector<uint8_t>& data)
 {
-    auto& aesKey = downcast<CryptoKeyAES>(key.get());
-    auto output = gcryptUnwrapKey(aesKey.key(), data);
-    if (!output) {
-        exceptionCallback(OperationError);
-        return;
-    }
-
-    callback(*output);
-}
-
-ExceptionOr<void> CryptoAlgorithmAES_KW::platformEncrypt(const CryptoKeyAES&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
-{
-    notImplemented();
-    return Exception { NOT_SUPPORTED_ERR };
-}
-
-ExceptionOr<void> CryptoAlgorithmAES_KW::platformDecrypt(const CryptoKeyAES&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
-{
-    notImplemented();
-    return Exception { NOT_SUPPORTED_ERR };
+    auto output = gcryptUnwrapKey(key.key(), data);
+    if (!output)
+        return Exception { OperationError };
+    return WTFMove(*output);
 }
 
 } // namespace WebCore

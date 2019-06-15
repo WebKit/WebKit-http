@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/system_wrappers/source/event_timer_posix.h"
+#include "system_wrappers/source/event_timer_posix.h"
 
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/base/event.h"
-#include "webrtc/test/gtest.h"
+#include "rtc_base/criticalsection.h"
+#include "rtc_base/event.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -35,7 +35,7 @@ class EventTimerPosixTest : public testing::Test, public EventTimerPosix {
         main_event_(false, true),
         process_thread_id_(0),
         process_thread_(nullptr) {}
-  virtual ~EventTimerPosixTest() {}
+  ~EventTimerPosixTest() override {}
 
   rtc::PlatformThread* CreateThread() override {
     EXPECT_TRUE(process_thread_ == nullptr);

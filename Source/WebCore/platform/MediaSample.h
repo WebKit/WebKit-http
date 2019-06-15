@@ -27,12 +27,13 @@
 #define MediaSample_h
 
 #include "FloatSize.h"
-#include <runtime/TypedArrays.h>
+#include <JavaScriptCore/TypedArrays.h>
 #include <wtf/MediaTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/AtomicString.h>
 
 typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
+typedef struct _GstSample GstSample;
 
 namespace WebCore {
 
@@ -43,16 +44,18 @@ struct PlatformSample {
         None,
         MockSampleBoxType,
         CMSampleBufferType,
+        GStreamerSampleType,
     } type;
     union {
         MockSampleBox* mockSampleBox;
         CMSampleBufferRef cmSampleBuffer;
+        GstSample* gstSample;
     } sample;
 };
 
 class MediaSample : public RefCounted<MediaSample> {
 public:
-    virtual ~MediaSample() { }
+    virtual ~MediaSample() = default;
 
     virtual MediaTime presentationTime() const = 0;
     virtual MediaTime outputPresentationTime() const { return presentationTime(); }
@@ -76,6 +79,7 @@ public:
         None = 0,
         IsSync = 1 << 0,
         IsNonDisplaying = 1 << 1,
+        HasAlpha = 1 << 2,
     };
     virtual SampleFlags flags() const = 0;
     virtual PlatformSample platformSample() = 0;
@@ -91,6 +95,7 @@ public:
 
     bool isSync() const { return flags() & IsSync; }
     bool isNonDisplaying() const { return flags() & IsNonDisplaying; }
+    bool hasAlpha() const { return flags() & HasAlpha; }
 
     virtual void dump(PrintStream&) const = 0;
 };

@@ -35,11 +35,8 @@
 #include "GraphicsContext3DNEON.h"
 #endif
 
-// Visual Studio crashes with a C1063 Fatal Error if everything is inlined.
-#if COMPILER(MSVC)
-#define ALWAYS_INLINE_EXCEPT_MSVC
-#else
-#define ALWAYS_INLINE_EXCEPT_MSVC ALWAYS_INLINE
+#if USE(ACCELERATE)
+#include <Accelerate/Accelerate.h>
 #endif
 
 namespace WebCore {
@@ -1205,6 +1202,7 @@ ALWAYS_INLINE void FormatConverter::convert(GraphicsContext3D::AlphaOp alphaOp)
 #undef FORMATCONVERTER_CASE_ALPHAOP
 }
 
+// Visual Studio crashes with a C1063 Fatal Error if everything is inlined.
 template<GraphicsContext3D::DataFormat SrcFormat, GraphicsContext3D::DataFormat DstFormat, GraphicsContext3D::AlphaOp alphaOp>
 ALWAYS_INLINE_EXCEPT_MSVC void FormatConverter::convert()
 {
@@ -1247,6 +1245,9 @@ ALWAYS_INLINE_EXCEPT_MSVC void FormatConverter::convert()
 
     const SrcType *srcRowStart = static_cast<const SrcType*>(m_srcStart);
     DstType* dstRowStart = static_cast<DstType*>(m_dstStart);
+    
+    m_success = true;
+    
     if (!trivialUnpack && trivialPack) {
         for (size_t i = 0; i < m_height; ++i) {
             unpack<SrcFormat>(srcRowStart, dstRowStart, m_width);
@@ -1261,14 +1262,33 @@ ALWAYS_INLINE_EXCEPT_MSVC void FormatConverter::convert()
             dstRowStart += dstStrideInElements;
         }
     } else {
+#if USE(ACCELERATE)
+        if (SrcFormat == GraphicsContext3D::DataFormatRGBA8
+            && DstFormat == GraphicsContext3D::DataFormatRGBA8
+            && alphaOp == GraphicsContext3D::AlphaDoUnmultiply) {
+            vImage_Buffer src;
+            src.width = m_width;
+            src.height = m_height;
+            src.rowBytes = m_srcStride;
+            src.data = const_cast<void*>(m_srcStart);
+
+            vImage_Buffer dst;
+            dst.width = m_width;
+            dst.height = m_height;
+            dst.rowBytes = m_dstStride;
+            dst.data = m_dstStart;
+
+            vImageUnpremultiplyData_RGBA8888(&src, &dst, kvImageNoFlags);
+            
+            return;
+        }
+#endif
         for (size_t i = 0; i < m_height; ++i) {
             pack<DstFormat, alphaOp>(srcRowStart, dstRowStart, m_width);
             srcRowStart += srcStrideInElements;
             dstRowStart += dstStrideInElements;
         }
     }
-    m_success = true;
-    return;
 }
 
 } // namespace WebCore

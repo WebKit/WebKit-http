@@ -15,10 +15,10 @@
  *
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_ISAC_MAIN_SOURCE_CRC_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_ISAC_MAIN_SOURCE_CRC_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_ISAC_MAIN_SOURCE_CRC_H_
+#define MODULES_AUDIO_CODING_CODECS_ISAC_MAIN_SOURCE_CRC_H_
 
-#include "webrtc/typedefs.h"
+#include <stdint.h>
 
 /****************************************************************************
  * WebRtcIsac_GetCrc(...)
@@ -36,11 +36,6 @@
  *                   -1 - Error
  */
 
-int WebRtcIsac_GetCrc(
-    const int16_t* encoded,
-    int no_of_word8s,
-    uint32_t* crc);
+int WebRtcIsac_GetCrc(const int16_t* encoded, int no_of_word8s, uint32_t* crc);
 
-
-
-#endif /* WEBRTC_MODULES_AUDIO_CODING_CODECS_ISAC_MAIN_SOURCE_CRC_H_ */
+#endif /* MODULES_AUDIO_CODING_CODECS_ISAC_MAIN_SOURCE_CRC_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005 Apple Inc.  All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,17 +29,25 @@
 #ifndef __LP64__
 
 #include "CarbonUtils.h"
-#import <WebKitSystemInterface.h>
+#import <wtf/spi/cocoa/objcSPI.h>
 
 extern CGImageRef _NSCreateImageRef( unsigned char *const bitmapData[5], int pixelsWide, int pixelsHigh, int bitsPerSample, int samplesPerPixel, int bitsPerPixel, int bytesPerRow, BOOL isPlanar, BOOL hasAlpha, NSString *colorSpaceName, CGColorSpaceRef customColorSpace, id sourceObj);
 
 static void				PoolCleaner( EventLoopTimerRef inTimer, EventLoopIdleTimerMessage inState, void *inUserData );
 
-static NSAutoreleasePool*	sPool;
+static void* sPool;
 static unsigned numPools;
 static EventLoopRef poolLoop;
 
 void                    HIWebViewRegisterClass( void );
+
+static unsigned getNSAutoreleasePoolCount(void)
+{
+    void* v = objc_autoreleasePoolPush();
+    uintptr_t numPools = (uintptr_t)v;
+    objc_autoreleasePoolPop(v);
+    return numPools;
+}
 
 void
 WebInitForCarbon()
@@ -55,8 +63,8 @@ WebInitForCarbon()
         GetCurrentProcess( &process ); 
         NSApplicationLoad();
                 
-        sPool = [[NSAutoreleasePool allocWithZone:NULL] init];
-        numPools = WKGetNSAutoreleasePoolCount();
+        sPool = objc_autoreleasePoolPush();
+        numPools = getNSAutoreleasePoolCount();
         
         poolLoop = GetCurrentEventLoop ();
 
@@ -79,15 +87,17 @@ static void
 PoolCleaner( EventLoopTimerRef inTimer, EventLoopIdleTimerMessage inState, void *inUserData )
 {
     if ( inState == kEventLoopIdleTimerStarted ) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
         CFStringRef mode = CFRunLoopCopyCurrentMode( (CFRunLoopRef)GetCFRunLoopFromEventLoop( GetCurrentEventLoop() ));
+#pragma clang diagnostic pop
         EventLoopRef thisLoop = GetCurrentEventLoop ();
         if ( CFEqual( mode, kCFRunLoopDefaultMode ) && thisLoop == poolLoop) {
-            unsigned currentNumPools = WKGetNSAutoreleasePoolCount()-1;            
+            unsigned currentNumPools = getNSAutoreleasePoolCount()-1;            
             if (currentNumPools == numPools){
-                [sPool drain];
-                
-                sPool = [[NSAutoreleasePool allocWithZone:NULL] init];
-                numPools = WKGetNSAutoreleasePoolCount();
+                objc_autoreleasePoolPop(sPool);
+                sPool = objc_autoreleasePoolPush();
+                numPools = getNSAutoreleasePoolCount();
             }
         }
         CFRelease( mode );

@@ -26,14 +26,15 @@
 namespace WebCore {
 
 class SVGTitleElement final : public SVGElement {
+    WTF_MAKE_ISO_ALLOCATED(SVGTitleElement);
 public:
     static Ref<SVGTitleElement> create(const QualifiedName&, Document&);
 
 private:
     SVGTitleElement(const QualifiedName&, Document&);
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
     void childrenChanged(const ChildChange&) final;
 
     bool rendererIsNeeded(const RenderStyle&) final { return false; }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,8 +46,8 @@ public:
     // before liveness data is cleared to be accurate.
     template<typename Func>
     static void findGCObjectPointersForMarking(
-        Heap& heap, HeapVersion markingVersion, TinyBloomFilter filter, void* passedPointer,
-        const Func& func)
+        Heap& heap, HeapVersion markingVersion, HeapVersion newlyAllocatedVersion, TinyBloomFilter filter,
+        void* passedPointer, const Func& func)
     {
         const HashSet<MarkedBlock*>& set = heap.objectSpace().blocks().set();
         
@@ -66,14 +66,16 @@ public:
                     LargeAllocation::fromCell(pointer),
                     [] (LargeAllocation** ptr) -> LargeAllocation* { return *ptr; });
                 if (result) {
-                    if (result > heap.objectSpace().largeAllocationsForThisCollectionBegin()
-                        && result[-1]->contains(pointer))
-                        func(result[-1]->cell());
-                    if (result[0]->contains(pointer))
-                        func(result[0]->cell());
-                    if (result + 1 < heap.objectSpace().largeAllocationsForThisCollectionEnd()
-                        && result[1]->contains(pointer))
-                        func(result[1]->cell());
+                    auto attemptLarge = [&] (LargeAllocation* allocation) {
+                        if (allocation->contains(pointer))
+                            func(allocation->cell(), allocation->attributes().cellKind);
+                    };
+                    
+                    if (result > heap.objectSpace().largeAllocationsForThisCollectionBegin())
+                        attemptLarge(result[-1]);
+                    attemptLarge(result[0]);
+                    if (result + 1 < heap.objectSpace().largeAllocationsForThisCollectionEnd())
+                        attemptLarge(result[1]);
                 }
             }
         }
@@ -82,14 +84,14 @@ public:
         // It's possible for a butterfly pointer to point past the end of a butterfly. Check this now.
         if (pointer <= bitwise_cast<char*>(candidate) + sizeof(IndexingHeader)) {
             // We may be interested in the last cell of the previous MarkedBlock.
-            char* previousPointer = pointer - sizeof(IndexingHeader) - 1;
+            char* previousPointer = bitwise_cast<char*>(bitwise_cast<uintptr_t>(pointer) - sizeof(IndexingHeader) - 1);
             MarkedBlock* previousCandidate = MarkedBlock::blockFor(previousPointer);
             if (!filter.ruleOut(bitwise_cast<Bits>(previousCandidate))
                 && set.contains(previousCandidate)
-                && previousCandidate->handle().cellKind() == HeapCell::Auxiliary) {
+                && hasInteriorPointers(previousCandidate->handle().cellKind())) {
                 previousPointer = static_cast<char*>(previousCandidate->handle().cellAlign(previousPointer));
-                if (previousCandidate->handle().isLiveCell(markingVersion, isMarking, previousPointer))
-                    func(previousPointer);
+                if (previousCandidate->handle().isLiveCell(markingVersion, newlyAllocatedVersion, isMarking, previousPointer))
+                    func(previousPointer, previousCandidate->handle().cellKind());
             }
         }
     
@@ -100,18 +102,19 @@ public:
     
         if (!set.contains(candidate))
             return;
+
+        HeapCell::Kind cellKind = candidate->handle().cellKind();
         
         auto tryPointer = [&] (void* pointer) {
-            if (candidate->handle().isLiveCell(markingVersion, isMarking, pointer))
-                func(pointer);
+            if (candidate->handle().isLiveCell(markingVersion, newlyAllocatedVersion, isMarking, pointer))
+                func(pointer, cellKind);
         };
     
-        if (candidate->handle().cellKind() == HeapCell::JSCell) {
-            if (!MarkedBlock::isAtomAligned(pointer))
+        if (isJSCellKind(cellKind)) {
+            if (MarkedBlock::isAtomAligned(pointer))
+                tryPointer(pointer);
+            if (!hasInteriorPointers(cellKind))
                 return;
-        
-            tryPointer(pointer);
-            return;
         }
     
         // A butterfly could point into the middle of an object.
@@ -120,7 +123,7 @@ public:
     
         // Also, a butterfly could point at the end of an object plus sizeof(IndexingHeader). In that
         // case, this is pointing to the object to the right of the one we should be marking.
-        if (candidate->atomNumber(alignedPointer) > MarkedBlock::firstAtom()
+        if (candidate->atomNumber(alignedPointer) > 0
             && pointer <= alignedPointer + sizeof(IndexingHeader))
             tryPointer(alignedPointer - candidate->cellSize());
     }
@@ -140,14 +143,14 @@ public:
                 if (result) {
                     if (result > largeAllocations.begin()
                         && result[-1]->cell() == pointer
-                        && result[-1]->attributes().cellKind == HeapCell::JSCell)
+                        && isJSCellKind(result[-1]->attributes().cellKind))
                         return true;
                     if (result[0]->cell() == pointer
-                        && result[0]->attributes().cellKind == HeapCell::JSCell)
+                        && isJSCellKind(result[0]->attributes().cellKind))
                         return true;
                     if (result + 1 < largeAllocations.end()
                         && result[1]->cell() == pointer
-                        && result[1]->attributes().cellKind == HeapCell::JSCell)
+                        && isJSCellKind(result[1]->attributes().cellKind))
                         return true;
                 }
             }

@@ -23,6 +23,7 @@
 #include "RenderBoxModelObject.h"
 #include "RenderText.h"
 #include "TextFlags.h"
+#include <wtf/IsoMalloc.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
@@ -34,7 +35,7 @@ class RootInlineBox;
 // InlineBox represents a rectangle that occurs on a line.  It corresponds to
 // some RenderObject (i.e., it represents a portion of that RenderObject).
 class InlineBox {
-    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_ISO_ALLOCATED(InlineBox);
 public:
     virtual ~InlineBox();
 
@@ -76,8 +77,8 @@ public:
     void showNodeTreeForThis() const;
     void showLineTreeForThis() const;
     
-    virtual void outputLineTreeAndMark(TextStream&, const InlineBox* markedBox, int depth) const;
-    virtual void outputLineBox(TextStream&, bool mark, int depth) const;
+    virtual void outputLineTreeAndMark(WTF::TextStream&, const InlineBox* markedBox, int depth) const;
+    virtual void outputLineBox(WTF::TextStream&, bool mark, int depth) const;
     virtual const char* boxName() const;
 #endif
 
@@ -217,8 +218,8 @@ public:
 
     unsigned char bidiLevel() const { return m_bitfields.bidiEmbeddingLevel(); }
     void setBidiLevel(unsigned char level) { m_bitfields.setBidiEmbeddingLevel(level); }
-    TextDirection direction() const { return bidiLevel() % 2 ? RTL : LTR; }
-    bool isLeftToRightDirection() const { return direction() == LTR; }
+    TextDirection direction() const { return bidiLevel() % 2 ? TextDirection::RTL : TextDirection::LTR; }
+    bool isLeftToRightDirection() const { return direction() == TextDirection::LTR; }
     int caretLeftmostOffset() const { return isLeftToRightDirection() ? caretMinOffset() : caretMaxOffset(); }
     int caretRightmostOffset() const { return isLeftToRightDirection() ? caretMaxOffset() : caretMinOffset(); }
 
@@ -240,11 +241,11 @@ public:
     void invalidateParentChildList();
 #endif
 
-    bool visibleToHitTesting() const { return renderer().style().visibility() == VISIBLE && renderer().style().pointerEvents() != PE_NONE; }
+    bool visibleToHitTesting() const { return renderer().style().visibility() == Visibility::Visible && renderer().style().pointerEvents() != PointerEvents::None; }
 
     const RenderStyle& lineStyle() const { return m_bitfields.firstLine() ? renderer().firstLineStyle() : renderer().style(); }
     
-    EVerticalAlign verticalAlign() const { return lineStyle().verticalAlign(); }
+    VerticalAlign verticalAlign() const { return lineStyle().verticalAlign(); }
 
     // Use with caution! The type is not checked!
     RenderBoxModelObject* boxModelObject() const
@@ -254,11 +255,11 @@ public:
         return nullptr;
     }
 
-    FloatPoint locationIncludingFlipping();
-    void flipForWritingMode(FloatRect&);
-    FloatPoint flipForWritingMode(const FloatPoint&);
-    void flipForWritingMode(LayoutRect&);
-    LayoutPoint flipForWritingMode(const LayoutPoint&);
+    FloatPoint locationIncludingFlipping() const;
+    void flipForWritingMode(FloatRect&) const;
+    FloatPoint flipForWritingMode(const FloatPoint&) const;
+    void flipForWritingMode(LayoutRect&) const;
+    LayoutPoint flipForWritingMode(const LayoutPoint&) const;
 
     bool knownToHaveNoOverflow() const { return m_bitfields.knownToHaveNoOverflow(); }
     void clearKnownToHaveNoOverflow();
@@ -279,6 +280,12 @@ public:
     }
     float expansion() const { return m_expansion; }
 
+    void setHasHyphen(bool hasHyphen) { m_bitfields.setHasEllipsisBoxOrHyphen(hasHyphen); }
+    void setCanHaveLeadingExpansion(bool canHaveLeadingExpansion) { m_bitfields.setHasSelectedChildrenOrCanHaveLeadingExpansion(canHaveLeadingExpansion); }
+    void setCanHaveTrailingExpansion(bool canHaveTrailingExpansion) { m_bitfields.setCanHaveTrailingExpansion(canHaveTrailingExpansion); }
+    void setForceTrailingExpansion() { m_bitfields.setForceTrailingExpansion(true); }
+    void setForceLeadingExpansion() { m_bitfields.setForceLeadingExpansion(true); }
+
 private:
     InlineBox* m_next { nullptr }; // The next element on the same line as us.
     InlineBox* m_prev { nullptr }; // The previous element on the same line as us.
@@ -287,7 +294,10 @@ private:
 
     RenderObject& m_renderer;
 
+private:
+    float m_logicalWidth { 0 };
     float m_expansion { 0 };
+    FloatPoint m_topLeft;
 
 #define ADD_BOOLEAN_BITFIELD(name, Name) \
     private:\
@@ -378,9 +388,9 @@ protected:
         , m_prev(prev)
         , m_parent(parent)
         , m_renderer(renderer)
-        , m_bitfields(firstLine, constructed, dirty, extracted, isHorizontal)
-        , m_topLeft(topLeft)
         , m_logicalWidth(logicalWidth)
+        , m_topLeft(topLeft)
+        , m_bitfields(firstLine, constructed, dirty, extracted, isHorizontal)
     {
     }
 
@@ -394,22 +404,15 @@ protected:
 
     // For InlineTextBox
     bool hasHyphen() const { return m_bitfields.hasEllipsisBoxOrHyphen(); }
-    void setHasHyphen(bool hasHyphen) { m_bitfields.setHasEllipsisBoxOrHyphen(hasHyphen); }    
     bool canHaveLeadingExpansion() const { return m_bitfields.hasSelectedChildrenOrCanHaveLeadingExpansion(); }
-    void setCanHaveLeadingExpansion(bool canHaveLeadingExpansion) { m_bitfields.setHasSelectedChildrenOrCanHaveLeadingExpansion(canHaveLeadingExpansion); }
     bool canHaveTrailingExpansion() const { return m_bitfields.canHaveTrailingExpansion(); }
-    void setCanHaveTrailingExpansion(bool canHaveTrailingExpansion) { m_bitfields.setCanHaveTrailingExpansion(canHaveTrailingExpansion); }
-    void setForceTrailingExpansion() { m_bitfields.setForceTrailingExpansion(true); }
     bool forceTrailingExpansion() const { return m_bitfields.forceTrailingExpansion(); }
-    void setForceLeadingExpansion() { m_bitfields.setForceLeadingExpansion(true); }
     bool forceLeadingExpansion() const { return m_bitfields.forceLeadingExpansion(); }
     
     // For InlineFlowBox and InlineTextBox
     bool extracted() const { return m_bitfields.extracted(); }
 
 protected:
-    FloatPoint m_topLeft;
-    float m_logicalWidth { 0 };
 
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
 private:

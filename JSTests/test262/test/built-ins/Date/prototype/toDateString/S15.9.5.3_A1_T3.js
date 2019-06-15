@@ -3,6 +3,7 @@
 
 /*---
 info: The Date.prototype property "toDateString" has { DontEnum } attributes
+esid: sec-date.prototype.todatestring
 es5id: 15.9.5.3_A1_T3
 description: Checking DontEnum attribute
 ---*/
@@ -11,8 +12,8 @@ if (Date.prototype.propertyIsEnumerable('toDateString')) {
   $ERROR('#1: The Date.prototype.toDateString property has the attribute DontEnum');
 }
 
-for(var x in Date.prototype) {
-  if(x === "toDateString") {
+for (var x in Date.prototype) {
+  if (x === "toDateString") {
     $ERROR('#2: The Date.prototype.toDateString has the attribute DontEnum');
   }
 }

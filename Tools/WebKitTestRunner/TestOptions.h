@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TestOptions_h
-#define TestOptions_h
+#pragma once
 
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -33,6 +32,7 @@ namespace WTR {
 
 struct TestOptions {
     bool useThreadedScrolling { false };
+    bool useAcceleratedDrawing { false };
     bool useRemoteLayerTree { false };
     bool shouldShowWebView { false };
     bool useFlexibleViewport { false };
@@ -43,15 +43,30 @@ struct TestOptions {
     bool needsSiteSpecificQuirks { false };
     bool ignoresViewportScaleLimits { false };
     bool useCharacterSelectionGranularity { false };
+    bool enableAttachmentElement { false };
     bool enableIntersectionObserver { false };
+    bool enableMenuItemElement { false };
     bool enableModernMediaControls { true };
     bool enablePointerLock { false };
-    bool enableCredentialManagement { false };
+    bool enableWebAuthentication { true };
     bool enableIsSecureContextAttribute { true };
+    bool enableInspectorAdditions { false };
+    bool shouldShowTouches { false };
+    bool dumpJSConsoleLogInStdErr { false };
+    bool allowCrossOriginSubresourcesToAskForCredentials { false };
+    bool enableWebAnimationsCSSIntegration { false };
+    bool enableProcessSwapOnNavigation { true };
+    bool enableProcessSwapOnWindowOpen { false };
+    bool enableColorFilter { false };
+    bool punchOutWhiteBackgroundsInDarkMode { false };
+    bool runSingly { false };
+    bool checkForWorldLeaks { false };
 
     float deviceScaleFactor { 1 };
     Vector<String> overrideLanguages;
-    
+    std::string applicationManifest;
+    std::string jscOptions;
+
     TestOptions(const std::string& pathOrURL);
 
     // Add here options that can only be set upon PlatformWebView
@@ -61,21 +76,39 @@ struct TestOptions {
     bool hasSameInitializationOptions(const TestOptions& options) const
     {
         if (useThreadedScrolling != options.useThreadedScrolling
+            || useAcceleratedDrawing != options.useAcceleratedDrawing
             || overrideLanguages != options.overrideLanguages
             || useMockScrollbars != options.useMockScrollbars
             || needsSiteSpecificQuirks != options.needsSiteSpecificQuirks
             || useCharacterSelectionGranularity != options.useCharacterSelectionGranularity
+            || enableAttachmentElement != options.enableAttachmentElement
             || enableIntersectionObserver != options.enableIntersectionObserver
+            || enableMenuItemElement != options.enableMenuItemElement
             || enableModernMediaControls != options.enableModernMediaControls
             || enablePointerLock != options.enablePointerLock
-            || enableCredentialManagement != options.enableCredentialManagement
-            || enableIsSecureContextAttribute != options.enableIsSecureContextAttribute)
+            || enableWebAuthentication != options.enableWebAuthentication
+            || enableIsSecureContextAttribute != options.enableIsSecureContextAttribute
+            || enableInspectorAdditions != options.enableInspectorAdditions
+            || dumpJSConsoleLogInStdErr != options.dumpJSConsoleLogInStdErr
+            || applicationManifest != options.applicationManifest
+            || allowCrossOriginSubresourcesToAskForCredentials != options.allowCrossOriginSubresourcesToAskForCredentials
+            || enableWebAnimationsCSSIntegration != options.enableWebAnimationsCSSIntegration
+            || enableProcessSwapOnNavigation != options.enableProcessSwapOnNavigation
+            || enableProcessSwapOnWindowOpen != options.enableProcessSwapOnWindowOpen
+            || enableColorFilter != options.enableColorFilter
+            || punchOutWhiteBackgroundsInDarkMode != options.punchOutWhiteBackgroundsInDarkMode
+            || jscOptions != options.jscOptions
+            || runSingly != options.runSingly
+            || checkForWorldLeaks != options.checkForWorldLeaks)
             return false;
 
         return true;
     }
+    
+    bool shouldEnableProcessSwapOnNavigation() const
+    {
+        return enableProcessSwapOnNavigation || enableProcessSwapOnWindowOpen;
+    }
 };
 
 }
-
-#endif // TestOptions_h

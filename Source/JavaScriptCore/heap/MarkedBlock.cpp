@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,12 @@
 #include "config.h"
 #include "MarkedBlock.h"
 
+#include "AlignedMemoryAllocator.h"
+#include "BlockDirectoryInlines.h"
 #include "FreeListInlines.h"
-#include "JSCell.h"
+#include "JSCast.h"
 #include "JSDestructibleObject.h"
 #include "JSCInlines.h"
-#include "MarkedAllocatorInlines.h"
 #include "MarkedBlockInlines.h"
 #include "SuperSampler.h"
 #include "SweepingScope.h"
@@ -43,24 +44,24 @@ const size_t MarkedBlock::blockSize;
 static const bool computeBalance = false;
 static size_t balance;
 
-MarkedBlock::Handle* MarkedBlock::tryCreate(Heap& heap)
+MarkedBlock::Handle* MarkedBlock::tryCreate(Heap& heap, AlignedMemoryAllocator* alignedMemoryAllocator)
 {
     if (computeBalance) {
         balance++;
         if (!(balance % 10))
             dataLog("MarkedBlock Balance: ", balance, "\n");
     }
-    void* blockSpace = tryFastAlignedMalloc(blockSize, blockSize);
+    void* blockSpace = alignedMemoryAllocator->tryAllocateAlignedMemory(blockSize, blockSize);
     if (!blockSpace)
         return nullptr;
     if (scribbleFreeCells())
         scribble(blockSpace, blockSize);
-    return new Handle(heap, blockSpace);
+    return new Handle(heap, alignedMemoryAllocator, blockSpace);
 }
 
-MarkedBlock::Handle::Handle(Heap& heap, void* blockSpace)
-    : m_weakSet(heap.vm(), CellContainer())
-    , m_newlyAllocatedVersion(MarkedSpace::nullVersion)
+MarkedBlock::Handle::Handle(Heap& heap, AlignedMemoryAllocator* alignedMemoryAllocator, void* blockSpace)
+    : m_alignedMemoryAllocator(alignedMemoryAllocator)
+    , m_weakSet(heap.vm(), CellContainer())
 {
     m_block = new (NotNull, blockSpace) MarkedBlock(*heap.vm(), *this);
     
@@ -77,19 +78,34 @@ MarkedBlock::Handle::~Handle()
         if (!(balance % 10))
             dataLog("MarkedBlock Balance: ", balance, "\n");
     }
-    removeFromAllocator();
+    removeFromDirectory();
     m_block->~MarkedBlock();
-    fastAlignedFree(m_block);
+    m_alignedMemoryAllocator->freeAlignedMemory(m_block);
     heap.didFreeBlock(blockSize);
 }
 
 MarkedBlock::MarkedBlock(VM& vm, Handle& handle)
-    : m_markingVersion(MarkedSpace::nullVersion)
-    , m_handle(handle)
-    , m_vm(&vm)
 {
+    new (&footer()) Footer(vm, handle);
     if (false)
         dataLog(RawPointer(this), ": Allocated.\n");
+}
+
+MarkedBlock::~MarkedBlock()
+{
+    footer().~Footer();
+}
+
+MarkedBlock::Footer::Footer(VM& vm, Handle& handle)
+    : m_handle(handle)
+    , m_vm(&vm)
+    , m_markingVersion(MarkedSpace::nullVersion)
+    , m_newlyAllocatedVersion(MarkedSpace::nullVersion)
+{
+}
+
+MarkedBlock::Footer::~Footer()
+{
 }
 
 void MarkedBlock::Handle::unsweepWithNoNewlyAllocated()
@@ -100,17 +116,17 @@ void MarkedBlock::Handle::unsweepWithNoNewlyAllocated()
 
 void MarkedBlock::Handle::setIsFreeListed()
 {
-    m_allocator->setIsEmpty(NoLockingNecessary, this, false);
+    m_directory->setIsEmpty(NoLockingNecessary, this, false);
     m_isFreeListed = true;
 }
 
 void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
 {
-    auto locker = holdLock(block().m_lock);
+    auto locker = holdLock(blockFooter().m_lock);
     
     if (false)
         dataLog(RawPointer(this), ": MarkedBlock::Handle::stopAllocating!\n");
-    ASSERT(!allocator()->isAllocated(NoLockingNecessary, this));
+    ASSERT(!directory()->isAllocated(NoLockingNecessary, this));
 
     if (!isFreeListed()) {
         if (false)
@@ -128,12 +144,12 @@ void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
     // allocated from our free list are not currently marked, so we need another
     // way to tell what's live vs dead. 
     
-    m_newlyAllocated.clearAll();
-    m_newlyAllocatedVersion = heap()->objectSpace().newlyAllocatedVersion();
+    blockFooter().m_newlyAllocated.clearAll();
+    blockFooter().m_newlyAllocatedVersion = heap()->objectSpace().newlyAllocatedVersion();
 
     forEachCell(
         [&] (HeapCell* cell, HeapCell::Kind) -> IterationStatus {
-            setNewlyAllocated(cell);
+            block().setNewlyAllocated(cell);
             return IterationStatus::Continue;
         });
 
@@ -143,7 +159,7 @@ void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
                 dataLog("Free cell: ", RawPointer(cell), "\n");
             if (m_attributes.destruction == NeedsDestruction)
                 cell->zap();
-            clearNewlyAllocated(cell);
+            block().clearNewlyAllocated(cell);
         });
     
     m_isFreeListed = false;
@@ -151,27 +167,28 @@ void MarkedBlock::Handle::stopAllocating(const FreeList& freeList)
 
 void MarkedBlock::Handle::lastChanceToFinalize()
 {
-    allocator()->setIsAllocated(NoLockingNecessary, this, false);
-    m_block->m_marks.clearAll();
-    m_block->clearHasAnyMarked();
-    m_block->m_markingVersion = heap()->objectSpace().markingVersion();
+    directory()->setIsAllocated(NoLockingNecessary, this, false);
+    directory()->setIsDestructible(NoLockingNecessary, this, true);
+    blockFooter().m_marks.clearAll();
+    block().clearHasAnyMarked();
+    blockFooter().m_markingVersion = heap()->objectSpace().markingVersion();
     m_weakSet.lastChanceToFinalize();
-    m_newlyAllocated.clearAll();
-    m_newlyAllocatedVersion = heap()->objectSpace().newlyAllocatedVersion();
+    blockFooter().m_newlyAllocated.clearAll();
+    blockFooter().m_newlyAllocatedVersion = heap()->objectSpace().newlyAllocatedVersion();
     sweep(nullptr);
 }
 
 void MarkedBlock::Handle::resumeAllocating(FreeList& freeList)
 {
     {
-        auto locker = holdLock(block().m_lock);
+        auto locker = holdLock(blockFooter().m_lock);
         
         if (false)
             dataLog(RawPointer(this), ": MarkedBlock::Handle::resumeAllocating!\n");
-        ASSERT(!allocator()->isAllocated(NoLockingNecessary, this));
+        ASSERT(!directory()->isAllocated(NoLockingNecessary, this));
         ASSERT(!isFreeListed());
         
-        if (!hasAnyNewlyAllocated()) {
+        if (!block().hasAnyNewlyAllocated()) {
             if (false)
                 dataLog("There ain't no newly allocated.\n");
             // This means we had already exhausted the block when we stopped allocation.
@@ -197,14 +214,14 @@ void MarkedBlock::Handle::zap(const FreeList& freeList)
 void MarkedBlock::aboutToMarkSlow(HeapVersion markingVersion)
 {
     ASSERT(vm()->heap.objectSpace().isMarking());
-    LockHolder locker(m_lock);
+    auto locker = holdLock(footer().m_lock);
     
     if (!areMarksStale(markingVersion))
         return;
     
-    MarkedAllocator* allocator = handle().allocator();
+    BlockDirectory* directory = handle().directory();
 
-    if (handle().allocator()->isAllocated(holdLock(allocator->bitvectorLock()), &handle())
+    if (handle().directory()->isAllocated(holdLock(directory->bitvectorLock()), &handle())
         || !marksConveyLivenessDuringMarking(markingVersion)) {
         if (false)
             dataLog(RawPointer(this), ": Clearing marks without doing anything else.\n");
@@ -214,34 +231,38 @@ void MarkedBlock::aboutToMarkSlow(HeapVersion markingVersion)
         // date version! If it does, then we want to leave the newlyAllocated alone, since that
         // means that we had allocated in this previously empty block but did not fill it up, so
         // we created a newlyAllocated.
-        m_marks.clearAll();
+        footer().m_marks.clearAll();
     } else {
         if (false)
             dataLog(RawPointer(this), ": Doing things.\n");
         HeapVersion newlyAllocatedVersion = space()->newlyAllocatedVersion();
-        if (handle().m_newlyAllocatedVersion == newlyAllocatedVersion) {
-            // Merge the contents of marked into newlyAllocated. If we get the full set of bits
-            // then invalidate newlyAllocated and set allocated.
-            handle().m_newlyAllocated.mergeAndClear(m_marks);
+        if (footer().m_newlyAllocatedVersion == newlyAllocatedVersion) {
+            // When do we get here? The block could not have been filled up. The newlyAllocated bits would
+            // have had to be created since the end of the last collection. The only things that create
+            // them are aboutToMarkSlow, lastChanceToFinalize, and stopAllocating. If it had been
+            // aboutToMarkSlow, then we shouldn't be here since the marks wouldn't be stale anymore. It
+            // cannot be lastChanceToFinalize. So it must be stopAllocating. That means that we just
+            // computed the newlyAllocated bits just before the start of an increment. When we are in that
+            // mode, it seems as if newlyAllocated should subsume marks.
+            ASSERT(footer().m_newlyAllocated.subsumes(footer().m_marks));
+            footer().m_marks.clearAll();
         } else {
-            // Replace the contents of newlyAllocated with marked. If we get the full set of
-            // bits then invalidate newlyAllocated and set allocated.
-            handle().m_newlyAllocated.setAndClear(m_marks);
+            footer().m_newlyAllocated.setAndClear(footer().m_marks);
+            footer().m_newlyAllocatedVersion = newlyAllocatedVersion;
         }
-        handle().m_newlyAllocatedVersion = newlyAllocatedVersion;
     }
     clearHasAnyMarked();
     WTF::storeStoreFence();
-    m_markingVersion = markingVersion;
+    footer().m_markingVersion = markingVersion;
     
     // This means we're the first ones to mark any object in this block.
-    allocator->setIsMarkingNotEmpty(holdLock(allocator->bitvectorLock()), &handle(), true);
+    directory->setIsMarkingNotEmpty(holdLock(directory->bitvectorLock()), &handle(), true);
 }
 
-void MarkedBlock::Handle::resetAllocated()
+void MarkedBlock::resetAllocated()
 {
-    m_newlyAllocated.clearAll();
-    m_newlyAllocatedVersion = MarkedSpace::nullVersion;
+    footer().m_newlyAllocated.clearAll();
+    footer().m_newlyAllocatedVersion = MarkedSpace::nullVersion;
 }
 
 void MarkedBlock::resetMarks()
@@ -253,14 +274,14 @@ void MarkedBlock::resetMarks()
     // version is null, aboutToMarkSlow() will assume that the marks were not stale as of before
     // beginMarking(). Hence the need to whip the marks into shape.
     if (areMarksStale())
-        m_marks.clearAll();
-    m_markingVersion = MarkedSpace::nullVersion;
+        footer().m_marks.clearAll();
+    footer().m_markingVersion = MarkedSpace::nullVersion;
 }
 
 #if !ASSERT_DISABLED
 void MarkedBlock::assertMarksNotStale()
 {
-    ASSERT(m_markingVersion == vm()->heap.objectSpace().markingVersion());
+    ASSERT(footer().m_markingVersion == vm()->heap.objectSpace().markingVersion());
 }
 #endif // !ASSERT_DISABLED
 
@@ -281,66 +302,57 @@ bool MarkedBlock::isMarked(const void* p)
 
 void MarkedBlock::Handle::didConsumeFreeList()
 {
-    auto locker = holdLock(block().m_lock);
+    auto locker = holdLock(blockFooter().m_lock);
     if (false)
         dataLog(RawPointer(this), ": MarkedBlock::Handle::didConsumeFreeList!\n");
     ASSERT(isFreeListed());
     m_isFreeListed = false;
-    allocator()->setIsAllocated(NoLockingNecessary, this, true);
+    directory()->setIsAllocated(NoLockingNecessary, this, true);
 }
 
 size_t MarkedBlock::markCount()
 {
-    return areMarksStale() ? 0 : m_marks.count();
-}
-
-bool MarkedBlock::Handle::isEmpty()
-{
-    return m_allocator->isEmpty(NoLockingNecessary, this);
+    return areMarksStale() ? 0 : footer().m_marks.count();
 }
 
 void MarkedBlock::clearHasAnyMarked()
 {
-    m_biasedMarkCount = m_markCountBias;
+    footer().m_biasedMarkCount = footer().m_markCountBias;
 }
 
 void MarkedBlock::noteMarkedSlow()
 {
-    MarkedAllocator* allocator = handle().allocator();
-    allocator->setIsMarkingRetired(holdLock(allocator->bitvectorLock()), &handle(), true);
+    BlockDirectory* directory = handle().directory();
+    directory->setIsMarkingRetired(holdLock(directory->bitvectorLock()), &handle(), true);
 }
 
-void MarkedBlock::Handle::removeFromAllocator()
+void MarkedBlock::Handle::removeFromDirectory()
 {
-    if (!m_allocator)
+    if (!m_directory)
         return;
     
-    m_allocator->removeBlock(this);
+    m_directory->removeBlock(this);
 }
 
-void MarkedBlock::updateNeedsDestruction()
-{
-    m_needsDestruction = handle().needsDestruction();
-}
-
-void MarkedBlock::Handle::didAddToAllocator(MarkedAllocator* allocator, size_t index)
+void MarkedBlock::Handle::didAddToDirectory(BlockDirectory* directory, size_t index)
 {
     ASSERT(m_index == std::numeric_limits<size_t>::max());
-    ASSERT(!m_allocator);
+    ASSERT(!m_directory);
+    
+    RELEASE_ASSERT(directory->subspace()->alignedMemoryAllocator() == m_alignedMemoryAllocator);
     
     m_index = index;
-    m_allocator = allocator;
+    m_directory = directory;
+    blockFooter().m_subspace = directory->subspace();
     
-    size_t cellSize = allocator->cellSize();
+    size_t cellSize = directory->cellSize();
     m_atomsPerCell = (cellSize + atomSize - 1) / atomSize;
-    m_endAtom = atomsPerBlock - m_atomsPerCell + 1;
+    m_endAtom = endAtom - m_atomsPerCell + 1;
     
-    m_attributes = allocator->attributes();
+    m_attributes = directory->attributes();
 
-    if (m_attributes.cellKind != HeapCell::JSCell)
+    if (!isJSCellKind(m_attributes.cellKind))
         RELEASE_ASSERT(m_attributes.destruction == DoesNotNeedDestruction);
-    
-    block().updateNeedsDestruction();
     
     double markCountBias = -(Options::minMarkedBlockUtilization() * cellsPerBlock());
     
@@ -349,26 +361,17 @@ void MarkedBlock::Handle::didAddToAllocator(MarkedAllocator* allocator, size_t i
     RELEASE_ASSERT(markCountBias < 0);
     
     // This means we haven't marked anything yet.
-    block().m_biasedMarkCount = block().m_markCountBias = static_cast<int16_t>(markCountBias);
+    blockFooter().m_biasedMarkCount = blockFooter().m_markCountBias = static_cast<int16_t>(markCountBias);
 }
 
-void MarkedBlock::Handle::didRemoveFromAllocator()
+void MarkedBlock::Handle::didRemoveFromDirectory()
 {
     ASSERT(m_index != std::numeric_limits<size_t>::max());
-    ASSERT(m_allocator);
+    ASSERT(m_directory);
     
     m_index = std::numeric_limits<size_t>::max();
-    m_allocator = nullptr;
-}
-
-bool MarkedBlock::Handle::isLive(const HeapCell* cell)
-{
-    return isLive(space()->markingVersion(), space()->isMarking(), cell);
-}
-
-bool MarkedBlock::Handle::isLiveCell(const void* p)
-{
-    return isLiveCell(space()->markingVersion(), space()->isMarking(), p);
+    m_directory = nullptr;
+    blockFooter().m_subspace = nullptr;
 }
 
 #if !ASSERT_DISABLED
@@ -382,8 +385,8 @@ void MarkedBlock::assertValidCell(VM& vm, HeapCell* cell) const
 void MarkedBlock::Handle::dumpState(PrintStream& out)
 {
     CommaPrinter comma;
-    allocator()->forEachBitVectorWithName(
-        holdLock(allocator()->bitvectorLock()),
+    directory()->forEachBitVectorWithName(
+        holdLock(directory()->bitvectorLock()),
         [&] (FastBitVector& bitvector, const char* name) {
             out.print(comma, name, ":", bitvector[index()] ? "YES" : "no");
         });
@@ -391,7 +394,7 @@ void MarkedBlock::Handle::dumpState(PrintStream& out)
 
 Subspace* MarkedBlock::Handle::subspace() const
 {
-    return allocator()->subspace();
+    return directory()->subspace();
 }
 
 void MarkedBlock::Handle::sweep(FreeList* freeList)
@@ -400,24 +403,32 @@ void MarkedBlock::Handle::sweep(FreeList* freeList)
     
     SweepMode sweepMode = freeList ? SweepToFreeList : SweepOnly;
     
-    m_allocator->setIsUnswept(NoLockingNecessary, this, false);
+    m_directory->setIsUnswept(NoLockingNecessary, this, false);
     
     m_weakSet.sweep();
+    
+    bool needsDestruction = m_attributes.destruction == NeedsDestruction
+        && m_directory->isDestructible(NoLockingNecessary, this);
 
-    if (sweepMode == SweepOnly && m_attributes.destruction == DoesNotNeedDestruction)
+    if (sweepMode == SweepOnly && !needsDestruction)
         return;
 
-    if (UNLIKELY(m_isFreeListed)) {
-        RELEASE_ASSERT(sweepMode == SweepToFreeList);
-        return;
+    if (m_isFreeListed) {
+        dataLog("FATAL: ", RawPointer(this), "->sweep: block is free-listed.\n");
+        RELEASE_ASSERT_NOT_REACHED();
     }
     
-    ASSERT(!m_allocator->isAllocated(NoLockingNecessary, this));
+    if (isAllocated()) {
+        dataLog("FATAL: ", RawPointer(this), "->sweep: block is allocated.\n");
+        RELEASE_ASSERT_NOT_REACHED();
+    }
     
     if (space()->isMarking())
-        block().m_lock.lock();
+        blockFooter().m_lock.lock();
     
-    if (m_attributes.destruction == NeedsDestruction) {
+    subspace()->didBeginSweepingToFreeList(this);
+    
+    if (needsDestruction) {
         subspace()->finishSweep(*this, freeList);
         return;
     }
@@ -474,7 +485,7 @@ void MarkedBlock::Handle::sweep(FreeList* freeList)
 bool MarkedBlock::Handle::isFreeListedCell(const void* target) const
 {
     ASSERT(isFreeListed());
-    return m_allocator->isFreeListedCell(target);
+    return m_directory->isFreeListedCell(target);
 }
 
 } // namespace JSC

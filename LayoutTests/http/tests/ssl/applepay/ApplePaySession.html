@@ -36,6 +36,13 @@ function logAndShouldNotThrow(setup, test) {
 }
 
 function go() {
+    debug("Testing supportsVersion");
+    debug("");
+    shouldThrow("ApplePaySession.supportsVersion(0)");
+    shouldBeTrue("ApplePaySession.supportsVersion(1)");
+    shouldBeTrue("ApplePaySession.supportsVersion(2)");
+    debug("");
+
     debug("Testing PaymentRequest")
     debug("");
     shouldThrow("new ApplePaySession(2, { })");
@@ -72,8 +79,10 @@ function go() {
     logAndShouldThrow("request = validRequest(); request.supportedNetworks = [];", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.supportedNetworks = ['invalidNetwork'];", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.supportedNetworks = ['invalidNetwork', 'visa'];", "new ApplePaySession(2, request)")
+    logAndShouldThrow("request = validRequest(); request.supportedNetworks = ['carteBancaire'];", "new ApplePaySession(2, request)")
     // FIXME: Should duplicate supportedNetworks be allowed?
     logAndShouldNotThrow("request = validRequest(); request.supportedNetworks = ['visa', 'visa'];", "new ApplePaySession(2, request)")
+    logAndShouldNotThrow("request = validRequest(); request.supportedNetworks = ['vIsa', 'MasterCard', 'JCB'];", "new ApplePaySession(2, request)")
     
     debug("Testing PaymentRequest.merchantCapabilities")
     debug("");
@@ -99,7 +108,6 @@ function go() {
     logAndShouldThrow("request = validRequest(); request.total = { };", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.total = { label: 'label' };", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.total = { label: 'label', amount: 'amount' };", "new ApplePaySession(2, request)")
-    logAndShouldThrow("request = validRequest(); request.total = { label: 'label', amount: '0' };", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.total = { label: 'label', amount: '-10.00' };", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.total = { label: 'label', amount: '10000000000.00' };", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.total = { label: 'label', amount: '10.00', type: 'invalid' };", "new ApplePaySession(2, request)")
@@ -134,6 +142,7 @@ function go() {
     logAndShouldThrow("request = validRequest(); request.requiredBillingContactFields = [undefined];", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.requiredBillingContactFields = [{}];", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.requiredBillingContactFields = ['invalid'];", "new ApplePaySession(2, request)")
+    logAndShouldThrow("request = validRequest(); request.requiredBillingContactFields = ['phoneticName'];", "new ApplePaySession(2, request)")
     logAndShouldNotThrow("request = validRequest(); request.requiredBillingContactFields = ['email', 'name', 'phone', 'postalAddress'];", "new ApplePaySession(2, request)")
     // FIXME: Should duplicate contactFields be allowed?
     logAndShouldNotThrow("request = validRequest(); request.requiredBillingContactFields = ['email', 'email'];", "new ApplePaySession(2, request)")
@@ -146,6 +155,7 @@ function go() {
     logAndShouldNotThrow("request = validRequest(); request.billingContact = null;", "new ApplePaySession(2, request)")
     logAndShouldNotThrow("request = validRequest(); request.billingContact = undefined;", "new ApplePaySession(2, request)")
     logAndShouldNotThrow("request = validRequest(); request.billingContact = { };", "new ApplePaySession(2, request)")
+    logAndShouldNotThrow("request = validRequest(); request.billingContact = { subLocality: '', subAdministrativeArea: '' };", "new ApplePaySession(2, request)")
     
     debug("Testing PaymentRequest.requiredShippingContactFields")
     debug("");
@@ -159,6 +169,7 @@ function go() {
     logAndShouldThrow("request = validRequest(); request.requiredShippingContactFields = [undefined];", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.requiredShippingContactFields = [{}];", "new ApplePaySession(2, request)")
     logAndShouldThrow("request = validRequest(); request.requiredShippingContactFields = ['invalid'];", "new ApplePaySession(2, request)")
+    logAndShouldThrow("request = validRequest(); request.requiredShippingContactFields = ['phoneticName'];", "new ApplePaySession(2, request)")
     logAndShouldNotThrow("request = validRequest(); request.requiredShippingContactFields = ['email', 'name', 'phone', 'postalAddress'];", "new ApplePaySession(2, request)")
     // FIXME: Should duplicate contactFields be allowed?
     logAndShouldNotThrow("request = validRequest(); request.requiredShippingContactFields = ['email', 'email'];", "new ApplePaySession(2, request)")
@@ -171,6 +182,7 @@ function go() {
     logAndShouldNotThrow("request = validRequest(); request.shippingContact = null;", "new ApplePaySession(2, request)")
     logAndShouldNotThrow("request = validRequest(); request.shippingContact = undefined;", "new ApplePaySession(2, request)")
     logAndShouldNotThrow("request = validRequest(); request.shippingContact = { };", "new ApplePaySession(2, request)")
+    logAndShouldNotThrow("request = validRequest(); request.shippingContact = { subLocality: '', subAdministrativeArea: '' };", "new ApplePaySession(2, request)")
     
     debug("Testing PaymentRequest.shippingType")
     debug("");

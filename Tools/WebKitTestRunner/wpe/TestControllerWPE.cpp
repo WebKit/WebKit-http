@@ -58,14 +58,7 @@ void TestController::platformInitializeContext()
 {
 }
 
-static GMainContext* threadDefaultContext()
-{
-    if (GMainContext* context = g_main_context_get_thread_default())
-        return context;
-    return g_main_context_default();
-}
-
-void TestController::platformRunUntil(bool& condition, double timeout)
+void TestController::platformRunUntil(bool& condition, WTF::Seconds timeout)
 {
     struct TimeoutTimer {
         TimeoutTimer()
@@ -77,7 +70,7 @@ void TestController::platformRunUntil(bool& condition, double timeout)
     } timeoutTimer;
 
     timeoutTimer.timer.setPriority(G_PRIORITY_DEFAULT_IDLE);
-    if (timeout >= 0)
+    if (timeout >= 0_s)
         timeoutTimer.timer.startOneShot(timeout);
 
     RunLoop::main().run();
@@ -116,7 +109,7 @@ void TestController::runModal(PlatformWebView*)
 
 WKContextRef TestController::platformContext()
 {
-    return nullptr;
+    return m_context.get();
 }
 
 const char* TestController::platformLibraryPathForTesting()

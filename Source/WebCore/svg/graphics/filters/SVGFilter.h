@@ -33,11 +33,10 @@ class SVGFilter final : public Filter {
 public:
     static Ref<SVGFilter> create(const AffineTransform&, const FloatRect&, const FloatRect&, const FloatRect&, bool);
 
-    FloatRect filterRegionInUserSpace() const { return m_filterRegion; }
+    FloatRect filterRegionInUserSpace() const final { return m_filterRegion; }
     FloatRect filterRegion() const final { return m_absoluteFilterRegion; }
 
-    float applyHorizontalScale(float value) const final;
-    float applyVerticalScale(float value) const final;
+    FloatSize scaledByFilterResolution(FloatSize) const final;
 
     FloatRect sourceImageRect() const final { return m_absoluteSourceDrawingRegion; }
     FloatRect targetBoundingBox() const { return m_targetBoundingBox; }

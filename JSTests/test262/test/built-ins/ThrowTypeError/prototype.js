@@ -6,7 +6,7 @@ esid: sec-%throwtypeerror%
 description: >
   The value of the [[Prototype]] internal slot of %ThrowTypeError% is the
   intrinsic object %FunctionPrototype%.
-info: >
+info: |
   8.2.2 CreateIntrinsics ( realmRec )
 
   ...
@@ -19,6 +19,9 @@ info: >
   ...
 ---*/
 
-var ThrowTypeError = Object.getOwnPropertyDescriptor(function(){ "use strict"; return arguments; }(), "callee").get;
+var ThrowTypeError = Object.getOwnPropertyDescriptor(function() {
+  "use strict";
+  return arguments;
+}(), "callee").get;
 
 assert.sameValue(Object.getPrototypeOf(ThrowTypeError), Function.prototype);

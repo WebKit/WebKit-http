@@ -35,13 +35,13 @@
 #include "InjectedScriptManager.h"
 #include "InspectorAgent.h"
 #include "InspectorBackendDispatcher.h"
+#include "InspectorConsoleAgent.h"
 #include "InspectorFrontendChannel.h"
 #include "InspectorFrontendRouter.h"
 #include "InspectorHeapAgent.h"
 #include "InspectorScriptProfilerAgent.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
-#include "JSGlobalObjectConsoleAgent.h"
 #include "JSGlobalObjectConsoleClient.h"
 #include "JSGlobalObjectDebuggerAgent.h"
 #include "JSGlobalObjectRuntimeAgent.h"
@@ -83,7 +83,7 @@ JSGlobalObjectInspectorController::JSGlobalObjectInspectorController(JSGlobalObj
     auto inspectorAgent = std::make_unique<InspectorAgent>(context);
     auto runtimeAgent = std::make_unique<JSGlobalObjectRuntimeAgent>(context);
     auto heapAgent = std::make_unique<InspectorHeapAgent>(context);
-    auto consoleAgent = std::make_unique<JSGlobalObjectConsoleAgent>(context, heapAgent.get());
+    auto consoleAgent = std::make_unique<InspectorConsoleAgent>(context, heapAgent.get());
     auto debuggerAgent = std::make_unique<JSGlobalObjectDebuggerAgent>(context, consoleAgent.get());
     auto scriptProfilerAgent = std::make_unique<InspectorScriptProfilerAgent>(context);
 
@@ -180,7 +180,6 @@ void JSGlobalObjectInspectorController::dispatchMessageFromFrontend(const String
 
 void JSGlobalObjectInspectorController::appendAPIBacktrace(ScriptCallStack& callStack)
 {
-#if OS(DARWIN) || (OS(LINUX) && !PLATFORM(GTK))
     static const int framesToShow = 31;
     static const int framesToSkip = 3; // WTFGetBacktrace, appendAPIBacktrace, reportAPIException.
 
@@ -193,13 +192,10 @@ void JSGlobalObjectInspectorController::appendAPIBacktrace(ScriptCallStack& call
     for (int i = 0; i < size; ++i) {
         auto demangled = StackTrace::demangle(stack[i]);
         if (demangled)
-            callStack.append(ScriptCallFrame(demangled->demangledName() ? demangled->demangledName() : demangled->mangledName(), ASCIILiteral("[native code]"), noSourceID, 0, 0));
+            callStack.append(ScriptCallFrame(demangled->demangledName() ? demangled->demangledName() : demangled->mangledName(), "[native code]"_s, noSourceID, 0, 0));
         else
-            callStack.append(ScriptCallFrame(ASCIILiteral("?"), ASCIILiteral("[native code]"), noSourceID, 0, 0));
+            callStack.append(ScriptCallFrame("?"_s, "[native code]"_s, noSourceID, 0, 0));
     }
-#else
-    UNUSED_PARAM(callStack);
-#endif
 }
 
 void JSGlobalObjectInspectorController::reportAPIException(ExecState* exec, Exception* exception)
@@ -211,7 +207,7 @@ void JSGlobalObjectInspectorController::reportAPIException(ExecState* exec, Exce
     auto scope = DECLARE_CATCH_SCOPE(vm);
     ErrorHandlingScope errorScope(vm);
 
-    Ref<ScriptCallStack> callStack = createScriptCallStackFromException(exec, exception, ScriptCallStack::maxCallStackSizeToCapture);
+    Ref<ScriptCallStack> callStack = createScriptCallStackFromException(exec, exception);
     if (includesNativeCallStackWhenReportingExceptions())
         appendAPIBacktrace(callStack.get());
 

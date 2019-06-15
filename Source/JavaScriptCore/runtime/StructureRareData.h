@@ -26,7 +26,7 @@
 #pragma once
 
 #include "ClassInfo.h"
-#include "JSCell.h"
+#include "JSCast.h"
 #include "JSTypeInfo.h"
 #include "PropertyOffset.h"
 #include "PropertySlot.h"
@@ -42,6 +42,12 @@ class StructureRareData final : public JSCell {
 public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.structureRareDataSpace;
+    }
 
     static StructureRareData* create(VM&, Structure*);
 
@@ -62,6 +68,11 @@ public:
     JSPropertyNameEnumerator* cachedPropertyNameEnumerator() const;
     void setCachedPropertyNameEnumerator(VM&, JSPropertyNameEnumerator*);
 
+    Box<InlineWatchpointSet> copySharedPolyProtoWatchpoint() const { return m_polyProtoWatchpoint; }
+    const Box<InlineWatchpointSet>& sharedPolyProtoWatchpoint() const { return m_polyProtoWatchpoint; }
+    void setSharedPolyProtoWatchpoint(Box<InlineWatchpointSet>&& sharedPolyProtoWatchpoint) { m_polyProtoWatchpoint = WTFMove(sharedPolyProtoWatchpoint); }
+    bool hasSharedPolyProtoWatchpoint() const { return static_cast<bool>(m_polyProtoWatchpoint); }
+
     DECLARE_EXPORT_INFO;
 
 private:
@@ -76,11 +87,12 @@ private:
     WriteBarrier<Structure> m_previous;
     WriteBarrier<JSString> m_objectToStringValue;
     WriteBarrier<JSPropertyNameEnumerator> m_cachedPropertyNameEnumerator;
-    
+
     typedef HashMap<PropertyOffset, RefPtr<WatchpointSet>, WTF::IntHash<PropertyOffset>, WTF::UnsignedWithZeroKeyHashTraits<PropertyOffset>> PropertyWatchpointMap;
     std::unique_ptr<PropertyWatchpointMap> m_replacementWatchpointSets;
     Bag<ObjectToStringAdaptiveStructureWatchpoint> m_objectToStringAdaptiveWatchpointSet;
     std::unique_ptr<ObjectToStringAdaptiveInferredPropertyValueWatchpoint> m_objectToStringAdaptiveInferredValueWatchpoint;
+    Box<InlineWatchpointSet> m_polyProtoWatchpoint;
     bool m_giveUpOnObjectToStringValueCache;
 };
 

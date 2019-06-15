@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NavigationActionData_h
-#define NavigationActionData_h
+#pragma once
 
 #include "WebEvent.h"
+#include <WebCore/BackForwardItemIdentifier.h>
 #include <WebCore/FloatPoint.h>
 #include <WebCore/FrameLoaderTypes.h>
 
@@ -39,7 +39,7 @@ namespace WebKit {
 
 struct NavigationActionData {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, NavigationActionData&);
+    static std::optional<NavigationActionData> decode(IPC::Decoder&);
 
     WebCore::NavigationType navigationType { WebCore::NavigationType::Other };
     WebEvent::Modifiers modifiers { };
@@ -50,8 +50,12 @@ struct NavigationActionData {
     WebCore::ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy { WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow };
     WTF::String downloadAttribute;
     WebCore::FloatPoint clickLocationInRootViewCoordinates;
+    bool isRedirect { false };
+    bool treatAsSameOriginNavigation { false };
+    bool isCrossOriginWindowOpenNavigation { false };
+    bool hasOpenedFrames { false };
+    std::optional<std::pair<uint64_t, uint64_t>> opener;
+    std::optional<WebCore::BackForwardItemIdentifier> targetBackForwardItemIdentifier;
 };
 
 }
-
-#endif // NavigationActionData_h

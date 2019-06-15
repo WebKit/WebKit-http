@@ -29,12 +29,12 @@
 #if PLATFORM(MAC)
 
 #import "WebCoreNSURLExtras.h"
-#import "WebCoreSystemInterface.h"
+#import <pal/spi/mac/MetadataSPI.h>
 #import <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-bool deleteEmptyDirectory(const String& path)
+bool FileSystem::deleteEmptyDirectory(const String& path)
 {
     auto fileManager = adoptNS([[NSFileManager alloc] init]);
 
@@ -45,32 +45,41 @@ bool deleteEmptyDirectory(const String& path)
     }
 
     // rmdir(...) returns 0 on successful deletion of the path and non-zero in any other case (including invalid permissions or non-existent file)
-    return !rmdir(fileSystemRepresentation(path).data());
+    return !rmdir(FileSystem::fileSystemRepresentation(path).data());
 }
 
-void setMetadataURL(const String& path, const String& metadataURLString)
+void FileSystem::setMetadataURL(const String& path, const String& metadataURLString, const String& referrer)
 {
     String urlString;
-    if (NSURL *url = URLWithUserTypedString(urlString, nil))
+    if (NSURL *url = URLWithUserTypedString(metadataURLString, nil))
         urlString = userVisibleString(URLByRemovingUserInfo(url));
     else
         urlString = metadataURLString;
 
-    // Call WKSetMetadataURL on a background queue because it can take some time.
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [path = path.isolatedCopy(), urlString = urlString.isolatedCopy()] {
-        wkSetMetadataURL(urlString, nil, [NSString stringWithUTF8String:[path fileSystemRepresentation]]);
+    // Call Metadata API on a background queue because it can take some time.
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), [path = path.isolatedCopy(), urlString = urlString.isolatedCopy(), referrer = referrer.isolatedCopy()] {
+        auto item = adoptCF(MDItemCreate(kCFAllocatorDefault, path.createCFString().get()));
+        if (!item)
+            return;
+
+        auto whereFromAttribute = adoptNS([[NSMutableArray alloc] initWithObjects:urlString, nil]);
+        if (!referrer.isNull())
+            [whereFromAttribute addObject:referrer];
+
+        MDItemSetAttribute(item.get(), kMDItemWhereFroms, (__bridge CFArrayRef)whereFromAttribute.get());
+        MDItemSetAttribute(item.get(), kMDItemDownloadedDate, (__bridge CFArrayRef)@[ [NSDate date] ]);
     });
 }
 
-bool canExcludeFromBackup()
+bool FileSystem::canExcludeFromBackup()
 {
     return true;
 }
 
-bool excludeFromBackup(const String& path)
+bool FileSystem::excludeFromBackup(const String& path)
 {
     // It is critical to pass FALSE for excludeByPath because excluding by path requires root privileges.
-    CSBackupSetItemExcluded(pathAsURL(path).get(), TRUE, FALSE); 
+    CSBackupSetItemExcluded(FileSystem::pathAsURL(path).get(), TRUE, FALSE);
     return true;
 }
 

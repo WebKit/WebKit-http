@@ -48,7 +48,7 @@ static bool jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(JSDOMWindowPr
     // properties that are in Moz but not IE. Since we have some of these, we have to do it
     // the Moz way.
     if (auto* scopedChild = frame.tree().scopedChild(propertyNameToAtomicString(propertyName))) {
-        slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, toJS(exec, scopedChild->document()->domWindow()));
+        slot.setValue(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::DontEnum, toJS(exec, scopedChild->document()->domWindow()));
         return true;
     }
 
@@ -71,7 +71,7 @@ static bool jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(JSDOMWindowPr
                 namedItem = toJS(exec, thisObject->globalObject(), collection);
             } else
                 namedItem = toJS(exec, thisObject->globalObject(), htmlDocument.windowNamedItem(*atomicPropertyName));
-            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, namedItem);
+            slot.setValue(thisObject, JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::DontEnum, namedItem);
             return true;
         }
     }
@@ -85,11 +85,19 @@ bool JSDOMWindowProperties::getOwnPropertySlot(JSObject* object, ExecState* stat
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     if (Base::getOwnPropertySlot(thisObject, state, propertyName, slot))
         return true;
-    JSValue proto = thisObject->getPrototypeDirect();
+    JSValue proto = thisObject->getPrototypeDirect(state->vm());
     if (proto.isObject() && jsCast<JSObject*>(proto)->hasProperty(state, propertyName))
         return false;
 
-    auto& window = jsCast<JSDOMWindowBase*>(thisObject->globalObject())->wrapped();
+    auto& vm = state->vm();
+
+    // FIXME: We should probably add support for JSRemoteDOMWindowBase too.
+    auto* jsWindow = jsDynamicCast<JSDOMWindowBase*>(vm, thisObject->globalObject());
+    if (!jsWindow)
+        return false;
+
+    auto& window = jsWindow->wrapped();
+
     if (auto* frame = window.frame())
         return jsDOMWindowPropertiesGetOwnPropertySlotNamedItemGetter(thisObject, *frame, state, propertyName, slot);
 

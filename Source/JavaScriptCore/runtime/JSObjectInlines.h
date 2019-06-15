@@ -48,7 +48,7 @@ void createListFromArrayLike(ExecState* exec, JSValue arrayLikeValue, RuntimeTyp
         JSValue next = arrayLikeValue.get(exec, index);
         RETURN_IF_EXCEPTION(scope, void());
         
-        RuntimeType type = runtimeTypeForValue(next);
+        RuntimeType type = runtimeTypeForValue(vm, next);
         if (!(type & legalTypesFilter)) {
             throwTypeError(exec, scope, errorMessage);
             return;
@@ -60,11 +60,8 @@ void createListFromArrayLike(ExecState* exec, JSValue arrayLikeValue, RuntimeTyp
     }
 }
 
-ALWAYS_INLINE bool JSObject::canPerformFastPutInline(ExecState* exec, VM& vm, PropertyName propertyName)
+ALWAYS_INLINE bool JSObject::canPerformFastPutInlineExcludingProto(VM& vm)
 {
-    if (UNLIKELY(propertyName == exec->propertyNames().underscoreProto))
-        return false;
-
     // Check if there are any setters or getters in the prototype chain
     JSValue prototype;
     JSObject* obj = this;
@@ -73,7 +70,7 @@ ALWAYS_INLINE bool JSObject::canPerformFastPutInline(ExecState* exec, VM& vm, Pr
         if (obj->structure(vm)->hasReadOnlyOrGetterSetterPropertiesExcludingProto() || obj->methodTable(vm)->getPrototype != defaultGetPrototype)
             return false;
 
-        prototype = obj->getPrototypeDirect();
+        prototype = obj->getPrototypeDirect(vm);
         if (prototype.isNull())
             return true;
 
@@ -81,6 +78,13 @@ ALWAYS_INLINE bool JSObject::canPerformFastPutInline(ExecState* exec, VM& vm, Pr
     }
 
     ASSERT_NOT_REACHED();
+}
+
+ALWAYS_INLINE bool JSObject::canPerformFastPutInline(VM& vm, PropertyName propertyName)
+{
+    if (UNLIKELY(propertyName == vm.propertyNames->underscoreProto))
+        return false;
+    return canPerformFastPutInlineExcludingProto(vm);
 }
 
 template<typename CallbackWhenNoException>
@@ -97,6 +101,7 @@ ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(bool, PropertySlot
     auto scope = DECLARE_THROW_SCOPE(vm);
     bool found = const_cast<JSObject*>(this)->getPropertySlot(exec, propertyName, slot);
     RETURN_IF_EXCEPTION(scope, { });
+    scope.release();
     return callback(found, slot);
 }
 
@@ -109,12 +114,13 @@ ALWAYS_INLINE bool JSObject::getPropertySlot(ExecState* exec, unsigned propertyN
     MethodTable::GetPrototypeFunctionPtr defaultGetPrototype = JSObject::getPrototype;
     while (true) {
         Structure* structure = structureIDTable.get(object->structureID());
-        if (structure->classInfo()->methodTable.getOwnPropertySlotByIndex(object, exec, propertyName, slot))
-            return true;
+        bool hasSlot = structure->classInfo()->methodTable.getOwnPropertySlotByIndex(object, exec, propertyName, slot);
         RETURN_IF_EXCEPTION(scope, false);
+        if (hasSlot)
+            return true;
         JSValue prototype;
         if (LIKELY(structure->classInfo()->methodTable.getPrototype == defaultGetPrototype || slot.internalMethodType() == PropertySlot::InternalMethodType::VMInquiry))
-            prototype = structure->storedPrototype();
+            prototype = object->getPrototypeDirect(vm);
         else {
             prototype = object->getPrototype(vm, exec);
             RETURN_IF_EXCEPTION(scope, false);
@@ -141,13 +147,14 @@ ALWAYS_INLINE bool JSObject::getNonIndexPropertySlot(ExecState* exec, PropertyNa
             if (object->getOwnNonIndexPropertySlot(vm, structure, propertyName, slot))
                 return true;
         } else {
-            if (structure->classInfo()->methodTable.getOwnPropertySlot(object, exec, propertyName, slot))
-                return true;
+            bool hasSlot = structure->classInfo()->methodTable.getOwnPropertySlot(object, exec, propertyName, slot);
             RETURN_IF_EXCEPTION(scope, false);
+            if (hasSlot)
+                return true;
         }
         JSValue prototype;
         if (LIKELY(structure->classInfo()->methodTable.getPrototype == defaultGetPrototype || slot.internalMethodType() == PropertySlot::InternalMethodType::VMInquiry))
-            prototype = structure->storedPrototype();
+            prototype = object->getPrototypeDirect(vm);
         else {
             prototype = object->getPrototype(vm, exec);
             RETURN_IF_EXCEPTION(scope, false);
@@ -158,9 +165,17 @@ ALWAYS_INLINE bool JSObject::getNonIndexPropertySlot(ExecState* exec, PropertyNa
     }
 }
 
+inline bool JSObject::getOwnPropertySlotInline(ExecState* exec, PropertyName propertyName, PropertySlot& slot)
+{
+    VM& vm = exec->vm();
+    if (UNLIKELY(TypeInfo::overridesGetOwnPropertySlot(inlineTypeFlags())))
+        return methodTable(vm)->getOwnPropertySlot(this, exec, propertyName, slot);
+    return JSObject::getOwnPropertySlot(this, exec, propertyName, slot);
+}
+
 inline void JSObject::putDirectWithoutTransition(VM& vm, PropertyName propertyName, JSValue value, unsigned attributes)
 {
-    ASSERT(!value.isGetterSetter() && !(attributes & Accessor));
+    ASSERT(!value.isGetterSetter() && !(attributes & PropertyAttribute::Accessor));
     ASSERT(!value.isCustomGetterSetter());
     StructureID structureID = this->structureID();
     Structure* structure = vm.heap.structureIDTable().get(structureID);
@@ -168,7 +183,7 @@ inline void JSObject::putDirectWithoutTransition(VM& vm, PropertyName propertyNa
     bool shouldOptimize = false;
     structure->willStoreValueForNewTransition(vm, propertyName, value, shouldOptimize);
     putDirect(vm, offset, value);
-    if (attributes & ReadOnly)
+    if (attributes & PropertyAttribute::ReadOnly)
         structure->setContainsReadOnlyProperties();
 }
 
@@ -188,6 +203,10 @@ ALWAYS_INLINE PropertyOffset JSObject::prepareToPutDirectWithoutTransition(VM& v
                 setStructureIDDirectly(structureID);
             } else
                 structure->setLastOffset(newLastOffset);
+
+            // This assertion verifies that the concurrent GC won't read garbage if the concurrentGC
+            // is running at the same time we put without transitioning.
+            ASSERT(!getDirect(offset) || !JSValue::encode(getDirect(offset)));
             result = offset;
         });
     return result;
@@ -203,21 +222,26 @@ ALWAYS_INLINE bool JSObject::putInlineForJSObject(JSCell* cell, ExecState* exec,
     ASSERT(value);
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(thisObject));
 
-    if (UNLIKELY(isThisValueAltered(slot, thisObject)))
+    if (UNLIKELY(isThisValueAltered(slot, thisObject))) {
+        scope.release();
         return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
+    }
 
     // Try indexed put first. This is required for correctness, since loads on property names that appear like
     // valid indices will never look in the named property storage.
-    if (std::optional<uint32_t> index = parseIndex(propertyName))
+    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
+        scope.release();
         return putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
+    }
 
-    if (thisObject->canPerformFastPutInline(exec, vm, propertyName)) {
-        ASSERT(!thisObject->structure(vm)->prototypeChainMayInterceptStoreTo(vm, propertyName));
+    if (thisObject->canPerformFastPutInline(vm, propertyName)) {
+        ASSERT(!thisObject->prototypeChainMayInterceptStoreTo(vm, propertyName));
         if (!thisObject->putDirectInternal<PutModePut>(vm, propertyName, value, 0, slot))
-            return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
+            return typeError(exec, scope, slot.isStrictMode(), ReadonlyPropertyWriteError);
         return true;
     }
 
+    scope.release();
     return thisObject->putInlineSlow(exec, propertyName, value, slot);
 }
 
@@ -225,10 +249,11 @@ ALWAYS_INLINE bool JSObject::putInlineForJSObject(JSCell* cell, ExecState* exec,
 // http://www.ecma-international.org/ecma-262/6.0/index.html#sec-hasownproperty
 ALWAYS_INLINE bool JSObject::hasOwnProperty(ExecState* exec, PropertyName propertyName, PropertySlot& slot) const
 {
+    VM& vm = exec->vm();
     ASSERT(slot.internalMethodType() == PropertySlot::InternalMethodType::GetOwnProperty);
-    if (LIKELY(const_cast<JSObject*>(this)->methodTable(exec->vm())->getOwnPropertySlot == JSObject::getOwnPropertySlot))
+    if (LIKELY(const_cast<JSObject*>(this)->methodTable(vm)->getOwnPropertySlot == JSObject::getOwnPropertySlot))
         return JSObject::getOwnPropertySlot(const_cast<JSObject*>(this), exec, propertyName, slot);
-    return const_cast<JSObject*>(this)->methodTable(exec->vm())->getOwnPropertySlot(const_cast<JSObject*>(this), exec, propertyName, slot);
+    return const_cast<JSObject*>(this)->methodTable(vm)->getOwnPropertySlot(const_cast<JSObject*>(this), exec, propertyName, slot);
 }
 
 ALWAYS_INLINE bool JSObject::hasOwnProperty(ExecState* exec, PropertyName propertyName) const
@@ -247,46 +272,48 @@ template<JSObject::PutMode mode>
 ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName, JSValue value, unsigned attributes, PutPropertySlot& slot)
 {
     ASSERT(value);
-    ASSERT(value.isGetterSetter() == !!(attributes & Accessor));
+    ASSERT(value.isGetterSetter() == !!(attributes & PropertyAttribute::Accessor));
     ASSERT(!Heap::heap(value) || Heap::heap(value) == Heap::heap(this));
     ASSERT(!parseIndex(propertyName));
 
     StructureID structureID = this->structureID();
     Structure* structure = vm.heap.structureIDTable().get(structureID);
     if (structure->isDictionary()) {
+        ASSERT(!isCopyOnWrite(indexingMode()));
         ASSERT(!structure->hasInferredTypes());
         
         unsigned currentAttributes;
         PropertyOffset offset = structure->get(vm, propertyName, currentAttributes);
         if (offset != invalidOffset) {
-            if ((mode == PutModePut) && currentAttributes & ReadOnly)
+            if ((mode == PutModePut) && currentAttributes & PropertyAttribute::ReadOnly)
                 return false;
 
             putDirect(vm, offset, value);
             structure->didReplaceProperty(offset);
-            slot.setExistingProperty(this, offset);
 
-            if ((attributes & Accessor) != (currentAttributes & Accessor) || (attributes & CustomAccessor) != (currentAttributes & CustomAccessor)) {
-                ASSERT(!(attributes & ReadOnly));
+            if ((attributes & PropertyAttribute::Accessor) != (currentAttributes & PropertyAttribute::Accessor) || (attributes & PropertyAttribute::CustomAccessor) != (currentAttributes & PropertyAttribute::CustomAccessor)) {
+                ASSERT(!(attributes & PropertyAttribute::ReadOnly));
                 setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
-            }
+            } else
+                slot.setExistingProperty(this, offset);
+
             return true;
         }
 
-        if ((mode == PutModePut) && !isStructureExtensible())
+        if ((mode == PutModePut) && !isStructureExtensible(vm))
             return false;
 
         offset = prepareToPutDirectWithoutTransition(vm, propertyName, attributes, structureID, structure);
         validateOffset(offset);
         putDirect(vm, offset, value);
         slot.setNewProperty(this, offset);
-        if (attributes & ReadOnly)
-            this->structure()->setContainsReadOnlyProperties();
+        if (attributes & PropertyAttribute::ReadOnly)
+            this->structure(vm)->setContainsReadOnlyProperties();
         return true;
     }
 
     PropertyOffset offset;
-    size_t currentCapacity = this->structure()->outOfLineCapacity();
+    size_t currentCapacity = this->structure(vm)->outOfLineCapacity();
     Structure* newStructure = Structure::addPropertyTransitionToExistingStructure(
         structure, propertyName, attributes, offset);
     if (newStructure) {
@@ -295,13 +322,17 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
         
         Butterfly* newButterfly = butterfly();
         if (currentCapacity != newStructure->outOfLineCapacity()) {
-            ASSERT(newStructure != this->structure());
+            ASSERT(newStructure != this->structure(vm));
             newButterfly = allocateMoreOutOfLineStorage(vm, currentCapacity, newStructure->outOfLineCapacity());
             nukeStructureAndSetButterfly(vm, structureID, newButterfly);
         }
 
         validateOffset(offset);
         ASSERT(newStructure->isValidOffset(offset));
+
+        // This assertion verifies that the concurrent GC won't read garbage if the concurrentGC
+        // is running at the same time we put without transitioning.
+        ASSERT(!getDirect(offset) || !JSValue::encode(getDirect(offset)));
         putDirect(vm, offset, value);
         setStructure(vm, newStructure);
         slot.setNewProperty(this, offset);
@@ -312,7 +343,7 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
     bool hasInferredType;
     offset = structure->get(vm, propertyName, currentAttributes, hasInferredType);
     if (offset != invalidOffset) {
-        if ((mode == PutModePut) && currentAttributes & ReadOnly)
+        if ((mode == PutModePut) && currentAttributes & PropertyAttribute::ReadOnly)
             return false;
 
         structure->didReplaceProperty(offset);
@@ -321,23 +352,24 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
                 vm, propertyName, value, slot.context() == PutPropertySlot::PutById);
         }
 
-        slot.setExistingProperty(this, offset);
         putDirect(vm, offset, value);
 
-        if ((attributes & Accessor) != (currentAttributes & Accessor) || (attributes & CustomAccessor) != (currentAttributes & CustomAccessor)) {
-            ASSERT(!(attributes & ReadOnly));
+        if ((attributes & PropertyAttribute::Accessor) != (currentAttributes & PropertyAttribute::Accessor) || (attributes & PropertyAttribute::CustomAccessor) != (currentAttributes & PropertyAttribute::CustomAccessor)) {
+            ASSERT(!(attributes & PropertyAttribute::ReadOnly));
             setStructure(vm, Structure::attributeChangeTransition(vm, structure, propertyName, attributes));
-        }
+        } else
+            slot.setExistingProperty(this, offset);
+
         return true;
     }
 
-    if ((mode == PutModePut) && !isStructureExtensible())
+    if ((mode == PutModePut) && !isStructureExtensible(vm))
         return false;
 
     // We want the structure transition watchpoint to fire after this object has switched
     // structure. This allows adaptive watchpoints to observe if the new structure is the one
     // we want.
-    DeferredStructureTransitionWatchpointFire deferredWatchpointFire;
+    DeferredStructureTransitionWatchpointFire deferredWatchpointFire(vm, structure);
     
     newStructure = Structure::addNewPropertyTransition(
         vm, structure, propertyName, attributes, offset, slot.context(), &deferredWatchpointFire);
@@ -353,10 +385,14 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
         Butterfly* newButterfly = allocateMoreOutOfLineStorage(vm, oldCapacity, newCapacity);
         nukeStructureAndSetButterfly(vm, structureID, newButterfly);
     }
+
+    // This assertion verifies that the concurrent GC won't read garbage if the concurrentGC
+    // is running at the same time we put without transitioning.
+    ASSERT(!getDirect(offset) || !JSValue::encode(getDirect(offset)));
     putDirect(vm, offset, value);
     setStructure(vm, newStructure);
     slot.setNewProperty(this, offset);
-    if (attributes & ReadOnly)
+    if (attributes & PropertyAttribute::ReadOnly)
         newStructure->setContainsReadOnlyProperties();
     return true;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Igalia S.L.
+ * Copyright (C) 2011, 2017 Igalia S.L.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -71,6 +71,7 @@ public:
 
     WebKitJavascriptResult* runJavaScriptAndWaitUntilFinished(const char* javascript, GError**);
     WebKitJavascriptResult* runJavaScriptFromGResourceAndWaitUntilFinished(const char* resource, GError**);
+    WebKitJavascriptResult* runJavaScriptInWorldAndWaitUntilFinished(const char* javascript, const char* world, GError**);
 
     // Javascript result helpers.
     static char* javascriptResultToCString(WebKitJavascriptResult*);
@@ -79,15 +80,17 @@ public:
     static bool javascriptResultIsNull(WebKitJavascriptResult*);
     static bool javascriptResultIsUndefined(WebKitJavascriptResult*);
 
+#if PLATFORM(GTK)
     cairo_surface_t* getSnapshotAndWaitUntilReady(WebKitSnapshotRegion, WebKitSnapshotOptions);
+#endif
 
-    bool runWebProcessTest(const char* suiteName, const char* testName);
+    bool runWebProcessTest(const char* suiteName, const char* testName, const char* contents = nullptr, const char* contentType = nullptr);
 
     // Prohibit overrides because this is called when the web view is created
     // in our constructor, before a derived class's vtable is ready.
     void initializeWebExtensions() final { Test::initializeWebExtensions(); }
 
-    static gboolean webProcessCrashed(WebKitWebView*, WebViewTest*);
+    static gboolean webProcessTerminated(WebKitWebView*, WebKitWebProcessTerminationReason, WebViewTest*);
 
     GRefPtr<WebKitUserContentManager> m_userContentManager;
     WebKitWebView* m_webView { nullptr };

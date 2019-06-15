@@ -132,7 +132,7 @@ using namespace WebCore;
 - (TextDirection)textDirection
 {
     // TODO: implement
-    return LTR;
+    return TextDirection::LTR;
 }
 
 - (BOOL)directionIsDownstream:(WebTextAdjustmentDirection)direction
@@ -144,11 +144,9 @@ using namespace WebCore;
         return YES;
     
     
-    if ([self textDirection] == LTR) {
+    if ([self textDirection] == TextDirection::LTR)
         return (direction == WebTextAdjustmentRight);
-    } else {
-        return (direction == WebTextAdjustmentLeft);
-    }
+    return (direction == WebTextAdjustmentLeft);
 }
 
 - (WebVisiblePosition *)positionByMovingInDirection:(WebTextAdjustmentDirection)direction amount:(UInt32)amount withAffinityDownstream:(BOOL)affinityDownstream
@@ -423,7 +421,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
     Node* node = p.deepEquivalent().anchorNode();
     Document& document = node->document();
     
-    const auto& markers = document.markers().markersFor(node, DocumentMarker::MarkerTypes(DocumentMarker::DictationPhraseWithAlternatives));
+    const auto& markers = document.markers().markersFor(node, DocumentMarker::DictationPhraseWithAlternatives);
     if (markers.isEmpty())
         return nil;
         
@@ -457,7 +455,7 @@ static inline SelectionDirection toSelectionDirection(WebTextAdjustmentDirection
     Node* node = p.deepEquivalent().anchorNode();
     Document& document = node->document();
     
-    const auto& markers = document.markers().markersFor(node, DocumentMarker::MarkerTypes(DocumentMarker::Spelling));
+    const auto& markers = document.markers().markersFor(node, DocumentMarker::Spelling);
     if (markers.isEmpty())
         return nil;
     

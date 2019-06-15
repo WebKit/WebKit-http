@@ -35,7 +35,6 @@
 namespace JSC {
 class ArrayBuffer;
 class ArrayBufferView;
-class ExecState;
 }
 
 namespace WebCore {
@@ -48,14 +47,16 @@ class SharedBuffer;
 class TextResourceDecoder;
 class ThreadableLoader;
 class XMLHttpRequestUpload;
+struct OwnedString;
 
-class XMLHttpRequest final : public RefCounted<XMLHttpRequest>, public XMLHttpRequestEventTarget, private ThreadableLoaderClient, public ActiveDOMObject {
+class XMLHttpRequest final : public ActiveDOMObject, public RefCounted<XMLHttpRequest>, private ThreadableLoaderClient, public XMLHttpRequestEventTarget {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<XMLHttpRequest> create(ScriptExecutionContext&);
     WEBCORE_EXPORT ~XMLHttpRequest();
 
-    enum State {
+    // Keep it in 3bits.
+    enum State : uint8_t {
         UNSENT = 0,
         OPENED = 1,
         HEADERS_RECEIVED = 2,
@@ -79,14 +80,14 @@ public:
     ExceptionOr<void> open(const String& method, const String& url);
     ExceptionOr<void> open(const String& method, const URL&, bool async);
     ExceptionOr<void> open(const String& method, const String&, bool async, const String& user, const String& password);
-    ExceptionOr<void> send(JSC::ExecState&, std::optional<SendTypes>&&);
+    ExceptionOr<void> send(std::optional<SendTypes>&&);
     void abort();
     ExceptionOr<void> setRequestHeader(const String& name, const String& value);
     ExceptionOr<void> overrideMimeType(const String& override);
-    bool doneWithoutErrors() const { return !m_error && m_state == DONE; }
+    bool doneWithoutErrors() const { return !m_error && readyState() == DONE; }
     String getAllResponseHeaders() const;
     String getResponseHeader(const String& name) const;
-    ExceptionOr<String> responseText();
+    ExceptionOr<OwnedString> responseText();
     String responseTextIgnoringResponseType() const { return m_responseBuilder.toStringPreserveCapacity(); }
     String responseMIMEType() const;
 
@@ -102,21 +103,21 @@ public:
     bool responseCacheIsValid() const { return m_responseCacheIsValid; }
     void didCacheResponse();
 
-    // Expose HTTP validation methods for other untrusted requests.
-    static bool isAllowedHTTPMethod(const String&);
-    static String uppercaseKnownHTTPMethod(const String&);
-    static bool isAllowedHTTPHeader(const String&);
-
-    enum class ResponseType { EmptyString, Arraybuffer, Blob, Document, Json, Text };
+    // Keep it in 3bits.
+    enum class ResponseType : uint8_t {
+        EmptyString = 0,
+        Arraybuffer = 1,
+        Blob = 2,
+        Document = 3,
+        Json = 4,
+        Text = 5,
+    };
     ExceptionOr<void> setResponseType(ResponseType);
     ResponseType responseType() const;
 
     String responseURL() const;
 
-    void setLastSendLineAndColumnNumber(unsigned lineNumber, unsigned columnNumber);
-    void setLastSendURL(const String& url) { m_lastSendURL = url; }
-
-    XMLHttpRequestUpload* upload();
+    XMLHttpRequestUpload& upload();
     XMLHttpRequestUpload* optionalUpload() const { return m_upload.get(); }
 
     const ResourceResponse& resourceResponse() const { return m_response; }
@@ -184,6 +185,24 @@ private:
     void dispatchErrorEvents(const AtomicString&);
 
     void resumeTimerFired();
+    Ref<TextResourceDecoder> createDecoder() const;
+
+    void networkErrorTimerFired();
+
+    unsigned m_async : 1;
+    unsigned m_includeCredentials : 1;
+    unsigned m_sendFlag : 1;
+    unsigned m_createdDocument : 1;
+    unsigned m_error : 1;
+    unsigned m_uploadListenerFlag : 1;
+    unsigned m_uploadComplete : 1;
+    unsigned m_wasAbortedByClient : 1;
+    unsigned m_responseCacheIsValid : 1;
+    unsigned m_dispatchErrorOnResuming : 1;
+    unsigned m_readyState : 3; // State
+    unsigned m_responseType : 3; // ResponseType
+
+    unsigned m_timeoutMilliseconds { 0 };
 
     std::unique_ptr<XMLHttpRequestUpload> m_upload;
 
@@ -192,59 +211,45 @@ private:
     HTTPHeaderMap m_requestHeaders;
     RefPtr<FormData> m_requestEntityBody;
     String m_mimeTypeOverride;
-    bool m_async { true };
-    bool m_includeCredentials { false };
 
     RefPtr<ThreadableLoader> m_loader;
-    State m_state { UNSENT };
-    bool m_sendFlag { false };
+
+    String m_responseEncoding;
 
     ResourceResponse m_response;
-    String m_responseEncoding;
 
     RefPtr<TextResourceDecoder> m_decoder;
 
-    StringBuilder m_responseBuilder;
-    bool m_createdDocument { false };
     RefPtr<Document> m_responseDocument;
 
     RefPtr<SharedBuffer> m_binaryResponseBuilder;
 
-    bool m_error { false };
-
-    bool m_uploadEventsAllowed { true };
-    bool m_uploadComplete { false };
-
-    bool m_sameOriginRequest { true };
+    StringBuilder m_responseBuilder;
 
     // Used for progress event tracking.
     long long m_receivedLength { 0 };
 
-    unsigned m_lastSendLineNumber { 0 };
-    unsigned m_lastSendColumnNumber { 0 };
-    String m_lastSendURL;
-    ExceptionCode m_exceptionCode { 0 };
-
     XMLHttpRequestProgressEventThrottle m_progressEventThrottle;
 
-    ResponseType m_responseType { ResponseType::EmptyString };
-    bool m_responseCacheIsValid { false };
     mutable String m_allResponseHeaders;
 
     Timer m_resumeTimer;
-    bool m_dispatchErrorOnResuming { false };
-
     Timer m_networkErrorTimer;
-    void networkErrorTimerFired();
-
-    unsigned m_timeoutMilliseconds { 0 };
-    MonotonicTime m_sendingTime;
     Timer m_timeoutTimer;
+
+    MonotonicTime m_sendingTime;
+
+    std::optional<ExceptionCode> m_exceptionCode;
 };
 
 inline auto XMLHttpRequest::responseType() const -> ResponseType
 {
-    return m_responseType;
+    return static_cast<ResponseType>(m_responseType);
+}
+
+inline auto XMLHttpRequest::readyState() const -> State
+{
+    return static_cast<State>(m_readyState);
 }
 
 } // namespace WebCore

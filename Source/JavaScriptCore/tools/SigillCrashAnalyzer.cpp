@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -78,12 +78,22 @@ private:
 #endif // USE(OS_LOG)
 
 struct SignalContext {
-    SignalContext(PlatformRegisters& registers)
+private:
+    SignalContext(PlatformRegisters& registers, MacroAssemblerCodePtr<PlatformRegistersPCPtrTag> machinePC)
         : registers(registers)
-        , machinePC(MachineContext::instructionPointer(registers))
+        , machinePC(machinePC)
         , stackPointer(MachineContext::stackPointer(registers))
         , framePointer(MachineContext::framePointer(registers))
     { }
+
+public:
+    static std::optional<SignalContext> tryCreate(PlatformRegisters& registers)
+    {
+        auto instructionPointer = MachineContext::instructionPointer(registers);
+        if (!instructionPointer)
+            return std::nullopt;
+        return SignalContext(registers, *instructionPointer);
+    }
 
     void dump()
     {
@@ -116,7 +126,7 @@ struct SignalContext {
         FOR_EACH_REGISTER(DUMP_REGISTER)
 #undef FOR_EACH_REGISTER
 
-#elif CPU(ARM64)
+#elif CPU(ARM64) && defined(__LP64__)
         int i;
         for (i = 0; i < 28; i += 4) {
             log("x%d: %016llx x%d: %016llx x%d: %016llx x%d: %016llx",
@@ -127,14 +137,18 @@ struct SignalContext {
         }
         ASSERT(i < 29);
         log("x%d: %016llx fp: %016llx lr: %016llx",
-            i, registers.__x[i], registers.__fp, registers.__lr);
+            i, registers.__x[i],
+            MachineContext::framePointer<uint64_t>(registers),
+            MachineContext::linkRegister(registers).untaggedExecutableAddress<uint64_t>());
         log("sp: %016llx pc: %016llx cpsr: %08x",
-            registers.__sp, registers.__pc, registers.__cpsr);
+            MachineContext::stackPointer<uint64_t>(registers),
+            machinePC.untaggedExecutableAddress<uint64_t>(),
+            registers.__cpsr);
 #endif
     }
 
     PlatformRegisters& registers;
-    void* machinePC;
+    MacroAssemblerCodePtr<PlatformRegistersPCPtrTag> machinePC;
     void* stackPointer;
     void* framePointer;
 };
@@ -143,13 +157,16 @@ static void installCrashHandler()
 {
 #if CPU(X86_64) || CPU(ARM64)
     installSignalHandler(Signal::Ill, [] (Signal, SigInfo&, PlatformRegisters& registers) {
-        SignalContext context(registers);
-
-        if (!isJITPC(context.machinePC))
+        auto signalContext = SignalContext::tryCreate(registers);
+        if (!signalContext)
+            return SignalAction::NotHandled;
+            
+        void* machinePC = signalContext->machinePC.untaggedExecutableAddress();
+        if (!isJITPC(machinePC))
             return SignalAction::NotHandled;
 
         SigillCrashAnalyzer& analyzer = SigillCrashAnalyzer::instance();
-        analyzer.analyze(context);
+        analyzer.analyze(*signalContext);
         return SignalAction::NotHandled;
     });
 #endif
@@ -164,7 +181,7 @@ struct SignalContext {
 
     void dump() { }
 
-    void* machinePC;
+    MacroAssemblerCodePtr<PlatformRegistersPCPtrTag> machinePC;
     void* stackPointer;
     void* framePointer;
 };
@@ -216,7 +233,7 @@ auto SigillCrashAnalyzer::analyze(SignalContext& context) -> CrashSource
         }
         auto& locker = expectedLocker.value();
 
-        void* pc = context.machinePC;
+        void* pc = context.machinePC.untaggedExecutableAddress();
         auto isInJITMemory = inspector.isValidExecutableMemory(locker, pc);
         if (!isInJITMemory) {
             log("ERROR: Timed out: not able to determine if pc %p is in valid JIT executable memory", pc);

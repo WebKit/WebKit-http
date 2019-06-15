@@ -29,9 +29,6 @@
 #if PLATFORM(MAC) && WK_API_ENABLED
 
 #import "RemoteWebInspectorProxy.h"
-#import "WKWebInspectorWKWebView.h"
-
-using namespace WebKit;
 
 @interface _WKRemoteWebInspectorViewController ()
 - (void)sendMessageToBackend:(NSString *)message;
@@ -68,8 +65,8 @@ private:
 } // namespace WebKit
 
 @implementation _WKRemoteWebInspectorViewController {
-    RefPtr<RemoteWebInspectorProxy> m_remoteInspectorProxy;
-    std::unique_ptr<_WKRemoteWebInspectorProxyClient> m_remoteInspectorClient;
+    RefPtr<WebKit::RemoteWebInspectorProxy> m_remoteInspectorProxy;
+    std::unique_ptr<WebKit::_WKRemoteWebInspectorProxyClient> m_remoteInspectorClient;
 }
 
 - (instancetype)init
@@ -77,8 +74,8 @@ private:
     if (!(self = [super init]))
         return nil;
 
-    m_remoteInspectorProxy = RemoteWebInspectorProxy::create();
-    m_remoteInspectorClient = std::make_unique<_WKRemoteWebInspectorProxyClient>(self);
+    m_remoteInspectorProxy = WebKit::RemoteWebInspectorProxy::create();
+    m_remoteInspectorClient = std::make_unique<WebKit::_WKRemoteWebInspectorProxyClient>(self);
     m_remoteInspectorProxy->setClient(m_remoteInspectorClient.get());
 
     return self;
@@ -98,9 +95,11 @@ static String debuggableTypeString(WKRemoteWebInspectorDebuggableType debuggable
 {
     switch (debuggableType) {
     case WKRemoteWebInspectorDebuggableTypeJavaScript:
-        return ASCIILiteral("javascript");
+        return "javascript"_s;
+    case WKRemoteWebInspectorDebuggableTypeServiceWorker:
+        return "service-worker"_s;
     case WKRemoteWebInspectorDebuggableTypeWeb:
-        return ASCIILiteral("web");
+        return "web"_s;
     }
 }
 

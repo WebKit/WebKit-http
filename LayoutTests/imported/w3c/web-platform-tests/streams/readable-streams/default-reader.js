@@ -38,6 +38,8 @@ test(() => {
     assert_equals(propDesc.configurable, true, 'method should be configurable');
     assert_equals(propDesc.writable, true, 'method should be writable');
     assert_equals(typeof rsReader[m], 'function', 'should have be a method');
+    const expectedName = m === 'constructor' ? 'ReadableStreamDefaultReader' : m;
+    assert_equals(rsReader[m].name, expectedName, 'method should have the correct name');
   }
 
   const closedPropDesc = Object.getOwnPropertyDescriptor(proto, 'closed');
@@ -482,5 +484,18 @@ promise_test(t => {
   return promise;
 
 }, 'Reading twice on a stream that gets errored');
+
+test(() => {
+  const rs = new ReadableStream();
+  let toStringCalled = false;
+  const mode = {
+    toString() {
+      toStringCalled = true;
+      return '';
+    }
+  };
+  assert_throws(new RangeError(), () => rs.getReader({ mode }), 'getReader() should throw');
+  assert_true(toStringCalled, 'toString() should be called');
+}, 'getReader() should call ToString() on mode');
 
 done();

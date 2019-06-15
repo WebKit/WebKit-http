@@ -27,7 +27,7 @@
 
 #include "CachedFontClient.h"
 #include "CachedResourceHandle.h"
-#include <runtime/ArrayBufferView.h>
+#include <JavaScriptCore/ArrayBufferView.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -66,6 +66,8 @@ public:
 
     const AtomicString& familyNameOrURI() const { return m_familyNameOrURI; }
 
+    void opportunisticallyStartFontDataURLLoading(CSSFontSelector&);
+
     void load(CSSFontSelector*);
     RefPtr<Font> font(const FontDescription&, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings&, const FontVariantSettings&, FontSelectionSpecifiedCapabilities);
 
@@ -76,6 +78,8 @@ public:
 #endif
 
 private:
+    bool shouldIgnoreFontLoadCompletions() const;
+
     void fontLoaded(CachedFont&) override;
 
     void setStatus(Status);

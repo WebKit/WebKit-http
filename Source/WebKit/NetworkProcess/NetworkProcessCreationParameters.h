@@ -25,9 +25,11 @@
 
 #pragma once
 
-#include "Attachment.h"
 #include "CacheModel.h"
+#include "NetworkSessionCreationParameters.h"
 #include "SandboxExtension.h"
+#include <WebCore/Cookie.h>
+#include <wtf/ProcessID.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -56,16 +58,14 @@ struct NetworkProcessCreationParameters {
 
     String diskCacheDirectory;
     SandboxExtension::Handle diskCacheDirectoryExtensionHandle;
-#if ENABLE(NETWORK_CACHE)
-    bool shouldEnableNetworkCache { false };
     bool shouldEnableNetworkCacheEfficacyLogging { false };
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     bool shouldEnableNetworkCacheSpeculativeRevalidation { false };
 #endif
-#endif
 #if PLATFORM(MAC)
     Vector<uint8_t> uiProcessCookieStorageIdentifier;
 #endif
+    Vector<WebCore::Cookie> defaultSessionPendingCookies;
 #if PLATFORM(IOS)
     SandboxExtension::Handle cookieStorageDirectoryExtensionHandle;
     SandboxExtension::Handle containerCachesDirectoryExtensionHandle;
@@ -76,25 +76,21 @@ struct NetworkProcessCreationParameters {
     Seconds loadThrottleLatency;
 
     Vector<String> urlSchemesRegisteredForCustomProtocols;
-    pid_t presentingApplicationPID { 0 };
+    ProcessID presentingApplicationPID { 0 };
 
 #if PLATFORM(COCOA)
-    String parentProcessName;
     String uiProcessBundleIdentifier;
-    uint64_t nsURLCacheMemoryCapacity;
-    uint64_t nsURLCacheDiskCapacity;
+    uint32_t uiProcessSDKVersion { 0 };
     String sourceApplicationBundleIdentifier;
     String sourceApplicationSecondaryIdentifier;
-    bool allowsCellularAccess { true };
 #if PLATFORM(IOS)
     String ctDataConnectionServiceType;
 #endif
     String httpProxy;
     String httpsProxy;
-#if PLATFORM(COCOA)
     RetainPtr<CFDataRef> networkATSContext;
-#endif
-    bool cookieStoragePartitioningEnabled;
+    bool storageAccessAPIEnabled;
+    bool suppressesConnectionTerminationOnSystemChange;
 #endif
 
 #if USE(SOUP) || PLATFORM(QT)
@@ -104,15 +100,29 @@ struct NetworkProcessCreationParameters {
     bool ignoreTLSErrors { false };
     Vector<String> languages;
     WebCore::SoupNetworkProxySettings proxySettings;
+#elif USE(CURL)
+    String cookiePersistentStorageFile;
 #endif
 
-#if OS(LINUX)
-    IPC::Attachment memoryPressureMonitorHandle;
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    bool logCookieInformation { false };
 #endif
 
 #if ENABLE(NETWORK_CAPTURE)
     String recordReplayMode;
     String recordReplayCacheLocation;
+#endif
+
+    Vector<String> urlSchemesRegisteredAsSecure;
+    Vector<String> urlSchemesRegisteredAsBypassingContentSecurityPolicy;
+    Vector<String> urlSchemesRegisteredAsLocal;
+    Vector<String> urlSchemesRegisteredAsNoAccess;
+    Vector<String> urlSchemesRegisteredAsDisplayIsolated;
+    Vector<String> urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
+    Vector<String> urlSchemesRegisteredAsCORSEnabled;
+
+#if ENABLE(PROXIMITY_NETWORKING)
+    unsigned wirelessContextIdentifier { 0 };
 #endif
 };
 

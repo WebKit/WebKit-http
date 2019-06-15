@@ -65,6 +65,10 @@
     --tree-outline-icon-margin-end: 6px;
 }
 
+.tree-outline.non-selectable .item:hover {
+    background-color: var(--selected-background-color-unfocused);
+}
+
 body[dir=ltr] .tree-outline .item :matches(.disclosure-button, .icon) {
     float: left;
 }
@@ -236,6 +240,10 @@ body[dir=rtl] .tree-outline .item .status {
     margin-top: 1px;
     width: 14px;
     height: 14px;
+}
+
+.tree-outline:not(.large):matches(:focus, .force-focus) .item.selected .status .indeterminate-progress-spinner {
+    filter: invert();
 }
 
 .tree-outline .item .title::after {

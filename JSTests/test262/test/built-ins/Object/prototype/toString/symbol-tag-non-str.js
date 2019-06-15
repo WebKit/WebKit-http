@@ -5,7 +5,7 @@
 description: >
     Non-string values of `Symbol.toStringTag` property are ignored
 es6id: 19.1.3.6
-info: >
+info: |
     16. Let tag be Get (O, @@toStringTag).
     17. ReturnIfAbrupt(tag).
     18. If Type(tag) is not String, let tag be builtinTag.
@@ -34,5 +34,9 @@ assert.sameValue(Object.prototype.toString.call(custom), '[object Object]');
 custom[Symbol.toStringTag] = {};
 assert.sameValue(Object.prototype.toString.call(custom), '[object Object]');
 
-custom[Symbol.toStringTag] = { toString: function() { return 'str'; } };
+custom[Symbol.toStringTag] = {
+  toString: function() {
+    return 'str';
+  }
+};
 assert.sameValue(Object.prototype.toString.call(custom), '[object Object]');

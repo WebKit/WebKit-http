@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,46 +24,43 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ResourceError_h
-#define ResourceError_h
+#pragma once
 
 #include "ResourceErrorBase.h"
 
-#if PLATFORM(WIN)
-#include <windows.h>
-#include <winsock2.h>
-#endif
-
-#include <curl/curl.h>
-
 namespace WebCore {
 
-class ResourceError : public ResourceErrorBase
-{
+class ResourceError : public ResourceErrorBase {
+    friend class ResourceErrorBase;
+
 public:
     ResourceError(Type type = Type::Null)
         : ResourceErrorBase(type)
-        , m_sslErrors(0)
     {
     }
 
     ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, Type type = Type::General)
         : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription, type)
-        , m_sslErrors(0)
     {
     }
 
+    WEBCORE_EXPORT static ResourceError httpError(int errorCode, const URL& failingURL, Type = Type::General);
+    static ResourceError sslError(int errorCode, unsigned sslErrors, const URL& failingURL);
+
     unsigned sslErrors() const { return m_sslErrors; }
-    void setSSLErrors(unsigned sslVerifyResult) { m_sslErrors = sslVerifyResult; }
-    bool hasSSLConnectError() const { return errorCode() == CURLE_SSL_CONNECT_ERROR; }
+    void setSslErrors(unsigned sslErrors) { m_sslErrors = sslErrors; }
+
+    bool isSSLConnectError() const;
+    WEBCORE_EXPORT bool isSSLCertVerificationError() const;
+
+    static bool platformCompare(const ResourceError& a, const ResourceError& b);
 
 private:
-    friend class ResourceErrorBase;
-    void doPlatformIsolatedCopy(const ResourceError&) { }
+    void doPlatformIsolatedCopy(const ResourceError&);
 
-    unsigned m_sslErrors;
+    static const char* const curlErrorDomain;
+
+    unsigned m_sslErrors { 0 };
 };
 
-}
-
-#endif // ResourceError_h_
+} // namespace WebCore

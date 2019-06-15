@@ -26,7 +26,7 @@
 #pragma once
 
 #include "ScriptElementCachedScriptFetcher.h"
-#include <runtime/ConsoleTypes.h>
+#include <JavaScriptCore/ConsoleTypes.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,6 +40,7 @@ public:
     enum class ErrorType {
         CachedScript,
         CrossOriginLoad,
+        MIMEType,
         Nosniff,
         FailedIntegrityCheck,
     };
@@ -55,7 +56,7 @@ public:
         std::optional<ConsoleMessage> consoleMessage;
     };
 
-    virtual ~LoadableScript() { }
+    virtual ~LoadableScript() = default;
 
     virtual bool isLoaded() const = 0;
     virtual std::optional<Error> error() const = 0;

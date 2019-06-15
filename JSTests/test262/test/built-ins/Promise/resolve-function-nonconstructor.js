@@ -4,7 +4,7 @@
 /*---
 es6id: 25.4.1.3.2
 description: Promise Resolve functions are not constructors
-info: >
+info: |
   17 ECMAScript Standard Built-in Objects:
     Built-in function objects that are not identified as constructors do not
     implement the [[Construct]] internal method unless otherwise specified
@@ -17,4 +17,6 @@ new Promise(function(resolve, reject) {
 });
 
 assert.sameValue(Object.prototype.hasOwnProperty.call(resolveFunction, "prototype"), false);
-assert.throws(TypeError, function() { new resolveFunction(); });
+assert.throws(TypeError, function() {
+  new resolveFunction();
+});

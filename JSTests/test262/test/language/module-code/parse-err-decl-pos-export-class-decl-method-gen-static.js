@@ -3,8 +3,13 @@
 /*---
 description: Statement cannot contain an `export` declaration
 esid: sec-modules
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 flags: [module]
+features: [generators]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 class C { static *method() { export default null; } }

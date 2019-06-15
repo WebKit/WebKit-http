@@ -3,11 +3,12 @@
 
 /*---
 info: The Date.prototype property "toUTCString" has { DontEnum } attributes
+esid: sec-date.prototype.toutcstring
 es5id: 15.9.5.42_A1_T2
 description: Checking absence of DontDelete attribute
 ---*/
 
-if (delete Date.prototype.toUTCString  === false) {
+if (delete Date.prototype.toUTCString === false) {
   $ERROR('#1: The Date.prototype.toUTCString property has not the attributes DontDelete');
 }
 

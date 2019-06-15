@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.2.3.8
+esid: sec-%typedarray%.prototype.fill
 description: >
   %TypedArray%.prototype.fill.name is "fill".
-info: >
+info: |
   %TypedArray%.prototype.fill (value [ , start [ , end ] ] )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.prototype.fill.name, "fill");

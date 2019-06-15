@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.some
 description: Throws a TypeError if callbackfn is not callable
-info: >
+info: |
   22.2.3.25 %TypedArray%.prototype.some ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.some is a distinct function that implements the same
@@ -17,7 +17,7 @@ info: >
   3. If IsCallable(callbackfn) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

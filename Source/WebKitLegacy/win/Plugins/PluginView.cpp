@@ -25,13 +25,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
 #include "PluginView.h"
 
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
 #include "PluginPackage.h"
 #include "WebFrameLoaderClient.h"
+#include <JavaScriptCore/JSCJSValue.h>
+#include <JavaScriptCore/JSLock.h>
 #include <WebCore/BridgeJSC.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/CommonVM.h>
@@ -72,9 +73,6 @@
 #include <WebCore/c_instance.h>
 #include <WebCore/npruntime_impl.h>
 #include <WebCore/runtime_root.h>
-#include <bindings/ScriptValue.h>
-#include <runtime/JSCJSValue.h>
-#include <runtime/JSLock.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/text/WTFString.h>
 
@@ -92,8 +90,6 @@ using JSC::JSObject;
 using JSC::JSValue;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-
-using std::min;
 
 using namespace WTF;
 
@@ -171,7 +167,7 @@ void PluginView::clipRectChanged()
     updatePluginWidget();
 }
 
-void PluginView::handleEvent(Event* event)
+void PluginView::handleEvent(Event& event)
 {
     if (!m_plugin || m_isWindowed)
         return;
@@ -179,20 +175,20 @@ void PluginView::handleEvent(Event* event)
     // Protect the plug-in from deletion while dispatching the event.
     RefPtr<PluginView> protect(this);
 
-    if (event->isMouseEvent())
-        handleMouseEvent(static_cast<MouseEvent*>(event));
-    else if (event->isKeyboardEvent())
-        handleKeyboardEvent(static_cast<KeyboardEvent*>(event));
+    if (event.isMouseEvent())
+        handleMouseEvent(downcast<MouseEvent>(event));
+    else if (event.isKeyboardEvent())
+        handleKeyboardEvent(downcast<KeyboardEvent>(event));
 #if defined(XP_MACOSX)
-    else if (event->type() == eventNames().wheelEvent || event->type() == eventNames().mousewheelEvent)
-        handleWheelEvent(static_cast<WheelEvent*>(event));
+    else if (event.type() == eventNames().wheelEvent || event.type() == eventNames().mousewheelEvent)
+        handleWheelEvent(downcast<WheelEvent>(event));
 #endif
-    else if (event->type() == eventNames().contextmenuEvent)
-        event->setDefaultHandled(); // We don't know if the plug-in has handled mousedown event by displaying a context menu, so we never want WebKit to show a default one.
+    else if (event.type() == eventNames().contextmenuEvent)
+        event.setDefaultHandled(); // We don't know if the plug-in has handled mousedown event by displaying a context menu, so we never want WebKit to show a default one.
 #if defined(XP_UNIX) && ENABLE(NETSCAPE_PLUGIN_API)
-    else if (event->type() == eventNames().focusoutEvent)
+    else if (event.type() == eventNames().focusoutEvent)
         handleFocusOutEvent();
-    else if (event->type() == eventNames().focusinEvent)
+    else if (event.type() == eventNames().focusinEvent)
         handleFocusInEvent();
 #endif
 }
@@ -1171,7 +1167,7 @@ NPError PluginView::handlePost(const char* url, const char* target, uint32_t len
                 String contentLength = headerFields.get(HTTPHeaderName::ContentLength);
 
                 if (!contentLength.isNull())
-                    dataLength = min(contentLength.toInt(), (int)dataLength);
+                    dataLength = std::min(contentLength.toInt(), (int)dataLength);
                 headerFields.remove(HTTPHeaderName::ContentLength);
 
                 postData += location;
@@ -1415,10 +1411,7 @@ NPError PluginView::getValueForURL(NPNURLVariable variable, const char* url, cha
     case NPNURLVProxy: {
         URL u(m_parentFrame->document()->baseURL(), url);
         if (u.isValid()) {
-            Frame* frame = getFrame(parentFrame(), m_element);
-            const FrameLoader* frameLoader = frame ? &frame->loader() : 0;
-            const NetworkingContext* context = frameLoader ? frameLoader->networkingContext() : 0;
-            const CString proxyStr = toString(proxyServersForURL(u, context)).utf8();
+            const CString proxyStr = toString(proxyServersForURL(u)).utf8();
             if (!proxyStr.isNull()) {
                 const int size = proxyStr.length();
                 *value = static_cast<char*>(NPN_MemAlloc(size+1));

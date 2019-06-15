@@ -48,6 +48,9 @@ namespace WebCore {
 #if ENABLE(ATTACHMENT_ELEMENT)
         DragSourceActionAttachment   = 16,
 #endif
+#if ENABLE(INPUT_TYPE_COLOR)
+        DragSourceActionColor        = 32,
+#endif
         DragSourceActionAny          = UINT_MAX
     } DragSourceAction;
     
@@ -62,5 +65,8 @@ namespace WebCore {
         DragOperationDelete  = 32,
         DragOperationEvery   = UINT_MAX
     } DragOperation;
+
+    enum class MayExtendDragSession { No, Yes };
+    enum class HasNonDefaultPasteboardData { No, Yes };
     
 } // namespace WebCore

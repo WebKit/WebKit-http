@@ -24,11 +24,11 @@
  */
 
 #import "config.h"
+
 #import "PlatformUtilities.h"
 #import <Carbon/Carbon.h> // For GetCurrentEventTime
-#import <WebCore/NSMenuSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
-#import <wtf/AutodrainedPool.h>
+#import <pal/spi/mac/NSMenuSPI.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
@@ -41,98 +41,99 @@ static bool canCallMenuTypeForEvent()
 
 static void buildAndPerformTest(NSEventType buttonEvent, NSEventModifierFlags modifierFlags, WebCore::MouseButton expectedButton, NSMenuType expectedMenu)
 {
-    AutodrainedPool pool;
-    RetainPtr<WebView> webView = adoptNS([[WebView alloc] init]);
-    NSEvent *event = [NSEvent mouseEventWithType:buttonEvent
-                                        location:NSMakePoint(100, 100)
-                                   modifierFlags:modifierFlags
-                                       timestamp:GetCurrentEventTime()
-                                    windowNumber:[[webView window] windowNumber]
-                                         context:[NSGraphicsContext currentContext]
-                                     eventNumber:0
-                                      clickCount:0
-                                        pressure:0];
-    
-    auto pme = WebCore::PlatformEventFactory::createPlatformMouseEvent(event, nil, webView.get());
-    
-    EXPECT_EQ(expectedButton, pme.button());
-    EXPECT_TRUE(!modifierFlags || pme.modifierFlags() & modifierFlags);
-    EXPECT_EQ(expectedMenu, pme.menuTypeForEvent());
-    if (canCallMenuTypeForEvent())
-        EXPECT_EQ(expectedMenu, [NSMenu menuTypeForEvent:event]);
+    @autoreleasepool {
+        auto webView = adoptNS([[WebView alloc] init]);
+        NSEvent *event = [NSEvent mouseEventWithType:buttonEvent
+                                            location:NSMakePoint(100, 100)
+                                       modifierFlags:modifierFlags
+                                           timestamp:GetCurrentEventTime()
+                                        windowNumber:[[webView window] windowNumber]
+                                             context:[NSGraphicsContext currentContext]
+                                         eventNumber:0
+                                          clickCount:0
+                                            pressure:0];
+
+        auto pme = WebCore::PlatformEventFactory::createPlatformMouseEvent(event, nil, webView.get());
+
+        EXPECT_EQ(expectedButton, pme.button());
+        EXPECT_TRUE(!modifierFlags || pme.modifierFlags() & modifierFlags);
+        EXPECT_EQ(expectedMenu, pme.menuTypeForEvent());
+        if (canCallMenuTypeForEvent())
+            EXPECT_EQ(expectedMenu, [NSMenu menuTypeForEvent:event]);
+    }
 }
 
-TEST(WebKit1, MenuAndButtonForNormalLeftClick)
+TEST(WebKitLegacy, MenuAndButtonForNormalLeftClick)
 {
     buildAndPerformTest(NSEventTypeLeftMouseDown, 0, WebCore::LeftButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForNormalRightClick)
+TEST(WebKitLegacy, MenuAndButtonForNormalRightClick)
 {
     buildAndPerformTest(NSEventTypeRightMouseDown, 0, WebCore::RightButton, NSMenuTypeContextMenu);
 }
 
-TEST(WebKit1, MenuAndButtonForNormalMiddleClick)
+TEST(WebKitLegacy, MenuAndButtonForNormalMiddleClick)
 {
     buildAndPerformTest(NSEventTypeOtherMouseDown, 0, WebCore::MiddleButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForControlLeftClick)
+TEST(WebKitLegacy, MenuAndButtonForControlLeftClick)
 {
     buildAndPerformTest(NSEventTypeLeftMouseDown, NSEventModifierFlagControl, WebCore::LeftButton, NSMenuTypeContextMenu);
 }
 
-TEST(WebKit1, MenuAndButtonForControlRightClick)
+TEST(WebKitLegacy, MenuAndButtonForControlRightClick)
 {
     buildAndPerformTest(NSEventTypeRightMouseDown, NSEventModifierFlagControl, WebCore::RightButton, NSMenuTypeContextMenu);
 }
 
-TEST(WebKit1, MenuAndButtonForControlMiddleClick)
+TEST(WebKitLegacy, MenuAndButtonForControlMiddleClick)
 {
     buildAndPerformTest(NSEventTypeOtherMouseDown, NSEventModifierFlagControl, WebCore::MiddleButton, NSMenuTypeNone);
 }
     
-TEST(WebKit1, MenuAndButtonForShiftLeftClick)
+TEST(WebKitLegacy, MenuAndButtonForShiftLeftClick)
 {
     buildAndPerformTest(NSEventTypeLeftMouseDown, NSEventModifierFlagShift, WebCore::LeftButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForShiftRightClick)
+TEST(WebKitLegacy, MenuAndButtonForShiftRightClick)
 {
     buildAndPerformTest(NSEventTypeRightMouseDown, NSEventModifierFlagShift, WebCore::RightButton, NSMenuTypeContextMenu);
 }
 
-TEST(WebKit1, MenuAndButtonForShiftMiddleClick)
+TEST(WebKitLegacy, MenuAndButtonForShiftMiddleClick)
 {
     buildAndPerformTest(NSEventTypeOtherMouseDown, NSEventModifierFlagShift, WebCore::MiddleButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForCommandLeftClick)
+TEST(WebKitLegacy, MenuAndButtonForCommandLeftClick)
 {
     buildAndPerformTest(NSEventTypeLeftMouseDown, NSEventModifierFlagCommand, WebCore::LeftButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForCommandRightClick)
+TEST(WebKitLegacy, MenuAndButtonForCommandRightClick)
 {
     buildAndPerformTest(NSEventTypeRightMouseDown, NSEventModifierFlagCommand, WebCore::RightButton, NSMenuTypeContextMenu);
 }
 
-TEST(WebKit1, MenuAndButtonForCommandMiddleClick)
+TEST(WebKitLegacy, MenuAndButtonForCommandMiddleClick)
 {
     buildAndPerformTest(NSEventTypeOtherMouseDown, NSEventModifierFlagCommand, WebCore::MiddleButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForAltLeftClick)
+TEST(WebKitLegacy, MenuAndButtonForAltLeftClick)
 {
     buildAndPerformTest(NSEventTypeLeftMouseDown, NSEventModifierFlagOption, WebCore::LeftButton, NSMenuTypeNone);
 }
 
-TEST(WebKit1, MenuAndButtonForAltRightClick)
+TEST(WebKitLegacy, MenuAndButtonForAltRightClick)
 {
     buildAndPerformTest(NSEventTypeRightMouseDown, NSEventModifierFlagOption, WebCore::RightButton, NSMenuTypeContextMenu);
 }
 
-TEST(WebKit1, MenuAndButtonForAltMiddleClick)
+TEST(WebKitLegacy, MenuAndButtonForAltMiddleClick)
 {
     buildAndPerformTest(NSEventTypeOtherMouseDown, NSEventModifierFlagOption, WebCore::MiddleButton, NSMenuTypeNone);
 }

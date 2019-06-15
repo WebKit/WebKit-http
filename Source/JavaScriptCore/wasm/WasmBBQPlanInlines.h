@@ -30,6 +30,7 @@
 #include "CalleeBits.h"
 #include "WasmBBQPlan.h"
 #include "WasmCallee.h"
+#include "WasmNameSection.h"
 
 namespace JSC { namespace Wasm {
 
@@ -39,18 +40,18 @@ void BBQPlan::initializeCallees(const Functor& callback)
     ASSERT(!failed());
     for (unsigned internalFunctionIndex = 0; internalFunctionIndex < m_wasmInternalFunctions.size(); ++internalFunctionIndex) {
 
-        RefPtr<Wasm::Callee> jsEntrypointCallee;
-        if (auto jsToWasmFunction = m_jsToWasmInternalFunctions.get(internalFunctionIndex)) {
-            jsEntrypointCallee = Wasm::Callee::create(WTFMove(jsToWasmFunction->entrypoint));
-            MacroAssembler::repatchPointer(jsToWasmFunction->calleeMoveLocation, CalleeBits::boxWasm(jsEntrypointCallee.get()));
+        RefPtr<Wasm::Callee> embedderEntrypointCallee;
+        if (auto embedderToWasmFunction = m_embedderToWasmInternalFunctions.get(internalFunctionIndex)) {
+            embedderEntrypointCallee = Wasm::Callee::create(WTFMove(embedderToWasmFunction->entrypoint));
+            MacroAssembler::repatchPointer(embedderToWasmFunction->calleeMoveLocation, CalleeBits::boxWasm(embedderEntrypointCallee.get()));
         }
 
         InternalFunction* function = m_wasmInternalFunctions[internalFunctionIndex].get();
         size_t functionIndexSpace = internalFunctionIndex + m_moduleInformation->importFunctionCount();
-        Ref<Wasm::Callee> wasmEntrypointCallee = Wasm::Callee::create(WTFMove(function->entrypoint), functionIndexSpace, m_moduleInformation->nameSection.get(functionIndexSpace));
+        Ref<Wasm::Callee> wasmEntrypointCallee = Wasm::Callee::create(WTFMove(function->entrypoint), functionIndexSpace, m_moduleInformation->nameSection->get(functionIndexSpace));
         MacroAssembler::repatchPointer(function->calleeMoveLocation, CalleeBits::boxWasm(wasmEntrypointCallee.ptr()));
 
-        callback(internalFunctionIndex, WTFMove(jsEntrypointCallee), WTFMove(wasmEntrypointCallee));
+        callback(internalFunctionIndex, WTFMove(embedderEntrypointCallee), WTFMove(wasmEntrypointCallee));
     }
 }
 

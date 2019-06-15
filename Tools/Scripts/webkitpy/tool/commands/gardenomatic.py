@@ -25,11 +25,16 @@
 from webkitpy.port import builders
 from webkitpy.tool.commands.rebaseline import AbstractRebaseliningCommand
 from webkitpy.tool.servers.gardeningserver import GardeningHTTPServer
+from webkitpy.port import factory
 
 
 class GardenOMatic(AbstractRebaseliningCommand):
     name = "garden-o-matic"
     help_text = "Command for gardening the WebKit tree."
+
+    # REVIEW: Reset the option here because globbing isn't useful for us, but apparently
+    # it's useful for other rebaselining commands because use_globs=True is set in parent.
+    platform_options = factory.platform_options()
 
     def __init__(self):
         super(GardenOMatic, self).__init__(options=(self.platform_options + [
@@ -39,8 +44,8 @@ class GardenOMatic(AbstractRebaseliningCommand):
             ]))
 
     def execute(self, options, args, tool):
-        print "This command runs a local HTTP server that changes your working copy"
-        print "based on the actions you take in the web-based UI."
+        print("This command runs a local HTTP server that changes your working copy")
+        print("based on the actions you take in the web-based UI.")
 
         args = {}
         if options.platform:
@@ -55,5 +60,5 @@ class GardenOMatic(AbstractRebaseliningCommand):
         httpd = GardeningHTTPServer(httpd_port=8127, config={'tool': tool, 'options': options})
         self._tool.user.open_url(httpd.url(args))
 
-        print "Local HTTP server started."
+        print("Local HTTP server started.")
         httpd.serve_forever()

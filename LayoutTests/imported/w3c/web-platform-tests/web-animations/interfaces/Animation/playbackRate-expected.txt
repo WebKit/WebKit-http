@@ -1,0 +1,5 @@
+
+PASS Test the initial effect of setting playbackRate on currentTime 
+PASS Test the effect of setting playbackRate on currentTime 
+PASS Test the effect of setting playbackRate while playing animation 
+

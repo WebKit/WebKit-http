@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,12 +31,15 @@
 #include "B3Compilation.h"
 #include "B3OpaqueByproducts.h"
 #include "JSCInlines.h"
-#include "JSWebAssemblyModule.h"
 #include "LinkBuffer.h"
 #include "WasmB3IRGenerator.h"
+#include "WasmCallee.h"
 #include "WasmContext.h"
+#include "WasmInstance.h"
 #include "WasmMachineThreads.h"
 #include "WasmMemory.h"
+#include "WasmNameSection.h"
+#include "WasmSignatureInlines.h"
 #include "WasmValidate.h"
 #include "WasmWorklist.h"
 #include <wtf/DataLog.h>
@@ -47,39 +50,38 @@
 
 namespace JSC { namespace Wasm {
 
+namespace WasmOMGPlanInternal {
 static const bool verbose = false;
+}
 
-OMGPlan::OMGPlan(Ref<Module> module, uint32_t functionIndex, MemoryMode mode, CompletionTask&& task)
-    : Base(nullptr, makeRef(const_cast<ModuleInformation&>(module->moduleInformation())), WTFMove(task))
-    , m_module(module.copyRef())
-    , m_codeBlock(*module->codeBlockFor(mode))
+OMGPlan::OMGPlan(Context* context, Ref<Module>&& module, uint32_t functionIndex, MemoryMode mode, CompletionTask&& task)
+    : Base(context, makeRef(const_cast<ModuleInformation&>(module->moduleInformation())), WTFMove(task))
+    , m_module(WTFMove(module))
+    , m_codeBlock(*m_module->codeBlockFor(mode))
     , m_functionIndex(functionIndex)
 {
     setMode(mode);
     ASSERT(m_codeBlock->runnable());
     ASSERT(m_codeBlock.ptr() == m_module->codeBlockFor(m_mode));
-    dataLogLnIf(verbose, "Starting OMG plan for ", functionIndex, " of module: ", RawPointer(&m_module.get()));
+    dataLogLnIf(WasmOMGPlanInternal::verbose, "Starting OMG plan for ", functionIndex, " of module: ", RawPointer(&m_module.get()));
 }
 
 void OMGPlan::work(CompilationEffort)
 {
     ASSERT(m_codeBlock->runnable());
     ASSERT(m_codeBlock.ptr() == m_module->codeBlockFor(mode()));
-    const FunctionLocationInBinary& location = m_moduleInformation->functionLocationInBinary[m_functionIndex];
-    const uint8_t* functionStart = m_moduleInformation->source.data() + location.start;
-    const size_t functionLength = location.end - location.start;
-    ASSERT(functionStart + functionLength <= m_moduleInformation->source.end());
+    const FunctionData& function = m_moduleInformation->functions[m_functionIndex];
 
     const uint32_t functionIndexSpace = m_functionIndex + m_module->moduleInformation().importFunctionCount();
     ASSERT(functionIndexSpace < m_module->moduleInformation().functionIndexSpaceSize());
 
     SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[m_functionIndex];
     const Signature& signature = SignatureInformation::get(signatureIndex);
-    ASSERT(validateFunction(functionStart, functionLength, signature, m_moduleInformation.get()));
+    ASSERT(validateFunction(function.data.data(), function.data.size(), signature, m_moduleInformation.get()));
 
     Vector<UnlinkedWasmToWasmCall> unlinkedCalls;
     CompilationContext context;
-    auto parseAndCompileResult = parseAndCompile(context, functionStart, functionLength, signature, unlinkedCalls, m_moduleInformation.get(), m_mode, CompilationMode::OMGMode, m_functionIndex);
+    auto parseAndCompileResult = parseAndCompile(context, function.data.data(), function.data.size(), signature, unlinkedCalls, m_moduleInformation.get(), m_mode, CompilationMode::OMGMode, m_functionIndex);
 
     if (UNLIKELY(!parseAndCompileResult)) {
         fail(holdLock(m_lock), makeString(parseAndCompileResult.error(), "when trying to tier up ", String::number(m_functionIndex)));
@@ -94,15 +96,15 @@ void OMGPlan::work(CompilationEffort)
     }
 
     omgEntrypoint.compilation = std::make_unique<B3::Compilation>(
-        FINALIZE_CODE(linkBuffer, ("WebAssembly OMG function[%i] %s", m_functionIndex, SignatureInformation::get(signatureIndex).toString().ascii().data())),
+        FINALIZE_CODE(linkBuffer, B3CompilationPtrTag, "WebAssembly OMG function[%i] %s", m_functionIndex, signature.toString().ascii().data()),
         WTFMove(context.wasmEntrypointByproducts));
 
     omgEntrypoint.calleeSaveRegisters = WTFMove(parseAndCompileResult.value()->entrypoint.calleeSaveRegisters);
 
-    void* entrypoint;
+    MacroAssemblerCodePtr<WasmEntryPtrTag> entrypoint;
     {
         ASSERT(m_codeBlock.ptr() == m_module->codeBlockFor(mode()));
-        Ref<Callee> callee = Callee::create(WTFMove(omgEntrypoint), functionIndexSpace, m_moduleInformation->nameSection.get(functionIndexSpace));
+        Ref<Callee> callee = Callee::create(WTFMove(omgEntrypoint), functionIndexSpace, m_moduleInformation->nameSection->get(functionIndexSpace));
         MacroAssembler::repatchPointer(parseAndCompileResult.value()->calleeMoveLocation, CalleeBits::boxWasm(callee.ptr()));
         ASSERT(!m_codeBlock->m_optimizedCallees[m_functionIndex]);
         entrypoint = callee->entrypoint();
@@ -115,13 +117,13 @@ void OMGPlan::work(CompilationEffort)
         m_codeBlock->m_optimizedCallees[m_functionIndex] = WTFMove(callee);
 
         for (auto& call : unlinkedCalls) {
-            void* entrypoint;
+            MacroAssemblerCodePtr<WasmEntryPtrTag> entrypoint;
             if (call.functionIndexSpace < m_module->moduleInformation().importFunctionCount())
-                entrypoint = m_codeBlock->m_wasmToWasmExitStubs[call.functionIndexSpace].code().executableAddress();
+                entrypoint = m_codeBlock->m_wasmToWasmExitStubs[call.functionIndexSpace].code();
             else
-                entrypoint = m_codeBlock->wasmEntrypointCalleeFromFunctionIndexSpace(call.functionIndexSpace).entrypoint();
+                entrypoint = m_codeBlock->wasmEntrypointCalleeFromFunctionIndexSpace(call.functionIndexSpace).entrypoint().retagged<WasmEntryPtrTag>();
 
-            MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(entrypoint));
+            MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel<WasmEntryPtrTag>(entrypoint));
         }
         unlinkedCalls = std::exchange(m_codeBlock->m_wasmToWasmCallsites[m_functionIndex], unlinkedCalls);
     }
@@ -138,10 +140,10 @@ void OMGPlan::work(CompilationEffort)
 
         auto repatchCalls = [&] (const Vector<UnlinkedWasmToWasmCall>&  callsites) {
             for (auto& call : callsites) {
-                dataLogLnIf(verbose, "Considering repatching call at: ", RawPointer(call.callLocation.dataLocation()), " that targets ", call.functionIndexSpace);
+                dataLogLnIf(WasmOMGPlanInternal::verbose, "Considering repatching call at: ", RawPointer(call.callLocation.dataLocation()), " that targets ", call.functionIndexSpace);
                 if (call.functionIndexSpace == functionIndexSpace) {
-                    dataLogLnIf(verbose, "Repatching call at: ", RawPointer(call.callLocation.dataLocation()), " to ", RawPointer(entrypoint));
-                    MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(entrypoint));
+                    dataLogLnIf(WasmOMGPlanInternal::verbose, "Repatching call at: ", RawPointer(call.callLocation.dataLocation()), " to ", RawPointer(entrypoint.executableAddress()));
+                    MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel<WasmEntryPtrTag>(entrypoint));
                 }
             }
 
@@ -156,17 +158,17 @@ void OMGPlan::work(CompilationEffort)
         repatchCalls(unlinkedCalls);
     }
 
-    dataLogLnIf(verbose, "Finished with tier up count at: ", m_codeBlock->tierUpCount(m_functionIndex).count());
+    dataLogLnIf(WasmOMGPlanInternal::verbose, "Finished with tier up count at: ", m_codeBlock->tierUpCount(m_functionIndex).count());
     complete(holdLock(m_lock));
 }
 
-void runOMGPlanForIndex(Context* context, uint32_t functionIndex)
+void OMGPlan::runForIndex(Instance* instance, uint32_t functionIndex)
 {
-    JSWebAssemblyCodeBlock* codeBlock = context->codeBlock();
-    ASSERT(context->memoryMode() == codeBlock->m_codeBlock->mode());
+    Wasm::CodeBlock& codeBlock = *instance->codeBlock();
+    ASSERT(instance->memory()->mode() == codeBlock.mode());
 
-    if (codeBlock->m_codeBlock->tierUpCount(functionIndex).shouldStartTierUp()) {
-        Ref<Plan> plan = adoptRef(*new OMGPlan(context->module()->module(), functionIndex, codeBlock->m_codeBlock->mode(), Plan::dontFinalize()));
+    if (codeBlock.tierUpCount(functionIndex).shouldStartTierUp()) {
+        Ref<Plan> plan = adoptRef(*new OMGPlan(instance->context(), Ref<Wasm::Module>(instance->module()), functionIndex, codeBlock.mode(), Plan::dontFinalize()));
         ensureWorklist().enqueue(plan.copyRef());
         if (UNLIKELY(!Options::useConcurrentJIT()))
             plan->waitForCompletion();

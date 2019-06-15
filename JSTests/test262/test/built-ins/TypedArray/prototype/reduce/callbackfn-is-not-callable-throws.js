@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.reduce
 description: >
   Throws TypeError if callbackfn is not callable
-info: >
+info: |
   22.2.3.20 %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] )
 
   %TypedArray%.prototype.reduce is a distinct function that implements the same
@@ -19,7 +19,7 @@ info: >
   4. If len is 0 and initialValue is not present, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

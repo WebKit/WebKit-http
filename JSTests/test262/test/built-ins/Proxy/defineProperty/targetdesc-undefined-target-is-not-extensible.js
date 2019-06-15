@@ -5,7 +5,7 @@ es6id: 9.5.6
 description: >
     Throw a TypeError exception if Desc is not configurable and target is not
     extensible, and trap result is true.
-info: >
+info: |
     [[DefineOwnProperty]] (P, Desc)
 
     ...
@@ -16,13 +16,13 @@ info: >
 
 var target = {};
 var p = new Proxy(target, {
-    defineProperty: function(t, prop, desc) {
-        return true;
-    }
+  defineProperty: function(t, prop, desc) {
+    return true;
+  }
 });
 
 Object.preventExtensions(target);
 
 assert.throws(TypeError, function() {
-    Object.defineProperty(p, "foo", {});
+  Object.defineProperty(p, "foo", {});
 });

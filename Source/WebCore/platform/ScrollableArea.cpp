@@ -32,16 +32,16 @@
 #include "config.h"
 #include "ScrollableArea.h"
 
+#include "FloatPoint.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
-#include "FloatPoint.h"
 #include "LayoutRect.h"
 #include "Logging.h"
 #include "PlatformWheelEvent.h"
 #include "ScrollAnimator.h"
 #include "ScrollAnimatorMock.h"
 #include "ScrollbarTheme.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -70,9 +70,7 @@ ScrollableArea::ScrollableArea()
 {
 }
 
-ScrollableArea::~ScrollableArea()
-{
-}
+ScrollableArea::~ScrollableArea() = default;
 
 ScrollAnimator& ScrollableArea::scrollAnimator() const
 {
@@ -129,7 +127,6 @@ bool ScrollableArea::scroll(ScrollDirection direction, ScrollGranularity granula
         step = scrollbar->totalSize();
         break;
     case ScrollByPixel:
-    case ScrollByPrecisePixel:
         step = scrollbar->pixelStep();
         break;
     }
@@ -141,10 +138,10 @@ bool ScrollableArea::scroll(ScrollDirection direction, ScrollGranularity granula
     return scrollAnimator().scroll(orientation, granularity, step, multiplier);
 }
 
-void ScrollableArea::scrollToOffsetWithoutAnimation(const FloatPoint& offset)
+void ScrollableArea::scrollToOffsetWithoutAnimation(const FloatPoint& offset, ScrollClamping clamping)
 {
     LOG_WITH_STREAM(Scrolling, stream << "ScrollableArea " << this << " scrollToOffsetWithoutAnimation " << offset);
-    scrollAnimator().scrollToOffsetWithoutAnimation(offset);
+    scrollAnimator().scrollToOffsetWithoutAnimation(offset, clamping);
 }
 
 void ScrollableArea::scrollToOffsetWithoutAnimation(ScrollbarOrientation orientation, float offset)

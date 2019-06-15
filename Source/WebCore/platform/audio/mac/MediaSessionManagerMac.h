@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,18 +28,20 @@
 #if PLATFORM(MAC)
 
 #include "GenericTaskQueue.h"
-#include "PlatformMediaSessionManager.h"
+#include "MediaSessionManagerCocoa.h"
 
 namespace WebCore {
 
-class MediaSessionManagerMac : public PlatformMediaSessionManager {
+class MediaSessionManagerMac : public MediaSessionManagerCocoa {
 public:
     virtual ~MediaSessionManagerMac();
 
-    bool hasActiveNowPlayingSession() const override { return m_nowPlayingActive; }
-    String lastUpdatedNowPlayingTitle() const override { return m_lastUpdatedNowPlayingTitle; }
-    double lastUpdatedNowPlayingDuration() const override { return m_lastUpdatedNowPlayingDuration; }
-    double lastUpdatedNowPlayingElapsedTime() const override { return m_lastUpdatedNowPlayingElapsedTime; }
+    bool hasActiveNowPlayingSession() const final { return m_nowPlayingActive; }
+    String lastUpdatedNowPlayingTitle() const final { return m_lastUpdatedNowPlayingTitle; }
+    double lastUpdatedNowPlayingDuration() const final { return m_lastUpdatedNowPlayingDuration; }
+    double lastUpdatedNowPlayingElapsedTime() const final { return m_lastUpdatedNowPlayingElapsedTime; }
+    uint64_t lastUpdatedNowPlayingInfoUniqueIdentifier() const final { return m_lastUpdatedNowPlayingInfoUniqueIdentifier; }
+    bool registeredAsNowPlayingApplication() const final { return m_registeredAsNowPlayingApplication; }
 
 private:
     friend class PlatformMediaSessionManager;
@@ -53,6 +55,7 @@ private:
     void sessionWillEndPlayback(PlatformMediaSession&) override;
     void sessionDidEndRemoteScrubbing(const PlatformMediaSession&) override;
     void clientCharacteristicsChanged(PlatformMediaSession&) override;
+    void sessionCanProduceAudioChanged(PlatformMediaSession&) override;
 
     void updateNowPlayingInfo();
 
@@ -60,11 +63,13 @@ private:
 
     bool m_nowPlayingActive { false };
     bool m_isInBackground { false };
+    bool m_registeredAsNowPlayingApplication { false };
 
     // For testing purposes only.
     String m_lastUpdatedNowPlayingTitle;
     double m_lastUpdatedNowPlayingDuration { NAN };
     double m_lastUpdatedNowPlayingElapsedTime { NAN };
+    uint64_t m_lastUpdatedNowPlayingInfoUniqueIdentifier { 0 };
 
     GenericTaskQueue<Timer> m_nowPlayingUpdateTaskQueue;
 };

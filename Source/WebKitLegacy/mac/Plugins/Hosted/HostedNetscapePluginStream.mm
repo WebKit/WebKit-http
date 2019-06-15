@@ -33,11 +33,9 @@
 #import "WebHostedNetscapePluginView.h"
 #import "WebKitErrorsPrivate.h"
 #import "WebKitPluginHost.h"
-#import "WebKitSystemInterface.h"
 #import "WebNSURLExtras.h"
 #import "WebNSURLRequestExtras.h"
 #import "WebResourceLoadScheduler.h"
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/Frame.h>
@@ -46,6 +44,8 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
 #import <WebCore/WebCoreURLResponse.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
+#import <wtf/CompletionHandler.h>
 #import <wtf/RefCountedLeakCounter.h>
 
 using namespace WebCore;
@@ -131,7 +131,7 @@ void HostedNetscapePluginStream::didFinishLoading(WebCore::NetscapePlugInStreamL
     m_instance->disconnectStream(this);
 }
 
-void HostedNetscapePluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, WTF::Function<void (WebCore::ResourceRequest&&)>&& callback)
+void HostedNetscapePluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, CompletionHandler<void(WebCore::ResourceRequest&&)>&& callback)
 {
     // FIXME: We should notify the plug-in with NPP_URLRedirectNotify here.
     callback(WTFMove(request));
@@ -223,7 +223,9 @@ void HostedNetscapePluginStream::start()
     ASSERT(!m_frameLoader);
     ASSERT(!m_loader);
 
-    m_loader = webResourceLoadScheduler().schedulePluginStreamLoad(*core([m_instance->pluginView() webFrame]), *this, m_request.get());
+    webResourceLoadScheduler().schedulePluginStreamLoad(*core([m_instance->pluginView() webFrame]), *this, m_request.get(), [this, protectedThis = makeRef(*this)] (RefPtr<WebCore::NetscapePlugInStreamLoader>&& loader) {
+        m_loader = WTFMove(loader);
+    });
 }
 
 void HostedNetscapePluginStream::stop()

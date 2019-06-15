@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,16 +23,17 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
-#ifndef AuthenticationChallenge_h
-#define AuthenticationChallenge_h
+
+#pragma once
 
 #include "AuthenticationChallengeBase.h"
 #include "AuthenticationClient.h"
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class AuthenticationChallenge : public AuthenticationChallengeBase {
+class CurlResponse;
+
+class WEBCORE_EXPORT AuthenticationChallenge final : public AuthenticationChallengeBase {
 public:
     AuthenticationChallenge()
     {
@@ -42,12 +44,18 @@ public:
     {
     }
 
+    AuthenticationChallenge(const CurlResponse&, unsigned, const ResourceResponse&, AuthenticationClient* = nullptr);
     AuthenticationClient* authenticationClient() const { return m_authenticationClient.get(); }
-    void setAuthenticationClient(AuthenticationClient* client) { m_authenticationClient = client; }
+
+private:
+    ProtectionSpaceServerType protectionSpaceServerTypeFromURI(const URL&, bool isForProxy);
+    ProtectionSpace protectionSpaceFromHandle(const CurlResponse&, const ResourceResponse&);
+    std::optional<uint16_t> determineProxyPort(const URL&);
+    ProtectionSpaceAuthenticationScheme authenticationSchemeFromCurlAuth(long);
+    String parseRealm(const ResourceResponse&);
+    void removeLeadingAndTrailingQuotes(String&);
 
     RefPtr<AuthenticationClient> m_authenticationClient;
 };
 
-}
-
-#endif
+} // namespace WebCore

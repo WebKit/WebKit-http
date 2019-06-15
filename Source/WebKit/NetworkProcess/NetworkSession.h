@@ -25,45 +25,41 @@
 
 #pragma once
 
-#if USE(NETWORK_SESSION)
-
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 #include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
+class AuthenticationChallenge;
 class NetworkStorageSession;
 }
 
 namespace WebKit {
 
-class LegacyCustomProtocolManager;
 class NetworkDataTask;
+struct NetworkSessionCreationParameters;
 
 class NetworkSession : public RefCounted<NetworkSession> {
 public:
-    static Ref<NetworkSession> create(WebCore::SessionID, LegacyCustomProtocolManager* = nullptr);
-    static NetworkSession& defaultSession();
+    static Ref<NetworkSession> create(NetworkSessionCreationParameters&&);
     virtual ~NetworkSession();
 
     virtual void invalidateAndCancel();
     virtual void clearCredentials() { };
 
-    WebCore::SessionID sessionID() const { return m_sessionID; }
+    PAL::SessionID sessionID() const { return m_sessionID; }
     WebCore::NetworkStorageSession& networkStorageSession() const;
 
     void registerNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.add(&task); }
     void unregisterNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.remove(&task); }
 
 protected:
-    NetworkSession(WebCore::SessionID);
+    NetworkSession(PAL::SessionID);
 
-    WebCore::SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
 
     HashSet<NetworkDataTask*> m_dataTaskSet;
 };
 
 } // namespace WebKit
-
-#endif // USE(NETWORK_SESSION)

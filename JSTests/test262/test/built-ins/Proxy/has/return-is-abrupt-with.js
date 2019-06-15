@@ -4,7 +4,7 @@
 es6id: 9.5.7
 description: >
     Trap returns abrupt. Using `with`.
-info: >
+info: |
     [[HasProperty]] (P)
 
     ...
@@ -15,13 +15,13 @@ flags: [noStrict]
 ---*/
 
 var p = new Proxy({}, {
-    has: function() {
-        throw new Test262Error();
-    }
+  has: function() {
+    throw new Test262Error();
+  }
 });
 
 assert.throws(Test262Error, function() {
-    with (p) {
-        (attr);
-    }
+  with(p) {
+    (attr);
+  }
 });

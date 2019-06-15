@@ -3,13 +3,14 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: ToInteger(begin)
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
   7. Let relativeBegin be ? ToInteger(begin).
   ...
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 var obj = {

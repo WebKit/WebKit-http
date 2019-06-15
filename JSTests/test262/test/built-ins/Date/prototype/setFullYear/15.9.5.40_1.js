@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.setfullyear
 es5id: 15.9.5.40_1
 description: >
     Date.prototype.setFullYear - Date.prototype is itself not an
@@ -10,5 +11,5 @@ description: >
 
 
 assert.throws(TypeError, function() {
-        Date.prototype.setFullYear(2012);
+  Date.prototype.setFullYear(2012);
 });

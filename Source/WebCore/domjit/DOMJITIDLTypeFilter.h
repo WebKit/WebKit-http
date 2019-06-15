@@ -25,7 +25,8 @@
 
 #pragma once
 
-#include <bytecode/SpeculatedType.h>
+#include "IDLTypes.h"
+#include <JavaScriptCore/SpeculatedType.h>
 
 namespace WebCore { namespace DOMJIT {
 

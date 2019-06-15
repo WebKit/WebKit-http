@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,15 +37,22 @@ typedef void* NPIdentifier;
 namespace WebKit {
 
 // A JSObject that wraps an NPMethod.
-class JSNPMethod : public JSC::InternalFunction {
+class JSNPMethod final : public JSC::InternalFunction {
 public:
     typedef JSC::InternalFunction Base;
 
+    template<typename CellType>
+    static JSC::IsoSubspace* subspaceFor(JSC::VM& vm)
+    {
+        return subspaceForImpl(vm);
+    }
+
     static JSNPMethod* create(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, const String& name, NPIdentifier npIdent)
     {
+        JSC::VM& vm = globalObject->vm();
         JSC::Structure* structure = createStructure(exec->vm(), globalObject, globalObject->functionPrototype());
-        JSNPMethod* method = new (JSC::allocateCell<JSNPMethod>(*exec->heap())) JSNPMethod(globalObject, structure, npIdent);
-        method->finishCreation(exec->vm(), name);
+        JSNPMethod* method = new (JSC::allocateCell<JSNPMethod>(vm.heap)) JSNPMethod(globalObject, structure, npIdent);
+        method->finishCreation(vm, name);
         return method;
     }
 
@@ -56,16 +63,16 @@ public:
 protected:
     void finishCreation(JSC::VM&, const String& name);
 
-private:    
+private:
+    static JSC::IsoSubspace* subspaceForImpl(JSC::VM&);
+    
     JSNPMethod(JSC::JSGlobalObject*, JSC::Structure*, NPIdentifier);
 
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
-        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::InternalFunctionType, StructureFlags), info());
     }
 
-    static JSC::CallType getCallData(JSC::JSCell*, JSC::CallData&);
-    
     NPIdentifier m_npIdentifier;
 };
 

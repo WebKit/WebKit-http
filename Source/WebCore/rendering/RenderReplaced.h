@@ -26,6 +26,7 @@
 namespace WebCore {
 
 class RenderReplaced : public RenderBox {
+    WTF_MAKE_ISO_ALLOCATED(RenderReplaced);
 public:
     virtual ~RenderReplaced();
 
@@ -33,6 +34,7 @@ public:
     LayoutUnit computeReplacedLogicalHeight(std::optional<LayoutUnit> estimatedUsedWidth = std::nullopt) const override;
 
     LayoutRect replacedContentRect(const LayoutSize& intrinsicSize) const;
+    LayoutRect replacedContentRect() const { return replacedContentRect(intrinsicSize()); }
 
     bool hasReplacedLogicalWidth() const;
     bool hasReplacedLogicalHeight() const;
@@ -81,7 +83,7 @@ private:
 
     LayoutRect clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const override;
 
-    VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) final;
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) final;
     
     bool canBeSelectionLeaf() const override { return true; }
 

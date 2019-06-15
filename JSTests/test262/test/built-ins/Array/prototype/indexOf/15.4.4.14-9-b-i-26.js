@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.indexof
 es5id: 15.4.4.14-9-b-i-26
 description: >
     Array.prototype.indexOf applied to Arguments object which
@@ -9,10 +10,10 @@ description: >
     to number of parameters)
 ---*/
 
-        var func = function (a, b) {
-            return 0 === Array.prototype.indexOf.call(arguments, arguments[0]) &&
-            1 === Array.prototype.indexOf.call(arguments, arguments[1]) &&
-            -1 === Array.prototype.indexOf.call(arguments, arguments[2]);
-        };
+var func = function(a, b) {
+  return 0 === Array.prototype.indexOf.call(arguments, arguments[0]) &&
+    1 === Array.prototype.indexOf.call(arguments, arguments[1]) &&
+    -1 === Array.prototype.indexOf.call(arguments, arguments[2]);
+};
 
 assert(func(0, true), 'func(0, true) !== true');

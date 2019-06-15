@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The initial value of Boolean.prototype is the Boolean
     prototype object
+esid: sec-boolean.prototype
 es5id: 15.6.3.1_A1
 description: Checking Boolean.prototype property
 ---*/

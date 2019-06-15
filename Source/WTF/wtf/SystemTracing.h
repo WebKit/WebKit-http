@@ -71,6 +71,9 @@ enum TracePointCode {
     MemoryPressureHandlerEnd,
     UpdateTouchRegionsStart,
     UpdateTouchRegionsEnd,
+    DisplayListRecordStart,
+    DisplayListRecordEnd,
+    DisplayRefreshDispatchingToMainThread,
 
     WebKitRange = 10000,
     WebHTMLViewPaintStart,
@@ -85,17 +88,23 @@ enum TracePointCode {
     SyncMessageEnd,
     SyncTouchEventStart,
     SyncTouchEventEnd,
+    InitializeWebProcessStart,
+    InitializeWebProcessEnd,
 
     UIProcessRange = 14000,
     CommitLayerTreeStart,
     CommitLayerTreeEnd,
+    ProcessLaunchStart,
+    ProcessLaunchEnd,
+    InitializeSandboxStart,
+    InitializeSandboxEnd,
 };
 
 #ifdef __cplusplus
 
 namespace WTF {
 
-inline void TracePoint(TracePointCode code, uint64_t data1 = 0, uint64_t data2 = 0, uint64_t data3 = 0, uint64_t data4 = 0)
+inline void tracePoint(TracePointCode code, uint64_t data1 = 0, uint64_t data2 = 0, uint64_t data3 = 0, uint64_t data4 = 0)
 {
 #if HAVE(KDEBUG_H)
     kdebug_trace(ARIADNEDBG_CODE(WEBKIT_COMPONENT, code), data1, data2, data3, data4);
@@ -114,12 +123,12 @@ public:
     TraceScope(TracePointCode entryCode, TracePointCode exitCode, uint64_t data1 = 0, uint64_t data2 = 0, uint64_t data3 = 0, uint64_t data4 = 0)
         : m_exitCode(exitCode)
     {
-        TracePoint(entryCode, data1, data2, data3, data4);
+        tracePoint(entryCode, data1, data2, data3, data4);
     }
 
     ~TraceScope()
     {
-        TracePoint(m_exitCode);
+        tracePoint(m_exitCode);
     }
 
 private:
@@ -129,6 +138,6 @@ private:
 } // namespace WTF
 
 using WTF::TraceScope;
-using WTF::TracePoint;
+using WTF::tracePoint;
 
 #endif // __cplusplus

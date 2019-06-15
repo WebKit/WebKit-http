@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.some
 description: >
   Does not interact over non-integer properties
-info: >
+info: |
   22.2.3.7 %TypedArray%.prototype.some ( callbackfn [ , thisArg ] )
 
   ...
@@ -15,7 +15,7 @@ info: >
       ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

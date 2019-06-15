@@ -36,6 +36,8 @@
 
 #if PLATFORM(MAC)
 
+#import "AppKitTestSPI.h"
+
 namespace WTR {
 
 void UIScriptController::doAsyncTask(JSValueRef callback)
@@ -64,8 +66,13 @@ void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
     doAsyncTask(callback);
 }
 
-void UIScriptController::insertText(JSStringRef, int, int)
+void UIScriptController::replaceTextAtRange(JSStringRef text, int location, int length)
 {
+    auto textToInsert = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, text));
+    auto rangeAttribute = adoptNS([[NSDictionary alloc] initWithObjectsAndKeys:NSStringFromRange(NSMakeRange(location == -1 ? NSNotFound : location, length)), NSTextInputReplacementRangeAttributeName, nil]);
+    auto textAndRange = adoptNS([[NSAttributedString alloc] initWithString:(__bridge NSString *)textToInsert.get() attributes:rangeAttribute.get()]);
+
+    [mainFrame.webView insertText:textAndRange.get()];
 }
 
 void UIScriptController::zoomToScale(double scale, JSValueRef callback)
@@ -91,7 +98,7 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
 #if JSC_OBJC_API_ENABLED
     WebView *webView = [mainFrame webView];
     RetainPtr<CFStringRef> interfaceItemCF = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, interfaceItem));
-    NSDictionary *contentDictionary = [webView _contentsOfUserInterfaceItem:(NSString *)interfaceItemCF.get()];
+    NSDictionary *contentDictionary = [webView _contentsOfUserInterfaceItem:(__bridge NSString *)interfaceItemCF.get()];
     return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:contentDictionary inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 #else
     UNUSED_PARAM(interfaceItem);
@@ -105,7 +112,7 @@ void UIScriptController::overridePreference(JSStringRef preferenceRef, JSStringR
 
     RetainPtr<CFStringRef> value = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, valueRef));
     if (JSStringIsEqualToUTF8CString(preferenceRef, "WebKitMinimumFontSize"))
-        preferences.minimumFontSize = [(NSString *)value.get() doubleValue];
+        preferences.minimumFontSize = [(__bridge NSString *)value.get() doubleValue];
 }
 
 void UIScriptController::simulateRotation(DeviceOrientation*, JSValueRef)
@@ -113,6 +120,10 @@ void UIScriptController::simulateRotation(DeviceOrientation*, JSValueRef)
 }
 
 void UIScriptController::simulateRotationLikeSafari(DeviceOrientation*, JSValueRef)
+{
+}
+
+void UIScriptController::findString(JSStringRef, unsigned long options, unsigned long maxCount)
 {
 }
 
@@ -154,6 +165,24 @@ void UIScriptController::completeBackSwipe(JSValueRef callback)
 
 void UIScriptController::platformPlayBackEventStream(JSStringRef, JSValueRef)
 {
+}
+
+void UIScriptController::firstResponderSuppressionForWebView(bool)
+{
+}
+
+void UIScriptController::makeWindowContentViewFirstResponder()
+{
+}
+
+bool UIScriptController::isWindowContentViewFirstResponder() const
+{
+    return false;
+}
+
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    return false;
 }
 
 }

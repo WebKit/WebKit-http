@@ -5,7 +5,7 @@
 es6id: 21.1.5.2.1
 description: >
   %StringIteratorPrototype%.next.name is "next".
-info: >
+info: |
   %StringIteratorPrototype%.next ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol.iterator]
 ---*/
 
 var StringIteratorProto = Object.getPrototypeOf(new String()[Symbol.iterator]());

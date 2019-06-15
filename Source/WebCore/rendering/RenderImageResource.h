@@ -28,6 +28,8 @@
 #include "CachedImage.h"
 #include "CachedResourceHandle.h"
 #include "StyleImage.h"
+#include <wtf/IsoMalloc.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -35,12 +37,12 @@ class CachedImage;
 class RenderElement;
 
 class RenderImageResource {
-    WTF_MAKE_NONCOPYABLE(RenderImageResource); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(RenderImageResource); WTF_MAKE_ISO_ALLOCATED(RenderImageResource);
 public:
     RenderImageResource();
-    virtual ~RenderImageResource();
+    virtual ~RenderImageResource() = default;
 
-    virtual void initialize(RenderElement*);
+    virtual void initialize(RenderElement& renderer) { initialize(renderer, nullptr); }
     virtual void shutdown();
 
     void setCachedImage(CachedImage*);
@@ -49,23 +51,28 @@ public:
     void resetAnimation();
 
     virtual RefPtr<Image> image(const IntSize& size = { }) const;
-    virtual bool errorOccurred() const;
+    virtual bool errorOccurred() const { return m_cachedImage && m_cachedImage->errorOccurred(); }
 
-    virtual void setContainerSizeForRenderer(const IntSize&);
-    virtual bool imageHasRelativeWidth() const;
-    virtual bool imageHasRelativeHeight() const;
+    virtual void setContainerContext(const IntSize&, const URL&);
 
-    virtual LayoutSize imageSize(float multiplier) const;
-    virtual LayoutSize intrinsicSize(float multiplier) const;
+    virtual bool imageHasRelativeWidth() const { return m_cachedImage && m_cachedImage->imageHasRelativeWidth(); }
+    virtual bool imageHasRelativeHeight() const { return m_cachedImage && m_cachedImage->imageHasRelativeHeight(); }
+
+    inline LayoutSize imageSize(float multiplier) const { return imageSize(multiplier, CachedImage::UsedSize); }
+    inline LayoutSize intrinsicSize(float multiplier) const { return imageSize(multiplier, CachedImage::IntrinsicSize); }
 
     virtual WrappedImagePtr imagePtr() const { return m_cachedImage.get(); }
 
 protected:
-    RenderElement* m_renderer { nullptr };
-    CachedResourceHandle<CachedImage> m_cachedImage;
-
+    RenderElement* renderer() const { return m_renderer.get(); }
+    void initialize(RenderElement&, CachedImage*);
+    
 private:
-    LayoutSize getImageSize(float multiplier, CachedImage::SizeType) const;
+    virtual LayoutSize imageSize(float multiplier, CachedImage::SizeType) const;
+
+    WeakPtr<RenderElement> m_renderer;
+    CachedResourceHandle<CachedImage> m_cachedImage;
+    bool m_cachedImageRemoveClientIsNeeded { true };
 };
 
 } // namespace WebCore

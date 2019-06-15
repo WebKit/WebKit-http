@@ -31,43 +31,51 @@
 #include "config.h"
 #include "PointLightSource.h"
 
-#include "TextStream.h"
+#include "FilterEffect.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
-void PointLightSource::initPaintingData(PaintingData&)
+void PointLightSource::initPaintingData(const FilterEffect& filterEffect, PaintingData&)
 {
+    m_bufferPosition.setXY(filterEffect.mapPointFromUserSpaceToBuffer(m_userSpacePosition.xy()));
+    // To scale Z, map a point offset from m_userSpacePosition in the x direction by z.
+    FloatPoint mappedZ = filterEffect.mapPointFromUserSpaceToBuffer({ m_userSpacePosition.x() + m_userSpacePosition.z(), m_userSpacePosition.y() });
+    m_bufferPosition.setZ(mappedZ.x() - m_bufferPosition.x());
 }
 
-void PointLightSource::updatePaintingData(PaintingData& paintingData, int x, int y, float z)
+LightSource::ComputedLightingData PointLightSource::computePixelLightingData(const PaintingData& paintingData, int x, int y, float z) const
 {
-    paintingData.lightVector.setX(m_position.x() - x);
-    paintingData.lightVector.setY(m_position.y() - y);
-    paintingData.lightVector.setZ(m_position.z() - z);
-    paintingData.lightVectorLength = paintingData.lightVector.length();
+    FloatPoint3D lightVector = {
+        m_bufferPosition.x() - x,
+        m_bufferPosition.y() - y,
+        m_bufferPosition.z() - z
+    };
+
+    return { lightVector, paintingData.initialLightingData.colorVector, lightVector.length() };
 }
 
 bool PointLightSource::setX(float x)
 {
-    if (m_position.x() == x)
+    if (m_userSpacePosition.x() == x)
         return false;
-    m_position.setX(x);
+    m_userSpacePosition.setX(x);
     return true;
 }
 
 bool PointLightSource::setY(float y)
 {
-    if (m_position.y() == y)
+    if (m_userSpacePosition.y() == y)
         return false;
-    m_position.setY(y);
+    m_userSpacePosition.setY(y);
     return true;
 }
 
 bool PointLightSource::setZ(float z)
 {
-    if (m_position.z() == z)
+    if (m_userSpacePosition.z() == z)
         return false;
-    m_position.setZ(z);
+    m_userSpacePosition.setZ(z);
     return true;
 }
 

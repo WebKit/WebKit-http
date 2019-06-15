@@ -36,6 +36,7 @@ namespace WebCore {
 class HTMLMediaElement;
 
 class HTMLTrackElement final : public HTMLElement, public TextTrackClient {
+    WTF_MAKE_ISO_ALLOCATED(HTMLTrackElement);
 public:
     static Ref<HTMLTrackElement> create(const QualifiedName&, Document&);
 
@@ -65,14 +66,14 @@ private:
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
 
     bool isURLAttribute(const Attribute&) const final;
 
     void loadTimerFired();
 
-    HTMLMediaElement* mediaElement() const;
+    RefPtr<HTMLMediaElement> mediaElement() const;
 
     // TextTrackClient
     void textTrackModeChanged(TextTrack&) final;

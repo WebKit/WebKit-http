@@ -38,8 +38,10 @@
 
 namespace JSC {
 
+static EncodedJSValue JSC_HOST_CALL constructTypedArrayView(ExecState*);
+
 JSTypedArrayViewConstructor::JSTypedArrayViewConstructor(VM& vm, Structure* structure)
-    : Base(vm, structure)
+    : Base(vm, structure, constructTypedArrayView, constructTypedArrayView)
 {
 }
 
@@ -48,18 +50,18 @@ const ClassInfo JSTypedArrayViewConstructor::s_info = { "Function", &Base::s_inf
 void JSTypedArrayViewConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject, JSTypedArrayViewPrototype* prototype, GetterSetter* speciesSymbol)
 {
     Base::finishCreation(vm, "TypedArray");
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | ReadOnly);
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->of, typedArrayConstructorOfCodeGenerator, DontEnum);
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->from, typedArrayConstructorFromCodeGenerator, DontEnum);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->of, typedArrayConstructorOfCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->from, typedArrayConstructorFromCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
 
 Structure* JSTypedArrayViewConstructor::createStructure(
     VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
-    return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
 }
 
 
@@ -68,19 +70,7 @@ static EncodedJSValue JSC_HOST_CALL constructTypedArrayView(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    return throwVMTypeError(exec, scope, ASCIILiteral("%TypedArray% should not be called directly"));
-}
-
-ConstructType JSTypedArrayViewConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructTypedArrayView;
-    return ConstructType::Host;
-}
-
-CallType JSTypedArrayViewConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = constructTypedArrayView;
-    return CallType::Host;
+    return throwVMTypeError(exec, scope, "%TypedArray% should not be called directly"_s);
 }
 
 } // namespace JSC

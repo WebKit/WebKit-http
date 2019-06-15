@@ -1,10 +1,11 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-array.prototype.findindex
 es6id: 22.1.3.9
 description: >
   Return index if predicate return a boolean true value.
-info: >
+info: |
   22.1.3.9 Array.prototype.findIndex ( predicate[ , thisArg ] )
 
   ...
@@ -37,17 +38,27 @@ result = arr.findIndex(function(val) {
 assert.sameValue(called, 3, 'predicate was called three times');
 assert.sameValue(result, 2);
 
-result = arr.findIndex(function(val) { return 'string'; });
+result = arr.findIndex(function(val) {
+  return 'string';
+});
 assert.sameValue(result, 0, 'coerced string');
 
-result = arr.findIndex(function(val) { return {}; });
+result = arr.findIndex(function(val) {
+  return {};
+});
 assert.sameValue(result, 0, 'coerced object');
 
-result = arr.findIndex(function(val) { return Symbol(''); });
+result = arr.findIndex(function(val) {
+  return Symbol('');
+});
 assert.sameValue(result, 0, 'coerced Symbol');
 
-result = arr.findIndex(function(val) { return 1; });
+result = arr.findIndex(function(val) {
+  return 1;
+});
 assert.sameValue(result, 0, 'coerced number');
 
-result = arr.findIndex(function(val) { return -1; });
+result = arr.findIndex(function(val) {
+  return -1;
+});
 assert.sameValue(result, 0, 'coerced negative number');

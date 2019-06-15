@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Caitlin Potter <caitp@igalia.com>.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,13 +30,19 @@
 
 namespace JSC {
 
-class JSAsyncFunction : public JSFunction {
+class JSAsyncFunction final : public JSFunction {
     friend class JIT;
     friend class VM;
 public:
     typedef JSFunction Base;
 
     const static unsigned StructureFlags = Base::StructureFlags;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.asyncFunctionSpace;
+    }
 
     DECLARE_EXPORT_INFO;
 

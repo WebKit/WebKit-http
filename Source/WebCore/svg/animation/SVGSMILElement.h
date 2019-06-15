@@ -41,14 +41,15 @@ using SMILEventSender = EventSender<SVGSMILElement>;
 
 // This class implements SMIL interval timing model as needed for SVG animation.
 class SVGSMILElement : public SVGElement {
+    WTF_MAKE_ISO_ALLOCATED(SVGSMILElement);
 public:
     SVGSMILElement(const QualifiedName&, Document&);
     virtual ~SVGSMILElement();
 
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void removedFromAncestor(RemovalType, ContainerNode&) override;
     
     virtual bool hasValidAttributeType() = 0;
     virtual bool hasValidAttributeName();
@@ -118,7 +119,7 @@ protected:
     virtual void setTargetElement(SVGElement*);
     virtual void setAttributeName(const QualifiedName&);
 
-    void finishedInsertingSubtree() override;
+    void didFinishInsertingNode() override;
 
 private:
     void buildPendingResource() override;
@@ -166,7 +167,7 @@ private:
     void disconnectConditions();
 
     // Event base timing
-    void handleConditionEvent(Event*, Condition*);
+    void handleConditionEvent(Condition*);
 
     // Syncbase timing
     enum NewOrExistingInterval { NewInterval, ExistingInterval };

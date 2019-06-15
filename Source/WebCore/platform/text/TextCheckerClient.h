@@ -35,7 +35,7 @@ class VisibleSelection;
 
 class TextCheckerClient {
 public:
-    virtual ~TextCheckerClient() { }
+    virtual ~TextCheckerClient() = default;
 
     virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const = 0;
     virtual void ignoreWordInSpellDocument(const String&) = 0;
@@ -45,7 +45,7 @@ public:
     virtual void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) = 0;
 
 #if USE(UNIFIED_TEXT_CHECKING)
-    virtual Vector<TextCheckingResult> checkTextOfParagraph(StringView, TextCheckingTypeMask checkingTypes, const VisibleSelection& currentSelection) = 0;
+    virtual Vector<TextCheckingResult> checkTextOfParagraph(StringView, OptionSet<TextCheckingType> checkingTypes, const VisibleSelection& currentSelection) = 0;
 #endif
 
     // For spellcheckers that support multiple languages, it's often important to be able to identify the language in order to

@@ -34,12 +34,11 @@
 #include "SharedBuffer.h"
 #include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
-CachedCSSStyleSheet::CachedCSSStyleSheet(CachedResourceRequest&& request, SessionID sessionID)
-    : CachedResource(WTFMove(request), CSSStyleSheet, sessionID)
+CachedCSSStyleSheet::CachedCSSStyleSheet(CachedResourceRequest&& request, PAL::SessionID sessionID)
+    : CachedResource(WTFMove(request), Type::CSSStyleSheet, sessionID)
     , m_decoder(TextResourceDecoder::create("text/css", request.charset()))
 {
 }
@@ -186,7 +185,7 @@ RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CS
     if (m_parsedStyleSheetCache->parserContext() != context)
         return nullptr;
 
-    didAccessDecodedData(monotonicallyIncreasingTime());
+    didAccessDecodedData(MonotonicTime::now());
 
     return m_parsedStyleSheetCache;
 }

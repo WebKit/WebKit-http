@@ -32,8 +32,6 @@
 #include "config.h"
 #include "NetworkDataTaskBlob.h"
 
-#if USE(NETWORK_SESSION)
-
 #include "DataReference.h"
 #include "Download.h"
 #include "Logging.h"
@@ -54,9 +52,8 @@
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static const unsigned bufferSize = 512 * 1024;
 
@@ -74,7 +71,7 @@ static const char* httpInternalErrorText = "Internal Server Error";
 static const char* const webKitBlobResourceDomain = "WebKitBlobResource";
 
 NetworkDataTaskBlob::NetworkDataTaskBlob(NetworkSession& session, NetworkDataTaskClient& client, const ResourceRequest& request, ContentSniffingPolicy shouldContentSniff, const Vector<RefPtr<WebCore::BlobDataFileReference>>& fileReferences)
-    : NetworkDataTask(session, client, request, DoNotAllowStoredCredentials, false)
+    : NetworkDataTask(session, client, request, StoredCredentialsPolicy::DoNotUse, false, false)
     , m_stream(std::make_unique<AsyncFileStream>(*this))
     , m_fileReferences(fileReferences)
 {
@@ -315,13 +312,16 @@ void NetworkDataTaskBlob::dispatchDidReceiveResponse(Error errorCode)
         }
 
         switch (policyAction) {
-        case PolicyAction::PolicyUse:
+        case PolicyAction::Use:
             m_buffer.resize(bufferSize);
             read();
             break;
-        case PolicyAction::PolicyIgnore:
+        case PolicyAction::Suspend:
+            LOG_ERROR("PolicyAction::Suspend encountered - Treating as PolicyAction::Ignore for now");
+            FALLTHROUGH;
+        case PolicyAction::Ignore:
             break;
-        case PolicyAction::PolicyDownload:
+        case PolicyAction::Download:
             download();
             break;
         }
@@ -412,7 +412,7 @@ void NetworkDataTaskBlob::consumeData(const char* data, int bytesRead)
     m_totalRemainingSize -= bytesRead;
 
     if (bytesRead) {
-        if (m_downloadFile != invalidPlatformFileHandle) {
+        if (m_downloadFile != FileSystem::invalidPlatformFileHandle) {
             if (!writeDownload(data, bytesRead))
                 return;
         } else {
@@ -439,17 +439,17 @@ void NetworkDataTaskBlob::consumeData(const char* data, int bytesRead)
     read();
 }
 
-void NetworkDataTaskBlob::setPendingDownloadLocation(const String& filename, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
+void NetworkDataTaskBlob::setPendingDownloadLocation(const String& filename, SandboxExtension::Handle&& sandboxExtensionHandle, bool allowOverwrite)
 {
-    NetworkDataTask::setPendingDownloadLocation(filename, sandboxExtensionHandle, allowOverwrite);
+    NetworkDataTask::setPendingDownloadLocation(filename, { }, allowOverwrite);
 
     ASSERT(!m_sandboxExtension);
-    m_sandboxExtension = SandboxExtension::create(sandboxExtensionHandle);
+    m_sandboxExtension = SandboxExtension::create(WTFMove(sandboxExtensionHandle));
     if (m_sandboxExtension)
         m_sandboxExtension->consume();
 
-    if (allowOverwrite && fileExists(m_pendingDownloadLocation))
-        deleteFile(m_pendingDownloadLocation);
+    if (allowOverwrite && FileSystem::fileExists(m_pendingDownloadLocation))
+        FileSystem::deleteFile(m_pendingDownloadLocation);
 }
 
 String NetworkDataTaskBlob::suggestedFilename() const
@@ -457,7 +457,7 @@ String NetworkDataTaskBlob::suggestedFilename() const
     if (!m_suggestedFilename.isEmpty())
         return m_suggestedFilename;
 
-    return ASCIILiteral("unknown");
+    return "unknown"_s;
 }
 
 void NetworkDataTaskBlob::download()
@@ -467,8 +467,8 @@ void NetworkDataTaskBlob::download()
 
     LOG(NetworkSession, "%p - NetworkDataTaskBlob::download to %s", this, m_pendingDownloadLocation.utf8().data());
 
-    m_downloadFile = openFile(m_pendingDownloadLocation, OpenForWrite);
-    if (m_downloadFile == invalidPlatformFileHandle) {
+    m_downloadFile = FileSystem::openFile(m_pendingDownloadLocation, FileSystem::FileOpenMode::Write);
+    if (m_downloadFile == FileSystem::invalidPlatformFileHandle) {
         didFailDownload(cancelledError(m_firstRequest));
         return;
     }
@@ -488,7 +488,7 @@ void NetworkDataTaskBlob::download()
 bool NetworkDataTaskBlob::writeDownload(const char* data, int bytesRead)
 {
     ASSERT(isDownload());
-    int bytesWritten = writeToFile(m_downloadFile, data, bytesRead);
+    int bytesWritten = FileSystem::writeToFile(m_downloadFile, data, bytesRead);
     if (bytesWritten == -1) {
         didFailDownload(cancelledError(m_firstRequest));
         return false;
@@ -503,11 +503,11 @@ bool NetworkDataTaskBlob::writeDownload(const char* data, int bytesRead)
 
 void NetworkDataTaskBlob::cleanDownloadFiles()
 {
-    if (m_downloadFile != invalidPlatformFileHandle) {
-        closeFile(m_downloadFile);
-        m_downloadFile = invalidPlatformFileHandle;
+    if (m_downloadFile != FileSystem::invalidPlatformFileHandle) {
+        FileSystem::closeFile(m_downloadFile);
+        m_downloadFile = FileSystem::invalidPlatformFileHandle;
     }
-    deleteFile(m_pendingDownloadLocation);
+    FileSystem::deleteFile(m_pendingDownloadLocation);
 }
 
 void NetworkDataTaskBlob::didFailDownload(const ResourceError& error)
@@ -536,8 +536,8 @@ void NetworkDataTaskBlob::didFinishDownload()
     LOG(NetworkSession, "%p - NetworkDataTaskBlob::didFinishDownload", this);
 
     ASSERT(isDownload());
-    closeFile(m_downloadFile);
-    m_downloadFile = invalidPlatformFileHandle;
+    FileSystem::closeFile(m_downloadFile);
+    m_downloadFile = FileSystem::invalidPlatformFileHandle;
 
     if (m_sandboxExtension) {
         m_sandboxExtension->revoke();
@@ -569,7 +569,7 @@ void NetworkDataTaskBlob::didFail(Error errorCode)
 
 void NetworkDataTaskBlob::didFinish()
 {
-    if (m_downloadFile != invalidPlatformFileHandle) {
+    if (m_downloadFile != FileSystem::invalidPlatformFileHandle) {
         didFinishDownload();
         return;
     }
@@ -584,5 +584,3 @@ void NetworkDataTaskBlob::didFinish()
 }
 
 } // namespace WebKit
-
-#endif // USE(NETWORK_SESSION)

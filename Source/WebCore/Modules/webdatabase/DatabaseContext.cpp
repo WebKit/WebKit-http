@@ -150,8 +150,7 @@ DatabaseThread* DatabaseContext::databaseThread()
         // Create the database thread on first request - but not if at least one database was already opened,
         // because in that case we already had a database thread and terminated it and should not create another.
         m_databaseThread = DatabaseThread::create();
-        if (!m_databaseThread->start())
-            m_databaseThread = nullptr;
+        m_databaseThread->start();
     }
 
     return m_databaseThread.get();
@@ -214,9 +213,9 @@ void DatabaseContext::databaseExceededQuota(const String& name, DatabaseDetails 
     ASSERT(m_scriptExecutionContext->isWorkerGlobalScope());
 }
 
-SecurityOriginData DatabaseContext::securityOrigin() const
+const SecurityOriginData& DatabaseContext::securityOrigin() const
 {
-    return SecurityOriginData::fromSecurityOrigin(*m_scriptExecutionContext->securityOrigin());
+    return m_scriptExecutionContext->securityOrigin()->data();
 }
 
 bool DatabaseContext::isContextThread() const

@@ -33,8 +33,6 @@
 #include "MediaPlaybackTargetMock.h"
 #include "WebMediaSessionManager.h"
 
-using namespace WebCore;
-
 namespace WebCore {
 
 static const Seconds timerInterval { 100_ms };
@@ -70,15 +68,16 @@ void MediaPlaybackTargetPickerMock::timerFired()
     currentDeviceDidChange();
 }
 
-void MediaPlaybackTargetPickerMock::showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute)
+void MediaPlaybackTargetPickerMock::showPlaybackTargetPicker(const FloatRect&, bool checkActiveRoute, bool useDarkAppearance)
 {
     if (!client() || m_showingMenu)
         return;
 
 #if LOG_DISABLED
     UNUSED_PARAM(checkActiveRoute);
+    UNUSED_PARAM(useDarkAppearance);
 #endif
-    LOG(Media, "MediaPlaybackTargetPickerMock::showPlaybackTargetPicker - checkActiveRoute = %i", (int)checkActiveRoute);
+    LOG(Media, "MediaPlaybackTargetPickerMock::showPlaybackTargetPicker - checkActiveRoute = %i, useDarkAppearance = %i", (int)checkActiveRoute, (int)useDarkAppearance);
 
     m_showingMenu = true;
     m_timer.startOneShot(timerInterval);

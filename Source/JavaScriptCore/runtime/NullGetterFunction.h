@@ -29,7 +29,7 @@
 
 namespace JSC {
 
-class NullGetterFunction : public InternalFunction {
+class NullGetterFunction final : public InternalFunction {
 public:
     typedef InternalFunction Base;
 
@@ -44,16 +44,11 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
 private:
-    NullGetterFunction(VM& vm, Structure* structure)
-        : Base(vm, structure)
-    {
-    }
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
+    NullGetterFunction(VM&, Structure*);
 };
 
 } // namespace JSC

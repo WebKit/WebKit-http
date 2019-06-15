@@ -38,17 +38,16 @@
 #import <WebCore/PlatformMouseEvent.h>
 #import <objc/runtime.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 #pragma mark Commands for Platform: 'macOS'
 
-void WebAutomationSession::inspectBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const bool* optionalEnableAutoCapturing, Ref<InspectBrowsingContextCallback>&& callback)
+void WebAutomationSession::inspectBrowsingContext(const String& handle, const bool* optionalEnableAutoCapturing, Ref<InspectBrowsingContextCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(handle);
     if (!page)
-        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
+        ASYNC_FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
     if (auto callback = m_pendingInspectorCallbacksPerPage.take(page->pageID()))
         callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
@@ -118,11 +117,11 @@ bool WebAutomationSession::wasEventSynthesizedForAutomation(NSEvent *event)
 
 #pragma mark Platform-dependent Implementations
 
-void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, const WebCore::IntPoint& viewPosition, Inspector::Protocol::Automation::MouseInteraction interaction, Inspector::Protocol::Automation::MouseButton button, WebEvent::Modifiers keyModifiers)
+void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, MouseInteraction interaction, WebMouseEvent::Button button, const WebCore::IntPoint& locationInView, WebEvent::Modifiers keyModifiers)
 {
     IntRect windowRect;
-    page.rootViewToWindow(IntRect(viewPosition, IntSize()), windowRect);
-    IntPoint windowPosition = windowRect.location();
+    page.rootViewToWindow(IntRect(locationInView, IntSize()), windowRect);
+    IntPoint locationInWindow = windowRect.location();
 
     NSEventModifierFlags modifiers = 0;
     if (keyModifiers & WebEvent::MetaKey)
@@ -144,20 +143,20 @@ void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, 
     NSEventType dragEventType = (NSEventType)0;
     NSEventType upEventType = (NSEventType)0;
     switch (button) {
-    case Inspector::Protocol::Automation::MouseButton::None:
+    case WebMouseEvent::NoButton:
         downEventType = upEventType = dragEventType = NSEventTypeMouseMoved;
         break;
-    case Inspector::Protocol::Automation::MouseButton::Left:
+    case WebMouseEvent::LeftButton:
         downEventType = NSEventTypeLeftMouseDown;
         dragEventType = NSEventTypeLeftMouseDragged;
         upEventType = NSEventTypeLeftMouseUp;
         break;
-    case Inspector::Protocol::Automation::MouseButton::Middle:
+    case WebMouseEvent::MiddleButton:
         downEventType = NSEventTypeOtherMouseDown;
         dragEventType = NSEventTypeLeftMouseDragged;
         upEventType = NSEventTypeOtherMouseUp;
         break;
-    case Inspector::Protocol::Automation::MouseButton::Right:
+    case WebMouseEvent::RightButton:
         downEventType = NSEventTypeRightMouseDown;
         upEventType = NSEventTypeRightMouseUp;
         break;
@@ -168,56 +167,56 @@ void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy& page, 
     NSInteger eventNumber = synthesizedMouseEventMagicEventNumber;
 
     switch (interaction) {
-    case Inspector::Protocol::Automation::MouseInteraction::Move:
+    case MouseInteraction::Move:
         ASSERT(dragEventType);
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:dragEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:0 pressure:0.0f]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:dragEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:0 pressure:0.0f]];
         break;
-    case Inspector::Protocol::Automation::MouseInteraction::Down:
+    case MouseInteraction::Down:
         ASSERT(downEventType);
 
         // Hard-code the click count to one, since clients don't expect successive simulated
         // down/up events to be potentially counted as a double click event.
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:WebCore::ForceAtClick]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:WebCore::ForceAtClick]];
         break;
-    case Inspector::Protocol::Automation::MouseInteraction::Up:
+    case MouseInteraction::Up:
         ASSERT(upEventType);
 
         // Hard-code the click count to one, since clients don't expect successive simulated
         // down/up events to be potentially counted as a double click event.
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:0.0f]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:0.0f]];
         break;
-    case Inspector::Protocol::Automation::MouseInteraction::SingleClick:
+    case MouseInteraction::SingleClick:
         ASSERT(upEventType);
         ASSERT(downEventType);
 
         // Send separate down and up events. WebCore will see this as a single-click event.
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:WebCore::ForceAtClick]];
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:0.0f]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:WebCore::ForceAtClick]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:0.0f]];
         break;
-    case Inspector::Protocol::Automation::MouseInteraction::DoubleClick:
+    case MouseInteraction::DoubleClick:
         ASSERT(upEventType);
         ASSERT(downEventType);
 
         // Send multiple down and up events with proper click count.
         // WebCore will see this as a single-click event then double-click event.
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:WebCore::ForceAtClick]];
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:0.0f]];
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:2 pressure:WebCore::ForceAtClick]];
-        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:windowPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:2 pressure:0.0f]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:WebCore::ForceAtClick]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:1 pressure:0.0f]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:downEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:2 pressure:WebCore::ForceAtClick]];
+        [eventsToBeSent addObject:[NSEvent mouseEventWithType:upEventType location:locationInWindow modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil eventNumber:eventNumber clickCount:2 pressure:0.0f]];
     }
 
     sendSynthesizedEventsToPage(page, eventsToBeSent.get());
 }
 
-static bool keyHasStickyModifier(Inspector::Protocol::Automation::VirtualKey key)
+static bool virtualKeyHasStickyModifier(VirtualKey key)
 {
     // Returns whether the key's modifier flags should affect other events while pressed down.
     switch (key) {
-    case Inspector::Protocol::Automation::VirtualKey::Shift:
-    case Inspector::Protocol::Automation::VirtualKey::Control:
-    case Inspector::Protocol::Automation::VirtualKey::Alternate:
-    case Inspector::Protocol::Automation::VirtualKey::Meta:
-    case Inspector::Protocol::Automation::VirtualKey::Command:
+    case VirtualKey::Shift:
+    case VirtualKey::Control:
+    case VirtualKey::Alternate:
+    case VirtualKey::Meta:
+    case VirtualKey::Command:
         return true;
 
     default:
@@ -225,201 +224,338 @@ static bool keyHasStickyModifier(Inspector::Protocol::Automation::VirtualKey key
     }
 }
 
-static int keyCodeForVirtualKey(Inspector::Protocol::Automation::VirtualKey key)
+static int keyCodeForCharKey(CharKey key)
+{
+    switch (key) {
+    case 'q':
+    case 'Q':
+        return kVK_ANSI_Q;
+    case 'w':
+    case 'W':
+        return kVK_ANSI_W;
+    case 'e':
+    case 'E':
+        return kVK_ANSI_E;
+    case 'r':
+    case 'R':
+        return kVK_ANSI_R;
+    case 't':
+    case 'T':
+        return kVK_ANSI_T;
+    case 'y':
+    case 'Y':
+        return kVK_ANSI_Y;
+    case 'u':
+    case 'U':
+        return kVK_ANSI_U;
+    case 'i':
+    case 'I':
+        return kVK_ANSI_I;
+    case 'o':
+    case 'O':
+        return kVK_ANSI_O;
+    case 'p':
+    case 'P':
+        return kVK_ANSI_P;
+    case 'a':
+    case 'A':
+        return kVK_ANSI_A;
+    case 's':
+    case 'S':
+        return kVK_ANSI_S;
+    case 'd':
+    case 'D':
+        return kVK_ANSI_D;
+    case 'f':
+    case 'F':
+        return kVK_ANSI_F;
+    case 'g':
+    case 'G':
+        return kVK_ANSI_G;
+    case 'h':
+    case 'H':
+        return kVK_ANSI_H;
+    case 'j':
+    case 'J':
+        return kVK_ANSI_J;
+    case 'k':
+    case 'K':
+        return kVK_ANSI_K;
+    case 'l':
+    case 'L':
+        return kVK_ANSI_L;
+    case 'z':
+    case 'Z':
+        return kVK_ANSI_Z;
+    case 'x':
+    case 'X':
+        return kVK_ANSI_X;
+    case 'c':
+    case 'C':
+        return kVK_ANSI_C;
+    case 'v':
+    case 'V':
+        return kVK_ANSI_V;
+    case 'b':
+    case 'B':
+        return kVK_ANSI_B;
+    case 'n':
+    case 'N':
+        return kVK_ANSI_N;
+    case 'm':
+    case 'M':
+        return kVK_ANSI_M;
+    case '1':
+        return kVK_ANSI_1;
+    case '2':
+        return kVK_ANSI_2;
+    case '3':
+        return kVK_ANSI_3;
+    case '4':
+        return kVK_ANSI_4;
+    case '5':
+        return kVK_ANSI_5;
+    case '6':
+        return kVK_ANSI_6;
+    case '7':
+        return kVK_ANSI_7;
+    case '8':
+        return kVK_ANSI_8;
+    case '9':
+        return kVK_ANSI_9;
+    case '0':
+        return kVK_ANSI_0;
+    case '=':
+    case '+':
+        return kVK_ANSI_Equal;
+    case '-':
+    case '_':
+        return kVK_ANSI_Minus;
+    case '[':
+    case '{':
+        return kVK_ANSI_LeftBracket;
+    case ']':
+    case '}':
+        return kVK_ANSI_RightBracket;
+    case '\'':
+    case '"':
+        return kVK_ANSI_Quote;
+    case ';':
+    case ':':
+        return kVK_ANSI_Semicolon;
+    case '\\':
+    case '|':
+        return kVK_ANSI_Backslash;
+    case ',':
+    case '<':
+        return kVK_ANSI_Comma;
+    case '.':
+    case '>':
+        return kVK_ANSI_Period;
+    case '/':
+    case '?':
+        return kVK_ANSI_Slash;
+    case '`':
+    case '~':
+        return kVK_ANSI_Grave;
+    }
+
+    return 0;
+}
+
+static int keyCodeForVirtualKey(VirtualKey key)
 {
     // The likely keyCode for the virtual key as defined in <HIToolbox/Events.h>.
     switch (key) {
-    case Inspector::Protocol::Automation::VirtualKey::Shift:
+    case VirtualKey::Shift:
         return kVK_Shift;
-    case Inspector::Protocol::Automation::VirtualKey::Control:
+    case VirtualKey::Control:
         return kVK_Control;
-    case Inspector::Protocol::Automation::VirtualKey::Alternate:
+    case VirtualKey::Alternate:
         return kVK_Option;
-    case Inspector::Protocol::Automation::VirtualKey::Meta:
+    case VirtualKey::Meta:
         // The 'meta' key does not exist on Apple keyboards and is usually
         // mapped to the Command key when using third-party keyboards.
-    case Inspector::Protocol::Automation::VirtualKey::Command:
+    case VirtualKey::Command:
         return kVK_Command;
-    case Inspector::Protocol::Automation::VirtualKey::Help:
+    case VirtualKey::Help:
         return kVK_Help;
-    case Inspector::Protocol::Automation::VirtualKey::Backspace:
+    case VirtualKey::Backspace:
         return kVK_Delete;
-    case Inspector::Protocol::Automation::VirtualKey::Tab:
+    case VirtualKey::Tab:
         return kVK_Tab;
-    case Inspector::Protocol::Automation::VirtualKey::Clear:
+    case VirtualKey::Clear:
         return kVK_ANSI_KeypadClear;
-    case Inspector::Protocol::Automation::VirtualKey::Enter:
+    case VirtualKey::Enter:
         return kVK_ANSI_KeypadEnter;
-    case Inspector::Protocol::Automation::VirtualKey::Pause:
+    case VirtualKey::Pause:
         // The 'pause' key does not exist on Apple keyboards and has no keyCode.
         // The semantics are unclear so just abort and do nothing.
         return 0;
-    case Inspector::Protocol::Automation::VirtualKey::Cancel:
+    case VirtualKey::Cancel:
         // The 'cancel' key does not exist on Apple keyboards and has no keyCode.
         // According to the internet its functionality is similar to 'Escape'.
-    case Inspector::Protocol::Automation::VirtualKey::Escape:
+    case VirtualKey::Escape:
         return kVK_Escape;
-    case Inspector::Protocol::Automation::VirtualKey::PageUp:
+    case VirtualKey::PageUp:
         return kVK_PageUp;
-    case Inspector::Protocol::Automation::VirtualKey::PageDown:
+    case VirtualKey::PageDown:
         return kVK_PageDown;
-    case Inspector::Protocol::Automation::VirtualKey::End:
+    case VirtualKey::End:
         return kVK_End;
-    case Inspector::Protocol::Automation::VirtualKey::Home:
+    case VirtualKey::Home:
         return kVK_Home;
-    case Inspector::Protocol::Automation::VirtualKey::LeftArrow:
+    case VirtualKey::LeftArrow:
         return kVK_LeftArrow;
-    case Inspector::Protocol::Automation::VirtualKey::UpArrow:
+    case VirtualKey::UpArrow:
         return kVK_UpArrow;
-    case Inspector::Protocol::Automation::VirtualKey::RightArrow:
+    case VirtualKey::RightArrow:
         return kVK_RightArrow;
-    case Inspector::Protocol::Automation::VirtualKey::DownArrow:
+    case VirtualKey::DownArrow:
         return kVK_DownArrow;
-    case Inspector::Protocol::Automation::VirtualKey::Insert:
+    case VirtualKey::Insert:
         // The 'insert' key does not exist on Apple keyboards and has no keyCode.
         // The semantics are unclear so just abort and do nothing.
         return 0;
-    case Inspector::Protocol::Automation::VirtualKey::Delete:
+    case VirtualKey::Delete:
         return kVK_ForwardDelete;
-    case Inspector::Protocol::Automation::VirtualKey::Space:
+    case VirtualKey::Space:
         return kVK_Space;
-    case Inspector::Protocol::Automation::VirtualKey::Semicolon:
+    case VirtualKey::Semicolon:
         return kVK_ANSI_Semicolon;
-    case Inspector::Protocol::Automation::VirtualKey::Equals:
+    case VirtualKey::Equals:
         return kVK_ANSI_Equal;
-    case Inspector::Protocol::Automation::VirtualKey::Return:
+    case VirtualKey::Return:
         return kVK_Return;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad0:
+    case VirtualKey::NumberPad0:
         return kVK_ANSI_Keypad0;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad1:
+    case VirtualKey::NumberPad1:
         return kVK_ANSI_Keypad1;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad2:
+    case VirtualKey::NumberPad2:
         return kVK_ANSI_Keypad2;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad3:
+    case VirtualKey::NumberPad3:
         return kVK_ANSI_Keypad3;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad4:
+    case VirtualKey::NumberPad4:
         return kVK_ANSI_Keypad4;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad5:
+    case VirtualKey::NumberPad5:
         return kVK_ANSI_Keypad5;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad6:
+    case VirtualKey::NumberPad6:
         return kVK_ANSI_Keypad6;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad7:
+    case VirtualKey::NumberPad7:
         return kVK_ANSI_Keypad7;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad8:
+    case VirtualKey::NumberPad8:
         return kVK_ANSI_Keypad8;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad9:
+    case VirtualKey::NumberPad9:
         return kVK_ANSI_Keypad9;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadMultiply:
+    case VirtualKey::NumberPadMultiply:
         return kVK_ANSI_KeypadMultiply;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadAdd:
+    case VirtualKey::NumberPadAdd:
         return kVK_ANSI_KeypadPlus;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadSubtract:
+    case VirtualKey::NumberPadSubtract:
         return kVK_ANSI_KeypadMinus;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadSeparator:
+    case VirtualKey::NumberPadSeparator:
         // The 'Separator' key is only present on a few international keyboards.
         // It is usually mapped to the same character as Decimal ('.' or ',').
         FALLTHROUGH;
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadDecimal:
+    case VirtualKey::NumberPadDecimal:
         return kVK_ANSI_KeypadDecimal;
         // FIXME: this might be locale-dependent. See the above comment.
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadDivide:
+    case VirtualKey::NumberPadDivide:
         return kVK_ANSI_KeypadDivide;
-    case Inspector::Protocol::Automation::VirtualKey::Function1:
+    case VirtualKey::Function1:
         return kVK_F1;
-    case Inspector::Protocol::Automation::VirtualKey::Function2:
+    case VirtualKey::Function2:
         return kVK_F2;
-    case Inspector::Protocol::Automation::VirtualKey::Function3:
+    case VirtualKey::Function3:
         return kVK_F3;
-    case Inspector::Protocol::Automation::VirtualKey::Function4:
+    case VirtualKey::Function4:
         return kVK_F4;
-    case Inspector::Protocol::Automation::VirtualKey::Function5:
+    case VirtualKey::Function5:
         return kVK_F5;
-    case Inspector::Protocol::Automation::VirtualKey::Function6:
+    case VirtualKey::Function6:
         return kVK_F6;
-    case Inspector::Protocol::Automation::VirtualKey::Function7:
+    case VirtualKey::Function7:
         return kVK_F7;
-    case Inspector::Protocol::Automation::VirtualKey::Function8:
+    case VirtualKey::Function8:
         return kVK_F8;
-    case Inspector::Protocol::Automation::VirtualKey::Function9:
+    case VirtualKey::Function9:
         return kVK_F9;
-    case Inspector::Protocol::Automation::VirtualKey::Function10:
+    case VirtualKey::Function10:
         return kVK_F10;
-    case Inspector::Protocol::Automation::VirtualKey::Function11:
+    case VirtualKey::Function11:
         return kVK_F11;
-    case Inspector::Protocol::Automation::VirtualKey::Function12:
+    case VirtualKey::Function12:
         return kVK_F12;
     }
 }
 
-static NSEventModifierFlags eventModifierFlagsForVirtualKey(Inspector::Protocol::Automation::VirtualKey key)
+static NSEventModifierFlags eventModifierFlagsForVirtualKey(VirtualKey key)
 {
     // Computes the modifiers changed by the virtual key when it is pressed or released.
     // The mapping from keys to modifiers is specified in the documentation for NSEvent.
     switch (key) {
-    case Inspector::Protocol::Automation::VirtualKey::Shift:
+    case VirtualKey::Shift:
         return NSEventModifierFlagShift;
 
-    case Inspector::Protocol::Automation::VirtualKey::Control:
+    case VirtualKey::Control:
         return NSEventModifierFlagControl;
 
-    case Inspector::Protocol::Automation::VirtualKey::Alternate:
+    case VirtualKey::Alternate:
         return NSEventModifierFlagOption;
 
-    case Inspector::Protocol::Automation::VirtualKey::Meta:
+    case VirtualKey::Meta:
         // The 'meta' key does not exist on Apple keyboards and is usually
         // mapped to the Command key when using third-party keyboards.
-    case Inspector::Protocol::Automation::VirtualKey::Command:
+    case VirtualKey::Command:
         return NSEventModifierFlagCommand;
 
-    case Inspector::Protocol::Automation::VirtualKey::Help:
-        return NSEventModifierFlagHelp | NSEventModifierFlagFunction;
-
-    case Inspector::Protocol::Automation::VirtualKey::PageUp:
-    case Inspector::Protocol::Automation::VirtualKey::PageDown:
-    case Inspector::Protocol::Automation::VirtualKey::End:
-    case Inspector::Protocol::Automation::VirtualKey::Home:
+    case VirtualKey::Help:
+    case VirtualKey::PageUp:
+    case VirtualKey::PageDown:
+    case VirtualKey::End:
+    case VirtualKey::Home:
         return NSEventModifierFlagFunction;
 
-    case Inspector::Protocol::Automation::VirtualKey::LeftArrow:
-    case Inspector::Protocol::Automation::VirtualKey::UpArrow:
-    case Inspector::Protocol::Automation::VirtualKey::RightArrow:
-    case Inspector::Protocol::Automation::VirtualKey::DownArrow:
+    case VirtualKey::LeftArrow:
+    case VirtualKey::UpArrow:
+    case VirtualKey::RightArrow:
+    case VirtualKey::DownArrow:
         return NSEventModifierFlagNumericPad | NSEventModifierFlagFunction;
 
-    case Inspector::Protocol::Automation::VirtualKey::Delete:
+    case VirtualKey::Delete:
         return NSEventModifierFlagFunction;
 
-    case Inspector::Protocol::Automation::VirtualKey::Clear:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad0:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad1:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad2:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad3:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad4:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad5:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad6:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad7:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad8:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPad9:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadMultiply:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadAdd:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadSubtract:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadSeparator:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadDecimal:
-    case Inspector::Protocol::Automation::VirtualKey::NumberPadDivide:
+    case VirtualKey::Clear:
+    case VirtualKey::NumberPad0:
+    case VirtualKey::NumberPad1:
+    case VirtualKey::NumberPad2:
+    case VirtualKey::NumberPad3:
+    case VirtualKey::NumberPad4:
+    case VirtualKey::NumberPad5:
+    case VirtualKey::NumberPad6:
+    case VirtualKey::NumberPad7:
+    case VirtualKey::NumberPad8:
+    case VirtualKey::NumberPad9:
+    case VirtualKey::NumberPadMultiply:
+    case VirtualKey::NumberPadAdd:
+    case VirtualKey::NumberPadSubtract:
+    case VirtualKey::NumberPadSeparator:
+    case VirtualKey::NumberPadDecimal:
+    case VirtualKey::NumberPadDivide:
         return NSEventModifierFlagNumericPad;
 
-    case Inspector::Protocol::Automation::VirtualKey::Function1:
-    case Inspector::Protocol::Automation::VirtualKey::Function2:
-    case Inspector::Protocol::Automation::VirtualKey::Function3:
-    case Inspector::Protocol::Automation::VirtualKey::Function4:
-    case Inspector::Protocol::Automation::VirtualKey::Function5:
-    case Inspector::Protocol::Automation::VirtualKey::Function6:
-    case Inspector::Protocol::Automation::VirtualKey::Function7:
-    case Inspector::Protocol::Automation::VirtualKey::Function8:
-    case Inspector::Protocol::Automation::VirtualKey::Function9:
-    case Inspector::Protocol::Automation::VirtualKey::Function10:
-    case Inspector::Protocol::Automation::VirtualKey::Function11:
-    case Inspector::Protocol::Automation::VirtualKey::Function12:
+    case VirtualKey::Function1:
+    case VirtualKey::Function2:
+    case VirtualKey::Function3:
+    case VirtualKey::Function4:
+    case VirtualKey::Function5:
+    case VirtualKey::Function6:
+    case VirtualKey::Function7:
+    case VirtualKey::Function8:
+    case VirtualKey::Function9:
+    case VirtualKey::Function10:
+    case VirtualKey::Function11:
+    case VirtualKey::Function12:
         return NSEventModifierFlagFunction;
 
     default:
@@ -427,26 +563,38 @@ static NSEventModifierFlags eventModifierFlagsForVirtualKey(Inspector::Protocol:
     }
 }
 
-void WebAutomationSession::platformSimulateKeyStroke(WebPageProxy& page, Inspector::Protocol::Automation::KeyboardInteractionType interaction, Inspector::Protocol::Automation::VirtualKey key)
+void WebAutomationSession::platformSimulateKeyboardInteraction(WebPageProxy& page, KeyboardInteraction interaction, WTF::Variant<VirtualKey, CharKey>&& key)
 {
     // FIXME: this function and the Automation protocol enum should probably adopt key names
     // from W3C UIEvents standard. For more details: https://w3c.github.io/uievents-code/
 
-    bool isStickyModifier = keyHasStickyModifier(key);
-    NSEventModifierFlags changedModifiers = eventModifierFlagsForVirtualKey(key);
-    int keyCode = keyCodeForVirtualKey(key);
+    bool isStickyModifier = false;
+    NSEventModifierFlags changedModifiers = 0;
+    int keyCode = 0;
+    std::optional<unichar> charCode;
+    std::optional<unichar> charCodeIgnoringModifiers;
+
+    WTF::switchOn(key,
+        [&] (VirtualKey virtualKey) {
+            isStickyModifier = virtualKeyHasStickyModifier(virtualKey);
+            changedModifiers = eventModifierFlagsForVirtualKey(virtualKey);
+            keyCode = keyCodeForVirtualKey(virtualKey);
+            charCode = charCodeForVirtualKey(virtualKey);
+            charCodeIgnoringModifiers = charCodeIgnoringModifiersForVirtualKey(virtualKey);
+        },
+        [&] (CharKey charKey) {
+            keyCode = keyCodeForCharKey(charKey);
+            charCode = (unichar)charKey;
+            charCodeIgnoringModifiers = (unichar)charKey;
+        }
+    );
 
     // FIXME: consider using AppKit SPI to normalize 'characters', i.e., changing * to Shift-8,
     // and passing that in to charactersIgnoringModifiers. We could hardcode this for ASCII if needed.
-    std::optional<unichar> charCode = charCodeForVirtualKey(key);
-    std::optional<unichar> charCodeIgnoringModifiers = charCodeIgnoringModifiersForVirtualKey(key);
     NSString *characters = charCode ? [NSString stringWithCharacters:&charCode.value() length:1] : nil;
     NSString *unmodifiedCharacters = charCodeIgnoringModifiers ? [NSString stringWithCharacters:&charCodeIgnoringModifiers.value() length:1] : nil;
 
     auto eventsToBeSent = adoptNS([[NSMutableArray alloc] init]);
-
-    NSEventModifierFlags existingModifiers = [NSEvent modifierFlags];
-    NSEventModifierFlags updatedModifiers = 0;
 
     // FIXME: this timestamp is not even close to matching native events. Find out how to get closer.
     NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
@@ -455,27 +603,27 @@ void WebAutomationSession::platformSimulateKeyStroke(WebPageProxy& page, Inspect
     NSPoint eventPosition = NSMakePoint(0, window.frame.size.height);
 
     switch (interaction) {
-    case Inspector::Protocol::Automation::KeyboardInteractionType::KeyPress: {
+    case KeyboardInteraction::KeyPress: {
         NSEventType eventType = isStickyModifier ? NSEventTypeFlagsChanged : NSEventTypeKeyDown;
-        updatedModifiers = existingModifiers | changedModifiers;
-        [eventsToBeSent addObject:[NSEvent keyEventWithType:eventType location:eventPosition modifierFlags:updatedModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
+        m_currentModifiers |= changedModifiers;
+        [eventsToBeSent addObject:[NSEvent keyEventWithType:eventType location:eventPosition modifierFlags:m_currentModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
         break;
     }
-    case Inspector::Protocol::Automation::KeyboardInteractionType::KeyRelease: {
+    case KeyboardInteraction::KeyRelease: {
         NSEventType eventType = isStickyModifier ? NSEventTypeFlagsChanged : NSEventTypeKeyUp;
-        updatedModifiers = existingModifiers & ~changedModifiers;
-        [eventsToBeSent addObject:[NSEvent keyEventWithType:eventType location:eventPosition modifierFlags:updatedModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
+        m_currentModifiers &= ~changedModifiers;
+        [eventsToBeSent addObject:[NSEvent keyEventWithType:eventType location:eventPosition modifierFlags:m_currentModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
         break;
     }
-    case Inspector::Protocol::Automation::KeyboardInteractionType::InsertByKey: {
+    case KeyboardInteraction::InsertByKey: {
         // Sticky modifiers should either be 'KeyPress' or 'KeyRelease'.
         ASSERT(!isStickyModifier);
         if (isStickyModifier)
             return;
 
-        updatedModifiers = existingModifiers | changedModifiers;
-        [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeKeyDown location:eventPosition modifierFlags:updatedModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
-        [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeKeyUp location:eventPosition modifierFlags:updatedModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
+        m_currentModifiers |= changedModifiers;
+        [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeKeyDown location:eventPosition modifierFlags:m_currentModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
+        [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeKeyUp location:eventPosition modifierFlags:m_currentModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:characters charactersIgnoringModifiers:unmodifiedCharacters isARepeat:NO keyCode:keyCode]];
         break;
     }
     }
@@ -535,7 +683,6 @@ void WebAutomationSession::platformSimulateKeySequence(WebPageProxy& page, const
     // This API should move more towards that direction in the future.
     NSString *text = keySequence;
 
-    NSEventModifierFlags modifiers = [NSEvent modifierFlags];
     NSTimeInterval timestamp = [NSDate timeIntervalSinceReferenceDate];
     NSWindow *window = page.platformWindow();
     NSInteger windowNumber = window.windowNumber;
@@ -546,18 +693,18 @@ void WebAutomationSession::platformSimulateKeySequence(WebPageProxy& page, const
         // For ASCII characters that are produced using Shift on a US-108 key keyboard layout,
         // WebDriver expects these to be delivered as [shift-down, key-down, key-up, shift-up]
         // keystrokes unless the shift key is already pressed down from an earlier interaction.
-        BOOL shiftAlreadyPressed = modifiers & NSEventModifierFlagShift;
+        BOOL shiftAlreadyPressed = m_currentModifiers & NSEventModifierFlagShift;
         BOOL shouldPressShift = !shiftAlreadyPressed && substringRange.length == 1 && characterIsProducedUsingShift(substring);
-        NSEventModifierFlags modifiersForKeystroke = shouldPressShift ? modifiers | NSEventModifierFlagShift : modifiers;
+        NSEventModifierFlags modifiersForKeystroke = shouldPressShift ? m_currentModifiers | NSEventModifierFlagShift : m_currentModifiers;
 
         if (shouldPressShift)
             [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeFlagsChanged location:eventPosition modifierFlags:modifiersForKeystroke timestamp:timestamp windowNumber:windowNumber context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:kVK_Shift]];
 
         [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeKeyDown location:eventPosition modifierFlags:modifiersForKeystroke timestamp:timestamp windowNumber:windowNumber context:nil characters:substring charactersIgnoringModifiers:substring isARepeat:NO keyCode:0]];
         [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeKeyUp location:eventPosition modifierFlags:modifiersForKeystroke timestamp:timestamp windowNumber:windowNumber context:nil characters:substring charactersIgnoringModifiers:substring isARepeat:NO keyCode:0]];
-        
+
         if (shouldPressShift)
-            [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeFlagsChanged location:eventPosition modifierFlags:modifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:kVK_Shift]];
+            [eventsToBeSent addObject:[NSEvent keyEventWithType:NSEventTypeFlagsChanged location:eventPosition modifierFlags:m_currentModifiers timestamp:timestamp windowNumber:windowNumber context:nil characters:@"" charactersIgnoringModifiers:@"" isARepeat:NO keyCode:kVK_Shift]];
     }];
 
     sendSynthesizedEventsToPage(page, eventsToBeSent.get());

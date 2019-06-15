@@ -34,7 +34,9 @@
 #include "HostWindow.h"
 #include "NotImplemented.h"
 #if USE(CAIRO)
+#include "CairoOperations.h"
 #include "PlatformContextCairo.h"
+#include <cairo.h>
 #endif
 #include <wtf/SoftLinking.h>
 
@@ -102,7 +104,6 @@ MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer
     , m_volume(1.0)
     , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
-    , m_weakPtrFactory(this)
 {
     createSession();
     createVideoWindow();
@@ -503,7 +504,7 @@ bool MediaPlayerPrivateMediaFoundation::endCreatedMediaSource(IMFAsyncResult* as
     hr = asyncResult->GetStatus();
     m_loadingProgress = SUCCEEDED(hr);
 
-    callOnMainThread([weakPtr = m_weakPtrFactory.createWeakPtr()] {
+    callOnMainThread([weakPtr = makeWeakPtr(*this)] {
         if (!weakPtr)
             return;
         weakPtr->onCreatedMediaSource();
@@ -532,7 +533,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
 
     switch (mediaEventType) {
     case MESessionTopologySet: {
-        callOnMainThread([weakPtr = m_weakPtrFactory.createWeakPtr()] {
+        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
             if (!weakPtr)
                 return;
             weakPtr->onTopologySet();
@@ -540,8 +541,17 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
         break;
     }
 
+    case MESessionStarted: {
+        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
+            if (!weakPtr)
+                return;
+            weakPtr->onSessionStarted();
+        });
+        break;
+    }
+
     case MEBufferingStarted: {
-        callOnMainThread([weakPtr = m_weakPtrFactory.createWeakPtr()] {
+        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
             if (!weakPtr)
                 return;
             weakPtr->onBufferingStarted();
@@ -550,7 +560,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
     }
 
     case MEBufferingStopped: {
-        callOnMainThread([weakPtr = m_weakPtrFactory.createWeakPtr()] {
+        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
             if (!weakPtr)
                 return;
             weakPtr->onBufferingStopped();
@@ -559,7 +569,7 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
     }
 
     case MESessionEnded: {
-        callOnMainThread([weakPtr = m_weakPtrFactory.createWeakPtr()] {
+        callOnMainThread([weakPtr = makeWeakPtr(*this)] {
             if (!weakPtr)
                 return;
             weakPtr->onSessionEnded();
@@ -931,6 +941,11 @@ void MediaPlayerPrivateMediaFoundation::onBufferingStarted()
 }
 
 void MediaPlayerPrivateMediaFoundation::onBufferingStopped()
+{
+    updateReadyState();
+}
+
+void MediaPlayerPrivateMediaFoundation::onSessionStarted()
 {
     updateReadyState();
 }
@@ -1722,7 +1737,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::processInputNot
     
     // Invalidate the video area
     if (m_mediaPlayer) {
-        callOnMainThread([weakPtr = m_mediaPlayer->m_weakPtrFactory.createWeakPtr()] {
+        callOnMainThread([weakPtr = makeWeakPtr(*m_mediaPlayer)] {
             if (weakPtr)
                 weakPtr->invalidateFrameView();
         });
@@ -2702,9 +2717,7 @@ MediaPlayerPrivateMediaFoundation::Direct3DPresenter::Direct3DPresenter()
     createD3DDevice();
 }
 
-MediaPlayerPrivateMediaFoundation::Direct3DPresenter::~Direct3DPresenter()
-{
-}
+MediaPlayerPrivateMediaFoundation::Direct3DPresenter::~Direct3DPresenter() = default;
 
 HRESULT MediaPlayerPrivateMediaFoundation::Direct3DPresenter::getService(REFGUID guidService, REFIID riid, void** ppv)
 {
@@ -2974,8 +2987,9 @@ void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(Web
 
         FloatRect srcRect(0, 0, width, height);
         if (image) {
-            WebCore::PlatformContextCairo* ctxt = context.platformContext();
-            ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
+            ASSERT(context.hasPlatformContext());
+            auto& state = context.state();
+            Cairo::drawSurface(*context.platformContext(), image, destRect, srcRect, state.imageInterpolationQuality, state.alpha, Cairo::ShadowState(state));
             cairo_surface_destroy(image);
         }
 #elif PLATFORM(QT)

@@ -28,11 +28,10 @@
 
 #include "WebPage.h"
 #include <WebCore/PlatformDisplayWPE.h>
-#include <wpe/renderer-backend-egl.h>
-
-using namespace WebCore;
+#include <wpe/wpe-egl.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 std::unique_ptr<AcceleratedSurfaceWPE> AcceleratedSurfaceWPE::create(WebPage& webPage, Client& client)
 {
@@ -60,6 +59,11 @@ void AcceleratedSurfaceWPE::initialize()
             auto& surface = *reinterpret_cast<AcceleratedSurfaceWPE*>(data);
             surface.m_client.frameComplete();
         },
+        // padding
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
     };
     wpe_renderer_backend_egl_target_set_client(m_backend, &s_client, this);
     wpe_renderer_backend_egl_target_initialize(m_backend, downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).backend(),
@@ -75,7 +79,12 @@ void AcceleratedSurfaceWPE::finalize()
 uint64_t AcceleratedSurfaceWPE::window() const
 {
     ASSERT(m_backend);
-    return reinterpret_cast<uint64_t>(wpe_renderer_backend_egl_target_get_native_window(m_backend));
+    // EGLNativeWindowType changes depending on the EGL implementation: reinterpret_cast works
+    // for pointers (only if they are 64-bit wide and not for other cases), and static_cast for
+    // numeric types (and when needed they get extended to 64-bit) but not for pointers. Using
+    // a plain C cast expression in this one instance works in all cases.
+    static_assert(sizeof(EGLNativeWindowType) <= sizeof(uint64_t), "EGLNativeWindowType must not be longer than 64 bits.");
+    return (uint64_t) wpe_renderer_backend_egl_target_get_native_window(m_backend);
 }
 
 uint64_t AcceleratedSurfaceWPE::surfaceID() const

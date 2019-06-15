@@ -32,12 +32,11 @@ namespace WebCore {
     
 class DeprecatedCSSOMValueList : public DeprecatedCSSOMValue {
 public:
-    static Ref<DeprecatedCSSOMValueList> create(const CSSValueList& value)
+    static Ref<DeprecatedCSSOMValueList> create(const CSSValueList& value, CSSStyleDeclaration& owner)
     {
-        return adoptRef(*new DeprecatedCSSOMValueList(value));
+        return adoptRef(*new DeprecatedCSSOMValueList(value, owner));
     }
     
-    bool equals(const DeprecatedCSSOMValueList& other) const;
     unsigned cssValueType() const { return CSS_VALUE_LIST; }
     String cssText() const;
     
@@ -46,13 +45,13 @@ public:
     const DeprecatedCSSOMValue* item(size_t index) const { return index < m_values.size() ? m_values[index].ptr() : nullptr; }
 
 protected:
-    DeprecatedCSSOMValueList(const CSSValueList& value)
-        : DeprecatedCSSOMValue(DeprecatedValueListClass)
+    DeprecatedCSSOMValueList(const CSSValueList& value, CSSStyleDeclaration& owner)
+        : DeprecatedCSSOMValue(DeprecatedValueListClass, owner)
     {
         m_valueListSeparator = value.separator();
         m_values.reserveInitialCapacity(value.length());
         for (unsigned i = 0, size = value.length(); i < size; ++i)
-            m_values.uncheckedAppend(value.itemWithoutBoundsCheck(i)->createDeprecatedCSSOMWrapper());
+            m_values.uncheckedAppend(value.itemWithoutBoundsCheck(i)->createDeprecatedCSSOMWrapper(owner));
     }
     
 private:

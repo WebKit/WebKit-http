@@ -8,49 +8,45 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_RESIDUAL_ECHO_DETECTOR_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_RESIDUAL_ECHO_DETECTOR_H_
+#ifndef MODULES_AUDIO_PROCESSING_RESIDUAL_ECHO_DETECTOR_H_
+#define MODULES_AUDIO_PROCESSING_RESIDUAL_ECHO_DETECTOR_H_
 
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/modules/audio_processing/echo_detector/circular_buffer.h"
-#include "webrtc/modules/audio_processing/echo_detector/mean_variance_estimator.h"
-#include "webrtc/modules/audio_processing/echo_detector/moving_max.h"
-#include "webrtc/modules/audio_processing/echo_detector/normalized_covariance_estimator.h"
+#include "api/array_view.h"
+#include "modules/audio_processing/echo_detector/circular_buffer.h"
+#include "modules/audio_processing/echo_detector/mean_variance_estimator.h"
+#include "modules/audio_processing/echo_detector/moving_max.h"
+#include "modules/audio_processing/echo_detector/normalized_covariance_estimator.h"
+#include "modules/audio_processing/include/audio_processing.h"
 
 namespace webrtc {
 
 class ApmDataDumper;
 class AudioBuffer;
-class EchoDetector;
 
-class ResidualEchoDetector {
+class ResidualEchoDetector : public EchoDetector {
  public:
   ResidualEchoDetector();
-  ~ResidualEchoDetector();
+  ~ResidualEchoDetector() override;
 
   // This function should be called while holding the render lock.
-  void AnalyzeRenderAudio(rtc::ArrayView<const float> render_audio);
+  void AnalyzeRenderAudio(rtc::ArrayView<const float> render_audio) override;
 
   // This function should be called while holding the capture lock.
-  void AnalyzeCaptureAudio(rtc::ArrayView<const float> capture_audio);
+  void AnalyzeCaptureAudio(rtc::ArrayView<const float> capture_audio) override;
 
   // This function should be called while holding the capture lock.
-  void Initialize();
+  void Initialize(int capture_sample_rate_hz,
+                  int num_capture_channels,
+                  int render_sample_rate_hz,
+                  int num_render_channels) override;
 
   // This function is for testing purposes only.
   void SetReliabilityForTest(float value) { reliability_ = value; }
 
-  static void PackRenderAudioBuffer(AudioBuffer* audio,
-                                    std::vector<float>* packed_buffer);
-
   // This function should be called while holding the capture lock.
-  float echo_likelihood() const { return echo_likelihood_; }
-
-  float echo_likelihood_recent_max() const {
-    return recent_likelihood_max_.max();
-  }
+  EchoDetector::Metrics GetMetrics() const override;
 
  private:
   static int instance_count_;
@@ -91,4 +87,4 @@ class ResidualEchoDetector {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_RESIDUAL_ECHO_DETECTOR_H_
+#endif  // MODULES_AUDIO_PROCESSING_RESIDUAL_ECHO_DETECTOR_H_

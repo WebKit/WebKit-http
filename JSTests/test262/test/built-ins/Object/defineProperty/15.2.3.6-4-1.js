@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Step 4 of defineProperty calls the [[DefineOwnProperty]] internal method
     of O passing 'true' for the Throw flag. In this case, step 3 of
     [[DefineOwnProperty]] requires that it throw a TypeError exception when
@@ -14,10 +14,12 @@ description: >
     non-extensible objects(8.12.9 step 3)
 ---*/
 
-  var o = {};
-  Object.preventExtensions(o);
+var o = {};
+Object.preventExtensions(o);
 assert.throws(TypeError, function() {
-    var desc = { value: 1 };
-    Object.defineProperty(o, "foo", desc);
+  var desc = {
+    value: 1
+  };
+  Object.defineProperty(o, "foo", desc);
 });
 assert.sameValue(o.hasOwnProperty("foo"), false, 'o.hasOwnProperty("foo")');

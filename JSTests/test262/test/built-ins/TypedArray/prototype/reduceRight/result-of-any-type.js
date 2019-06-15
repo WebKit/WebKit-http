@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.reduceright
 description: >
   Result can be of any type without any number conversions
-info: >
+info: |
   22.2.3.21 %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] )
 
   %TypedArray%.prototype.reduceRight is a distinct function that implements the
@@ -33,7 +33,7 @@ info: >
     d. Decrease k by 1.
   9. Return accumulator.
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

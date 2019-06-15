@@ -4,13 +4,14 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   [[ArrayLength]] is accessed in place of performing a [[Get]] of "length"
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
   ...
   3. Let len be the value of O's [[ArrayLength]] internal slot.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -21,6 +22,7 @@ testWithTypedArrayConstructors(function(TA) {
 
   sample1.map(function() {
     loop++;
+    return 0;
   });
   assert.sameValue(loop, 42, "data descriptor");
 
@@ -36,6 +38,7 @@ testWithTypedArrayConstructors(function(TA) {
 
   sample2.map(function() {
     loop++;
+    return 0;
   });
   assert.sameValue(loop, 4, "accessor descriptor");
 });

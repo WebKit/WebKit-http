@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
+#define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
 
 #include <vector>
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/report_block.h"
+#include "modules/rtp_rtcp/source/rtcp_packet.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/report_block.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -24,6 +23,8 @@ class CommonHeader;
 class ReceiverReport : public RtcpPacket {
  public:
   static constexpr uint8_t kPacketType = 201;
+  static constexpr size_t kMaxNumberOfReportBlocks = 0x1f;
+
   ReceiverReport();
   ~ReceiverReport() override;
 
@@ -32,6 +33,7 @@ class ReceiverReport : public RtcpPacket {
 
   void SetSenderSsrc(uint32_t ssrc) { sender_ssrc_ = ssrc; }
   bool AddReportBlock(const ReportBlock& block);
+  bool SetReportBlocks(std::vector<ReportBlock> blocks);
 
   uint32_t sender_ssrc() const { return sender_ssrc_; }
   const std::vector<ReportBlock>& report_blocks() const {
@@ -43,11 +45,10 @@ class ReceiverReport : public RtcpPacket {
   bool Create(uint8_t* packet,
               size_t* index,
               size_t max_length,
-              RtcpPacket::PacketReadyCallback* callback) const override;
+              PacketReadyCallback callback) const override;
 
  private:
   static const size_t kRrBaseLength = 4;
-  static const size_t kMaxNumberOfReportBlocks = 0x1F;
 
   uint32_t sender_ssrc_;
   std::vector<ReportBlock> report_blocks_;
@@ -55,4 +56,4 @@ class ReceiverReport : public RtcpPacket {
 
 }  // namespace rtcp
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_RECEIVER_REPORT_H_

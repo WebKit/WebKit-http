@@ -28,10 +28,11 @@
 
 #if USE(APPKIT)
 
-#import <WebKitSystemInterface.h>
+#import <HIToolbox/CarbonEventsCore.h>
+#import <pal/spi/mac/HIToolboxSPI.h>
+#import <pal/system/mac/WebPanel.h>
 
-@interface WKTextInputView : NSTextView {
-}
+@interface WKTextInputView : NSTextView
 @end
 
 @implementation WKTextInputView
@@ -47,7 +48,7 @@
 
 @end
 
-@interface WKTextInputPanel : NSPanel {
+@interface WKTextInputPanel : WebPanel {
     NSTextView *_inputTextView;
 }
 
@@ -74,7 +75,7 @@
 
 - (id)init
 {
-    self = [super initWithContentRect:NSZeroRect styleMask:WKGetInputPanelWindowStyle() backing:NSBackingStoreBuffered defer:YES];
+    self = [super init];
     if (!self)
         return nil;
     

@@ -4,7 +4,7 @@
 es6id: 21.1.3.7
 description: >
   Returns abrupt from IsRegExp(searchString).
-info: >
+info: |
   21.1.3.7 String.prototype.includes ( searchString [ , position ] )
 
   ...
@@ -16,7 +16,7 @@ info: >
 
   2. Let isRegExp be Get(argument, @@match).
   3. ReturnIfAbrupt(isRegExp).
-features: [Symbol.match]
+features: [Symbol.match, String.prototype.includes]
 ---*/
 
 var obj = {};

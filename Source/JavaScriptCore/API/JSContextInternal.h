@@ -23,9 +23,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSContextInternal_h
-#define JSContextInternal_h
-
 #import <JavaScriptCore/JavaScriptCore.h>
 
 #if JSC_OBJC_API_ENABLED
@@ -33,7 +30,7 @@
 #import <JavaScriptCore/JSContext.h>
 
 struct CallbackData {
-    CallbackData *next;
+    CallbackData* next;
     JSContext *context;
     JSValue *preservedException;
     JSValueRef calleeValue;
@@ -43,23 +40,9 @@ struct CallbackData {
     NSArray *currentArguments;
 };
 
-class WeakContextRef {
-public:
-    WeakContextRef(JSContext * = nil);
-    ~WeakContextRef();
-
-    JSContext * get();
-    void set(JSContext *);
-
-private:
-    JSContext *m_weakContext;
-};
-
 @class JSWrapperMap;
 
 @interface JSContext(Internal)
-
-- (instancetype)initWithGlobalContextRef:(JSGlobalContextRef)context;
 
 - (void)notifyException:(JSValueRef)exception;
 - (JSValue *)valueFromNotifyException:(JSValueRef)exception;
@@ -71,10 +54,6 @@ private:
 - (JSValue *)wrapperForObjCObject:(id)object;
 - (JSValue *)wrapperForJSObject:(JSValueRef)value;
 
-@property (readonly, retain) JSWrapperMap *wrapperMap;
-
 @end
 
 #endif
-
-#endif // JSContextInternal_h

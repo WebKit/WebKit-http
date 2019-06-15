@@ -34,7 +34,7 @@ namespace JSC {
 
 class WebAssemblyRuntimeErrorPrototype;
 
-class WebAssemblyRuntimeErrorConstructor : public InternalFunction {
+class WebAssemblyRuntimeErrorConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
@@ -49,8 +49,6 @@ protected:
 
 private:
     WebAssemblyRuntimeErrorConstructor(VM&, Structure*);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 };
 
 } // namespace JSC

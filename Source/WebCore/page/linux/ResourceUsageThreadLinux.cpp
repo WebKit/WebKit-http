@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 Igalia S.L.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +29,10 @@
 
 #if ENABLE(RESOURCE_USAGE) && OS(LINUX)
 
+#include <JavaScriptCore/GCActivityCallback.h>
+#include <JavaScriptCore/VM.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <heap/GCActivityCallback.h>
-#include <runtime/VM.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -58,8 +59,14 @@ static float cpuPeriod()
     unsigned long long userTime, niceTime, systemTime, idleTime;
     unsigned long long ioWait, irq, softIrq, steal, guest, guestnice;
     ioWait = irq = softIrq = steal = guest = guestnice = 0;
-    sscanf(buffer, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu",
+    int retVal = sscanf(buffer, "cpu  %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu %16llu",
         &userTime, &niceTime, &systemTime, &idleTime, &ioWait, &irq, &softIrq, &steal, &guest, &guestnice);
+    // We expect 10 values to be matched by sscanf
+    if (retVal != 10) {
+        fclose(file);
+        return 0;
+    }
+
 
     // Keep parsing if we still don't know cpuCount.
     static unsigned cpuCount = 0;
@@ -162,8 +169,9 @@ void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& dat
 
     data.totalExternalSize = currentGCOwnedExternal;
 
-    data.timeOfNextEdenCollection = vm->heap.edenActivityCallback()->nextFireTime();
-    data.timeOfNextFullCollection = vm->heap.fullActivityCallback()->nextFireTime();
+    auto now = MonotonicTime::now();
+    data.timeOfNextEdenCollection = now + vm->heap.edenActivityCallback()->timeUntilFire().value_or(Seconds(std::numeric_limits<double>::infinity()));
+    data.timeOfNextFullCollection = now + vm->heap.fullActivityCallback()->timeUntilFire().value_or(Seconds(std::numeric_limits<double>::infinity()));
 }
 
 } // namespace WebCore

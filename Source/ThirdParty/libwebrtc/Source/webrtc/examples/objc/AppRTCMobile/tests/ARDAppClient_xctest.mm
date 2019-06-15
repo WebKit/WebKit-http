@@ -13,7 +13,7 @@
 #import <QuartzCore/CoreAnimation.h>
 #import <XCTest/XCTest.h>
 
-#include "webrtc/base/ssladapter.h"
+#include "rtc_base/ssladapter.h"
 
 #import "WebRTC/RTCMediaConstraints.h"
 #import "WebRTC/RTCPeerConnectionFactory.h"
@@ -21,7 +21,6 @@
 #import "ARDAppClient+Internal.h"
 #import "ARDJoinResponse+Internal.h"
 #import "ARDMessageResponse+Internal.h"
-#import "ARDSDPUtils.h"
 #import "ARDSettingsModel.h"
 
 @interface ARDAppClientTest : XCTestCase

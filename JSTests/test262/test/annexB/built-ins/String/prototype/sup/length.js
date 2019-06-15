@@ -5,7 +5,7 @@
 es6id: B.2.3.14
 description: >
   String.prototype.sup.length is 0.
-info: >
+info: |
   String.prototype.sup ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.sup.length, 0);
-
-verifyNotEnumerable(String.prototype.sup, "length");
-verifyNotWritable(String.prototype.sup, "length");
-verifyConfigurable(String.prototype.sup, "length");
+verifyProperty(String.prototype.sup, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

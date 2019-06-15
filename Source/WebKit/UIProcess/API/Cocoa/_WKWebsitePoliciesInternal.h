@@ -32,11 +32,9 @@
 
 namespace WebKit {
 
-inline _WKWebsitePolicies *wrapper(API::WebsitePolicies& websitePolicies)
-{
-    ASSERT([websitePolicies.wrapper() isKindOfClass:[_WKWebsitePolicies class]]);
-    return (_WKWebsitePolicies *)websitePolicies.wrapper();
-}
+template<> struct WrapperTraits<API::WebsitePolicies> {
+    using WrapperClass = _WKWebsitePolicies;
+};
 
 }
 

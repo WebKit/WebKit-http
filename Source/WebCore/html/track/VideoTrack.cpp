@@ -82,10 +82,13 @@ const AtomicString& VideoTrack::commentaryKeyword()
 
 VideoTrack::VideoTrack(VideoTrackClient& client, VideoTrackPrivate& trackPrivate)
     : MediaTrackBase(MediaTrackBase::VideoTrack, trackPrivate.id(), trackPrivate.label(), trackPrivate.language())
-    , m_selected(trackPrivate.selected())
     , m_client(&client)
     , m_private(trackPrivate)
+    , m_selected(trackPrivate.selected())
 {
+#if !RELEASE_LOG_DISABLED
+    m_private->setLogger(logger(), logIdentifier());
+#endif
     m_private->setClient(this);
     updateKindFromPrivate();
 }
@@ -103,6 +106,9 @@ void VideoTrack::setPrivate(VideoTrackPrivate& trackPrivate)
     m_private->setClient(nullptr);
     m_private = trackPrivate;
     m_private->setClient(this);
+#if !RELEASE_LOG_DISABLED
+    m_private->setLogger(logger(), logIdentifier());
+#endif
 
     m_private->setSelected(m_selected);
     updateKindFromPrivate();
@@ -157,7 +163,7 @@ void VideoTrack::languageChanged(const AtomicString& language)
 
 void VideoTrack::willRemove()
 {
-    auto* element = mediaElement();
+    auto element = makeRefPtr(mediaElement());
     if (!element)
         return;
     element->removeVideoTrack(*this);
@@ -183,7 +189,7 @@ void VideoTrack::setKind(const AtomicString& kind)
 
     // 4. Queue a task to fire a simple event named change at the VideoTrackList object referenced by
     // the videoTracks attribute on the HTMLMediaElement.
-    mediaElement()->videoTracks().scheduleChangeEvent();
+    mediaElement()->ensureVideoTracks().scheduleChangeEvent();
 }
 
 void VideoTrack::setLanguage(const AtomicString& language)
@@ -204,7 +210,8 @@ void VideoTrack::setLanguage(const AtomicString& language)
 
     // 4. Queue a task to fire a simple event named change at the VideoTrackList object referenced by
     // the videoTracks attribute on the HTMLMediaElement.
-    mediaElement()->videoTracks().scheduleChangeEvent();
+    if (mediaElement())
+        mediaElement()->ensureVideoTracks().scheduleChangeEvent();
 }
 
 #endif
@@ -235,6 +242,14 @@ void VideoTrack::updateKindFromPrivate()
         return;
     }
     ASSERT_NOT_REACHED();
+}
+
+void VideoTrack::setMediaElement(HTMLMediaElement* element)
+{
+    TrackBase::setMediaElement(element);
+#if !RELEASE_LOG_DISABLED
+    m_private->setLogger(logger(), logIdentifier());
+#endif
 }
 
 } // namespace WebCore

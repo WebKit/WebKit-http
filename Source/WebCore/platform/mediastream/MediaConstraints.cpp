@@ -242,6 +242,8 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     case MediaConstraintType::FacingMode:
     case MediaConstraintType::DeviceId:
     case MediaConstraintType::GroupId:
+    case MediaConstraintType::DisplaySurface:
+    case MediaConstraintType::LogicalSurface:
     case MediaConstraintType::Unknown:
         ASSERT_NOT_REACHED();
         break;
@@ -269,6 +271,8 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     case MediaConstraintType::FacingMode:
     case MediaConstraintType::DeviceId:
     case MediaConstraintType::GroupId:
+    case MediaConstraintType::DisplaySurface:
+    case MediaConstraintType::LogicalSurface:
     case MediaConstraintType::Unknown:
         ASSERT_NOT_REACHED();
         break;
@@ -280,6 +284,12 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     switch (constraintType) {
     case MediaConstraintType::EchoCancellation:
         m_echoCancellation = WTFMove(constraint);
+        break;
+    case MediaConstraintType::DisplaySurface:
+        m_displaySurface = WTFMove(constraint);
+        break;
+    case MediaConstraintType::LogicalSurface:
+        m_logicalSurface = WTFMove(constraint);
         break;
 
     case MediaConstraintType::Width:
@@ -319,6 +329,8 @@ void MediaTrackConstraintSetMap::set(MediaConstraintType constraintType, std::op
     case MediaConstraintType::FrameRate:
     case MediaConstraintType::Volume:
     case MediaConstraintType::EchoCancellation:
+    case MediaConstraintType::DisplaySurface:
+    case MediaConstraintType::LogicalSurface:
     case MediaConstraintType::Unknown:
         ASSERT_NOT_REACHED();
         break;
@@ -358,7 +370,7 @@ static inline void addDefaultVideoConstraints(MediaTrackConstraintSetMap& videoC
     }
     if (addFacingModeConstraint) {
         StringConstraint facingModeConstraint({ }, MediaConstraintType::FacingMode);
-        facingModeConstraint.setIdeal(ASCIILiteral("user"));
+        facingModeConstraint.setIdeal("user"_s);
         videoConstraints.set(MediaConstraintType::FacingMode, WTFMove(facingModeConstraint));
     }
 }

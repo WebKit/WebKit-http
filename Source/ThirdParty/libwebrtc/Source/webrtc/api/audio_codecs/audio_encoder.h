@@ -8,24 +8,56 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_AUDIO_CODECS_AUDIO_ENCODER_H_
-#define WEBRTC_API_AUDIO_CODECS_AUDIO_ENCODER_H_
+#ifndef API_AUDIO_CODECS_AUDIO_ENCODER_H_
+#define API_AUDIO_CODECS_AUDIO_ENCODER_H_
 
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/base/deprecation.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/typedefs.h"
+#include "absl/types/optional.h"
+#include "api/array_view.h"
+#include "rtc_base/buffer.h"
+#include "rtc_base/deprecation.h"
 
 namespace webrtc {
 
-class Clock;
 class RtcEventLog;
+
+// Statistics related to Audio Network Adaptation.
+struct ANAStats {
+  ANAStats();
+  ANAStats(const ANAStats&);
+  ~ANAStats();
+  // Number of actions taken by the ANA bitrate controller since the start of
+  // the call. If this value is not set, it indicates that the bitrate
+  // controller is disabled.
+  absl::optional<uint32_t> bitrate_action_counter;
+  // Number of actions taken by the ANA channel controller since the start of
+  // the call. If this value is not set, it indicates that the channel
+  // controller is disabled.
+  absl::optional<uint32_t> channel_action_counter;
+  // Number of actions taken by the ANA DTX controller since the start of the
+  // call. If this value is not set, it indicates that the DTX controller is
+  // disabled.
+  absl::optional<uint32_t> dtx_action_counter;
+  // Number of actions taken by the ANA FEC controller since the start of the
+  // call. If this value is not set, it indicates that the FEC controller is
+  // disabled.
+  absl::optional<uint32_t> fec_action_counter;
+  // Number of times the ANA frame length controller decided to increase the
+  // frame length since the start of the call. If this value is not set, it
+  // indicates that the frame length controller is disabled.
+  absl::optional<uint32_t> frame_length_increase_counter;
+  // Number of times the ANA frame length controller decided to decrease the
+  // frame length since the start of the call. If this value is not set, it
+  // indicates that the frame length controller is disabled.
+  absl::optional<uint32_t> frame_length_decrease_counter;
+  // The uplink packet loss fractions as set by the ANA FEC controller. If this
+  // value is not set, it indicates that the ANA FEC controller is not active.
+  absl::optional<float> uplink_packet_loss_fraction;
+};
 
 // This is the interface class for encoders in AudioCoding module. Each codec
 // type must have an implementation of this class.
@@ -187,9 +219,8 @@ class AudioEncoder {
 
   // Provides target audio bitrate and corresponding probing interval of
   // the bandwidth estimator to this encoder to allow it to adapt.
-  virtual void OnReceivedUplinkBandwidth(
-      int target_audio_bitrate_bps,
-      rtc::Optional<int64_t> bwe_period_ms);
+  virtual void OnReceivedUplinkBandwidth(int target_audio_bitrate_bps,
+                                         absl::optional<int64_t> bwe_period_ms);
 
   // Provides RTT to this encoder to allow it to adapt.
   virtual void OnReceivedRtt(int rtt_ms);
@@ -203,6 +234,9 @@ class AudioEncoder {
   virtual void SetReceiverFrameLengthRange(int min_frame_length_ms,
                                            int max_frame_length_ms);
 
+  // Get statistics related to audio network adaptation.
+  virtual ANAStats GetANAStats() const;
+
  protected:
   // Subclasses implement this to perform the actual encoding. Called by
   // Encode().
@@ -211,4 +245,4 @@ class AudioEncoder {
                                  rtc::Buffer* encoded) = 0;
 };
 }  // namespace webrtc
-#endif  // WEBRTC_API_AUDIO_CODECS_AUDIO_ENCODER_H_
+#endif  // API_AUDIO_CODECS_AUDIO_ENCODER_H_

@@ -8,25 +8,27 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_RTPTRANSPORT_H_
-#define WEBRTC_PC_RTPTRANSPORT_H_
+#ifndef PC_RTPTRANSPORT_H_
+#define PC_RTPTRANSPORT_H_
 
-#include "webrtc/api/ortc/rtptransportinterface.h"
-#include "webrtc/base/sigslot.h"
-#include "webrtc/pc/bundlefilter.h"
+#include <string>
+
+#include "call/rtp_demuxer.h"
+#include "modules/rtp_rtcp/include/rtp_header_extension_map.h"
+#include "pc/rtptransportinternal.h"
+#include "rtc_base/third_party/sigslot/sigslot.h"
 
 namespace rtc {
 
 class CopyOnWriteBuffer;
 struct PacketOptions;
-struct PacketTime;
 class PacketTransportInternal;
 
 }  // namespace rtc
 
 namespace webrtc {
 
-class RtpTransport : public RtpTransportInterface, public sigslot::has_slots<> {
+class RtpTransport : public RtpTransportInternal {
  public:
   RtpTransport(const RtpTransport&) = delete;
   RtpTransport& operator=(const RtpTransport&) = delete;
@@ -34,56 +36,83 @@ class RtpTransport : public RtpTransportInterface, public sigslot::has_slots<> {
   explicit RtpTransport(bool rtcp_mux_enabled)
       : rtcp_mux_enabled_(rtcp_mux_enabled) {}
 
-  bool rtcp_mux_enabled() const { return rtcp_mux_enabled_; }
-  void SetRtcpMuxEnabled(bool enable);
+  bool rtcp_mux_enabled() const override { return rtcp_mux_enabled_; }
+  void SetRtcpMuxEnabled(bool enable) override;
 
-  rtc::PacketTransportInternal* rtp_packet_transport() const {
+  rtc::PacketTransportInternal* rtp_packet_transport() const override {
     return rtp_packet_transport_;
   }
-  void SetRtpPacketTransport(rtc::PacketTransportInternal* rtp);
+  void SetRtpPacketTransport(rtc::PacketTransportInternal* rtp) override;
 
-  rtc::PacketTransportInternal* rtcp_packet_transport() const {
+  rtc::PacketTransportInternal* rtcp_packet_transport() const override {
     return rtcp_packet_transport_;
   }
-  void SetRtcpPacketTransport(rtc::PacketTransportInternal* rtcp);
+  void SetRtcpPacketTransport(rtc::PacketTransportInternal* rtcp) override;
 
-  PacketTransportInterface* GetRtpPacketTransport() const override;
-  PacketTransportInterface* GetRtcpPacketTransport() const override;
+  PacketTransportInterface* GetRtpPacketTransport() const override {
+    return rtp_packet_transport_;
+  }
+  PacketTransportInterface* GetRtcpPacketTransport() const override {
+    return rtcp_packet_transport_;
+  }
 
   // TODO(zstein): Use these RtcpParameters for configuration elsewhere.
-  RTCError SetRtcpParameters(const RtcpParameters& parameters) override;
-  RtcpParameters GetRtcpParameters() const override;
+  RTCError SetParameters(const RtpTransportParameters& parameters) override;
+  RtpTransportParameters GetParameters() const override;
 
-  // Called whenever a transport's ready-to-send state changes. The argument
-  // is true if all used transports are ready to send. This is more specific
-  // than just "writable"; it means the last send didn't return ENOTCONN.
-  sigslot::signal1<bool> SignalReadyToSend;
+  bool IsReadyToSend() const override { return ready_to_send_; }
 
-  bool IsWritable(bool rtcp) const;
+  bool IsWritable(bool rtcp) const override;
 
-  bool SendPacket(bool rtcp,
-                  const rtc::CopyOnWriteBuffer* packet,
-                  const rtc::PacketOptions& options,
-                  int flags);
+  bool SendRtpPacket(rtc::CopyOnWriteBuffer* packet,
+                     const rtc::PacketOptions& options,
+                     int flags) override;
 
-  bool HandlesPayloadType(int payload_type) const;
+  bool SendRtcpPacket(rtc::CopyOnWriteBuffer* packet,
+                      const rtc::PacketOptions& options,
+                      int flags) override;
 
-  void AddHandledPayloadType(int payload_type);
+  bool IsSrtpActive() const override { return false; }
 
-  // TODO(zstein): Consider having two signals - RtcPacketReceived and
-  // RtcpPacketReceived.
-  // The first argument is true for RTCP packets and false for RTP packets.
-  sigslot::signal3<bool, rtc::CopyOnWriteBuffer&, const rtc::PacketTime&>
-      SignalPacketReceived;
+  void UpdateRtpHeaderExtensionMap(
+      const cricket::RtpHeaderExtensions& header_extensions) override;
+
+  bool RegisterRtpDemuxerSink(const RtpDemuxerCriteria& criteria,
+                              RtpPacketSinkInterface* sink) override;
+
+  bool UnregisterRtpDemuxerSink(RtpPacketSinkInterface* sink) override;
 
  protected:
   // TODO(zstein): Remove this when we remove RtpTransportAdapter.
   RtpTransportAdapter* GetInternal() override;
 
- private:
-  bool HandlesPacket(const uint8_t* data, size_t len);
+  // These methods will be used in the subclasses.
+  void DemuxPacket(rtc::CopyOnWriteBuffer* packet, const rtc::PacketTime& time);
 
+  bool SendPacket(bool rtcp,
+                  rtc::CopyOnWriteBuffer* packet,
+                  const rtc::PacketOptions& options,
+                  int flags);
+
+  // Overridden by SrtpTransport.
+  virtual void OnNetworkRouteChanged(
+      absl::optional<rtc::NetworkRoute> network_route);
+  virtual void OnRtpPacketReceived(rtc::CopyOnWriteBuffer* packet,
+                                   const rtc::PacketTime& packet_time);
+  virtual void OnRtcpPacketReceived(rtc::CopyOnWriteBuffer* packet,
+                                    const rtc::PacketTime& packet_time);
+  // Overridden by SrtpTransport and DtlsSrtpTransport.
+  virtual void OnWritableState(rtc::PacketTransportInternal* packet_transport);
+
+ private:
   void OnReadyToSend(rtc::PacketTransportInternal* transport);
+  void OnSentPacket(rtc::PacketTransportInternal* packet_transport,
+                    const rtc::SentPacket& sent_packet);
+  void OnReadPacket(rtc::PacketTransportInternal* transport,
+                    const char* data,
+                    size_t len,
+                    const rtc::PacketTime& packet_time,
+                    int flags);
 
   // Updates "ready to send" for an individual channel and fires
   // SignalReadyToSend.
@@ -91,13 +120,19 @@ class RtpTransport : public RtpTransportInterface, public sigslot::has_slots<> {
 
   void MaybeSignalReadyToSend();
 
-  void OnReadPacket(rtc::PacketTransportInternal* transport,
-                    const char* data,
-                    size_t len,
-                    const rtc::PacketTime& packet_time,
-                    int flags);
+  bool IsTransportWritable();
 
-  bool WantsPacket(bool rtcp, const rtc::CopyOnWriteBuffer* packet);
+  // SRTP specific methods.
+  // TODO(zhihuang): Improve the inheritance model so that the RtpTransport
+  // doesn't need to implement SRTP specfic methods.
+  RTCError SetSrtpSendKey(const cricket::CryptoParams& params) override {
+    RTC_NOTREACHED();
+    return RTCError::OK();
+  }
+  RTCError SetSrtpReceiveKey(const cricket::CryptoParams& params) override {
+    RTC_NOTREACHED();
+    return RTCError::OK();
+  }
 
   bool rtcp_mux_enabled_;
 
@@ -108,11 +143,13 @@ class RtpTransport : public RtpTransportInterface, public sigslot::has_slots<> {
   bool rtp_ready_to_send_ = false;
   bool rtcp_ready_to_send_ = false;
 
-  RtcpParameters rtcp_parameters_;
+  RtpTransportParameters parameters_;
+  RtpDemuxer rtp_demuxer_;
 
-  cricket::BundleFilter bundle_filter_;
+  // Used for identifying the MID for RtpDemuxer.
+  RtpHeaderExtensionMap header_extension_map_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_RTPTRANSPORT_H_
+#endif  // PC_RTPTRANSPORT_H_

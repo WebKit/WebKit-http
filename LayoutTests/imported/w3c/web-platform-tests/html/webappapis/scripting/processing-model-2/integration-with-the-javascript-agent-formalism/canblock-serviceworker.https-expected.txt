@@ -1,3 +1,6 @@
 
-FAIL Service worker test setup undefined is not an object (evaluating 'navigator.serviceWorker.getRegistration')
+PASS Service worker test setup 
+FAIL [[CanBlock]] in a ServiceWorkerGlobalScope assert_throws: function "() => {
+    Atomics.wait(ta, 0, 0, 10);
+  }" did not throw
 

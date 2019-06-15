@@ -78,7 +78,7 @@ Successfully added item: 74
 
 
 --------
-Frame: '<!--framePath //<!--frame0-->-->'
+Frame: '<!--frame1-->'
 --------
 Adding state objects in iframe
 Successfully added item: 0
@@ -106,5 +106,5 @@ Successfully added item: 21
 Successfully added item: 22
 Successfully added item: 23
 Successfully added item: 24
-Expected exception: SecurityError (DOM Exception 18): Attempt to use history.replaceState() more than 100 times per 30.000000 seconds
+Expected exception: SecurityError: Attempt to use history.replaceState() more than 100 times per 30.000000 seconds
 

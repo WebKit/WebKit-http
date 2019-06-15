@@ -26,14 +26,10 @@
 #include "config.h"
 #include "ClassChangeInvalidation.h"
 
-#include "DocumentRuleSets.h"
 #include "ElementChildIterator.h"
-#include "HTMLSlotElement.h"
-#include "ShadowRoot.h"
 #include "SpaceSplitString.h"
+#include "StyleInvalidationFunctions.h"
 #include "StyleInvalidator.h"
-#include "StyleResolver.h"
-#include "StyleScope.h"
 #include <wtf/BitVector.h>
 
 namespace WebCore {
@@ -78,7 +74,7 @@ static ClassChangeVector computeClassChange(const SpaceSplitString& oldClasses, 
         changedClasses.append(newClasses[i].impl());
     }
     for (unsigned i = 0; i < oldSize; ++i) {
-        // If the bit is not set the the corresponding class has been removed.
+        // If the bit is not set the corresponding class has been removed.
         if (remainingClassBits.quickGet(i))
             continue;
         changedClasses.append(oldClasses[i].impl());
@@ -87,87 +83,45 @@ static ClassChangeVector computeClassChange(const SpaceSplitString& oldClasses, 
     return changedClasses;
 }
 
-static bool mayBeAffectedByHostRules(ShadowRoot* shadowRoot, AtomicStringImpl* changedClass, bool& mayAffectShadowTree)
-{
-    // FIXME: More of this code should be shared between Class/Attribute/IdInvalidation.
-    if (!shadowRoot)
-        return false;
-    auto& shadowRuleSets = shadowRoot->styleScope().resolver().ruleSets();
-    auto& authorStyle = shadowRuleSets.authorStyle();
-    if (authorStyle.hostPseudoClassRules().isEmpty() && !authorStyle.hasHostPseudoClassRulesMatchingInShadowTree())
-        return false;
-
-    if (!shadowRuleSets.features().classesInRules.contains(changedClass))
-        return false;
-
-    if (authorStyle.hasHostPseudoClassRulesMatchingInShadowTree())
-        mayAffectShadowTree = true;
-    return true;
-}
-
-static bool mayBeAffectedBySlottedRules(const Vector<ShadowRoot*>& assignedShadowRoots, AtomicStringImpl* changedClass)
-{
-    for (auto& assignedShadowRoot : assignedShadowRoots) {
-        auto& ruleSets = assignedShadowRoot->styleScope().resolver().ruleSets();
-        if (ruleSets.authorStyle().slottedPseudoElementRules().isEmpty())
-            continue;
-        if (ruleSets.features().classesInRules.contains(changedClass))
-            return true;
-    }
-    return false;
-}
-
-void ClassChangeInvalidation::invalidateStyle(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses)
+void ClassChangeInvalidation::computeInvalidation(const SpaceSplitString& oldClasses, const SpaceSplitString& newClasses)
 {
     auto changedClasses = computeClassChange(oldClasses, newClasses);
-    bool mayAffectShadowTree = false;
 
-    auto& ruleSets = m_element.styleResolver().ruleSets();
-    auto* shadowRoot = m_element.shadowRoot();
-    auto assignedShadowRoots = assignedShadowRootsIfSlotted(m_element);
+    bool shouldInvalidateCurrent = false;
+    bool mayAffectStyleInShadowTree = false;
 
-    ClassChangeVector changedClassesAffectingStyle;
-    for (auto* changedClass : changedClasses) {
-        bool mayAffectStyle = ruleSets.features().classesInRules.contains(changedClass)
-            || mayBeAffectedByHostRules(shadowRoot, changedClass, mayAffectShadowTree)
-            || mayBeAffectedBySlottedRules(assignedShadowRoots, changedClass);
-        if (mayAffectStyle)
-            changedClassesAffectingStyle.append(changedClass);
-    };
+    traverseRuleFeatures(m_element, [&] (const RuleFeatureSet& features, bool mayAffectShadowTree) {
+        for (auto* changedClass : changedClasses) {
+            if (mayAffectShadowTree && features.classRules.contains(changedClass))
+                mayAffectStyleInShadowTree = true;
+            if (features.classesAffectingHost.contains(changedClass))
+                shouldInvalidateCurrent = true;
+        }
+    });
 
-    if (changedClassesAffectingStyle.isEmpty())
-        return;
-
-    if (shadowRoot && ruleSets.authorStyle().hasShadowPseudoElementRules())
-        mayAffectShadowTree = true;
-
-    if (is<HTMLSlotElement>(m_element) && !ruleSets.authorStyle().slottedPseudoElementRules().isEmpty())
-        mayAffectShadowTree = true;
-
-    if (mayAffectShadowTree) {
+    if (mayAffectStyleInShadowTree) {
         // FIXME: We should do fine-grained invalidation for shadow tree.
         m_element.invalidateStyleForSubtree();
-        return;
     }
 
-    m_element.invalidateStyle();
+    if (shouldInvalidateCurrent)
+        m_element.invalidateStyle();
 
-    if (!childrenOfType<Element>(m_element).first())
-        return;
+    auto& ruleSets = m_element.styleResolver().ruleSets();
 
-    for (auto* changedClass : changedClassesAffectingStyle) {
-        auto* ancestorClassRules = ruleSets.ancestorClassRules(changedClass);
-        if (!ancestorClassRules)
-            continue;
-        m_descendantInvalidationRuleSets.append(ancestorClassRules);
+    for (auto* changedClass : changedClasses) {
+        if (auto* invalidationRuleSets = ruleSets.classInvalidationRuleSets(changedClass)) {
+            for (auto& invalidationRuleSet : *invalidationRuleSets)
+                m_invalidationRuleSets.append(&invalidationRuleSet);
+        }
     }
 }
 
-void ClassChangeInvalidation::invalidateDescendantStyle()
+void ClassChangeInvalidation::invalidateStyleWithRuleSets()
 {
-    for (auto* ancestorClassRules : m_descendantInvalidationRuleSets) {
-        Invalidator invalidator(*ancestorClassRules);
-        invalidator.invalidateStyle(m_element);
+    for (auto* invalidationRuleSet : m_invalidationRuleSets) {
+        Invalidator invalidator(*invalidationRuleSet->ruleSet);
+        invalidator.invalidateStyleWithMatchElement(m_element, invalidationRuleSet->matchElement);
     }
 }
 

@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_mixer/gain_change_calculator.h"
+#include "modules/audio_mixer/gain_change_calculator.h"
 
 #include <math.h>
 #include <vector>
@@ -27,6 +27,10 @@ float GainChangeCalculator::CalculateGainChange(
   std::vector<float> gain(in.size());
   CalculateGain(in, out, gain);
   return CalculateDifferences(gain);
+}
+
+float GainChangeCalculator::LatestGain() const {
+  return last_reliable_gain_;
 }
 
 void GainChangeCalculator::CalculateGain(rtc::ArrayView<const int16_t> in,

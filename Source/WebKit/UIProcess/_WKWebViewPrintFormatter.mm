@@ -26,7 +26,7 @@
 #import "config.h"
 #import "_WKWebViewPrintFormatterInternal.h"
 
-#if PLATFORM(IOS)
+#if PLATFORM(IOS) && !PLATFORM(IOSMAC)
 
 #import "WKWebViewInternal.h"
 #import "_WKFrameHandle.h"
@@ -116,4 +116,4 @@
 
 @end
 
-#endif // PLATFORM(IOS)
+#endif // PLATFORM(IOS) && !PLATFORM(IOSMAC)

@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.fill
-es6id: 22.2.3.8
 description: >
   Fills elements from coerced to Integer `start` and `end` values
-info: >
+info: |
   22.2.3.8 %TypedArray%.prototype.fill (value [ , start [ , end ] ] )
 
   %TypedArray%.prototype.fill is a distinct function that implements the same
@@ -29,6 +28,7 @@ info: >
   ToInteger(end).
   ...
 includes: [compareArray.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

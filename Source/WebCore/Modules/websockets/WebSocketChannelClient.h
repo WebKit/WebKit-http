@@ -30,16 +30,13 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
 class WebSocketChannelClient {
 public:
-    virtual ~WebSocketChannelClient() { }
+    virtual ~WebSocketChannelClient() = default;
     virtual void didConnect() = 0;
     virtual void didReceiveMessage(const String&) = 0;
     virtual void didReceiveBinaryData(Vector<uint8_t>&&) = 0;
@@ -54,9 +51,7 @@ public:
     virtual void didUpgradeURL() = 0;
 
 protected:
-    WebSocketChannelClient() { }
+    WebSocketChannelClient() = default;
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

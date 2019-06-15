@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,16 +34,16 @@
 
 namespace WebKit {
 
-inline WKWebsiteDataRecord *wrapper(API::WebsiteDataRecord& websiteDataRecord)
-{
-    ASSERT([websiteDataRecord.wrapper() isKindOfClass:[WKWebsiteDataRecord class]]);
-    return (WKWebsiteDataRecord *)websiteDataRecord.wrapper();
-}
+template<> struct WrapperTraits<API::WebsiteDataRecord> {
+    using WrapperClass = WKWebsiteDataRecord;
+};
 
 static inline std::optional<WebsiteDataType> toWebsiteDataType(NSString *websiteDataType)
 {
     if ([websiteDataType isEqualToString:WKWebsiteDataTypeCookies])
         return WebsiteDataType::Cookies;
+    if ([websiteDataType isEqualToString:WKWebsiteDataTypeFetchCache])
+        return WebsiteDataType::DOMCache;
     if ([websiteDataType isEqualToString:WKWebsiteDataTypeDiskCache])
         return WebsiteDataType::DiskCache;
     if ([websiteDataType isEqualToString:WKWebsiteDataTypeMemoryCache])
@@ -58,6 +58,10 @@ static inline std::optional<WebsiteDataType> toWebsiteDataType(NSString *website
         return WebsiteDataType::WebSQLDatabases;
     if ([websiteDataType isEqualToString:WKWebsiteDataTypeIndexedDBDatabases])
         return WebsiteDataType::IndexedDBDatabases;
+#if ENABLE(SERVICE_WORKER)
+    if ([websiteDataType isEqualToString:WKWebsiteDataTypeServiceWorkerRegistrations])
+        return WebsiteDataType::ServiceWorkerRegistrations;
+#endif
     if ([websiteDataType isEqualToString:_WKWebsiteDataTypeHSTSCache])
         return WebsiteDataType::HSTSCache;
     if ([websiteDataType isEqualToString:_WKWebsiteDataTypeMediaKeys])
@@ -81,7 +85,7 @@ static inline OptionSet<WebKit::WebsiteDataType> toWebsiteDataTypes(NSSet *websi
 
     for (NSString *websiteDataType in websiteDataTypes) {
         if (auto dataType = toWebsiteDataType(websiteDataType))
-            result |= *dataType;
+            result.add(*dataType);
     }
 
     return result;
@@ -95,6 +99,8 @@ static inline RetainPtr<NSSet> toWKWebsiteDataTypes(OptionSet<WebKit::WebsiteDat
         [wkWebsiteDataTypes addObject:WKWebsiteDataTypeCookies];
     if (websiteDataTypes.contains(WebsiteDataType::DiskCache))
         [wkWebsiteDataTypes addObject:WKWebsiteDataTypeDiskCache];
+    if (websiteDataTypes.contains(WebsiteDataType::DOMCache))
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeFetchCache];
     if (websiteDataTypes.contains(WebsiteDataType::MemoryCache))
         [wkWebsiteDataTypes addObject:WKWebsiteDataTypeMemoryCache];
     if (websiteDataTypes.contains(WebsiteDataType::OfflineWebApplicationCache))
@@ -107,6 +113,10 @@ static inline RetainPtr<NSSet> toWKWebsiteDataTypes(OptionSet<WebKit::WebsiteDat
         [wkWebsiteDataTypes addObject:WKWebsiteDataTypeWebSQLDatabases];
     if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases))
         [wkWebsiteDataTypes addObject:WKWebsiteDataTypeIndexedDBDatabases];
+#if ENABLE(SERVICE_WORKER)
+    if (websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations))
+        [wkWebsiteDataTypes addObject:WKWebsiteDataTypeServiceWorkerRegistrations];
+#endif
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache))
         [wkWebsiteDataTypes addObject:_WKWebsiteDataTypeHSTSCache];
     if (websiteDataTypes.contains(WebsiteDataType::MediaKeys))

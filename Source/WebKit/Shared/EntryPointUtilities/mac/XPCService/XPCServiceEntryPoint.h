@@ -54,6 +54,7 @@ public:
     virtual bool checkEntitlements();
 
     virtual bool getConnectionIdentifier(IPC::Connection::Identifier& identifier);
+    virtual bool getProcessIdentifier(WebCore::ProcessIdentifier&);
     virtual bool getClientIdentifier(String& clientIdentifier);
     virtual bool getClientProcessName(String& clientProcessName);
     virtual bool getExtraInitializationData(HashMap<String, String>& extraInitializationData);
@@ -82,13 +83,18 @@ void XPCServiceInitializer(OSObjectPtr<xpc_connection_t> connection, xpc_object_
 
     ChildProcessInitializationParameters parameters;
     if (priorityBoostMessage)
-        parameters.priorityBoostMessage = adoptOSObject(xpc_retain(priorityBoostMessage));
+        parameters.priorityBoostMessage = priorityBoostMessage;
 
     if (!delegate.getConnectionIdentifier(parameters.connectionIdentifier))
         exit(EXIT_FAILURE);
 
     if (!delegate.getClientIdentifier(parameters.clientIdentifier))
         exit(EXIT_FAILURE);
+
+    WebCore::ProcessIdentifier processIdentifier;
+    if (!delegate.getProcessIdentifier(processIdentifier))
+        exit(EXIT_FAILURE);
+    parameters.processIdentifier = processIdentifier;
 
     if (!delegate.getClientProcessName(parameters.uiProcessName))
         exit(EXIT_FAILURE);
@@ -102,12 +108,16 @@ void XPCServiceInitializer(OSObjectPtr<xpc_connection_t> connection, xpc_object_
 #endif
 
 #if HAVE(QOS_CLASSES)
-    if (parameters.extraInitializationData.contains(ASCIILiteral("always-runs-at-background-priority")))
+    if (parameters.extraInitializationData.contains("always-runs-at-background-priority"_s))
         Thread::setGlobalMaxQOSClass(QOS_CLASS_UTILITY);
 #endif
 
+    parameters.processType = XPCServiceType::processType;
+
     XPCServiceType::singleton().initialize(parameters);
 }
+
+int XPCServiceMain();
 
 void XPCServiceExit(OSObjectPtr<xpc_object_t>&& priorityBoostMessage);
 

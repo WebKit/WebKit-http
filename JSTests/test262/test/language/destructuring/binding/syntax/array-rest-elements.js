@@ -5,7 +5,7 @@
 es6id: 13.3.3
 description: >
   Array Binding Pattern with Rest Element
-info: >
+info: |
   Destructuring Binding Patterns - Syntax
 
   ArrayBindingPattern[Yield] :
@@ -15,6 +15,7 @@ info: >
 
   BindingRestElement[Yield] :
     ... BindingIdentifier[?Yield]
+features: [destructuring-binding]
 ---*/
 
 function fn1([...args]) {}

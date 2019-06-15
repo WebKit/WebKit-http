@@ -40,6 +40,7 @@ public:
 class GraphicsContext;
 
 class RenderSVGResourceGradient : public RenderSVGResourceContainer {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGResourceGradient);
 public:
     SVGGradientElement& gradientElement() const { return static_cast<SVGGradientElement&>(RenderSVGResourceContainer::element()); }
 
@@ -55,23 +56,24 @@ protected:
 
     void element() const = delete;
 
-    void addStops(GradientData*, const Vector<Gradient::ColorStop>&) const;
+    void addStops(GradientData*, const Vector<Gradient::ColorStop>&, const RenderStyle&) const;
 
     virtual SVGUnitTypes::SVGUnitType gradientUnits() const = 0;
     virtual void calculateGradientTransform(AffineTransform&) = 0;
     virtual bool collectGradientAttributes() = 0;
-    virtual void buildGradient(GradientData*) const = 0;
+    virtual void buildGradient(GradientData*, const RenderStyle&) const = 0;
 
     GradientSpreadMethod platformSpreadMethodFromSVGType(SVGSpreadMethodType) const;
 
 private:
-    bool m_shouldCollectGradientAttributes : 1;
     HashMap<RenderObject*, std::unique_ptr<GradientData>> m_gradientMap;
 
 #if USE(CG)
-    GraphicsContext* m_savedContext;
+    GraphicsContext* m_savedContext { nullptr };
     std::unique_ptr<ImageBuffer> m_imageBuffer;
 #endif
+
+    bool m_shouldCollectGradientAttributes { true };
 };
 
 } // namespace WebCore

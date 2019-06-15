@@ -8,26 +8,22 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_TEST_TESTSTEREO_H_
-#define WEBRTC_MODULES_AUDIO_CODING_TEST_TESTSTEREO_H_
+#ifndef MODULES_AUDIO_CODING_TEST_TESTSTEREO_H_
+#define MODULES_AUDIO_CODING_TEST_TESTSTEREO_H_
 
 #include <math.h>
 
 #include <memory>
 
-#include "webrtc/modules/audio_coding/test/ACMTest.h"
-#include "webrtc/modules/audio_coding/test/Channel.h"
-#include "webrtc/modules/audio_coding/test/PCMFile.h"
+#include "modules/audio_coding/test/ACMTest.h"
+#include "modules/audio_coding/test/Channel.h"
+#include "modules/audio_coding/test/PCMFile.h"
 
 #define PCMA_AND_PCMU
 
 namespace webrtc {
 
-enum StereoMonoMode {
-  kNotSet,
-  kMono,
-  kStereo
-};
+enum StereoMonoMode { kNotSet, kMono, kStereo };
 
 class TestPackStereo : public AudioPacketizationCallback {
  public:
@@ -72,11 +68,17 @@ class TestStereo : public ACMTest {
   // The default value of '-1' indicates that the registration is based only on
   // codec name and a sampling frequncy matching is not required. This is useful
   // for codecs which support several sampling frequency.
-  void RegisterSendCodec(char side, char* codec_name, int32_t samp_freq_hz,
-                         int rate, int pack_size, int channels,
+  void RegisterSendCodec(char side,
+                         char* codec_name,
+                         int32_t samp_freq_hz,
+                         int rate,
+                         int pack_size,
+                         int channels,
                          int payload_type);
 
-  void Run(TestPackStereo* channel, int in_channels, int out_channels,
+  void Run(TestPackStereo* channel,
+           int in_channels,
+           int out_channels,
            int percent_loss = 0);
   void OpenOutFile(int16_t test_number);
   void DisplaySendReceiveCodec();
@@ -98,9 +100,7 @@ class TestStereo : public ACMTest {
   char* send_codec_name_;
 
   // Payload types for stereo codecs and CNG
-#ifdef WEBRTC_CODEC_G722
   int g722_pltype_;
-#endif
   int l16_8khz_pltype_;
   int l16_16khz_pltype_;
   int l16_32khz_pltype_;
@@ -115,4 +115,4 @@ class TestStereo : public ACMTest {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_TEST_TESTSTEREO_H_
+#endif  // MODULES_AUDIO_CODING_TEST_TESTSTEREO_H_

@@ -29,6 +29,7 @@ namespace WebCore {
 class SVGRadialGradientElement;
 
 class RenderSVGResourceRadialGradient final : public RenderSVGResourceGradient {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGResourceRadialGradient);
 public:
     RenderSVGResourceRadialGradient(SVGRadialGradientElement&, RenderStyle&&);
     virtual ~RenderSVGResourceRadialGradient();
@@ -39,7 +40,7 @@ public:
 
     SVGUnitTypes::SVGUnitType gradientUnits() const override { return m_attributes.gradientUnits(); }
     void calculateGradientTransform(AffineTransform& transform) override { transform = m_attributes.gradientTransform(); }
-    void buildGradient(GradientData*) const override;
+    void buildGradient(GradientData*, const RenderStyle&) const override;
 
     FloatPoint centerPoint(const RadialGradientAttributes&) const;
     FloatPoint focalPoint(const RadialGradientAttributes&) const;

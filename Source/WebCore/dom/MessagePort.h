@@ -26,9 +26,13 @@
 
 #pragma once
 
+#include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "MessagePortChannel.h"
+#include "MessagePortIdentifier.h"
+#include "MessageWithMessagePorts.h"
+#include <wtf/WeakPtr.h>
 
 namespace JSC {
 class ExecState;
@@ -40,65 +44,88 @@ namespace WebCore {
 
 class Frame;
 
-class MessagePort final : public RefCounted<MessagePort>, public EventTargetWithInlineData {
+class MessagePort final : public ActiveDOMObject, public EventTargetWithInlineData, public CanMakeWeakPtr<MessagePort> {
+    WTF_MAKE_NONCOPYABLE(MessagePort);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<MessagePort> create(ScriptExecutionContext& scriptExecutionContext) { return adoptRef(*new MessagePort(scriptExecutionContext)); }
+    static Ref<MessagePort> create(ScriptExecutionContext&, const MessagePortIdentifier& local, const MessagePortIdentifier& remote);
     virtual ~MessagePort();
 
     ExceptionOr<void> postMessage(JSC::ExecState&, JSC::JSValue message, Vector<JSC::Strong<JSC::JSObject>>&&);
 
     void start();
     void close();
-
-    void entangle(std::unique_ptr<MessagePortChannel>&&);
+    void entangle();
 
     // Returns nullptr if the passed-in vector is empty.
-    static ExceptionOr<std::unique_ptr<MessagePortChannelArray>> disentanglePorts(Vector<RefPtr<MessagePort>>&&);
+    static ExceptionOr<TransferredMessagePortArray> disentanglePorts(Vector<RefPtr<MessagePort>>&&);
+    static Vector<RefPtr<MessagePort>> entanglePorts(ScriptExecutionContext&, TransferredMessagePortArray&&);
 
-    static Vector<RefPtr<MessagePort>> entanglePorts(ScriptExecutionContext&, std::unique_ptr<MessagePortChannelArray>&&);
+    WEBCORE_EXPORT static bool isExistingMessagePortLocallyReachable(const MessagePortIdentifier&);
+    WEBCORE_EXPORT static void notifyMessageAvailable(const MessagePortIdentifier&);
 
-    void messageAvailable();
+    WEBCORE_EXPORT void messageAvailable();
     bool started() const { return m_started; }
-
-    void contextDestroyed();
-
-    ScriptExecutionContext* scriptExecutionContext() const final { return m_scriptExecutionContext; }
+    bool closed() const { return m_closed; }
 
     void dispatchMessages();
-
-    bool hasPendingActivity();
 
     // Returns null if there is no entangled port, or if the entangled port is run by a different thread.
     // This is used solely to enable a GC optimization. Some platforms may not be able to determine ownership
     // of the remote port (since it may live cross-process) - those platforms may always return null.
-    MessagePort* locallyEntangledPort();
+    MessagePort* locallyEntangledPort() const;
 
-    using RefCounted::ref;
-    using RefCounted::deref;
+    const MessagePortIdentifier& identifier() const { return m_identifier; }
+    const MessagePortIdentifier& remoteIdentifier() const { return m_remoteIdentifier; }
 
-private:
-    explicit MessagePort(ScriptExecutionContext&);
+    WEBCORE_EXPORT void ref() const;
+    WEBCORE_EXPORT void deref() const;
 
+    // ActiveDOMObject
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    void contextDestroyed() final;
+    void stop() final { close(); }
+    bool hasPendingActivity() const final;
+
+    WEBCORE_EXPORT bool isLocallyReachable() const;
+
+    // EventTargetWithInlineData.
+    EventTargetInterface eventTargetInterface() const final { return MessagePortEventTargetInterfaceType; }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
-    bool isMessagePort() const final { return true; }
-    EventTargetInterface eventTargetInterface() const final { return MessagePortEventTargetInterfaceType; }
+private:
+    explicit MessagePort(ScriptExecutionContext&, const MessagePortIdentifier& local, const MessagePortIdentifier& remote);
 
     bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) final;
+    bool removeEventListener(const AtomicString& eventType, EventListener&, const ListenerOptions&) final;
 
-    std::unique_ptr<MessagePortChannel> disentangle();
+    void disentangle();
+
+    void registerLocalActivity();
 
     // A port starts out its life entangled, and remains entangled until it is closed or is cloned.
-    bool isEntangled() const { return !m_closed && !isNeutered(); }
+    bool isEntangled() const { return !m_closed && m_entangled; }
 
-    // A port gets neutered when it is transferred to a new owner via postMessage().
-    bool isNeutered() const { return !m_entangledChannel; }
+    void updateActivity(MessagePortChannelProvider::HasActivity);
 
-    std::unique_ptr<MessagePortChannel> m_entangledChannel;
     bool m_started { false };
     bool m_closed { false };
-    ScriptExecutionContext* m_scriptExecutionContext;
+    bool m_entangled { true };
+
+    // Flags to manage querying the remote port for GC purposes
+    mutable bool m_mightBeEligibleForGC { false };
+    mutable bool m_hasHadLocalActivitySinceLastCheck { false };
+    mutable bool m_isRemoteEligibleForGC { false };
+    mutable bool m_isAskingRemoteAboutGC { false };
+    bool m_hasMessageEventListener { false };
+
+    MessagePortIdentifier m_identifier;
+    MessagePortIdentifier m_remoteIdentifier;
+
+    mutable std::atomic<unsigned> m_refCount { 1 };
 };
 
 } // namespace WebCore

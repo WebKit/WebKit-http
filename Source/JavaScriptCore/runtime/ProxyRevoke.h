@@ -31,10 +31,16 @@ namespace JSC {
 
 class ProxyObject;
 
-class ProxyRevoke : public InternalFunction {
+class ProxyRevoke final : public InternalFunction {
 public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = Base::StructureFlags;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.proxyRevokeSpace;
+    }
 
     static ProxyRevoke* create(VM&, Structure*, ProxyObject*);
 
@@ -42,7 +48,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
     { 
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info()); 
     }
 
     void finishCreation(VM&, const char* name, ProxyObject*);
@@ -52,7 +58,6 @@ public:
 
 private:
     ProxyRevoke(VM&, Structure*);
-    static CallType getCallData(JSCell*, CallData&);
 
     WriteBarrier<Unknown> m_proxy;
 };

@@ -104,7 +104,7 @@ class Manager(object):
 
     def _custom_device_for_test(self, test):
         for device_class in self._port.CUSTOM_DEVICE_CLASSES:
-            directory_suffix = device_class + self._port.TEST_PATH_SEPARATOR
+            directory_suffix = device_class.lower().replace(' ', '') + self._port.TEST_PATH_SEPARATOR
             if directory_suffix in test:
                 return device_class
         return None
@@ -161,7 +161,7 @@ class Manager(object):
 
     def _set_up_run(self, test_names, device_class=None):
         self._printer.write_update("Checking build ...")
-        if not self._port.check_build(self.needs_servers(test_names)):
+        if not self._port.check_build():
             _log.error("Build check failed")
             return False
 
@@ -179,7 +179,7 @@ class Manager(object):
         # Check that the system dependencies (themes, fonts, ...) are correct.
         if not self._options.nocheck_sys_deps:
             self._printer.write_update("Checking system dependencies ...")
-            if not self._port.check_sys_deps(self.needs_servers(test_names)):
+            if not self._port.check_sys_deps():
                 self._port.stop_helper()
                 return False
 
@@ -460,8 +460,7 @@ class Manager(object):
             self._filesystem.remove(results_json_path)
 
     def upload_results(self, results_json_path, start_time, end_time):
-        hostname = self._options.results_server_host
-        if not hostname:
+        if not self._options.results_server_host:
             return
         master_name = self._options.master_name
         builder_name = self._options.builder_name
@@ -478,44 +477,45 @@ class Manager(object):
             revision = scm.native_revision(path)
             revisions[name] = {'revision': revision, 'timestamp': scm.timestamp_of_native_revision(path, revision)}
 
-        _log.info("Uploading JSON files for master: %s builder: %s build: %s slave: %s to %s", master_name, builder_name, build_number, build_slave, hostname)
+        for hostname in self._options.results_server_host:
+            _log.info("Uploading JSON files for master: %s builder: %s build: %s slave: %s to %s", master_name, builder_name, build_number, build_slave, hostname)
 
-        attrs = [
-            ('master', 'build.webkit.org' if master_name == 'webkit.org' else master_name),  # FIXME: Pass in build.webkit.org.
-            ('builder_name', builder_name),
-            ('build_number', build_number),
-            ('build_slave', build_slave),
-            ('revisions', json.dumps(revisions)),
-            ('start_time', str(start_time)),
-            ('end_time', str(end_time)),
-        ]
+            attrs = [
+                ('master', 'build.webkit.org' if master_name == 'webkit.org' else master_name),  # FIXME: Pass in build.webkit.org.
+                ('builder_name', builder_name),
+                ('build_number', build_number),
+                ('build_slave', build_slave),
+                ('revisions', json.dumps(revisions)),
+                ('start_time', str(start_time)),
+                ('end_time', str(end_time)),
+            ]
 
-        uploader = FileUploader("http://%s/api/report" % hostname, 360)
-        try:
-            response = uploader.upload_as_multipart_form_data(self._filesystem, [('results.json', results_json_path)], attrs)
-            if not response:
-                _log.error("JSON upload failed; no response returned")
-                return
-
-            if response.code != 200:
-                _log.error("JSON upload failed, %d: '%s'" % (response.code, response.read()))
-                return
-
-            response_text = response.read()
+            uploader = FileUploader("http://%s/api/report" % hostname, 360)
             try:
-                response_json = json.loads(response_text)
-            except ValueError, error:
-                _log.error("JSON upload failed; failed to parse the response: %s", response_text)
-                return
+                response = uploader.upload_as_multipart_form_data(self._filesystem, [('results.json', results_json_path)], attrs)
+                if not response:
+                    _log.error("JSON upload failed; no response returned")
+                    continue
 
-            if response_json['status'] != 'OK':
-                _log.error("JSON upload failed, %s: %s", response_json['status'], response_text)
-                return
+                if response.code != 200:
+                    _log.error("JSON upload failed, %d: '%s'" % (response.code, response.read()))
+                    continue
 
-            _log.info("JSON uploaded.")
-        except Exception, error:
-            _log.error("Upload failed: %s" % error)
-            return
+                response_text = response.read()
+                try:
+                    response_json = json.loads(response_text)
+                except ValueError as error:
+                    _log.error("JSON upload failed; failed to parse the response: %s", response_text)
+                    continue
+
+                if response_json['status'] != 'OK':
+                    _log.error("JSON upload failed, %s: %s", response_json['status'], response_text)
+                    continue
+
+                _log.info("JSON uploaded.")
+            except Exception as error:
+                _log.error("Upload failed: %s" % error)
+                continue
 
     def _copy_results_html_file(self, destination_path):
         base_dir = self._port.path_from_webkit_base('LayoutTests', 'fast', 'harness')
@@ -540,18 +540,18 @@ class Manager(object):
 
     def _print_expectation_line_for_test(self, format_string, test):
         line = self._expectations.model().get_expectation_line(test)
-        print format_string.format(test, line.expected_behavior, self._expectations.readable_filename_and_line_number(line), line.original_string or '')
+        print(format_string.format(test, line.expected_behavior, self._expectations.readable_filename_and_line_number(line), line.original_string or ''))
     
     def _print_expectations_for_subset(self, device_class, test_col_width, tests_to_run, tests_to_skip={}):
         format_string = '{{:{width}}} {{}} {{}} {{}}'.format(width=test_col_width)
         if tests_to_skip:
-            print ''
-            print 'Tests to skip ({})'.format(len(tests_to_skip))
+            print('')
+            print('Tests to skip ({})'.format(len(tests_to_skip)))
             for test in sorted(tests_to_skip):
                 self._print_expectation_line_for_test(format_string, test)
 
-        print ''
-        print 'Tests to run{} ({})'.format(' for ' + device_class if device_class else '', len(tests_to_run))
+        print('')
+        print('Tests to run{} ({})'.format(' for ' + device_class if device_class else '', len(tests_to_run)))
         for test in sorted(tests_to_run):
             self._print_expectation_line_for_test(format_string, test)
 

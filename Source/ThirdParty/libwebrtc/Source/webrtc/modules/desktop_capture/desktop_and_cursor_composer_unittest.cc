@@ -10,13 +10,14 @@
 
 #include <memory>
 
-#include "webrtc/modules/desktop_capture/desktop_and_cursor_composer.h"
-#include "webrtc/modules/desktop_capture/desktop_capturer.h"
-#include "webrtc/modules/desktop_capture/desktop_capture_options.h"
-#include "webrtc/modules/desktop_capture/desktop_frame.h"
-#include "webrtc/modules/desktop_capture/mouse_cursor.h"
-#include "webrtc/modules/desktop_capture/shared_desktop_frame.h"
-#include "webrtc/test/gtest.h"
+#include "modules/desktop_capture/desktop_and_cursor_composer.h"
+#include "modules/desktop_capture/desktop_capture_options.h"
+#include "modules/desktop_capture/desktop_capturer.h"
+#include "modules/desktop_capture/desktop_frame.h"
+#include "modules/desktop_capture/mouse_cursor.h"
+#include "modules/desktop_capture/shared_desktop_frame.h"
+#include "rtc_base/arraysize.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -29,9 +30,15 @@ const int kCursorHeight = 10;
 
 const int kTestCursorSize = 3;
 const uint32_t kTestCursorData[kTestCursorSize][kTestCursorSize] = {
-  { 0xffffffff, 0x99990000, 0xaa222222, },
-  { 0x88008800, 0xaa0000aa, 0xaa333333, },
-  { 0x00000000, 0xaa0000aa, 0xaa333333, },
+    {
+        0xffffffff, 0x99990000, 0xaa222222,
+    },
+    {
+        0x88008800, 0xaa0000aa, 0xaa333333,
+    },
+    {
+        0x00000000, 0xaa0000aa, 0xaa333333,
+    },
 };
 
 uint32_t GetFakeFramePixelValue(const DesktopVector& p) {
@@ -42,8 +49,7 @@ uint32_t GetFakeFramePixelValue(const DesktopVector& p) {
 }
 
 uint32_t GetFramePixel(const DesktopFrame& frame, const DesktopVector& pos) {
-  return *reinterpret_cast<uint32_t*>(frame.data() + pos.y() * frame.stride() +
-                                      pos.x() * DesktopFrame::kBytesPerPixel);
+  return *reinterpret_cast<uint32_t*>(frame.GetFrameDataAtPos(pos));
 }
 
 // Blends two pixel values taking into account alpha.
@@ -85,10 +91,15 @@ class FakeScreenCapturer : public DesktopCapturer {
     next_frame_ = std::move(next_frame);
   }
 
+  bool IsOccluded(const DesktopVector& pos) override { return is_occluded_; }
+
+  void set_is_occluded(bool value) { is_occluded_ = value; }
+
  private:
   Callback* callback_ = nullptr;
 
   std::unique_ptr<DesktopFrame> next_frame_;
+  bool is_occluded_ = false;
 };
 
 class FakeMouseMonitor : public MouseCursorMonitor {
@@ -126,7 +137,7 @@ class FakeMouseMonitor : public MouseCursorMonitor {
       callback_->OnMouseCursor(new MouseCursor(image.release(), hotspot_));
     }
 
-    callback_->OnMouseCursorPosition(state_, position_);
+    callback_->OnMouseCursorPosition(position_);
   }
 
  private:
@@ -159,13 +170,17 @@ void VerifyFrame(const DesktopFrame& frame,
   }
 }
 
+}  // namespace
+
 class DesktopAndCursorComposerTest : public testing::Test,
                                      public DesktopCapturer::Callback {
  public:
   DesktopAndCursorComposerTest()
       : fake_screen_(new FakeScreenCapturer()),
         fake_cursor_(new FakeMouseMonitor()),
-        blender_(fake_screen_, fake_cursor_) {}
+        blender_(fake_screen_, fake_cursor_) {
+    blender_.Start(this);
+  }
 
   // DesktopCapturer::Callback interface
   void OnCaptureResult(DesktopCapturer::Result result,
@@ -182,44 +197,20 @@ class DesktopAndCursorComposerTest : public testing::Test,
   std::unique_ptr<DesktopFrame> frame_;
 };
 
-// Verify DesktopAndCursorComposer can handle the case when the screen capturer
-// fails.
-TEST_F(DesktopAndCursorComposerTest, Error) {
-  blender_.Start(this);
-
-  fake_cursor_->SetHotspot(DesktopVector());
-  fake_cursor_->SetState(MouseCursorMonitor::INSIDE, DesktopVector());
-  fake_screen_->SetNextFrame(nullptr);
-
-  blender_.CaptureFrame();
-
-  EXPECT_FALSE(frame_);
-}
-
-TEST_F(DesktopAndCursorComposerTest, Blend) {
+TEST_F(DesktopAndCursorComposerTest, CursorShouldBeIgnoredIfNoFrameCaptured) {
   struct {
     int x, y;
     int hotspot_x, hotspot_y;
     bool inside;
   } tests[] = {
-    {0, 0, 0, 0, true},
-    {50, 50, 0, 0, true},
-    {100, 50, 0, 0, true},
-    {50, 100, 0, 0, true},
-    {100, 100, 0, 0, true},
-    {0, 0, 2, 5, true},
-    {1, 1, 2, 5, true},
-    {50, 50, 2, 5, true},
-    {100, 100, 2, 5, true},
-    {0, 0, 5, 2, true},
-    {50, 50, 5, 2, true},
-    {100, 100, 5, 2, true},
-    {0, 0, 0, 0, false},
+      {0, 0, 0, 0, true},    {50, 50, 0, 0, true},   {100, 50, 0, 0, true},
+      {50, 100, 0, 0, true}, {100, 100, 0, 0, true}, {0, 0, 2, 5, true},
+      {1, 1, 2, 5, true},    {50, 50, 2, 5, true},   {100, 100, 2, 5, true},
+      {0, 0, 5, 2, true},    {50, 50, 5, 2, true},   {100, 100, 5, 2, true},
+      {0, 0, 0, 0, false},
   };
 
-  blender_.Start(this);
-
-  for (size_t i = 0; i < (sizeof(tests) / sizeof(tests[0])); ++i) {
+  for (size_t i = 0; i < arraysize(tests); i++) {
     SCOPED_TRACE(i);
 
     DesktopVector hotspot(tests[i].hotspot_x, tests[i].hotspot_y);
@@ -233,11 +224,89 @@ TEST_F(DesktopAndCursorComposerTest, Blend) {
 
     std::unique_ptr<SharedDesktopFrame> frame(
         SharedDesktopFrame::Wrap(CreateTestFrame()));
-    fake_screen_->SetNextFrame(frame->Share());
 
     blender_.CaptureFrame();
+    // If capturer captured nothing, then cursor should be ignored, not matter
+    // its state or position.
+    EXPECT_EQ(frame_, nullptr);
+  }
+}
 
-    VerifyFrame(*frame_, state, pos);
+TEST_F(DesktopAndCursorComposerTest,
+       CursorShouldBeIgnoredIfItIsOutOfDesktopFrame) {
+  std::unique_ptr<SharedDesktopFrame> frame(
+      SharedDesktopFrame::Wrap(CreateTestFrame()));
+  frame->set_top_left(DesktopVector(100, 200));
+  // The frame covers (100, 200) - (200, 300).
+
+  struct {
+    int x;
+    int y;
+  } tests[] = {
+      {0, 0},    {50, 50},         {50, 150},      {100, 150}, {50, 200},
+      {99, 200}, {100, 199},       {200, 300},     {200, 299}, {199, 300},
+      {-1, -1},  {-10000, -10000}, {10000, 10000},
+  };
+  for (size_t i = 0; i < arraysize(tests); i++) {
+    SCOPED_TRACE(i);
+
+    fake_screen_->SetNextFrame(frame->Share());
+    // The CursorState is ignored when using absolute cursor position.
+    fake_cursor_->SetState(MouseCursorMonitor::OUTSIDE,
+                           DesktopVector(tests[i].x, tests[i].y));
+    blender_.CaptureFrame();
+    VerifyFrame(*frame_, MouseCursorMonitor::OUTSIDE, DesktopVector(0, 0));
+  }
+}
+
+TEST_F(DesktopAndCursorComposerTest, IsOccludedShouldBeConsidered) {
+  std::unique_ptr<SharedDesktopFrame> frame(
+      SharedDesktopFrame::Wrap(CreateTestFrame()));
+  frame->set_top_left(DesktopVector(100, 200));
+  // The frame covers (100, 200) - (200, 300).
+
+  struct {
+    int x;
+    int y;
+  } tests[] = {
+      {100, 200}, {101, 200}, {100, 201}, {101, 201}, {150, 250}, {199, 299},
+  };
+  fake_screen_->set_is_occluded(true);
+  for (size_t i = 0; i < arraysize(tests); i++) {
+    SCOPED_TRACE(i);
+
+    fake_screen_->SetNextFrame(frame->Share());
+    // The CursorState is ignored when using absolute cursor position.
+    fake_cursor_->SetState(MouseCursorMonitor::OUTSIDE,
+                           DesktopVector(tests[i].x, tests[i].y));
+    blender_.CaptureFrame();
+    VerifyFrame(*frame_, MouseCursorMonitor::OUTSIDE, DesktopVector());
+  }
+}
+
+TEST_F(DesktopAndCursorComposerTest, CursorIncluded) {
+  std::unique_ptr<SharedDesktopFrame> frame(
+      SharedDesktopFrame::Wrap(CreateTestFrame()));
+  frame->set_top_left(DesktopVector(100, 200));
+  // The frame covers (100, 200) - (200, 300).
+
+  struct {
+    int x;
+    int y;
+  } tests[] = {
+      {100, 200}, {101, 200}, {100, 201}, {101, 201}, {150, 250}, {199, 299},
+  };
+  for (size_t i = 0; i < arraysize(tests); i++) {
+    SCOPED_TRACE(i);
+
+    const DesktopVector abs_pos(tests[i].x, tests[i].y);
+    const DesktopVector rel_pos(abs_pos.subtract(frame->top_left()));
+
+    fake_screen_->SetNextFrame(frame->Share());
+    // The CursorState is ignored when using absolute cursor position.
+    fake_cursor_->SetState(MouseCursorMonitor::OUTSIDE, abs_pos);
+    blender_.CaptureFrame();
+    VerifyFrame(*frame_, MouseCursorMonitor::INSIDE, rel_pos);
 
     // Verify that the cursor is erased before the frame buffer is returned to
     // the screen capturer.
@@ -245,7 +314,5 @@ TEST_F(DesktopAndCursorComposerTest, Blend) {
     VerifyFrame(*frame, MouseCursorMonitor::OUTSIDE, DesktopVector());
   }
 }
-
-}  // namespace
 
 }  // namespace webrtc

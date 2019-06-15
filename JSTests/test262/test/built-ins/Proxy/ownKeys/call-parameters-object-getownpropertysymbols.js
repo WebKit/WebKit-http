@@ -1,11 +1,12 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 9.5.12
+esid: sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys
 description: >
     [[OwnPropertyKeys]] ( )
 
-    8. Let trapResultArray be Call(trap, handler, «target»).
+    7. Let trapResultArray be ? Call(trap, handler, « target »).
+
 features: [Symbol]
 ---*/
 
@@ -18,11 +19,11 @@ target[a] = 1;
 target[b] = 2;
 
 var handler = {
-    ownKeys: function(t) {
-        _handler = this;
-        _target = t;
-        return Object.getOwnPropertySymbols(t);
-    }
+  ownKeys: function(t) {
+    _handler = this;
+    _target = t;
+    return Object.getOwnPropertySymbols(t);
+  }
 }
 var p = new Proxy(target, handler);
 

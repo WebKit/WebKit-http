@@ -57,10 +57,12 @@ void ProcessThrottler::updateAssertionNow()
 {
     m_suspendTimer.stop();
     if (m_assertion) {
-        if (m_assertion->state() != assertionState())
-            RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::updateAssertionNow() updating process assertion state to %u (foregroundActivities: %lu, backgroundActivities: %lu)", this, assertionState(), m_foregroundCounter.value(), m_backgroundCounter.value());
-        m_assertion->setState(assertionState());
-        m_process.didSetAssertionState(assertionState());
+        auto newState = assertionState();
+        if (m_assertion->state() == newState)
+            return;
+        RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::updateAssertionNow() updating process assertion state to %u (foregroundActivities: %lu, backgroundActivities: %lu)", this, newState, m_foregroundCounter.value(), m_backgroundCounter.value());
+        m_assertion->setState(newState);
+        m_process.didSetAssertionState(newState);
     }
 }
     
@@ -91,7 +93,7 @@ void ProcessThrottler::updateAssertion()
     updateAssertionNow();
 }
 
-void ProcessThrottler::didConnectToProcess(PlatformProcessIdentifier pid)
+void ProcessThrottler::didConnectToProcess(ProcessID pid)
 {
     RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::didConnectToProcess(%d)", this, pid);
 

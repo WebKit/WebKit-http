@@ -1,10 +1,11 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-array.prototype.find
 es6id: 22.1.3.8
 description: >
   Return undefined if predicate always returns a boolean false value.
-info: >
+info: |
   22.1.3.8 Array.prototype.find ( predicate[ , thisArg ] )
 
   ...
@@ -27,17 +28,27 @@ var result = arr.find(function(val) {
 assert.sameValue(called, 3, 'predicate was called three times');
 assert.sameValue(result, undefined);
 
-result = arr.find(function(val) { return ''; });
+result = arr.find(function(val) {
+  return '';
+});
 assert.sameValue(result, undefined, 'coerced string');
 
-result = arr.find(function(val) { return undefined; });
+result = arr.find(function(val) {
+  return undefined;
+});
 assert.sameValue(result, undefined, 'coerced undefined');
 
-result = arr.find(function(val) { return null; });
+result = arr.find(function(val) {
+  return null;
+});
 assert.sameValue(result, undefined, 'coerced null');
 
-result = arr.find(function(val) { return 0; });
+result = arr.find(function(val) {
+  return 0;
+});
 assert.sameValue(result, undefined, 'coerced 0');
 
-result = arr.find(function(val) { return NaN; });
+result = arr.find(function(val) {
+  return NaN;
+});
 assert.sameValue(result, undefined, 'coerced NaN');

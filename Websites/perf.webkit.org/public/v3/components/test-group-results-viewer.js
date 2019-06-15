@@ -38,7 +38,8 @@ class TestGroupResultsViewer extends ComponentBase {
         if (!this._testGroup || !this._analysisResults)
             return;
 
-        this._renderResultsTableLazily.evaluate(this._testGroup, this._expandedTests, ...this._analysisResults.highestTests());
+        this._renderResultsTableLazily.evaluate(this._testGroup, this._expandedTests,
+            ...this._analysisResults.topLevelTestsForTestGroup(this._testGroup));
         this._renderCurrentMetricsLazily.evaluate(this._currentMetric);
     }
 
@@ -56,7 +57,8 @@ class TestGroupResultsViewer extends ComponentBase {
                     element('th', {class: 'metric-direction'}, ''),
                     element('th', {colspan: 2}, 'Results'),
                     element('th', 'Averages'),
-                    element('th', 'Comparison'),
+                    element('th', 'Comparison by mean'),
+                    element('th', 'Comparison by individual iterations')
                 ]),
             ]),
             tests.map((test) => this._buildRowsForTest(testGroup, expandedTests, test, [], maxDepth, 0))]);
@@ -99,7 +101,10 @@ class TestGroupResultsViewer extends ComponentBase {
         const deltaFormatter = metric.makeFormatter(2, false);
         const formatValue = (value, interval) => {
             const delta = interval ? (interval[1] - interval[0]) / 2 : null;
-            return value == null || isNaN(value) ? '-' : `${formatter(value)} \u00b1 ${deltaFormatter(delta)}`;
+            let result = value == null || isNaN(value) ? '-' : formatter(value);
+            if (delta != null && !isNaN(delta))
+                result += ` \u00b1 ${deltaFormatter(delta)}`;
+            return result;
         }
 
         const barGroup = new BarGraphGroup();
@@ -108,7 +113,7 @@ class TestGroupResultsViewer extends ComponentBase {
             const entry = valueMap.get(commitSet);
             const previousEntry = valueMap.get(previousCommitSet);
 
-            const comparison = entry && previousEntry ? testGroup.compareTestResults(metric, previousEntry.filteredValues, entry.filteredValues) : null;
+            const comparison = entry && previousEntry ? testGroup.compareTestResults(metric, previousEntry.filteredMeasurements, entry.filteredMeasurements) : null;
             const valueLabels = entry.measurements.map((measurement) => measurement ?  formatValue(measurement.value, measurement.interval) : '-');
 
             const barCell = element('td', {class: 'plot-bar'},
@@ -116,15 +121,17 @@ class TestGroupResultsViewer extends ComponentBase {
             barCell.expandedHeight = +valueLabels.length + 'rem';
             barCells.push(barCell);
 
-            const significance = comparison && comparison.isStatisticallySignificant ? 'significant' : 'negligible';
+            const significanceForMean = comparison && comparison.isStatisticallySignificantForMean ? 'significant' : 'negligible';
+            const significanceForIndividual = comparison && comparison.isStatisticallySignificantForIndividual ? 'significant' : 'negligible';
             const changeType = comparison ? comparison.changeType : null;
             return [
                 element('th', testGroup.labelForCommitSet(commitSet)),
                 barCell,
                 element('td', formatValue(entry.mean, entry.interval)),
-                element('td', {class: `comparison ${changeType} ${significance}`}, comparison ? comparison.fullLabel : ''),
+                element('td', {class: `comparison ${changeType} ${significanceForMean}`}, comparison ? comparison.fullLabelForMean : ''),
+                element('td', {class: `comparison ${changeType} ${significanceForIndividual}`}, comparison ? comparison.fullLabelForIndividual : ''),
             ];
-        }
+        };
 
         this._barGraphCellMap.set(metric, {barGroup, barCells});
 
@@ -162,10 +169,11 @@ class TestGroupResultsViewer extends ComponentBase {
         for (const commitSet of commitSets) {
             const requests = testGroup.requestsForCommitSet(commitSet);
             const measurements = requests.map((request) => resultsView.resultForRequest(request));
-            const filteredValues = measurements.filter((result) => !!result).map((measurement) => measurement.value);
+            const filteredMeasurements = measurements.filter((result) => !!result);
+            const filteredValues = filteredMeasurements.map((measurement) => measurement.value);
             const allValues = measurements.map((result) => result != null ? result.value : NaN);
             const interval = Statistics.confidenceInterval(filteredValues);
-            map.set(commitSet, {requests, measurements, filteredValues, allValues, mean: Statistics.mean(filteredValues), interval});
+            map.set(commitSet, {requests, measurements, filteredMeasurements, allValues, mean: Statistics.mean(filteredValues), interval});
         }
         return map;
     }

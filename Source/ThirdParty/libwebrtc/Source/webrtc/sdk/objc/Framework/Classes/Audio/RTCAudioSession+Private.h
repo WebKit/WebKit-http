@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#import "WebRTC/RTCAudioSession.h"
+#import "sdk/objc/Framework/Headers/WebRTC/RTCAudioSession.h"
 
 #include <vector>
 
@@ -77,19 +77,18 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSError *)configurationErrorWithDescription:(NSString *)description;
 
 // Properties and methods for tests.
-@property(nonatomic, readonly)
-    std::vector<__weak id<RTCAudioSessionDelegate> > delegates;
+@property(nonatomic, readonly) std::vector<__weak id<RTCAudioSessionDelegate> > delegates;
 
 - (void)notifyDidBeginInterruption;
-- (void)notifyDidEndInterruptionWithShouldResumeSession:
-    (BOOL)shouldResumeSession;
+- (void)notifyDidEndInterruptionWithShouldResumeSession:(BOOL)shouldResumeSession;
 - (void)notifyDidChangeRouteWithReason:(AVAudioSessionRouteChangeReason)reason
-    previousRoute:(AVAudioSessionRouteDescription *)previousRoute;
+                         previousRoute:(AVAudioSessionRouteDescription *)previousRoute;
 - (void)notifyMediaServicesWereLost;
 - (void)notifyMediaServicesWereReset;
 - (void)notifyDidChangeCanPlayOrRecord:(BOOL)canPlayOrRecord;
 - (void)notifyDidStartPlayOrRecord;
 - (void)notifyDidStopPlayOrRecord;
+- (void)notifyDidDetectPlayoutGlitch:(int64_t)totalNumberOfGlitches;
 
 @end
 

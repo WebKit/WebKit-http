@@ -36,28 +36,28 @@
 #include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "FloatRect.h"
+#include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "InspectorController.h"
 #include "InspectorFrontendHost.h"
 #include "InspectorPageAgent.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "ScriptController.h"
-#include "ScriptGlobalObject.h"
 #include "ScriptState.h"
 #include "Settings.h"
 #include "Timer.h"
 #include "UserGestureIndicator.h"
 #include "WindowFeatures.h"
-#include <inspector/InspectorBackendDispatchers.h>
+#include <JavaScriptCore/InspectorBackendDispatchers.h>
 #include <wtf/Deque.h>
 #include <wtf/text/CString.h>
 
-using namespace Inspector;
 
 namespace WebCore {
+
+using namespace Inspector;
 
 static const char* inspectorAttachedHeightSetting = "inspectorAttachedHeight";
 static const unsigned defaultAttachedHeight = 300;
@@ -152,7 +152,7 @@ void InspectorFrontendClientLocal::windowObjectCleared()
         m_frontendHost->disconnectClient();
     
     m_frontendHost = InspectorFrontendHost::create(this, m_frontendPage);
-    ScriptGlobalObject::set(*execStateFromPage(debuggerWorld(), m_frontendPage), "InspectorFrontendHost", *m_frontendHost);
+    m_frontendHost->addSelfToGlobalObjectInWorld(debuggerWorld());
 }
 
 void InspectorFrontendClientLocal::frontendLoaded()
@@ -227,7 +227,7 @@ void InspectorFrontendClientLocal::openInNewTab(const String& url)
 {
     UserGestureIndicator indicator { ProcessingUserGesture };
     Frame& mainFrame = m_inspectedPageController->inspectedPage().mainFrame();
-    FrameLoadRequest frameLoadRequest { *mainFrame.document(), mainFrame.document()->securityOrigin(), { }, ASCIILiteral("_blank"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
+    FrameLoadRequest frameLoadRequest { *mainFrame.document(), mainFrame.document()->securityOrigin(), { }, "_blank"_s, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
 
     bool created;
     RefPtr<Frame> frame = WebCore::createWindow(mainFrame, mainFrame, WTFMove(frameLoadRequest), { }, created);
@@ -239,7 +239,7 @@ void InspectorFrontendClientLocal::openInNewTab(const String& url)
 
     // FIXME: Why do we compute the absolute URL with respect to |frame| instead of |mainFrame|?
     ResourceRequest resourceRequest { frame->document()->completeURL(url) };
-    FrameLoadRequest frameLoadRequest2 { *mainFrame.document(), mainFrame.document()->securityOrigin(), resourceRequest, ASCIILiteral("_self"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
+    FrameLoadRequest frameLoadRequest2 { *mainFrame.document(), mainFrame.document()->securityOrigin(), resourceRequest, "_self"_s, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
     frame->loader().changeLocation(WTFMove(frameLoadRequest2));
 }
 

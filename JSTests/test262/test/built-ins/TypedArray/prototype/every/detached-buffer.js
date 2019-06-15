@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.every
 description: Throws a TypeError if this has a detached buffer
-info: >
+info: |
   22.2.3.7 %TypedArray%.prototype.every ( callbackfn [ , thisArg ] )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -16,6 +16,7 @@ info: >
   5. If IsDetachedBuffer(buffer) is true, throw a TypeError exception.
   ...
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 var callbackfn = function() {

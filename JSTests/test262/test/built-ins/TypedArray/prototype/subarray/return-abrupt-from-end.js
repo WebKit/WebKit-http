@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Return abrupt from ToInteger(end)
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
@@ -11,6 +11,7 @@ info: >
   be ? ToInteger(end).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var o1 = {

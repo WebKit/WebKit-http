@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WebURLSchemeTaskProxy.h"
 
+#include "URLSchemeTaskParameters.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
@@ -33,11 +34,10 @@
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoader.h>
-#include <wtf/CurrentTime.h>
-
-using namespace WebCore;
+#include <wtf/CompletionHandler.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 WebURLSchemeTaskProxy::WebURLSchemeTaskProxy(WebURLSchemeHandlerProxy& handler, ResourceLoader& loader)
     : m_urlSchemeHandler(handler)
@@ -50,7 +50,7 @@ WebURLSchemeTaskProxy::WebURLSchemeTaskProxy(WebURLSchemeHandlerProxy& handler, 
 void WebURLSchemeTaskProxy::startLoading()
 {
     ASSERT(m_coreLoader);
-    m_urlSchemeHandler.page().send(Messages::WebPageProxy::StartURLSchemeTask(m_urlSchemeHandler.identifier(), m_coreLoader->identifier(), m_request));
+    m_urlSchemeHandler.page().send(Messages::WebPageProxy::StartURLSchemeTask({m_urlSchemeHandler.identifier(), m_coreLoader->identifier(), m_request}));
 }
 
 void WebURLSchemeTaskProxy::stopLoading()
@@ -69,29 +69,45 @@ void WebURLSchemeTaskProxy::didPerformRedirection(WebCore::ResourceResponse&& re
         return;
     
     auto completionHandler = [this, protectedThis = makeRef(*this), originalRequest = request] (ResourceRequest&& request) {
-        m_waitingForRedirectCompletionHandler = false;
+        m_waitingForCompletionHandler = false;
         // We do not inform the UIProcess of WebKit's new request with the given suggested request.
         // We do want to know if WebKit would have generated a request that differs from the suggested request, though.
         if (request.url() != originalRequest.url())
             WTFLogAlways("Redirected scheme task would have been sent to a different URL.");
+
+        processNextPendingTask();
     };
     
-    if (m_waitingForRedirectCompletionHandler)
-        WTFLogAlways("Received redirect during previous redirect processing.");
-    m_waitingForRedirectCompletionHandler = true;
+    if (m_waitingForCompletionHandler) {
+        WTFLogAlways("Received redirect during previous redirect processing, queuing it.");
+        queueTask([this, protectedThis = makeRef(*this), redirectResponse = WTFMove(redirectResponse), request = WTFMove(request)]() mutable {
+            didPerformRedirection(WTFMove(redirectResponse), WTFMove(request));
+        });
+        return;
+    }
+    m_waitingForCompletionHandler = true;
 
     m_coreLoader->willSendRequest(WTFMove(request), redirectResponse, WTFMove(completionHandler));
 }
 
 void WebURLSchemeTaskProxy::didReceiveResponse(const ResourceResponse& response)
 {
-    if (m_waitingForRedirectCompletionHandler)
-        WTFLogAlways("Received response during redirect processing.");
+    if (m_waitingForCompletionHandler) {
+        WTFLogAlways("Received response during redirect processing, queuing it.");
+        queueTask([this, protectedThis = makeRef(*this), response] {
+            didReceiveResponse(response);
+        });
+        return;
+    }
     
     if (!hasLoader())
         return;
 
-    m_coreLoader->didReceiveResponse(response);
+    m_waitingForCompletionHandler = true;
+    m_coreLoader->didReceiveResponse(response, [this, protectedThis = makeRef(*this)] {
+        m_waitingForCompletionHandler = false;
+        processNextPendingTask();
+    });
 }
 
 void WebURLSchemeTaskProxy::didReceiveData(size_t size, const uint8_t* data)
@@ -99,13 +115,31 @@ void WebURLSchemeTaskProxy::didReceiveData(size_t size, const uint8_t* data)
     if (!hasLoader())
         return;
 
+    if (m_waitingForCompletionHandler) {
+        WTFLogAlways("Received data during response processing, queuing it.");
+        Vector<uint8_t> dataVector;
+        dataVector.append(data, size);
+        queueTask([this, protectedThis = makeRef(*this), dataVector = WTFMove(dataVector)] {
+            didReceiveData(dataVector.size(), dataVector.data());
+        });
+        return;
+    }
+
     m_coreLoader->didReceiveData(reinterpret_cast<const char*>(data), size, 0, DataPayloadType::DataPayloadBytes);
+    processNextPendingTask();
 }
 
 void WebURLSchemeTaskProxy::didComplete(const ResourceError& error)
 {
     if (!hasLoader())
         return;
+
+    if (m_waitingForCompletionHandler) {
+        queueTask([this, protectedThis = makeRef(*this), error] {
+            didComplete(error);
+        });
+        return;
+    }
 
     if (error.isNull())
         m_coreLoader->didFinishLoading(NetworkLoadMetrics());
@@ -121,6 +155,12 @@ bool WebURLSchemeTaskProxy::hasLoader()
         m_coreLoader = nullptr;
 
     return m_coreLoader;
+}
+
+void WebURLSchemeTaskProxy::processNextPendingTask()
+{
+    if (!m_queuedTasks.isEmpty())
+        m_queuedTasks.takeFirst()();
 }
 
 } // namespace WebKit

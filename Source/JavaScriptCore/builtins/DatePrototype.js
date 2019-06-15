@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner <thetalecrafter@gmail.com>.
+ * Copyright (C) 2015 Andy VanWagoner <andy@vanwagoner.family>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ function toLocaleString(/* locales, options */)
         else if (opts === null)
             @throwTypeError("null is not an object");
         else
-            options = @Object(opts);
+            options = @toObject(opts);
 
         // Check original instead of descendant to reduce lookups up the prototype chain.
         var needsDefaults = !options || (
@@ -97,7 +97,7 @@ function toLocaleDateString(/* locales, options */)
         else if (opts === null)
             @throwTypeError("null is not an object");
         else
-            options = @Object(opts);
+            options = @toObject(opts);
 
         // Check original instead of descendant to reduce lookups up the prototype chain.
         var needsDefaults = !options || (
@@ -147,7 +147,7 @@ function toLocaleTimeString(/* locales, options */)
         else if (opts === null)
             @throwTypeError("null is not an object");
         else
-            options = @Object(opts);
+            options = @toObject(opts);
 
         // Check original instead of descendant to reduce lookups up the prototype chain.
         var needsDefaults = !options || (

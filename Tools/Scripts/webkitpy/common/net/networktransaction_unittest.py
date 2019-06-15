@@ -49,7 +49,7 @@ class NetworkTransactionTest(LoggingTestCase):
         try:
             transaction.run(lambda: self._raise_exception())
             did_throw_exception = False
-        except Exception, e:
+        except Exception as e:
             did_process_exception = True
             self.assertEqual(e, self.exception)
         self.assertTrue(did_throw_exception)
@@ -62,11 +62,18 @@ class NetworkTransactionTest(LoggingTestCase):
             raise HTTPError("http://example.com/", 500, "internal server error", None, None)
         return 42
 
+    def _raise_URLError(self):
+        self._run_count += 1
+        if self._run_count < 3:
+            from webkitpy.thirdparty.autoinstalled.mechanize import URLError
+            raise URLError("[Errno 60] Operation timed out")
+        return 43
+
     def _raise_404_error(self):
         from webkitpy.thirdparty.autoinstalled.mechanize import HTTPError
         raise HTTPError("http://foo.com/", 404, "not found", None, None)
 
-    def test_retry(self):
+    def test_retry_on_HTTPError(self):
         self._run_count = 0
         transaction = NetworkTransaction(initial_backoff_seconds=0)
         self.assertEqual(transaction.run(lambda: self._raise_500_error()), 42)
@@ -74,6 +81,17 @@ class NetworkTransactionTest(LoggingTestCase):
         self.assertLog(['WARNING: Received HTTP status 500 loading "http://example.com/".  '
                         'Retrying in 0 seconds...\n',
                         'WARNING: Received HTTP status 500 loading "http://example.com/".  '
+                        'Retrying in 0.0 seconds...\n'])
+
+    def test_retry_on_URLError(self):
+        self._run_count = 0
+        url = "http://example.com/"
+        transaction = NetworkTransaction(initial_backoff_seconds=0)
+        self.assertEqual(transaction.run(lambda: self._raise_URLError(), url), 43)
+        self.assertEqual(self._run_count, 3)
+        self.assertLog(['WARNING: Received URLError: "[Errno 60] Operation timed out" while loading http://example.com/. '
+                        'Retrying in 0 seconds...\n',
+                        'WARNING: Received URLError: "[Errno 60] Operation timed out" while loading http://example.com/. '
                         'Retrying in 0.0 seconds...\n'])
 
     def test_convert_404_to_None(self):
@@ -88,7 +106,7 @@ class NetworkTransactionTest(LoggingTestCase):
         try:
             transaction.run(lambda: self._raise_500_error())
             did_throw_exception = False
-        except NetworkTimeout, e:
+        except NetworkTimeout as e:
             did_process_exception = True
         self.assertTrue(did_throw_exception)
         self.assertTrue(did_process_exception)

@@ -3,17 +3,13 @@
 <meta name=timeout content=long>
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
-<script src="resources/get-host-info.sub.js"></script>
+<script src="/common/get-host-info.sub.js"></script>
 <script src="resources/test-helpers.sub.js"></script>
 <body>
 <script>
 var worker = 'resources/fetch-rewrite-worker.js';
 var path = base_path() + 'resources/fetch-access-control.py';
 var host_info = get_host_info();
-
-if (window.testRunner) {
-  testRunner.setCanOpenWindows();
-}
 
 function getLoadedObject(win, contentFunc, closeFunc) {
   return new Promise(function(resolve) {
@@ -50,7 +46,12 @@ function getLoadedObject(win, contentFunc, closeFunc) {
 
       win.onload = function() {
           clearTimeout(timeout);
-          var content = contentFunc(win);
+          let content = '';
+          try {
+            content = contentFunc(win);
+          } catch(e) {
+            // use default empty string for cross-domain window (see above)
+          }
           done(content);
         };
     });
@@ -110,7 +111,8 @@ async_test(function(t) {
           frame.src =
             scope + '?mode=cors&url=' +
             encodeURIComponent(host_info['HTTPS_REMOTE_ORIGIN'] + path +
-                               '?ACAOrigin=' + host_info['HTTPS_ORIGIN']);
+                               '?ACAOrigin=' + host_info['HTTPS_ORIGIN'] +
+                               '&ACACredentials=true');
           document.body.appendChild(frame);
           return getLoadedFrameAsObject(frame);
         })
@@ -183,7 +185,8 @@ async_test(function(t) {
           var win = window.open(
             scope + '?mode=cors&url=' +
             encodeURIComponent(host_info['HTTPS_REMOTE_ORIGIN'] + path +
-                               '?ACAOrigin=' + host_info['HTTPS_ORIGIN']));
+                               '?ACAOrigin=' + host_info['HTTPS_ORIGIN'] +
+                               '&ACACredentials=true'));
           return getLoadedWindowAsObject(win);
         })
       .then(function(result) {

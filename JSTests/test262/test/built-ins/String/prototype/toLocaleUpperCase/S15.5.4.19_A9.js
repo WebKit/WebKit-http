@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The String.prototype.toLocaleUpperCase.length property does not have the
     attribute DontDelete
 es5id: 15.5.4.19_A9
@@ -14,7 +14,7 @@ description: >
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#0
 if (!(String.prototype.toLocaleUpperCase.hasOwnProperty('length'))) {
-  $ERROR('#0: String.prototype.toLocaleUpperCase.hasOwnProperty(\'length\') return true. Actual: '+String.prototype.toLocaleUpperCase.hasOwnProperty('length'));
+  $ERROR('#0: String.prototype.toLocaleUpperCase.hasOwnProperty(\'length\') return true. Actual: ' + String.prototype.toLocaleUpperCase.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ if (!delete String.prototype.toLocaleUpperCase.length) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (String.prototype.toLocaleUpperCase.hasOwnProperty('length')) {
-  $ERROR('#2: delete String.prototype.toLocaleUpperCase.length; String.prototype.toLocaleUpperCase.hasOwnProperty(\'length\') return false. Actual: '+String.prototype.toLocaleUpperCase.hasOwnProperty('length'));
+  $ERROR('#2: delete String.prototype.toLocaleUpperCase.length; String.prototype.toLocaleUpperCase.hasOwnProperty(\'length\') return false. Actual: ' + String.prototype.toLocaleUpperCase.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////

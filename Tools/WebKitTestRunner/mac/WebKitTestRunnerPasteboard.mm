@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2013 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2005-2018 Apple, Inc. All rights reserved.
  * Copyright (C) 2007 Graham Dennis (graham.dennis@gmail.com)
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  *
@@ -28,6 +28,8 @@
 #include "config.h"
 #include "WebKitTestRunnerPasteboard.h"
 
+#include <wtf/RetainPtr.h>
+
 @interface LocalPasteboard : NSPasteboard
 {
     NSMutableArray *typesArray;
@@ -38,6 +40,11 @@
 }
 
 -(id)initWithName:(NSString *)name;
+@end
+
+@interface NSPasteboard (SuperHelpers)
++ (instancetype)superAlloc;
++ (instancetype)superAllocWithZone:(NSZone *)zone;
 @end
 
 static NSMutableDictionary *localPasteboards;
@@ -57,7 +64,6 @@ static NSMutableDictionary *localPasteboards;
         return pasteboard;
     pasteboard = [[LocalPasteboard alloc] initWithName:name];
     [localPasteboards setObject:pasteboard forKey:name];
-    [pasteboard release];
     return pasteboard;
 }
 
@@ -69,7 +75,6 @@ static NSMutableDictionary *localPasteboards;
 
 + (void)releaseLocalPasteboards
 {
-    [localPasteboards release];
     localPasteboards = nil;
 }
 
@@ -82,11 +87,32 @@ static NSMutableDictionary *localPasteboards;
 
 @end
 
+@implementation NSPasteboard (SuperHelpers)
+
++ (instancetype)superAlloc
+{
+    return [super alloc];
+}
+
++ (instancetype)superAllocWithZone:(NSZone *)zone
+{
+    return [super allocWithZone:zone];
+}
+
+@end
+
 @implementation LocalPasteboard
 
 + (id)alloc
 {
-    return NSAllocateObject(self, 0, 0);
+    // Need to skip over [NSPasteboard alloc], which won't allocate a new object.
+    return [self superAlloc];
+}
+
++ (id)allocWithZone:(NSZone *)zone
+{
+    // Need to skip over [NSPasteboard allocWithZone:], which won't allocate a new object.
+    return [self superAllocWithZone:zone];
 }
 
 - (id)initWithName:(NSString *)name
@@ -99,15 +125,6 @@ static NSMutableDictionary *localPasteboards;
     dataByType = [[NSMutableDictionary alloc] init];
     pasteboardName = [name copy];
     return self;
-}
-
-- (void)dealloc
-{
-    [typesArray release];
-    [typesSet release];
-    [dataByType release];
-    [pasteboardName release];
-    [super dealloc];
 }
 
 - (NSString *)name
@@ -138,7 +155,6 @@ static NSMutableDictionary *localPasteboards;
             setType = [type copy];
             [typesArray addObject:setType];
             [typesSet addObject:setType];
-            [setType release];
         }
         if (newOwner && [newOwner respondsToSelector:@selector(pasteboard:provideDataForType:)])
             [newOwner pasteboard:self provideDataForType:setType];
@@ -158,12 +174,8 @@ static NSMutableDictionary *localPasteboards;
 
 - (NSString *)availableTypeFromArray:(NSArray *)types
 {
-    unsigned count = [types count];
-    unsigned i;
-    for (i = 0; i < count; ++i) {
-        NSString *type = [types objectAtIndex:i];
-        NSString *setType = [typesSet member:type];
-        if (setType)
+    for (NSString *type in types) {
+        if (NSString *setType = [typesSet member:type])
             return setType;
     }
     return nil;
@@ -171,10 +183,10 @@ static NSMutableDictionary *localPasteboards;
 
 - (BOOL)setData:(NSData *)data forType:(NSString *)dataType
 {
-    if (data == nil)
-        data = [NSData data];
     if (![typesSet containsObject:dataType])
         return NO;
+    if (!data)
+        data = [NSData data];
     [dataByType setObject:data forKey:dataType];
     ++changeCount;
     return YES;
@@ -187,28 +199,23 @@ static NSMutableDictionary *localPasteboards;
 
 - (BOOL)setPropertyList:(id)propertyList forType:(NSString *)dataType
 {
-    CFDataRef data = 0;
+    NSData *data = nil;
     if (propertyList)
-        data = CFPropertyListCreateXMLData(0, propertyList);
-    BOOL result = [self setData:(NSData *)data forType:dataType];
-    if (data)
-        CFRelease(data);
-    return result;
+        data = [NSPropertyListSerialization dataWithPropertyList:propertyList format:NSPropertyListXMLFormat_v1_0 options:0 error:nullptr];
+    return [self setData:data forType:dataType];
 }
 
 - (BOOL)setString:(NSString *)string forType:(NSString *)dataType
 {
-    CFDataRef data = 0;
-    if (string) {
-        if ([string length] == 0)
-            data = CFDataCreate(0, 0, 0);
-        else
-            data = CFStringCreateExternalRepresentation(0, (CFStringRef)string, kCFStringEncodingUTF8, 0);
-    }
-    BOOL result = [self setData:(NSData *)data forType:dataType];
-    if (data)
-        CFRelease(data);
-    return result;
+    return [self setData:[string dataUsingEncoding:NSUTF8StringEncoding] forType:dataType];
+}
+
+- (NSArray<NSPasteboardItem *> *)pasteboardItems
+{
+    auto item = adoptNS([[NSPasteboardItem alloc] init]);
+    for (NSString *type in dataByType)
+        [item setData:dataByType[type] forType:type];
+    return @[ item.get() ];
 }
 
 @end

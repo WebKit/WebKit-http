@@ -28,7 +28,20 @@
 
 namespace WebCore {
 
-auto FontSelectionAlgorithm::stretchDistance(FontSelectionCapabilities capabilities) const -> DistanceResult
+FontSelectionAlgorithm::FontSelectionAlgorithm(FontSelectionRequest request, const Vector<Capabilities>& capabilities, std::optional<Capabilities> bounds)
+    : m_request(request)
+    , m_capabilities(capabilities)
+{
+    ASSERT(!m_capabilities.isEmpty());
+    if (bounds)
+        m_capabilitiesBounds = bounds.value();
+    else {
+        for (auto& capabilities : m_capabilities)
+            m_capabilitiesBounds.expand(capabilities);
+    }
+}
+
+auto FontSelectionAlgorithm::stretchDistance(Capabilities capabilities) const -> DistanceResult
 {
     auto width = capabilities.width;
     ASSERT(width.isValid());
@@ -50,106 +63,109 @@ auto FontSelectionAlgorithm::stretchDistance(FontSelectionCapabilities capabilit
     return { width.minimum - threshold, width.minimum };
 }
 
-auto FontSelectionAlgorithm::styleDistance(FontSelectionCapabilities capabilities) const -> DistanceResult
+auto FontSelectionAlgorithm::styleDistance(Capabilities capabilities) const -> DistanceResult
 {
     auto slope = capabilities.slope;
+    auto requestSlope = m_request.slope.value_or(normalItalicValue());
     ASSERT(slope.isValid());
-    if (slope.includes(m_request.slope))
-        return { FontSelectionValue(), m_request.slope };
+    if (slope.includes(requestSlope))
+        return { FontSelectionValue(), requestSlope };
 
-    if (m_request.slope >= italicThreshold()) {
-        if (slope.minimum > m_request.slope)
-            return { slope.minimum - m_request.slope, slope.minimum };
-        ASSERT(m_request.slope > slope.maximum);
-        auto threshold = std::max(m_request.slope, m_capabilitiesBounds.slope.maximum);
+    if (requestSlope >= italicThreshold()) {
+        if (slope.minimum > requestSlope)
+            return { slope.minimum - requestSlope, slope.minimum };
+        ASSERT(requestSlope > slope.maximum);
+        auto threshold = std::max(requestSlope, m_capabilitiesBounds.slope.maximum);
         return { threshold - slope.maximum, slope.maximum };
     }
 
-    if (m_request.slope >= FontSelectionValue()) {
-        if (slope.maximum >= FontSelectionValue() && slope.maximum < m_request.slope)
-            return { m_request.slope - slope.maximum, slope.maximum };
-        if (slope.minimum > m_request.slope)
+    if (requestSlope >= FontSelectionValue()) {
+        if (slope.maximum >= FontSelectionValue() && slope.maximum < requestSlope)
+            return { requestSlope - slope.maximum, slope.maximum };
+        if (slope.minimum > requestSlope)
             return { slope.minimum, slope.minimum };
         ASSERT(slope.maximum < FontSelectionValue());
-        auto threshold = std::max(m_request.slope, m_capabilitiesBounds.slope.maximum);
+        auto threshold = std::max(requestSlope, m_capabilitiesBounds.slope.maximum);
         return { threshold - slope.maximum, slope.maximum };
     }
 
-    if (m_request.slope > -italicThreshold()) {
-        if (slope.minimum > m_request.slope && slope.minimum <= FontSelectionValue())
-            return { slope.minimum - m_request.slope, slope.minimum };
-        if (slope.maximum < m_request.slope)
+    if (requestSlope > -italicThreshold()) {
+        if (slope.minimum > requestSlope && slope.minimum <= FontSelectionValue())
+            return { slope.minimum - requestSlope, slope.minimum };
+        if (slope.maximum < requestSlope)
             return { -slope.maximum, slope.maximum };
         ASSERT(slope.minimum > FontSelectionValue());
-        auto threshold = std::min(m_request.slope, m_capabilitiesBounds.slope.minimum);
+        auto threshold = std::min(requestSlope, m_capabilitiesBounds.slope.minimum);
         return { slope.minimum - threshold, slope.minimum };
     }
 
-    if (slope.maximum < m_request.slope)
-        return { m_request.slope - slope.maximum, slope.maximum };
-    ASSERT(slope.minimum > m_request.slope);
-    auto threshold = std::min(m_request.slope, m_capabilitiesBounds.slope.minimum);
+    if (slope.maximum < requestSlope)
+        return { requestSlope - slope.maximum, slope.maximum };
+    ASSERT(slope.minimum > requestSlope);
+    auto threshold = std::min(requestSlope, m_capabilitiesBounds.slope.minimum);
     return { slope.minimum - threshold, slope.minimum };
 }
 
-auto FontSelectionAlgorithm::weightDistance(FontSelectionCapabilities capabilities) const -> DistanceResult
+auto FontSelectionAlgorithm::weightDistance(Capabilities capabilities) const -> DistanceResult
 {
     auto weight = capabilities.weight;
     ASSERT(weight.isValid());
     if (weight.includes(m_request.weight))
         return { FontSelectionValue(), m_request.weight };
 
-    // The spec states: "If the desired weight is 400, 500 is checked first ... If the desired weight is 500, 400 is checked first"
-    FontSelectionValue offset(1);
-    if (m_request.weight == FontSelectionValue(400) && weight.includes(FontSelectionValue(500)))
-        return { offset, FontSelectionValue(500) };
-    if (m_request.weight == FontSelectionValue(500) && weight.includes(FontSelectionValue(400)))
-        return { offset, FontSelectionValue(400) };
-
-    if (m_request.weight <= weightSearchThreshold()) {
+    if (m_request.weight >= lowerWeightSearchThreshold() && m_request.weight <= upperWeightSearchThreshold()) {
+        if (weight.minimum > m_request.weight && weight.minimum <= upperWeightSearchThreshold())
+            return { weight.minimum - m_request.weight, weight.minimum };
         if (weight.maximum < m_request.weight)
-            return { m_request.weight - weight.maximum + offset, weight.maximum };
+            return { upperWeightSearchThreshold() - weight.maximum, weight.maximum };
+        ASSERT(weight.minimum > upperWeightSearchThreshold());
+        auto threshold = std::min(m_request.weight, m_capabilitiesBounds.weight.minimum);
+        return { weight.minimum - threshold, weight.minimum };
+    }
+    if (m_request.weight < lowerWeightSearchThreshold()) {
+        if (weight.maximum < m_request.weight)
+            return { m_request.weight - weight.maximum, weight.maximum };
         ASSERT(weight.minimum > m_request.weight);
         auto threshold = std::min(m_request.weight, m_capabilitiesBounds.weight.minimum);
-        return { weight.minimum - threshold + offset, weight.minimum };
+        return { weight.minimum - threshold, weight.minimum };
     }
-
+    ASSERT(m_request.weight >= upperWeightSearchThreshold());
     if (weight.minimum > m_request.weight)
-        return { weight.minimum - m_request.weight + offset, weight.minimum };
+        return { weight.minimum - m_request.weight, weight.minimum };
     ASSERT(weight.maximum < m_request.weight);
     auto threshold = std::max(m_request.weight, m_capabilitiesBounds.weight.maximum);
-    return { threshold - weight.maximum + offset, weight.maximum };
+    return { threshold - weight.maximum, weight.maximum };
 }
 
-void FontSelectionAlgorithm::filterCapability(DistanceResult(FontSelectionAlgorithm::*computeDistance)(FontSelectionCapabilities) const, FontSelectionRange FontSelectionCapabilities::*inclusionRange)
+FontSelectionValue FontSelectionAlgorithm::bestValue(const bool eliminated[], DistanceFunction computeDistance) const
 {
-    std::optional<FontSelectionValue> smallestDistance;
-    FontSelectionValue closestValue;
-    iterateActiveCapabilities([&](FontSelectionCapabilities capabilities, size_t) {
-        auto distanceResult = (this->*computeDistance)(capabilities);
-        if (!smallestDistance || distanceResult.distance < smallestDistance.value()) {
-            smallestDistance = distanceResult.distance;
-            closestValue = distanceResult.value;
-        }
-    });
-    ASSERT(smallestDistance);
-    iterateActiveCapabilities([&](auto& capabilities, size_t i) {
-        if (!(capabilities.*inclusionRange).includes(closestValue))
-            m_filter[i] = false;
-    });
+    std::optional<DistanceResult> smallestDistance;
+    for (size_t i = 0, size = m_capabilities.size(); i < size; ++i) {
+        if (eliminated[i])
+            continue;
+        auto distanceResult = (this->*computeDistance)(m_capabilities[i]);
+        if (!smallestDistance || distanceResult.distance < smallestDistance.value().distance)
+            smallestDistance = distanceResult;
+    }
+    return smallestDistance.value().value;
+}
+
+void FontSelectionAlgorithm::filterCapability(bool eliminated[], DistanceFunction computeDistance, CapabilitiesRange inclusionRange)
+{
+    auto value = bestValue(eliminated, computeDistance);
+    for (size_t i = 0, size = m_capabilities.size(); i < size; ++i) {
+        eliminated[i] = eliminated[i]
+            || !(m_capabilities[i].*inclusionRange).includes(value);
+    }
 }
 
 size_t FontSelectionAlgorithm::indexOfBestCapabilities()
 {
-    filterCapability(&FontSelectionAlgorithm::stretchDistance, &FontSelectionCapabilities::width);
-    filterCapability(&FontSelectionAlgorithm::styleDistance, &FontSelectionCapabilities::slope);
-    filterCapability(&FontSelectionAlgorithm::weightDistance, &FontSelectionCapabilities::weight);
-
-    auto result = iterateActiveCapabilitiesWithReturn<size_t>([](FontSelectionCapabilities, size_t i) {
-        return i;
-    });
-    ASSERT(result);
-    return result.value_or(0);
+    Vector<bool, 256> eliminated(m_capabilities.size(), false);
+    filterCapability(eliminated.data(), &FontSelectionAlgorithm::stretchDistance, &Capabilities::width);
+    filterCapability(eliminated.data(), &FontSelectionAlgorithm::styleDistance, &Capabilities::slope);
+    filterCapability(eliminated.data(), &FontSelectionAlgorithm::weightDistance, &Capabilities::weight);
+    return eliminated.find(false);
 }
 
 }

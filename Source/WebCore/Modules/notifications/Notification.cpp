@@ -38,7 +38,6 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "NotificationClient.h"
 #include "NotificationController.h"
 #include "NotificationPermissionCallback.h"
@@ -72,9 +71,7 @@ Notification::Notification(Document& document, const String& title, const Option
     m_taskTimer->startOneShot(0_s);
 }
 
-Notification::~Notification() 
-{
-}
+Notification::~Notification()  = default;
 
 void Notification::show()
 {
@@ -144,24 +141,24 @@ void Notification::finalize()
 
 void Notification::dispatchShowEvent()
 {
-    dispatchEvent(Event::create(eventNames().showEvent, false, false));
+    dispatchEvent(Event::create(eventNames().showEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void Notification::dispatchClickEvent()
 {
     WindowFocusAllowedIndicator windowFocusAllowed;
-    dispatchEvent(Event::create(eventNames().clickEvent, false, false));
+    dispatchEvent(Event::create(eventNames().clickEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 void Notification::dispatchCloseEvent()
 {
-    dispatchEvent(Event::create(eventNames().closeEvent, false, false));
+    dispatchEvent(Event::create(eventNames().closeEvent, Event::CanBubble::No, Event::IsCancelable::No));
     finalize();
 }
 
 void Notification::dispatchErrorEvent()
 {
-    dispatchEvent(Event::create(eventNames().errorEvent, false, false));
+    dispatchEvent(Event::create(eventNames().errorEvent, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 auto Notification::permission(Document& document) -> Permission

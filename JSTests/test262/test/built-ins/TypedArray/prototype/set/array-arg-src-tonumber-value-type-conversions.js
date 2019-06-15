@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-array-offset
 description: >
   Type conversions on ToNumber(src property value)
-info: >
+info: |
   22.2.3.23.1 %TypedArray%.prototype.set (array [ , offset ] )
 
   1. Assert: array is any ECMAScript language value other than an Object with a
@@ -19,24 +19,24 @@ info: >
     kNumber).
   ...
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
-var obj1 = {
-  valueOf: function() {
-    return 42;
-  }
-};
-
-var obj2 = {
-  toString: function() {
-    return 42;
-  }
-};
-
-// undefined and NaN covered on typedArrayConversions
-var arr = ["1", "", false, true, null, obj1, obj2, [], [1]];
-
 testWithTypedArrayConstructors(function(TA) {
+  var obj1 = {
+      valueOf: function() {
+        return 42;
+      }
+  };
+
+  var obj2 = {
+      toString: function() {
+        return "42";
+      }
+  };
+
+  var arr = ["1", "", false, true, null, obj1, obj2, [], [1]];
+
   var sample = new TA(arr.length);
   var expected = new TA([1, 0, 0, 1, 0, 42, 42, 0, 1]);
 

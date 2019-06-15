@@ -8,14 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/congestion_controller/transport_feedback_adapter.h"
+#include "modules/congestion_controller/transport_feedback_adapter.h"
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/mod_ops.h"
-#include "webrtc/modules/congestion_controller/delay_based_bwe.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/transport_feedback.h"
-#include "webrtc/system_wrappers/include/field_trial.h"
+#include <algorithm>
+
+#include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/transport_feedback.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/numerics/mod_ops.h"
 
 namespace webrtc {
 
@@ -26,10 +27,7 @@ const int64_t kBaseTimestampScaleFactor =
 const int64_t kBaseTimestampRangeSizeUs = kBaseTimestampScaleFactor * (1 << 24);
 
 TransportFeedbackAdapter::TransportFeedbackAdapter(const Clock* clock)
-    : send_side_bwe_with_overhead_(
-          webrtc::field_trial::IsEnabled("WebRTC-SendSideBwe-WithOverhead")),
-      transport_overhead_bytes_per_packet_(0),
-      send_time_history_(clock, kSendTimeHistoryWindowMs),
+    : send_time_history_(clock, kSendTimeHistoryWindowMs),
       clock_(clock),
       current_offset_ms_(kNoTimestamp),
       last_timestamp_us_(kNoTimestamp),
@@ -64,9 +62,6 @@ void TransportFeedbackAdapter::AddPacket(uint32_t ssrc,
                                          const PacedPacketInfo& pacing_info) {
   {
     rtc::CritScope cs(&lock_);
-    if (send_side_bwe_with_overhead_) {
-      length += transport_overhead_bytes_per_packet_;
-    }
     const int64_t creation_time_ms = clock_->TimeInMilliseconds();
     send_time_history_.AddAndRemoveOld(
         PacketFeedback(creation_time_ms, sequence_number, length, local_net_id_,
@@ -75,7 +70,7 @@ void TransportFeedbackAdapter::AddPacket(uint32_t ssrc,
 
   {
     rtc::CritScope cs(&observers_lock_);
-    for (auto observer : observers_) {
+    for (auto* observer : observers_) {
       observer->OnPacketAdded(ssrc, sequence_number);
     }
   }
@@ -85,12 +80,6 @@ void TransportFeedbackAdapter::OnSentPacket(uint16_t sequence_number,
                                             int64_t send_time_ms) {
   rtc::CritScope cs(&lock_);
   send_time_history_.OnSentPacket(sequence_number, send_time_ms);
-}
-
-void TransportFeedbackAdapter::SetTransportOverhead(
-    int transport_overhead_bytes_per_packet) {
-  rtc::CritScope cs(&lock_);
-  transport_overhead_bytes_per_packet_ = transport_overhead_bytes_per_packet;
 }
 
 void TransportFeedbackAdapter::SetNetworkIds(uint16_t local_id,
@@ -103,11 +92,12 @@ void TransportFeedbackAdapter::SetNetworkIds(uint16_t local_id,
 std::vector<PacketFeedback> TransportFeedbackAdapter::GetPacketFeedbackVector(
     const rtcp::TransportFeedback& feedback) {
   int64_t timestamp_us = feedback.GetBaseTimeUs();
+  int64_t now_ms = clock_->TimeInMilliseconds();
   // Add timestamp deltas to a local time base selected on first packet arrival.
   // This won't be the true time base, but makes it easier to manually inspect
   // time stamps.
   if (last_timestamp_us_ == kNoTimestamp) {
-    current_offset_ms_ = clock_->TimeInMilliseconds();
+    current_offset_ms_ = now_ms;
   } else {
     int64_t delta = timestamp_us - last_timestamp_us_;
 
@@ -124,11 +114,11 @@ std::vector<PacketFeedback> TransportFeedbackAdapter::GetPacketFeedbackVector(
 
   std::vector<PacketFeedback> packet_feedback_vector;
   if (feedback.GetPacketStatusCount() == 0) {
-    LOG(LS_INFO) << "Empty transport feedback packet received.";
+    RTC_LOG(LS_INFO) << "Empty transport feedback packet received.";
     return packet_feedback_vector;
   }
   packet_feedback_vector.reserve(feedback.GetPacketStatusCount());
-
+  int64_t feedback_rtt = -1;
   {
     rtc::CritScope cs(&lock_);
     size_t failed_lookups = 0;
@@ -158,6 +148,12 @@ std::vector<PacketFeedback> TransportFeedbackAdapter::GetPacketFeedbackVector(
         ++failed_lookups;
       if (packet_feedback.local_net_id == local_net_id_ &&
           packet_feedback.remote_net_id == remote_net_id_) {
+        if (packet_feedback.send_time_ms >= 0) {
+          int64_t rtt = now_ms - packet_feedback.send_time_ms;
+          // max() is used to account for feedback being delayed by the
+          // receiver.
+          feedback_rtt = std::max(rtt, feedback_rtt);
+        }
         packet_feedback_vector.push_back(packet_feedback);
       }
 
@@ -165,9 +161,17 @@ std::vector<PacketFeedback> TransportFeedbackAdapter::GetPacketFeedbackVector(
     }
 
     if (failed_lookups > 0) {
-      LOG(LS_WARNING) << "Failed to lookup send time for " << failed_lookups
-                      << " packet" << (failed_lookups > 1 ? "s" : "")
-                      << ". Send time history too small?";
+      RTC_LOG(LS_WARNING) << "Failed to lookup send time for " << failed_lookups
+                          << " packet" << (failed_lookups > 1 ? "s" : "")
+                          << ". Send time history too small?";
+    }
+    if (feedback_rtt > -1) {
+      feedback_rtts_.push_back(feedback_rtt);
+      const size_t kFeedbackRttWindow = 32;
+      if (feedback_rtts_.size() > kFeedbackRttWindow)
+        feedback_rtts_.pop_front();
+      min_feedback_rtt_.emplace(
+          *std::min_element(feedback_rtts_.begin(), feedback_rtts_.end()));
     }
   }
   return packet_feedback_vector;
@@ -178,7 +182,7 @@ void TransportFeedbackAdapter::OnTransportFeedback(
   last_packet_feedback_vector_ = GetPacketFeedbackVector(feedback);
   {
     rtc::CritScope cs(&observers_lock_);
-    for (auto observer : observers_) {
+    for (auto* observer : observers_) {
       observer->OnPacketFeedbackVector(last_packet_feedback_vector_);
     }
   }
@@ -187,5 +191,16 @@ void TransportFeedbackAdapter::OnTransportFeedback(
 std::vector<PacketFeedback>
 TransportFeedbackAdapter::GetTransportFeedbackVector() const {
   return last_packet_feedback_vector_;
+}
+
+absl::optional<int64_t> TransportFeedbackAdapter::GetMinFeedbackLoopRtt()
+    const {
+  rtc::CritScope cs(&lock_);
+  return min_feedback_rtt_;
+}
+
+size_t TransportFeedbackAdapter::GetOutstandingBytes() const {
+  rtc::CritScope cs(&lock_);
+  return send_time_history_.GetOutstandingBytes(local_net_id_, remote_net_id_);
 }
 }  // namespace webrtc

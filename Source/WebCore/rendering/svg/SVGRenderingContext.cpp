@@ -5,6 +5,7 @@
  * Copyright (C) 2009 Google, Inc.  All rights reserved.
  * Copyright (C) 2009 Dirk Schulze <krit@webkit.org>
  * Copyright (C) Research In Motion Limited 2009-2010. All rights reserved.
+ * Copyright (C) 2018 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -42,7 +43,7 @@ namespace WebCore {
 
 static inline bool isRenderingMaskImage(const RenderObject& object)
 {
-    return object.view().frameView().paintBehavior() & PaintBehaviorRenderingSVGMask;
+    return object.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGMask);
 }
 
 SVGRenderingContext::~SVGRenderingContext()
@@ -56,7 +57,7 @@ SVGRenderingContext::~SVGRenderingContext()
     if (m_renderingFlags & EndFilterLayer) {
         ASSERT(m_filter);
         GraphicsContext* contextPtr = &m_paintInfo->context();
-        m_filter->postApplyResource(*m_renderer, contextPtr, RenderSVGResourceMode::ApplyToDefault, 0, 0);
+        m_filter->postApplyResource(*m_renderer, contextPtr, { }, nullptr, nullptr);
         m_paintInfo->setContext(*m_savedContext);
         m_paintInfo->rect = m_savedPaintRect;
     }
@@ -81,7 +82,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
 
     m_renderer = &renderer;
     m_paintInfo = &paintInfo;
-    m_filter = 0;
+    m_filter = nullptr;
 
     // We need to save / restore the context even if the initialization failed.
     if (needsGraphicsContextSave == SaveGraphicsContext) {
@@ -121,7 +122,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
             m_paintInfo->context().beginTransparencyLayer(opacity);
 
             if (hasBlendMode)
-                m_paintInfo->context().setCompositeOperation(m_paintInfo->context().compositeOperation(), BlendModeNormal);
+                m_paintInfo->context().setCompositeOperation(m_paintInfo->context().compositeOperation(), BlendMode::Normal);
 
             m_renderingFlags |= EndOpacityLayer;
         }
@@ -134,21 +135,9 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     }
 
     ClipPathOperation* clipPathOperation = style.clipPath();
-    if (is<ShapeClipPathOperation>(clipPathOperation)) {
-        auto& clipPath = downcast<ShapeClipPathOperation>(*clipPathOperation);
-        FloatRect referenceBox;
-        if (clipPath.referenceBox() == Stroke)
-            // FIXME: strokeBoundingBox() takes dasharray into account but shouldn't.
-            referenceBox = renderer.strokeBoundingBox();
-        else if (clipPath.referenceBox() == ViewBox && renderer.element()) {
-            FloatSize viewportSize;
-            SVGLengthContext(downcast<SVGElement>(renderer.element())).determineViewport(viewportSize);
-            referenceBox.setWidth(viewportSize.width());
-            referenceBox.setHeight(viewportSize.height());
-        } else
-            referenceBox = renderer.objectBoundingBox();
-        m_paintInfo->context().clipPath(clipPath.pathForReferenceRect(referenceBox), clipPath.windRule());
-    }
+    bool hasCSSClipping = is<ShapeClipPathOperation>(clipPathOperation) || is<BoxClipPathOperation>(clipPathOperation);
+    if (hasCSSClipping)
+        SVGRenderSupport::clipContextToCSSClippingArea(m_paintInfo->context(), renderer);
 
     auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*m_renderer);
     if (!resources) {
@@ -162,7 +151,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     if (!isRenderingMask) {
         if (RenderSVGResourceMasker* masker = resources->masker()) {
             GraphicsContext* contextPtr = &m_paintInfo->context();
-            bool result = masker->applyResource(*m_renderer, style, contextPtr, RenderSVGResourceMode::ApplyToDefault);
+            bool result = masker->applyResource(*m_renderer, style, contextPtr, { });
             m_paintInfo->setContext(*contextPtr);
             if (!result)
                 return;
@@ -170,9 +159,9 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
     }
 
     RenderSVGResourceClipper* clipper = resources->clipper();
-    if (!clipPathOperation && clipper) {
+    if (!hasCSSClipping && clipper) {
         GraphicsContext* contextPtr = &m_paintInfo->context();
-        bool result = clipper->applyResource(*m_renderer, style, contextPtr, RenderSVGResourceMode::ApplyToDefault);
+        bool result = clipper->applyResource(*m_renderer, style, contextPtr, { });
         m_paintInfo->setContext(*contextPtr);
         if (!result)
             return;
@@ -187,7 +176,7 @@ void SVGRenderingContext::prepareToRenderSVGContent(RenderElement& renderer, Pai
             // (because it was either drawn before or empty) but we still need to apply the filter.
             m_renderingFlags |= EndFilterLayer;
             GraphicsContext* contextPtr = &m_paintInfo->context();
-            bool result = m_filter->applyResource(*m_renderer, style, contextPtr, RenderSVGResourceMode::ApplyToDefault);
+            bool result = m_filter->applyResource(*m_renderer, style, contextPtr, { });
             m_paintInfo->setContext(*contextPtr);
             if (!result)
                 return;
@@ -272,7 +261,7 @@ std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatR
 std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatRect& targetRect, const FloatRect& clampedRect, ColorSpace colorSpace, RenderingMode renderingMode)
 {
     IntSize clampedSize = roundedIntSize(clampedRect.size());
-    IntSize unclampedSize = roundedIntSize(targetRect.size());
+    FloatSize unclampedSize = roundedIntSize(targetRect.size());
 
     // Don't create empty ImageBuffers.
     if (clampedSize.isEmpty())
@@ -285,7 +274,7 @@ std::unique_ptr<ImageBuffer> SVGRenderingContext::createImageBuffer(const FloatR
     GraphicsContext& imageContext = imageBuffer->context();
 
     // Compensate rounding effects, as the absolute target rect is using floating-point numbers and the image buffer size is integer.
-    imageContext.scale(FloatSize(unclampedSize.width() / targetRect.width(), unclampedSize.height() / targetRect.height()));
+    imageContext.scale(unclampedSize / targetRect.size());
 
     return imageBuffer;
 }
@@ -296,7 +285,7 @@ void SVGRenderingContext::renderSubtreeToImageBuffer(ImageBuffer* image, RenderE
 
     // Rendering into a buffer implies we're being used for masking, clipping, patterns or filters. In each of these
     // cases we don't want to paint the selection.
-    PaintInfo info(image->context(), LayoutRect::infiniteRect(), PaintPhaseForeground, PaintBehaviorSkipSelectionHighlight);
+    PaintInfo info(image->context(), LayoutRect::infiniteRect(), PaintPhase::Foreground, PaintBehavior::SkipSelectionHighlight);
 
     AffineTransform& contentTransformation = currentContentTransformation();
     AffineTransform savedContentTransformation = contentTransformation;
@@ -354,7 +343,7 @@ bool SVGRenderingContext::bufferForeground(std::unique_ptr<ImageBuffer>& imageBu
     if (!imageBuffer) {
         if ((imageBuffer = ImageBuffer::createCompatibleBuffer(expandedIntSize(boundingBox.size()), ColorSpaceSRGB, m_paintInfo->context()))) {
             GraphicsContext& bufferedRenderingContext = imageBuffer->context();
-            bufferedRenderingContext.translate(-boundingBox.x(), -boundingBox.y());
+            bufferedRenderingContext.translate(-boundingBox.location());
             PaintInfo bufferedInfo(*m_paintInfo);
             bufferedInfo.setContext(bufferedRenderingContext);
             downcast<RenderSVGImage>(*m_renderer).paintForeground(bufferedInfo);

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,22 +27,17 @@
 #include "SVGFilterBuilder.h"
 #include "SVGNames.h"
 #include "SVGRenderStyle.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_STRING(SVGFETileElement, SVGNames::inAttr, In1, in1)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFETileElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(in1)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGFilterPrimitiveStandardAttributes)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFETileElement);
 
 inline SVGFETileElement::SVGFETileElement(const QualifiedName& tagName, Document& document)
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feTileTag));
-    registerAnimatedPropertiesForSVGFETileElement();
+    registerAttributes();
 }
 
 Ref<SVGFETileElement> SVGFETileElement::create(const QualifiedName& tagName, Document& document)
@@ -49,10 +45,18 @@ Ref<SVGFETileElement> SVGFETileElement::create(const QualifiedName& tagName, Doc
     return adoptRef(*new SVGFETileElement(tagName, document));
 }
 
+void SVGFETileElement::registerAttributes()
+{
+    auto& registry = attributeRegistry();
+    if (!registry.isEmpty())
+        return;
+    registry.registerAttribute<SVGNames::inAttr, &SVGFETileElement::m_in1>();
+}
+
 void SVGFETileElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::inAttr) {
-        setIn1BaseValue(value);
+        m_in1.setValue(value);
         return;
     }
 
@@ -72,7 +76,7 @@ void SVGFETileElement::svgAttributeChanged(const QualifiedName& attrName)
 
 RefPtr<FilterEffect> SVGFETileElement::build(SVGFilterBuilder* filterBuilder, Filter& filter)
 {
-    FilterEffect* input1 = filterBuilder->getEffectById(in1());
+    auto input1 = filterBuilder->getEffectById(in1());
 
     if (!input1)
         return nullptr;

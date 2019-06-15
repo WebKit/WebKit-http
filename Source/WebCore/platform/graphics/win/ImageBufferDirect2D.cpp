@@ -120,9 +120,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
 {
 }
 
-ImageBuffer::~ImageBuffer()
-{
-}
+ImageBuffer::~ImageBuffer() = default;
 
 FloatSize ImageBuffer::sizeForDestinationSize(FloatSize destinationSize) const
 {
@@ -139,13 +137,13 @@ void ImageBuffer::flushContext() const
     context().flush();
 }
 
-RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior scaleBehavior) const
+RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveResolution) const
 {
     notImplemented();
     return nullptr;
 }
 
-RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, PreserveResolution)
 {
     IntSize internalSize = imageBuffer->internalSize();
     IntSize logicalSize = imageBuffer->logicalSize();
@@ -227,7 +225,7 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& r
     if (pixelArrayDimensions)
         *pixelArrayDimensions = srcRect.size();
 
-    return m_data.getData(srcRect, internalSize(), context().isAcceleratedContext(), true, 1);
+    return m_data.getData(AlphaPremultiplication::Unpremultiplied, srcRect, internalSize(), context().isAcceleratedContext(), 1);
 }
 
 RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, IntSize* pixelArrayDimensions, CoordinateSystem coordinateSystem) const
@@ -242,10 +240,10 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& 
     if (pixelArrayDimensions)
         *pixelArrayDimensions = srcRect.size();
 
-    return m_data.getData(srcRect, internalSize(), context().isAcceleratedContext(), false, 1);
+    return m_data.getData(AlphaPremultiplication::Premultiplied, srcRect, internalSize(), context().isAcceleratedContext(), 1);
 }
 
-void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem coordinateSystem)
+void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultiplication bufferFormat, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem coordinateSystem)
 {
     if (context().isAcceleratedContext())
         flushContext();
@@ -257,13 +255,13 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
         scaledSourceSize.scale(m_resolutionScale);
     }
 
-    m_data.putData(source, scaledSourceSize, scaledSourceRect, destPoint, internalSize(), context().isAcceleratedContext(), multiplied == Unmultiplied, 1);
+    m_data.putData(source, bufferFormat, scaledSourceSize, scaledSourceRect, destPoint, internalSize(), context().isAcceleratedContext(), 1);
 }
 
-String ImageBuffer::toDataURL(const String&, std::optional<double>, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String&, std::optional<double>, PreserveResolution) const
 {
     notImplemented();
-    return ASCIILiteral("data:,");
+    return "data:,"_s;
 }
 
 Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
@@ -275,7 +273,7 @@ Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double
 String ImageDataToDataURL(const ImageData& source, const String& mimeType, const double* quality)
 {
     notImplemented();
-    return ASCIILiteral("data:,");
+    return "data:,"_s;
 }
 
 void ImageBuffer::transformColorSpace(ColorSpace, ColorSpace)

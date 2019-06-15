@@ -4,11 +4,12 @@
 es6id: 21.1.3.6
 description: >
   Property type and descriptor.
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   17 ECMAScript Standard Built-in Objects
 includes: [propertyHelper.js]
+features: [String.prototype.endsWith]
 ---*/
 
 assert.sameValue(

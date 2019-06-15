@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,24 +26,20 @@
 #import "config.h"
 #import "IOSurface.h"
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 
-#import "CoreGraphicsSPI.h"
+#import "GraphicsContext3D.h"
 #import "GraphicsContextCG.h"
 #import "IOSurfacePool.h"
-#import "IOSurfaceSPI.h"
 #import "ImageBuffer.h"
 #import "ImageBufferDataCG.h"
 #import "Logging.h"
-#import "MachSendRight.h"
-#import "TextStream.h"
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/IOSurfaceSPI.h>
 #import <wtf/Assertions.h>
+#import <wtf/MachSendRight.h>
 #import <wtf/MathExtras.h>
-
-#if PLATFORM(IOS)
-// Move this into the SPI header once it's possible to put inside the APPLE_INTERNAL_SDK block.
-NSString * const WebIOSurfaceAcceleratorUnwireSurfaceKey = @"UnwireSurface";
-#endif
+#import <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -112,10 +108,12 @@ void IOSurface::moveToPool(std::unique_ptr<IOSurface>&& surface)
     IOSurfacePool::sharedPool().addSurface(WTFMove(surface));
 }
 
+#if USE(IOSURFACE_CANVAS_BACKING_STORE)
 std::unique_ptr<IOSurface> IOSurface::createFromImageBuffer(std::unique_ptr<ImageBuffer> imageBuffer)
 {
     return WTFMove(imageBuffer->m_data.surface);
 }
+#endif
 
 static NSDictionary *optionsForBiplanarSurface(IntSize size, unsigned pixelFormat, size_t firstPlaneBytesPerPixel, size_t secondPlaneBytesPerPixel)
 {
@@ -274,7 +272,7 @@ void IOSurface::setContextSize(IntSize contextSize)
     m_contextSize = contextSize;
 }
 
-CGContextRef IOSurface::ensurePlatformContext()
+CGContextRef IOSurface::ensurePlatformContext(const HostWindow* hostWindow)
 {
     if (m_cgContext)
         return m_cgContext.get();
@@ -301,6 +299,16 @@ CGContextRef IOSurface::ensurePlatformContext()
     }
     
     m_cgContext = adoptCF(CGIOSurfaceContextCreate(m_surface.get(), m_contextSize.width(), m_contextSize.height(), bitsPerComponent, bitsPerPixel, m_colorSpace.get(), bitmapInfo));
+
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    if (auto displayMask = primaryOpenGLDisplayMask()) {
+        if (hostWindow && hostWindow->displayID())
+            displayMask = displayMaskForDisplay(hostWindow->displayID());
+        CGIOSurfaceContextSetDisplayMask(m_cgContext.get(), displayMask);
+    }
+#else
+    UNUSED_PARAM(hostWindow);
+#endif
 
     return m_cgContext.get();
 }
@@ -365,11 +373,16 @@ IOSurface::Format IOSurface::format() const
 
 IOSurfaceID IOSurface::surfaceID() const
 {
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000
+#if PLATFORM(IOS) && (!USE(APPLE_INTERNAL_SDK) || __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
     return 0;
 #else
     return IOSurfaceGetID(m_surface.get());
 #endif
+}
+
+size_t IOSurface::bytesPerRow() const
+{
+    return IOSurfaceGetBytesPerRow(m_surface.get());
 }
 
 bool IOSurface::isInUse() const
@@ -383,7 +396,8 @@ void IOSurface::releaseGraphicsContext()
     m_cgContext = nullptr;
 }
 
-#if PLATFORM(IOS)
+#if HAVE(IOSURFACE_ACCELERATOR)
+
 bool IOSurface::allowConversionFromFormatToFormat(Format sourceFormat, Format destFormat)
 {
     if ((sourceFormat == Format::RGB10 || sourceFormat == Format::RGB10A8) && destFormat == Format::YUV422)
@@ -425,12 +439,19 @@ void IOSurface::convertToFormat(std::unique_ptr<IOSurface>&& inSurface, Format f
         delete callback;
     };
 
-    NSDictionary *options = @{ WebIOSurfaceAcceleratorUnwireSurfaceKey : @YES };
+    NSDictionary *options = @{ (id)kIOSurfaceAcceleratorUnwireSurfaceKey : @YES };
 
     IOReturn ret = IOSurfaceAcceleratorTransformSurface(accelerator, inSurface->surface(), destinationIOSurfaceRef, (CFDictionaryRef)options, nullptr, &completion, nullptr, nullptr);
     ASSERT_UNUSED(ret, ret == kIOReturnSuccess);
 }
-#endif // PLATFORM(IOS)
+
+#endif // HAVE(IOSURFACE_ACCELERATOR)
+
+void IOSurface::migrateColorSpaceToProperties()
+{
+    auto colorSpaceProperties = adoptCF(CGColorSpaceCopyPropertyList(m_colorSpace.get()));
+    IOSurfaceSetValue(m_surface.get(), kIOSurfaceColorSpace, colorSpaceProperties.get());
+}
 
 static TextStream& operator<<(TextStream& ts, IOSurface::Format format)
 {
@@ -471,4 +492,4 @@ TextStream& operator<<(TextStream& ts, const IOSurface& surface)
 
 } // namespace WebCore
 
-#endif // USE(IOSURFACE)
+#endif // HAVE(IOSURFACE)

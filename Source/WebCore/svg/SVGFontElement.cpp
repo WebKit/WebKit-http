@@ -2,6 +2,7 @@
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
  * Copyright (C) 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -33,22 +34,17 @@
 #include "SVGNames.h"
 #include "SVGVKernElement.h"
 #include <wtf/ASCIICType.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_BOOLEAN(SVGFontElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFontElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGElement)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFontElement);
 
 inline SVGFontElement::SVGFontElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
+    , SVGExternalResourcesRequired(this)
 {
     ASSERT(hasTagName(SVGNames::fontTag));
-    registerAnimatedPropertiesForSVGFontElement();
 }
 
 Ref<SVGFontElement> SVGFontElement::create(const QualifiedName& tagName, Document& document)

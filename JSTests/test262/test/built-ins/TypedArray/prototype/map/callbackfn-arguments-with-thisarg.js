@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   thisArg does not affect callbackfn arguments
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
   ...
@@ -14,6 +14,7 @@ info: >
     c. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -24,6 +25,7 @@ testWithTypedArrayConstructors(function(TA) {
 
   sample.map(function() {
     results.push(arguments);
+    return 0;
   }, thisArg);
 
   assert.sameValue(results.length, 3, "results.length");

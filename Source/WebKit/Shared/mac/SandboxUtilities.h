@@ -38,6 +38,4 @@ bool processHasContainer();
 // Returns an empty string if the process is not in a container.
 String pathForProcessContainer();
 
-bool processHasEntitlement(NSString *entitlement);
-
 }

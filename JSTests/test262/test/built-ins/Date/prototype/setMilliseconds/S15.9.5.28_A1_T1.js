@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "setMilliseconds" has { DontEnum } attributes
+esid: sec-date.prototype.setmilliseconds
 es5id: 15.9.5.28_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.setMilliseconds;
-if(x === 1)
+if (x === 1)
   Date.prototype.setMilliseconds = 2;
 else
   Date.prototype.setMilliseconds = 1;

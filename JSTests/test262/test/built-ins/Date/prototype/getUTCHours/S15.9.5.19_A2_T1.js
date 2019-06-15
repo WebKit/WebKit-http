@@ -3,14 +3,15 @@
 
 /*---
 info: The "length" property of the "getUTCHours" is 0
+esid: sec-date.prototype.getutchours
 es5id: 15.9.5.19_A2_T1
 description: The "length" property of the "getUTCHours" is 0
 ---*/
 
-if(Date.prototype.getUTCHours.hasOwnProperty("length") !== true){
+if (Date.prototype.getUTCHours.hasOwnProperty("length") !== true) {
   $ERROR('#1: The getUTCHours has a "length" property');
 }
 
-if(Date.prototype.getUTCHours.length !== 0){
+if (Date.prototype.getUTCHours.length !== 0) {
   $ERROR('#2: The "length" property of the getUTCHours is 0');
 }

@@ -59,21 +59,21 @@
 
 namespace TestWebKitAPI {
 
-static void didFinishLoadForFrame(WKPageRef, WKFrameRef, WKTypeRef, const void* context)
+static void didFinishNavigation(WKPageRef, WKNavigationRef, WKTypeRef, const void* context)
 {
     *static_cast<bool*>(const_cast<void*>(context)) = true;
 }
 
 static void setPageLoaderClient(WKPageRef page, bool* didFinishLoad)
 {
-    WKPageLoaderClientV0 loaderClient;
+    WKPageNavigationClientV0 loaderClient;
     memset(&loaderClient, 0, sizeof(loaderClient));
 
     loaderClient.base.version = 0;
     loaderClient.base.clientInfo = didFinishLoad;
-    loaderClient.didFinishLoadForFrame = didFinishLoadForFrame;
+    loaderClient.didFinishNavigation = didFinishNavigation;
 
-    WKPageSetPageLoaderClient(page, &loaderClient.base);
+    WKPageSetPageNavigationClient(page, &loaderClient.base);
 }
 
 WebKitAgnosticTest::WebKitAgnosticTest()
@@ -118,7 +118,7 @@ void WebKitAgnosticTest::loadURL(WebView *webView, NSURL *url)
 void WebKitAgnosticTest::loadURL(WKView *view, NSURL *url)
 {
     EXPECT_FALSE(didFinishLoad);
-    WKPageLoadURL([view pageRef], adoptWK(WKURLCreateWithCFURL((CFURLRef)url)).get());
+    WKPageLoadURL([view pageRef], adoptWK(WKURLCreateWithCFURL((__bridge CFURLRef)url)).get());
 }
 
 void WebKitAgnosticTest::goBack(WebView *webView)
@@ -137,6 +137,25 @@ void WebKitAgnosticTest::waitForLoadToFinish()
 {
     Util::run(&didFinishLoad);
     didFinishLoad = false;
+}
+
+void WebKitAgnosticTest::waitForNextPresentationUpdate(WebView *)
+{
+    // FIXME: This isn't currently required anywhere. Just dispatch to the next runloop for now.
+    __block bool done = false;
+    dispatch_async(dispatch_get_main_queue(), ^() {
+        done = true;
+    });
+    Util::run(&done);
+}
+
+void WebKitAgnosticTest::waitForNextPresentationUpdate(WKView *view)
+{
+    __block bool done = false;
+    [view _doAfterNextPresentationUpdate:^() {
+        done = true;
+    }];
+    Util::run(&done);
 }
 
 } // namespace TestWebKitAPI

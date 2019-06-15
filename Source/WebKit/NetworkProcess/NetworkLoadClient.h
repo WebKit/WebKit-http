@@ -30,10 +30,6 @@
 #include <WebCore/ResourceResponse.h>
 #include <wtf/Forward.h>
 
-#if PLATFORM(COCOA)
-typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
-#endif
-
 namespace WebCore {
 class NetworkLoadMetrics;
 class ProtectionSpace;
@@ -48,16 +44,16 @@ public:
 
     virtual bool isSynchronous() const = 0;
 
+    virtual bool isAllowedToAskUserForCredentials() const = 0;
+
     virtual void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) = 0;
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    virtual void canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace&) = 0;
-#endif
     virtual void willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse) = 0;
     enum class ShouldContinueDidReceiveResponse { No, Yes };
     virtual ShouldContinueDidReceiveResponse didReceiveResponse(WebCore::ResourceResponse&&) = 0;
     virtual void didReceiveBuffer(Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) = 0;
     virtual void didFinishLoading(const WebCore::NetworkLoadMetrics&) = 0;
     virtual void didFailLoading(const WebCore::ResourceError&) = 0;
+    virtual void didBlockAuthenticationChallenge() { };
     virtual bool shouldCaptureExtraNetworkLoadMetrics() const { return false; }
 };
 

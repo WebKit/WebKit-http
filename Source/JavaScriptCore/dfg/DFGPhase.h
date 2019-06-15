@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "CompilerTimingScope.h"
 #include "DFGCommon.h"
 #include "DFGGraph.h"
 
@@ -76,18 +77,11 @@ private:
 template<typename PhaseType>
 bool runAndLog(PhaseType& phase)
 {
-    double before = 0;
-
-    if (UNLIKELY(Options::reportDFGPhaseTimes()))
-        before = monotonicallyIncreasingTimeMS();
-
+    CompilerTimingScope timingScope("DFG", phase.name());
+    
     bool result = phase.run();
 
-    if (UNLIKELY(Options::reportDFGPhaseTimes())) {
-        double after = monotonicallyIncreasingTimeMS();
-        dataLogF("Phase %s took %.4f ms\n", phase.name(), after - before);
-    }
-    if (result && logCompilationChanges(phase.graph().m_plan.mode))
+    if (result && logCompilationChanges(phase.graph().m_plan.mode()))
         dataLogF("Phase %s changed the IR.\n", phase.name());
     return result;
 }

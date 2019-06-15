@@ -34,7 +34,6 @@
 #include "DatabaseContext.h"
 #include "DatabaseThread.h"
 #include "DatabaseTracker.h"
-#include "ExceptionCode.h"
 #include "Logging.h"
 #include "OriginLock.h"
 #include "SQLError.h"
@@ -69,14 +68,12 @@ SQLTransaction::SQLTransaction(Ref<Database>&& database, RefPtr<SQLTransactionCa
 {
 }
 
-SQLTransaction::~SQLTransaction()
-{
-}
+SQLTransaction::~SQLTransaction() = default;
 
 ExceptionOr<void> SQLTransaction::executeSql(const String& sqlStatement, std::optional<Vector<SQLValue>>&& arguments, RefPtr<SQLStatementCallback>&& callback, RefPtr<SQLStatementErrorCallback>&& callbackError)
 {
     if (!m_executeSqlAllowed || !m_database->opened())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     int permissions = DatabaseAuthorizer::ReadWriteMask;
     if (!m_database->databaseContext().allowDatabaseAccess())
@@ -187,7 +184,7 @@ void SQLTransaction::checkAndHandleClosedDatabase()
     m_errorCallbackWrapper.clear();
 
     // The next steps should be executed only if we're on the DB thread.
-    if (currentThread() != m_database->databaseThread().getThreadID())
+    if (m_database->databaseThread().getThread() != &Thread::current())
         return;
 
     // The current SQLite transaction should be stopped, as well

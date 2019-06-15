@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2013 Google Inc. All rights reserved.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@ namespace WebCore {
 
 class SecurityPolicyViolationEvent final : public Event {
 public:
-    static Ref<SecurityPolicyViolationEvent> create(const AtomicString& type, bool canBubble, bool cancelable, const String& documentURI, const String& referrer, const String& blockedURI, const String& violatedDirective, const String& effectiveDirective, const String& originalPolicy, const String& sourceFile, unsigned short statusCode, int lineNumber, int columnNumber)
+    static Ref<SecurityPolicyViolationEvent> create(const AtomicString& type, CanBubble canBubble, IsCancelable cancelable, const String& documentURI, const String& referrer, const String& blockedURI, const String& violatedDirective, const String& effectiveDirective, const String& originalPolicy, const String& sourceFile, unsigned short statusCode, int lineNumber, int columnNumber)
     {
         return adoptRef(*new SecurityPolicyViolationEvent(type, canBubble, cancelable, documentURI, referrer, blockedURI, violatedDirective, effectiveDirective, originalPolicy, sourceFile, statusCode, lineNumber, columnNumber));
     }
@@ -52,6 +52,9 @@ public:
         unsigned short statusCode { 0 };
         int lineNumber { 0 };
         int columnNumber { 0 };
+
+        template<class Encoder> void encode(Encoder&) const;
+        template<class Decoder> static bool decode(Decoder&, Init&);
     };
 
     static Ref<SecurityPolicyViolationEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
@@ -77,7 +80,7 @@ private:
     {
     }
 
-    SecurityPolicyViolationEvent(const AtomicString& type, bool canBubble, bool cancelable, const String& documentURI, const String& referrer, const String& blockedURI, const String& violatedDirective, const String& effectiveDirective, const String& originalPolicy, const String& sourceFile, unsigned short statusCode, int lineNumber, int columnNumber)
+    SecurityPolicyViolationEvent(const AtomicString& type, CanBubble canBubble, IsCancelable cancelable, const String& documentURI, const String& referrer, const String& blockedURI, const String& violatedDirective, const String& effectiveDirective, const String& originalPolicy, const String& sourceFile, unsigned short statusCode, int lineNumber, int columnNumber)
         : Event(type, canBubble, cancelable)
         , m_documentURI(documentURI)
         , m_referrer(referrer)
@@ -118,5 +121,49 @@ private:
     int m_lineNumber;
     int m_columnNumber;
 };
+
+template<class Encoder>
+void SecurityPolicyViolationEvent::Init::encode(Encoder& encoder) const
+{
+    encoder << static_cast<const EventInit&>(*this);
+    encoder << documentURI;
+    encoder << referrer;
+    encoder << blockedURI;
+    encoder << violatedDirective;
+    encoder << effectiveDirective;
+    encoder << originalPolicy;
+    encoder << sourceFile;
+    encoder << statusCode;
+    encoder << lineNumber;
+    encoder << columnNumber;
+}
+
+template<class Decoder>
+bool SecurityPolicyViolationEvent::Init::decode(Decoder& decoder, SecurityPolicyViolationEvent::Init& eventInit)
+{
+    if (!decoder.decode(static_cast<EventInit&>(eventInit)))
+        return false;
+    if (!decoder.decode(eventInit.documentURI))
+        return false;
+    if (!decoder.decode(eventInit.referrer))
+        return false;
+    if (!decoder.decode(eventInit.blockedURI))
+        return false;
+    if (!decoder.decode(eventInit.violatedDirective))
+        return false;
+    if (!decoder.decode(eventInit.effectiveDirective))
+        return false;
+    if (!decoder.decode(eventInit.originalPolicy))
+        return false;
+    if (!decoder.decode(eventInit.sourceFile))
+        return false;
+    if (!decoder.decode(eventInit.statusCode))
+        return false;
+    if (!decoder.decode(eventInit.lineNumber))
+        return false;
+    if (!decoder.decode(eventInit.columnNumber))
+        return false;
+    return true;
+}
 
 } // namespace WebCore

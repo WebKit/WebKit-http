@@ -25,14 +25,12 @@
 
 #pragma once
 
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class MockContentFilterSettings {
     friend class NeverDestroyed<MockContentFilterSettings>;
-
 public:
     enum class DecisionPoint {
         AfterWillSendRequest,

@@ -2,8 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-timeclip
 description: TimeClip converts negative zero to positive zero
-info: >
+info: |
   20.3.1.15 TimeClip (time)
 
   ...

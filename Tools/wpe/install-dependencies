@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script needs to be run with root rights.
 if [ $UID -ne 0 ]; then
@@ -52,7 +52,7 @@ function aptIfElse {
 }
 
 function installDependenciesWithApt {
-    # These are dependencies necessary for building WPE+.
+    # These are dependencies necessary for building WPE.
     packages=" \
         autoconf \
         automake \
@@ -68,8 +68,12 @@ function installDependenciesWithApt {
         intltool \
         itstool \
         libgnutls28-dev \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-bad1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
         libicu-dev \
         libjpeg-dev \
+        libfile-copy-recursive-perl \
         $(aptIfElse libpng-dev libpng12-dev) \
         libsqlite3-dev \
         libtasn1-6-dev \
@@ -89,7 +93,7 @@ function installDependenciesWithApt {
         curl \
         gdb \
         libapache2-mod-bw \
-        $(aptIfElse libapache2-mod-php7.0 libapache2-mod-php5) \
+        libapache2-mod-php \
         libcgi-pm-perl \
         psmisc \
         pulseaudio-utils \
@@ -103,10 +107,11 @@ function installDependenciesWithApt {
     packages="$packages \
         git \
         gsettings-desktop-schemas-dev \
+        libegl1-mesa-dev \
         libexpat1-dev \
-        libgbm-dev \
         libgles2-mesa-dev \
         libluajit-5.1-dev \
+        libmount-dev \
         libopus-dev \
         liborc-0.4-dev \
         libproxy-dev \
@@ -117,7 +122,11 @@ function installDependenciesWithApt {
         libvorbis-dev \
         libvpx-dev \
         libxcb-xkb-dev \
-        luajit"
+        libxkbcommon-dev \
+        libxml-libxml-perl \
+        libwayland-dev \
+        luajit \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -128,8 +137,9 @@ function installDependenciesWithApt {
 }
 
 function installDependenciesWithPacman {
-    # These are dependencies necessary for building WebKitGTK+.
+    # These are dependencies necessary for building WPE.
     packages=" \
+        alsa-lib \
         autoconf \
         automake \
         bison \
@@ -143,6 +153,9 @@ function installDependenciesWithPacman {
         gperf \
         grep \
         groff \
+        gstreamer \
+        gst-plugins-bad \
+        gst-plugins-base-libs \
         gzip \
         icu \
         intltool \
@@ -158,6 +171,7 @@ function installDependenciesWithPacman {
         make \
         ninja \
         patch \
+        perl-file-copy-recursive \
         pkg-config \
         ruby
         sed \
@@ -196,12 +210,18 @@ function installDependenciesWithPacman {
         libvorbis \
         libvpx \
         libxcb \
+        libxkbcommon \
         luajit \
         mesa \
         mesa-libgl \
         opus \
         orc \
-        v4l-utils"
+        perl-xml-libxml \
+        util-linux \
+        v4l-utils \
+        xorg-xrandr \
+        wayland \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -214,16 +234,20 @@ function installDependenciesWithPacman {
 }
 
 function installDependenciesWithDnf {
-    # These are dependencies necessary for building WebKitGTK+.
+    # These are dependencies necessary for building WebKitWPE.
     packages=" \
         autoconf \
         automake \
+        alsa-lib-devel \
         bison \
         cmake \
         flex \
         gcc-c++ \
         gnutls-devel \
         gperf \
+        gstreamer1-devel \
+        gstreamer1-plugins-bad-free-devel \
+        gstreamer1-plugins-base-devel \
         intltool \
         itstool \
         libicu-devel \
@@ -236,7 +260,11 @@ function installDependenciesWithDnf {
         libxslt-devel \
         ninja-build \
         patch \
-        ruby
+        perl-File-Copy-Recursive \
+        perl-JSON-PP \
+        perl-Time-HiRes \
+        perl-version \
+        ruby \
         sqlite-devel \
         zlib-devel"
 
@@ -252,7 +280,7 @@ function installDependenciesWithDnf {
         psmisc \
         pulseaudio-utils \
         python2-psutil \
-        python-gobject-base
+        python-gobject-base \
         ruby \
         rubygem-highline \
         rubygem-json"
@@ -262,6 +290,7 @@ function installDependenciesWithDnf {
         expat-devel \
         git \
         gsettings-desktop-schemas-devel \
+        libmount-devel \
         libproxy-devel \
         libsrtp-devel \
         libtheora-devel \
@@ -269,13 +298,18 @@ function installDependenciesWithDnf {
         libvorbis-devel \
         libvpx-devel \
         libxcb-devel \
+        libxkbcommon-devel \
+        libXrandr-devel \
         luajit \
         luajit-devel \
-        mesa-libgbm-devel \
         mesa-libGLES-devel \
+        mesa-libEGL-devel \
         opus-devel \
         orc-devel \
-        pulseaudio-libs-devel"
+        perl-XML-LibXML \
+        pulseaudio-libs-devel \
+        wayland-devel \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages

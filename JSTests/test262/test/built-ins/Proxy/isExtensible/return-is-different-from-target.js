@@ -5,7 +5,7 @@ es6id: 9.5.3
 description: >
     Throws a TypeError exception if boolean trap result is not the same as
     target.[[IsExtensible]]() result
-info: >
+info: |
     [[IsExtensible]] ( )
 
     ...
@@ -15,11 +15,11 @@ info: >
 ---*/
 
 var p = new Proxy({}, {
-    isExtensible: function(t) {
-        return false;
-    }
+  isExtensible: function(t) {
+    return false;
+  }
 });
 
 assert.throws(TypeError, function() {
-    Object.isExtensible(p);
+  Object.isExtensible(p);
 });

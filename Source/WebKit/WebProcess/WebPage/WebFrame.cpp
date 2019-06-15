@@ -45,6 +45,7 @@
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
+#include "WebsitePoliciesData.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSContextRef.h>
 #include <JavaScriptCore/JSLock.h>
@@ -70,8 +71,6 @@
 #include <WebCore/JSElement.h>
 #include <WebCore/JSFile.h>
 #include <WebCore/JSRange.h>
-#include <WebCore/MainFrame.h>
-#include <WebCore/NetworkingContext.h>
 #include <WebCore/NodeTraversal.h>
 #include <WebCore/Page.h>
 #include <WebCore/PluginDocument.h>
@@ -91,10 +90,9 @@
 #include <wtf/RefCountedLeakCounter.h>
 #endif
 
+namespace WebKit {
 using namespace JSC;
 using namespace WebCore;
-
-namespace WebKit {
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webFrameCounter, ("WebFrame"));
 
@@ -165,20 +163,24 @@ WebFrame::~WebFrame()
 {
     ASSERT(!m_coreFrame);
 
+    auto willSubmitFormCompletionHandlers = WTFMove(m_willSubmitFormCompletionHandlers);
+    for (auto& completionHandler : willSubmitFormCompletionHandlers.values())
+        completionHandler();
+
 #ifndef NDEBUG
     webFrameCounter.decrement();
 #endif
 }
 
 WebPage* WebFrame::page() const
-{ 
+{
     if (!m_coreFrame)
-        return 0;
+        return nullptr;
     
     if (Page* page = m_coreFrame->page())
         return WebPage::fromCorePage(page);
 
-    return 0;
+    return nullptr;
 }
 
 WebFrame* WebFrame::fromCoreFrame(Frame& frame)
@@ -209,7 +211,7 @@ void WebFrame::invalidate()
     m_coreFrame = 0;
 }
 
-uint64_t WebFrame::setUpPolicyListener(WebCore::FramePolicyFunction&& policyFunction)
+uint64_t WebFrame::setUpPolicyListener(WebCore::FramePolicyFunction&& policyFunction, ForNavigationAction forNavigationAction)
 {
     // FIXME: <rdar://5634381> We need to support multiple active policy listeners.
 
@@ -217,7 +219,23 @@ uint64_t WebFrame::setUpPolicyListener(WebCore::FramePolicyFunction&& policyFunc
 
     m_policyListenerID = generateListenerID();
     m_policyFunction = WTFMove(policyFunction);
+    m_policyFunctionForNavigationAction = forNavigationAction;
     return m_policyListenerID;
+}
+
+uint64_t WebFrame::setUpWillSubmitFormListener(CompletionHandler<void()>&& completionHandler)
+{
+    uint64_t identifier = generateListenerID();
+    invalidatePolicyListener();
+    m_willSubmitFormCompletionHandlers.set(identifier, WTFMove(completionHandler));
+    return identifier;
+}
+
+void WebFrame::continueWillSubmitForm(uint64_t listenerID)
+{
+    if (auto completionHandler = m_willSubmitFormCompletionHandlers.take(listenerID))
+        completionHandler();
+    invalidatePolicyListener();
 }
 
 void WebFrame::invalidatePolicyListener()
@@ -227,10 +245,16 @@ void WebFrame::invalidatePolicyListener()
 
     m_policyDownloadID = { };
     m_policyListenerID = 0;
-    m_policyFunction = nullptr;
+    if (auto function = std::exchange(m_policyFunction, nullptr))
+        function(PolicyAction::Ignore);
+    m_policyFunctionForNavigationAction = ForNavigationAction::No;
+
+    auto willSubmitFormCompletionHandlers = WTFMove(m_willSubmitFormCompletionHandlers);
+    for (auto& completionHandler : willSubmitFormCompletionHandlers.values())
+        completionHandler();
 }
 
-void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID)
+void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action, uint64_t navigationID, DownloadID downloadID, std::optional<WebsitePoliciesData>&& websitePolicies)
 {
     if (!m_coreFrame)
         return;
@@ -241,11 +265,16 @@ void WebFrame::didReceivePolicyDecision(uint64_t listenerID, PolicyAction action
     if (listenerID != m_policyListenerID)
         return;
 
-    ASSERT(m_policyFunction);
+    if (!m_policyFunction)
+        return;
 
     FramePolicyFunction function = WTFMove(m_policyFunction);
+    bool forNavigationAction = m_policyFunctionForNavigationAction == ForNavigationAction::Yes;
 
     invalidatePolicyListener();
+
+    if (forNavigationAction && m_frameLoaderClient && websitePolicies)
+        m_frameLoaderClient->applyToDocumentLoader(WTFMove(*websitePolicies));
 
     m_policyDownloadID = downloadID;
     if (navigationID) {
@@ -264,11 +293,11 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request, const Stri
     m_policyDownloadID = { };
 
     auto& webProcess = WebProcess::singleton();
-    SessionID sessionID = page() ? page()->sessionID() : SessionID::defaultSessionID();
-    webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
+    PAL::SessionID sessionID = page() ? page()->sessionID() : PAL::SessionID::defaultSessionID();
+    webProcess.ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
 }
 
-void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, PAL::SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
 {
     ASSERT(m_policyDownloadID.downloadID());
 
@@ -287,7 +316,15 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     else
         mainResourceLoadIdentifier = 0;
 
-    webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(sessionID, mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
+    webProcess.ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(sessionID, mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
+}
+
+void WebFrame::addConsoleMessage(MessageSource messageSource, MessageLevel messageLevel, const String& message, uint64_t requestID)
+{
+    if (!m_coreFrame)
+        return;
+    if (auto* document = m_coreFrame->document())
+        document->addConsoleMessage(messageSource, messageLevel, message, requestID);
 }
 
 String WebFrame::source() const
@@ -392,16 +429,16 @@ String WebFrame::name() const
     return m_coreFrame->tree().uniqueName();
 }
 
-String WebFrame::url() const
+URL WebFrame::url() const
 {
     if (!m_coreFrame)
-        return String();
+        return { };
 
-    DocumentLoader* documentLoader = m_coreFrame->loader().documentLoader();
+    auto* documentLoader = m_coreFrame->loader().documentLoader();
     if (!documentLoader)
-        return String();
+        return { };
 
-    return documentLoader->url().string();
+    return documentLoader->url();
 }
 
 CertificateInfo WebFrame::certificateInfo() const
@@ -492,21 +529,13 @@ JSGlobalContextRef WebFrame::jsContextForWorld(InjectedBundleScriptWorld* world)
 
 bool WebFrame::handlesPageScaleGesture() const
 {
-    if (!m_coreFrame->document()->isPluginDocument())
-        return 0;
-
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(m_coreFrame->document());
-    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
+    auto* pluginView = WebPage::pluginViewForFrame(m_coreFrame);
     return pluginView && pluginView->handlesPageScaleFactor();
 }
 
 bool WebFrame::requiresUnifiedScaleFactor() const
 {
-    if (!m_coreFrame->document()->isPluginDocument())
-        return 0;
-
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(m_coreFrame->document());
-    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
+    auto* pluginView = WebPage::pluginViewForFrame(m_coreFrame);
     return pluginView && pluginView->requiresUnifiedScaleFactor();
 }
 
@@ -676,7 +705,7 @@ WebFrame* WebFrame::frameForContext(JSContextRef context)
 {
 
     JSC::JSGlobalObject* globalObjectObj = toJS(context)->lexicalGlobalObject();
-    JSDOMWindow* window = jsDynamicDowncast<JSDOMWindow*>(globalObjectObj->vm(), globalObjectObj);
+    JSDOMWindow* window = jsDynamicCast<JSDOMWindow*>(globalObjectObj->vm(), globalObjectObj);
     if (!window)
         return nullptr;
     return WebFrame::fromCoreFrame(*(window->wrapped().frame()));
@@ -720,7 +749,7 @@ JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleFileHandle* fileHandle, Inj
 
 String WebFrame::counterValue(JSObjectRef element)
 {
-    if (!toJS(element)->inherits(*toJS(element)->vm(), JSElement::info()))
+    if (!toJS(element)->inherits<JSElement>(*toJS(element)->vm()))
         return String();
 
     return counterValueForElement(&jsCast<JSElement*>(toJS(element))->wrapped());
@@ -756,7 +785,7 @@ String WebFrame::suggestedFilenameForResourceWithURL(const URL& url) const
     if (resource)
         return resource->response().suggestedFilename();
 
-    return page()->cachedSuggestedFilenameForURL(url);
+    return String();
 }
 
 String WebFrame::mimeTypeForResourceWithURL(const URL& url) const
@@ -777,7 +806,7 @@ String WebFrame::mimeTypeForResourceWithURL(const URL& url) const
     if (resource)
         return resource->mimeType();
 
-    return page()->cachedResponseMIMETypeForURL(url);
+    return String();
 }
 
 void WebFrame::setTextDirection(const String& direction)
@@ -795,7 +824,8 @@ void WebFrame::setTextDirection(const String& direction)
 
 void WebFrame::documentLoaderDetached(uint64_t navigationID)
 {
-    page()->send(Messages::WebPageProxy::DidDestroyNavigation(navigationID));
+    if (auto * page = this->page())
+        page->send(Messages::WebPageProxy::DidDestroyNavigation(navigationID));
 }
 
 #if PLATFORM(COCOA)
@@ -824,7 +854,7 @@ RefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     if (!snapshot)
         return nullptr;
 
-    auto sharedSnapshot = ShareableBitmap::createShareable(snapshot->internalSize(), ShareableBitmap::SupportsAlpha);
+    auto sharedSnapshot = ShareableBitmap::createShareable(snapshot->internalSize(), { });
     if (!sharedSnapshot)
         return nullptr;
 

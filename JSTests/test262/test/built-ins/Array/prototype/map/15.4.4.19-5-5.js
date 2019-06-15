@@ -2,21 +2,23 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.map
 es5id: 15.4.4.19-5-5
 description: Array.prototype.map - thisArg is object from object template
 ---*/
 
-  var res = false;
-  function callbackfn(val, idx, obj)
-  {
-    return this.res;
-  }
+var res = false;
 
-  function foo(){}
-  var f = new foo();
-  f.res = true;
-  
-  var srcArr = [1];
-  var resArr = srcArr.map(callbackfn,f);
+function callbackfn(val, idx, obj)
+{
+  return this.res;
+}
+
+function foo() {}
+var f = new foo();
+f.res = true;
+
+var srcArr = [1];
+var resArr = srcArr.map(callbackfn, f);
 
 assert.sameValue(resArr[0], true, 'resArr[0]');

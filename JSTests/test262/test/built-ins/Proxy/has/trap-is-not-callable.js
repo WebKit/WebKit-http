@@ -4,7 +4,7 @@
 es6id: 9.5.7
 description: >
     Throws a TypeError exception if trap is not callable.
-info: >
+info: |
     [[HasProperty]] (P)
 
     ...
@@ -19,9 +19,9 @@ info: >
 
 var target = {};
 var p = new Proxy(target, {
-    has: {}
+  has: {}
 });
 
 assert.throws(TypeError, function() {
-    "attr" in p;
+  "attr" in p;
 });

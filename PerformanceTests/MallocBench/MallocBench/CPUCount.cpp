@@ -28,6 +28,7 @@
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 static size_t count;
 
@@ -36,6 +37,7 @@ size_t cpuCount()
     if (count)
         return count;
 
+#ifdef __APPLE__
     size_t length = sizeof(count);
     int name[] = {
             CTL_HW,
@@ -44,6 +46,12 @@ size_t cpuCount()
     int sysctlResult = sysctl(name, sizeof(name) / sizeof(int), &count, &length, 0, 0);
     if (sysctlResult < 0)
         abort();
+#else
+    long sysconfResult = sysconf(_SC_NPROCESSORS_ONLN);
+    if (sysconfResult < 0)
+        abort();
+    count = sysconfResult;
+#endif
 
     return count;
 }

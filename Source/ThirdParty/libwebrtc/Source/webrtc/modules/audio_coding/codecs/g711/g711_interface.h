@@ -8,10 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_G711_G711_INTERFACE_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_G711_G711_INTERFACE_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_G711_G711_INTERFACE_H_
+#define MODULES_AUDIO_CODING_CODECS_G711_G711_INTERFACE_H_
 
-#include "webrtc/typedefs.h"
+#include <stdint.h>
 
 // Comfort noise constants
 #define G711_WEBRTC_SPEECH 1
@@ -112,19 +112,19 @@ size_t WebRtcG711_DecodeU(const uint8_t* encoded,
                           int16_t* speechType);
 
 /**********************************************************************
-* WebRtcG711_Version(...)
-*
-* This function gives the version string of the G.711 codec.
-*
-* Input:
-*      - lenBytes:     the size of Allocated space (in Bytes) where
-*                      the version number is written to (in string format).
-*
-* Output:
-*      - version:      Pointer to a buffer where the version number is
-*                      written to.
-*
-*/
+ * WebRtcG711_Version(...)
+ *
+ * This function gives the version string of the G.711 codec.
+ *
+ * Input:
+ *      - lenBytes:     the size of Allocated space (in Bytes) where
+ *                      the version number is written to (in string format).
+ *
+ * Output:
+ *      - version:      Pointer to a buffer where the version number is
+ *                      written to.
+ *
+ */
 
 int16_t WebRtcG711_Version(char* version, int16_t lenBytes);
 
@@ -132,4 +132,4 @@ int16_t WebRtcG711_Version(char* version, int16_t lenBytes);
 }
 #endif
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_CODECS_G711_G711_INTERFACE_H_
+#endif  // MODULES_AUDIO_CODING_CODECS_G711_G711_INTERFACE_H_

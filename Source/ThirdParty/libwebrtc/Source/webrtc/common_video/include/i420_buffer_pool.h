@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_VIDEO_INCLUDE_I420_BUFFER_POOL_H_
-#define WEBRTC_COMMON_VIDEO_INCLUDE_I420_BUFFER_POOL_H_
+#ifndef COMMON_VIDEO_INCLUDE_I420_BUFFER_POOL_H_
+#define COMMON_VIDEO_INCLUDE_I420_BUFFER_POOL_H_
 
-#include <list>
 #include <limits>
+#include <list>
 
-#include "webrtc/api/video/i420_buffer.h"
-#include "webrtc/base/export.h"
-#include "webrtc/base/race_checker.h"
+#include "api/video/i420_buffer.h"
+#include "rtc_base/race_checker.h"
+#include "rtc_base/refcountedobject.h"
 
 namespace webrtc {
 
@@ -27,13 +27,12 @@ namespace webrtc {
 // changes, old buffers will be purged from the pool.
 // Note that CreateBuffer will crash if more than kMaxNumberOfFramesBeforeCrash
 // are created. This is to prevent memory leaks where frames are not returned.
-class WEBRTC_DYLIB_EXPORT I420BufferPool {
+class I420BufferPool {
  public:
-  I420BufferPool()
-      : I420BufferPool(false) {}
-  explicit I420BufferPool(bool zero_initialize)
-      : I420BufferPool(zero_initialize, std::numeric_limits<size_t>::max()) {}
+  I420BufferPool();
+  explicit I420BufferPool(bool zero_initialize);
   I420BufferPool(bool zero_initialze, size_t max_number_of_buffers);
+  ~I420BufferPool();
 
   // Returns a buffer from the pool. If no suitable buffer exist in the pool
   // and there are less than |max_number_of_buffers| pending, a buffer is
@@ -62,4 +61,4 @@ class WEBRTC_DYLIB_EXPORT I420BufferPool {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_VIDEO_INCLUDE_I420_BUFFER_POOL_H_
+#endif  // COMMON_VIDEO_INCLUDE_I420_BUFFER_POOL_H_

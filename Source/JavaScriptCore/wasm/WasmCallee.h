@@ -44,20 +44,20 @@ public:
         return adoptRef(*callee);
     }
 
-    static Ref<Callee> create(Wasm::Entrypoint&& entrypoint, size_t index, const Name* name)
+    static Ref<Callee> create(Wasm::Entrypoint&& entrypoint, size_t index, std::pair<const Name*, RefPtr<NameSection>>&& name)
     {
-        Callee* callee = new Callee(WTFMove(entrypoint), index, name);
+        Callee* callee = new Callee(WTFMove(entrypoint), index, WTFMove(name));
         return adoptRef(*callee);
     }
 
-    void* entrypoint() const { return m_entrypoint.compilation->code().executableAddress(); }
+    MacroAssemblerCodePtr<WasmEntryPtrTag> entrypoint() const { return m_entrypoint.compilation->code().retagged<WasmEntryPtrTag>(); }
 
     RegisterAtOffsetList* calleeSaveRegisters() { return &m_entrypoint.calleeSaveRegisters; }
     IndexOrName indexOrName() const { return m_indexOrName; }
 
 private:
     JS_EXPORT_PRIVATE Callee(Wasm::Entrypoint&&);
-    JS_EXPORT_PRIVATE Callee(Wasm::Entrypoint&&, size_t, const Name*);
+    JS_EXPORT_PRIVATE Callee(Wasm::Entrypoint&&, size_t, std::pair<const Name*, RefPtr<NameSection>>&&);
 
     Wasm::Entrypoint m_entrypoint;
     IndexOrName m_indexOrName;

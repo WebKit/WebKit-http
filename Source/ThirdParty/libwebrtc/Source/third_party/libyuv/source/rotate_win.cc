@@ -17,11 +17,11 @@ extern "C" {
 #endif
 
 // This module is for 32 bit Visual C x86 and clangcl
-#if !defined(LIBYUV_DISABLE_X86) && defined(_M_IX86)
+#if !defined(LIBYUV_DISABLE_X86) && defined(_M_IX86) && defined(_MSC_VER)
 
-__declspec(naked) void TransposeWx8_SSSE3(const uint8* src,
+__declspec(naked) void TransposeWx8_SSSE3(const uint8_t* src,
                                           int src_stride,
-                                          uint8* dst,
+                                          uint8_t* dst,
                                           int dst_stride,
                                           int width) {
   __asm {
@@ -112,11 +112,11 @@ __declspec(naked) void TransposeWx8_SSSE3(const uint8* src,
   }
 }
 
-__declspec(naked) void TransposeUVWx8_SSE2(const uint8* src,
+__declspec(naked) void TransposeUVWx8_SSE2(const uint8_t* src,
                                            int src_stride,
-                                           uint8* dst_a,
+                                           uint8_t* dst_a,
                                            int dst_stride_a,
-                                           uint8* dst_b,
+                                           uint8_t* dst_b,
                                            int dst_stride_b,
                                            int w) {
   __asm {
@@ -172,7 +172,7 @@ __declspec(naked) void TransposeUVWx8_SSE2(const uint8* src,
     movdqa    xmm7, xmm5
     lea       eax, [eax + 8 * edi + 16]
     neg       edi
-    // Second round of bit swap.
+        // Second round of bit swap.
     movdqa    xmm5, xmm0
     punpcklwd xmm0, xmm2
     punpckhwd xmm5, xmm2
@@ -192,8 +192,8 @@ __declspec(naked) void TransposeUVWx8_SSE2(const uint8* src,
     punpckhwd xmm6, xmm7
     movdqa    xmm7, xmm6
 
-    // Third round of bit swap.
-    // Write to the destination pointer.
+        // Third round of bit swap.
+        // Write to the destination pointer.
     movdqa    xmm6, xmm0
     punpckldq xmm0, xmm4
     punpckhdq xmm6, xmm4

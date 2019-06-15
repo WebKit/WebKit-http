@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,13 +37,15 @@ GetByIdVariant::GetByIdVariant(
     const ObjectPropertyConditionSet& conditionSet,
     std::unique_ptr<CallLinkStatus> callLinkStatus,
     JSFunction* intrinsicFunction,
-    DOMJIT::GetterSetter* domJIT)
+    FunctionPtr<OperationPtrTag> customAccessorGetter,
+    std::optional<DOMAttributeAnnotation> domAttribute)
     : m_structureSet(structureSet)
     , m_conditionSet(conditionSet)
     , m_offset(offset)
     , m_callLinkStatus(WTFMove(callLinkStatus))
     , m_intrinsicFunction(intrinsicFunction)
-    , m_domJIT(domJIT)
+    , m_customAccessorGetter(customAccessorGetter)
+    , m_domAttribute(domAttribute)
 {
     if (!structureSet.size()) {
         ASSERT(offset == invalidOffset);
@@ -67,7 +69,8 @@ GetByIdVariant& GetByIdVariant::operator=(const GetByIdVariant& other)
     m_conditionSet = other.m_conditionSet;
     m_offset = other.m_offset;
     m_intrinsicFunction = other.m_intrinsicFunction;
-    m_domJIT = other.m_domJIT;
+    m_customAccessorGetter = other.m_customAccessorGetter;
+    m_domAttribute = other.m_domAttribute;
     if (other.m_callLinkStatus)
         m_callLinkStatus = std::make_unique<CallLinkStatus>(*other.m_callLinkStatus);
     else
@@ -100,14 +103,24 @@ bool GetByIdVariant::attemptToMerge(const GetByIdVariant& other)
 {
     if (m_offset != other.m_offset)
         return false;
-    if (m_callLinkStatus || other.m_callLinkStatus)
-        return false;
+    
+    if (m_callLinkStatus || other.m_callLinkStatus) {
+        if (!(m_callLinkStatus && other.m_callLinkStatus))
+            return false;
+    }
 
     if (!canMergeIntrinsicStructures(other))
         return false;
 
-    if (m_domJIT != other.m_domJIT)
+    if (m_customAccessorGetter != other.m_customAccessorGetter)
         return false;
+
+    if (m_domAttribute || other.m_domAttribute) {
+        if (!(m_domAttribute && other.m_domAttribute))
+            return false;
+        if (*m_domAttribute != *other.m_domAttribute)
+            return false;
+    }
 
     if (m_conditionSet.isEmpty() != other.m_conditionSet.isEmpty())
         return false;
@@ -115,13 +128,37 @@ bool GetByIdVariant::attemptToMerge(const GetByIdVariant& other)
     ObjectPropertyConditionSet mergedConditionSet;
     if (!m_conditionSet.isEmpty()) {
         mergedConditionSet = m_conditionSet.mergedWith(other.m_conditionSet);
-        if (!mergedConditionSet.isValid() || !mergedConditionSet.hasOneSlotBaseCondition())
+        if (!mergedConditionSet.isValid())
+            return false;
+        // If this is a hit variant, one slot base should exist. If this is not a hit variant, the slot base is not necessary.
+        if (!isPropertyUnset() && !mergedConditionSet.hasOneSlotBaseCondition())
             return false;
     }
     m_conditionSet = mergedConditionSet;
     
     m_structureSet.merge(other.m_structureSet);
     
+    if (m_callLinkStatus)
+        m_callLinkStatus->merge(*other.m_callLinkStatus);
+
+    return true;
+}
+
+void GetByIdVariant::markIfCheap(SlotVisitor& visitor)
+{
+    m_structureSet.markIfCheap(visitor);
+}
+
+bool GetByIdVariant::finalize()
+{
+    if (!m_structureSet.isStillAlive())
+        return false;
+    if (!m_conditionSet.areStillLive())
+        return false;
+    if (m_callLinkStatus && !m_callLinkStatus->finalize())
+        return false;
+    if (m_intrinsicFunction && !Heap::isMarked(m_intrinsicFunction))
+        return false;
     return true;
 }
 
@@ -144,8 +181,13 @@ void GetByIdVariant::dumpInContext(PrintStream& out, DumpContext* context) const
         out.print(", call = ", *m_callLinkStatus);
     if (m_intrinsicFunction)
         out.print(", intrinsic = ", *m_intrinsicFunction);
-    if (m_domJIT)
-        out.print(", domjit = ", RawPointer(m_domJIT));
+    if (m_customAccessorGetter)
+        out.print(", customaccessorgetter = ", RawPointer(m_customAccessorGetter.executableAddress()));
+    if (m_domAttribute) {
+        out.print(", domclass = ", RawPointer(m_domAttribute->classInfo));
+        if (m_domAttribute->domJIT)
+            out.print(", domjit = ", RawPointer(m_domAttribute->domJIT));
+    }
     out.print(">");
 }
 

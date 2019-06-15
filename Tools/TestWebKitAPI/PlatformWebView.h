@@ -54,7 +54,18 @@ QT_END_NAMESPACE
 class QQuickWebView;
 typedef QQuickWebView* PlatformWKView;
 typedef QQuickView* PlatformWindow;
+#elif PLATFORM(WPE)
+namespace WPEToolingBackends {
+class HeadlessViewBackend;
+}
+struct wpe_view_backend;
+typedef WKViewRef PlatformWKView;
+typedef WPEToolingBackends::HeadlessViewBackend *PlatformWindow;
+#elif PLATFORM(WIN)
+typedef WKViewRef PlatformWKView;
+typedef HWND PlatformWindow;
 #endif
+typedef uint32_t WKEventModifiers;
 
 namespace TestWebKitAPI {
 
@@ -84,8 +95,12 @@ public:
 private:
 #if PLATFORM(MAC)
     void initialize(WKPageConfigurationRef, Class wkViewSubclass);
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(WIN)
     void initialize(WKPageConfigurationRef);
+#endif
+#if PLATFORM(WIN)
+    static void registerWindowClass();
+    static LRESULT CALLBACK wndProc(HWND, UINT message, WPARAM, LPARAM);
 #endif
 
     PlatformWKView m_view;

@@ -29,6 +29,7 @@ namespace WebCore {
 // This is used for non-root <svg> elements and <marker> elements, neither of which are SVGTransformable
 // thus we inherit from RenderSVGContainer instead of RenderSVGTransformableContainer
 class RenderSVGViewportContainer final : public RenderSVGContainer {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGViewportContainer);
 public:
     RenderSVGViewportContainer(SVGSVGElement&, RenderStyle&&);
 
@@ -59,11 +60,12 @@ private:
     void applyViewportClip(PaintInfo&) override;
     bool pointIsInsideViewportClip(const FloatPoint& pointInParent) override;
 
-    FloatRect m_viewport;
-    mutable AffineTransform m_localToParentTransform;
     bool m_didTransformToRootUpdate : 1;
     bool m_isLayoutSizeChanged : 1;
     bool m_needsTransformUpdate : 1;
+
+    FloatRect m_viewport;
+    mutable AffineTransform m_localToParentTransform;
 };
 
 } // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -191,7 +191,7 @@ static const uint8_t characterClassTable[256] = {
     0, // '$'
     ForbiddenHost, // '%'
     0, // '&'
-    0, // '''
+    0, // '\''
     0, // '('
     0, // ')'
     0, // '*'
@@ -212,9 +212,9 @@ static const uint8_t characterClassTable[256] = {
     ValidScheme, // '9'
     UserInfo | ForbiddenHost, // ':'
     UserInfo, // ';'
-    UserInfo | Default | QueryPercent, // '<'
+    UserInfo | Default | QueryPercent | ForbiddenHost, // '<'
     UserInfo, // '='
-    UserInfo | Default | QueryPercent, // '>'
+    UserInfo | Default | QueryPercent | ForbiddenHost, // '>'
     UserInfo | Default | SlashQuestionOrHash | ForbiddenHost, // '?'
     UserInfo | ForbiddenHost, // '@'
     ValidScheme, // 'A'
@@ -429,6 +429,11 @@ ALWAYS_INLINE static bool shouldPercentEncodeQueryByte(uint8_t byte, const bool&
     return false;
 }
 
+bool URLParser::isInUserInfoEncodeSet(UChar c)
+{
+    return WebCore::isInUserInfoEncodeSet(c);
+}
+
 template<typename CharacterType, URLParser::ReportSyntaxViolation reportSyntaxViolation>
 ALWAYS_INLINE void URLParser::advance(CodePointIterator<CharacterType>& iterator, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
 {
@@ -497,17 +502,17 @@ void URLParser::appendWindowsDriveLetter(CodePointIterator<CharacterType>& itera
 bool URLParser::copyBaseWindowsDriveLetter(const URL& base)
 {
     if (base.protocolIs("file")) {
-        RELEASE_ASSERT(base.m_portEnd < base.m_string.length());
+        RELEASE_ASSERT(base.m_hostEnd + base.m_portLength < base.m_string.length());
         if (base.m_string.is8Bit()) {
             const LChar* begin = base.m_string.characters8();
-            CodePointIterator<LChar> c(begin + base.m_portEnd + 1, begin + base.m_string.length());
+            CodePointIterator<LChar> c(begin + base.m_hostEnd + base.m_portLength + 1, begin + base.m_string.length());
             if (isWindowsDriveLetter(c)) {
                 appendWindowsDriveLetter(c);
                 return true;
             }
         } else {
             const UChar* begin = base.m_string.characters16();
-            CodePointIterator<UChar> c(begin + base.m_portEnd + 1, begin + base.m_string.length());
+            CodePointIterator<UChar> c(begin + base.m_hostEnd + base.m_portLength + 1, begin + base.m_string.length());
             if (isWindowsDriveLetter(c)) {
                 appendWindowsDriveLetter(c);
                 return true;
@@ -616,9 +621,9 @@ template<typename CharacterType>
 void URLParser::encodeQuery(const Vector<UChar>& source, const TextEncoding& encoding, CodePointIterator<CharacterType> iterator)
 {
     // FIXME: It is unclear in the spec what to do when encoding fails. The behavior should be specified and tested.
-    CString encoded = encoding.encode(StringView(source.data(), source.size()), URLEncodedEntitiesForUnencodables);
-    const char* data = encoded.data();
-    size_t length = encoded.length();
+    auto encoded = encoding.encode(StringView(source.data(), source.size()), UnencodableHandling::URLEncodedEntities);
+    auto* data = encoded.data();
+    size_t length = encoded.size();
     
     if (!length == !iterator.atEnd()) {
         syntaxViolation(iterator);
@@ -841,7 +846,7 @@ size_t URLParser::urlLengthUntilPart(const URL& url, URLPart part)
     case URLPart::PathAfterLastSlash:
         return url.m_pathAfterLastSlash;
     case URLPart::PortEnd:
-        return url.m_portEnd;
+        return url.m_hostEnd + url.m_portLength;
     case URLPart::HostEnd:
         return url.m_hostEnd;
     case URLPart::PasswordEnd:
@@ -893,7 +898,7 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
         m_url.m_pathAfterLastSlash = base.m_pathAfterLastSlash;
         FALLTHROUGH;
     case URLPart::PortEnd:
-        m_url.m_portEnd = base.m_portEnd;
+        m_url.m_portLength = base.m_portLength;
         FALLTHROUGH;
     case URLPart::HostEnd:
         m_url.m_hostEnd = base.m_hostEnd;
@@ -1038,7 +1043,7 @@ bool URLParser::shouldPopPath(unsigned newPathAfterLastSlash)
 
     ASSERT(m_url.m_pathAfterLastSlash <= m_asciiBuffer.size());
     CodePointIterator<LChar> componentToPop(&m_asciiBuffer[newPathAfterLastSlash], &m_asciiBuffer[0] + m_url.m_pathAfterLastSlash);
-    if (newPathAfterLastSlash == m_url.m_portEnd + 1 && isWindowsDriveLetter(componentToPop))
+    if (newPathAfterLastSlash == m_url.m_hostEnd + m_url.m_portLength + 1 && isWindowsDriveLetter(componentToPop))
         return false;
     return true;
 }
@@ -1046,11 +1051,11 @@ bool URLParser::shouldPopPath(unsigned newPathAfterLastSlash)
 void URLParser::popPath()
 {
     ASSERT(m_didSeeSyntaxViolation);
-    if (m_url.m_pathAfterLastSlash > m_url.m_portEnd + 1) {
+    if (m_url.m_pathAfterLastSlash > m_url.m_hostEnd + m_url.m_portLength + 1) {
         auto newPathAfterLastSlash = m_url.m_pathAfterLastSlash - 1;
         if (m_asciiBuffer[newPathAfterLastSlash] == '/')
             newPathAfterLastSlash--;
-        while (newPathAfterLastSlash > m_url.m_portEnd && m_asciiBuffer[newPathAfterLastSlash] != '/')
+        while (newPathAfterLastSlash > m_url.m_hostEnd + m_url.m_portLength && m_asciiBuffer[newPathAfterLastSlash] != '/')
             newPathAfterLastSlash--;
         newPathAfterLastSlash++;
         if (shouldPopPath(newPathAfterLastSlash))
@@ -1253,6 +1258,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     m_asciiBuffer.clear();
                     state = State::NoScheme;
                     c = beginAfterControlAndSpace;
+                    break;
                 }
                 state = State::Scheme;
             } else
@@ -1265,7 +1271,12 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     syntaxViolation(c);
                 appendToASCIIBuffer(toASCIILower(*c));
             } else if (*c == ':') {
-                m_url.m_schemeEnd = currentPosition(c);
+                unsigned schemeEnd = currentPosition(c);
+                if (schemeEnd > URL::maxSchemeLength) {
+                    failure();
+                    return;
+                }
+                m_url.m_schemeEnd = schemeEnd;
                 StringView urlScheme = parsedDataView(0, m_url.m_schemeEnd);
                 appendToASCIIBuffer(':');
                 switch (scheme(urlScheme)) {
@@ -1315,7 +1326,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                         m_url.m_userEnd = m_url.m_userStart;
                         m_url.m_passwordEnd = m_url.m_userStart;
                         m_url.m_hostEnd = m_url.m_userStart;
-                        m_url.m_portEnd = m_url.m_userStart;
+                        m_url.m_portLength = 0;
                         m_url.m_pathAfterLastSlash = m_url.m_userStart;
                         m_url.m_cannotBeABaseURL = true;
                         state = State::CannotBeABaseURLPath;
@@ -1389,7 +1400,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 m_url.m_userEnd = m_url.m_userStart;
                 m_url.m_passwordEnd = m_url.m_userStart;
                 m_url.m_hostEnd = m_url.m_userStart;
-                m_url.m_portEnd = m_url.m_userStart;
+                m_url.m_portLength = 0;
                 m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
                 state = State::Path;
             }
@@ -1445,7 +1456,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             } else {
                 copyURLPartsUntil(base, URLPart::PortEnd, c, isUTF8Encoding);
                 appendToASCIIBuffer('/');
-                m_url.m_pathAfterLastSlash = base.m_portEnd + 1;
+                m_url.m_pathAfterLastSlash = base.m_hostEnd + base.m_portLength + 1;
                 state = State::Path;
             }
             break;
@@ -1514,7 +1525,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                         m_url.m_userEnd = currentPosition(c);
                         m_url.m_passwordEnd = m_url.m_userEnd;
                         m_url.m_hostEnd = m_url.m_userEnd;
-                        m_url.m_portEnd = m_url.m_userEnd;
+                        m_url.m_portLength = 0;
                         m_url.m_pathAfterLastSlash = m_url.m_userEnd;
                     } else {
                         m_url.m_userEnd = currentPosition(authorityOrHostBegin);
@@ -1584,7 +1595,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     m_url.m_userEnd = m_url.m_userStart;
                     m_url.m_passwordEnd = m_url.m_userStart;
                     m_url.m_hostEnd = m_url.m_userStart;
-                    m_url.m_portEnd = m_url.m_userStart;
+                    m_url.m_portLength = 0;
                     m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
                     m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
                 }
@@ -1606,7 +1617,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     m_url.m_userEnd = m_url.m_userStart;
                     m_url.m_passwordEnd = m_url.m_userStart;
                     m_url.m_hostEnd = m_url.m_userStart;
-                    m_url.m_portEnd = m_url.m_userStart;
+                    m_url.m_portLength = 0;
                     m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
                     m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
                     m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
@@ -1624,7 +1635,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                     m_url.m_userEnd = m_url.m_userStart;
                     m_url.m_passwordEnd = m_url.m_userStart;
                     m_url.m_hostEnd = m_url.m_userStart;
-                    m_url.m_portEnd = m_url.m_userStart;
+                    m_url.m_portLength = 0;
                     m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
                     if (isWindowsDriveLetter(c))
                         appendWindowsDriveLetter(c);
@@ -1644,7 +1655,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 m_url.m_userEnd = m_url.m_userStart;
                 m_url.m_passwordEnd = m_url.m_userStart;
                 m_url.m_hostEnd = m_url.m_userStart;
-                m_url.m_portEnd = m_url.m_userStart;
+                m_url.m_portLength = 0;
                 authorityOrHostBegin = c;
                 state = State::FileHost;
                 break;
@@ -1655,7 +1666,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_userEnd = m_url.m_userStart;
             m_url.m_passwordEnd = m_url.m_userStart;
             m_url.m_hostEnd = m_url.m_userStart;
-            m_url.m_portEnd = m_url.m_userStart;
+            m_url.m_portLength = 0;
             if (isWindowsDriveLetter(c)) {
                 appendWindowsDriveLetter(c);
                 m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
@@ -1714,7 +1725,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                         syntaxViolation(c);
                         m_asciiBuffer.shrink(m_url.m_passwordEnd);
                         m_url.m_hostEnd = currentPosition(c);
-                        m_url.m_portEnd = m_url.m_hostEnd;
+                        m_url.m_portLength = 0;
                     }
                     
                     state = State::PathStart;
@@ -1727,8 +1738,11 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             break;
         case State::PathStart:
             LOG_STATE("PathStart");
-            if (*c != '/' && *c != '\\')
-                ++c;
+            if (*c != '/' && *c != '\\') {
+                syntaxViolation(c);
+                appendToASCIIBuffer('/');
+            }
+            m_url.m_pathAfterLastSlash = currentPosition(c);
             state = State::Path;
             break;
         case State::Path:
@@ -1866,7 +1880,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_userEnd = m_url.m_userStart;
         m_url.m_passwordEnd = m_url.m_userStart;
         m_url.m_hostEnd = m_url.m_userStart;
-        m_url.m_portEnd = m_url.m_userStart;
+        m_url.m_portLength = 0;
         m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
@@ -1878,7 +1892,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         LOG_FINAL_STATE("RelativeSlash");
         copyURLPartsUntil(base, URLPart::PortEnd, c, isUTF8Encoding);
         appendToASCIIBuffer('/');
-        m_url.m_pathAfterLastSlash = base.m_portEnd + 1;
+        m_url.m_pathAfterLastSlash = m_url.m_hostEnd + m_url.m_portLength + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
         break;
@@ -1888,7 +1902,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_userEnd = m_url.m_userStart;
         m_url.m_passwordEnd = m_url.m_userStart;
         m_url.m_hostEnd = m_url.m_userStart;
-        m_url.m_portEnd = m_url.m_userStart;
+        m_url.m_portLength = 0;
         m_url.m_pathAfterLastSlash = m_url.m_userStart;
         m_url.m_pathEnd = m_url.m_userStart;
         m_url.m_queryEnd = m_url.m_userStart;
@@ -1905,7 +1919,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_userEnd = m_url.m_userStart;
             m_url.m_passwordEnd = m_url.m_userStart;
             m_url.m_hostEnd = m_url.m_userStart;
-            m_url.m_portEnd = m_url.m_userStart;
+            m_url.m_portLength = 0;
             m_url.m_pathEnd = m_url.m_userStart;
         } else if (!parseHostAndPort(authorityOrHostBegin)) {
             failure();
@@ -1914,9 +1928,9 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             if (m_urlIsSpecial) {
                 syntaxViolation(c);
                 appendToASCIIBuffer('/');
-                m_url.m_pathEnd = m_url.m_portEnd + 1;
+                m_url.m_pathEnd = m_url.m_hostEnd + m_url.m_portLength + 1;
             } else
-                m_url.m_pathEnd = m_url.m_portEnd;
+                m_url.m_pathEnd = m_url.m_hostEnd + m_url.m_portLength;
         }
         m_url.m_pathAfterLastSlash = m_url.m_pathEnd;
         m_url.m_queryEnd = m_url.m_pathEnd;
@@ -1930,9 +1944,9 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         if (m_urlIsSpecial) {
             syntaxViolation(c);
             appendToASCIIBuffer('/');
-            m_url.m_pathEnd = m_url.m_portEnd + 1;
+            m_url.m_pathEnd = m_url.m_hostEnd + m_url.m_portLength + 1;
         } else
-            m_url.m_pathEnd = m_url.m_portEnd;
+            m_url.m_pathEnd = m_url.m_hostEnd + m_url.m_portLength;
         m_url.m_pathAfterLastSlash = m_url.m_pathEnd;
         m_url.m_queryEnd = m_url.m_pathEnd;
         break;
@@ -1948,7 +1962,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_userEnd = m_url.m_userStart;
         m_url.m_passwordEnd = m_url.m_userStart;
         m_url.m_hostEnd = m_url.m_userStart;
-        m_url.m_portEnd = m_url.m_userStart;
+        m_url.m_portLength = 0;
         m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
@@ -1961,7 +1975,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_userEnd = m_url.m_userStart;
         m_url.m_passwordEnd = m_url.m_userStart;
         m_url.m_hostEnd = m_url.m_userStart;
-        m_url.m_portEnd = m_url.m_userStart;
+        m_url.m_portLength = 0;
         if (copyBaseWindowsDriveLetter(base)) {
             appendToASCIIBuffer('/');
             m_url.m_pathAfterLastSlash = m_url.m_userStart + 4;
@@ -1990,7 +2004,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             m_url.m_userEnd = m_url.m_userStart;
             m_url.m_passwordEnd = m_url.m_userStart;
             m_url.m_hostEnd = m_url.m_userStart;
-            m_url.m_portEnd = m_url.m_userStart;
+            m_url.m_portLength = 0;
             m_url.m_pathAfterLastSlash = m_url.m_userStart + 1;
             m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
             m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
@@ -2006,10 +2020,10 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         if (isLocalhost(parsedDataView(m_url.m_passwordEnd, currentPosition(c) - m_url.m_passwordEnd))) {
             m_asciiBuffer.shrink(m_url.m_passwordEnd);
             m_url.m_hostEnd = currentPosition(c);
-            m_url.m_portEnd = m_url.m_hostEnd;
+            m_url.m_portLength = 0;
         }
         appendToASCIIBuffer('/');
-        m_url.m_pathAfterLastSlash = m_url.m_portEnd + 1;
+        m_url.m_pathAfterLastSlash = m_url.m_hostEnd + m_url.m_portLength + 1;
         m_url.m_pathEnd = m_url.m_pathAfterLastSlash;
         m_url.m_queryEnd = m_url.m_pathAfterLastSlash;
         break;
@@ -2082,10 +2096,10 @@ void URLParser::parseAuthority(CodePointIterator<CharacterType> iterator)
             appendToASCIIBuffer(':');
             break;
         }
-        utf8PercentEncode<isInUserInfoEncodeSet>(iterator);
+        utf8PercentEncode<WebCore::isInUserInfoEncodeSet>(iterator);
     }
     for (; !iterator.atEnd(); advance(iterator))
-        utf8PercentEncode<isInUserInfoEncodeSet>(iterator);
+        utf8PercentEncode<WebCore::isInUserInfoEncodeSet>(iterator);
     m_url.m_passwordEnd = currentPosition(iterator);
     if (!m_url.m_userEnd)
         m_url.m_userEnd = m_url.m_passwordEnd;
@@ -2305,11 +2319,11 @@ Expected<URLParser::IPv4Address, URLParser::IPv4ParsingError> URLParser::parseIP
     if (!iterator.atEnd() || !items.size() || items.size() > 4)
         return makeUnexpected(IPv4ParsingError::NotIPv4);
     for (const auto& item : items) {
-        if (!item.hasValue() && item.error() == IPv4PieceParsingError::Failure)
+        if (!item.has_value() && item.error() == IPv4PieceParsingError::Failure)
             return makeUnexpected(IPv4ParsingError::NotIPv4);
     }
     for (const auto& item : items) {
-        if (!item.hasValue() && item.error() == IPv4PieceParsingError::Overflow)
+        if (!item.has_value() && item.error() == IPv4PieceParsingError::Overflow)
             return makeUnexpected(IPv4ParsingError::Failure);
     }
     if (items.size() > 1) {
@@ -2486,9 +2500,9 @@ std::optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator
 }
 
 template<typename CharacterType>
-Vector<LChar, URLParser::defaultInlineBufferSize> URLParser::percentDecode(const LChar* input, size_t length, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
+URLParser::LCharBuffer URLParser::percentDecode(const LChar* input, size_t length, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
 {
-    Vector<LChar, defaultInlineBufferSize> output;
+    LCharBuffer output;
     output.reserveInitialCapacity(length);
     
     for (size_t i = 0; i < length; ++i) {
@@ -2508,9 +2522,9 @@ Vector<LChar, URLParser::defaultInlineBufferSize> URLParser::percentDecode(const
     return output;
 }
     
-Vector<LChar, URLParser::defaultInlineBufferSize> URLParser::percentDecode(const LChar* input, size_t length)
+URLParser::LCharBuffer URLParser::percentDecode(const LChar* input, size_t length)
 {
-    Vector<LChar, defaultInlineBufferSize> output;
+    LCharBuffer output;
     output.reserveInitialCapacity(length);
     
     for (size_t i = 0; i < length; ++i) {
@@ -2529,19 +2543,10 @@ Vector<LChar, URLParser::defaultInlineBufferSize> URLParser::percentDecode(const
     return output;
 }
 
-ALWAYS_INLINE static bool containsOnlyASCII(const String& string)
+template<typename CharacterType> std::optional<URLParser::LCharBuffer> URLParser::domainToASCII(StringImpl& domain, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
 {
-    ASSERT(!string.isNull());
-    if (string.is8Bit())
-        return charactersAreAllASCII(string.characters8(), string.length());
-    return charactersAreAllASCII(string.characters16(), string.length());
-}
-
-template<typename CharacterType>
-std::optional<Vector<LChar, URLParser::defaultInlineBufferSize>> URLParser::domainToASCII(const String& domain, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
-{
-    Vector<LChar, defaultInlineBufferSize> ascii;
-    if (containsOnlyASCII(domain)) {
+    LCharBuffer ascii;
+    if (domain.isAllASCII()) {
         size_t length = domain.length();
         if (domain.is8Bit()) {
             const LChar* characters = domain.characters8();
@@ -2584,7 +2589,7 @@ std::optional<Vector<LChar, URLParser::defaultInlineBufferSize>> URLParser::doma
     return std::nullopt;
 }
 
-bool URLParser::hasForbiddenHostCodePoint(const Vector<LChar, URLParser::defaultInlineBufferSize>& asciiDomain)
+bool URLParser::hasForbiddenHostCodePoint(const URLParser::LCharBuffer& asciiDomain)
 {
     for (size_t i = 0; i < asciiDomain.size(); ++i) {
         if (isForbiddenHostCodePoint(asciiDomain[i]))
@@ -2601,7 +2606,9 @@ bool URLParser::parsePort(CodePointIterator<CharacterType>& iterator)
     advance(iterator, colonIterator);
     uint32_t port = 0;
     if (UNLIKELY(iterator.atEnd())) {
-        m_url.m_portEnd = currentPosition(colonIterator);
+        unsigned portLength = currentPosition(colonIterator) - m_url.m_hostEnd;
+        RELEASE_ASSERT(portLength <= URL::maxPortLength);
+        m_url.m_portLength = portLength;
         syntaxViolation(colonIterator);
         return true;
     }
@@ -2638,7 +2645,9 @@ bool URLParser::parsePort(CodePointIterator<CharacterType>& iterator)
         appendNumberToASCIIBuffer<uint16_t>(static_cast<uint16_t>(port));
     }
 
-    m_url.m_portEnd = currentPosition(iterator);
+    unsigned portLength = currentPosition(iterator) - m_url.m_hostEnd;
+    RELEASE_ASSERT(portLength <= URL::maxPortLength);
+    m_url.m_portLength = portLength;
     return true;
 }
 
@@ -2664,7 +2673,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
                     return parsePort(ipv6End);
                 }
                 m_url.m_hostEnd = currentPosition(ipv6End);
-                m_url.m_portEnd = m_url.m_hostEnd;
+                m_url.m_portLength = 0;
                 return true;
             }
             m_url.m_hostEnd = currentPosition(ipv6End);
@@ -2687,7 +2696,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         }
         m_url.m_hostEnd = currentPosition(iterator);
         if (iterator.atEnd()) {
-            m_url.m_portEnd = currentPosition(iterator);
+            m_url.m_portLength = 0;
             return true;
         }
         return parsePort(iterator);
@@ -2708,7 +2717,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
             serializeIPv4(address.value());
             m_url.m_hostEnd = currentPosition(iterator);
             if (iterator.atEnd()) {
-                m_url.m_portEnd = currentPosition(iterator);
+                m_url.m_portLength = 0;
                 return true;
             }
             return parsePort(iterator);
@@ -2727,13 +2736,15 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         m_url.m_hostEnd = currentPosition(iterator);
         if (!hostIterator.atEnd())
             return parsePort(hostIterator);
-        m_url.m_portEnd = currentPosition(iterator);
+        unsigned portLength = currentPosition(iterator) - m_url.m_hostEnd;
+        RELEASE_ASSERT(portLength <= URL::maxPortLength);
+        m_url.m_portLength = portLength;
         return true;
     }
     
     const auto hostBegin = iterator;
     
-    Vector<LChar, defaultInlineBufferSize> utf8Encoded;
+    LCharBuffer utf8Encoded;
     for (; !iterator.atEnd(); ++iterator) {
         if (UNLIKELY(isTabOrNewline(*iterator))) {
             syntaxViolation(hostBegin);
@@ -2752,16 +2763,16 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         // FIXME: Check error.
         utf8Encoded.append(buffer, offset);
     }
-    Vector<LChar, defaultInlineBufferSize> percentDecoded = percentDecode(utf8Encoded.data(), utf8Encoded.size(), hostBegin);
+    LCharBuffer percentDecoded = percentDecode(utf8Encoded.data(), utf8Encoded.size(), hostBegin);
     String domain = String::fromUTF8(percentDecoded.data(), percentDecoded.size());
     if (domain.isNull())
         return false;
     if (domain != StringView(percentDecoded.data(), percentDecoded.size()))
         syntaxViolation(hostBegin);
-    auto asciiDomain = domainToASCII(domain, hostBegin);
+    auto asciiDomain = domainToASCII(*domain.impl(), hostBegin);
     if (!asciiDomain || hasForbiddenHostCodePoint(asciiDomain.value()))
         return false;
-    Vector<LChar, defaultInlineBufferSize>& asciiDomainValue = asciiDomain.value();
+    LCharBuffer& asciiDomainValue = asciiDomain.value();
     const LChar* asciiDomainCharacters = asciiDomainValue.data();
 
     auto address = parseIPv4Host(hostBegin, CodePointIterator<LChar>(asciiDomainValue.begin(), asciiDomainValue.end()));
@@ -2769,7 +2780,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         serializeIPv4(address.value());
         m_url.m_hostEnd = currentPosition(iterator);
         if (iterator.atEnd()) {
-            m_url.m_portEnd = currentPosition(iterator);
+            m_url.m_portLength = 0;
             return true;
         }
         return parsePort(iterator);
@@ -2781,7 +2792,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
     m_url.m_hostEnd = currentPosition(iterator);
     if (!iterator.atEnd())
         return parsePort(iterator);
-    m_url.m_portEnd = currentPosition(iterator);
+    m_url.m_portLength = 0;
     return true;
 }
 
@@ -2857,6 +2868,8 @@ const UIDNA& URLParser::internationalDomainNameTranscoder()
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
         UErrorCode error = U_ZERO_ERROR;
+        // Warning: Please contact a WebKitGTK+ developer if changing these flags.
+        // They should be synced with ephy_uri_decode() in ephy-uri-helpers.c.
         encoder = uidna_openUTS46(UIDNA_CHECK_BIDI | UIDNA_CHECK_CONTEXTJ | UIDNA_NONTRANSITIONAL_TO_UNICODE | UIDNA_NONTRANSITIONAL_TO_ASCII, &error);
         RELEASE_ASSERT(U_SUCCESS(error));
         RELEASE_ASSERT(encoder);
@@ -2866,29 +2879,29 @@ const UIDNA& URLParser::internationalDomainNameTranscoder()
 
 bool URLParser::allValuesEqual(const URL& a, const URL& b)
 {
-    // FIXME: m_cannotBeABaseURL is not compared because the old URL::parse did not use it,
-    // but once we get rid of URL::parse its value should be tested.
-    URL_PARSER_LOG("%d %d %d %d %d %d %d %d %d %d %d %s\n%d %d %d %d %d %d %d %d %d %d %d %s",
+    URL_PARSER_LOG("%d %d %d %d %d %d %d %d %d %d %d %d %s\n%d %d %d %d %d %d %d %d %d %d %d %d %s",
         a.m_isValid,
+        a.m_cannotBeABaseURL,
         a.m_protocolIsInHTTPFamily,
         a.m_schemeEnd,
         a.m_userStart,
         a.m_userEnd,
         a.m_passwordEnd,
         a.m_hostEnd,
-        a.m_portEnd,
+        a.m_hostEnd + a.m_portLength,
         a.m_pathAfterLastSlash,
         a.m_pathEnd,
         a.m_queryEnd,
         a.m_string.utf8().data(),
         b.m_isValid,
+        b.m_cannotBeABaseURL,
         b.m_protocolIsInHTTPFamily,
         b.m_schemeEnd,
         b.m_userStart,
         b.m_userEnd,
         b.m_passwordEnd,
         b.m_hostEnd,
-        b.m_portEnd,
+        b.m_hostEnd + b.m_portLength,
         b.m_pathAfterLastSlash,
         b.m_pathEnd,
         b.m_queryEnd,
@@ -2896,13 +2909,14 @@ bool URLParser::allValuesEqual(const URL& a, const URL& b)
 
     return a.m_string == b.m_string
         && a.m_isValid == b.m_isValid
+        && a.m_cannotBeABaseURL == b.m_cannotBeABaseURL
         && a.m_protocolIsInHTTPFamily == b.m_protocolIsInHTTPFamily
         && a.m_schemeEnd == b.m_schemeEnd
         && a.m_userStart == b.m_userStart
         && a.m_userEnd == b.m_userEnd
         && a.m_passwordEnd == b.m_passwordEnd
         && a.m_hostEnd == b.m_hostEnd
-        && a.m_portEnd == b.m_portEnd
+        && a.m_portLength == b.m_portLength
         && a.m_pathAfterLastSlash == b.m_pathAfterLastSlash
         && a.m_pathEnd == b.m_pathEnd
         && a.m_queryEnd == b.m_queryEnd;
@@ -2914,8 +2928,7 @@ bool URLParser::internalValuesConsistent(const URL& url)
         && url.m_userStart <= url.m_userEnd
         && url.m_userEnd <= url.m_passwordEnd
         && url.m_passwordEnd <= url.m_hostEnd
-        && url.m_hostEnd <= url.m_portEnd
-        && url.m_portEnd <= url.m_pathAfterLastSlash
+        && url.m_hostEnd + url.m_portLength <= url.m_pathAfterLastSlash
         && url.m_pathAfterLastSlash <= url.m_pathEnd
         && url.m_pathEnd <= url.m_queryEnd
         && url.m_queryEnd <= url.m_string.length();

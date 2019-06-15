@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 Apple Inc.  All rights reserved.
  * Copyright (C) 2017 Sony Interactive Entertainment Inc.
+ * Copyright (C) 2017 NAVER Corp.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,88 +27,69 @@
 
 #pragma once
 
-#include "FileSystem.h"
-#include "ResourceHandle.h"
+#if USE(CURL)
+
+#include "CurlRequest.h"
+#include "CurlRequestClient.h"
+#include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include <wtf/Lock.h>
-#include <wtf/Threading.h>
-
-#if PLATFORM(WIN)
-#include <windows.h>
-#include <winsock2.h>
-#endif
-
-#include "CurlContext.h"
-#include "CurlJobManager.h"
 
 namespace WebCore {
 
+class CurlRequest;
+class ResourceHandle;
+
 class CurlDownloadListener {
 public:
-    virtual void didReceiveResponse() { }
+    virtual void didReceiveResponse(const ResourceResponse&) { }
     virtual void didReceiveDataOfLength(int) { }
     virtual void didFinish() { }
     virtual void didFail() { }
 };
 
-class CurlDownload : public ThreadSafeRefCounted<CurlDownload>, public CurlJob {
+class CurlDownload : public ThreadSafeRefCounted<CurlDownload>, public CurlRequestClient {
 public:
-    CurlDownload();
+    CurlDownload() = default;
     ~CurlDownload();
 
-    void init(CurlDownloadListener*, const WebCore::URL&);
-    void init(CurlDownloadListener*, ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
+    void ref() override { ThreadSafeRefCounted<CurlDownload>::ref(); }
+    void deref() override { ThreadSafeRefCounted<CurlDownload>::deref(); }
+
+    void init(CurlDownloadListener&, const URL&);
+    void init(CurlDownloadListener&, ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
 
     void setListener(CurlDownloadListener* listener) { m_listener = listener; }
 
-    bool start();
+    void start();
     bool cancel();
-
-    String getTempPath() const;
-    String getUrl() const;
-    WebCore::ResourceResponse getResponse() const;
 
     bool deletesFileUponFailure() const { return m_deletesFileUponFailure; }
     void setDeletesFileUponFailure(bool deletesFileUponFailure) { m_deletesFileUponFailure = deletesFileUponFailure; }
 
     void setDestination(const String& destination) { m_destination = destination; }
 
-    virtual CurlJobAction handleCurlMsg(CURLMsg*);
-
 private:
-    void closeFile();
-    void moveFileToDestination();
-    void writeDataToFile(const char* data, int size);
+    Ref<CurlRequest> createCurlRequest(ResourceRequest&);
+    void curlDidSendData(CurlRequest&, unsigned long long, unsigned long long) override { }
+    void curlDidReceiveResponse(CurlRequest&, const CurlResponse&) override;
+    void curlDidReceiveBuffer(CurlRequest&, Ref<SharedBuffer>&&) override;
+    void curlDidComplete(CurlRequest&) override;
+    void curlDidFailWithError(CurlRequest&, const ResourceError&) override;
 
-    void addHeaders(const ResourceRequest&);
+    bool shouldRedirectAsGET(const ResourceRequest&, bool crossOrigin);
+    void willSendRequest();
 
-    // Called on download thread.
-    void didReceiveHeader(const String& header);
-    void didReceiveData(void* data, int size);
-
-    // Called on main thread.
-    void didReceiveResponse();
-    void didReceiveDataOfLength(int size);
-    void didFinish();
-    void didFail();
-
-    static size_t writeCallback(char* ptr, size_t, size_t nmemb, void* data);
-    static size_t headerCallback(char* ptr, size_t, size_t nmemb, void* data);
-
-    static void downloadFinishedCallback(CurlDownload*);
-    static void downloadFailedCallback(CurlDownload*);
-    static void receivedDataCallback(CurlDownload*, int size);
-    static void receivedResponseCallback(CurlDownload*);
-
-    CurlHandle m_curlHandle;
-
-    String m_tempPath;
-    String m_destination;
-    WebCore::PlatformFileHandle m_tempHandle { invalidPlatformFileHandle };
-    WebCore::ResourceResponse m_response;
-    bool m_deletesFileUponFailure { false };
-    mutable Lock m_mutex;
     CurlDownloadListener* m_listener { nullptr };
+    bool m_isCancelled { false };
+
+    ResourceRequest m_request;
+    ResourceResponse m_response;
+    bool m_deletesFileUponFailure { false };
+    String m_destination;
+    unsigned m_redirectCount { 0 };
+    RefPtr<CurlRequest> m_curlRequest;
 };
 
-}
+} // namespace WebCore
+
+#endif

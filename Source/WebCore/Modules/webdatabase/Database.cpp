@@ -40,7 +40,6 @@
 #include "DatabaseThread.h"
 #include "DatabaseTracker.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "JSDOMWindow.h"
 #include "Logging.h"
 #include "SQLError.h"
@@ -156,7 +155,7 @@ static bool retrieveTextResultFromDatabase(SQLiteDatabase& db, const String& que
 }
 
 // FIXME: move all guid-related functions to a DatabaseVersionTracker class.
-static StaticLock guidMutex;
+static Lock guidMutex;
 
 static HashMap<DatabaseGUID, String>& guidToVersionMap()
 {
@@ -205,7 +204,7 @@ Database::Database(DatabaseContext& context, const String& name, const String& e
     , m_databaseAuthorizer(DatabaseAuthorizer::create(unqualifiedInfoTableName))
 {
     {
-        std::lock_guard<StaticLock> locker(guidMutex);
+        std::lock_guard<Lock> locker(guidMutex);
 
         m_guid = guidForOriginAndName(securityOrigin().securityOrigin()->toString(), name);
         guidToDatabaseMap().ensure(m_guid, [] {
@@ -252,7 +251,7 @@ ExceptionOr<void> Database::openAndVerifyVersion(bool setVersionInNewDatabase)
     DatabaseTaskSynchronizer synchronizer;
     auto& thread = databaseThread();
     if (thread.terminationRequested(&synchronizer))
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     ExceptionOr<void> result;
     auto task = std::make_unique<DatabaseOpenTask>(*this, setVersionInNewDatabase, synchronizer, result);
@@ -288,7 +287,7 @@ void Database::close()
 
 void Database::performClose()
 {
-    ASSERT(currentThread() == databaseThread().getThreadID());
+    ASSERT(databaseThread().getThread() == &Thread::current());
 
     {
         LockHolder locker(m_transactionInProgressMutex);
@@ -342,14 +341,14 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
 #if PLATFORM(IOS)
     {
         // Make sure we wait till the background removal of the empty database files finished before trying to open any database.
-        LockHolder locker(DatabaseTracker::openDatabaseMutex());
+        auto locker = holdLock(DatabaseTracker::openDatabaseMutex());
     }
 #endif
 
     SQLiteTransactionInProgressAutoCounter transactionCounter;
 
     if (!m_sqliteDatabase.open(m_filename, true))
-        return Exception { INVALID_STATE_ERR, formatErrorMessage("unable to open database", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg()) };
+        return Exception { InvalidStateError, formatErrorMessage("unable to open database", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg()) };
     if (!m_sqliteDatabase.turnOnIncrementalAutoVacuum())
         LOG_ERROR("Unable to turn on incremental auto-vacuum (%d %s)", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
 
@@ -357,7 +356,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
 
     String currentVersion;
     {
-        std::lock_guard<StaticLock> locker(guidMutex);
+        std::lock_guard<Lock> locker(guidMutex);
 
         auto entry = guidToVersionMap().find(m_guid);
         if (entry != guidToVersionMap().end()) {
@@ -372,7 +371,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
             if (!transaction.inProgress()) {
                 String message = formatErrorMessage("unable to open database, failed to start transaction", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                 m_sqliteDatabase.close();
-                return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                return Exception { InvalidStateError, WTFMove(message) };
             }
 
             String tableName(unqualifiedInfoTableName);
@@ -383,13 +382,13 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
                     String message = formatErrorMessage("unable to open database, failed to create 'info' table", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                     transaction.rollback();
                     m_sqliteDatabase.close();
-                return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                return Exception { InvalidStateError, WTFMove(message) };
                 }
             } else if (!getVersionFromDatabase(currentVersion, false)) {
                 String message = formatErrorMessage("unable to open database, failed to read current version", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                 transaction.rollback();
                 m_sqliteDatabase.close();
-                return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                return Exception { InvalidStateError, WTFMove(message) };
             }
 
             if (currentVersion.length()) {
@@ -400,7 +399,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
                     String message = formatErrorMessage("unable to open database, failed to write current version", m_sqliteDatabase.lastError(), m_sqliteDatabase.lastErrorMsg());
                     transaction.rollback();
                     m_sqliteDatabase.close();
-                    return Exception { INVALID_STATE_ERR, WTFMove(message) };
+                    return Exception { InvalidStateError, WTFMove(message) };
                 }
                 currentVersion = m_expectedVersion;
             }
@@ -418,7 +417,7 @@ ExceptionOr<void> Database::performOpenAndVerify(bool shouldSetVersionInNewDatab
     // If the expected version is the empty string, then we always return with whatever version of the database we have.
     if ((!m_new || shouldSetVersionInNewDatabase) && m_expectedVersion.length() && m_expectedVersion != currentVersion) {
         m_sqliteDatabase.close();
-        return Exception { INVALID_STATE_ERR, "unable to open database, version mismatch, '" + m_expectedVersion + "' does not match the currentVersion of '" + currentVersion + "'" };
+        return Exception { InvalidStateError, "unable to open database, version mismatch, '" + m_expectedVersion + "' does not match the currentVersion of '" + currentVersion + "'" };
     }
 
     m_sqliteDatabase.setAuthorizer(m_databaseAuthorizer.get());
@@ -446,7 +445,7 @@ void Database::closeDatabase()
     DatabaseTracker::singleton().removeOpenDatabase(*this);
 
     {
-        std::lock_guard<StaticLock> locker(guidMutex);
+        std::lock_guard<Lock> locker(guidMutex);
 
         auto it = guidToDatabaseMap().find(m_guid);
         ASSERT(it != guidToDatabaseMap().end());
@@ -504,14 +503,14 @@ void Database::setExpectedVersion(const String& version)
 
 String Database::getCachedVersion() const
 {
-    std::lock_guard<StaticLock> locker(guidMutex);
+    std::lock_guard<Lock> locker(guidMutex);
 
     return guidToVersionMap().get(m_guid).isolatedCopy();
 }
 
 void Database::setCachedVersion(const String& actualVersion)
 {
-    std::lock_guard<StaticLock> locker(guidMutex);
+    std::lock_guard<Lock> locker(guidMutex);
 
     updateGUIDVersionMap(m_guid, actualVersion);
 }
@@ -768,9 +767,9 @@ Vector<String> Database::tableNames()
 SecurityOriginData Database::securityOrigin()
 {
     if (m_scriptExecutionContext->isContextThread())
-        return SecurityOriginData::fromSecurityOrigin(m_contextThreadSecurityOrigin.get());
-    if (currentThread() == databaseThread().getThreadID())
-        return SecurityOriginData::fromSecurityOrigin(m_databaseThreadSecurityOrigin.get());
+        return m_contextThreadSecurityOrigin->data();
+    if (databaseThread().getThread() == &Thread::current())
+        return m_databaseThreadSecurityOrigin->data();
     RELEASE_ASSERT_NOT_REACHED();
 }
 

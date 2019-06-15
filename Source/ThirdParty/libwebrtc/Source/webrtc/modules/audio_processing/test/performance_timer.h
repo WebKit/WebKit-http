@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_TEST_PERFORMANCE_TIMER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_TEST_PERFORMANCE_TIMER_H_
+#ifndef MODULES_AUDIO_PROCESSING_TEST_PERFORMANCE_TIMER_H_
+#define MODULES_AUDIO_PROCESSING_TEST_PERFORMANCE_TIMER_H_
 
 #include <vector>
 
-#include "webrtc/base/optional.h"
-#include "webrtc/system_wrappers/include/clock.h"
+#include "absl/types/optional.h"
+#include "system_wrappers/include/clock.h"
 
 namespace webrtc {
 namespace test {
@@ -37,11 +37,11 @@ class PerformanceTimer {
 
  private:
   webrtc::Clock* clock_;
-  rtc::Optional<int64_t> start_timestamp_us_;
+  absl::optional<int64_t> start_timestamp_us_;
   std::vector<int64_t> timestamps_us_;
 };
 
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_TEST_PERFORMANCE_TIMER_H_
+#endif  // MODULES_AUDIO_PROCESSING_TEST_PERFORMANCE_TIMER_H_

@@ -26,7 +26,6 @@
 #include "config.h"
 #include "RunLoop.h"
 
-#include <wtf/CurrentTime.h>
 #include <wtf/WindowsExtras.h>
 
 namespace WTF {
@@ -156,14 +155,14 @@ RunLoop::TimerBase::~TimerBase()
     stop();
 }
 
-void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
+void RunLoop::TimerBase::start(Seconds nextFireInterval, bool repeat)
 {
     LockHolder locker(m_runLoop->m_activeTimersLock);
     m_isRepeating = repeat;
     m_runLoop->m_activeTimers.set(m_ID, this);
-    m_interval = Seconds(nextFireInterval);
+    m_interval = nextFireInterval;
     m_nextFireDate = MonotonicTime::now() + m_interval;
-    ::SetTimer(m_runLoop->m_runLoopMessageWindow, m_ID, nextFireInterval * 1000, 0);
+    ::SetTimer(m_runLoop->m_runLoopMessageWindow, m_ID, nextFireInterval.millisecondsAs<unsigned>(), 0);
 }
 
 void RunLoop::TimerBase::stop()

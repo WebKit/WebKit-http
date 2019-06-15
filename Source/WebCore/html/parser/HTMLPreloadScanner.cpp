@@ -35,9 +35,13 @@
 #include "InputTypeNames.h"
 #include "LinkLoader.h"
 #include "LinkRelAttribute.h"
+#include "Logging.h"
+#include "MIMETypeRegistry.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
+#include "MediaQueryParser.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SizesAttributeParser.h"
 #include <wtf/MainThread.h>
 
@@ -76,13 +80,13 @@ String TokenPreloadScanner::initiatorFor(TagId tagId)
     switch (tagId) {
     case TagId::Source:
     case TagId::Img:
-        return ASCIILiteral("img");
+        return "img"_s;
     case TagId::Input:
-        return ASCIILiteral("input");
+        return "input"_s;
     case TagId::Link:
-        return ASCIILiteral("link");
+        return "link"_s;
     case TagId::Script:
-        return ASCIILiteral("script");
+        return "script"_s;
     case TagId::Unknown:
     case TagId::Style:
     case TagId::Base:
@@ -90,10 +94,10 @@ String TokenPreloadScanner::initiatorFor(TagId tagId)
     case TagId::Meta:
     case TagId::Picture:
         ASSERT_NOT_REACHED();
-        return ASCIILiteral("unknown");
+        return "unknown"_s;
     }
     ASSERT_NOT_REACHED();
-    return ASCIILiteral("unknown");
+    return "unknown"_s;
 }
 
 class TokenPreloadScanner::StartTagScanner {
@@ -103,6 +107,7 @@ public:
         , m_linkIsStyleSheet(false)
         , m_linkIsPreload(false)
         , m_metaIsViewport(false)
+        , m_metaIsDisabledAdaptations(false)
         , m_inputIsImage(false)
         , m_deviceScaleFactor(deviceScaleFactor)
     {
@@ -120,7 +125,7 @@ public:
             processAttribute(attributeName, attributeValue, document, pictureState);
         }
         
-        if (m_tagId == TagId::Source && !pictureState.isEmpty() && !pictureState.last() && m_mediaMatched && !m_srcSetAttribute.isEmpty()) {
+        if (m_tagId == TagId::Source && !pictureState.isEmpty() && !pictureState.last() && m_mediaMatched && m_typeMatched && !m_srcSetAttribute.isEmpty()) {
             
             auto sourceSize = SizesAttributeParser(m_sizesAttribute, document).length();
             ImageCandidate imageCandidate = bestFitSourceForImageAttributes(m_deviceScaleFactor, m_urlToLoad, m_srcSetAttribute, sourceSize);
@@ -139,6 +144,9 @@ public:
 
         if (m_metaIsViewport && !m_metaContent.isNull())
             document.processViewport(m_metaContent, ViewportArguments::ViewportMeta);
+
+        if (m_metaIsDisabledAdaptations && !m_metaContent.isNull())
+            document.processDisabledAdaptations(m_metaContent);
     }
 
     std::unique_ptr<PreloadRequest> createPreloadRequest(const URL& predictedBaseURL)
@@ -213,9 +221,15 @@ private:
             }
             if (match(attributeName, mediaAttr) && m_mediaAttribute.isNull()) {
                 m_mediaAttribute = attributeValue;
-                auto mediaSet = MediaQuerySet::create(attributeValue);
-                auto* documentElement = document.documentElement();
+                auto mediaSet = MediaQuerySet::create(attributeValue, MediaQueryParserContext(document));
+                auto documentElement = makeRefPtr(document.documentElement());
+                LOG(MediaQueries, "HTMLPreloadScanner %p processAttribute evaluating media queries", this);
                 m_mediaMatched = MediaQueryEvaluator { document.printing() ? "print" : "screen", document, documentElement ? documentElement->computedStyle() : nullptr }.evaluate(mediaSet.get());
+            }
+            if (match(attributeName, typeAttr) && m_typeAttribute.isNull()) {
+                // when multiple type attributes present: first value wins, ignore subsequent (to match ImageElement parser and Blink behaviours)
+                m_typeAttribute = attributeValue;
+                m_typeMatched &= MIMETypeRegistry::isSupportedImageVideoOrSVGMIMEType(m_typeAttribute);
             }
             break;
         case TagId::Script:
@@ -230,7 +244,7 @@ private:
             if (match(attributeName, hrefAttr))
                 setUrlToLoad(attributeValue);
             else if (match(attributeName, relAttr)) {
-                LinkRelAttribute parsedAttribute { attributeValue };
+                LinkRelAttribute parsedAttribute { document, attributeValue };
                 m_linkIsStyleSheet = relAttributeIsStyleSheet(parsedAttribute);
                 m_linkIsPreload = parsedAttribute.isLinkPreload;
             } else if (match(attributeName, mediaAttr))
@@ -257,6 +271,8 @@ private:
                 m_metaContent = attributeValue;
             else if (match(attributeName, nameAttr))
                 m_metaIsViewport = equalLettersIgnoringASCIICase(attributeValue, "viewport");
+            else if (RuntimeEnabledFeatures::sharedFeatures().disabledAdaptationsMetaTagEnabled() && match(attributeName, nameAttr))
+                m_metaIsDisabledAdaptations = equalLettersIgnoringASCIICase(attributeValue, "disabled-adaptations");
             break;
         case TagId::Base:
         case TagId::Style:
@@ -293,15 +309,15 @@ private:
     {
         switch (m_tagId) {
         case TagId::Script:
-            return CachedResource::Script;
+            return CachedResource::Type::Script;
         case TagId::Img:
         case TagId::Input:
         case TagId::Source:
             ASSERT(m_tagId != TagId::Input || m_inputIsImage);
-            return CachedResource::ImageResource;
+            return CachedResource::Type::ImageResource;
         case TagId::Link:
             if (m_linkIsStyleSheet)
-                return CachedResource::CSSStyleSheet;
+                return CachedResource::Type::CSSStyleSheet;
             if (m_linkIsPreload)
                 return LinkLoader::resourceTypeFromAsAttribute(m_asAttribute);
             break;
@@ -314,7 +330,7 @@ private:
             break;
         }
         ASSERT_NOT_REACHED();
-        return CachedResource::RawResource;
+        return CachedResource::Type::RawResource;
     }
 
     bool shouldPreload()
@@ -339,6 +355,7 @@ private:
     String m_srcSetAttribute;
     String m_sizesAttribute;
     bool m_mediaMatched { true };
+    bool m_typeMatched { true };
     String m_charset;
     String m_crossOriginMode;
     bool m_linkIsStyleSheet;
@@ -349,6 +366,7 @@ private:
     String m_asAttribute;
     String m_typeAttribute;
     bool m_metaIsViewport;
+    bool m_metaIsDisabledAdaptations;
     bool m_inputIsImage;
     float m_deviceScaleFactor;
     PreloadRequest::ModuleScript m_moduleScript { PreloadRequest::ModuleScript::No };
@@ -425,7 +443,7 @@ void TokenPreloadScanner::scan(const HTMLToken& token, Vector<std::unique_ptr<Pr
 void TokenPreloadScanner::updatePredictedBaseURL(const HTMLToken& token)
 {
     ASSERT(m_predictedBaseElementURL.isEmpty());
-    if (auto* hrefAttribute = findAttribute(token.attributes(), hrefAttr.localName().string()))
+    if (auto* hrefAttribute = findAttribute(token.attributes(), hrefAttr->localName().string()))
         m_predictedBaseElementURL = URL(m_documentURL, stripLeadingAndTrailingHTMLSpaces(StringImpl::create8BitIfPossible(hrefAttribute->value))).isolatedCopy();
 }
 

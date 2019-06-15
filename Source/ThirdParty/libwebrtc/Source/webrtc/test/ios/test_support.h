@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_TEST_IOS_TEST_SUPPORT_H_
-#define WEBRTC_TEST_IOS_TEST_SUPPORT_H_
+#ifndef TEST_IOS_TEST_SUPPORT_H_
+#define TEST_IOS_TEST_SUPPORT_H_
 
 namespace rtc {
 namespace test {
@@ -17,9 +17,12 @@ namespace test {
 // This is necessary as iOS doesn't like processes without a gui
 // running for longer than a few seconds.
 void RunTestsFromIOSApp();
-void InitTestSuite(int (*test_suite)(void), int argc, char* argv[]);
+void InitTestSuite(int (*test_suite)(void),
+                   int argc,
+                   char* argv[],
+                   bool save_chartjson_result);
 
 }  // namespace test
 }  // namespace rtc
 
-#endif  // WEBRTC_TEST_IOS_TEST_SUPPORT_H_
+#endif  // TEST_IOS_TEST_SUPPORT_H_

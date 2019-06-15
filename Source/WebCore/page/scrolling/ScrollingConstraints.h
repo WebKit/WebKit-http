@@ -52,7 +52,7 @@ public:
         , m_anchorEdges(other.m_anchorEdges)
     { }
     
-    virtual ~ViewportConstraints() { }
+    virtual ~ViewportConstraints() = default;
     
     virtual ConstraintType constraintType() const = 0;
     
@@ -195,7 +195,7 @@ private:
     FloatPoint m_layerPositionAtLastLayout;
 };
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const FixedPositionViewportConstraints&);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const StickyPositionViewportConstraints&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FixedPositionViewportConstraints&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const StickyPositionViewportConstraints&);
 
 } // namespace WebCore

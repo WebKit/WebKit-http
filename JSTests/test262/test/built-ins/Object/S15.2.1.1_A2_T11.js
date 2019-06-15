@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Object function is called with one argument value,
     and the value neither is null nor undefined, and is supplied, return ToObject(value)
 es5id: 15.2.1.1_A2_T11
@@ -14,10 +14,12 @@ if (typeof func !== 'undefined') {
   $ERROR('#1:  function expression can\'t be declarated');
 }
 
-var n_obj = Object(function func(){return 1;});
+var n_obj = Object(function func() {
+  return 1;
+});
 
 //CHECK#2
-if ((n_obj.constructor !== Function)||(n_obj()!==1)) {
+if ((n_obj.constructor !== Function) || (n_obj() !== 1)) {
   $ERROR('#2: Object(function func(){return 1;}) returns function');
 }
 

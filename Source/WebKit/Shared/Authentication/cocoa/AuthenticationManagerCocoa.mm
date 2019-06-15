@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,43 +26,80 @@
 #import "config.h"
 #import "AuthenticationManager.h"
 
-using namespace WebCore;
+#if HAVE(SEC_KEY_PROXY)
+
+#import "ClientCertificateAuthenticationXPCConstants.h"
+#import "Connection.h"
+#import <pal/spi/cocoa/NSXPCConnectionSPI.h>
+#import <pal/spi/cocoa/SecKeyProxySPI.h>
+#import <wtf/MainThread.h>
 
 namespace WebKit {
 
-void AuthenticationManager::receivedCredential(const AuthenticationChallenge& authenticationChallenge, const Credential& credential)
+void AuthenticationManager::initializeConnection(IPC::Connection* connection)
 {
-#if !USE(CFURLCONNECTION)
-    [authenticationChallenge.sender() useCredential:credential.nsCredential() forAuthenticationChallenge:authenticationChallenge.nsURLAuthenticationChallenge()];
-#endif
+    ASSERT(isMainThread());
+
+    if (!connection || !connection->xpcConnection()) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    auto weakThis = makeWeakPtr(*this);
+    // The following xpc event handler overwrites the boostrap event handler and is only used
+    // to capture client certificate credential.
+    xpc_connection_set_event_handler(connection->xpcConnection(), ^(xpc_object_t event) {
+        ASSERT(isMainThread());
+
+        xpc_type_t type = xpc_get_type(event);
+        if (type == XPC_TYPE_ERROR || !weakThis)
+            return;
+
+        if (type != XPC_TYPE_DICTIONARY || strcmp(xpc_dictionary_get_string(event, clientCertificateAuthenticationXPCMessageNameKey), clientCertificateAuthenticationXPCMessageNameValue)) {
+            ASSERT_NOT_REACHED();
+            return;
+        }
+
+        auto challengeID = xpc_dictionary_get_uint64(event, clientCertificateAuthenticationXPCChallengeIDKey);
+        if (!challengeID)
+            return;
+
+        auto xpcEndPoint = xpc_dictionary_get_value(event, clientCertificateAuthenticationXPCSecKeyProxyEndpointKey);
+        if (!xpcEndPoint || xpc_get_type(xpcEndPoint) != XPC_TYPE_ENDPOINT)
+            return;
+        auto endPoint = adoptNS([[NSXPCListenerEndpoint alloc] init]);
+        [endPoint _setEndpoint:xpcEndPoint];
+        NSError *error = nil;
+        auto identity = adoptCF([SecKeyProxy createIdentityFromEndpoint:endPoint.get() error:&error]);
+        if (!identity || error) {
+            LOG_ERROR("Couldn't create identity from end point: %@", error);
+            return;
+        }
+
+        auto certificateDataArray = xpc_dictionary_get_array(event, clientCertificateAuthenticationXPCCertificatesKey);
+        if (!certificateDataArray)
+            return;
+        NSMutableArray *certificates = nil;
+        if (auto total = xpc_array_get_count(certificateDataArray)) {
+            certificates = [NSMutableArray arrayWithCapacity:total];
+            for (size_t i = 0; i < total; i++) {
+                auto certificateData = xpc_array_get_value(certificateDataArray, i);
+                auto cfData = adoptCF(CFDataCreate(nullptr, reinterpret_cast<const UInt8*>(xpc_data_get_bytes_ptr(certificateData)), xpc_data_get_length(certificateData)));
+                auto certificate = adoptCF(SecCertificateCreateWithData(nullptr, cfData.get()));
+                if (!certificate)
+                    return;
+                [certificates addObject:(__bridge id)certificate.get()];
+            }
+        }
+
+        auto persistence = xpc_dictionary_get_uint64(event, clientCertificateAuthenticationXPCPersistenceKey);
+        if (persistence > static_cast<uint64_t>(NSURLCredentialPersistenceSynchronizable))
+            return;
+
+        weakThis->useCredentialForChallenge(challengeID, WebCore::Credential(adoptNS([[NSURLCredential alloc] initWithIdentity:identity.get() certificates:certificates persistence:(NSURLCredentialPersistence)persistence]).get()));
+    });
 }
 
-void AuthenticationManager::receivedRequestToContinueWithoutCredential(const AuthenticationChallenge& authenticationChallenge)
-{
-#if !USE(CFURLCONNECTION)
-    [authenticationChallenge.sender() continueWithoutCredentialForAuthenticationChallenge:authenticationChallenge.nsURLAuthenticationChallenge()];
-#endif
-}
+} // namespace WebKit
 
-void AuthenticationManager::receivedCancellation(const AuthenticationChallenge& authenticationChallenge)
-{
-#if !USE(CFURLCONNECTION)
-    [authenticationChallenge.sender() cancelAuthenticationChallenge:authenticationChallenge.nsURLAuthenticationChallenge()];
 #endif
-}
-
-void AuthenticationManager::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge& authenticationChallenge)
-{
-#if !USE(CFURLCONNECTION)
-    [authenticationChallenge.sender() performDefaultHandlingForAuthenticationChallenge:authenticationChallenge.nsURLAuthenticationChallenge()];
-#endif
-}
-
-void AuthenticationManager::receivedChallengeRejection(const AuthenticationChallenge& authenticationChallenge)
-{
-#if !USE(CFURLCONNECTION)
-    [authenticationChallenge.sender() rejectProtectionSpaceAndContinueWithChallenge:authenticationChallenge.nsURLAuthenticationChallenge()];
-#endif
-}
-
-}

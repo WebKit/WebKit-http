@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The propertyIsEnumerable method does not consider objects in the
     prototype chain
 es5id: 15.2.4.7_A1_T1
@@ -16,13 +16,17 @@ if (typeof Object.prototype.propertyIsEnumerable !== "function") {
   $ERROR('#1: propertyIsEnumerable method is defined');
 }
 
-var proto={rootprop:"avis"};
+var proto = {
+  rootprop: "avis"
+};
 
-function AVISFACTORY(name){this.name=name};
+function AVISFACTORY(name) {
+  this.name = name
+};
 
 AVISFACTORY.prototype = proto;
 
-var seagull= new AVISFACTORY("seagull");
+var seagull = new AVISFACTORY("seagull");
 
 //CHECK#2
 if (typeof seagull.propertyIsEnumerable !== "function") {

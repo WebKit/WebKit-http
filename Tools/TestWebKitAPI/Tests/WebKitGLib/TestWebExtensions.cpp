@@ -23,13 +23,14 @@
 #include "WebViewTest.h"
 #include <wtf/glib/GRefPtr.h>
 
-static const char* webExtensionsUserData = "Web Extensions user data";
 static WebKitTestBus* bus;
 static GUniquePtr<char> scriptDialogResult;
 
 #define INPUT_ID "input-id"
 #define FORM_ID "form-id"
 #define FORM2_ID "form2-id"
+
+#define FORM_SUBMISSION_TEST_ID "form-submission-test-id"
 
 static void testWebExtensionGetTitle(WebViewTest* test, gconstpointer)
 {
@@ -51,6 +52,60 @@ static void testWebExtensionGetTitle(WebViewTest* test, gconstpointer)
     g_variant_get(result.get(), "(&s)", &title);
     g_assert_cmpstr(title, ==, "WebKitGTK+ Web Extensions Test");
 }
+
+#if PLATFORM(GTK)
+static gboolean inputElementIsUserEdited(GDBusProxy* proxy, uint64_t pageID, const char* elementID)
+{
+    GRefPtr<GVariant> result = adoptGRef(g_dbus_proxy_call_sync(
+        proxy,
+        "InputElementIsUserEdited",
+        g_variant_new("(t&s)", pageID, elementID),
+        G_DBUS_CALL_FLAGS_NONE,
+        -1, nullptr, nullptr));
+    g_assert_nonnull(result);
+
+    gboolean retval;
+    g_variant_get(result.get(), "(b)", &retval);
+    return retval;
+}
+
+static void testWebExtensionInputElementIsUserEdited(WebViewTest* test, gconstpointer)
+{
+    test->showInWindowAndWaitUntilMapped();
+    test->loadHtml("<html><body id='body'><input id='input'></input><textarea id='textarea'></textarea></body></html>", nullptr);
+    test->waitUntilLoadFinished();
+
+    GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
+    GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
+        "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
+
+    uint64_t pageID = webkit_web_view_get_page_id(test->m_webView);
+    g_assert_false(inputElementIsUserEdited(proxy.get(), pageID, "input"));
+    test->runJavaScriptAndWaitUntilFinished("document.getElementById('input').focus()", nullptr);
+    test->keyStroke(GDK_KEY_a);
+    while (gtk_events_pending())
+        gtk_main_iteration();
+    GUniquePtr<char> resultString;
+    do {
+        auto* result = test->runJavaScriptAndWaitUntilFinished("document.getElementById('input').value", nullptr);
+        resultString.reset(WebViewTest::javascriptResultToCString(result));
+    } while (g_strcmp0(resultString.get(), "a"));
+    g_assert_true(inputElementIsUserEdited(proxy.get(), pageID, "input"));
+
+    g_assert_false(inputElementIsUserEdited(proxy.get(), pageID, "textarea"));
+    test->runJavaScriptAndWaitUntilFinished("document.getElementById('textarea').focus()", nullptr);
+    test->keyStroke(GDK_KEY_b);
+    while (gtk_events_pending())
+        gtk_main_iteration();
+    do {
+        auto* result = test->runJavaScriptAndWaitUntilFinished("document.getElementById('textarea').value", nullptr);
+        resultString.reset(WebViewTest::javascriptResultToCString(result));
+    } while (g_strcmp0(resultString.get(), "b"));
+    g_assert_true(inputElementIsUserEdited(proxy.get(), pageID, "textarea"));
+
+    g_assert_false(inputElementIsUserEdited(proxy.get(), pageID, "body"));
+}
+#endif
 
 static void documentLoadedCallback(GDBusConnection*, const char*, const char*, const char*, const char*, GVariant*, WebViewTest* test)
 {
@@ -80,8 +135,9 @@ static void testDocumentLoadedSignal(WebViewTest* test, gconstpointer)
     g_dbus_connection_signal_unsubscribe(connection, id);
 }
 
-static gboolean webProcessCrashedCallback(WebKitWebView*, WebViewTest* test)
+static gboolean webProcessTerminatedCallback(WebKitWebView*, WebKitWebProcessTerminationReason reason, WebViewTest* test)
 {
+    g_assert_cmpuint(reason, ==, WEBKIT_WEB_PROCESS_CRASHED);
     test->quitMainLoop();
 
     return FALSE;
@@ -92,8 +148,8 @@ static void testWebKitWebViewProcessCrashed(WebViewTest* test, gconstpointer)
     test->loadHtml("<html></html>", 0);
     test->waitUntilLoadFinished();
 
-    g_signal_connect_after(test->m_webView, "web-process-crashed",
-        G_CALLBACK(webProcessCrashedCallback), test);
+    g_signal_connect_after(test->m_webView, "web-process-terminated",
+        G_CALLBACK(webProcessTerminatedCallback), test);
 
     test->m_expectedWebProcessCrash = true;
 
@@ -149,7 +205,7 @@ static void testWebExtensionIsolatedWorld(WebViewTest* test, gconstpointer)
         "top.foo = 'Foo';\n"
         "document.getElementById('console').innerHTML = top.foo;\n"
         "window.open = function () { alert('Main World'); }\n"
-        "document.open(1, 2, 3);";
+        "window.open();";
     test->runJavaScriptAndWaitUntilFinished(mainWorldScript, 0);
     g_assert_cmpstr(scriptDialogResult.get(), ==, "Main World");
 
@@ -161,7 +217,7 @@ static void testWebExtensionIsolatedWorld(WebViewTest* test, gconstpointer)
     static const char* isolatedWorldScript =
         "document.getElementById('console').innerHTML = top.foo;\n"
         "window.open = function () { alert('Isolated World'); }\n"
-        "document.open(1, 2, 3);";
+        "window.open();";
     GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", Test::s_webExtensionID));
     GRefPtr<GDBusProxy> proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
         "/org/webkit/gtk/WebExtensionTest" , "org.webkit.gtk.WebExtensionTest", test->m_mainLoop));
@@ -216,12 +272,13 @@ static void testInstallMissingPluginsPermissionRequest(WebViewTest* test, gconst
     g_main_loop_run(test->m_mainLoop);
     g_signal_handler_disconnect(test->m_webView, permissionRequestSignalID);
 }
+#endif // PLATFORM(GTK)
 
 static void didAssociateFormControlsCallback(GDBusConnection*, const char*, const char*, const char*, const char*, GVariant* result, WebViewTest* test)
 {
     const char* formIds;
     g_variant_get(result, "(&s)", &formIds);
-    g_assert(!g_strcmp0(formIds, FORM_ID FORM2_ID) || !g_strcmp0(formIds, INPUT_ID));
+    g_assert(!g_strcmp0(formIds, FORM_ID FORM2_ID) || !g_strcmp0(formIds, FORM2_ID FORM_ID) || !g_strcmp0(formIds, INPUT_ID));
 
     test->quitMainLoop();
 }
@@ -275,7 +332,126 @@ static void testWebExtensionFormControlsAssociated(WebViewTest* test, gconstpoin
 
     g_dbus_connection_signal_unsubscribe(connection, id);
 }
-#endif // PLATFORM(GTK)
+
+class FormSubmissionTest : public WebViewTest {
+public:
+    MAKE_GLIB_TEST_FIXTURE(FormSubmissionTest);
+
+    FormSubmissionTest()
+    {
+        GUniquePtr<char> extensionBusName(g_strdup_printf("org.webkit.gtk.WebExtensionTest%u", s_webExtensionID));
+        m_proxy = adoptGRef(bus->createProxy(extensionBusName.get(),
+            "/org/webkit/gtk/WebExtensionTest", "org.webkit.gtk.WebExtensionTest", m_mainLoop));
+        GDBusConnection* connection = g_dbus_proxy_get_connection(m_proxy.get());
+
+        m_willSendDOMEventCallbackID = g_dbus_connection_signal_subscribe(connection,
+            nullptr,
+            "org.webkit.gtk.WebExtensionTest",
+            "FormSubmissionWillSendDOMEvent",
+            "/org/webkit/gtk/WebExtensionTest",
+            nullptr,
+            G_DBUS_SIGNAL_FLAGS_NONE,
+            reinterpret_cast<GDBusSignalCallback>(willSendDOMEventCallback),
+            this,
+            nullptr);
+        g_assert(m_willSendDOMEventCallbackID);
+
+        m_willCompleteCallbackID = g_dbus_connection_signal_subscribe(connection,
+            nullptr,
+            "org.webkit.gtk.WebExtensionTest",
+            "FormSubmissionWillComplete",
+            "/org/webkit/gtk/WebExtensionTest",
+            nullptr,
+            G_DBUS_SIGNAL_FLAGS_NONE,
+            reinterpret_cast<GDBusSignalCallback>(willCompleteCallback),
+            this,
+            nullptr);
+        g_assert(m_willCompleteCallbackID);
+    }
+
+    ~FormSubmissionTest()
+    {
+        GDBusConnection* connection = g_dbus_proxy_get_connection(m_proxy.get());
+        g_dbus_connection_signal_unsubscribe(connection, m_willSendDOMEventCallbackID);
+        g_dbus_connection_signal_unsubscribe(connection, m_willCompleteCallbackID);
+    }
+
+    static void testFormSubmissionResult(GVariant* result)
+    {
+        const char* formID;
+        const char* concatenatedTextFieldNames;
+        const char* concatenatedTextFieldValues;
+        gboolean targetFrameIsMainFrame;
+        gboolean sourceFrameIsMainFrame;
+        g_variant_get(result, "(&s&s&sbb)", &formID, &concatenatedTextFieldNames, &concatenatedTextFieldValues, &targetFrameIsMainFrame, &sourceFrameIsMainFrame);
+
+        g_assert_cmpstr(formID, ==, FORM_SUBMISSION_TEST_ID);
+        g_assert_cmpstr(concatenatedTextFieldNames, ==, "foo,bar,");
+        g_assert_cmpstr(concatenatedTextFieldValues, ==, "first,second,");
+        g_assert(!targetFrameIsMainFrame);
+        g_assert(sourceFrameIsMainFrame);
+    }
+
+    static void willSendDOMEventCallback(GDBusConnection*, const char*, const char*, const char*, const char*, GVariant* result, FormSubmissionTest* test)
+    {
+        test->m_willSendDOMEventCallbackExecuted = true;
+        testFormSubmissionResult(result);
+    }
+
+    static void willCompleteCallback(GDBusConnection*, const char*, const char*, const char*, const char*, GVariant* result, FormSubmissionTest* test)
+    {
+        test->m_willCompleteCallbackExecuted = true;
+        testFormSubmissionResult(result);
+        test->quitMainLoop();
+    }
+
+    void runJavaScriptAndWaitUntilFormSubmitted(const char* js)
+    {
+        webkit_web_view_run_javascript(m_webView, js, nullptr, nullptr, nullptr);
+        g_main_loop_run(m_mainLoop);
+    }
+
+    GRefPtr<GDBusProxy> m_proxy;
+    guint m_willSendDOMEventCallbackID { 0 };
+    guint m_willCompleteCallbackID { 0 };
+    bool m_willSendDOMEventCallbackExecuted { false };
+    bool m_willCompleteCallbackExecuted { false };
+};
+
+static void testWebExtensionFormSubmissionSteps(FormSubmissionTest* test, gconstpointer)
+{
+    test->loadHtml("<form id=\"" FORM_SUBMISSION_TEST_ID "\" target=\"target_frame\">"
+        "<input type=\"text\" name=\"foo\" value=\"first\">"
+        "<input type=\"text\" name=\"bar\" value=\"second\">"
+        "<input type=\"submit\" id=\"submit_button\">"
+        "</form>"
+        "<iframe name=\"target_frame\"></iframe>", nullptr);
+    test->waitUntilLoadFinished();
+
+    static const char* submitFormScript =
+        "var form = document.getElementById(\"" FORM_SUBMISSION_TEST_ID "\");"
+        "form.submit();";
+    test->runJavaScriptAndWaitUntilFormSubmitted(submitFormScript);
+    // Submit must not be emitted when the form is submitted via JS.
+    // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
+    g_assert(!test->m_willSendDOMEventCallbackExecuted);
+    g_assert(test->m_willCompleteCallbackExecuted);
+    test->m_willCompleteCallbackExecuted = false;
+
+    static const char* manuallySubmitFormScript =
+        "var button = document.getElementById(\"submit_button\");"
+        "button.click();";
+    test->runJavaScriptAndWaitUntilFormSubmitted(manuallySubmitFormScript);
+    g_assert(test->m_willSendDOMEventCallbackExecuted);
+    g_assert(test->m_willCompleteCallbackExecuted);
+    test->m_willSendDOMEventCallbackExecuted = false;
+    test->m_willCompleteCallbackExecuted = false;
+
+    test->loadHtml("<form id=\"" FORM_SUBMISSION_TEST_ID "\" target=\"target_frame\">"
+        "</form>"
+        "<iframe name=\"target_frame\"></iframe>", nullptr);
+    test->waitUntilLoadFinished();
+}
 
 void beforeAll()
 {
@@ -283,9 +459,9 @@ void beforeAll()
     if (!bus->run())
         return;
 
-    // FIXME: Use JSC API in the extension to get the title from JavaScript.
-#if PLATFORM(GTK)
     WebViewTest::add("WebKitWebExtension", "dom-document-title", testWebExtensionGetTitle);
+#if PLATFORM(GTK)
+    WebViewTest::add("WebKitWebExtension", "dom-input-element-is-user-edited", testWebExtensionInputElementIsUserEdited);
 #endif
     WebViewTest::add("WebKitWebExtension", "document-loaded-signal", testDocumentLoadedSignal);
     WebViewTest::add("WebKitWebView", "web-process-crashed", testWebKitWebViewProcessCrashed);
@@ -293,8 +469,9 @@ void beforeAll()
     WebViewTest::add("WebKitWebExtension", "isolated-world", testWebExtensionIsolatedWorld);
 #if PLATFORM(GTK)
     WebViewTest::add("WebKitWebView", "install-missing-plugins-permission-request", testInstallMissingPluginsPermissionRequest);
-    WebViewTest::add("WebKitWebExtension", "form-controls-associated-signal", testWebExtensionFormControlsAssociated);
 #endif
+    WebViewTest::add("WebKitWebExtension", "form-controls-associated-signal", testWebExtensionFormControlsAssociated);
+    FormSubmissionTest::add("WebKitWebExtension", "form-submission-steps", testWebExtensionFormSubmissionSteps);
 }
 
 void afterAll()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,10 +29,10 @@
 #include "JSDOMConvertBase.h"
 #include "JSDOMConvertNumbers.h"
 #include "JSDOMGlobalObject.h"
-#include <runtime/IteratorOperations.h>
-#include <runtime/JSArray.h>
-#include <runtime/JSGlobalObjectInlines.h>
-#include <runtime/ObjectConstructor.h>
+#include <JavaScriptCore/IteratorOperations.h>
+#include <JavaScriptCore/JSArray.h>
+#include <JavaScriptCore/JSGlobalObjectInlines.h>
+#include <JavaScriptCore/ObjectConstructor.h>
 
 namespace WebCore {
 
@@ -57,7 +57,7 @@ struct GenericSequenceConverter {
                 return;
             result.append(WTFMove(convertedValue));
         });
-        return result;
+        return WTFMove(result);
     }
 
     static ReturnType convert(JSC::ExecState& state, JSC::JSObject* object, JSC::JSValue method)
@@ -75,7 +75,7 @@ struct GenericSequenceConverter {
                 return;
             result.append(WTFMove(convertedValue));
         });
-        return result;
+        return WTFMove(result);
     }
 };
 
@@ -92,19 +92,19 @@ struct NumericSequenceConverter {
     {
         if (indexingType == JSC::Int32Shape) {
             for (unsigned i = 0; i < length; i++) {
-                auto indexValue = array->butterfly()->contiguousInt32()[i].get();
+                auto indexValue = array->butterfly()->contiguousInt32().at(array, i).get();
                 ASSERT(!indexValue || indexValue.isInt32());
                 if (!indexValue)
                     result.uncheckedAppend(0);
                 else
                     result.uncheckedAppend(indexValue.asInt32());
             }
-            return result;
+            return WTFMove(result);
         }
 
         ASSERT(indexingType == JSC::DoubleShape);
         for (unsigned i = 0; i < length; i++) {
-            auto doubleValue = array->butterfly()->contiguousDouble()[i];
+            double doubleValue = array->butterfly()->contiguousDouble().at(array, i);
             if (std::isnan(doubleValue))
                 result.uncheckedAppend(0);
             else {
@@ -114,7 +114,7 @@ struct NumericSequenceConverter {
                 result.uncheckedAppend(convertedValue);
             }
         }
-        return result;
+        return WTFMove(result);
     }
 
     static ReturnType convert(JSC::ExecState& state, JSC::JSValue value)
@@ -210,7 +210,7 @@ struct SequenceConverter {
 
         if (indexingType == JSC::ContiguousShape) {
             for (unsigned i = 0; i < length; i++) {
-                auto indexValue = array->butterfly()->contiguous()[i].get();
+                auto indexValue = array->butterfly()->contiguous().at(array, i).get();
                 if (!indexValue)
                     indexValue = JSC::jsUndefined();
 
@@ -378,9 +378,15 @@ template<typename T> struct JSConverter<IDLSequence<T>> {
     template<typename U, size_t inlineCapacity>
     static JSC::JSValue convert(JSC::ExecState& exec, JSDOMGlobalObject& globalObject, const Vector<U, inlineCapacity>& vector)
     {
+        JSC::VM& vm = exec.vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
         JSC::MarkedArgumentBuffer list;
         for (auto& element : vector)
             list.append(toJS<T>(exec, globalObject, element));
+        if (UNLIKELY(list.hasOverflowed())) {
+            throwOutOfMemoryError(&exec, scope);
+            return { };
+        }
         return JSC::constructArray(&exec, nullptr, &globalObject, list);
     }
 };
@@ -406,9 +412,15 @@ template<typename T> struct JSConverter<IDLFrozenArray<T>> {
     template<typename U, size_t inlineCapacity>
     static JSC::JSValue convert(JSC::ExecState& exec, JSDOMGlobalObject& globalObject, const Vector<U, inlineCapacity>& vector)
     {
+        JSC::VM& vm = exec.vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
         JSC::MarkedArgumentBuffer list;
         for (auto& element : vector)
             list.append(toJS<T>(exec, globalObject, element));
+        if (UNLIKELY(list.hasOverflowed())) {
+            throwOutOfMemoryError(&exec, scope);
+            return { };
+        }
         auto* array = JSC::constructArray(&exec, nullptr, &globalObject, list);
         return JSC::objectConstructorFreeze(&exec, array);
     }

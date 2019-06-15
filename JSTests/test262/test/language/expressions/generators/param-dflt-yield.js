@@ -14,8 +14,12 @@ info: |
   YieldExpression cannot be used within the FormalParameters of a generator
   function because any expressions that are part of FormalParameters are
   evaluated before the resulting generator object is in a resumable state.
-features: [default-parameters]
-negative: SyntaxError
+features: [generators, default-parameters]
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 0, function*(x = yield) {};

@@ -333,7 +333,7 @@ private:
     template<typename SelectFunc>
     void prepareIntervals(const SelectFunc& selectFunc)
     {
-        m_tmps.resize(0);
+        m_tmps.shrink(0);
         
         m_code.forEachTmp(
             [&] (Tmp tmp) {
@@ -371,7 +371,7 @@ private:
         // http://dl.acm.org/citation.cfm?id=330250.
 
         m_active.clear();
-        m_activeRegs = RegisterSet();
+        m_activeRegs = { };
         
         size_t clobberIndex = 0;
         for (Tmp& tmp : m_tmps) {

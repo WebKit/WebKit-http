@@ -94,20 +94,19 @@ public:
 
     virtual ~GenericCallback()
     {
-        ASSERT(currentThread() == m_originThreadID);
+        ASSERT(m_originThread.ptr() == &Thread::current());
         ASSERT(!m_callback);
     }
 
     void performCallbackWithReturnValue(T... returnValue)
     {
-        ASSERT(currentThread() == m_originThreadID);
+        ASSERT(m_originThread.ptr() == &Thread::current());
 
         if (!m_callback)
             return;
 
-        m_callback.value()(returnValue..., Error::None);
-
-        m_callback = std::nullopt;
+        auto callback = std::exchange(m_callback, std::nullopt);
+        callback.value()(returnValue..., Error::None);
     }
 
     void performCallback()
@@ -117,14 +116,13 @@ public:
 
     void invalidate(Error error = Error::Unknown) final
     {
-        ASSERT(currentThread() == m_originThreadID);
+        ASSERT(m_originThread.ptr() == &Thread::current());
 
         if (!m_callback)
             return;
 
-        m_callback.value()(typename std::remove_reference<T>::type()..., error);
-
-        m_callback = std::nullopt;
+        auto callback = std::exchange(m_callback, std::nullopt);
+        callback.value()(typename std::remove_reference<T>::type()..., error);
     }
 
 private:
@@ -144,7 +142,7 @@ private:
     std::optional<CallbackFunction> m_callback;
 
 #ifndef NDEBUG
-    ThreadIdentifier m_originThreadID { currentThread() };
+    Ref<Thread> m_originThread { Thread::current() };
 #endif
 };
 
@@ -163,12 +161,9 @@ typedef GenericCallback<const ShareableBitmap::Handle&> ImageCallback;
 template<typename T>
 void invalidateCallbackMap(HashMap<uint64_t, T>& callbackMap, CallbackBase::Error error)
 {
-    Vector<T> callbacks;
-    copyValuesToVector(callbackMap, callbacks);
-    for (auto& callback : callbacks)
+    auto map = WTFMove(callbackMap);
+    for (auto& callback : map.values())
         callback->invalidate(error);
-
-    callbackMap.clear();
 }
 
 class CallbackMap {
@@ -197,14 +192,6 @@ public:
     CallbackID put(Function<void(T...)>&& function, const ProcessThrottler::BackgroundActivityToken& activityToken)
     {
         auto callback = GenericCallbackType<sizeof...(T), T...>::type::create(WTFMove(function), activityToken);
-        return put(WTFMove(callback));
-    }
-
-    // FIXME: <webkit.org/b/174007> WebCookieManagerProxy should pass in BackgroundActivityToken
-    template<typename... T>
-    CallbackID put(Function<void(T...)>&& function)
-    {
-        auto callback = GenericCallbackType<sizeof...(T), T...>::type::create(WTFMove(function));
         return put(WTFMove(callback));
     }
 

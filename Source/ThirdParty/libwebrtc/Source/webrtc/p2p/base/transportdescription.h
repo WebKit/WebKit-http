@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_TRANSPORTDESCRIPTION_H_
-#define WEBRTC_P2P_BASE_TRANSPORTDESCRIPTION_H_
+#ifndef P2P_BASE_TRANSPORTDESCRIPTION_H_
+#define P2P_BASE_TRANSPORTDESCRIPTION_H_
 
 #include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "webrtc/p2p/base/p2pconstants.h"
-#include "webrtc/base/sslfingerprint.h"
+#include "p2p/base/p2pconstants.h"
+#include "rtc_base/sslfingerprint.h"
 
 namespace cricket {
 
@@ -30,18 +30,10 @@ namespace cricket {
 //               or unsupported crypto.
 // TODO(deadbeef): Remove this or rename it to something more appropriate, like
 // SdesPolicy.
-enum SecurePolicy {
-  SEC_DISABLED,
-  SEC_ENABLED,
-  SEC_REQUIRED
-};
+enum SecurePolicy { SEC_DISABLED, SEC_ENABLED, SEC_REQUIRED };
 
 // Whether our side of the call is driving the negotiation, or the other side.
-enum IceRole {
-  ICEROLE_CONTROLLING = 0,
-  ICEROLE_CONTROLLED,
-  ICEROLE_UNKNOWN
-};
+enum IceRole { ICEROLE_CONTROLLING = 0, ICEROLE_CONTROLLED, ICEROLE_UNKNOWN };
 
 // ICE RFC 5245 implementation type.
 enum IceMode {
@@ -87,59 +79,26 @@ extern const char CONNECTIONROLE_PASSIVE_STR[];
 extern const char CONNECTIONROLE_ACTPASS_STR[];
 extern const char CONNECTIONROLE_HOLDCONN_STR[];
 
-constexpr auto ICE_OPTION_TRICKLE = "trickle";
-constexpr auto ICE_OPTION_RENOMINATION = "renomination";
+constexpr auto* ICE_OPTION_TRICKLE = "trickle";
+constexpr auto* ICE_OPTION_RENOMINATION = "renomination";
 
 bool StringToConnectionRole(const std::string& role_str, ConnectionRole* role);
 bool ConnectionRoleToString(const ConnectionRole& role, std::string* role_str);
 
 struct TransportDescription {
-  TransportDescription()
-      : ice_mode(ICEMODE_FULL),
-        connection_role(CONNECTIONROLE_NONE) {}
-
+  TransportDescription();
   TransportDescription(const std::vector<std::string>& transport_options,
                        const std::string& ice_ufrag,
                        const std::string& ice_pwd,
                        IceMode ice_mode,
                        ConnectionRole role,
-                       const rtc::SSLFingerprint* identity_fingerprint)
-      : transport_options(transport_options),
-        ice_ufrag(ice_ufrag),
-        ice_pwd(ice_pwd),
-        ice_mode(ice_mode),
-        connection_role(role),
-        identity_fingerprint(CopyFingerprint(identity_fingerprint)) {}
+                       const rtc::SSLFingerprint* identity_fingerprint);
   TransportDescription(const std::string& ice_ufrag,
-                       const std::string& ice_pwd)
-      : ice_ufrag(ice_ufrag),
-        ice_pwd(ice_pwd),
-        ice_mode(ICEMODE_FULL),
-        connection_role(CONNECTIONROLE_NONE) {}
-  TransportDescription(const TransportDescription& from)
-      : transport_options(from.transport_options),
-        ice_ufrag(from.ice_ufrag),
-        ice_pwd(from.ice_pwd),
-        ice_mode(from.ice_mode),
-        connection_role(from.connection_role),
-        identity_fingerprint(CopyFingerprint(from.identity_fingerprint.get())) {
-  }
+                       const std::string& ice_pwd);
+  TransportDescription(const TransportDescription& from);
+  ~TransportDescription();
 
-  TransportDescription& operator=(const TransportDescription& from) {
-    // Self-assignment
-    if (this == &from)
-      return *this;
-
-    transport_options = from.transport_options;
-    ice_ufrag = from.ice_ufrag;
-    ice_pwd = from.ice_pwd;
-    ice_mode = from.ice_mode;
-    connection_role = from.connection_role;
-
-    identity_fingerprint.reset(CopyFingerprint(
-        from.identity_fingerprint.get()));
-    return *this;
-  }
+  TransportDescription& operator=(const TransportDescription& from);
 
   // TODO(deadbeef): Rename to HasIceOption, etc.
   bool HasOption(const std::string& option) const {
@@ -156,8 +115,7 @@ struct TransportDescription {
                          HasOption(ICE_OPTION_RENOMINATION));
   }
 
-  static rtc::SSLFingerprint* CopyFingerprint(
-      const rtc::SSLFingerprint* from) {
+  static rtc::SSLFingerprint* CopyFingerprint(const rtc::SSLFingerprint* from) {
     if (!from)
       return NULL;
 
@@ -178,4 +136,4 @@ struct TransportDescription {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_P2P_BASE_TRANSPORTDESCRIPTION_H_
+#endif  // P2P_BASE_TRANSPORTDESCRIPTION_H_

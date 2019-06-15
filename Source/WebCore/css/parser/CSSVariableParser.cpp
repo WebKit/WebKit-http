@@ -31,7 +31,7 @@
 #include "CSSVariableParser.h"
 
 #include "CSSCustomPropertyValue.h"
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include "CSSParserTokenRange.h"
 
 namespace WebCore {
@@ -70,7 +70,7 @@ static bool classifyBlock(CSSParserTokenRange range, bool& hasReferences, bool& 
                 hasReferences = true;
                 continue;
             }
-            if (token.functionId() == CSSValueConstant && parserContext.constantPropertiesEnabled) {
+            if (token.functionId() == CSSValueEnv && parserContext.constantPropertiesEnabled) {
                 if (!isValidConstantReference(block, hasAtApplyRule, parserContext))
                     return false; // Bail if any references are invalid
                 hasReferences = true;

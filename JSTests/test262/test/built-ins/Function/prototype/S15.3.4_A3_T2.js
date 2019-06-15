@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The value of the internal [[Prototype]] property of the Function
     prototype object is the Object prototype object (15.3.2.1)
 es5id: 15.3.4_A3_T2
@@ -14,6 +14,6 @@ description: >
 Object.prototype.indicator = 1;
 
 //CHECK#1
-if (Function.prototype.indicator!==1) {
+if (Function.prototype.indicator !== 1) {
   $ERROR('#1: The value of the internal [[Prototype]] property of the Function prototype object is the Object prototype object (15.3.2.1)');
 }

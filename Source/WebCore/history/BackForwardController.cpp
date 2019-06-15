@@ -28,6 +28,7 @@
 
 #include "BackForwardClient.h"
 #include "Page.h"
+#include "ShouldTreatAsContinuingLoad.h"
 
 namespace WebCore {
 
@@ -37,9 +38,7 @@ BackForwardController::BackForwardController(Page& page, Ref<BackForwardClient>&
 {
 }
 
-BackForwardController::~BackForwardController()
-{
-}
+BackForwardController::~BackForwardController() = default;
 
 bool BackForwardController::canGoBackOrForward(int distance) const
 {
@@ -71,7 +70,7 @@ void BackForwardController::goBackOrForward(int distance)
     if (!item)
         return;
 
-    m_page.goToItem(*item, FrameLoadType::IndexedBackForward);
+    m_page.goToItem(*item, FrameLoadType::IndexedBackForward, ShouldTreatAsContinuingLoad::No);
 }
 
 bool BackForwardController::goBack()
@@ -80,7 +79,7 @@ bool BackForwardController::goBack()
     if (!item)
         return false;
 
-    m_page.goToItem(*item, FrameLoadType::Back);
+    m_page.goToItem(*item, FrameLoadType::Back, ShouldTreatAsContinuingLoad::No);
     return true;
 }
 
@@ -90,7 +89,7 @@ bool BackForwardController::goForward()
     if (!item)
         return false;
 
-    m_page.goToItem(*item, FrameLoadType::Forward);
+    m_page.goToItem(*item, FrameLoadType::Forward, ShouldTreatAsContinuingLoad::No);
     return true;
 }
 

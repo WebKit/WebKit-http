@@ -2,15 +2,17 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-1-7
 description: Array.prototype.forEach applied to string primitive
 ---*/
 
-        var result = false;
-        function callbackfn(val, idx, obj) {
-            result = obj instanceof String;
-        }
+var result = false;
 
-        Array.prototype.forEach.call("abc", callbackfn);
+function callbackfn(val, idx, obj) {
+  result = obj instanceof String;
+}
+
+Array.prototype.forEach.call("abc", callbackfn);
 
 assert(result, 'result !== true');

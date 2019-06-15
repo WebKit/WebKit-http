@@ -30,18 +30,18 @@
 #include "CommonVM.h"
 #include "Document.h"
 #include "EventLoop.h"
+#include "Frame.h"
 #include "FrameView.h"
 #include "InspectorController.h"
 #include "InspectorFrontendClient.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWindowCustom.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PageGroup.h"
 #include "PluginViewBase.h"
 #include "ScriptController.h"
 #include "Timer.h"
-#include <runtime/JSLock.h>
+#include <JavaScriptCore/JSLock.h>
 #include <wtf/MainThread.h>
 #include <wtf/StdLibExtras.h>
 
@@ -49,10 +49,10 @@
 #include "WebCoreThreadInternal.h"
 #endif
 
-using namespace JSC;
-using namespace Inspector;
 
 namespace WebCore {
+using namespace JSC;
+using namespace Inspector;
 
 PageScriptDebugServer::PageScriptDebugServer(Page& page)
     : ScriptDebugServer(WebCore::commonVM())
@@ -123,14 +123,14 @@ void PageScriptDebugServer::runEventLoopWhilePausedInternal()
     m_page.decrementNestedRunLoopCount();
 }
 
-bool PageScriptDebugServer::isContentScript(ExecState* exec) const
+bool PageScriptDebugServer::isContentScript(ExecState* state) const
 {
-    return &currentWorld(exec) != &mainThreadNormalWorld();
+    return &currentWorld(*state) != &mainThreadNormalWorld();
 }
 
-void PageScriptDebugServer::reportException(ExecState* exec, JSC::Exception* exception) const
+void PageScriptDebugServer::reportException(ExecState* state, JSC::Exception* exception) const
 {
-    WebCore::reportException(exec, exception);
+    WebCore::reportException(state, exception);
 }
 
 void PageScriptDebugServer::setJavaScriptPaused(const PageGroup& pageGroup, bool paused)
@@ -163,15 +163,15 @@ void PageScriptDebugServer::setJavaScriptPaused(Frame& frame, bool paused)
     auto& document = *frame.document();
     if (paused) {
         document.suspendScriptedAnimationControllerCallbacks();
-        document.suspendActiveDOMObjects(ActiveDOMObject::JavaScriptDebuggerPaused);
+        document.suspendActiveDOMObjects(ReasonForSuspension::JavaScriptDebuggerPaused);
     } else {
-        document.resumeActiveDOMObjects(ActiveDOMObject::JavaScriptDebuggerPaused);
+        document.resumeActiveDOMObjects(ReasonForSuspension::JavaScriptDebuggerPaused);
         document.resumeScriptedAnimationControllerCallbacks();
     }
 
     if (auto* view = frame.view()) {
         for (auto& child : view->children()) {
-            if (!is<PluginViewBase>(child.get()))
+            if (!is<PluginViewBase>(child))
                 continue;
             downcast<PluginViewBase>(child.get()).setJavaScriptPaused(paused);
         }

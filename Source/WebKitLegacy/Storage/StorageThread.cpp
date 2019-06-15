@@ -50,7 +50,7 @@ StorageThread::~StorageThread()
     ASSERT(!m_thread);
 }
 
-bool StorageThread::start()
+void StorageThread::start()
 {
     ASSERT(isMainThread());
     if (!m_thread) {
@@ -59,7 +59,6 @@ bool StorageThread::start()
         });
     }
     activeStorageThreads().add(this);
-    return m_thread;
 }
 
 void StorageThread::threadEntryPoint()
@@ -104,13 +103,8 @@ void StorageThread::performTerminate()
 
 void StorageThread::releaseFastMallocFreeMemoryInAllThreads()
 {
-    HashSet<StorageThread*>& threads = activeStorageThreads();
-
-    for (HashSet<StorageThread*>::iterator it = threads.begin(), end = threads.end(); it != end; ++it) {
-        (*it)->dispatch([]() {
-            WTF::releaseFastMallocFreeMemory();
-        });
-    }
+    for (auto& thread : activeStorageThreads())
+        thread->dispatch(&WTF::releaseFastMallocFreeMemory);
 }
 
 }

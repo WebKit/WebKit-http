@@ -10,6 +10,7 @@ accesskey
 action
 align
 alink
+allow
 allowfullscreen
 alt
 archive
@@ -35,6 +36,7 @@ aria-haspopup
 aria-help
 aria-hidden
 aria-invalid
+aria-keyshortcuts
 aria-label
 aria-labeledby
 aria-labelledby
@@ -104,6 +106,7 @@ crossorigin
 data
 datetime
 declare
+decoding
 default
 defer
 dir
@@ -141,6 +144,7 @@ http_equiv
 id
 incremental
 indeterminate
+inputmode
 integrity
 is
 ismap
@@ -187,9 +191,19 @@ novalidate
 nowrap
 object
 onabort
+onaccessiblecontextmenu
+onaccessibleclick
+onaccessibledecrement
+onaccessibledismiss
+onaccessiblefocus
+onaccessibleincrement
+onaccessiblescrollintoview
+onaccessiblesetvalue
+onaccessibleselect
 onanimationstart
 onanimationiteration
 onanimationend
+onanimationcancel
 onautocomplete
 onautocompleteerror
 onbeforecopy
@@ -279,7 +293,10 @@ ontouchstart
 ontouchmove
 ontouchend
 ontouchcancel
+ontransitioncancel
 ontransitionend
+ontransitionrun
+ontransitionstart
 onunload
 onvolumechange
 onwaiting
@@ -380,7 +397,10 @@ version
 vlink
 vspace
 webkitallowfullscreen
+webkitattachmentid
 webkitattachmentpath
+webkitattachmentbloburl
+webkitdirectory
 width
 wrap
 

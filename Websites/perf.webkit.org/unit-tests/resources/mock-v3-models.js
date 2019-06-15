@@ -14,10 +14,12 @@ var MockModels = {
             TestGroup.clearStaticMap();
             BuildRequest.clearStaticMap();
             Triggerable.clearStaticMap();
+            MeasurementSet._set = null;
 
             MockModels.osx = Repository.ensureSingleton(9, {name: 'OS X'});
             MockModels.ios = Repository.ensureSingleton(22, {name: 'iOS'});
             MockModels.webkit = Repository.ensureSingleton(11, {name: 'WebKit', url: 'http://trac.webkit.org/changeset/$1'});
+            MockModels.ownedWebkit = Repository.ensureSingleton(191, {name: 'WebKit', url: 'http://trac.webkit.org/changeset/$1', owner: 9});
             MockModels.sharedRepository = Repository.ensureSingleton(16, {name: 'Shared'});
             MockModels.ownerRepository = Repository.ensureSingleton(111, {name: 'Owner Repository'});
             MockModels.ownedRepository = Repository.ensureSingleton(112, {name: 'Owned Repository', owner: 111});
@@ -26,7 +28,8 @@ var MockModels = {
 
             MockModels.someTest = Test.ensureSingleton(1, {name: 'Some test'});
             MockModels.someMetric = Metric.ensureSingleton(2884, {name: 'Some metric', test: MockModels.someTest});
-            MockModels.somePlatform = Platform.ensureSingleton(65, {name: 'Some platform', metrics: [MockModels.someMetric]});
+            MockModels.somePlatform = Platform.ensureSingleton(65, {name: 'Some platform', metrics: [MockModels.someMetric],
+                lastModifiedByMetric: {'2884': 5000, '1158': 5000}});
 
             MockModels.speedometer = Test.ensureSingleton(1928, {name: 'Speedometer'});
             MockModels.jetstream = Test.ensureSingleton(1886, {name: 'JetStream'});
@@ -56,8 +59,13 @@ var MockModels = {
                 name: 'ios-git-webkit',
                 repositories: [{repository: MockModels.ios}, {repository: MockModels.webkitGit}, {repository: MockModels.sharedRepository}]
             });
+            MockModels.svnRepositoryWithOwnedRepositoryGroup = new TriggerableRepositoryGroup(34, {
+                name: 'ios-svn-webkit-with-owned-commit',
+                repositories: [{repository: MockModels.ios}, {repository: MockModels.webkit, acceptsPatch: true}, {repository: MockModels.ownerRepository}],
+                acceptsCustomRoots: true,
+            });
             MockModels.triggerable = new Triggerable(3, {name: 'build-webkit',
-                repositoryGroups: [MockModels.osRepositoryGroup, MockModels.svnRepositoryGroup, MockModels.gitRepositoryGroup],
+                repositoryGroups: [MockModels.osRepositoryGroup, MockModels.svnRepositoryGroup, MockModels.gitRepositoryGroup, MockModels.svnRepositoryWithOwnedRepositoryGroup],
                 configurations: [{test: MockModels.iPhonePLT, platform: MockModels.iphone}]});
 
         });

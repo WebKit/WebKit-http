@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Igalia S.L.
+ * Copyright (C) 2011, 2017 Igalia S.L.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -48,14 +48,20 @@ WebViewTest::~WebViewTest()
 void WebViewTest::initializeWebView()
 {
     g_assert(!m_webView);
-    m_webView = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW, "web-context", m_webContext.get(), "user-content-manager", m_userContentManager.get(), nullptr));
+    m_webView = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
+        "web-context", m_webContext.get(),
+        "user-content-manager", m_userContentManager.get(),
+        nullptr));
     platformInitializeWebView();
     assertObjectIsDeletedWhenTestFinishes(G_OBJECT(m_webView));
 
-    g_signal_connect(m_webView, "web-process-crashed", G_CALLBACK(WebViewTest::webProcessCrashed), this);
+    g_signal_connect(m_webView, "web-process-terminated", G_CALLBACK(WebViewTest::webProcessTerminated), this);
 }
 
-gboolean WebViewTest::webProcessCrashed(WebKitWebView*, WebViewTest* test)
+gboolean WebViewTest::webProcessTerminated(WebKitWebView*, WebKitWebProcessTerminationReason, WebViewTest* test)
 {
     if (test->m_expectedWebProcessCrash) {
         test->m_expectedWebProcessCrash = false;
@@ -265,6 +271,12 @@ static void runJavaScriptFromGResourceReadyCallback(GObject*, GAsyncResult* resu
     g_main_loop_quit(test->m_mainLoop);
 }
 
+static void runJavaScriptInWorldReadyCallback(GObject*, GAsyncResult* result, WebViewTest* test)
+{
+    test->m_javascriptResult = webkit_web_view_run_javascript_in_world_finish(test->m_webView, result, test->m_javascriptError);
+    g_main_loop_quit(test->m_mainLoop);
+}
+
 WebKitJavascriptResult* WebViewTest::runJavaScriptAndWaitUntilFinished(const char* javascript, GError** error)
 {
     if (m_javascriptResult)
@@ -289,69 +301,57 @@ WebKitJavascriptResult* WebViewTest::runJavaScriptFromGResourceAndWaitUntilFinis
     return m_javascriptResult;
 }
 
-static char* jsValueToCString(JSGlobalContextRef context, JSValueRef value)
+WebKitJavascriptResult* WebViewTest::runJavaScriptInWorldAndWaitUntilFinished(const char* javascript, const char* world, GError** error)
 {
-    g_assert(value);
-    g_assert(JSValueIsString(context, value));
+    if (m_javascriptResult)
+        webkit_javascript_result_unref(m_javascriptResult);
+    m_javascriptResult = 0;
+    m_javascriptError = error;
+    webkit_web_view_run_javascript_in_world(m_webView, javascript, world, nullptr, reinterpret_cast<GAsyncReadyCallback>(runJavaScriptInWorldReadyCallback), this);
+    g_main_loop_run(m_mainLoop);
 
-    JSRetainPtr<JSStringRef> stringValue(Adopt, JSValueToStringCopy(context, value, 0));
-    g_assert(stringValue);
-
-    size_t cStringLength = JSStringGetMaximumUTF8CStringSize(stringValue.get());
-    char* cString = static_cast<char*>(g_malloc(cStringLength));
-    JSStringGetUTF8CString(stringValue.get(), cString, cStringLength);
-    return cString;
+    return m_javascriptResult;
 }
 
 char* WebViewTest::javascriptResultToCString(WebKitJavascriptResult* javascriptResult)
 {
-    JSGlobalContextRef context = webkit_javascript_result_get_global_context(javascriptResult);
-    g_assert(context);
-    return jsValueToCString(context, webkit_javascript_result_get_value(javascriptResult));
+    auto* value = webkit_javascript_result_get_js_value(javascriptResult);
+    g_assert(JSC_IS_VALUE(value));
+    g_assert(jsc_value_is_string(value));
+    return jsc_value_to_string(value);
 }
 
 double WebViewTest::javascriptResultToNumber(WebKitJavascriptResult* javascriptResult)
 {
-    JSGlobalContextRef context = webkit_javascript_result_get_global_context(javascriptResult);
-    g_assert(context);
-    JSValueRef value = webkit_javascript_result_get_value(javascriptResult);
-    g_assert(value);
-    g_assert(JSValueIsNumber(context, value));
-
-    return JSValueToNumber(context, value, 0);
+    auto* value = webkit_javascript_result_get_js_value(javascriptResult);
+    g_assert(JSC_IS_VALUE(value));
+    g_assert(jsc_value_is_number(value));
+    return jsc_value_to_double(value);
 }
 
 bool WebViewTest::javascriptResultToBoolean(WebKitJavascriptResult* javascriptResult)
 {
-    JSGlobalContextRef context = webkit_javascript_result_get_global_context(javascriptResult);
-    g_assert(context);
-    JSValueRef value = webkit_javascript_result_get_value(javascriptResult);
-    g_assert(value);
-    g_assert(JSValueIsBoolean(context, value));
-
-    return JSValueToBoolean(context, value);
+    auto* value = webkit_javascript_result_get_js_value(javascriptResult);
+    g_assert(JSC_IS_VALUE(value));
+    g_assert(jsc_value_is_boolean(value));
+    return jsc_value_to_boolean(value);
 }
 
 bool WebViewTest::javascriptResultIsNull(WebKitJavascriptResult* javascriptResult)
 {
-    JSGlobalContextRef context = webkit_javascript_result_get_global_context(javascriptResult);
-    g_assert(context);
-    JSValueRef value = webkit_javascript_result_get_value(javascriptResult);
-    g_assert(value);
-
-    return JSValueIsNull(context, value);
+    auto* value = webkit_javascript_result_get_js_value(javascriptResult);
+    g_assert(JSC_IS_VALUE(value));
+    return jsc_value_is_null(value);
 }
 
 bool WebViewTest::javascriptResultIsUndefined(WebKitJavascriptResult* javascriptResult)
 {
-    JSGlobalContextRef context = webkit_javascript_result_get_global_context(javascriptResult);
-    g_assert(context);
-    JSValueRef value = webkit_javascript_result_get_value(javascriptResult);
-    g_assert(value);
-
-    return JSValueIsUndefined(context, value);
+    auto* value = webkit_javascript_result_get_js_value(javascriptResult);
+    g_assert(JSC_IS_VALUE(value));
+    return jsc_value_is_undefined(value);
 }
 
+#if PLATFORM(GTK)
 static void onSnapshotReady(WebKitWebView* web_view, GAsyncResult* res, WebViewTest* test)
 {
     GUniqueOutPtr<GError> error;
@@ -371,12 +371,24 @@ cairo_surface_t* WebViewTest::getSnapshotAndWaitUntilReady(WebKitSnapshotRegion 
     g_main_loop_run(m_mainLoop);
     return m_surface;
 }
+#endif
 
-bool WebViewTest::runWebProcessTest(const char* suiteName, const char* testName)
+bool WebViewTest::runWebProcessTest(const char* suiteName, const char* testName, const char* contents, const char* contentType)
 {
+    if (!contentType) {
+        static const char* emptyHTML = "<html><body></body></html>";
+        loadHtml(contents ? contents : emptyHTML, "webprocess://test");
+    } else {
+        GRefPtr<GBytes> bytes = adoptGRef(g_bytes_new_static(contents, strlen(contents)));
+        loadBytes(bytes.get(), contentType, nullptr, "webprocess://test");
+    }
+    waitUntilLoadFinished();
+
     GUniquePtr<char> script(g_strdup_printf("WebProcessTestRunner.runTest('%s/%s');", suiteName, testName));
     GUniqueOutPtr<GError> error;
     WebKitJavascriptResult* javascriptResult = runJavaScriptAndWaitUntilFinished(script.get(), &error.outPtr());
     g_assert(!error);
+    loadURI("about:blank");
+    waitUntilLoadFinished();
     return javascriptResultToBoolean(javascriptResult);
 }

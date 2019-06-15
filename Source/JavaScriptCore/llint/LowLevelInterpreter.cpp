@@ -30,6 +30,7 @@
 #include <wtf/InlineASM.h>
 
 #if !ENABLE(JIT)
+#include "Bytecodes.h"
 #include "CLoopStackInlines.h"
 #include "CodeBlock.h"
 #include "CommonSlowPaths.h"
@@ -105,7 +106,7 @@ using namespace JSC::LLInt;
 
 #define OFFLINE_ASM_OPCODE_LABEL(opcode) DEFINE_OPCODE(opcode) USE_LABEL(opcode); TRACE_OPCODE(opcode);
 
-#define OFFLINE_ASM_GLOBAL_LABEL(label)  OFFLINE_ASM_GLUE_LABEL(label)
+#define OFFLINE_ASM_GLOBAL_LABEL(label)  label: USE_LABEL(label);
 
 #if ENABLE(COMPUTED_GOTO_OPCODES)
 #define OFFLINE_ASM_GLUE_LABEL(label)  label: USE_LABEL(label);
@@ -333,8 +334,27 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 #endif
     CLoopDoubleRegister d0, d1;
 
+    struct StackPointerScope {
+        StackPointerScope(CLoopStack& stack)
+            : m_stack(stack)
+            , m_originalStackPointer(stack.currentStackPointer())
+        { }
+
+        ~StackPointerScope()
+        {
+            m_stack.setCurrentStackPointer(m_originalStackPointer);
+        }
+
+    private:
+        CLoopStack& m_stack;
+        void* m_originalStackPointer;
+    };
+
+    CLoopStack& cloopStack = vm->interpreter->cloopStack();
+    StackPointerScope stackPointerScope(cloopStack);
+
     lr.opcode = getOpcode(llint_return_to_host);
-    sp.vp = vm->interpreter->cloopStack().topOfStack() + 1;
+    sp.vp = cloopStack.currentStackPointer();
     cfr.callFrame = vm->topCallFrame;
 #ifndef NDEBUG
     void* startSP = sp.vp;
@@ -354,7 +374,7 @@ JSValue CLoop::execute(OpcodeID entryOpcodeID, void* executableAddress, VM* vm, 
 #endif // USE(JSVALUE64)
 
     // Interpreter variables for value passing between opcodes and/or helpers:
-    NativeFunction nativeFunc = 0;
+    NativeFunction nativeFunc = nullptr;
     JSValue functionReturnValue;
     Opcode opcode = getOpcode(entryOpcodeID);
 

@@ -5,7 +5,7 @@ es6id: 9.5.4
 description: >
     Throws a TypeError exception if boolean trap result is true and target is
     extensible.
-info: >
+info: |
     [[PreventExtensions]] ( )
 
     ...
@@ -17,11 +17,11 @@ info: >
 ---*/
 
 var p = new Proxy({}, {
-    preventExtensions: function(t) {
-        return true;
-    }
+  preventExtensions: function(t) {
+    return true;
+  }
 });
 
 assert.throws(TypeError, function() {
-    Object.preventExtensions(p);
+  Object.preventExtensions(p);
 });

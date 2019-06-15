@@ -5,7 +5,7 @@
 es6id: 19.4.3.3
 description: >
   Symbol.prototype.valueOf.name is "valueOf".
-info: >
+info: |
   Symbol.prototype.valueOf ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol]
 ---*/
 
 assert.sameValue(Symbol.prototype.valueOf.name, "valueOf");

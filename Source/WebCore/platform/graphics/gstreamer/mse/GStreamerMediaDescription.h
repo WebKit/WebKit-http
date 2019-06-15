@@ -22,10 +22,11 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "MediaDescription.h"
 
 #include <gst/gst.h>
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
@@ -48,9 +49,12 @@ private:
         : MediaDescription()
         , m_caps(caps)
     {
+        m_codecName = extractCodecName();
     }
 
+    AtomicString extractCodecName();
     GRefPtr<GstCaps> m_caps;
+    AtomicString m_codecName;
 };
 
 } // namespace WebCore.

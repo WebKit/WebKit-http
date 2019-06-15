@@ -1,10 +1,5 @@
 <!DOCTYPE html>
 <script src="../../resources/js-test-pre.js"></script>
-
-<body onload="test()">
-    <svg id="rootSVG" width="300" height="300" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
-</body>
-
 <script>
  description("This test checks that adding an animation to a SVG element does not leak the whole SVGDocument.")
 
@@ -38,13 +33,13 @@
  function test()
  {
      if (!window.internals || !window.GCController) {
-	 testFailed("This test requires internals and GCController");
-	 return;
+         testFailed("This test requires internals and GCController");
+         return;
      }
 
      testRunner.dumpAsText();
 
-     // One gc() call is not enough and cause flakiness in some platforms.
+     // One gc() call is not enough and causes flakiness in some platforms.
      gc();
      gc();
      var originalLiveElements = internals.numberOfLiveNodes();
@@ -53,7 +48,7 @@
      applyTransform();
      removeRect();
 
-     // One gc() call is not enough and cause flakiness in some platforms.
+     // One gc() call is not enough and causes flakiness in some platforms.
      gc();
      gc();
      var delta = internals.numberOfLiveNodes() - originalLiveElements;
@@ -61,3 +56,6 @@
      var successfullyParsed = true;
  }
 </script>
+<body onload="test()">
+    <svg id="rootSVG" width="300" height="300" xmlns="http://www.w3.org/2000/svg" version="1.1"></svg>
+</body>

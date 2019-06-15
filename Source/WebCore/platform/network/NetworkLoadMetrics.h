@@ -29,8 +29,8 @@
 #include "HTTPHeaderMap.h"
 #include <wtf/Optional.h>
 #include <wtf/Seconds.h>
-#include <wtf/persistence/Decoder.h>
-#include <wtf/persistence/Encoder.h>
+#include <wtf/persistence/PersistentDecoder.h>
+#include <wtf/persistence/PersistentEncoder.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
@@ -39,10 +39,11 @@ OBJC_CLASS NSDictionary;
 
 namespace WebCore {
 
-enum class NetworkLoadPriority {
+enum class NetworkLoadPriority : uint8_t {
     Low,
     Medium,
     High,
+    Unknown,
 };
 
 class NetworkLoadMetrics {
@@ -67,14 +68,10 @@ public:
         copy.complete = complete;
         copy.protocol = protocol.isolatedCopy();
 
-        if (remoteAddress)
-            copy.remoteAddress = remoteAddress.value().isolatedCopy();
-        if (connectionIdentifier)
-            copy.connectionIdentifier = connectionIdentifier.value().isolatedCopy();
-        if (priority)
-            copy.priority = *priority;
-        if (requestHeaders)
-            copy.requestHeaders = requestHeaders.value().isolatedCopy();
+        copy.remoteAddress = remoteAddress.isolatedCopy();
+        copy.connectionIdentifier = connectionIdentifier.isolatedCopy();
+        copy.priority = priority;
+        copy.requestHeaders = requestHeaders.isolatedCopy();
 
         copy.requestHeaderBytesSent = requestHeaderBytesSent;
         copy.requestBodyBytesSent = requestBodyBytesSent;
@@ -97,28 +94,20 @@ public:
         responseEnd = Seconds(0);
         complete = false;
         protocol = String();
-        remoteAddress = std::nullopt;
-        connectionIdentifier = std::nullopt;
-        priority = std::nullopt;
-        requestHeaders = std::nullopt;
-        requestHeaderBytesSent = std::nullopt;
-        requestBodyBytesSent = std::nullopt;
-        responseHeaderBytesReceived = std::nullopt;
-        responseBodyBytesReceived = std::nullopt;
-        responseBodyDecodedSize = std::nullopt;
+        clearNonTimingData();
     }
 
     void clearNonTimingData()
     {
-        remoteAddress = std::nullopt;
-        connectionIdentifier = std::nullopt;
-        priority = std::nullopt;
-        requestHeaders = std::nullopt;
-        requestHeaderBytesSent = std::nullopt;
-        requestBodyBytesSent = std::nullopt;
-        responseHeaderBytesReceived = std::nullopt;
-        responseBodyBytesReceived = std::nullopt;
-        responseBodyDecodedSize = std::nullopt;
+        remoteAddress = String();
+        connectionIdentifier = String();
+        priority = NetworkLoadPriority::Unknown;
+        requestHeaders.clear();
+        requestHeaderBytesSent = std::numeric_limits<uint32_t>::max();
+        requestBodyBytesSent = std::numeric_limits<uint64_t>::max();
+        responseHeaderBytesReceived = std::numeric_limits<uint32_t>::max();
+        responseBodyBytesReceived = std::numeric_limits<uint64_t>::max();
+        responseBodyDecodedSize = std::numeric_limits<uint64_t>::max();
     }
 
     bool operator==(const NetworkLoadMetrics& other) const
@@ -166,22 +155,23 @@ public:
     Seconds responseStart;
     Seconds responseEnd;
 
-    // Whether or not all of the properties (0 or otherwise) have been set.
-    bool complete { false };
-
     // ALPN Protocol ID: https://w3c.github.io/resource-timing/#bib-RFC7301
     String protocol;
 
-    std::optional<String> remoteAddress;
-    std::optional<String> connectionIdentifier;
-    std::optional<NetworkLoadPriority> priority;
-    std::optional<HTTPHeaderMap> requestHeaders;
+    String remoteAddress;
+    String connectionIdentifier;
+    NetworkLoadPriority priority;
 
-    std::optional<uint64_t> requestHeaderBytesSent;
-    std::optional<uint64_t> requestBodyBytesSent;
-    std::optional<uint64_t> responseHeaderBytesReceived;
-    std::optional<uint64_t> responseBodyBytesReceived;
-    std::optional<uint64_t> responseBodyDecodedSize;
+    // Whether or not all of the properties (0 or otherwise) have been set.
+    bool complete { false };
+
+    HTTPHeaderMap requestHeaders;
+
+    uint32_t requestHeaderBytesSent;
+    uint32_t responseHeaderBytesReceived;
+    uint64_t requestBodyBytesSent;
+    uint64_t responseBodyBytesReceived;
+    uint64_t responseBodyDecodedSize;
 };
 
 #if PLATFORM(COCOA)

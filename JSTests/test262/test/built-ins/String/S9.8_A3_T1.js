@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Result of ToString conversion from boolean value is "true" if
     the argument is "true", else is "false"
 es5id: 9.8_A3_T1
@@ -16,5 +16,5 @@ if (String(false) !== "false") {
 
 // CHECK#2
 if (String(true) !== "true") {
-  $ERROR('#2: String(true) === "true". Actual: ' + (String(true)));	
+  $ERROR('#2: String(true) === "true". Actual: ' + (String(true)));
 }

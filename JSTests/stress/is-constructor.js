@@ -1,9 +1,11 @@
+var createBuiltin = $vm.createBuiltin;
+
 function assert(x) {
     if (!x)
         throw Error("Bad");
 }
 
-let isConstructor = createBuiltin("(function(c) { return @isConstructor(c); })");
+let isConstructor = createBuiltin("(function (c) { return @isConstructor(c); })");
 
 // Functions.
 assert(isConstructor(assert));

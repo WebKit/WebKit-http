@@ -28,7 +28,7 @@
 
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/LengthBox.h>
-#include <WebCore/TextStream.h>
+#include <wtf/text/TextStream.h>
 
 using namespace WebCore;
 
@@ -38,6 +38,7 @@ void VisibleContentRectUpdateInfo::encode(IPC::Encoder& encoder) const
 {
     encoder << m_exposedContentRect;
     encoder << m_unobscuredContentRect;
+    encoder << m_unobscuredContentRectRespectingInputViewBounds;
     encoder << m_unobscuredRectInScrollViewCoordinates;
     encoder << m_customFixedPositionRect;
     encoder << m_obscuredInsets;
@@ -60,6 +61,8 @@ bool VisibleContentRectUpdateInfo::decode(IPC::Decoder& decoder, VisibleContentR
     if (!decoder.decode(result.m_exposedContentRect))
         return false;
     if (!decoder.decode(result.m_unobscuredContentRect))
+        return false;
+    if (!decoder.decode(result.m_unobscuredContentRectRespectingInputViewBounds))
         return false;
     if (!decoder.decode(result.m_unobscuredRectInScrollViewCoordinates))
         return false;
@@ -112,8 +115,8 @@ TextStream& operator<<(TextStream& ts, const VisibleContentRectUpdateInfo& info)
 
     ts.dumpProperty("exposedContentRect", info.exposedContentRect());
     ts.dumpProperty("unobscuredContentRect", info.unobscuredContentRect());
-    ts.dumpProperty("unobscuredRectInScrollViewCoordinates", info.unobscuredRectInScrollViewCoordinates());
     ts.dumpProperty("unobscuredContentRectRespectingInputViewBounds", info.unobscuredContentRectRespectingInputViewBounds());
+    ts.dumpProperty("unobscuredRectInScrollViewCoordinates", info.unobscuredRectInScrollViewCoordinates());
     ts.dumpProperty("customFixedPositionRect", info.customFixedPositionRect());
     ts.dumpProperty("obscuredInsets", info.obscuredInsets());
     ts.dumpProperty("unobscuredSafeAreaInsets", info.unobscuredSafeAreaInsets());
@@ -127,6 +130,7 @@ TextStream& operator<<(TextStream& ts, const VisibleContentRectUpdateInfo& info)
         ts.dumpProperty("enclosedInScrollableAncestorView", info.enclosedInScrollableAncestorView());
 
     ts.dumpProperty("timestamp", info.timestamp().secondsSinceEpoch().value());
+    ts.dumpProperty("allowShrinkToFit", info.allowShrinkToFit());
     if (info.horizontalVelocity())
         ts.dumpProperty("horizontalVelocity", info.horizontalVelocity());
     if (info.verticalVelocity())

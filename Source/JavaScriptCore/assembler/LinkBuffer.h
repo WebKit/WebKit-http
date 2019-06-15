@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@
 
 #include "JITCompilationEffort.h"
 #include "MacroAssembler.h"
+#include "MacroAssemblerCodeRef.h"
 #include <wtf/DataLog.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
@@ -61,8 +62,8 @@ class CodeBlock;
 class LinkBuffer {
     WTF_MAKE_NONCOPYABLE(LinkBuffer); WTF_MAKE_FAST_ALLOCATED;
     
-    typedef MacroAssemblerCodeRef CodeRef;
-    typedef MacroAssemblerCodePtr CodePtr;
+    template<PtrTag tag> using CodePtr = MacroAssemblerCodePtr<tag>;
+    template<PtrTag tag> using CodeRef = MacroAssemblerCodeRef<tag>;
     typedef MacroAssembler::Label Label;
     typedef MacroAssembler::Jump Jump;
     typedef MacroAssembler::PatchableJump PatchableJump;
@@ -81,7 +82,6 @@ public:
     LinkBuffer(MacroAssembler& macroAssembler, void* ownerUID, JITCompilationEffort effort = JITCompilationMustSucceed)
         : m_size(0)
         , m_didAllocate(false)
-        , m_code(0)
 #ifndef NDEBUG
         , m_completed(false)
 #endif
@@ -89,10 +89,11 @@ public:
         linkCode(macroAssembler, ownerUID, effort);
     }
 
-    LinkBuffer(MacroAssembler& macroAssembler, void* code, size_t size, JITCompilationEffort effort = JITCompilationMustSucceed, bool shouldPerformBranchCompaction = true)
+    template<PtrTag tag>
+    LinkBuffer(MacroAssembler& macroAssembler, MacroAssemblerCodePtr<tag> code, size_t size, JITCompilationEffort effort = JITCompilationMustSucceed, bool shouldPerformBranchCompaction = true)
         : m_size(size)
         , m_didAllocate(false)
-        , m_code(code)
+        , m_code(code.template retagged<LinkBufferPtrTag>())
 #ifndef NDEBUG
         , m_completed(false)
 #endif
@@ -121,25 +122,36 @@ public:
     
     // These methods are used to link or set values at code generation time.
 
-    void link(Call call, FunctionPtr function)
+    template<PtrTag tag, typename Func, typename = std::enable_if_t<std::is_function<typename std::remove_pointer<Func>::type>::value>>
+    void link(Call call, Func funcName)
+    {
+        FunctionPtr<tag> function(funcName);
+        link(call, function);
+    }
+
+    template<PtrTag tag>
+    void link(Call call, FunctionPtr<tag> function)
     {
         ASSERT(call.isFlagSet(Call::Linkable));
         call.m_label = applyOffset(call.m_label);
         MacroAssembler::linkCall(code(), call, function);
     }
     
-    void link(Call call, CodeLocationLabel label)
+    template<PtrTag tag>
+    void link(Call call, CodeLocationLabel<tag> label)
     {
-        link(call, FunctionPtr(label.executableAddress()));
+        link(call, FunctionPtr<tag>(label));
     }
     
-    void link(Jump jump, CodeLocationLabel label)
+    template<PtrTag tag>
+    void link(Jump jump, CodeLocationLabel<tag> label)
     {
         jump.m_label = applyOffset(jump.m_label);
         MacroAssembler::linkJump(code(), jump, label);
     }
 
-    void link(const JumpList& list, CodeLocationLabel label)
+    template<PtrTag tag>
+    void link(const JumpList& list, CodeLocationLabel<tag> label)
     {
         for (const Jump& jump : list.jumps())
             link(jump, label);
@@ -151,62 +163,72 @@ public:
         MacroAssembler::linkPointer(code(), target, value);
     }
 
-    void patch(DataLabelPtr label, CodeLocationLabel value)
+    template<PtrTag tag>
+    void patch(DataLabelPtr label, CodeLocationLabel<tag> value)
     {
         AssemblerLabel target = applyOffset(label.m_label);
-        MacroAssembler::linkPointer(code(), target, value.executableAddress());
+        MacroAssembler::linkPointer(code(), target, value);
     }
 
     // These methods are used to obtain handles to allow the code to be relinked / repatched later.
     
-    CodeLocationLabel entrypoint()
+    template<PtrTag tag>
+    CodeLocationLabel<tag> entrypoint()
     {
-        return CodeLocationLabel(code());
+        return CodeLocationLabel<tag>(tagCodePtr<tag>(code()));
     }
 
-    CodeLocationCall locationOf(Call call)
+    template<PtrTag tag>
+    CodeLocationCall<tag> locationOf(Call call)
     {
         ASSERT(call.isFlagSet(Call::Linkable));
         ASSERT(!call.isFlagSet(Call::Near));
-        return CodeLocationCall(MacroAssembler::getLinkerAddress(code(), applyOffset(call.m_label)));
+        return CodeLocationCall<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(call.m_label)));
     }
 
-    CodeLocationNearCall locationOfNearCall(Call call)
+    template<PtrTag tag>
+    CodeLocationNearCall<tag> locationOfNearCall(Call call)
     {
         ASSERT(call.isFlagSet(Call::Linkable));
         ASSERT(call.isFlagSet(Call::Near));
-        return CodeLocationNearCall(MacroAssembler::getLinkerAddress(code(), applyOffset(call.m_label)),
+        return CodeLocationNearCall<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(call.m_label)),
             call.isFlagSet(Call::Tail) ? NearCallMode::Tail : NearCallMode::Regular);
     }
 
-    CodeLocationLabel locationOf(PatchableJump jump)
+    template<PtrTag tag>
+    CodeLocationLabel<tag> locationOf(PatchableJump jump)
     {
-        return CodeLocationLabel(MacroAssembler::getLinkerAddress(code(), applyOffset(jump.m_jump.m_label)));
+        return CodeLocationLabel<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(jump.m_jump.m_label)));
     }
 
-    CodeLocationLabel locationOf(Label label)
+    template<PtrTag tag>
+    CodeLocationLabel<tag> locationOf(Label label)
     {
-        return CodeLocationLabel(MacroAssembler::getLinkerAddress(code(), applyOffset(label.m_label)));
+        return CodeLocationLabel<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(label.m_label)));
     }
 
-    CodeLocationDataLabelPtr locationOf(DataLabelPtr label)
+    template<PtrTag tag>
+    CodeLocationDataLabelPtr<tag> locationOf(DataLabelPtr label)
     {
-        return CodeLocationDataLabelPtr(MacroAssembler::getLinkerAddress(code(), applyOffset(label.m_label)));
+        return CodeLocationDataLabelPtr<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(label.m_label)));
     }
 
-    CodeLocationDataLabel32 locationOf(DataLabel32 label)
+    template<PtrTag tag>
+    CodeLocationDataLabel32<tag> locationOf(DataLabel32 label)
     {
-        return CodeLocationDataLabel32(MacroAssembler::getLinkerAddress(code(), applyOffset(label.m_label)));
+        return CodeLocationDataLabel32<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(label.m_label)));
     }
     
-    CodeLocationDataLabelCompact locationOf(DataLabelCompact label)
+    template<PtrTag tag>
+    CodeLocationDataLabelCompact<tag> locationOf(DataLabelCompact label)
     {
-        return CodeLocationDataLabelCompact(MacroAssembler::getLinkerAddress(code(), applyOffset(label.m_label)));
+        return CodeLocationDataLabelCompact<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(label.m_label)));
     }
 
-    CodeLocationConvertibleLoad locationOf(ConvertibleLoadLabel label)
+    template<PtrTag tag>
+    CodeLocationConvertibleLoad<tag> locationOf(ConvertibleLoadLabel label)
     {
-        return CodeLocationConvertibleLoad(MacroAssembler::getLinkerAddress(code(), applyOffset(label.m_label)));
+        return CodeLocationConvertibleLoad<tag>(MacroAssembler::getLinkerAddress<tag>(code(), applyOffset(label.m_label)));
     }
 
     // This method obtains the return address of the call, given as an offset from
@@ -231,18 +253,36 @@ public:
     // complete generation of the code. Alternatively, call
     // finalizeCodeWithoutDisassembly() directly if you have your own way of
     // displaying disassembly.
-    
-    JS_EXPORT_PRIVATE CodeRef finalizeCodeWithoutDisassembly();
-    JS_EXPORT_PRIVATE CodeRef finalizeCodeWithDisassembly(const char* format, ...) WTF_ATTRIBUTE_PRINTF(2, 3);
 
-    CodePtr trampolineAt(Label label)
+    template<PtrTag tag>
+    CodeRef<tag> finalizeCodeWithoutDisassembly()
     {
-        return CodePtr(MacroAssembler::AssemblerType_T::getRelocatedAddress(code(), applyOffset(label.m_label)));
+        return finalizeCodeWithoutDisassemblyImpl().template retagged<tag>();
+    }
+
+    template<PtrTag tag, typename... Args>
+    CodeRef<tag> finalizeCodeWithDisassembly(const char* format, Args... args)
+    {
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#pragma GCC diagnostic ignored "-Wformat-security"
+#endif
+        return finalizeCodeWithDisassemblyImpl(format, args...).template retagged<tag>();
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic pop
+#endif
+    }
+
+    template<PtrTag tag>
+    CodePtr<tag> trampolineAt(Label label)
+    {
+        return CodePtr<tag>(MacroAssembler::AssemblerType_T::getRelocatedAddress(code(), applyOffset(label.m_label)));
     }
 
     void* debugAddress()
     {
-        return m_code;
+        return m_code.dataLocation();
     }
 
     size_t size() const { return m_size; }
@@ -251,10 +291,17 @@ public:
     void didAlreadyDisassemble() { m_alreadyDisassembled = true; }
 
 private:
+    JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithoutDisassemblyImpl();
+    JS_EXPORT_PRIVATE CodeRef<LinkBufferPtrTag> finalizeCodeWithDisassemblyImpl(const char* format, ...) WTF_ATTRIBUTE_PRINTF(2, 3);
+
 #if ENABLE(BRANCH_COMPACTION)
     int executableOffsetFor(int location)
     {
-        if (!location)
+        // Returning 0 in this case works because at location <
+        // sizeof(int32_t), no compaction could have happened before this
+        // point as the assembler could not have placed a branch instruction
+        // within this space that required compaction.
+        if (location < static_cast<int>(sizeof(int32_t)))
             return 0;
         return bitwise_cast<int32_t*>(m_assemblerStorage.buffer())[location / sizeof(int32_t) - 1];
     }
@@ -271,7 +318,7 @@ private:
     // Keep this private! - the underlying code should only be obtained externally via finalizeCode().
     void* code()
     {
-        return m_code;
+        return m_code.dataLocation();
     }
     
     void allocate(MacroAssembler&, void* ownerUID, JITCompilationEffort);
@@ -299,7 +346,7 @@ private:
     bool m_shouldPerformBranchCompaction { true };
 #endif
     bool m_didAllocate;
-    void* m_code;
+    MacroAssemblerCodePtr<LinkBufferPtrTag> m_code;
 #ifndef NDEBUG
     bool m_completed;
 #endif
@@ -307,19 +354,19 @@ private:
     Vector<RefPtr<SharedTask<void(LinkBuffer&)>>> m_linkTasks;
 };
 
-#define FINALIZE_CODE_IF(condition, linkBufferReference, dataLogFArgumentsForHeading)  \
+#define FINALIZE_CODE_IF(condition, linkBufferReference, resultPtrTag, ...)  \
     (UNLIKELY((condition))                                              \
-     ? ((linkBufferReference).finalizeCodeWithDisassembly dataLogFArgumentsForHeading) \
-     : (linkBufferReference).finalizeCodeWithoutDisassembly())
+        ? (linkBufferReference).finalizeCodeWithDisassembly<resultPtrTag>(__VA_ARGS__) \
+        : (linkBufferReference).finalizeCodeWithoutDisassembly<resultPtrTag>())
 
 bool shouldDumpDisassemblyFor(CodeBlock*);
 
-#define FINALIZE_CODE_FOR(codeBlock, linkBufferReference, dataLogFArgumentsForHeading)  \
-    FINALIZE_CODE_IF(shouldDumpDisassemblyFor(codeBlock) || Options::asyncDisassembly(), linkBufferReference, dataLogFArgumentsForHeading)
+#define FINALIZE_CODE_FOR(codeBlock, linkBufferReference, resultPtrTag, ...)  \
+    FINALIZE_CODE_IF((shouldDumpDisassemblyFor(codeBlock) || Options::asyncDisassembly()), linkBufferReference, resultPtrTag, __VA_ARGS__)
 
 // Use this to finalize code, like so:
 //
-// CodeRef code = FINALIZE_CODE(linkBuffer, ("my super thingy number %d", number));
+// CodeRef code = FINALIZE_CODE(linkBuffer, tag, "my super thingy number %d", number);
 //
 // Which, in disassembly mode, will print:
 //
@@ -330,14 +377,17 @@ bool shouldDumpDisassemblyFor(CodeBlock*);
 //
 // ... and so on.
 //
-// Note that the dataLogFArgumentsForHeading are only evaluated when dumpDisassembly
+// Note that the format string and print arguments are only evaluated when dumpDisassembly
 // is true, so you can hide expensive disassembly-only computations inside there.
 
-#define FINALIZE_CODE(linkBufferReference, dataLogFArgumentsForHeading)  \
-    FINALIZE_CODE_IF(JSC::Options::asyncDisassembly() || JSC::Options::dumpDisassembly(), linkBufferReference, dataLogFArgumentsForHeading)
+#define FINALIZE_CODE(linkBufferReference, resultPtrTag, ...)  \
+    FINALIZE_CODE_IF((JSC::Options::asyncDisassembly() || JSC::Options::dumpDisassembly()), linkBufferReference, resultPtrTag, __VA_ARGS__)
 
-#define FINALIZE_DFG_CODE(linkBufferReference, dataLogFArgumentsForHeading)  \
-    FINALIZE_CODE_IF(JSC::Options::asyncDisassembly() || JSC::Options::dumpDisassembly() || Options::dumpDFGDisassembly(), linkBufferReference, dataLogFArgumentsForHeading)
+#define FINALIZE_DFG_CODE(linkBufferReference, resultPtrTag, ...)  \
+    FINALIZE_CODE_IF((JSC::Options::asyncDisassembly() || JSC::Options::dumpDisassembly() || Options::dumpDFGDisassembly()), linkBufferReference, resultPtrTag, __VA_ARGS__)
+
+#define FINALIZE_REGEXP_CODE(linkBufferReference, resultPtrTag, dataLogFArgumentsForHeading)  \
+    FINALIZE_CODE_IF(JSC::Options::asyncDisassembly() || JSC::Options::dumpDisassembly() || Options::dumpRegExpDisassembly(), linkBufferReference, resultPtrTag, dataLogFArgumentsForHeading)
 
 } // namespace JSC
 

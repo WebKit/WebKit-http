@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The Object.prototype.isPrototypeOf.length property has the attribute
     ReadOnly
 es5id: 15.2.4.6_A10
@@ -19,7 +19,9 @@ if (!(Object.prototype.isPrototypeOf.hasOwnProperty('length'))) {
 
 var obj = Object.prototype.isPrototypeOf.length;
 
-verifyNotWritable(Object.prototype.isPrototypeOf, "length", null, function(){return "shifted";});
+verifyNotWritable(Object.prototype.isPrototypeOf, "length", null, function() {
+  return "shifted";
+});
 
 //CHECK#2
 if (Object.prototype.isPrototypeOf.length !== obj) {

@@ -70,33 +70,42 @@ JSPromiseConstructor* JSPromiseConstructor::create(VM& vm, Structure* structure,
 
 Structure* JSPromiseConstructor::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
-    return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
 }
 
+
+static EncodedJSValue JSC_HOST_CALL callPromise(ExecState*);
+static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState*);
+
 JSPromiseConstructor::JSPromiseConstructor(VM& vm, Structure* structure)
-    : Base(vm, structure)
+    : Base(vm, structure, callPromise, constructPromise)
+{
+}
+
+JSPromiseConstructor::JSPromiseConstructor(VM& vm, Structure* structure, NativeFunction functionForCall, NativeFunction functionForConstruct)
+    : Base(vm, structure, functionForCall, functionForConstruct)
 {
 }
 
 void JSPromiseConstructor::finishCreation(VM& vm, JSPromisePrototype* promisePrototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, ASCIILiteral("Promise"));
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, promisePrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), DontEnum | ReadOnly);
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
+    Base::finishCreation(vm, "Promise"_s);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, promisePrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 void JSPromiseConstructor::addOwnInternalSlots(VM& vm, JSGlobalObject* globalObject)
 {
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().resolvePrivateName(), promiseConstructorResolveCodeGenerator, DontEnum | DontDelete | ReadOnly);
-    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().rejectPrivateName(), promiseConstructorRejectCodeGenerator, DontEnum | DontDelete | ReadOnly);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().resolvePrivateName(), promiseConstructorResolveCodeGenerator, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().rejectPrivateName(), promiseConstructorRejectCodeGenerator, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
 }
 
 static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    JSGlobalObject* globalObject = exec->jsCallee()->globalObject();
+    JSGlobalObject* globalObject = exec->jsCallee()->globalObject(vm);
 
     JSValue newTarget = exec->newTarget();
     if (newTarget.isUndefined())
@@ -106,6 +115,7 @@ static EncodedJSValue JSC_HOST_CALL constructPromise(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSPromise* promise = JSPromise::create(vm, promiseStructure);
     promise->initialize(exec, globalObject, exec->argument(0));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     return JSValue::encode(promise);
 }
@@ -115,22 +125,6 @@ static EncodedJSValue JSC_HOST_CALL callPromise(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "Promise"));
-}
-
-ConstructType JSPromiseConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructPromise;
-    return ConstructType::Host;
-}
-
-CallType JSPromiseConstructor::getCallData(JSCell*, CallData& callData)
-{
-    // FIXME: This is workaround. Since JSC does not expose @isConstructor to JS builtins,
-    // we use typeof function === "function" now. And since typeof constructorWithoutCallability
-    // returns "object", we need to define [[Call]] for now.
-    // https://bugs.webkit.org/show_bug.cgi?id=144093
-    callData.native.function = callPromise;
-    return CallType::Host;
 }
 
 } // namespace JSC

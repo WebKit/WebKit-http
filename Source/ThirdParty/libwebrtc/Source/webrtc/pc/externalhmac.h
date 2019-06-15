@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_EXTERNALHMAC_H_
-#define WEBRTC_PC_EXTERNALHMAC_H_
+#ifndef PC_EXTERNALHMAC_H_
+#define PC_EXTERNALHMAC_H_
 
 // External libsrtp HMAC auth module which implements methods defined in
 // auth_type_t.
@@ -49,22 +49,22 @@ srtp_err_status_t external_hmac_alloc(srtp_auth_t** a,
 
 srtp_err_status_t external_hmac_dealloc(srtp_auth_t* a);
 
-srtp_err_status_t external_hmac_init(ExternalHmacContext* state,
+srtp_err_status_t external_hmac_init(void* state,
                                      const uint8_t* key,
                                      int key_len);
 
-srtp_err_status_t external_hmac_start(ExternalHmacContext* state);
+srtp_err_status_t external_hmac_start(void* state);
 
-srtp_err_status_t external_hmac_update(ExternalHmacContext* state,
+srtp_err_status_t external_hmac_update(void* state,
                                        const uint8_t* message,
                                        int msg_octets);
 
-srtp_err_status_t external_hmac_compute(ExternalHmacContext* state,
-                                        const void* message,
+srtp_err_status_t external_hmac_compute(void* state,
+                                        const uint8_t* message,
                                         int msg_octets,
                                         int tag_len,
                                         uint8_t* result);
 
 srtp_err_status_t external_crypto_init();
 
-#endif  // WEBRTC_PC_EXTERNALHMAC_H_
+#endif  // PC_EXTERNALHMAC_H_

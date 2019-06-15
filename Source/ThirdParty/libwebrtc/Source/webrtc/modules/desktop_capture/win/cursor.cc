@@ -8,17 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/desktop_capture/win/cursor.h"
+#include "modules/desktop_capture/win/cursor.h"
 
 #include <algorithm>
 #include <memory>
 
-#include "webrtc/base/logging.h"
-#include "webrtc/modules/desktop_capture/win/scoped_gdi_object.h"
-#include "webrtc/modules/desktop_capture/desktop_frame.h"
-#include "webrtc/modules/desktop_capture/desktop_geometry.h"
-#include "webrtc/modules/desktop_capture/mouse_cursor.h"
-#include "webrtc/typedefs.h"
+#include "modules/desktop_capture/desktop_frame.h"
+#include "modules/desktop_capture/desktop_geometry.h"
+#include "modules/desktop_capture/mouse_cursor.h"
+#include "modules/desktop_capture/win/scoped_gdi_object.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/system/arch.h"
 
 namespace webrtc {
 
@@ -26,19 +26,15 @@ namespace {
 
 #if defined(WEBRTC_ARCH_LITTLE_ENDIAN)
 
-#define RGBA(r, g, b, a) \
-    ((((a) << 24) & 0xff000000) | \
-    (((b) << 16) & 0xff0000) | \
-    (((g) << 8) & 0xff00) | \
-    ((r) & 0xff))
+#define RGBA(r, g, b, a)                                   \
+  ((((a) << 24) & 0xff000000) | (((b) << 16) & 0xff0000) | \
+   (((g) << 8) & 0xff00) | ((r)&0xff))
 
 #else  // !defined(WEBRTC_ARCH_LITTLE_ENDIAN)
 
-#define RGBA(r, g, b, a) \
-    ((((r) << 24) & 0xff000000) | \
-    (((g) << 16) & 0xff0000) | \
-    (((b) << 8) & 0xff00) | \
-    ((a) & 0xff))
+#define RGBA(r, g, b, a)                                   \
+  ((((r) << 24) & 0xff000000) | (((g) << 16) & 0xff0000) | \
+   (((b) << 8) & 0xff00) | ((a)&0xff))
 
 #endif  // !defined(WEBRTC_ARCH_LITTLE_ENDIAN)
 
@@ -112,8 +108,8 @@ bool HasAlphaChannel(const uint32_t* data, int stride, int width, int height) {
 MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
   ICONINFO iinfo;
   if (!GetIconInfo(cursor, &iinfo)) {
-    LOG_F(LS_ERROR) << "Unable to get cursor icon info. Error = "
-                    << GetLastError();
+    RTC_LOG_F(LS_ERROR) << "Unable to get cursor icon info. Error = "
+                        << GetLastError();
     return NULL;
   }
 
@@ -128,8 +124,8 @@ MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
   // Get |scoped_mask| dimensions.
   BITMAP bitmap_info;
   if (!GetObject(scoped_mask, sizeof(bitmap_info), &bitmap_info)) {
-    LOG_F(LS_ERROR) << "Unable to get bitmap info. Error = "
-                    << GetLastError();
+    RTC_LOG_F(LS_ERROR) << "Unable to get bitmap info. Error = "
+                        << GetLastError();
     return NULL;
   }
 
@@ -149,15 +145,10 @@ MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
   bmi.bV5AlphaMask = 0xff000000;
   bmi.bV5CSType = LCS_WINDOWS_COLOR_SPACE;
   bmi.bV5Intent = LCS_GM_BUSINESS;
-  if (!GetDIBits(dc,
-                 scoped_mask,
-                 0,
-                 height,
-                 mask_data.get(),
-                 reinterpret_cast<BITMAPINFO*>(&bmi),
-                 DIB_RGB_COLORS)) {
-    LOG_F(LS_ERROR) << "Unable to get bitmap bits. Error = "
-                    << GetLastError();
+  if (!GetDIBits(dc, scoped_mask, 0, height, mask_data.get(),
+                 reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS)) {
+    RTC_LOG_F(LS_ERROR) << "Unable to get bitmap bits. Error = "
+                        << GetLastError();
     return NULL;
   }
 
@@ -169,15 +160,10 @@ MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
   if (is_color) {
     image.reset(new BasicDesktopFrame(DesktopSize(width, height)));
     // Get the pixels from the color bitmap.
-    if (!GetDIBits(dc,
-                   scoped_color,
-                   0,
-                   height,
-                   image->data(),
-                   reinterpret_cast<BITMAPINFO*>(&bmi),
-                   DIB_RGB_COLORS)) {
-      LOG_F(LS_ERROR) << "Unable to get bitmap bits. Error = "
-                      << GetLastError();
+    if (!GetDIBits(dc, scoped_color, 0, height, image->data(),
+                   reinterpret_cast<BITMAPINFO*>(&bmi), DIB_RGB_COLORS)) {
+      RTC_LOG_F(LS_ERROR) << "Unable to get bitmap bits. Error = "
+                          << GetLastError();
       return NULL;
     }
 
@@ -194,8 +180,8 @@ MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
     image.reset(new BasicDesktopFrame(DesktopSize(width, height)));
 
     // The XOR mask becomes the color bitmap.
-    memcpy(
-        image->data(), mask_plane + (width * height), image->stride() * height);
+    memcpy(image->data(), mask_plane + (width * height),
+           image->stride() * height);
   }
 
   // Reconstruct transparency from the mask if the color image does not has
@@ -232,8 +218,8 @@ MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
       }
     }
     if (add_outline) {
-      AddCursorOutline(
-          width, height, reinterpret_cast<uint32_t*>(image->data()));
+      AddCursorOutline(width, height,
+                       reinterpret_cast<uint32_t*>(image->data()));
     }
   }
 
@@ -241,8 +227,7 @@ MouseCursor* CreateMouseCursorFromHCursor(HDC dc, HCURSOR cursor) {
   // images.
   AlphaMul(reinterpret_cast<uint32_t*>(image->data()), width, height);
 
-  return new MouseCursor(
-      image.release(), DesktopVector(hotspot_x, hotspot_y));
+  return new MouseCursor(image.release(), DesktopVector(hotspot_x, hotspot_y));
 }
 
 }  // namespace webrtc

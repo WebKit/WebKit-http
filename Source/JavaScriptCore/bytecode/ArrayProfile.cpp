@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,10 +29,13 @@
 #include "CodeBlock.h"
 #include "JSCInlines.h"
 #include <wtf/CommaPrinter.h>
-#include <wtf/StringExtras.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
+
+#if !ASSERT_DISABLED
+const char* const ArrayProfile::s_typeName = "ArrayProfile";
+#endif
 
 void dumpArrayModes(PrintStream& out, ArrayModes arrayModes)
 {
@@ -73,6 +76,12 @@ void dumpArrayModes(PrintStream& out, ArrayModes arrayModes)
         out.print(comma, "ArrayWithArrayStorage");
     if (arrayModes & asArrayModes(ArrayWithSlowPutArrayStorage))
         out.print(comma, "ArrayWithSlowPutArrayStorage");
+    if (arrayModes & asArrayModes(CopyOnWriteArrayWithInt32))
+        out.print(comma, "CopyOnWriteArrayWithInt32");
+    if (arrayModes & asArrayModes(CopyOnWriteArrayWithDouble))
+        out.print(comma, "CopyOnWriteArrayWithDouble");
+    if (arrayModes & asArrayModes(CopyOnWriteArrayWithContiguous))
+        out.print(comma, "CopyOnWriteArrayWithContiguous");
 
     if (arrayModes & Int8ArrayMode)
         out.print(comma, "Int8ArrayMode");
@@ -122,6 +131,23 @@ void ArrayProfile::computeUpdatedPrediction(const ConcurrentJSLocker&, CodeBlock
         m_usesOriginalArrayStructures = false;
 }
 
+void ArrayProfile::observeIndexedRead(VM& vm, JSCell* cell, unsigned index)
+{
+    m_lastSeenStructureID = cell->structureID();
+
+    if (JSObject* object = jsDynamicCast<JSObject*>(vm, cell)) {
+        if (hasAnyArrayStorage(object->indexingType()) && index >= object->getVectorLength())
+            setOutOfBounds();
+        else if (index >= object->getArrayLength())
+            setOutOfBounds();
+    }
+
+    if (JSString* string = jsDynamicCast<JSString*>(vm, cell)) {
+        if (index >= string->length())
+            setOutOfBounds();
+    }
+}
+
 CString ArrayProfile::briefDescription(const ConcurrentJSLocker& locker, CodeBlock* codeBlock)
 {
     computeUpdatedPrediction(locker, codeBlock);
@@ -131,46 +157,19 @@ CString ArrayProfile::briefDescription(const ConcurrentJSLocker& locker, CodeBlo
 CString ArrayProfile::briefDescriptionWithoutUpdating(const ConcurrentJSLocker&)
 {
     StringPrintStream out;
-    
-    bool hasPrinted = false;
-    
-    if (m_observedArrayModes) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print(ArrayModesDump(m_observedArrayModes));
-        hasPrinted = true;
-    }
-    
-    if (m_mayStoreToHole) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("Hole");
-        hasPrinted = true;
-    }
-    
-    if (m_outOfBounds) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("OutOfBounds");
-        hasPrinted = true;
-    }
-    
-    if (m_mayInterceptIndexedAccesses) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("Intercept");
-        hasPrinted = true;
-    }
-    
-    if (m_usesOriginalArrayStructures) {
-        if (hasPrinted)
-            out.print(", ");
-        out.print("Original");
-        hasPrinted = true;
-    }
-    
-    UNUSED_PARAM(hasPrinted);
-    
+    CommaPrinter comma;
+
+    if (m_observedArrayModes)
+        out.print(comma, ArrayModesDump(m_observedArrayModes));
+    if (m_mayStoreToHole)
+        out.print(comma, "Hole");
+    if (m_outOfBounds)
+        out.print(comma, "OutOfBounds");
+    if (m_mayInterceptIndexedAccesses)
+        out.print(comma, "Intercept");
+    if (m_usesOriginalArrayStructures)
+        out.print(comma, "Original");
+
     return out.toCString();
 }
 

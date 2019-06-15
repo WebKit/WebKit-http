@@ -32,47 +32,9 @@
 
 namespace WebCore {
 
-ResourceHandleClient::ResourceHandleClient()
-{
-}
+ResourceHandleClient::ResourceHandleClient() = default;
 
-ResourceHandleClient::~ResourceHandleClient()
-{
-}
-    
-ResourceRequest ResourceHandleClient::willSendRequest(ResourceHandle*, ResourceRequest&& request, ResourceResponse&&)
-{
-    return WTFMove(request);
-}
-
-void ResourceHandleClient::willSendRequestAsync(ResourceHandle* handle, ResourceRequest&& request, ResourceResponse&& /*redirectResponse*/)
-{
-    handle->continueWillSendRequest(WTFMove(request));
-}
-
-void ResourceHandleClient::didReceiveResponseAsync(ResourceHandle* handle, ResourceResponse&&)
-{
-    handle->continueDidReceiveResponse();
-}
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void ResourceHandleClient::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle* handle, const ProtectionSpace&)
-{
-    handle->continueCanAuthenticateAgainstProtectionSpace(false);
-}
-#endif
-
-#if USE(CFURLCONNECTION)
-void ResourceHandleClient::willCacheResponseAsync(ResourceHandle* handle, CFCachedURLResponseRef response)
-{
-    handle->continueWillCacheResponse(response);
-}
-#elif PLATFORM(COCOA)
-void ResourceHandleClient::willCacheResponseAsync(ResourceHandle* handle, NSCachedURLResponse *response)
-{
-    handle->continueWillCacheResponse(response);
-}
-#endif
+ResourceHandleClient::~ResourceHandleClient() = default;
 
 void ResourceHandleClient::didReceiveBuffer(ResourceHandle* handle, Ref<SharedBuffer>&& buffer, int encodedDataLength)
 {

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) Research In Motion Limited 2011. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -33,7 +34,7 @@ SVGAnimatedColorAnimator::SVGAnimatedColorAnimator(SVGAnimationElement& animatio
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedColorAnimator::constructFromString(const String& string)
 {
-    return SVGAnimatedType::createColor(std::make_unique<Color>(CSSParser::parseColor(string.stripWhiteSpace())));
+    return SVGAnimatedType::create(SVGPropertyTraits<Color>::fromString(string));
 }
 
 void SVGAnimatedColorAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAnimatedType* to)
@@ -44,8 +45,8 @@ void SVGAnimatedColorAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAnimat
     ASSERT(to->type() == AnimatedColor);
 
     // Ignores any alpha and sets alpha on result to 100% opaque.
-    auto& fromColor = from->color();
-    auto& toColor = to->color();
+    const auto& fromColor = from->as<Color>();
+    auto& toColor = to->as<Color>();
     toColor = { roundAndClampColorChannel(toColor.red() + fromColor.red()),
         roundAndClampColorChannel(toColor.green() + fromColor.green()),
         roundAndClampColorChannel(toColor.blue() + fromColor.blue()) };
@@ -69,8 +70,8 @@ void SVGAnimatedColorAnimator::calculateAnimatedValue(float percentage, unsigned
     ASSERT(m_animationElement);
     ASSERT(m_contextElement);
 
-    Color fromColor = m_animationElement->animationMode() == ToAnimation ? animated->color() : from->color();
-    Color toColor = to->color();
+    auto fromColor = (m_animationElement->animationMode() == ToAnimation ? animated : from)->as<Color>();
+    auto toColor = to->as<Color>();
 
     // Apply CSS inheritance rules.
     m_animationElement->adjustForInheritance<Color>(parseColorFromString, m_animationElement->fromPropertyValueType(), fromColor, m_contextElement);
@@ -82,8 +83,8 @@ void SVGAnimatedColorAnimator::calculateAnimatedValue(float percentage, unsigned
     if (m_animationElement->toPropertyValueType() == CurrentColorValue)
         toColor = currentColor(*m_contextElement);
 
-    auto& toAtEndOfDurationColor = toAtEndOfDuration->color();
-    auto& animatedColor = animated->color();
+    const auto& toAtEndOfDurationColor = toAtEndOfDuration->as<Color>();
+    auto& animatedColor = animated->as<Color>();
 
     // FIXME: ExtendedColor - this will need to handle blending between colors in different color spaces,
     // as well as work with non [0-255] Colors.

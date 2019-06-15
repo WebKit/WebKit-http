@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPageGroupData_h
-#define WebPageGroupData_h
+#pragma once
 
+#include "UserContentControllerIdentifier.h"
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
@@ -37,17 +37,14 @@ namespace WebKit {
 
 struct WebPageGroupData {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, WebPageGroupData&);
+    static std::optional<WebPageGroupData> decode(IPC::Decoder&);
 
     String identifier;
     uint64_t pageGroupID;
     bool visibleToInjectedBundle;
     bool visibleToHistoryClient;
 
-    uint64_t userContentControllerIdentifier;
+    UserContentControllerIdentifier userContentControllerIdentifier;
 };
 
 } // namespace WebKit
-
-
-#endif // WebPageGroupData_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaPlayerPrivateAVFoundationObjC_h
-#define MediaPlayerPrivateAVFoundationObjC_h
+#pragma once
 
 #if ENABLE(VIDEO) && USE(AVFOUNDATION)
 
@@ -37,50 +36,34 @@ OBJC_CLASS AVAssetImageGenerator;
 OBJC_CLASS AVAssetResourceLoadingRequest;
 OBJC_CLASS AVMediaSelectionGroup;
 OBJC_CLASS AVOutputContext;
-OBJC_CLASS AVPlayer;
 OBJC_CLASS AVPlayerItem;
 OBJC_CLASS AVPlayerItemLegibleOutput;
-OBJC_CLASS AVPlayerItemTrack;
 OBJC_CLASS AVPlayerItemVideoOutput;
 OBJC_CLASS AVPlayerLayer;
 OBJC_CLASS AVURLAsset;
 OBJC_CLASS NSArray;
-OBJC_CLASS NSURLAuthenticationChallenge;
+OBJC_CLASS WebCoreAVFLoaderDelegate;
 OBJC_CLASS WebCoreAVFMovieObserver;
 OBJC_CLASS WebCoreAVFPullDelegate;
 
 typedef struct objc_object* id;
 
-#if HAVE(AVFOUNDATION_LOADER_DELEGATE)
-OBJC_CLASS WebCoreAVFLoaderDelegate;
-OBJC_CLASS AVAssetResourceLoadingRequest;
-#endif
-
 typedef struct CGImage *CGImageRef;
 typedef struct __CVBuffer *CVPixelBufferRef;
-#if PLATFORM(IOS)
-typedef struct  __CVOpenGLESTextureCache *CVOpenGLESTextureCacheRef;
-#else
-typedef struct __CVOpenGLTextureCache* CVOpenGLTextureCacheRef;
-#endif
 
 namespace WebCore {
 
 class AudioSourceProviderAVFObjC;
 class AudioTrackPrivateAVFObjC;
+class CDMInstanceFairPlayStreamingAVFObjC;
 class CDMSessionAVFoundationObjC;
 class InbandMetadataTextTrackPrivateAVF;
-class InbandTextTrackPrivateAVFObjC;
 class MediaSelectionGroupAVFObjC;
 class PixelBufferConformerCV;
+class VideoFullscreenLayerManagerObjC;
+class VideoTextureCopierCV;
 class VideoTrackPrivateAVFObjC;
 class WebCoreAVFResourceLoader;
-class TextureCacheCV;
-class VideoTextureCopierCV;
-
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-class VideoFullscreenLayerManager;
-#endif
 
 class MediaPlayerPrivateAVFoundationObjC : public MediaPlayerPrivateAVFoundation {
 public:
@@ -90,7 +73,7 @@ public:
     static void registerMediaEngine(MediaEngineRegistrar);
 
     static HashSet<RefPtr<SecurityOrigin>> originsInMediaCache(const String&);
-    static void clearMediaCache(const String&, std::chrono::system_clock::time_point modifiedSince);
+    static void clearMediaCache(const String&, WallTime modifiedSince);
     static void clearMediaCacheForOrigins(const String&, const HashSet<RefPtr<SecurityOrigin>>&);
 
     void setAsset(RetainPtr<id>);
@@ -102,10 +85,9 @@ public:
     void flushCues();
 #endif
     AVPlayer *avPlayer() const { return m_avPlayer.get(); }
-    
+
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
     bool shouldWaitForLoadingOfResource(AVAssetResourceLoadingRequest*);
-    bool shouldWaitForResponseToAuthenticationChallenge(NSURLAuthenticationChallenge*);
     void didCancelLoadingRequest(AVAssetResourceLoadingRequest*);
     void didStopLoadingRequest(AVAssetResourceLoadingRequest *);
 #endif
@@ -145,8 +127,10 @@ public:
     void playbackTargetIsWirelessDidChange();
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || (ENABLE(ENCRYPTED_MEDIA) && HAVE(AVCONTENTKEYSESSION))
     void outputObscuredDueToInsufficientExternalProtectionChanged(bool);
+    void beginSimulatedHDCPError() override { outputObscuredDueToInsufficientExternalProtectionChanged(true); }
+    void endSimulatedHDCPError() override { outputObscuredDueToInsufficientExternalProtectionChanged(false); }
 #endif
 
 #if ENABLE(AVF_CAPTIONS)
@@ -155,10 +139,14 @@ public:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void removeSession(CDMSession&);
+    void removeSession(LegacyCDMSession&);
 #endif
 
-    WeakPtr<MediaPlayerPrivateAVFoundationObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+#if ENABLE(ENCRYPTED_MEDIA)
+    void cdmInstanceAttached(CDMInstance&) final;
+    void cdmInstanceDetached(CDMInstance&) final;
+    void attemptToDecryptWithInstance(CDMInstance&) final;
+#endif
 
 private:
     // engine support
@@ -169,8 +157,6 @@ private:
     static bool isAvailable();
 
     void cancelLoad() override;
-
-    PlatformMedia platformMedia() const override;
 
     void platformSetVisible(bool) override;
     void platformPlay() override;
@@ -185,12 +171,11 @@ private:
     void paint(GraphicsContext&, const FloatRect&) override;
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) override;
     PlatformLayer* platformLayer() const override;
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
+    void setVideoFullscreenLayer(PlatformLayer*, Function<void()>&& completionHandler) override;
+    void updateVideoFullscreenInlineImage() final;
     void setVideoFullscreenFrame(FloatRect) override;
     void setVideoFullscreenGravity(MediaPlayer::VideoGravity) override;
     void setVideoFullscreenMode(MediaPlayer::VideoFullscreenMode) override;
-#endif
 
 #if PLATFORM(IOS)
     NSArray *timedMetadata() const override;
@@ -205,7 +190,7 @@ private:
     void createAVPlayer() override;
     void createAVPlayerItem() override;
     virtual void createAVPlayerLayer();
-    void createAVAssetForURL(const String& url) override;
+    void createAVAssetForURL(const URL&) override;
     MediaPlayerPrivateAVFoundation::ItemStatus playerItemStatus() const override;
     MediaPlayerPrivateAVFoundation::AssetStatus assetStatus() const override;
     long assetErrorCode() const override;
@@ -226,6 +211,7 @@ private:
     MediaTime platformMaxTimeLoaded() const override;
     void beginLoadingMetadata() override;
     void sizeChanged() override;
+    void resolvedURLChanged() override;
 
     bool hasAvailableVideoFrame() const override;
 
@@ -240,8 +226,9 @@ private:
 
     void updateVideoLayerGravity() override;
 
-    bool hasSingleSecurityOrigin() const override;
     bool didPassCORSAccessCheck() const override;
+    std::optional<bool> wouldTaintOrigin(const SecurityOrigin&) const final;
+
 
     MediaTime getStartDate() const override;
 
@@ -263,24 +250,22 @@ private:
     void paintWithImageGenerator(GraphicsContext&, const FloatRect&);
 
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
+    enum class UpdateType { UpdateSynchronously, UpdateAsynchronously };
+    void updateLastImage(UpdateType type = UpdateType::UpdateAsynchronously);
+
     void createVideoOutput();
     void destroyVideoOutput();
-    RetainPtr<CVPixelBufferRef> createPixelBuffer();
-    void updateLastImage();
+    bool updateLastPixelBuffer();
     bool videoOutputHasAvailableFrame();
     void paintWithVideoOutput(GraphicsContext&, const FloatRect&);
     NativeImagePtr nativeImageForCurrentTime() override;
     void waitForVideoOutputMediaDataWillChange();
 
-    void createOpenGLVideoOutput();
-    void destroyOpenGLVideoOutput();
-    void updateLastOpenGLImage();
-
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum target, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY) override;
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    std::unique_ptr<CDMSession> createSession(const String& keySystem, CDMSessionClient*) override;
+    std::unique_ptr<LegacyCDMSession> createSession(const String& keySystem, LegacyCDMSessionClient*) override;
 #endif
 
     String languageOfPrimaryAudioTrack() const override;
@@ -330,23 +315,22 @@ private:
     double maxFastForwardRate() const override { return m_cachedCanPlayFastForward ? std::numeric_limits<double>::infinity() : 2.0; }
     double minFastReverseRate() const override { return m_cachedCanPlayFastReverse ? -std::numeric_limits<double>::infinity() : 0.0; }
 
-    URL resolvedURL() const override;
-
     Vector<String> preferredAudioCharacteristics() const;
 
     void setShouldDisableSleep(bool) override;
 
-    WeakPtrFactory<MediaPlayerPrivateAVFoundationObjC> m_weakPtrFactory;
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const final { return "MediaPlayerPrivateAVFoundationObjC"; }
+#endif
+
+    AVPlayer *objCAVFoundationAVPlayer() const final { return m_avPlayer.get(); }
 
     RetainPtr<AVURLAsset> m_avAsset;
     RetainPtr<AVPlayer> m_avPlayer;
     RetainPtr<AVPlayerItem> m_avPlayerItem;
     RetainPtr<AVPlayerLayer> m_videoLayer;
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    std::unique_ptr<VideoFullscreenLayerManager> m_videoFullscreenLayerManager;
+    std::unique_ptr<VideoFullscreenLayerManagerObjC> m_videoFullscreenLayerManager;
     MediaPlayer::VideoGravity m_videoFullscreenGravity;
-    RetainPtr<PlatformLayer> m_textTrackRepresentationLayer;
-#endif
     RetainPtr<WebCoreAVFMovieObserver> m_objcObserver;
     RetainPtr<id> m_timeObserver;
     mutable String m_languageOfPrimaryAudioTrack;
@@ -361,20 +345,19 @@ private:
 #if HAVE(AVFOUNDATION_VIDEO_OUTPUT)
     RetainPtr<AVPlayerItemVideoOutput> m_videoOutput;
     RetainPtr<WebCoreAVFPullDelegate> m_videoOutputDelegate;
+    RetainPtr<CVPixelBufferRef> m_lastPixelBuffer;
     RetainPtr<CGImageRef> m_lastImage;
     dispatch_semaphore_t m_videoOutputSemaphore;
-
-    RetainPtr<AVPlayerItemVideoOutput> m_openGLVideoOutput;
-    std::unique_ptr<TextureCacheCV> m_textureCache;
     std::unique_ptr<VideoTextureCopierCV> m_videoTextureCopier;
-    RetainPtr<CVPixelBufferRef> m_lastOpenGLImage;
 #endif
 
+#if HAVE(CORE_VIDEO)
     std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
+#endif
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE)
     friend class WebCoreAVFResourceLoader;
-    HashMap<RetainPtr<AVAssetResourceLoadingRequest>, RefPtr<WebCoreAVFResourceLoader>> m_resourceLoaderMap;
+    HashMap<RetainPtr<CFTypeRef>, RefPtr<WebCoreAVFResourceLoader>> m_resourceLoaderMap;
     RetainPtr<WebCoreAVFLoaderDelegate> m_loaderDelegate;
     HashMap<String, RetainPtr<AVAssetResourceLoadingRequest>> m_keyURIToRequestMap;
     HashMap<String, RetainPtr<AVAssetResourceLoadingRequest>> m_sessionIDToRequestMap;
@@ -407,6 +390,9 @@ private:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     WeakPtr<CDMSessionAVFoundationObjC> m_session;
 #endif
+#if ENABLE(ENCRYPTED_MEDIA) && HAVE(AVCONTENTKEYSESSION)
+    RefPtr<CDMInstanceFairPlayStreamingAVFObjC> m_cdmInstance;
+#endif
 
     mutable RetainPtr<NSArray> m_cachedSeekableRanges;
     mutable RetainPtr<NSArray> m_cachedLoadedRanges;
@@ -437,5 +423,4 @@ private:
 
 }
 
-#endif
 #endif

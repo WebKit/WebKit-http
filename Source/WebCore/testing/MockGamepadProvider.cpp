@@ -31,6 +31,7 @@
 #include "GamepadProviderClient.h"
 #include "MockGamepad.h"
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -40,9 +41,7 @@ MockGamepadProvider& MockGamepadProvider::singleton()
     return sharedProvider;
 }
 
-MockGamepadProvider::MockGamepadProvider()
-{
-}
+MockGamepadProvider::MockGamepadProvider() = default;
 
 void MockGamepadProvider::startMonitoringGamepads(GamepadProviderClient& client)
 {

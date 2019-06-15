@@ -8,9 +8,9 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_device/android/build_info.h"
+#include "modules/audio_device/android/build_info.h"
 
-#include "webrtc/modules/utility/include/helpers_android.h"
+#include "modules/utility/include/helpers_android.h"
 
 namespace webrtc {
 
@@ -21,8 +21,8 @@ BuildInfo::BuildInfo()
 
 std::string BuildInfo::GetStringFromJava(const char* name) {
   jmethodID id = j_build_info_.GetStaticMethodId(name, "()Ljava/lang/String;");
-  jstring j_string = static_cast<jstring>(
-      j_build_info_.CallStaticObjectMethod(id));
+  jstring j_string =
+      static_cast<jstring>(j_build_info_.CallStaticObjectMethod(id));
   return j_environment_->JavaToStdString(j_string);
 }
 

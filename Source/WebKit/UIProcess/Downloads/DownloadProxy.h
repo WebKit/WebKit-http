@@ -23,16 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DownloadProxy_h
-#define DownloadProxy_h
+#pragma once
 
 #include "APIObject.h"
 #include "Connection.h"
 #include "DownloadID.h"
+#include "DownloadProxyMessages.h"
 #include "SandboxExtension.h"
 #include <WebCore/ResourceRequest.h>
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
+#include <wtf/WeakPtr.h>
 
 namespace API {
 class Data;
@@ -40,9 +41,11 @@ class Data;
 
 namespace WebCore {
 class AuthenticationChallenge;
+class IntRect;
 class ProtectionSpace;
 class ResourceError;
 class ResourceResponse;
+class URL;
 }
 
 namespace WebKit {
@@ -69,6 +72,29 @@ public:
     void didReceiveDownloadProxyMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncDownloadProxyMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
+    WebPageProxy* originatingPage() const;
+    void setOriginatingPage(WebPageProxy*);
+
+    void setRedirectChain(Vector<WebCore::URL>&& redirectChain) { m_redirectChain = WTFMove(redirectChain); }
+    const Vector<WebCore::URL>& redirectChain() const { return m_redirectChain; }
+
+    void setWasUserInitiated(bool value) { m_wasUserInitiated = value; }
+    bool wasUserInitiated() const { return m_wasUserInitiated; }
+
+    String destinationFilename() const { return m_destinationFilename; }
+    void setDestinationFilename(const String& d) { m_destinationFilename = d; }
+
+    uint64_t expectedContentLength() const { return m_expectedContentLength; }
+    void setExpectedContentLength(uint64_t expectedContentLength) { m_expectedContentLength = expectedContentLength; }
+
+    uint64_t bytesLoaded() const { return m_bytesLoaded; }
+    void setBytesLoaded(uint64_t bytesLoaded) { m_bytesLoaded = bytesLoaded; }
+
+#if USE(SYSTEM_PREVIEW)
+    bool isSystemPreviewDownload() const { return request().isSystemPreview(); }
+    const WebCore::IntRect& systemPreviewDownloadRect() const { return request().systemPreviewRect(); }
+#endif
+
 #if PLATFORM(QT)
     void startTransfer(const String& filename);
 #endif
@@ -78,11 +104,10 @@ private:
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
     // Message handlers.
     void didStart(const WebCore::ResourceRequest&, const String& suggestedFilename);
-    void didReceiveAuthenticationChallenge(const WebCore::AuthenticationChallenge&, uint64_t challengeID);
+    void didReceiveAuthenticationChallenge(WebCore::AuthenticationChallenge&&, uint64_t challengeID);
     void didReceiveResponse(const WebCore::ResourceResponse&);
     void didReceiveData(uint64_t length);
     void shouldDecodeSourceDataOfMIMEType(const String& mimeType, bool& result);
@@ -90,14 +115,7 @@ private:
     void didFinish();
     void didFail(const WebCore::ResourceError&, const IPC::DataReference& resumeData);
     void didCancel(const IPC::DataReference& resumeData);
-#if USE(NETWORK_SESSION)
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void canAuthenticateAgainstProtectionSpace(const WebCore::ProtectionSpace&);
-#endif
-    void willSendRequest(const WebCore::ResourceRequest& redirectRequest, const WebCore::ResourceResponse& redirectResponse);
-#else
-    void decideDestinationWithSuggestedFilename(const String& filename, const String& mimeType, String& destination, bool& allowOverwrite, SandboxExtension::Handle& sandboxExtensionHandle);
-#endif
+    void willSendRequest(WebCore::ResourceRequest&& redirectRequest, const WebCore::ResourceResponse& redirectResponse);
     void decideDestinationWithSuggestedFilenameAsync(DownloadID, const String& suggestedFilename);
 
     DownloadProxyMap& m_downloadProxyMap;
@@ -107,8 +125,13 @@ private:
     RefPtr<API::Data> m_resumeData;
     WebCore::ResourceRequest m_request;
     String m_suggestedFilename;
+    String m_destinationFilename;
+    uint64_t m_expectedContentLength { 0 };
+    uint64_t m_bytesLoaded { 0 };
+
+    WeakPtr<WebPageProxy> m_originatingPage;
+    Vector<WebCore::URL> m_redirectChain;
+    bool m_wasUserInitiated { true };
 };
 
 } // namespace WebKit
-
-#endif // DownloadProxy_h

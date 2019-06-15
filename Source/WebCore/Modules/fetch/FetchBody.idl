@@ -27,18 +27,16 @@
  */
 
 [
-    Conditional=FETCH_API,
     EnabledAtRuntime=FetchAPI,
     Exposed=(Window,Worker),
     InterfaceName=Body,
     NoInterfaceObject
-]
-interface FetchBody {
-    [ImplementedAs=isDisturbed] readonly attribute boolean bodyUsed;
+] interface FetchBody {
+    [ImplementedAs=readableStream, CallWith=ScriptState] readonly attribute ReadableStream? body;
+    readonly attribute boolean bodyUsed;
     [NewObject] Promise<ArrayBuffer> arrayBuffer();
     [NewObject] Promise<Blob> blob();
-    // FIXME: Add support for form data consumption (https://bugs.webkit.org/show_bug.cgi?id=161190).
-    //[NewObject] Promise<DOMFormData> formData();
+    [NewObject] Promise<DOMFormData> formData();
     [NewObject] Promise<any> json();
     [NewObject] Promise<USVString> text();
 };

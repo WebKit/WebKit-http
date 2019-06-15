@@ -29,6 +29,7 @@
 #pragma once
 
 #include "AccessibilitySVGElement.h"
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -37,7 +38,7 @@ public:
     static Ref<AccessibilitySVGRoot> create(RenderObject*);
     virtual ~AccessibilitySVGRoot();
     
-    void setParent(AccessibilityObject* parent) { m_parent = parent; }
+    void setParent(AccessibilityRenderObject*);
 
 private:
     explicit AccessibilitySVGRoot(RenderObject*);
@@ -45,8 +46,8 @@ private:
     AccessibilityObject* parentObject() const override;
     bool isAccessibilitySVGRoot() const override { return true; }
 
-    AccessibilityObject* m_parent;
-    AccessibilityRole roleValue() const override { return GroupRole; }
+    WeakPtr<AccessibilityRenderObject> m_parent;
+    AccessibilityRole roleValue() const override;
 };
     
 } // namespace WebCore 

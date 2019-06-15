@@ -29,6 +29,7 @@ namespace WebCore {
 class SVGElement;
 
 class RenderSVGContainer : public RenderSVGModelObject {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGContainer);
 public:
     virtual ~RenderSVGContainer();
 
@@ -47,8 +48,6 @@ protected:
 
     void layout() override;
 
-    void addChild(RenderObject* child, RenderObject* beforeChild = 0) final;
-    void removeChild(RenderObject&) final;
     void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) final;
 
     FloatRect objectBoundingBox() const final { return m_objectBoundingBox; }
@@ -74,10 +73,11 @@ private:
     bool isSVGContainer() const final { return true; }
 
     FloatRect m_objectBoundingBox;
-    bool m_objectBoundingBoxValid;
     FloatRect m_strokeBoundingBox;
     FloatRect m_repaintBoundingBox;
-    bool m_needsBoundariesUpdate : 1;
+
+    bool m_objectBoundingBoxValid { false };
+    bool m_needsBoundariesUpdate { true };
 };
 
 } // namespace WebCore

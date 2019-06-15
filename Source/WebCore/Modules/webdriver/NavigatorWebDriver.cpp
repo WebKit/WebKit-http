@@ -30,17 +30,13 @@
 #include "Navigator.h"
 #include "Page.h"
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
-NavigatorWebDriver::NavigatorWebDriver()
-{
-}
+NavigatorWebDriver::NavigatorWebDriver() = default;
 
-NavigatorWebDriver::~NavigatorWebDriver()
-{
-}
+NavigatorWebDriver::~NavigatorWebDriver() = default;
 
 const char* NavigatorWebDriver::supplementName()
 {

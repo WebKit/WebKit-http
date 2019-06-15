@@ -3,7 +3,7 @@
 /*---
 esid: sec-additional-properties-of-the-object.prototype-object
 description: Object.prototype.__defineSetter__ `length` property
-info: >
+info: |
     ES6 Section 17:
     Every built-in Function object, including constructors, has a length
     property whose value is an integer. Unless otherwise specified, this value
@@ -18,8 +18,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(Object.prototype.__defineSetter__.length, 2);
-
-verifyNotEnumerable(Object.prototype.__defineSetter__, 'length');
-verifyNotWritable(Object.prototype.__defineSetter__, 'length');
-verifyConfigurable(Object.prototype.__defineSetter__, 'length');
+verifyProperty(Object.prototype.__defineSetter__, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 2
+});

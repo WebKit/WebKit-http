@@ -270,19 +270,15 @@ void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef call
 {
 }
 
+void UIScriptController::enterText(JSStringRef)
+{
+}
+
 void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
 
 void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
-{
-}
-
-void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
-{
-}
-
-void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long, unsigned, float)
 {
 }
 
@@ -294,8 +290,31 @@ void UIScriptController::dismissFormAccessoryView()
 {
 }
 
+void UIScriptController::setTimePickerValue(long, long)
+{
+}
+
+void UIScriptController::invokeShareSheetWithResolution(bool)
+{
+}
+
 void UIScriptController::selectFormAccessoryPickerRow(long)
 {
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::textContentType() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
+{
+    return nullptr;
 }
 
 void UIScriptController::scrollToOffset(long x, long y)
@@ -357,6 +376,16 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
 }
 
 JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
 {
     return nullptr;
 }
@@ -445,23 +474,15 @@ void UIScriptController::simulateRotationLikeSafari(DeviceOrientation*, JSValueR
 {
 }
 
+void UIScriptController::findString(JSStringRef, unsigned long options, unsigned long maxCount)
+{
+}
+
 void UIScriptController::removeViewFromWindow(JSValueRef)
 {
 }
 
 void UIScriptController::addViewToWindow(JSValueRef)
-{
-}
-
-#endif // !PLATFORM(COCOA)
-
-#if !PLATFORM(MAC)
-
-void UIScriptController::overridePreference(JSStringRef, JSStringRef)
-{
-}
-
-void UIScriptController::insertText(JSStringRef, int, int)
 {
 }
 
@@ -473,8 +494,38 @@ void UIScriptController::completeBackSwipe(JSValueRef callback)
 {
 }
 
+#endif // !PLATFORM(COCOA)
+
+#if !PLATFORM(MAC)
+
+void UIScriptController::overridePreference(JSStringRef, JSStringRef)
+{
+}
+
+void UIScriptController::replaceTextAtRange(JSStringRef, int, int)
+{
+}
+
 void UIScriptController::platformPlayBackEventStream(JSStringRef, JSValueRef)
 {
+}
+
+void UIScriptController::firstResponderSuppressionForWebView(bool)
+{
+}
+
+void UIScriptController::makeWindowContentViewFirstResponder()
+{
+}
+
+bool UIScriptController::isWindowContentViewFirstResponder() const
+{
+    return false;
+}
+
+bool UIScriptController::isShowingDataListSuggestions() const
+{
+    return false;
 }
 
 #endif

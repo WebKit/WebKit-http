@@ -32,10 +32,10 @@
 
 #include "ActiveDOMObject.h"
 #include "CDMInstance.h"
+#include "DOMPromiseProxy.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
-#include "JSDOMPromiseDeferred.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeySessionType.h"
 #include "MediaKeyStatus.h"
@@ -52,13 +52,15 @@ class MediaKeyStatusMap;
 class MediaKeys;
 class SharedBuffer;
 
-class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject {
+class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject, public CanMakeWeakPtr<MediaKeySession>, public CDMInstanceClient {
 public:
-    static Ref<MediaKeySession> create(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    static Ref<MediaKeySession> create(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
     virtual ~MediaKeySession();
 
     using RefCounted<MediaKeySession>::ref;
     using RefCounted<MediaKeySession>::deref;
+
+    bool isClosed() const { return m_closed; }
 
     const String& sessionId() const;
     double expiration() const;
@@ -70,17 +72,20 @@ public:
     void close(Ref<DeferredPromise>&&);
     void remove(Ref<DeferredPromise>&&);
 
-    using ClosedPromise = DOMPromiseDeferred<void>;
-    void registerClosedPromise(ClosedPromise&&);
+    using ClosedPromise = DOMPromiseProxy<IDLVoid>;
+    ClosedPromise& closed() { return m_closedPromise; }
 
     const Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>>& statuses() const { return m_statuses; }
 
 private:
-    MediaKeySession(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    MediaKeySession(ScriptExecutionContext&, WeakPtr<MediaKeys>&&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
     void enqueueMessage(MediaKeyMessageType, const SharedBuffer&);
-    void updateKeyStatuses(CDMInstance::KeyStatusVector&&);
     void updateExpiration(double);
     void sessionClosed();
+    String mediaKeysStorageDirectory() const;
+
+    // CDMInstanceClient
+    void updateKeyStatuses(CDMInstanceClient::KeyStatusVector&&) override;
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
@@ -94,9 +99,10 @@ private:
     bool canSuspendForDocumentSuspension() const override;
     void stop() override;
 
+    WeakPtr<MediaKeys> m_keys;
     String m_sessionId;
     double m_expiration;
-    std::optional<ClosedPromise> m_closedPromise;
+    ClosedPromise m_closedPromise;
     Ref<MediaKeyStatusMap> m_keyStatuses;
     bool m_closed { false };
     bool m_uninitialized { true };
@@ -111,7 +117,6 @@ private:
     double m_firstDecryptTime { 0 };
     double m_latestDecryptTime { 0 };
     Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>> m_statuses;
-    WeakPtrFactory<MediaKeySession> m_weakPtrFactory;
 };
 
 } // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,7 +53,10 @@
 #import "WebScriptWorldInternal.h"
 #import "WebViewInternal.h"
 #import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/JSCJSValue.h>
 #import <JavaScriptCore/JSContextInternal.h>
+#import <JavaScriptCore/JSLock.h>
+#import <JavaScriptCore/JSObject.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/AccessibilityObject.h>
 #import <WebCore/CSSAnimationController.h>
@@ -69,6 +72,7 @@
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/EventNames.h>
+#import <WebCore/Frame.h>
 #import <WebCore/FrameLoadRequest.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoaderStateMachine.h>
@@ -81,11 +85,11 @@
 #import <WebCore/JSNode.h>
 #import <WebCore/LegacyWebArchive.h>
 #import <WebCore/MIMETypeRegistry.h>
-#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/PluginData.h>
 #import <WebCore/PrintContext.h>
+#import <WebCore/RenderLayer.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/RenderWidget.h>
 #import <WebCore/RenderedDocumentMarker.h>
@@ -99,12 +103,6 @@
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/markup.h>
-#import <WebKitSystemInterface.h>
-#import <bindings/ScriptValue.h>
-#import <runtime/JSCJSValue.h>
-#import <runtime/JSLock.h>
-#import <runtime/JSObject.h>
-#import <wtf/CurrentTime.h>
 
 #if PLATFORM(IOS)
 #import "WebMailDelegate.h"
@@ -363,15 +361,15 @@ static NSURL *createUniqueWebDataURL();
 
 - (void)_attachScriptDebugger
 {
-    ScriptController& scriptController = _private->coreFrame->script();
+    auto& windowProxy = _private->coreFrame->windowProxy();
 
     // Calling ScriptController::globalObject() would create a window proxy, and dispatch corresponding callbacks, which may be premature
     // if the script debugger is attached before a document is created.  These calls use the debuggerWorld(), we will need to pass a world
     // to be able to debug isolated worlds.
-    if (!scriptController.existingWindowProxy(debuggerWorld()))
+    if (!windowProxy.existingJSWindowProxy(debuggerWorld()))
         return;
 
-    JSGlobalObject* globalObject = scriptController.globalObject(debuggerWorld());
+    auto* globalObject = windowProxy.globalObject(debuggerWorld());
     if (!globalObject)
         return;
 
@@ -446,7 +444,10 @@ static NSURL *createUniqueWebDataURL();
         if (FrameView* view = frame->view()) {
             view->setTransparent(!drawsBackground);
 #if !PLATFORM(IOS)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             Color color = colorFromNSColor([backgroundColor colorUsingColorSpaceName:NSDeviceRGBColorSpace]);
+#pragma clang diagnostic pop
 #else
             Color color = Color(backgroundColor);
 #endif
@@ -559,6 +560,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 }
 
 #if PLATFORM(IOS)
+
 - (BOOL)_isCommitting
 {
     return _private->isCommitting;
@@ -568,6 +570,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 {
     _private->isCommitting = value;
 }
+
 #endif
 
 - (NSArray *)_nodesFromList:(Vector<Node*> *)nodesVector
@@ -589,29 +592,30 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     return plainText(core(range), TextIteratorDefaultBehavior, true);
 }
 
-- (PaintBehavior)_paintBehaviorForDestinationContext:(CGContextRef)context
+- (OptionSet<PaintBehavior>)_paintBehaviorForDestinationContext:(CGContextRef)context
 {
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC)
     // -currentContextDrawingToScreen returns YES for bitmap contexts.
     BOOL isPrinting = ![NSGraphicsContext currentContextDrawingToScreen];
     if (isPrinting)
-        return PaintBehaviorFlattenCompositingLayers;
+        return OptionSet<PaintBehavior>(PaintBehavior::FlattenCompositingLayers) | PaintBehavior::Snapshotting;
 #endif
 
-    if (!WKCGContextIsBitmapContext(context))
-        return PaintBehaviorAllowAsyncImageDecoding;
+    if (CGContextGetType(context) != kCGContextTypeBitmap)
+        return PaintBehavior::Normal;
 
-    // If we're drawing into a bitmap, we might be snapshotting, or drawing into a layer-backed view.
-    if (WebHTMLView *htmlDocumentView = [self _webHTMLDocumentView]) {
+    // If we're drawing into a bitmap, we could be snapshotting or drawing into a layer-backed view.
+    if (WebHTMLView *documentView = [self _webHTMLDocumentView]) {
 #if PLATFORM(IOS)
-        if ([[htmlDocumentView window] isInSnapshottingPaint])
-            return 0;
+        return [[documentView window] isInSnapshottingPaint] ? PaintBehavior::Snapshotting : PaintBehavior::Normal;
 #endif
-        if ([htmlDocumentView _web_isDrawingIntoLayer])
-            return PaintBehaviorAllowAsyncImageDecoding;
+#if PLATFORM(MAC)
+        if ([documentView _web_isDrawingIntoLayer])
+            return PaintBehavior::Normal;
+#endif
     }
     
-    return PaintBehaviorFlattenCompositingLayers;
+    return OptionSet<PaintBehavior>(PaintBehavior::FlattenCompositingLayers) | PaintBehavior::Snapshotting;
 }
 
 - (void)_drawRect:(NSRect)rect contentsOnly:(BOOL)contentsOnly
@@ -619,7 +623,10 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 #if !PLATFORM(IOS)
     ASSERT([[NSGraphicsContext currentContext] isFlipped]);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CGContextRef ctx = static_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]);
+#pragma clang diagnostic pop
 #else
     CGContextRef ctx = WKGetCurrentGraphicsContext();
 #endif
@@ -636,20 +643,23 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
     FrameView* view = _private->coreFrame->view();
     
-    PaintBehavior oldBehavior = view->paintBehavior();
-    PaintBehavior paintBehavior = oldBehavior;
+    OptionSet<PaintBehavior> oldBehavior = view->paintBehavior();
+    OptionSet<PaintBehavior> paintBehavior = oldBehavior;
     
     if (Frame* parentFrame = _private->coreFrame->tree().parent()) {
         // For subframes, we need to inherit the paint behavior from our parent
         if (FrameView* parentView = parentFrame ? parentFrame->view() : nullptr) {
-            if (parentView->paintBehavior() & PaintBehaviorFlattenCompositingLayers)
-                paintBehavior |= PaintBehaviorFlattenCompositingLayers;
-                
-            if (parentView->paintBehavior() & PaintBehaviorAllowAsyncImageDecoding)
-                paintBehavior |= PaintBehaviorAllowAsyncImageDecoding;
+            if (parentView->paintBehavior().contains(PaintBehavior::FlattenCompositingLayers))
+                paintBehavior.add(PaintBehavior::FlattenCompositingLayers);
+            
+            if (parentView->paintBehavior().contains(PaintBehavior::Snapshotting))
+                paintBehavior.add(PaintBehavior::Snapshotting);
+            
+            if (parentView->paintBehavior().contains(PaintBehavior::TileFirstPaint))
+                paintBehavior.add(PaintBehavior::TileFirstPaint);
         }
     } else
-        paintBehavior |= [self _paintBehaviorForDestinationContext:ctx];
+        paintBehavior.add([self _paintBehaviorForDestinationContext:ctx]);
         
     view->setPaintBehavior(paintBehavior);
 
@@ -732,12 +742,12 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         
     if (startNode && startNode->renderer()) {
 #if !PLATFORM(IOS)
-        startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+        startNode->renderer()->scrollRectToVisible(enclosingIntRect(rangeRect), insideFixed, { SelectionRevealMode::Reveal, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded, ShouldAllowCrossOriginScrolling::Yes });
 #else
         RenderLayer* layer = startNode->renderer()->enclosingLayer();
         if (layer) {
             layer->setAdjustForIOSCaretWhenScrolling(true);
-            startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+            startNode->renderer()->scrollRectToVisible(enclosingIntRect(rangeRect), insideFixed, { SelectionRevealMode::Reveal, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded, ShouldAllowCrossOriginScrolling::Yes });
             layer->setAdjustForIOSCaretWhenScrolling(false);
             _private->coreFrame->selection().setCaretRectNeedsUpdate();
             _private->coreFrame->selection().updateAppearance();
@@ -757,7 +767,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         RenderLayer* layer = startNode->renderer()->enclosingLayer();
         if (layer) {
             layer->setAdjustForIOSCaretWhenScrolling(true);
-            startNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, enclosingIntRect(rangeRect), insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+            startNode->renderer()->scrollRectToVisible(enclosingIntRect(rangeRect), insideFixed, { SelectionRevealMode::Reveal, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded, ShouldAllowCrossOriginScrolling::Yes});
             layer->setAdjustForIOSCaretWhenScrolling(false);
 
             Frame *coreFrame = core(self);
@@ -958,7 +968,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return;
     // FIXME: These are fake modifier keys here, but they should be real ones instead.
     PlatformMouseEvent event(IntPoint(windowLoc), IntPoint(globalPoint(windowLoc, [view->platformWidget() window])),
-                             LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
+                             LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WallTime::now(), WebCore::ForceAtClick, WebCore::NoTap);
     _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
 #endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
@@ -1025,7 +1035,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     RenderObject* bodyRenderer = body->renderer();
     if (!bodyRenderer)
         return nil;
-    Color color = bodyRenderer->style().visitedDependentColor(CSSPropertyBackgroundColor);
+    Color color = bodyRenderer->style().visitedDependentColorWithColorFilter(CSSPropertyBackgroundColor);
     if (!color.isValid())
         return nil;
 #if !PLATFORM(IOS)
@@ -1238,7 +1248,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     RefPtr<Range> domRange = [self _convertToDOMRange:range];
     if (domRange) {
         const VisibleSelection& newSelection = VisibleSelection(*domRange, SEL_DEFAULT_AFFINITY);
-        _private->coreFrame->selection().setSelection(newSelection, 0);
+        _private->coreFrame->selection().setSelection(newSelection, { });
         
         _private->coreFrame->editor().ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping();
     }
@@ -1436,7 +1446,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     WebCore::Frame *frame = core(self);
     if (!frame || !frame->view())
         return 0;
-    return frame->view()->layoutCount();
+    return frame->view()->layoutContext().layoutCount();
 }
 
 - (BOOL)isTelephoneNumberParsingAllowed
@@ -2083,8 +2093,11 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     // The global object is probably a proxy object? - if so, we know how to use this!
     JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
     JSC::VM& vm = *globalObjectObj->vm();
-    if (!strcmp(globalObjectObj->classInfo(vm)->className, "JSDOMWindowProxy"))
-        anyWorldGlobalObject = static_cast<JSDOMWindowProxy*>(globalObjectObj)->window();
+    if (!strcmp(globalObjectObj->classInfo(vm)->className, "JSWindowProxy"))
+        anyWorldGlobalObject = JSC::jsDynamicCast<JSDOMWindow*>(vm, static_cast<JSWindowProxy*>(globalObjectObj)->window());
+
+    if (!anyWorldGlobalObject)
+        return @"";
 
     // Get the frame frome the global object we've settled on.
     Frame* frame = anyWorldGlobalObject->wrapped().frame();
@@ -2289,7 +2302,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 - (DOMDocumentFragment *)_documentFragmentForImageData:(NSData *)data withRelativeURLPart:(NSString *)relativeURLPart andMIMEType:(NSString *)mimeType
 {
     WebResource *resource = [[WebResource alloc] initWithData:data
-                                                          URL:[NSURL uniqueURLWithRelativePart:relativeURLPart]
+                                                          URL:URL::fakeURLWithRelativePart(relativeURLPart)
                                                      MIMEType:mimeType
                                              textEncodingName:nil
                                                     frameName:nil];
@@ -2325,7 +2338,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
     Frame* coreFrame = _private->coreFrame;
     if (!coreFrame)
         return;
-    coreFrame->loader().client().dispatchDidReceiveTitle({ title, LTR });
+    coreFrame->loader().client().dispatchDidReceiveTitle({ title, TextDirection::LTR });
 }
 
 #endif // PLATFORM(IOS)

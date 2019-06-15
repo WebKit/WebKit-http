@@ -30,15 +30,15 @@
 #include "MessageSender.h"
 #include "SandboxExtension.h"
 #include <WebCore/IDBConnectionToServer.h>
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 
 namespace WebKit {
 
 class WebIDBResult;
 
-class WebIDBConnectionToServer final : public WebCore::IDBClient::IDBConnectionToServerDelegate, public IPC::MessageSender, public RefCounted<WebIDBConnectionToServer> {
+class WebIDBConnectionToServer final : private WebCore::IDBClient::IDBConnectionToServerDelegate, private IPC::MessageSender, public RefCounted<WebIDBConnectionToServer> {
 public:
-    static Ref<WebIDBConnectionToServer> create(WebCore::SessionID);
+    static Ref<WebIDBConnectionToServer> create(PAL::SessionID);
 
     virtual ~WebIDBConnectionToServer();
 
@@ -79,7 +79,7 @@ public:
     void ref() override { RefCounted<WebIDBConnectionToServer>::ref(); }
     void deref() override { RefCounted<WebIDBConnectionToServer>::deref(); }
 
-    // Messages received from DatabaseProcess
+    // Messages received from StorageProcess
     void didDeleteDatabase(const WebCore::IDBResultData&);
     void didOpenDatabase(const WebCore::IDBResultData&);
     void didAbortTransaction(const WebCore::IDBResourceIdentifier& transactionIdentifier, const WebCore::IDBError&);
@@ -109,14 +109,14 @@ public:
     void connectionToServerLost();
 
 private:
-    WebIDBConnectionToServer(WebCore::SessionID);
+    WebIDBConnectionToServer(PAL::SessionID);
 
     IPC::Connection* messageSenderConnection() final;
 
     uint64_t m_identifier { 0 };
     bool m_isOpenInServer { false };
     RefPtr<WebCore::IDBClient::IDBConnectionToServer> m_connectionToServer;
-    WebCore::SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
 };
 
 } // namespace WebKit

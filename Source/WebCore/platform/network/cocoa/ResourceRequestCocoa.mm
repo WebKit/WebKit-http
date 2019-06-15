@@ -28,14 +28,13 @@
 
 #if PLATFORM(COCOA)
 
-#import "CFNetworkSPI.h"
 #import "FileSystem.h"
 #import "FormDataStreamMac.h"
 #import "HTTPHeaderNames.h"
 #import "ResourceRequestCFNet.h"
 #import "RuntimeApplicationChecks.h"
-#import "WebCoreSystemInterface.h"
 #import <Foundation/Foundation.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/text/CString.h>
 
 namespace WebCore {
@@ -43,36 +42,8 @@ namespace WebCore {
 NSURLRequest *ResourceRequest::nsURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
 {
     updatePlatformRequest(bodyPolicy);
-#if USE(CFURLCONNECTION)
-    if (!m_nsRequest)
-        const_cast<ResourceRequest*>(this)->updateNSURLRequest();
-#endif
     return [[m_nsRequest.get() retain] autorelease];
 }
-
-#if USE(CFURLCONNECTION)
-
-void ResourceRequest::clearOrUpdateNSURLRequest()
-{
-    // There is client code that extends NSURLRequest and expects to get back, in the delegate
-    // callbacks, an object of the same type that they passed into WebKit. To keep then running, we
-    // create an object of the same type and return that. See <rdar://9843582>.
-    // Also, developers really really want an NSMutableURLRequest so try to create an
-    // NSMutableURLRequest instead of NSURLRequest.
-    static Class nsURLRequestClass = [NSURLRequest class];
-    static Class nsMutableURLRequestClass = [NSMutableURLRequest class];
-    Class requestClass = [m_nsRequest.get() class];
-    
-    if (!m_cfRequest)
-        return;
-    
-    if (requestClass && requestClass != nsURLRequestClass && requestClass != nsMutableURLRequestClass)
-        m_nsRequest = adoptNS([[requestClass alloc] _initWithCFURLRequest:m_cfRequest.get()]);
-    else
-        m_nsRequest = nullptr;
-}
-
-#else
 
 CFURLRequestRef ResourceRequest::cfURLRequest(HTTPBodyUpdatePolicy bodyPolicy) const
 {
@@ -83,24 +54,24 @@ static inline ResourceRequestCachePolicy fromPlatformRequestCachePolicy(NSURLReq
 {
     switch (policy) {
     case NSURLRequestUseProtocolCachePolicy:
-        return UseProtocolCachePolicy;
+        return ResourceRequestCachePolicy::UseProtocolCachePolicy;
     case NSURLRequestReturnCacheDataElseLoad:
-        return ReturnCacheDataElseLoad;
+        return ResourceRequestCachePolicy::ReturnCacheDataElseLoad;
     case NSURLRequestReturnCacheDataDontLoad:
-        return ReturnCacheDataDontLoad;
+        return ResourceRequestCachePolicy::ReturnCacheDataDontLoad;
     default:
-        return ReloadIgnoringCacheData;
+        return ResourceRequestCachePolicy::ReloadIgnoringCacheData;
     }
 }
 
 static inline NSURLRequestCachePolicy toPlatformRequestCachePolicy(ResourceRequestCachePolicy policy)
 {
     switch (policy) {
-    case UseProtocolCachePolicy:
+    case ResourceRequestCachePolicy::UseProtocolCachePolicy:
         return NSURLRequestUseProtocolCachePolicy;
-    case ReturnCacheDataElseLoad:
+    case ResourceRequestCachePolicy::ReturnCacheDataElseLoad:
         return NSURLRequestReturnCacheDataElseLoad;
-    case ReturnCacheDataDontLoad:
+    case ResourceRequestCachePolicy::ReturnCacheDataDontLoad:
         return NSURLRequestReturnCacheDataDontLoad;
     default:
         return NSURLRequestReloadIgnoringLocalCacheData;
@@ -111,10 +82,17 @@ void ResourceRequest::doUpdateResourceRequest()
 {
     m_url = [m_nsRequest.get() URL];
 
-    if (!m_cachePolicy)
+    if (m_cachePolicy == ResourceRequestCachePolicy::UseProtocolCachePolicy)
         m_cachePolicy = fromPlatformRequestCachePolicy([m_nsRequest.get() cachePolicy]);
     m_timeoutInterval = [m_nsRequest.get() timeoutInterval];
     m_firstPartyForCookies = [m_nsRequest.get() mainDocumentURL];
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+    URL siteForCookies { [m_nsRequest.get() _propertyForKey:@"_kCFHTTPCookiePolicyPropertySiteForCookies"] };
+    m_sameSiteDisposition = siteForCookies.isNull() ? SameSiteDisposition::Unspecified : (registrableDomainsAreEqual(siteForCookies, m_url) ? SameSiteDisposition::SameSite : SameSiteDisposition::CrossSite);
+
+    m_isTopSite = static_cast<NSNumber*>([m_nsRequest.get() _propertyForKey:@"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation"]).boolValue;
+#endif
 
     if (NSString* method = [m_nsRequest.get() HTTPMethod])
         m_httpMethod = method;
@@ -138,7 +116,7 @@ void ResourceRequest::doUpdateResourceRequest()
     }
 
     if (m_nsRequest) {
-        NSString* cachePartition = [NSURLProtocol propertyForKey:(NSString *)wkCachePartitionKey() inRequest:m_nsRequest.get()];
+        NSString* cachePartition = [NSURLProtocol propertyForKey:(NSString *)_kCFURLCachePartitionKey inRequest:m_nsRequest.get()];
         if (cachePartition)
             m_cachePartition = cachePartition;
     }
@@ -157,6 +135,21 @@ void ResourceRequest::doUpdateResourceHTTPBody()
             m_httpBody = formData;
     }
 }
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+static NSURL *siteForCookies(ResourceRequest::SameSiteDisposition disposition, NSURL *url)
+{
+    switch (disposition) {
+    case ResourceRequest::SameSiteDisposition::Unspecified:
+        return { };
+    case ResourceRequest::SameSiteDisposition::SameSite:
+        return url;
+    case ResourceRequest::SameSiteDisposition::CrossSite:
+        static NSURL *emptyURL = [[NSURL alloc] initWithString:@""];
+        return emptyURL;
+    }
+}
+#endif
 
 void ResourceRequest::doUpdatePlatformRequest()
 {
@@ -191,6 +184,11 @@ void ResourceRequest::doUpdatePlatformRequest()
         [nsRequest setHTTPMethod:httpMethod()];
     [nsRequest setHTTPShouldHandleCookies:allowCookies()];
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+    [nsRequest _setProperty:siteForCookies(m_sameSiteDisposition, nsRequest.URL) forKey:@"_kCFHTTPCookiePolicyPropertySiteForCookies"];
+    [nsRequest _setProperty:[NSNumber numberWithBool:m_isTopSite] forKey:@"_kCFHTTPCookiePolicyPropertyIsTopLevelNavigation"];
+#endif
+
     // Cannot just use setAllHTTPHeaderFields here, because it does not remove headers.
     for (NSString *oldHeaderName in [nsRequest allHTTPHeaderFields])
         [nsRequest setValue:nil forHTTPHeaderField:oldHeaderName];
@@ -208,14 +206,14 @@ void ResourceRequest::doUpdatePlatformRequest()
     String partition = cachePartition();
     if (!partition.isNull() && !partition.isEmpty()) {
         NSString *partitionValue = [NSString stringWithUTF8String:partition.utf8().data()];
-        [NSURLProtocol setProperty:partitionValue forKey:(NSString *)wkCachePartitionKey() inRequest:nsRequest];
+        [NSURLProtocol setProperty:partitionValue forKey:(NSString *)_kCFURLCachePartitionKey inRequest:nsRequest];
     }
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+#if PLATFORM(MAC)
     if (m_url.isLocalFile()) {
-        auto fsRepFile = fileSystemRepresentation(m_url.fileSystemPath());
+        auto fsRepFile = FileSystem::fileSystemRepresentation(m_url.fileSystemPath());
         if (!fsRepFile.isNull()) {
-            auto fileDevice = getFileDeviceId(fsRepFile);
+            auto fileDevice = FileSystem::getFileDeviceId(fsRepFile);
             if (fileDevice && fileDevice.value())
                 [nsRequest _setProperty:[NSNumber numberWithInteger:fileDevice.value()] forKey:@"NSURLRequestFileProtocolExpectedDevice"];
         }
@@ -245,7 +243,7 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 
     if (NSInputStream *bodyStream = [nsRequest HTTPBodyStream]) {
         // For streams, provide a Content-Length to avoid using chunked encoding, and to get accurate total length in callbacks.
-        NSString *lengthString = [bodyStream propertyForKey:(NSString *)formDataStreamLengthPropertyName()];
+        NSString *lengthString = [bodyStream propertyForKey:(__bridge NSString *)formDataStreamLengthPropertyName()];
         if (lengthString) {
             [nsRequest setValue:lengthString forHTTPHeaderField:@"Content-Length"];
             // Since resource request is already marked updated, we need to keep it up to date too.
@@ -260,10 +258,31 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
 void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 {
     updatePlatformRequest();
-    m_nsRequest = adoptNS(wkCopyRequestWithStorageSession(storageSession, m_nsRequest.get()));
+    m_nsRequest = adoptNS(copyRequestWithStorageSession(storageSession, m_nsRequest.get()));
 }
 
-#endif // USE(CFURLCONNECTION)
+NSURLRequest *copyRequestWithStorageSession(CFURLStorageSessionRef storageSession, NSURLRequest *request)
+{
+    if (!storageSession || !request)
+        return [request copy];
+
+    auto cfRequest = adoptCF(CFURLRequestCreateMutableCopy(kCFAllocatorDefault, [request _CFURLRequest]));
+    _CFURLRequestSetStorageSession(cfRequest.get(), storageSession);
+    return [[NSURLRequest alloc] _initWithCFURLRequest:cfRequest.get()];
+}
+
+NSCachedURLResponse *cachedResponseForRequest(CFURLStorageSessionRef storageSession, NSURLRequest *request)
+{
+    if (!storageSession)
+        return [[NSURLCache sharedURLCache] cachedResponseForRequest:request];
+
+    auto cache = adoptCF(_CFURLStorageSessionCopyCache(kCFAllocatorDefault, storageSession));
+    auto cachedResponse = adoptCF(CFURLCacheCopyResponseForRequest(cache.get(), [request _CFURLRequest]));
+    if (!cachedResponse)
+        return nil;
+
+    return [[[NSCachedURLResponse alloc] _initWithCFCachedURLResponse:cachedResponse.get()] autorelease];
+}
 
 } // namespace WebCore
 

@@ -1,5 +1,5 @@
 # Copyright (c) 2009 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2018 Apple Inc. All rights reserved.
 # Copyright (c) 2010 Research In Motion Limited. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -28,9 +28,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import json
 import logging
 
+from datetime import datetime
 from webkitpy.common.memoized import memoized
+from webkitpy.common.net.bugzilla.constants import BUGZILLA_DATE_FORMAT
 
 _log = logging.getLogger(__name__)
 
@@ -63,7 +66,13 @@ class Attachment(object):
         return self._bug
 
     def bug_id(self):
-        return int(self._attachment_dictionary.get("bug_id"))
+        bug_id_string = self._attachment_dictionary.get('bug_id')
+        if bug_id_string:
+            return int(bug_id_string)
+        # We may not know the associated bug ID. This can happen if we do not have
+        # permission to view the attachment or we failed to fetch it from Bugzilla
+        # for some other reason (see AbstractPatchQueue._next_patch()).
+        return None
 
     def is_patch(self):
         return not not self._attachment_dictionary.get("is_patch")
@@ -119,3 +128,16 @@ class Attachment(object):
         if not self._committer:
             self._committer = self._validate_flag_value("committer")
         return self._committer
+
+    def to_json(self):
+        temp = dict(self._attachment_dictionary)
+        if 'attach_date' in temp:
+            temp['attach_date'] = temp['attach_date'].strftime(BUGZILLA_DATE_FORMAT)
+        return json.dumps(temp)
+
+    @classmethod
+    def from_json(cls, json_string):
+        temp = json.loads(json_string)
+        if 'attach_date' in temp:
+            temp['attach_date'] = datetime.strptime(temp['attach_date'], BUGZILLA_DATE_FORMAT)
+        return cls(temp, bug=None)

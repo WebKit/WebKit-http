@@ -30,6 +30,7 @@ class HitTestResult;
 class HTMLImageElement;
     
 class HTMLMapElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLMapElement);
 public:
     static Ref<HTMLMapElement> create(Document&);
     static Ref<HTMLMapElement> create(const QualifiedName&, Document&);
@@ -47,8 +48,8 @@ private:
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
 
     AtomicString m_name;
 };

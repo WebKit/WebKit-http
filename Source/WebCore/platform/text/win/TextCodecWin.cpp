@@ -139,9 +139,7 @@ TextCodecWin::TextCodecWin(UINT codePage)
 {
 }
 
-TextCodecWin::~TextCodecWin()
-{
-}
+TextCodecWin::~TextCodecWin() = default;
 
 void TextCodecWin::registerExtendedEncodingNames(EncodingNameRegistrar registrar)
 {
@@ -283,7 +281,7 @@ CString TextCodecWin::encode(const UChar* characters, size_t length, Unencodable
 
     int resultLength = WideCharToMultiByte(m_codePage, WC_COMPOSITECHECK, characters, length, 0, 0, 0, 0);
 
-    // FIXME: We need to implement UnencodableHandling: QuestionMarksForUnencodables, EntitiesForUnencodables, and URLEncodedEntitiesForUnencodables.
+    // FIXME: We need to implement UnencodableHandling.
 
     if (resultLength <= 0)
         return "?";

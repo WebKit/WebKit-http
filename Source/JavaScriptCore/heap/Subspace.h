@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,48 +25,52 @@
 
 #pragma once
 
+#include "AllocationFailureMode.h"
+#include "AllocatorForMode.h"
+#include "Allocator.h"
 #include "MarkedBlock.h"
 #include "MarkedSpace.h"
 #include <wtf/text/CString.h>
 
 namespace JSC {
 
+class AlignedMemoryAllocator;
+class HeapCellType;
+
 // The idea of subspaces is that you can provide some custom behavior for your objects if you
 // allocate them from a custom Subspace in which you override some of the virtual methods. This
-// class is the baseclass of Subspaces and it provides a reasonable default implementation, where
-// sweeping assumes immortal structure. The common ways of overriding this are:
-//
-// - Provide customized destructor behavior. You can change how the destructor is called. You can
-//   also specialize the destructor call in the loop.
-//
-// - Use the Subspace as a quick way to iterate all of the objects in that subspace.
+// class is the baseclass of Subspaces. Usually you will use either Subspace or FixedSizeSubspace.
 class Subspace {
     WTF_MAKE_NONCOPYABLE(Subspace);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    JS_EXPORT_PRIVATE Subspace(CString name, Heap&, AllocatorAttributes);
+    JS_EXPORT_PRIVATE Subspace(CString name, Heap&);
     JS_EXPORT_PRIVATE virtual ~Subspace();
-    
-    const char *name() const { return m_name.data(); }
+
+    const char* name() const { return m_name.data(); }
     MarkedSpace& space() const { return m_space; }
     
-    const AllocatorAttributes& attributes() const { return m_attributes; }
+    const CellAttributes& attributes() const { return m_attributes; }
+    HeapCellType* heapCellType() const { return m_heapCellType; }
+    AlignedMemoryAllocator* alignedMemoryAllocator() const { return m_alignedMemoryAllocator; }
     
-    // The purpose of overriding this is to specialize the sweep for your destructors. This won't
-    // be called for no-destructor blocks. This must call MarkedBlock::finishSweepKnowingSubspace.
-    virtual void finishSweep(MarkedBlock::Handle&, FreeList*);
+    void finishSweep(MarkedBlock::Handle&, FreeList*);
+    void destroy(VM&, JSCell*);
+
+    virtual Allocator allocatorFor(size_t, AllocatorForMode) = 0;
+    virtual void* allocate(VM&, size_t, GCDeferralContext*, AllocationFailureMode) = 0;
     
-    // These get called for large objects.
-    virtual void destroy(VM&, JSCell*);
+    void prepareForAllocation();
     
-    MarkedAllocator* tryAllocatorFor(size_t);
-    MarkedAllocator* allocatorFor(size_t);
+    void didCreateFirstDirectory(BlockDirectory* directory) { m_directoryForEmptyAllocation = directory; }
     
-    JS_EXPORT_PRIVATE void* allocate(size_t);
-    JS_EXPORT_PRIVATE void* allocate(GCDeferralContext*, size_t);
+    // Finds an empty block from any Subspace that agrees to trade blocks with us.
+    MarkedBlock::Handle* findEmptyBlockToSteal();
     
-    JS_EXPORT_PRIVATE void* tryAllocate(size_t);
-    JS_EXPORT_PRIVATE void* tryAllocate(GCDeferralContext*, size_t);
+    template<typename Func>
+    void forEachDirectory(const Func&);
+    
+    RefPtr<SharedTask<BlockDirectory*()>> parallelDirectorySource();
     
     template<typename Func>
     void forEachMarkedBlock(const Func&);
@@ -74,54 +78,45 @@ public:
     template<typename Func>
     void forEachNotEmptyMarkedBlock(const Func&);
     
+    JS_EXPORT_PRIVATE RefPtr<SharedTask<MarkedBlock::Handle*()>> parallelNotEmptyMarkedBlockSource();
+    
     template<typename Func>
     void forEachLargeAllocation(const Func&);
     
     template<typename Func>
     void forEachMarkedCell(const Func&);
+    
+    template<typename Func>
+    RefPtr<SharedTask<void(SlotVisitor&)>> forEachMarkedCellInParallel(const Func&);
 
     template<typename Func>
     void forEachLiveCell(const Func&);
     
-    static ptrdiff_t offsetOfAllocatorForSizeStep() { return OBJECT_OFFSETOF(Subspace, m_allocatorForSizeStep); }
+    void sweep();
     
-    MarkedAllocator** allocatorForSizeStep() { return &m_allocatorForSizeStep[0]; }
+    Subspace* nextSubspaceInAlignedMemoryAllocator() const { return m_nextSubspaceInAlignedMemoryAllocator; }
+    void setNextSubspaceInAlignedMemoryAllocator(Subspace* subspace) { m_nextSubspaceInAlignedMemoryAllocator = subspace; }
+    
+    virtual void didResizeBits(size_t newSize);
+    virtual void didRemoveBlock(size_t blockIndex);
+    virtual void didBeginSweepingToFreeList(MarkedBlock::Handle*);
 
-private:
-    MarkedAllocator* allocatorForSlow(size_t);
-    
-    // These slow paths are concerned with large allocations and allocator creation.
-    void* allocateSlow(GCDeferralContext*, size_t);
-    void* tryAllocateSlow(GCDeferralContext*, size_t);
-    
-    void didAllocate(void*);
+protected:
+    void initialize(HeapCellType*, AlignedMemoryAllocator*);
     
     MarkedSpace& m_space;
     
     CString m_name;
-    AllocatorAttributes m_attributes;
+    CellAttributes m_attributes;
+
+    HeapCellType* m_heapCellType { nullptr };
+    AlignedMemoryAllocator* m_alignedMemoryAllocator { nullptr };
     
-    std::array<MarkedAllocator*, MarkedSpace::numSizeClasses> m_allocatorForSizeStep;
-    MarkedAllocator* m_firstAllocator { nullptr };
+    BlockDirectory* m_firstDirectory { nullptr };
+    BlockDirectory* m_directoryForEmptyAllocation { nullptr }; // Uses the MarkedSpace linked list of blocks.
     SentinelLinkedList<LargeAllocation, BasicRawSentinelNode<LargeAllocation>> m_largeAllocations;
+    Subspace* m_nextSubspaceInAlignedMemoryAllocator { nullptr };
 };
-
-ALWAYS_INLINE MarkedAllocator* Subspace::tryAllocatorFor(size_t size)
-{
-    if (size <= MarkedSpace::largeCutoff)
-        return m_allocatorForSizeStep[MarkedSpace::sizeClassToIndex(size)];
-    return nullptr;
-}
-
-ALWAYS_INLINE MarkedAllocator* Subspace::allocatorFor(size_t size)
-{
-    if (size <= MarkedSpace::largeCutoff) {
-        if (MarkedAllocator* result = m_allocatorForSizeStep[MarkedSpace::sizeClassToIndex(size)])
-            return result;
-        return allocatorForSlow(size);
-    }
-    return nullptr;
-}
 
 } // namespace JSC
 

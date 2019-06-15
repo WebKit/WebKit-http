@@ -40,19 +40,18 @@
 #include "IDBTransactionInfo.h"
 #include "IDBValue.h"
 #include "Logging.h"
-#include "ScopeGuard.h"
 #include "SerializedScriptValue.h"
 #include "UniqueIDBDatabaseConnection.h"
-#include <heap/HeapInlines.h>
-#include <heap/StrongInlines.h>
-#include <runtime/AuxiliaryBarrierInlines.h>
-#include <runtime/StructureInlines.h>
+#include <JavaScriptCore/AuxiliaryBarrierInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/StrongInlines.h>
+#include <JavaScriptCore/StructureInlines.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
-
-using namespace JSC;
+#include <wtf/Scope.h>
 
 namespace WebCore {
+using namespace JSC;
 namespace IDBServer {
 
 UniqueIDBDatabase::UniqueIDBDatabase(IDBServer& server, const IDBDatabaseIdentifier& identifier)
@@ -153,7 +152,7 @@ void UniqueIDBDatabase::performCurrentOpenOperation()
     // 3.3.1 Opening a database
     // If the database version higher than the requested version, abort these steps and return a VersionError.
     if (requestedVersion < m_databaseInfo->version()) {
-        auto result = IDBResultData::error(m_currentOpenDBRequest->requestData().requestIdentifier(), IDBError(IDBDatabaseException::VersionError));
+        auto result = IDBResultData::error(m_currentOpenDBRequest->requestData().requestIdentifier(), IDBError(VersionError));
         m_currentOpenDBRequest->connection().didOpenDatabase(result);
         m_currentOpenDBRequest = nullptr;
 
@@ -274,7 +273,11 @@ void UniqueIDBDatabase::scheduleShutdownForClose()
 {
     ASSERT(isMainThread());
 
+    m_operationAndTransactionTimer.stop();
+
+    RELEASE_ASSERT(!m_owningPointerForClose);
     m_owningPointerForClose = m_server.closeAndTakeUniqueIDBDatabase(*this);
+
     postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::shutdownForClose));
 }
 
@@ -331,17 +334,6 @@ void UniqueIDBDatabase::didDeleteBackingStore(uint64_t deletedVersion)
     }
 
     m_deleteBackingStoreInProgress = false;
-
-    if (m_clientClosePendingDatabaseConnections.isEmpty() && m_pendingOpenDBRequests.isEmpty()) {
-        // This UniqueIDBDatabase is now ready to be deleted.
-        ASSERT(m_databaseQueue.isEmpty());
-        ASSERT(m_databaseReplyQueue.isEmpty());
-        m_databaseQueue.kill();
-        m_databaseReplyQueue.kill();
-        callOnMainThread([owningRef = m_server.closeAndTakeUniqueIDBDatabase(*this)]{ });
-        return;
-    }
-
     invokeOperationAndTransactionTimer();
 }
 
@@ -688,7 +680,7 @@ void UniqueIDBDatabase::deleteObjectStore(UniqueIDBDatabaseTransaction& transact
 
     auto* info = m_databaseInfo->infoForExistingObjectStore(objectStoreName);
     if (!info) {
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to delete non-existant object store") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to delete non-existant object store"_s });
         return;
     }
 
@@ -729,7 +721,7 @@ void UniqueIDBDatabase::renameObjectStore(UniqueIDBDatabaseTransaction& transact
 
     auto* info = m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
     if (!info) {
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to rename non-existant object store") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to rename non-existant object store"_s });
         return;
     }
 
@@ -838,13 +830,13 @@ void UniqueIDBDatabase::deleteIndex(UniqueIDBDatabaseTransaction& transaction, u
 
     auto* objectStoreInfo = m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
     if (!objectStoreInfo) {
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to delete index from non-existant object store") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to delete index from non-existant object store"_s });
         return;
     }
 
     auto* indexInfo = objectStoreInfo->infoForExistingIndex(indexName);
     if (!indexInfo) {
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to delete non-existant index") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to delete non-existant index"_s });
         return;
     }
 
@@ -888,13 +880,13 @@ void UniqueIDBDatabase::renameIndex(UniqueIDBDatabaseTransaction& transaction, u
 
     auto* objectStoreInfo = m_databaseInfo->infoForExistingObjectStore(objectStoreIdentifier);
     if (!objectStoreInfo) {
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to rename index in non-existant object store") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to rename index in non-existant object store"_s });
         return;
     }
 
     auto* indexInfo = objectStoreInfo->infoForExistingIndex(indexIdentifier);
     if (!indexInfo) {
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to rename non-existant index") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to rename non-existant index"_s });
         return;
     }
 
@@ -972,15 +964,18 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
 
     auto* objectStoreInfo = m_backingStore->infoForObjectStore(objectStoreIdentifier);
     if (!objectStoreInfo) {
-        error = IDBError(IDBDatabaseException::InvalidStateError, ASCIILiteral("Object store cannot be found in the backing store"));
+        error = IDBError(InvalidStateError, "Object store cannot be found in the backing store"_s);
         postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, error, usedKey));
         return;
     }
 
     bool usedKeyIsGenerated = false;
-    ScopeGuard generatedKeyResetter;
+    uint64_t keyNumber;
+    auto generatedKeyResetter = WTF::makeScopeExit([this, transactionIdentifier, objectStoreIdentifier, &keyNumber, &usedKeyIsGenerated]() {
+        if (usedKeyIsGenerated)
+            m_backingStore->revertGeneratedKeyNumber(transactionIdentifier, objectStoreIdentifier, keyNumber);
+    });
     if (objectStoreInfo->autoIncrement() && !keyData.isValid()) {
-        uint64_t keyNumber;
         error = m_backingStore->generateKeyNumber(transactionIdentifier, objectStoreIdentifier, keyNumber);
         if (!error.isNull()) {
             postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, error, usedKey));
@@ -989,9 +984,6 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
         
         usedKey.setNumberValue(keyNumber);
         usedKeyIsGenerated = true;
-        generatedKeyResetter.enable([this, transactionIdentifier, objectStoreIdentifier, keyNumber]() {
-            m_backingStore->revertGeneratedKeyNumber(transactionIdentifier, objectStoreIdentifier, keyNumber);
-        });
     } else
         usedKey = keyData;
 
@@ -999,7 +991,7 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
         bool keyExists;
         error = m_backingStore->keyExistsInObjectStore(transactionIdentifier, objectStoreIdentifier, usedKey, keyExists);
         if (error.isNull() && keyExists)
-            error = IDBError(IDBDatabaseException::ConstraintError, ASCIILiteral("Key already exists in the object store"));
+            error = IDBError(ConstraintError, "Key already exists in the object store"_s);
 
         if (!error.isNull()) {
             postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, error, usedKey));
@@ -1018,18 +1010,18 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
 
         auto value = deserializeIDBValueToJSValue(databaseThreadExecState(), originalRecordValue.data());
         if (value.isUndefined()) {
-            postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(IDBDatabaseException::ConstraintError, ASCIILiteral("Unable to deserialize record value for record key injection")), usedKey));
+            postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(ConstraintError, "Unable to deserialize record value for record key injection"_s), usedKey));
             return;
         }
 
         if (!injectIDBKeyIntoScriptValue(databaseThreadExecState(), usedKey, value, objectStoreInfo->keyPath().value())) {
-            postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(IDBDatabaseException::ConstraintError, ASCIILiteral("Unable to inject record key into record value")), usedKey));
+            postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(ConstraintError, "Unable to inject record key into record value"_s), usedKey));
             return;
         }
 
         auto serializedValue = SerializedScriptValue::create(databaseThreadExecState(), value);
         if (UNLIKELY(scope.exception())) {
-            postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(IDBDatabaseException::ConstraintError, ASCIILiteral("Unable to serialize record value after injecting record key")), usedKey));
+            postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, IDBError(ConstraintError, "Unable to serialize record value after injecting record key"_s), usedKey));
             return;
         }
 
@@ -1059,7 +1051,7 @@ void UniqueIDBDatabase::performPutOrAdd(uint64_t callbackIdentifier, const IDBRe
     if (overwriteMode != IndexedDB::ObjectStoreOverwriteMode::OverwriteForCursor && objectStoreInfo->autoIncrement() && keyData.type() == IndexedDB::KeyType::Number)
         error = m_backingStore->maybeUpdateKeyGeneratorNumber(transactionIdentifier, objectStoreIdentifier, keyData.number());
 
-    generatedKeyResetter.disable();
+    generatedKeyResetter.release();
     postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformPutOrAdd, callbackIdentifier, error, usedKey));
 }
 
@@ -1310,7 +1302,7 @@ void UniqueIDBDatabase::commitTransaction(UniqueIDBDatabaseTransaction& transact
     ASSERT(isMainThread());
     LOG(IndexedDB, "(main) UniqueIDBDatabase::commitTransaction - %s", transaction.info().identifier().loggingString().utf8().data());
 
-    ASSERT(&transaction.databaseConnection().database() == this);
+    ASSERT(transaction.databaseConnection().database() == this);
 
     uint64_t callbackID = storeCallbackOrFireError(WTFMove(callback));
     if (!callbackID)
@@ -1323,7 +1315,7 @@ void UniqueIDBDatabase::commitTransaction(UniqueIDBDatabaseTransaction& transact
             return;
         }
 
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to commit transaction that is already finishing") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to commit transaction that is already finishing"_s });
         return;
     }
 
@@ -1354,7 +1346,7 @@ void UniqueIDBDatabase::abortTransaction(UniqueIDBDatabaseTransaction& transacti
     ASSERT(isMainThread());
     LOG(IndexedDB, "(main) UniqueIDBDatabase::abortTransaction - %s", transaction.info().identifier().loggingString().utf8().data());
 
-    ASSERT(&transaction.databaseConnection().database() == this);
+    ASSERT(transaction.databaseConnection().database() == this);
 
     uint64_t callbackID = storeCallbackOrFireError(WTFMove(callback));
     if (!callbackID)
@@ -1367,7 +1359,7 @@ void UniqueIDBDatabase::abortTransaction(UniqueIDBDatabaseTransaction& transacti
             return;
         }
 
-        performErrorCallback(callbackID, { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to abort transaction that is already finishing") });
+        performErrorCallback(callbackID, IDBError { UnknownError, "Attempt to abort transaction that is already finishing"_s });
         return;
     }
 
@@ -1542,6 +1534,7 @@ void UniqueIDBDatabase::invokeOperationAndTransactionTimer()
 {
     LOG(IndexedDB, "UniqueIDBDatabase::invokeOperationAndTransactionTimer()");
     ASSERT(!m_hardClosedForUserDelete);
+    ASSERT(!m_owningPointerForClose);
 
     if (!m_operationAndTransactionTimer.isActive())
         m_operationAndTransactionTimer.startOneShot(0_s);
@@ -1742,8 +1735,6 @@ void UniqueIDBDatabase::postDatabaseTask(CrossThreadTask&& task)
 
 void UniqueIDBDatabase::postDatabaseTaskReply(CrossThreadTask&& task)
 {
-    ASSERT(!isMainThread());
-
     m_databaseReplyQueue.append(WTFMove(task));
     m_server.postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::executeNextDatabaseTaskReply));
 }
@@ -1777,6 +1768,10 @@ void UniqueIDBDatabase::executeNextDatabaseTaskReply()
 void UniqueIDBDatabase::maybeFinishHardClose()
 {
     if (m_owningPointerForClose && isDoneWithHardClose()) {
+        if (m_owningPointerReleaseScheduled)
+            return;
+        m_owningPointerReleaseScheduled = true;
+
         callOnMainThread([this] {
             ASSERT(isDoneWithHardClose());
             m_owningPointerForClose = nullptr;
@@ -1805,9 +1800,7 @@ void UniqueIDBDatabase::immediateCloseForUserDelete()
     ASSERT(isMainThread());
 
     // Error out all transactions
-    Vector<IDBResourceIdentifier> inProgressIdentifiers;
-    copyKeysToVector(m_inProgressTransactions, inProgressIdentifiers);
-    for (auto& identifier : inProgressIdentifiers)
+    for (auto& identifier : copyToVector(m_inProgressTransactions.keys()))
         m_inProgressTransactions.get(identifier)->abortWithoutCallback();
 
     ASSERT(m_inProgressTransactions.isEmpty());
@@ -1817,28 +1810,20 @@ void UniqueIDBDatabase::immediateCloseForUserDelete()
     m_objectStoreWriteTransactions.clear();
 
     // Error out all pending callbacks
-    Vector<uint64_t> callbackIdentifiers;
     IDBError error = IDBError::userDeleteError();
     IDBKeyData keyData;
     IDBGetResult getResult;
 
-    copyKeysToVector(m_errorCallbacks, callbackIdentifiers);
-    for (auto identifier : callbackIdentifiers)
+    for (auto identifier : copyToVector(m_errorCallbacks.keys()))
         performErrorCallback(identifier, error);
 
-    callbackIdentifiers.clear();
-    copyKeysToVector(m_keyDataCallbacks, callbackIdentifiers);
-    for (auto identifier : callbackIdentifiers)
+    for (auto identifier : copyToVector(m_keyDataCallbacks.keys()))
         performKeyDataCallback(identifier, error, keyData);
 
-    callbackIdentifiers.clear();
-    copyKeysToVector(m_getResultCallbacks, callbackIdentifiers);
-    for (auto identifier : callbackIdentifiers)
+    for (auto identifier : copyToVector(m_getResultCallbacks.keys()))
         performGetResultCallback(identifier, error, getResult);
 
-    callbackIdentifiers.clear();
-    copyKeysToVector(m_countCallbacks, callbackIdentifiers);
-    for (auto identifier : callbackIdentifiers)
+    for (auto identifier : copyToVector(m_countCallbacks.keys()))
         performCountCallback(identifier, error, 0);
 
     // Error out all IDBOpenDBRequests
@@ -1853,7 +1838,7 @@ void UniqueIDBDatabase::immediateCloseForUserDelete()
     m_pendingOpenDBRequests.clear();
 
     // Close all open connections
-    ListHashSet<RefPtr<UniqueIDBDatabaseConnection>> openDatabaseConnections = m_openDatabaseConnections;
+    auto openDatabaseConnections = m_openDatabaseConnections;
     for (auto& connection : openDatabaseConnections)
         connectionClosedFromServer(*connection);
 
@@ -1864,11 +1849,15 @@ void UniqueIDBDatabase::immediateCloseForUserDelete()
     // database connections confirm that they have closed.
     m_hardClosedForUserDelete = true;
 
-    // Remove this UniqueIDBDatabase from the IDBServer's set of open databases, and let it own itself.
-    // It will dispatch back to the main thread later to finalize deleting itself.
-    m_owningPointerForClose = m_server.closeAndTakeUniqueIDBDatabase(*this);
+    // If this database already owns itself, it is already closing on the background thread.
+    // After that close completes, the next database thread task will be "delete all currently closed databases"
+    // which will also cover this database.
+    if (m_owningPointerForClose)
+        return;
 
-    // Have the database unconditionally delete itself on the database task queue.
+    // Otherwise, this database is still potentially active.
+    // So we'll have it own itself and then perform a clean unconditional delete on the background thread.
+    m_owningPointerForClose = m_server.closeAndTakeUniqueIDBDatabase(*this);
     postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performUnconditionalDeleteBackingStore));
 }
 

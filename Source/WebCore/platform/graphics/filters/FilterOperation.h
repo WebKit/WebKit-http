@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FilterOperation_h
-#define FilterOperation_h
+#pragma once
 
 #include "Color.h"
 #include "LayoutSize.h"
@@ -45,6 +44,7 @@ namespace WebCore {
 class CachedResourceLoader;
 class CachedSVGDocumentReference;
 class FilterEffect;
+struct FloatComponents;
 struct ResourceLoaderOptions;
 
 class FilterOperation : public RefCounted<FilterOperation> {
@@ -56,6 +56,7 @@ public:
         SATURATE,
         HUE_ROTATE,
         INVERT,
+        APPLE_INVERT_LIGHTNESS,
         OPACITY,
         BRIGHTNESS,
         CONTRAST,
@@ -66,7 +67,7 @@ public:
         NONE
     };
 
-    virtual ~FilterOperation() { }
+    virtual ~FilterOperation() = default;
 
     virtual Ref<FilterOperation> clone() const = 0;
 
@@ -75,15 +76,11 @@ public:
 
     virtual RefPtr<FilterOperation> blend(const FilterOperation* /*from*/, double /*progress*/, bool /*blendToPassthrough*/ = false)
     {
-        ASSERT(!blendingNeedsRendererSize());
         return nullptr;
     }
-
-    virtual RefPtr<FilterOperation> blend(const FilterOperation* /*from*/, double /*progress*/, const LayoutSize&, bool /*blendToPassthrough*/ = false)
-    {
-        ASSERT(blendingNeedsRendererSize());
-        return nullptr;
-    }
+    
+    virtual bool transformColor(FloatComponents&) const { return false; }
+    virtual bool inverseTransformColor(FloatComponents&) const { return false; }
 
     OperationType type() const { return m_type; }
 
@@ -101,12 +98,10 @@ public:
 
     // True if the alpha channel of any pixel can change under this operation.
     virtual bool affectsOpacity() const { return false; }
-    // True if the the value of one pixel can affect the value of another pixel under this operation, such as blur.
+    // True if the value of one pixel can affect the value of another pixel under this operation, such as blur.
     virtual bool movesPixels() const { return false; }
     // True if the filter should not be allowed to work on content that is not available from this security origin.
     virtual bool shouldBeRestrictedBySecurityOrigin() const { return false; }
-    // True if the filter needs the size of the box in order to calculate the animations.
-    virtual bool blendingNeedsRendererSize() const { return false; }
 
 protected:
     FilterOperation(OperationType type)
@@ -175,11 +170,10 @@ public:
     }
     virtual ~ReferenceFilterOperation();
 
-    Ref<FilterOperation> clone() const override
+    Ref<FilterOperation> clone() const final
     {
         // Reference filters cannot be cloned.
         RELEASE_ASSERT_NOT_REACHED();
-        return *static_cast<FilterOperation*>(nullptr);
     }
 
     bool affectsOpacity() const override { return true; }
@@ -238,6 +232,8 @@ private:
     {
     }
 
+    bool transformColor(FloatComponents&) const override;
+
     double m_amount;
 };
 
@@ -271,7 +267,35 @@ private:
     {
     }
 
+    bool transformColor(FloatComponents&) const override;
+
     double m_amount;
+};
+
+class WEBCORE_EXPORT InvertLightnessFilterOperation : public FilterOperation {
+public:
+    static Ref<InvertLightnessFilterOperation> create()
+    {
+        return adoptRef(*new InvertLightnessFilterOperation());
+    }
+
+    Ref<FilterOperation> clone() const final
+    {
+        return adoptRef(*new InvertLightnessFilterOperation());
+    }
+
+    RefPtr<FilterOperation> blend(const FilterOperation* from, double progress, bool blendToPassthrough = false) override;
+
+private:
+    bool operator==(const FilterOperation&) const final;
+
+    InvertLightnessFilterOperation()
+        : FilterOperation(APPLE_INVERT_LIGHTNESS)
+    {
+    }
+
+    bool transformColor(FloatComponents&) const final;
+    bool inverseTransformColor(FloatComponents&) const final;
 };
 
 class WEBCORE_EXPORT BlurFilterOperation : public FilterOperation {
@@ -344,7 +368,7 @@ private:
     Color m_color;
 };
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const FilterOperation&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FilterOperation&);
 
 } // namespace WebCore
 
@@ -358,7 +382,7 @@ SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(PassthroughFilterOperation, type() == Web
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(ReferenceFilterOperation, type() == WebCore::FilterOperation::REFERENCE)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BasicColorMatrixFilterOperation, isBasicColorMatrixFilterOperation())
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BasicComponentTransferFilterOperation, isBasicComponentTransferFilterOperation())
+SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(InvertLightnessFilterOperation, type() == WebCore::FilterOperation::APPLE_INVERT_LIGHTNESS)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(BlurFilterOperation, type() == WebCore::FilterOperation::BLUR)
 SPECIALIZE_TYPE_TRAITS_FILTEROPERATION(DropShadowFilterOperation, type() == WebCore::FilterOperation::DROP_SHADOW)
 
-#endif // FilterOperation_h

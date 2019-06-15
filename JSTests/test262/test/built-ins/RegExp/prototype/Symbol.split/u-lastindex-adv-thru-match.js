@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-description:
+description: >
     lastIndex is advanced according to width of astral symbols following match success
 es6id: 21.2.5.11
-info: >
+info: |
     21.2.5.11 RegExp.prototype [ @@split ] ( string, limit )
 
     [...]

@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007-2008, 2016 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003-2018 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -30,10 +30,16 @@ namespace JSC {
 class RegExpPrototype;
 class GetterSetter;
 
-class RegExpConstructor : public InternalFunction {
+class RegExpConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.regExpConstructorSpace;
+    }
 
     static RegExpConstructor* create(VM& vm, Structure* structure, RegExpPrototype* regExpPrototype, GetterSetter* species)
     {
@@ -44,7 +50,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
     DECLARE_INFO;
@@ -74,23 +80,13 @@ protected:
 private:
     RegExpConstructor(VM&, Structure*, RegExpPrototype*);
     static void destroy(JSCell*);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 
     RegExpCachedResult m_cachedResult;
     bool m_multiline;
     Vector<int> m_ovector;
 };
 
-RegExpConstructor* asRegExpConstructor(JSValue);
-
 JSObject* constructRegExp(ExecState*, JSGlobalObject*, const ArgList&, JSObject* callee = nullptr, JSValue newTarget = jsUndefined());
-
-inline RegExpConstructor* asRegExpConstructor(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), RegExpConstructor::info()));
-    return static_cast<RegExpConstructor*>(asObject(value));
-}
 
 /* 
    To facilitate result caching, exec(), test(), match(), search(), and replace() dipatch regular
@@ -142,7 +138,7 @@ ALWAYS_INLINE bool isRegExp(VM& vm, ExecState* exec, JSValue value)
     if (!matchValue.isUndefined())
         return matchValue.toBoolean(exec);
 
-    return object->inherits(vm, RegExpObject::info());
+    return object->inherits<RegExpObject>(vm);
 }
 
 EncodedJSValue JSC_HOST_CALL esSpecRegExpCreate(ExecState*);

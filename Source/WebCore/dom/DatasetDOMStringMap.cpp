@@ -27,7 +27,6 @@
 #include "DatasetDOMStringMap.h"
 
 #include "Element.h"
-#include "ExceptionCode.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/StringBuilder.h>
@@ -189,7 +188,7 @@ Vector<String> DatasetDOMStringMap::supportedPropertyNames() const
     return names;
 }
 
-std::optional<const AtomicString&> DatasetDOMStringMap::item(const String& propertyName) const
+const AtomicString* DatasetDOMStringMap::item(const String& propertyName) const
 {
     if (m_element.hasAttributes()) {
         AttributeIteratorAccessor attributeIteratorAccessor = m_element.attributesIterator();
@@ -199,28 +198,30 @@ std::optional<const AtomicString&> DatasetDOMStringMap::item(const String& prope
             // Building a new AtomicString in that case is overkill so we do a direct character comparison.
             const Attribute& attribute = *attributeIteratorAccessor.begin();
             if (propertyNameMatchesAttributeName(propertyName, attribute.localName()))
-                return attribute.value();
+                return &attribute.value();
         } else {
             AtomicString attributeName = convertPropertyNameToAttributeName(propertyName);
             for (const Attribute& attribute : attributeIteratorAccessor) {
                 if (attribute.localName() == attributeName)
-                    return attribute.value();
+                    return &attribute.value();
             }
         }
     }
 
-    return std::nullopt;
+    return nullptr;
 }
 
 String DatasetDOMStringMap::namedItem(const AtomicString& name) const
 {
-    return item(name).value_or(String { });
+    if (const auto* value = item(name))
+        return *value;
+    return String { };
 }
 
 ExceptionOr<void> DatasetDOMStringMap::setNamedItem(const String& name, const String& value)
 {
     if (!isValidPropertyName(name))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     return m_element.setAttribute(convertPropertyNameToAttributeName(name), value);
 }
 

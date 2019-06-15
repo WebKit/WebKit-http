@@ -7,9 +7,11 @@ description: >
     `try` block of a `try..catch` statement, `throw` should interrupt control
     flow as if a `throw` statement had appeared at that location in the
     function body.
+features: [generators]
 ---*/
 
 var unreachable = 0;
+
 function* g() {
   try {
     yield 1;
@@ -46,7 +48,9 @@ result = iter.throw(new Test262Error());
 assert.sameValue(result.value, 4, 'Fourth result `value`');
 assert.sameValue(result.done, false, 'Fourth result `done` flag');
 
-assert.throws(Test262Error, function() { iter.next(); });
+assert.throws(Test262Error, function() {
+  iter.next();
+});
 
 assert.sameValue(
   unreachable,

@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: TypedArrays sort does not cast values to String
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   When the TypedArray SortCompare abstract operation is called with two
@@ -15,12 +15,17 @@ info: >
     ...
   ...
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
-var origToString = Number.prototype.toString;
+var toStringCalled = false;
+Number.prototype.toString = function() {
+  toStringCalled = true;
+}
 
 testWithTypedArrayConstructors(function(TA) {
   var sample = new TA([20, 100, 3]);
   var result = sample.sort();
-  assert(compareArray(result, [3, 20, 100]));
+  assert.sameValue(toStringCalled, false, "Number.prototype.toString will not be called");
+  assert(compareArray(result, [3, 20, 100]), "Default sorting by value");
 });

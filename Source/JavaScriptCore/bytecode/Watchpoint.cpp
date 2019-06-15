@@ -49,10 +49,10 @@ Watchpoint::~Watchpoint()
     }
 }
 
-void Watchpoint::fire(const FireDetail& detail)
+void Watchpoint::fire(VM& vm, const FireDetail& detail)
 {
     RELEASE_ASSERT(!isOnList());
-    fireInternal(detail);
+    fireInternal(vm, detail);
 }
 
 WatchpointSet::WatchpointSet(WatchpointState state)
@@ -92,6 +92,16 @@ void WatchpointSet::fireAllSlow(VM& vm, const FireDetail& detail)
     WTF::storeStoreFence();
 }
 
+void WatchpointSet::fireAllSlow(VM&, DeferredWatchpointFire* deferredWatchpoints)
+{
+    ASSERT(state() == IsWatched);
+
+    WTF::storeStoreFence();
+    deferredWatchpoints->takeWatchpointsToFire(this);
+    m_state = IsInvalidated; // Do after moving watchpoints to deferredWatchpoints so deferredWatchpoints gets our current state.
+    WTF::storeStoreFence();
+}
+
 void WatchpointSet::fireAllSlow(VM& vm, const char* reason)
 {
     fireAllSlow(vm, StringFireDetail(reason));
@@ -127,10 +137,19 @@ void WatchpointSet::fireAllWatchpoints(VM& vm, const FireDetail& detail)
         ASSERT(m_set.begin() != watchpoint);
         ASSERT(!watchpoint->isOnList());
         
-        watchpoint->fire(detail);
+        watchpoint->fire(vm, detail);
         // After we fire the watchpoint, the watchpoint pointer may be a dangling pointer. That's
         // fine, because we have no use for the pointer anymore.
     }
+}
+
+void WatchpointSet::take(WatchpointSet* other)
+{
+    ASSERT(state() == ClearWatchpoint);
+    m_set.takeFrom(other->m_set);
+    m_setIsNotEmpty = other->m_setIsNotEmpty;
+    m_state = other->m_state;
+    other->m_setIsNotEmpty = false;
 }
 
 void InlineWatchpointSet::add(Watchpoint* watchpoint)
@@ -159,5 +178,48 @@ void InlineWatchpointSet::freeFat()
     fat()->deref();
 }
 
+DeferredWatchpointFire::DeferredWatchpointFire(VM& vm)
+    : m_vm(vm)
+    , m_watchpointsToFire(ClearWatchpoint)
+{
+}
+
+DeferredWatchpointFire::~DeferredWatchpointFire()
+{
+}
+
+void DeferredWatchpointFire::fireAll()
+{
+    if (m_watchpointsToFire.state() == IsWatched)
+        m_watchpointsToFire.fireAll(m_vm, *this);
+}
+
+void DeferredWatchpointFire::takeWatchpointsToFire(WatchpointSet* watchpointsToFire)
+{
+    ASSERT(m_watchpointsToFire.state() == ClearWatchpoint);
+    ASSERT(watchpointsToFire->state() == IsWatched);
+    m_watchpointsToFire.take(watchpointsToFire);
+}
+
 } // namespace JSC
+
+namespace WTF {
+
+void printInternal(PrintStream& out, JSC::WatchpointState state)
+{
+    switch (state) {
+    case JSC::ClearWatchpoint:
+        out.print("ClearWatchpoint");
+        return;
+    case JSC::IsWatched:
+        out.print("IsWatched");
+        return;
+    case JSC::IsInvalidated:
+        out.print("IsInvalidated");
+        return;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+} // namespace WTF
 

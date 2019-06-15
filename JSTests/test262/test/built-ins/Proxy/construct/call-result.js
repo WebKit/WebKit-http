@@ -4,19 +4,21 @@
 es6id: 9.5.14
 description: >
     Return the result from the trap method.
-info: >
+info: |
     [[Construct]] ( argumentsList, newTarget)
 
     12. Return newObj
 ---*/
 
 function Target(a, b) {
-    this.sum = a + b;
+  this.sum = a + b;
 };
 var handler = {
-    construct: function(t, c, args) {
-        return { sum: 42 };
-    }
+  construct: function(t, c, args) {
+    return {
+      sum: 42
+    };
+  }
 };
 var P = new Proxy(Target, handler);
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +26,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "FloatPoint.h"
 #include "SVGMatrix.h"
 #include "SVGPropertyTearOff.h"
@@ -40,11 +40,6 @@ public:
     }
 
     static Ref<SVGPoint> create(const FloatPoint& initialValue = { })
-    {
-        return adoptRef(*new SVGPoint(initialValue));
-    }
-
-    static Ref<SVGPoint> create(const FloatPoint* initialValue)
     {
         return adoptRef(*new SVGPoint(initialValue));
     }
@@ -64,7 +59,7 @@ public:
     ExceptionOr<void> setX(float xValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setX(xValue);
         commitChange();
@@ -80,7 +75,7 @@ public:
     ExceptionOr<void> setY(float xValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setY(xValue);
         commitChange();
@@ -91,7 +86,7 @@ public:
     ExceptionOr<Ref<SVGPoint>> matrixTransform(SVGMatrix& matrix)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto newPoint = propertyReference().matrixTransform(matrix.propertyReference());
         commitChange();
@@ -111,11 +106,6 @@ protected:
     }
 
     explicit SVGPoint(const FloatPoint& initialValue)
-        : SVGPropertyTearOff<FloatPoint>(initialValue)
-    {
-    }
-
-    explicit SVGPoint(const FloatPoint* initialValue)
         : SVGPropertyTearOff<FloatPoint>(initialValue)
     {
     }

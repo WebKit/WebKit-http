@@ -72,9 +72,9 @@
 #ifndef PODRedBlackTree_h
 #define PODRedBlackTree_h
 
-#include "ValueToString.h"
 #include <wtf/Assertions.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/text/ValueToString.h>
 #ifndef NDEBUG
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
@@ -93,7 +93,7 @@ public:
     public:
         virtual void visit(const T& data) = 0;
     protected:
-        virtual ~Visitor() { }
+        virtual ~Visitor() = default;
     };
 
     PODRedBlackTree()
@@ -205,7 +205,7 @@ public:
         {
         }
 
-        virtual ~Node() { }
+        virtual ~Node() = default;
 
         Color color() const { return m_color; }
         void setColor(Color color) { m_color = color; }

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # Copyright (C) 2010 Chris Jerdonek (chris.jerdonek@gmail.com)
 # Copyright (C) 2012 Daniel Bates (dbates@intudata.com)
@@ -265,6 +265,47 @@ END
 },
 "\n"],
     expectedNextLine => "Property changes on: test_file.swf\n",
+},
+####
+#    Empty file test cases
+##
+{
+    # New test
+    diffName => "add an empty file",
+    inputText => <<'END',
+Index: empty_file_that_should_never_exist
+===================================================================
+END
+    expectedReturn => [
+{
+    svnConvertedText => <<'END',
+Index: empty_file_that_should_never_exist
+===================================================================
+END
+    indexPath => "empty_file_that_should_never_exist",
+    isNew => 1,
+},
+undef],
+    expectedNextLine => undef,
+},
+{
+    # New test
+    diffName => "delete an empty file",
+    inputText => <<'END',
+Index: Tools/Scripts/webkitperl/VCSUtils_unittest/resources/empty.txt
+===================================================================
+END
+    expectedReturn => [
+{
+    svnConvertedText => <<'END',
+Index: Tools/Scripts/webkitperl/VCSUtils_unittest/resources/empty.txt
+===================================================================
+END
+    indexPath => "Tools/Scripts/webkitperl/VCSUtils_unittest/resources/empty.txt",
+    isDeletion => 1,
+},
+undef],
+    expectedNextLine => undef,
 },
 );
 

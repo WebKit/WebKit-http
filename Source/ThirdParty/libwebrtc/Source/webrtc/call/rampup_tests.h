@@ -8,17 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_CALL_RAMPUP_TESTS_H_
-#define WEBRTC_CALL_RAMPUP_TESTS_H_
+#ifndef CALL_RAMPUP_TESTS_H_
+#define CALL_RAMPUP_TESTS_H_
 
 #include <map>
 #include <string>
 #include <vector>
 
-#include "webrtc/base/event.h"
-#include "webrtc/call/call.h"
-#include "webrtc/logging/rtc_event_log/rtc_event_log.h"
-#include "webrtc/test/call_test.h"
+#include "call/call.h"
+#include "logging/rtc_event_log/rtc_event_log.h"
+#include "rtc_base/event.h"
+#include "test/call_test.h"
 
 namespace webrtc {
 
@@ -62,7 +62,6 @@ class RampUpTester : public test::EndToEndTest {
                     const std::string& units) const;
   void TriggerTestDone();
 
-  webrtc::RtcEventLogNullImpl event_log_;
   rtc::Event stop_event_;
   Clock* const clock_;
   FakeNetworkPipe::Config forward_transport_config_;
@@ -80,11 +79,13 @@ class RampUpTester : public test::EndToEndTest {
   typedef std::map<uint32_t, uint32_t> SsrcMap;
   class VideoStreamFactory;
 
-  Call::Config GetSenderCallConfig() override;
+  void ModifySenderCallConfig(Call::Config* config) override;
   void OnVideoStreamsCreated(
       VideoSendStream* send_stream,
       const std::vector<VideoReceiveStream*>& receive_streams) override;
-  test::PacketTransport* CreateSendTransport(Call* sender_call) override;
+  test::PacketTransport* CreateSendTransport(
+      test::SingleThreadedTaskQueueForTesting* task_queue,
+      Call* sender_call) override;
   void ModifyVideoConfigs(
       VideoSendStream::Config* send_config,
       std::vector<VideoReceiveStream::Config>* receive_configs,
@@ -137,7 +138,7 @@ class RampUpDownUpTester : public RampUpTester {
     kTransitionToNextState,
   };
 
-  Call::Config GetReceiverCallConfig() override;
+  void ModifyReceiverCallConfig(Call::Config* config);
 
   std::string GetModifierString() const;
   int GetExpectedHighBitrate() const;
@@ -155,4 +156,4 @@ class RampUpDownUpTester : public RampUpTester {
   std::vector<int> loss_rates_;
 };
 }  // namespace webrtc
-#endif  // WEBRTC_CALL_RAMPUP_TESTS_H_
+#endif  // CALL_RAMPUP_TESTS_H_

@@ -26,20 +26,19 @@
 #pragma once
 
 #include "JSObject.h"
+#include "WeakMapImpl.h"
 
 namespace JSC {
 
-class WeakMapData;
-
-class JSWeakMap : public JSNonFinalObject {
+class JSWeakMap final : public WeakMapImpl<WeakMapBucket<WeakMapBucketDataKeyValue>> {
 public:
-    typedef JSNonFinalObject Base;
+    using Base = WeakMapImpl<WeakMapBucket<WeakMapBucketDataKeyValue>>;
 
     DECLARE_EXPORT_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(JSWeakMapType, StructureFlags), info());
     }
 
     static JSWeakMap* create(VM& vm, Structure* structure)
@@ -49,19 +48,10 @@ public:
         return instance;
     }
 
-    static JSWeakMap* create(ExecState* exec, Structure* structure)
+    ALWAYS_INLINE void set(VM& vm, JSObject* key, JSValue value)
     {
-        return create(exec->vm(), structure);
+        add(vm, key, value);
     }
-
-    WeakMapData* weakMapData() { return m_weakMapData.get(); }
-
-    JSValue get(CallFrame*, JSObject*);
-    bool has(CallFrame*, JSObject*);
-    bool remove(CallFrame*, JSObject*);
-
-    void set(CallFrame*, JSObject*, JSValue);
-    void clear(CallFrame*);
 
 private:
     JSWeakMap(VM& vm, Structure* structure)
@@ -69,11 +59,9 @@ private:
     {
     }
 
-    void finishCreation(VM&);
-    static void visitChildren(JSCell*, SlotVisitor&);
     static String toStringName(const JSObject*, ExecState*);
-
-    WriteBarrier<WeakMapData> m_weakMapData;
 };
+
+static_assert(std::is_final<JSWeakMap>::value, "Required for JSType based casting");
 
 } // namespace JSC

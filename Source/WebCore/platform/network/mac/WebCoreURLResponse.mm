@@ -31,7 +31,7 @@
 
 #import "MIMETypeRegistry.h"
 #import "UTIUtilities.h"
-#import "WebCoreSystemInterface.h"
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/Assertions.h>
 #import <wtf/RetainPtr.h>
 
@@ -294,7 +294,7 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
 
     if (!result) {
         auto url = CFURLResponseGetURL(cfResponse);
-        if ([(NSURL *)url isFileURL]) {
+        if ([(__bridge NSURL *)url isFileURL]) {
             RetainPtr<CFStringRef> extension = adoptCF(CFURLCopyPathExtension(url));
             if (extension) {
                 // <rdar://problem/7007389> CoreTypes UTI map is missing 100+ file extensions that GateKeeper knew about
@@ -303,13 +303,15 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
                 CFMutableStringRef mutableExtension = CFStringCreateMutableCopy(kCFAllocatorDefault, 0, extension.get());
                 CFStringLowercase(mutableExtension, NULL);
                 extension = adoptCF(mutableExtension);
-                result = (CFStringRef) CFDictionaryGetValue(extensionMap, extension.get());
+                result = (CFStringRef)CFDictionaryGetValue(extensionMap, extension.get());
                 
                 if (!result) {
                     // If the Gatekeeper-based map doesn't have a MIME type, we'll try to figure out what it should be by
                     // looking up the file extension in the UTI maps.
                     RetainPtr<CFStringRef> uti = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, extension.get(), 0));
-                    result = mimeTypeFromUTITree(uti.get());
+                    String MIMEType = MIMETypeFromUTITree(uti.get());
+                    if (!MIMEType.isEmpty())
+                        result = MIMEType.createCFString();
                 }
             }
         }
@@ -325,13 +327,23 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
 }
 #endif
 
-#if !USE(CFURLCONNECTION)
+static bool schemeWasUpgradedDueToDynamicHSTS(NSURLRequest *request)
+{
+#if !USE(CFNETWORK_IGNORE_HSTS)
+    UNUSED_PARAM(request);
+    return false;
+#else
+    return [request respondsToSelector:@selector(_schemeWasUpgradedDueToDynamicHSTS)]
+        && [request _schemeWasUpgradedDueToDynamicHSTS];
+#endif
+}
+
 NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentRequest, NSURLRequest *newRequest, NSURLResponse *redirectResponse)
 {
     if (redirectResponse)
         return redirectResponse;
 
-    if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]])
+    if ([[[newRequest URL] scheme] isEqualToString:[[currentRequest URL] scheme]] && !schemeWasUpgradedDueToDynamicHSTS(newRequest))
         return nil;
 
     // If the new request is a different protocol than the current request, synthesize a redirect response.
@@ -339,6 +351,5 @@ NSURLResponse *synthesizeRedirectResponseIfNecessary(NSURLRequest *currentReques
     NSDictionary *synthesizedResponseHeaderFields = @{ @"Location": [[newRequest URL] absoluteString], @"Cache-Control": @"no-store" };
     return [[[NSHTTPURLResponse alloc] initWithURL:[currentRequest URL] statusCode:302 HTTPVersion:(NSString *)kCFHTTPVersion1_1 headerFields:synthesizedResponseHeaderFields] autorelease];
 }
-#endif
 
 }

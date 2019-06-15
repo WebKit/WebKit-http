@@ -34,7 +34,9 @@ import shlex
 import sys
 import time
 import os
+from collections import defaultdict
 
+from os.path import normpath
 from webkitpy.common.system import path
 from webkitpy.common.system.profiler import ProfilerFactory
 
@@ -118,6 +120,13 @@ class DriverOutput(object):
             self.error = re.sub(pattern[0], pattern[1], self.error)
 
 
+class DriverPostTestOutput(object):
+    """Groups data collected for a set of tests, collected after all those testse have run
+    (for example, data about leaked objects)"""
+    def __init__(self, world_leaks_dict):
+        self.world_leaks_dict = world_leaks_dict
+
+
 class Driver(object):
     """object for running test(s) using DumpRenderTree/WebKitTestRunner."""
 
@@ -167,7 +176,8 @@ class Driver(object):
             self._profiler = None
 
         self.web_platform_test_server_doc_root = self._port.web_platform_test_server_doc_root()
-        self.web_platform_test_server_base_url = self._port.web_platform_test_server_base_url()
+        self.web_platform_test_server_base_http_url = self._port.web_platform_test_server_base_http_url()
+        self.web_platform_test_server_base_https_url = self._port.web_platform_test_server_base_https_url()
 
     def __del__(self):
         self.stop()
@@ -240,6 +250,38 @@ class Driver(object):
             crashed_process_name=self._crashed_process_name,
             crashed_pid=self._crashed_pid, crash_log=crash_log, pid=pid)
 
+    def do_post_tests_work(self):
+        if not self._port.get_option('world_leaks'):
+            return None
+
+        if not self._server_process:
+            return None
+
+        _log.debug('Checking for world leaks...')
+        self._server_process.write('#CHECK FOR WORLD LEAKS\n')
+        deadline = time.time() + 20
+        block = self._read_block(deadline, '', wait_for_stderr_eof=True)
+
+        _log.debug('World leak result: %s' % (block.decoded_content))
+
+        return self._parse_world_leaks_output(block.decoded_content)
+
+    def _parse_world_leaks_output(self, output):
+        tests_with_world_leaks = defaultdict(list)
+
+        last_test = None
+        for line in output.splitlines():
+            m = re.match('^TEST: (.+)$', line)
+            if m:
+                last_test = self.uri_to_test(m.group(1))
+            m = re.match('^ABANDONED DOCUMENT: (.+)$', line)
+            if m:
+                leaked_document_url = m.group(1)
+                if last_test:
+                    tests_with_world_leaks[last_test].append(leaked_document_url)
+
+        return DriverPostTestOutput(tests_with_world_leaks)
+
     def _get_crash_log(self, stdout, stderr, newer_than):
         return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than, target_host=self._target_host)
 
@@ -266,22 +308,30 @@ class Driver(object):
     def is_web_platform_test(self, test_name):
         return test_name.startswith(self.web_platform_test_server_doc_root)
 
+    def wpt_test_path_to_uri(self, path):
+        return self.web_platform_test_server_base_https_url + path if ".https." in path else self.web_platform_test_server_base_http_url + path
+
+    def http_test_path_to_uri(self, path):
+        path = path.replace(os.sep, '/')
+        return self.http_base_url(secure=self.is_secure_path(path)) + path
+
+    def is_secure_path(self, path):
+        return path.startswith("ssl") or ".https." in path
+
+    def http_base_url(self, secure=None):
+        return "%s://127.0.0.1:%d/" % (('https', 8443) if secure else ('http', 8000))
+
     def test_to_uri(self, test_name):
         """Convert a test name to a URI."""
         if self.is_web_platform_test(test_name):
-            return self.web_platform_test_server_base_url + test_name[len(self.web_platform_test_server_doc_root):]
+            return self.wpt_test_path_to_uri(test_name[len(self.web_platform_test_server_doc_root):])
         if self.is_webkit_specific_web_platform_test(test_name):
-            return self.web_platform_test_server_base_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE + test_name[len(self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR):]
+            return self.wpt_test_path_to_uri(self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE + test_name[len(self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR):])
 
         if not self.is_http_test(test_name):
             return path.abspath_to_uri(self._port.host.platform, self._port.abspath_for_test(test_name))
 
-        relative_path = test_name[len(self.HTTP_DIR):]
-
-        # TODO(dpranke): remove the SSL reference?
-        if relative_path.startswith("ssl/"):
-            return "https://127.0.0.1:8443/" + relative_path
-        return "http://127.0.0.1:8000/" + relative_path
+        return self.http_test_path_to_uri(test_name[len(self.HTTP_DIR):])
 
     def uri_to_test(self, uri):
         """Return the base layout test name for a given URI.
@@ -296,14 +346,18 @@ class Driver(object):
             if not prefix.endswith('/'):
                 prefix += '/'
             return uri[len(prefix):]
-        if uri.startswith(self.web_platform_test_server_base_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE):
-            return uri.replace(self.web_platform_test_server_base_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE, self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR)
-        if uri.startswith(self.web_platform_test_server_base_url):
-            return uri.replace(self.web_platform_test_server_base_url, self.web_platform_test_server_doc_root)
+        if uri.startswith(self.web_platform_test_server_base_http_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE):
+            return uri.replace(self.web_platform_test_server_base_http_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE, self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR)
+        if uri.startswith(self.web_platform_test_server_base_https_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE):
+            return uri.replace(self.web_platform_test_server_base_https_url + self.WEBKIT_WEB_PLATFORM_TEST_SERVER_ROUTE, self.WEBKIT_SPECIFIC_WEB_PLATFORM_TEST_SUBDIR)
+        if uri.startswith(self.web_platform_test_server_base_http_url):
+            return uri.replace(self.web_platform_test_server_base_http_url, self.web_platform_test_server_doc_root)
+        if uri.startswith(self.web_platform_test_server_base_https_url):
+            return uri.replace(self.web_platform_test_server_base_https_url, self.web_platform_test_server_doc_root)
         if uri.startswith("http://"):
-            return uri.replace('http://127.0.0.1:8000/', self.HTTP_DIR)
+            return uri.replace(self.http_base_url(secure=False), self.HTTP_DIR)
         if uri.startswith("https://"):
-            return uri.replace('https://127.0.0.1:8443/', self.HTTP_DIR)
+            return uri.replace(self.http_base_url(secure=True), self.HTTP_DIR)
         raise NotImplementedError('unknown url type: %s' % uri)
 
     def has_crashed(self):
@@ -353,6 +407,11 @@ class Driver(object):
         environment['LOCAL_RESOURCE_ROOT'] = str(self._port.layout_tests_dir())
         environment['ASAN_OPTIONS'] = "allocator_may_return_null=1"
         environment['__XPC_ASAN_OPTIONS'] = environment['ASAN_OPTIONS']
+
+        # Disable vnode-guard related simulated crashes for WKTR / DRT (rdar://problem/40674034).
+        environment['SQLITE_EXEMPT_PATH_FROM_VNODE_GUARDS'] = os.path.realpath(environment['DUMPRENDERTREE_TEMP'])
+        environment['__XPC_SQLITE_EXEMPT_PATH_FROM_VNODE_GUARDS'] = environment['SQLITE_EXEMPT_PATH_FROM_VNODE_GUARDS']
+
         if self._profiler:
             environment = self._profiler.adjusted_environment(environment)
         return environment
@@ -413,10 +472,14 @@ class Driver(object):
             cmd.append('--accelerated-drawing')
         if self._port.get_option('remote_layer_tree'):
             cmd.append('--remote-layer-tree')
+        if self._port.get_option('world_leaks'):
+            cmd.append('--world-leaks')
         if self._port.get_option('threaded'):
             cmd.append('--threaded')
         if self._no_timeout:
             cmd.append('--no-timeout')
+        if self._port.get_option('show_touches'):
+            cmd.append('--show-touches')
 
         for allowed_host in self._port.allowed_hosts():
             cmd.append('--allowed-host')
@@ -479,7 +542,7 @@ class Driver(object):
         # FIXME: performance tests pass in full URLs instead of test names.
         if driver_input.test_name.startswith('http://') or driver_input.test_name.startswith('https://')  or driver_input.test_name == ('about:blank'):
             command = driver_input.test_name
-        elif self.is_web_platform_test(driver_input.test_name) or self.is_webkit_specific_web_platform_test(driver_input.test_name) or (self.is_http_test(driver_input.test_name) and (self._port.get_option('webkit_test_runner') or sys.platform == "cygwin")):
+        elif self.is_web_platform_test(driver_input.test_name) or self.is_webkit_specific_web_platform_test(driver_input.test_name) or self.is_http_test(driver_input.test_name):
             command = self.test_to_uri(driver_input.test_name)
             command += "'--absolutePath'"
             command += self._port.abspath_for_test(driver_input.test_name, self._target_host)
@@ -683,6 +746,9 @@ class DriverProxy(object):
             self._driver_cmd_line = cmd_line_key
 
         return self._driver.run_test(driver_input, stop_when_done)
+
+    def do_post_tests_work(self):
+        return self._driver.do_post_tests_work()
 
     def has_crashed(self):
         return self._driver.has_crashed()

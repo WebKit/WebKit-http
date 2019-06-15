@@ -36,7 +36,7 @@ namespace JSC {
 typedef enum { StrictJSON, NonStrictJSON, JSONP } ParserMode;
 
 enum JSONPPathEntryType {
-    JSONPPathEntryTypeDeclare, // var pathEntryName = JSON
+    JSONPPathEntryTypeDeclareVar, // var pathEntryName = JSON
     JSONPPathEntryTypeDot, // <prior entries>.pathEntryName = JSON
     JSONPPathEntryTypeLookup, // <prior entries>[pathIndex] = JSON
     JSONPPathEntryTypeCall // <prior entries>(JSON)
@@ -105,7 +105,7 @@ public:
             return String::format("JSON Parse error: %s", m_lexer.getErrorMessage().ascii().data());
         if (!m_parseErrorMessage.isEmpty())
             return String::format("JSON Parse error: %s", m_parseErrorMessage.ascii().data());
-        return ASCIILiteral("JSON Parse error: Unable to parse JSON string");
+        return "JSON Parse error: Unable to parse JSON string"_s;
     }
     
     JSValue tryLiteralParse()
@@ -172,10 +172,10 @@ private:
         
     private:
         String m_lexErrorMessage;
-        template <ParserMode mode> TokenType lex(LiteralParserToken<CharType>&);
+        TokenType lex(LiteralParserToken<CharType>&);
         ALWAYS_INLINE TokenType lexIdentifier(LiteralParserToken<CharType>&);
-        template <ParserMode mode, char terminator> ALWAYS_INLINE TokenType lexString(LiteralParserToken<CharType>&);
-        template <ParserMode mode, char terminator> TokenType lexStringSlow(LiteralParserToken<CharType>&, const CharType* runStart);
+        ALWAYS_INLINE TokenType lexString(LiteralParserToken<CharType>&, CharType terminator);
+        TokenType lexStringSlow(LiteralParserToken<CharType>&, const CharType* runStart, CharType terminator);
         ALWAYS_INLINE TokenType lexNumber(LiteralParserToken<CharType>&);
         LiteralParserToken<CharType> m_currentToken;
         ParserMode m_mode;

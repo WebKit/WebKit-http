@@ -25,8 +25,8 @@
 
 #pragma once
 
-#include <runtime/ArrayBuffer.h>
-#include <runtime/ArrayBufferView.h>
+#include <JavaScriptCore/ArrayBuffer.h>
+#include <JavaScriptCore/ArrayBufferView.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Variant.h>
 
@@ -46,14 +46,14 @@ public:
     const uint8_t* data() const
     {
         return WTF::visit([](auto& buffer) -> const uint8_t* {
-            return static_cast<const uint8_t*>(buffer->data());
+            return buffer ? static_cast<const uint8_t*>(buffer->data()) : nullptr;
         }, m_variant);
     }
 
     size_t length() const
     {
         return WTF::visit([](auto& buffer) -> size_t {
-            return buffer->byteLength();
+            return buffer ? buffer->byteLength() : 0;
         }, m_variant);
     }
 

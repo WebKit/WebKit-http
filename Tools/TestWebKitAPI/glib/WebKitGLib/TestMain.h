@@ -29,14 +29,11 @@
 #if PLATFORM(GTK)
 #include <webkit2/webkit2.h>
 #elif PLATFORM(WPE)
+#include "HeadlessViewBackend.h"
 #include <wpe/webkit.h>
 #endif
 
-#if PLATFORM(GTK)
-#define TEST_PATH_FORMAT "/webkit2/%s/%s"
-#elif PLATFORM(WPE)
-#define TEST_PATH_FORMAT "/wpe/%s/%s"
-#endif
+#define TEST_PATH_FORMAT "/webkit/%s/%s"
 
 #define MAKE_GLIB_TEST_FIXTURE(ClassName) \
     static void setUp(ClassName* fixture, gconstpointer data) \
@@ -56,15 +53,13 @@
 #define MAKE_GLIB_TEST_FIXTURE_WITH_SETUP_TEARDOWN(ClassName, setup, teardown) \
     static void setUp(ClassName* fixture, gconstpointer data) \
     { \
-        if (setup) \
-            setup(); \
+        setup(); \
         new (fixture) ClassName; \
     } \
     static void tearDown(ClassName* fixture, gconstpointer data) \
     { \
         fixture->~ClassName(); \
-        if (teardown) \
-            teardown(); \
+        teardown(); \
     } \
     static void add(const char* suiteName, const char* testName, void (*testFunc)(ClassName*, const void*)) \
     { \
@@ -144,6 +139,61 @@ public:
         webkit_web_context_set_web_extensions_initialization_user_data(m_webContext.get(), g_variant_new_uint32(++s_webExtensionID));
     }
 
+#if PLATFORM(WPE)
+    static WebKitWebViewBackend* createWebViewBackend()
+    {
+        auto* headlessBackend = new WPEToolingBackends::HeadlessViewBackend(800, 600);
+        return webkit_web_view_backend_new(headlessBackend->backend(), [](gpointer userData) {
+            delete static_cast<WPEToolingBackends::HeadlessViewBackend*>(userData);
+        }, headlessBackend);
+    }
+#endif
+
+    static WebKitWebView* createWebView()
+    {
+#if PLATFORM(GTK)
+        return WEBKIT_WEB_VIEW(webkit_web_view_new());
+#elif PLATFORM(WPE)
+        return webkit_web_view_new(createWebViewBackend());
+#endif
+    }
+
+    static WebKitWebView* createWebView(WebKitWebContext* context)
+    {
+#if PLATFORM(GTK)
+        return WEBKIT_WEB_VIEW(webkit_web_view_new_with_context(context));
+#elif PLATFORM(WPE)
+        return webkit_web_view_new_with_context(createWebViewBackend(), context);
+#endif
+    }
+
+    static WebKitWebView* createWebView(WebKitWebView* relatedView)
+    {
+#if PLATFORM(GTK)
+        return WEBKIT_WEB_VIEW(webkit_web_view_new_with_related_view(relatedView));
+#elif PLATFORM(WPE)
+        return webkit_web_view_new_with_related_view(createWebViewBackend(), relatedView);
+#endif
+    }
+
+    static WebKitWebView* createWebView(WebKitUserContentManager* contentManager)
+    {
+#if PLATFORM(GTK)
+        return WEBKIT_WEB_VIEW(webkit_web_view_new_with_user_content_manager(contentManager));
+#elif PLATFORM(WPE)
+        return webkit_web_view_new_with_user_content_manager(createWebViewBackend(), contentManager);
+#endif
+    }
+
+    static WebKitWebView* createWebView(WebKitSettings* settings)
+    {
+#if PLATFORM(GTK)
+        return WEBKIT_WEB_VIEW(webkit_web_view_new_with_settings(settings));
+#elif PLATFORM(WPE)
+        return webkit_web_view_new_with_settings(createWebViewBackend(), settings);
+#endif
+    }
+
     static void objectFinalized(Test* test, GObject* finalizedObject)
     {
         test->m_watchedObjects.remove(finalizedObject);
@@ -169,10 +219,11 @@ public:
             return resourcesDir.get();
         }
         case WebKit2Resources: {
-            GUniquePtr<char> resourcesDir(g_build_filename(WEBKIT_SRC_DIR, "Tools", "TestWebKitAPI", "Tests", "WebKit2", nullptr));
+            GUniquePtr<char> resourcesDir(g_build_filename(WEBKIT_SRC_DIR, "Tools", "TestWebKitAPI", "Tests", "WebKit", nullptr));
             return resourcesDir.get();
         }
         }
+        RELEASE_ASSERT_NOT_REACHED();
     }
 
     void addLogFatalFlag(unsigned flag)

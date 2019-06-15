@@ -24,6 +24,7 @@
 
 #include "HTMLFrameOwnerElement.h"
 #include "Image.h"
+#include "RenderEmbeddedObject.h"
 
 namespace JSC {
 namespace Bindings {
@@ -34,11 +35,11 @@ class Instance;
 namespace WebCore {
 
 class PluginReplacement;
-class RenderEmbeddedObject;
 class RenderWidget;
 class Widget;
 
 class HTMLPlugInElement : public HTMLFrameOwnerElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLPlugInElement);
 public:
     virtual ~HTMLPlugInElement();
 
@@ -82,7 +83,9 @@ public:
 
     bool isUserObservable() const;
 
-    WEBCORE_EXPORT bool isReplacementObscured(const String& unavailabilityDescription);
+    // Return whether or not the replacement content for blocked plugins is accessible to the user.
+    WEBCORE_EXPORT bool setReplacement(RenderEmbeddedObject::PluginUnavailabilityReason, const String& unavailabilityDescription);
+
     WEBCORE_EXPORT bool isReplacementObscured();
 
 protected:
@@ -98,7 +101,7 @@ protected:
 
     virtual bool requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    void didAddUserAgentShadowRoot(ShadowRoot*) override;
+    void didAddUserAgentShadowRoot(ShadowRoot&) override;
 
     // Subclasses should use guardedDispatchBeforeLoadEvent instead of calling dispatchBeforeLoadEvent directly.
     bool guardedDispatchBeforeLoadEvent(const String& sourceURL);
@@ -109,14 +112,14 @@ private:
     void swapRendererTimerFired();
     bool shouldOverridePlugin(const String& url, const String& mimeType);
 
-    bool dispatchBeforeLoadEvent(const String& sourceURL); // Not implemented, generates a compile error if subclasses call this by mistake.
+    bool dispatchBeforeLoadEvent(const String& sourceURL) = delete; // Generate a compile error if someone calls this by mistake.
 
     // This will load the plugin if necessary.
     virtual RenderWidget* renderWidgetLoadingPlugin() const = 0;
 
     bool supportsFocus() const override;
 
-    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    bool isKeyboardFocusable(KeyboardEvent*) const override;
     bool isPluginElement() const final;
 
     RefPtr<JSC::Bindings::Instance> m_instance;

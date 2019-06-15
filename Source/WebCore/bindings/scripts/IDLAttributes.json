@@ -31,8 +31,18 @@
         "CachedAttribute": {
             "contextsAllowed": ["attribute"]
         },
+        "CallTracingCallback": {
+            "contextsAllowed": ["interface", "attribute", "operation"],
+            "values": ["*"]
+        },
         "CallbackNeedsOperatorEqual": {
             "contextsAllowed": ["callback-function"]
+        },
+        "CallbackThisObject": {
+            "contextsAllowed": ["callback-function", "operation"]
+        },
+        "CallNamedSetterOnlyForSupportedProperties": {
+            "contextsAllowed": ["operation"]
         },
         "CallWith": {
             "contextsAllowed": ["attribute", "operation"],
@@ -75,6 +85,9 @@
         "ConstructorMayThrowException": {
             "contextsAllowed": ["interface"]
         },
+        "ContextHasServiceWorkerScheme": {
+            "contextsAllowed": ["attribute"]
+        },
         "Custom": {
             "contextsAllowed": ["attribute", "operation"]
         },
@@ -99,14 +112,14 @@
         "CustomGetOwnPropertySlot": {
             "contextsAllowed": ["interface"]
         },
-        "CustomGetOwnPropertySlotAndDescriptor": {
-            "contextsAllowed": ["interface"]
-        },
         "CustomGetPrototype": {
             "contextsAllowed": ["interface"]
         },
         "CustomGetter": {
             "contextsAllowed": ["attribute"]
+        },
+        "CustomHeapSnapshot": {
+            "contextsAllowed": ["interface"]
         },
         "CustomIndexedSetter": {
             "contextsAllowed": ["interface"]
@@ -142,11 +155,18 @@
             "contextsAllowed": ["interface", "attribute", "operation"],
             "values": ["", "ReadDOM", "Getter"]
         },
+        "DefaultDefineOwnProperty": {
+            "contextsAllowed": ["interface"]
+        },
         "DoNotCheckConstants": {
             "contextsAllowed": ["interface"]
         },
         "DoNotCheckSecurity": {
             "contextsAllowed": ["attribute", "operation"]
+        },
+        "DoNotCheckSecurityIf": {
+            "contextsAllowed": ["attribute", "operation"],
+            "values": ["CrossOriginWindowPolicyAllow", "CrossOriginWindowPolicyAllowPostMessage"]
         },
         "DoNotCheckSecurityOnGetter": {
             "contextsAllowed": ["attribute"]
@@ -176,7 +196,7 @@
             }
         },
         "ExportMacro": {
-            "contextsAllowed": ["interface", "dictionary", "enum"],
+            "contextsAllowed": ["interface", "dictionary", "enum", "callback-function"],
             "values": ["WEBCORE_EXPORT", "WEBCORE_TESTSUPPORT_EXPORT"]
         },
         "ExportToWrappedFunction": {
@@ -195,9 +215,6 @@
         "GenerateIsReachable": {
             "contextsAllowed": ["interface"],
             "values": ["", "Impl", "ImplWebGLRenderingContext", "ImplDocument", "ImplElementRoot", "ImplFrame", "ImplOwnerNodeRoot", "ImplScriptExecutionContext"]
-        },
-        "GetterMayThrowException": {
-            "contextsAllowed": ["attribute"]
         },
         "Global": {
             "contextsAllowed": ["interface"],
@@ -349,6 +366,9 @@
         "PrivateIdentifier": {
             "contextsAllowed": ["interface", "attribute", "operation"]
         },
+        "PromiseProxy": {
+            "contextsAllowed": ["operation"]
+        },
         "PublicIdentifier": {
             "contextsAllowed": ["interface", "attribute", "operation"]
         },
@@ -403,9 +423,6 @@
         "SetterCallWith": {
             "contextsAllowed": ["attribute"],
             "values": ["ScriptExecutionContext", "ScriptState", "GlobalObject", "ActiveWindow", "FirstWindow"]
-        },
-        "SetterMayThrowException": {
-            "contextsAllowed": ["attribute"]
         },
         "SkipCallbackInvokeCheck": {
             "contextsAllowed": ["operation", "callback-function"]

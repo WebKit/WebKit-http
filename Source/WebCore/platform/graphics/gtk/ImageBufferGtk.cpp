@@ -20,8 +20,8 @@
 #include "ImageBuffer.h"
 
 #include "CairoUtilities.h"
-#include "GdkCairoUtilities.h"
 #include "GRefPtrGtk.h"
+#include "GdkCairoUtilities.h"
 #include "MIMETypeRegistry.h"
 #include <cairo.h>
 #include <gtk/gtk.h>
@@ -75,7 +75,7 @@ static bool encodeImage(cairo_surface_t* surface, const String& mimeType, std::o
     return !error;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution) const
 {
     Vector<uint8_t> imageData = toData(mimeType, quality);
     if (imageData.isEmpty())

@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The length property of the newly constructed object;
     is set to the number of arguments
 es5id: 15.4.2.1_A2.1_T1
@@ -15,8 +15,8 @@ if (new Array().length !== 0) {
 }
 
 //CHECK#2
-if (new Array(0,1,0,1).length !== 4) {
-  $ERROR('#2: new Array(0,1,0,1).length === 4. Actual: ' + (new Array(0,1,0,1).length));
+if (new Array(0, 1, 0, 1).length !== 4) {
+  $ERROR('#2: new Array(0,1,0,1).length === 4. Actual: ' + (new Array(0, 1, 0, 1).length));
 }
 
 //CHECK#3

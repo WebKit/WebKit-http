@@ -8,13 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_SYNC_BUFFER_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_SYNC_BUFFER_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_SYNC_BUFFER_H_
+#define MODULES_AUDIO_CODING_NETEQ_SYNC_BUFFER_H_
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/audio_coding/neteq/audio_multi_vector.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/typedefs.h"
+#include "api/audio/audio_frame.h"
+#include "modules/audio_coding/neteq/audio_multi_vector.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -92,10 +91,10 @@ class SyncBuffer : public AudioMultiVector {
  private:
   size_t next_index_;
   uint32_t end_timestamp_;  // The timestamp of the last sample in the buffer.
-  size_t dtmf_index_;  // Index to the first non-DTMF sample in the buffer.
+  size_t dtmf_index_;       // Index to the first non-DTMF sample in the buffer.
 
   RTC_DISALLOW_COPY_AND_ASSIGN(SyncBuffer);
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_SYNC_BUFFER_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_SYNC_BUFFER_H_

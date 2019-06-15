@@ -27,60 +27,68 @@
 // 25.3.3.3 GeneratorResume ( generator, value )
 // 25.3.3.4 GeneratorResumeAbrupt(generator, abruptCompletion)
 @globalPrivate
-function generatorResume(generator, sentValue, resumeMode)
+function generatorResume(generator, state, generatorThis, sentValue, value, resumeMode)
 {
     "use strict";
 
-    let state = generator.@generatorState;
-    let done = false;
-    let value = @undefined;
-
-    if (typeof state !== 'number')
-        @throwTypeError("|this| should be a generator");
-
-    if (state === @GeneratorStateExecuting)
-        @throwTypeError("Generator is executing");
-
-    if (state === @GeneratorStateCompleted) {
-        if (resumeMode === @GeneratorResumeModeThrow)
-            throw sentValue;
-
-        done = true;
-        if (resumeMode === @GeneratorResumeModeReturn)
-            value = sentValue;
-    } else {
+    var done = state === @GeneratorStateCompleted;
+    if (!done) {
         try {
-            generator.@generatorState = @GeneratorStateExecuting;
-            value = generator.@generatorNext.@call(generator.@generatorThis, generator, state, sentValue, resumeMode, generator.@generatorFrame);
-            if (generator.@generatorState === @GeneratorStateExecuting) {
-                generator.@generatorState = @GeneratorStateCompleted;
+            @putByIdDirectPrivate(generator, "generatorState", @GeneratorStateExecuting);
+            value = @getByIdDirectPrivate(generator, "generatorNext").@call(generatorThis, generator, state, sentValue, resumeMode, @getByIdDirectPrivate(generator, "generatorFrame"));
+            if (@getByIdDirectPrivate(generator, "generatorState") === @GeneratorStateExecuting) {
+                @putByIdDirectPrivate(generator, "generatorState", @GeneratorStateCompleted);
                 done = true;
             }
         } catch (error) {
-            generator.@generatorState = @GeneratorStateCompleted;
+            @putByIdDirectPrivate(generator, "generatorState", @GeneratorStateCompleted);
             throw error;
         }
     }
-    return { done, value };
+    return { value, done };
 }
 
 function next(value)
 {
     "use strict";
 
-    return @generatorResume(this, value, @GeneratorResumeModeNormal);
+    var state = @getByIdDirectPrivate(this, "generatorState");
+    if (typeof state !== "number")
+        @throwTypeError("|this| should be a generator");
+
+    if (state === @GeneratorStateExecuting)
+        @throwTypeError("Generator is executing");
+
+    return @generatorResume(this, state, @getByIdDirectPrivate(this, "generatorThis"), value, @undefined, @GeneratorResumeModeNormal);
 }
 
 function return(value)
 {
     "use strict";
 
-    return @generatorResume(this, value, @GeneratorResumeModeReturn);
+    var state = @getByIdDirectPrivate(this, "generatorState");
+    if (typeof state !== "number")
+        @throwTypeError("|this| should be a generator");
+
+    if (state === @GeneratorStateExecuting)
+        @throwTypeError("Generator is executing");
+
+    return @generatorResume(this, state, @getByIdDirectPrivate(this, "generatorThis"), value, value, @GeneratorResumeModeReturn);
 }
 
 function throw(exception)
 {
     "use strict";
 
-    return @generatorResume(this, exception, @GeneratorResumeModeThrow);
+    var state = @getByIdDirectPrivate(this, "generatorState");
+    if (typeof state !== "number")
+        @throwTypeError("|this| should be a generator");
+
+    if (state === @GeneratorStateExecuting)
+        @throwTypeError("Generator is executing");
+
+    if (state === @GeneratorStateCompleted)
+        throw exception;
+
+    return @generatorResume(this, state, @getByIdDirectPrivate(this, "generatorThis"), exception, @undefined, @GeneratorResumeModeThrow);
 }

@@ -1,10 +1,11 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-array.prototype.copywithin
 es6id: 22.1.3.3
 description: >
   Copy values with non-negative target and start positions.
-info: >
+info: |
   22.1.3.3 Array.prototype.copyWithin (target, start [ , end ] )
 
   ...
@@ -33,28 +34,24 @@ includes: [compareArray.js]
 
 assert(
   compareArray(
-    ['a', 'b', 'c', 'd', 'e', 'f'].copyWithin(0, 0),
-    ['a', 'b', 'c', 'd', 'e', 'f']
+    ['a', 'b', 'c', 'd', 'e', 'f'].copyWithin(0, 0), ['a', 'b', 'c', 'd', 'e', 'f']
   )
 );
 
 assert(
   compareArray(
-    ['a', 'b', 'c', 'd', 'e', 'f'].copyWithin(0, 2),
-    ['c', 'd', 'e', 'f', 'e', 'f']
+    ['a', 'b', 'c', 'd', 'e', 'f'].copyWithin(0, 2), ['c', 'd', 'e', 'f', 'e', 'f']
   )
 );
 
 assert(
   compareArray(
-    ['a', 'b', 'c', 'd', 'e', 'f'].copyWithin(3, 0),
-    ['a', 'b', 'c', 'a', 'b', 'c']
+    ['a', 'b', 'c', 'd', 'e', 'f'].copyWithin(3, 0), ['a', 'b', 'c', 'a', 'b', 'c']
   )
 );
 
 assert(
   compareArray(
-    [0, 1, 2, 3, 4, 5].copyWithin(1, 4),
-    [0, 4, 5, 3, 4, 5]
+    [0, 1, 2, 3, 4, 5].copyWithin(1, 4), [0, 4, 5, 3, 4, 5]
   )
 );

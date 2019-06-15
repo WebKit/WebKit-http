@@ -53,7 +53,6 @@ public:
     void clear(WebCore::Frame* sourceFrame) override;
     bool contains(const String& key) override;
 
-    bool canAccessStorage(WebCore::Frame* sourceFrame) override;
     WebCore::StorageType storageType() const override;
 
     size_t memoryBytesUsedByCache() override;
@@ -62,7 +61,7 @@ public:
     void decrementAccessCount() override;
     void closeDatabaseIfIdle() override;
 
-    WebCore::SecurityOriginData securityOrigin() const override { return m_securityOrigin; }
+    const WebCore::SecurityOriginData& securityOrigin() const override { return m_securityOrigin; }
 
     Ref<StorageAreaImpl> copy();
     void close();

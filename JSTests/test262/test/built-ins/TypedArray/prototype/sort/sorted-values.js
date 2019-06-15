@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: Sort values to numeric ascending order
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   When the TypedArray SortCompare abstract operation is called with two
@@ -11,6 +11,7 @@ info: >
 
   ...
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

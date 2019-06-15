@@ -30,8 +30,7 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
+#include "CookieRequestHeaderFieldProxy.h"
 #include "URL.h"
 #include "ResourceResponse.h"
 #include "WebSocketExtensionDispatcher.h"
@@ -54,6 +53,7 @@ public:
 
     const URL& url() const;
     void setURL(const URL&);
+    URL httpURLForAuthenticationAndCookies() const;
     const String host() const;
 
     const String& clientProtocol() const;
@@ -66,6 +66,7 @@ public:
 
     CString clientHandshakeMessage() const;
     ResourceRequest clientHandshakeRequest() const;
+    std::optional<CookieRequestHeaderFieldProxy> clientHandshakeCookieRequestHeaderFieldProxy() const;
 
     void reset();
     void clearDocument();
@@ -88,7 +89,6 @@ public:
     static String getExpectedWebSocketAccept(const String& secWebSocketKey);
 
 private:
-    URL httpURLForAuthenticationAndCookies() const;
 
     int readStatusLine(const char* header, size_t headerLength, int& statusCode, String& statusText);
 
@@ -116,5 +116,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

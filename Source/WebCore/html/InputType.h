@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@
 #include "StepRange.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
+#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 #if PLATFORM(IOS)
@@ -47,11 +48,11 @@ namespace WebCore {
 
 class BeforeTextInsertedEvent;
 class Chrome;
+class DOMFormData;
 class DateComponents;
 class DragData;
 class Event;
 class FileList;
-class FormDataList;
 class HTMLElement;
 class HTMLFormElement;
 class HTMLInputElement;
@@ -60,21 +61,23 @@ class KeyboardEvent;
 class MouseEvent;
 class Node;
 class RenderStyle;
-class TouchEvent;
 class TextControlInnerTextElement;
+class TouchEvent;
 
 struct InputElementClickState;
 
 // An InputType object represents the type-specific part of an HTMLInputElement.
 // Do not expose instances of InputType and classes derived from it to classes
 // other than HTMLInputElement.
-class InputType {
+class InputType : public RefCounted<InputType> {
     WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    static std::unique_ptr<InputType> create(HTMLInputElement&, const AtomicString&);
-    static std::unique_ptr<InputType> createText(HTMLInputElement&);
+    static Ref<InputType> create(HTMLInputElement&, const AtomicString&);
+    static Ref<InputType> createText(HTMLInputElement&);
     virtual ~InputType();
+
+    void detachFromElement() { m_element = nullptr; }
 
     static bool themeSupportsDataListUI(InputType*);
 
@@ -120,7 +123,7 @@ public:
     virtual FormControlState saveFormControlState() const;
     virtual void restoreFormControlState(const FormControlState&);
     virtual bool isFormDataAppendable() const;
-    virtual bool appendFormData(FormDataList&, bool multipart) const;
+    virtual bool appendFormData(DOMFormData&, bool multipart) const;
 
     // DOM property functions.
 
@@ -177,7 +180,7 @@ public:
     virtual void handleClickEvent(MouseEvent&);
     virtual void handleMouseDownEvent(MouseEvent&);
     virtual void willDispatchClick(InputElementClickState&);
-    virtual void didDispatchClick(Event*, const InputElementClickState&);
+    virtual void didDispatchClick(Event&, const InputElementClickState&);
     virtual void handleDOMActivateEvent(Event&);
     virtual void handleKeydownEvent(KeyboardEvent&);
     virtual void handleKeypressEvent(KeyboardEvent&);
@@ -193,7 +196,7 @@ public:
 
     virtual bool shouldSubmitImplicitly(Event&);
     virtual bool hasCustomFocusLogic() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent&) const;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
     virtual bool shouldUseInputMethod() const;
     virtual void handleFocusEvent(Node* oldFocusedNode, FocusDirection);
@@ -202,6 +205,8 @@ public:
     virtual bool canBeSuccessfulSubmitButton();
     virtual void subtreeHasChanged();
     virtual void blur();
+
+    virtual void elementDidBlur() { }
 
 #if ENABLE(TOUCH_EVENTS)
     virtual bool hasTouchEventHandler() const;
@@ -214,7 +219,7 @@ public:
 
     virtual HTMLElement* containerElement() const { return nullptr; }
     virtual HTMLElement* innerBlockElement() const { return nullptr; }
-    virtual TextControlInnerTextElement* innerTextElement() const { return nullptr; }
+    virtual RefPtr<TextControlInnerTextElement> innerTextElement() const;
     virtual HTMLElement* innerSpinButtonElement() const { return nullptr; }
     virtual HTMLElement* capsLockIndicatorElement() const { return nullptr; }
     virtual HTMLElement* autoFillButtonElement() const { return nullptr; }
@@ -223,6 +228,9 @@ public:
     virtual HTMLElement* sliderThumbElement() const { return nullptr; }
     virtual HTMLElement* sliderTrackElement() const { return nullptr; }
     virtual HTMLElement* placeholderElement() const;
+#if ENABLE(DATALIST_ELEMENT)
+    virtual HTMLElement* dataListButtonElement() const { return nullptr; }
+#endif
 
     // Miscellaneous functions.
 
@@ -231,11 +239,6 @@ public:
     virtual void addSearchResult();
     virtual void attach();
     virtual void detach();
-    virtual void minOrMaxAttributeChanged();
-    virtual void stepAttributeChanged();
-    virtual void altAttributeChanged();
-    virtual void srcAttributeChanged();
-    virtual void maxResultsAttributeChanged();
     virtual bool shouldRespectAlignAttribute();
     virtual FileList* files();
     virtual void setFiles(RefPtr<FileList>&&);
@@ -254,19 +257,20 @@ public:
     virtual bool supportsReadOnly() const;
     virtual void updateInnerTextValue();
     virtual void updatePlaceholderText();
-    virtual void attributeChanged(const QualifiedName&);
-    virtual void multipleAttributeChanged();
-    virtual void disabledAttributeChanged();
-    virtual void readonlyAttributeChanged();
-    virtual void requiredAttributeChanged();
+    virtual void attributeChanged(const QualifiedName&) { }
+    virtual void disabledStateChanged() { }
+    virtual void readOnlyStateChanged() { }
+    virtual void requiredStateChanged() { }
     virtual void capsLockStateMayHaveChanged();
     virtual void updateAutoFillButton();
     virtual String defaultToolTip() const;
     virtual bool matchesIndeterminatePseudoClass() const;
     virtual bool shouldAppearIndeterminate() const;
+    virtual bool isPresentingAttachedView() const;
     virtual bool supportsSelectionAPI() const;
     virtual Color valueAsColor() const;
-    virtual void selectColor(const Color&);
+    virtual void selectColor(StringView);
+    virtual Vector<Color> suggestedColors() const;
 
     // Parses the specified string for the type, and return
     // the Decimal value for the parsing result if the parsing
@@ -307,8 +311,9 @@ public:
     virtual String displayString() const;
 
 protected:
-    explicit InputType(HTMLInputElement& element) : m_element(element) { }
-    HTMLInputElement& element() const { return m_element; }
+    explicit InputType(HTMLInputElement& element)
+        : m_element(makeWeakPtr(element)) { }
+    HTMLInputElement* element() const { return m_element.get(); }
     Chrome* chrome() const;
     Decimal parseToNumberOrNaN(const String&) const;
 
@@ -316,8 +321,8 @@ private:
     // Helper for stepUp()/stepDown(). Adds step value * count to the current value.
     ExceptionOr<void> applyStep(int count, AnyStepHandling, TextFieldEventBehavior);
 
-    // Raw pointer because the HTMLInputElement object owns this InputType object.
-    HTMLInputElement& m_element;
+    // m_element is null if this InputType is no longer associated with an element (either the element died or changed input type).
+    WeakPtr<HTMLInputElement> m_element;
 };
 
 } // namespace WebCore

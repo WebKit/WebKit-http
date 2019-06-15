@@ -61,8 +61,6 @@
     description("This tests the ability to search for accessible elements by key or text.");
     
     if (window.accessibilityController) {
-        window.testRunner.keepWebHistory();
-        
         document.getElementById("body").focus();
         var containerElement = accessibilityController.focusedElement;
         var startElement;
@@ -74,19 +72,19 @@
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXAnyTypeSearchKey", "", false);
         shouldBe("resultElement.role", "'AXRole: AXStaticText'");
         shouldBe("resultElement.stringValue", "'AXValue: first blockquote level 1'");
-        
+
         // Same level blockquote.
         startElement = accessibilityController.focusedElement.childAtIndex(0);
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXBlockquoteSameLevelSearchKey", "", false);
         shouldBe("resultElement.role", "'AXRole: AXGroup'");
         shouldBe("resultElement.childAtIndex(0).stringValue", "'AXValue: second blockquote level 1'");
-        
+
         // Blockquote.
         startElement = accessibilityController.focusedElement.childAtIndex(0);
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXBlockquoteSearchKey", "", false);
         shouldBe("resultElement.role", "'AXRole: AXGroup'");
         shouldBe("resultElement.childAtIndex(0).stringValue", "'AXValue: second blockquote level 1'");
-        
+
         // Bold font.
         startElement = accessibilityController.focusedElement.childAtIndex(0);
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXBoldFontSearchKey", "", false);
@@ -274,14 +272,7 @@
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXUnvisitedLinkSearchKey", "", false);
         shouldBe("resultElement.boolAttributeValue('AXVisited')", "false");
         shouldBe("resultElement.childAtIndex(0).stringValue", "'AXValue: link'");
-        
-        // Visited link.
-        accessibilityController.focusedElement.childAtIndex(14).childAtIndex(0).press();
-        startElement = accessibilityController.focusedElement.childAtIndex(0);
-        resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXVisitedLinkSearchKey", "", false);
-        shouldBe("resultElement.boolAttributeValue('AXVisited')", "true");
-        shouldBe("resultElement.childAtIndex(0).stringValue", "'AXValue: link'");
-        
+
         // Previous text search.
         startElement = accessibilityController.focusedElement.childAtIndex(10);
         resultElement = containerElement.uiElementForSearchPredicate(startElement, false, "", "sans-serif black bold text with underline", false);
@@ -303,7 +294,7 @@
         resultElement = containerElement.uiElementForSearchPredicate(resultElement, false, ["AXHeadingLevel2SearchKey", "AXLinkSearchKey"], "", false);
         shouldBe("resultElement.role", "'AXRole: AXHeading'");
         shouldBe("resultElement.childAtIndex(0).stringValue", "'AXValue: heading level 2'");
-               
+           
         // Now, we need to test isVisible. Save off the first object
         startElement = accessibilityController.focusedElement.childAtIndex(0);
         
@@ -341,38 +332,27 @@
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXButtonSearchKey", "", true);
         shouldBe("resultElement.role", "'AXRole: AXButton'");
         shouldBe("resultElement.title", "'AXTitle: test button 1'");
-        
+
         resultElement = containerElement.uiElementForSearchPredicate(resultElement, true, "AXButtonSearchKey", "", true);
         shouldBe("resultElement.role", "'AXRole: AXButton'");
         shouldBe("resultElement.title", "'AXTitle: test button 3'");
-        
+
         // now, scroll to the second button, and confirm that we don't see the first button
         testButton2.scrollToMakeVisible();
 
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXButtonSearchKey", "", true);
         shouldBe("resultElement.role", "'AXRole: AXButton'");
         shouldBe("resultElement.title", "'AXTitle: test button 2'");
-        
+
         resultElement = containerElement.uiElementForSearchPredicate(resultElement, true, "AXButtonSearchKey", "", true);
         shouldBe("resultElement.role", "'AXRole: AXButton'");
         shouldBe("resultElement.title", "'AXTitle: test button 3'");
-        
+
         // Now since the page is scrolled to the bottom, the first visible button should be #2
         startElement = accessibilityController.focusedElement.childAtIndex(0);
         resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXButtonSearchKey", "", true);
         shouldBe("resultElement.role", "'AXRole: AXButton'");
         shouldBe("resultElement.title", "'AXTitle: test button 2'");
-        
-        // lets scroll to the top of the page and ensure that the submit button is visible
-        startElement.scrollToMakeVisible();
-        resultElement = containerElement.uiElementForSearchPredicate(startElement, true, "AXButtonSearchKey", "", true);
-        shouldBe("resultElement.role", "'AXRole: AXButton'");
-        shouldBe("resultElement.title", "'AXTitle: Submit'");
-        
-        // there should be no more visible buttons
-        resultElement = containerElement.uiElementForSearchPredicate(resultElement, true, "AXButtonSearchKey", "", true);
-        shouldBeUndefined("resultElement");
-        
     }
     
 </script>

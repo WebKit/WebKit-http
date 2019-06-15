@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 Nikolas Zimmermann <zimmermann@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -47,9 +48,9 @@ struct SVGPropertyTraits<SVGTextPathMethodType> {
         case SVGTextPathMethodUnknown:
             return emptyString();
         case SVGTextPathMethodAlign:
-            return ASCIILiteral("align");
+            return "align"_s;
         case SVGTextPathMethodStretch:
-            return ASCIILiteral("stretch");
+            return "stretch"_s;
         }
     
         ASSERT_NOT_REACHED();
@@ -76,9 +77,9 @@ struct SVGPropertyTraits<SVGTextPathSpacingType> {
         case SVGTextPathSpacingUnknown:
             return emptyString();
         case SVGTextPathSpacingAuto:
-            return ASCIILiteral("auto");
+            return "auto"_s;
         case SVGTextPathSpacingExact:
-            return ASCIILiteral("exact");
+            return "exact"_s;
         }
 
         ASSERT_NOT_REACHED();
@@ -95,8 +96,8 @@ struct SVGPropertyTraits<SVGTextPathSpacingType> {
     }
 };
 
-class SVGTextPathElement final : public SVGTextContentElement,
-                                 public SVGURIReference {
+class SVGTextPathElement final : public SVGTextContentElement, public SVGURIReference {
+    WTF_MAKE_ISO_ALLOCATED(SVGTextPathElement);
 public:
     // Forward declare enumerations in the W3C naming scheme, for IDL generation.
     enum {
@@ -110,21 +111,27 @@ public:
 
     static Ref<SVGTextPathElement> create(const QualifiedName&, Document&);
 
+    const SVGLengthValue& startOffset() const { return m_startOffset.currentValue(attributeOwnerProxy()); }
+    SVGTextPathMethodType method() const { return m_method.currentValue(attributeOwnerProxy()); }
+    SVGTextPathSpacingType spacing() const { return m_spacing.currentValue(attributeOwnerProxy()); }
+
+    RefPtr<SVGAnimatedLength> startOffsetAnimated() { return m_startOffset.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedEnumeration> methodAnimated() { return m_method.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedEnumeration> spacingAnimated() { return m_spacing.animatedProperty(attributeOwnerProxy()); }
+
 protected:
-    void finishedInsertingSubtree() override;
+    void didFinishInsertingNode() override;
 
 private:
     SVGTextPathElement(const QualifiedName&, Document&);
-
     virtual ~SVGTextPathElement();
 
-    void clearResourceReferences();
+    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGTextPathElement, SVGTextContentElement, SVGURIReference>;
+    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
+    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
+    static void registerAttributes();
 
-    void buildPendingResource() override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
-
-    static bool isSupportedAttribute(const QualifiedName&);
+    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
@@ -132,14 +139,17 @@ private:
     bool childShouldCreateRenderer(const Node&) const override;
     bool rendererIsNeeded(const RenderStyle&) override;
 
+    void clearResourceReferences();
+    void buildPendingResource() override;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void removedFromAncestor(RemovalType, ContainerNode&) override;
+
     bool selfHasRelativeLengths() const override;
- 
-    BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGTextPathElement)
-        DECLARE_ANIMATED_LENGTH(StartOffset, startOffset)
-        DECLARE_ANIMATED_ENUMERATION(Method, method, SVGTextPathMethodType)
-        DECLARE_ANIMATED_ENUMERATION(Spacing, spacing, SVGTextPathSpacingType)
-        DECLARE_ANIMATED_STRING_OVERRIDE(Href, href)
-    END_DECLARE_ANIMATED_PROPERTIES
+
+    AttributeOwnerProxy m_attributeOwnerProxy { *this };
+    SVGAnimatedLengthAttribute m_startOffset { LengthModeOther };
+    SVGAnimatedEnumerationAttribute<SVGTextPathMethodType> m_method { SVGTextPathMethodAlign };
+    SVGAnimatedEnumerationAttribute<SVGTextPathSpacingType> m_spacing { SVGTextPathSpacingExact };
 };
 
 } // namespace WebCore

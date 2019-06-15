@@ -21,15 +21,11 @@
 #include "TextureMapperAnimation.h"
 
 #include "LayoutSize.h"
-#include "UnitBezier.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
-static RefPtr<FilterOperation> blendFunc(FilterOperation* fromOp, FilterOperation& toOp, double progress, const FloatSize& size, bool blendToPassthrough = false)
+static RefPtr<FilterOperation> blendFunc(FilterOperation* fromOp, FilterOperation& toOp, double progress, const FloatSize&, bool blendToPassthrough = false)
 {
-    if (toOp.blendingNeedsRendererSize())
-        return toOp.blend(fromOp, progress, LayoutSize(size), blendToPassthrough);
     return toOp.blend(fromOp, progress, blendToPassthrough);
 }
 
@@ -111,38 +107,6 @@ static float applyOpacityAnimation(float fromOpacity, float toOpacity, double pr
     return fromOpacity + progress * (toOpacity - fromOpacity);
 }
 
-static inline double solveEpsilon(double duration)
-{
-    return 1.0 / (200.0 * duration);
-}
-
-static inline double solveCubicBezierFunction(double p1x, double p1y, double p2x, double p2y, double t, double duration)
-{
-    return UnitBezier(p1x, p1y, p2x, p2y).solve(t, solveEpsilon(duration));
-}
-
-static inline double solveStepsFunction(int numSteps, bool stepAtStart, double t)
-{
-    if (stepAtStart)
-        return std::min(1.0, (floor(numSteps * t) + 1) / numSteps);
-    return floor(numSteps * t) / numSteps;
-}
-
-static inline float applyTimingFunction(const TimingFunction& timingFunction, float progress, double duration)
-{
-    if (timingFunction.isCubicBezierTimingFunction()) {
-        auto& ctf = static_cast<const CubicBezierTimingFunction&>(timingFunction);
-        return solveCubicBezierFunction(ctf.x1(), ctf.y1(), ctf.x2(), ctf.y2(), progress, duration);
-    }
-
-    if (timingFunction.isStepsTimingFunction()) {
-        auto& stf = static_cast<const StepsTimingFunction&>(timingFunction);
-        return solveStepsFunction(stf.numberOfSteps(), stf.stepAtStart(), double(progress));
-    }
-
-    return progress;
-}
-
 static TransformationMatrix applyTransformAnimation(const TransformOperations& from, const TransformOperations& to, double progress, const FloatSize& boxSize, bool listsMatch)
 {
     TransformationMatrix matrix;
@@ -200,7 +164,7 @@ static const TimingFunction& timingFunctionForAnimationValue(const AnimationValu
     return CubicBezierTimingFunction::defaultTimingFunction();
 }
 
-TextureMapperAnimation::TextureMapperAnimation(const String& name, const KeyframeValueList& keyframes, const FloatSize& boxSize, const Animation& animation, bool listsMatch, double startTime, double pauseTime, AnimationState state)
+TextureMapperAnimation::TextureMapperAnimation(const String& name, const KeyframeValueList& keyframes, const FloatSize& boxSize, const Animation& animation, bool listsMatch, MonotonicTime startTime, Seconds pauseTime, AnimationState state)
     : m_name(name.isSafeToSendToAnotherThread() ? name : name.isolatedCopy())
     , m_keyframes(keyframes)
     , m_boxSize(boxSize)
@@ -208,7 +172,7 @@ TextureMapperAnimation::TextureMapperAnimation(const String& name, const Keyfram
     , m_listsMatch(listsMatch)
     , m_startTime(startTime)
     , m_pauseTime(pauseTime)
-    , m_totalRunningTime(0)
+    , m_totalRunningTime(0_s)
     , m_lastRefreshedTime(m_startTime)
     , m_state(state)
 {
@@ -228,34 +192,36 @@ TextureMapperAnimation::TextureMapperAnimation(const TextureMapperAnimation& oth
 {
 }
 
-void TextureMapperAnimation::apply(Client& client)
+void TextureMapperAnimation::apply(ApplicationResult& applicationResults, MonotonicTime time)
 {
     if (!isActive())
         return;
 
-    double totalRunningTime = computeTotalRunningTime();
-    double normalizedValue = normalizedAnimationValue(totalRunningTime, m_animation->duration(), m_animation->direction(), m_animation->iterationCount());
+    Seconds totalRunningTime = computeTotalRunningTime(time);
+    double normalizedValue = normalizedAnimationValue(totalRunningTime.seconds(), m_animation->duration(), m_animation->direction(), m_animation->iterationCount());
 
-    if (m_animation->iterationCount() != Animation::IterationCountInfinite && totalRunningTime >= m_animation->duration() * m_animation->iterationCount()) {
+    if (m_animation->iterationCount() != Animation::IterationCountInfinite && totalRunningTime.seconds() >= m_animation->duration() * m_animation->iterationCount()) {
         m_state = AnimationState::Stopped;
-        m_pauseTime = 0;
+        m_pauseTime = 0_s;
         if (m_animation->fillsForwards())
             normalizedValue = normalizedAnimationValueForFillsForwards(m_animation->iterationCount(), m_animation->direction());
     }
 
+    applicationResults.hasRunningAnimations |= (m_state == AnimationState::Playing);
+
     if (!normalizedValue) {
-        applyInternal(client, m_keyframes.at(0), m_keyframes.at(1), 0);
+        applyInternal(applicationResults, m_keyframes.at(0), m_keyframes.at(1), 0);
         return;
     }
 
     if (normalizedValue == 1.0) {
-        applyInternal(client, m_keyframes.at(m_keyframes.size() - 2), m_keyframes.at(m_keyframes.size() - 1), 1);
+        applyInternal(applicationResults, m_keyframes.at(m_keyframes.size() - 2), m_keyframes.at(m_keyframes.size() - 1), 1);
         return;
     }
     if (m_keyframes.size() == 2) {
         auto& timingFunction = timingFunctionForAnimationValue(m_keyframes.at(0), *m_animation);
-        normalizedValue = applyTimingFunction(timingFunction, normalizedValue, m_animation->duration());
-        applyInternal(client, m_keyframes.at(0), m_keyframes.at(1), normalizedValue);
+        normalizedValue = timingFunction.transformTime(normalizedValue, m_animation->duration());
+        applyInternal(applicationResults, m_keyframes.at(0), m_keyframes.at(1), normalizedValue);
         return;
     }
 
@@ -267,13 +233,13 @@ void TextureMapperAnimation::apply(Client& client)
 
         normalizedValue = (normalizedValue - from.keyTime()) / (to.keyTime() - from.keyTime());
         auto& timingFunction = timingFunctionForAnimationValue(from, *m_animation);
-        normalizedValue = applyTimingFunction(timingFunction, normalizedValue, m_animation->duration());
-        applyInternal(client, from, to, normalizedValue);
+        normalizedValue = timingFunction.transformTime(normalizedValue, m_animation->duration());
+        applyInternal(applicationResults, from, to, normalizedValue);
         break;
     }
 }
 
-void TextureMapperAnimation::pause(double time)
+void TextureMapperAnimation::pause(Seconds time)
 {
     m_state = AnimationState::Paused;
     m_pauseTime = time;
@@ -282,18 +248,20 @@ void TextureMapperAnimation::pause(double time)
 void TextureMapperAnimation::resume()
 {
     m_state = AnimationState::Playing;
-    m_pauseTime = 0;
+    // FIXME: This seems wrong. m_totalRunningTime is cleared.
+    // https://bugs.webkit.org/show_bug.cgi?id=183113
+    m_pauseTime = 0_s;
     m_totalRunningTime = m_pauseTime;
-    m_lastRefreshedTime = monotonicallyIncreasingTime();
+    m_lastRefreshedTime = MonotonicTime::now();
 }
 
-double TextureMapperAnimation::computeTotalRunningTime()
+Seconds TextureMapperAnimation::computeTotalRunningTime(MonotonicTime time)
 {
     if (m_state == AnimationState::Paused)
         return m_pauseTime;
 
-    double oldLastRefreshedTime = m_lastRefreshedTime;
-    m_lastRefreshedTime = monotonicallyIncreasingTime();
+    MonotonicTime oldLastRefreshedTime = m_lastRefreshedTime;
+    m_lastRefreshedTime = time;
     m_totalRunningTime += m_lastRefreshedTime - oldLastRefreshedTime;
     return m_totalRunningTime;
 }
@@ -303,17 +271,17 @@ bool TextureMapperAnimation::isActive() const
     return m_state != AnimationState::Stopped || m_animation->fillsForwards();
 }
 
-void TextureMapperAnimation::applyInternal(Client& client, const AnimationValue& from, const AnimationValue& to, float progress)
+void TextureMapperAnimation::applyInternal(ApplicationResult& applicationResults, const AnimationValue& from, const AnimationValue& to, float progress)
 {
     switch (m_keyframes.property()) {
-    case AnimatedPropertyOpacity:
-        client.setAnimatedOpacity(applyOpacityAnimation((static_cast<const FloatAnimationValue&>(from).value()), (static_cast<const FloatAnimationValue&>(to).value()), progress));
-        return;
     case AnimatedPropertyTransform:
-        client.setAnimatedTransform(applyTransformAnimation(static_cast<const TransformAnimationValue&>(from).value(), static_cast<const TransformAnimationValue&>(to).value(), progress, m_boxSize, m_listsMatch));
+        applicationResults.transform = applyTransformAnimation(static_cast<const TransformAnimationValue&>(from).value(), static_cast<const TransformAnimationValue&>(to).value(), progress, m_boxSize, m_listsMatch);
+        return;
+    case AnimatedPropertyOpacity:
+        applicationResults.opacity = applyOpacityAnimation((static_cast<const FloatAnimationValue&>(from).value()), (static_cast<const FloatAnimationValue&>(to).value()), progress);
         return;
     case AnimatedPropertyFilter:
-        client.setAnimatedFilters(applyFilterAnimation(static_cast<const FilterAnimationValue&>(from).value(), static_cast<const FilterAnimationValue&>(to).value(), progress, m_boxSize));
+        applicationResults.filters = applyFilterAnimation(static_cast<const FilterAnimationValue&>(from).value(), static_cast<const FilterAnimationValue&>(to).value(), progress, m_boxSize);
         return;
     default:
         ASSERT_NOT_REACHED();
@@ -342,7 +310,7 @@ void TextureMapperAnimations::remove(const String& name, AnimatedPropertyID prop
     });
 }
 
-void TextureMapperAnimations::pause(const String& name, double offset)
+void TextureMapperAnimations::pause(const String& name, Seconds offset)
 {
     for (auto& animation : m_animations) {
         if (animation.name() == name)
@@ -350,10 +318,12 @@ void TextureMapperAnimations::pause(const String& name, double offset)
     }
 }
 
-void TextureMapperAnimations::suspend(double offset)
+void TextureMapperAnimations::suspend(MonotonicTime time)
 {
+    // FIXME: This seems wrong. `pause` takes time offset (Seconds), not MonotonicTime.
+    // https://bugs.webkit.org/show_bug.cgi?id=183112
     for (auto& animation : m_animations)
-        animation.pause(offset);
+        animation.pause(time.secondsSinceEpoch());
 }
 
 void TextureMapperAnimations::resume()
@@ -362,10 +332,10 @@ void TextureMapperAnimations::resume()
         animation.resume();
 }
 
-void TextureMapperAnimations::apply(TextureMapperAnimation::Client& client)
+void TextureMapperAnimations::apply(TextureMapperAnimation::ApplicationResult& applicationResults, MonotonicTime time)
 {
     for (auto& animation : m_animations)
-        animation.apply(client);
+        animation.apply(applicationResults, time);
 }
 
 bool TextureMapperAnimations::hasActiveAnimationsOfType(AnimatedPropertyID type) const

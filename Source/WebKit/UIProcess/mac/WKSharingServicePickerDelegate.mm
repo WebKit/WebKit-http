@@ -31,8 +31,9 @@
 #import "DataReference.h"
 #import "WebContextMenuProxyMac.h"
 #import "WebPageProxy.h"
-#import <WebCore/NSSharingServicePickerSPI.h>
-#import <WebCore/NSSharingServiceSPI.h>
+#import <WebCore/LegacyNSPasteboardTypes.h>
+#import <pal/spi/mac/NSSharingServicePickerSPI.h>
+#import <pal/spi/mac/NSSharingServiceSPI.h>
 #import <wtf/text/WTFString.h>
 
 // FIXME: We probably need to hang on the picker itself until the context menu operation is done, and this object will probably do that.
@@ -111,7 +112,7 @@
         dataReference = IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length]);
 
         types.append(NSPasteboardTypeRTFD);
-        types.append(NSRTFDPboardType);
+        types.append(WebCore::legacyRTFDPasteboardType());
     } else if ([item isKindOfClass:[NSData class]]) {
         NSData *data = (NSData *)item;
         RetainPtr<CGImageSourceRef> source = adoptCF(CGImageSourceCreateWithData((CFDataRef)data, NULL));

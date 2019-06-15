@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,23 +24,22 @@
  */
 
 #include "BAssert.h"
+#include "BInline.h"
 #include "Chunk.h"
 #include "Deallocator.h"
 #include "DebugHeap.h"
 #include "Heap.h"
-#include "Inline.h"
 #include "Object.h"
 #include "PerProcess.h"
 #include <algorithm>
 #include <cstdlib>
 #include <sys/mman.h>
 
-using namespace std;
-
 namespace bmalloc {
 
-Deallocator::Deallocator(Heap* heap)
-    : m_debugHeap(heap->debugHeap())
+Deallocator::Deallocator(Heap& heap)
+    : m_heap(heap)
+    , m_debugHeap(heap.debugHeap())
 {
     if (m_debugHeap) {
         // Fill the object log in order to disable the fast path.
@@ -59,18 +58,16 @@ void Deallocator::scavenge()
     if (m_debugHeap)
         return;
 
-    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
+    std::unique_lock<Mutex> lock(Heap::mutex());
 
     processObjectLog(lock);
-    PerProcess<Heap>::getFastCase()->deallocateLineCache(lock, lineCache(lock));
+    m_heap.deallocateLineCache(lock, lineCache(lock));
 }
 
-void Deallocator::processObjectLog(std::lock_guard<StaticMutex>& lock)
+void Deallocator::processObjectLog(std::unique_lock<Mutex>& lock)
 {
-    Heap* heap = PerProcess<Heap>::getFastCase();
-    
     for (Object object : m_objectLog)
-        heap->derefSmallLine(lock, object, lineCache(lock));
+        m_heap.derefSmallLine(lock, object, lineCache(lock));
     m_objectLog.clear();
 }
 
@@ -82,9 +79,9 @@ void Deallocator::deallocateSlowCase(void* object)
     if (!object)
         return;
 
-    std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-    if (PerProcess<Heap>::getFastCase()->isLarge(lock, object)) {
-        PerProcess<Heap>::getFastCase()->deallocateLarge(lock, object);
+    std::unique_lock<Mutex> lock(Heap::mutex());
+    if (m_heap.isLarge(lock, object)) {
+        m_heap.deallocateLarge(lock, object);
         return;
     }
 

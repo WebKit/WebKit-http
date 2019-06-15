@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +37,6 @@
 #include <wtf/Ref.h>
 #include <wtf/Threading.h>
 #include <wtf/text/WTFString.h>
-#include <wtf/threads/BinarySemaphore.h>
 
 namespace WTF {
 
@@ -115,7 +115,7 @@ void WorkQueue::concurrentApply(size_t iterations, WTF::Function<void (size_t in
         Condition m_condition;
         Deque<const WTF::Function<void ()>*> m_queue;
 
-        Vector<RefPtr<Thread>> m_workers;
+        Vector<Ref<Thread>> m_workers;
     };
 
     static LazyNeverDestroyed<ThreadPool> threadPool;

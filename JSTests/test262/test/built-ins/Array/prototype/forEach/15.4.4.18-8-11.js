@@ -2,18 +2,19 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-8-11
 description: >
     Array.prototype.forEach doesn't mutate the array on which it is
     called on
 ---*/
 
-  function callbackfn(val, idx, obj)
-  {
-    return true;
-  }
-  var arr = [1,2,3,4,5];
-  arr.forEach(callbackfn);
+function callbackfn(val, idx, obj)
+{
+  return true;
+}
+var arr = [1, 2, 3, 4, 5];
+arr.forEach(callbackfn);
 
 assert.sameValue(arr[0], 1, 'arr[0]');
 assert.sameValue(arr[1], 2, 'arr[1]');

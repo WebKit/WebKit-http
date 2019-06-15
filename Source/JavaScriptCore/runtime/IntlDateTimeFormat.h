@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2015 Andy VanWagoner (andy@vanwagoner.family)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@ namespace JSC {
 class IntlDateTimeFormatConstructor;
 class JSBoundFunction;
 
-class IntlDateTimeFormat : public JSDestructibleObject {
+class IntlDateTimeFormat final : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
@@ -79,15 +79,15 @@ private:
     };
 
     void setFormatsFromPattern(const StringView&);
-    static const char* weekdayString(Weekday);
-    static const char* eraString(Era);
-    static const char* yearString(Year);
-    static const char* monthString(Month);
-    static const char* dayString(Day);
-    static const char* hourString(Hour);
-    static const char* minuteString(Minute);
-    static const char* secondString(Second);
-    static const char* timeZoneNameString(TimeZoneName);
+    static ASCIILiteral weekdayString(Weekday);
+    static ASCIILiteral eraString(Era);
+    static ASCIILiteral yearString(Year);
+    static ASCIILiteral monthString(Month);
+    static ASCIILiteral dayString(Day);
+    static ASCIILiteral hourString(Hour);
+    static ASCIILiteral minuteString(Minute);
+    static ASCIILiteral secondString(Second);
+    static ASCIILiteral timeZoneNameString(TimeZoneName);
 
     bool m_initializedDateTimeFormat { false };
     WriteBarrier<JSBoundFunction> m_boundFormat;
@@ -97,7 +97,7 @@ private:
     String m_calendar;
     String m_numberingSystem;
     String m_timeZone;
-    bool m_hour12 { true };
+    String m_hourCycle;
     Weekday m_weekday { Weekday::None };
     Era m_era { Era::None };
     Year m_year { Year::None };
@@ -113,7 +113,7 @@ private:
         void operator()(UFieldPositionIterator*) const;
     };
 
-    static const char* partTypeString(UDateFormatField);
+    static ASCIILiteral partTypeString(UDateFormatField);
 #endif
 };
 

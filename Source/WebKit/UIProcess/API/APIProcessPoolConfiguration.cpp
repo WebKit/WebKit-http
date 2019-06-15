@@ -38,21 +38,11 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::create()
 
 Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::createWithLegacyOptions()
 {
-    auto configuration = ProcessPoolConfiguration::create();
+    auto configuration = ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration(WebsiteDataStore::legacyDefaultDataStoreConfiguration());
 
     configuration->m_shouldHaveLegacyDataStore = true;
     configuration->m_maximumProcessCount = 1;
     configuration->m_cacheModel = WebKit::CacheModelDocumentViewer;
-
-    configuration->m_applicationCacheDirectory = WebKit::WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory();
-    configuration->m_applicationCacheFlatFileSubdirectoryName = "ApplicationCache";
-    configuration->m_diskCacheDirectory = WebKit::WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory();
-    configuration->m_mediaCacheDirectory = WebKit::WebProcessPool::legacyPlatformDefaultMediaCacheDirectory();
-    configuration->m_indexedDBDatabaseDirectory = WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory();
-    configuration->m_localStorageDirectory = WebKit::WebProcessPool::legacyPlatformDefaultLocalStorageDirectory();
-    configuration->m_mediaKeysStorageDirectory = WebKit::WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory();
-    configuration->m_webSQLDatabaseDirectory = WebKit::WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory();
-    configuration->m_javaScriptConfigurationDirectory = WebKit::WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory();
 
     return configuration;
 }
@@ -65,11 +55,12 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::createWithWebsiteDataSto
     configuration->m_applicationCacheFlatFileSubdirectoryName = legacyConfiguration.applicationCacheFlatFileSubdirectoryName;
     configuration->m_diskCacheDirectory = legacyConfiguration.networkCacheDirectory;
     configuration->m_mediaCacheDirectory = legacyConfiguration.mediaCacheDirectory;
-    configuration->m_indexedDBDatabaseDirectory = WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory();
+    configuration->m_indexedDBDatabaseDirectory = WebsiteDataStore::legacyDefaultIndexedDBDatabaseDirectory();
     configuration->m_localStorageDirectory = legacyConfiguration.localStorageDirectory;
     configuration->m_mediaKeysStorageDirectory = legacyConfiguration.mediaKeysStorageDirectory;
     configuration->m_resourceLoadStatisticsDirectory = legacyConfiguration.resourceLoadStatisticsDirectory;
     configuration->m_webSQLDatabaseDirectory = legacyConfiguration.webSQLDatabaseDirectory;
+    configuration->m_javaScriptConfigurationDirectory = legacyConfiguration.javaScriptConfigurationDirectory;
 
     return configuration;
 }
@@ -99,11 +90,11 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_shouldHaveLegacyDataStore = this->m_shouldHaveLegacyDataStore;
     copy->m_maximumProcessCount = this->m_maximumProcessCount;
     copy->m_cacheModel = this->m_cacheModel;
+    copy->m_diskCacheDirectory = this->m_diskCacheDirectory;
     copy->m_diskCacheSpeculativeValidationEnabled = this->m_diskCacheSpeculativeValidationEnabled;
     copy->m_diskCacheSizeOverride = this->m_diskCacheSizeOverride;
     copy->m_applicationCacheDirectory = this->m_applicationCacheDirectory;
     copy->m_applicationCacheFlatFileSubdirectoryName = this->m_applicationCacheFlatFileSubdirectoryName;
-    copy->m_diskCacheDirectory = this->m_diskCacheDirectory;
     copy->m_mediaCacheDirectory = this->m_mediaCacheDirectory;
     copy->m_indexedDBDatabaseDirectory = this->m_indexedDBDatabaseDirectory;
     copy->m_injectedBundlePath = this->m_injectedBundlePath;
@@ -117,6 +108,7 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_additionalReadAccessAllowedPaths = this->m_additionalReadAccessAllowedPaths;
     copy->m_fullySynchronousModeIsAllowedForTesting = this->m_fullySynchronousModeIsAllowedForTesting;
     copy->m_ignoreSynchronousMessagingTimeoutsForTesting = this->m_ignoreSynchronousMessagingTimeoutsForTesting;
+    copy->m_attrStyleEnabled = this->m_attrStyleEnabled;
     copy->m_overrideLanguages = this->m_overrideLanguages;
     copy->m_sourceApplicationBundleIdentifier = this->m_sourceApplicationBundleIdentifier;
     copy->m_sourceApplicationSecondaryIdentifier = this->m_sourceApplicationSecondaryIdentifier;
@@ -127,7 +119,17 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_ctDataConnectionServiceType = this->m_ctDataConnectionServiceType;
 #endif
     copy->m_presentingApplicationPID = this->m_presentingApplicationPID;
-    
+    copy->m_processSwapsOnNavigation = this->m_processSwapsOnNavigation;
+    copy->m_alwaysKeepAndReuseSwappedProcesses = this->m_alwaysKeepAndReuseSwappedProcesses;
+    copy->m_processSwapsOnWindowOpenWithOpener = this->m_processSwapsOnWindowOpenWithOpener;
+    copy->m_isAutomaticProcessWarmingEnabled = this->m_isAutomaticProcessWarmingEnabled;
+#if ENABLE(PROXIMITY_NETWORKING)
+    copy->m_wirelessContextIdentifier = this->m_wirelessContextIdentifier;
+#endif
+#if PLATFORM(COCOA)
+    copy->m_suppressesConnectionTerminationOnSystemChange = this->m_suppressesConnectionTerminationOnSystemChange;
+#endif
+
     return copy;
 }
 

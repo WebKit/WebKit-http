@@ -31,7 +31,7 @@
 #include "AudioContext.h"
 #include "AudioParamTimeline.h"
 #include "AudioSummingJunction.h"
-#include <runtime/Float32Array.h>
+#include <JavaScriptCore/Float32Array.h>
 #include <sys/types.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -40,7 +40,7 @@ namespace WebCore {
 
 class AudioNodeOutput;
 
-class AudioParam : public AudioSummingJunction, public RefCounted<AudioParam> {
+class AudioParam final : public AudioSummingJunction, public RefCounted<AudioParam> {
 public:
     static const double DefaultSmoothingConstant;
     static const double SnapThreshold;

@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FEGaussianBlur_h
-#define FEGaussianBlur_h
+#pragma once
 
 #include "FEConvolveMatrix.h"
 #include "Filter.h"
@@ -32,25 +31,23 @@ class FEGaussianBlur : public FilterEffect {
 public:
     static Ref<FEGaussianBlur> create(Filter&, float, float, EdgeModeType);
 
-    float stdDeviationX() const;
+    float stdDeviationX() const { return m_stdX; }
     void setStdDeviationX(float);
 
-    float stdDeviationY() const;
+    float stdDeviationY() const { return m_stdY; }
     void setStdDeviationY(float);
 
-    EdgeModeType edgeMode() const;
+    EdgeModeType edgeMode() const { return m_edgeMode; }
     void setEdgeMode(EdgeModeType);
 
-    void platformApplySoftware() override;
-    void dump() override;
-
-    void determineAbsolutePaintRect() override;
-    static IntSize calculateKernelSize(const Filter&, const FloatPoint& stdDeviation);
-    static IntSize calculateUnscaledKernelSize(const FloatPoint& stdDeviation);
-
-    TextStream& externalRepresentation(TextStream&, int indention) const override;
+    static IntSize calculateKernelSize(const Filter&, FloatSize stdDeviation);
+    static IntSize calculateUnscaledKernelSize(FloatSize stdDeviation);
 
 private:
+    FEGaussianBlur(Filter&, float, float, EdgeModeType);
+
+    const char* filterName() const final { return "FEGaussianBlur"; }
+
     static const int s_minimalRectDimension = 100 * 100; // Empirical data limit for parallel jobs
 
     template<typename Type>
@@ -58,21 +55,23 @@ private:
 
     struct PlatformApplyParameters {
         FEGaussianBlur* filter;
-        RefPtr<Uint8ClampedArray> srcPixelArray;
-        RefPtr<Uint8ClampedArray> dstPixelArray;
+        RefPtr<Uint8ClampedArray> ioPixelArray;
+        RefPtr<Uint8ClampedArray> tmpPixelArray;
         int width;
         int height;
         unsigned kernelSizeX;
         unsigned kernelSizeY;
     };
 
+    void platformApplySoftware() override;
+
+    void determineAbsolutePaintRect() override;
+
+    WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType) const override;
+
     static void platformApplyWorker(PlatformApplyParameters*);
-
-    FEGaussianBlur(Filter&, float, float, EdgeModeType);
-
-    inline void platformApply(Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* tmpPixelArray, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize);
-
-    inline void platformApplyGeneric(Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* tmpPixelArray, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize);
+    void platformApply(Uint8ClampedArray& ioBuffer, Uint8ClampedArray& tempBuffer, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize);
+    void platformApplyGeneric(Uint8ClampedArray& ioBuffer, Uint8ClampedArray& tempBuffer, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize);
 
     float m_stdX;
     float m_stdY;
@@ -81,4 +80,3 @@ private:
 
 } // namespace WebCore
 
-#endif // FEGaussianBlur_h

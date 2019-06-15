@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2009 Google Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,19 +31,15 @@
 
 #pragma once
 
+#include "CurlContext.h"
 #include "SocketStreamHandle.h"
-
-#if PLATFORM(WIN)
-#include <winsock2.h>
-#endif
-
-#include "SessionID.h"
-#include <curl/curl.h>
-#include <wtf/Deque.h>
+#include <pal/SessionID.h>
 #include <wtf/Lock.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Seconds.h>
 #include <wtf/StreamBuffer.h>
 #include <wtf/Threading.h>
+#include <wtf/UniqueArray.h>
 
 namespace WebCore {
 
@@ -51,55 +47,36 @@ class SocketStreamHandleClient;
 
 class SocketStreamHandleImpl : public SocketStreamHandle {
 public:
-    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID, const String&, SourceApplicationAuditToken&&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+    static Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID, const String&, SourceApplicationAuditToken&&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
 
     virtual ~SocketStreamHandleImpl();
 
-    void platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
-    void platformClose() final;
+    WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
+    WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+    WEBCORE_EXPORT void platformClose() final;
+
 private:
-    SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
+    WEBCORE_EXPORT SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
 
     size_t bufferedAmount() final;
-    std::optional<size_t> platformSendInternal(const char*, size_t);
+    std::optional<size_t> platformSendInternal(const uint8_t*, size_t);
     bool sendPendingData();
 
-    bool readData(CURL*);
-    bool sendData(CURL*);
-    bool waitForAvailableData(CURL*, std::chrono::milliseconds selectTimeout);
-
-    void startThread();
+    void threadEntryPoint();
+    void handleError(CURLcode);
     void stopThread();
 
-    void didReceiveData();
-    void didOpenSocket();
-
-    struct SocketData {
-        SocketData(std::unique_ptr<char[]>&& source, size_t length)
-        {
-            data = WTFMove(source);
-            size = length;
-        }
-
-        SocketData(SocketData&& other)
-        {
-            data = WTFMove(other.data);
-            size = other.size;
-            other.size = 0;
-        }
-
-        std::unique_ptr<char[]> data;
-        size_t size { 0 };
-    };
+    static const size_t kWriteBufferSize = 4 * 1024;
+    static const size_t kReadBufferSize = 4 * 1024;
 
     RefPtr<Thread> m_workerThread;
-    std::atomic<bool> m_stopThread { false };
-    Lock m_mutexSend;
-    Lock m_mutexReceive;
-    Deque<SocketData> m_sendData;
-    Deque<SocketData> m_receiveData;
+    std::atomic<bool> m_running { true };
 
-    StreamBuffer<char, 1024 * 1024> m_buffer;
+    std::atomic<size_t> m_writeBufferSize { 0 };
+    size_t m_writeBufferOffset;
+    UniqueArray<uint8_t> m_writeBuffer;
+
+    StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
     static const unsigned maxBufferSize = 100 * 1024 * 1024;
 };
 

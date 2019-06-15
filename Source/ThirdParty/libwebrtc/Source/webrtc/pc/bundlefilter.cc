@@ -8,18 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/pc/bundlefilter.h"
+#include "pc/bundlefilter.h"
 
-#include "webrtc/base/logging.h"
-#include "webrtc/media/base/rtputils.h"
+#include "media/base/rtputils.h"
+#include "rtc_base/logging.h"
 
 namespace cricket {
 
-BundleFilter::BundleFilter() {
-}
+BundleFilter::BundleFilter() {}
 
-BundleFilter::~BundleFilter() {
-}
+BundleFilter::~BundleFilter() {}
 
 bool BundleFilter::DemuxPacket(const uint8_t* data, size_t len) {
   // For RTP packets, we check whether the payload type can be found.

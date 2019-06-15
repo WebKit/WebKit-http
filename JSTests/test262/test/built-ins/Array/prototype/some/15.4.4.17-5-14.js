@@ -2,12 +2,13 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.some
 es5id: 15.4.4.17-5-14
 description: Array.prototype.some - the Math object can be used as thisArg
 ---*/
 
-        function callbackfn(val, idx, obj) {
-            return this === Math;
-        }
+function callbackfn(val, idx, obj) {
+  return this === Math;
+}
 
 assert([11].some(callbackfn, Math), '[11].some(callbackfn, Math) !== true');

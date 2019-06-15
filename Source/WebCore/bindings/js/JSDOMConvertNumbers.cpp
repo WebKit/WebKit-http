@@ -23,14 +23,14 @@
 #include "JSDOMConvertNumbers.h"
 
 #include "JSDOMExceptionHandling.h"
-#include <heap/HeapInlines.h>
-#include <runtime/JSCJSValueInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/JSCJSValueInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/WTFString.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 enum class IntegerConversionConfiguration { Normal, EnforceRange, Clamp };
 

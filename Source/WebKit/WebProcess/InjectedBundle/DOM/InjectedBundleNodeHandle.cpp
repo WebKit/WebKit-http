@@ -55,16 +55,15 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
+namespace WebKit {
 using namespace WebCore;
 using namespace HTMLNames;
 
-namespace WebKit {
+typedef HashMap<Node*, InjectedBundleNodeHandle*> DOMNodeHandleCache;
 
-typedef HashMap<Node*, InjectedBundleNodeHandle*> DOMHandleCache;
-
-static DOMHandleCache& domHandleCache()
+static DOMNodeHandleCache& domNodeHandleCache()
 {
-    static NeverDestroyed<DOMHandleCache> cache;
+    static NeverDestroyed<DOMNodeHandleCache> cache;
     return cache;
 }
 
@@ -84,7 +83,7 @@ RefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::getOrCreate(Node* nod
 
 Ref<InjectedBundleNodeHandle> InjectedBundleNodeHandle::getOrCreate(Node& node)
 {
-    DOMHandleCache::AddResult result = domHandleCache().add(&node, nullptr);
+    DOMNodeHandleCache::AddResult result = domNodeHandleCache().add(&node, nullptr);
     if (!result.isNewEntry)
         return Ref<InjectedBundleNodeHandle>(*result.iterator->value);
 
@@ -105,7 +104,7 @@ InjectedBundleNodeHandle::InjectedBundleNodeHandle(Node& node)
 
 InjectedBundleNodeHandle::~InjectedBundleNodeHandle()
 {
-    domHandleCache().remove(m_node.ptr());
+    domNodeHandleCache().remove(m_node.ptr());
 }
 
 Node* InjectedBundleNodeHandle::coreNode()
@@ -163,19 +162,19 @@ static RefPtr<WebImage> imageForRect(FrameView* frameView, const IntRect& painti
     graphicsContext->clearRect(IntRect(IntPoint(), bitmapSize));
     graphicsContext->applyDeviceScaleFactor(deviceScaleFactor);
     graphicsContext->scale(bitmapScaleFactor);
-    graphicsContext->translate(-paintingRect.x(), -paintingRect.y());
+    graphicsContext->translate(-paintingRect.location());
 
     FrameView::SelectionInSnapshot shouldPaintSelection = FrameView::IncludeSelection;
     if (options & SnapshotOptionsExcludeSelectionHighlighting)
         shouldPaintSelection = FrameView::ExcludeSelection;
 
-    PaintBehavior paintBehavior = (frameView->paintBehavior() & ~PaintBehaviorAllowAsyncImageDecoding) | PaintBehaviorFlattenCompositingLayers;
+    auto paintBehavior = frameView->paintBehavior() | PaintBehavior::FlattenCompositingLayers | PaintBehavior::Snapshotting;
     if (options & SnapshotOptionsForceBlackText)
-        paintBehavior |= PaintBehaviorForceBlackText;
+        paintBehavior.add(PaintBehavior::ForceBlackText);
     if (options & SnapshotOptionsForceWhiteText)
-        paintBehavior |= PaintBehaviorForceWhiteText;
+        paintBehavior.add(PaintBehavior::ForceWhiteText);
 
-    PaintBehavior oldPaintBehavior = frameView->paintBehavior();
+    auto oldPaintBehavior = frameView->paintBehavior();
     frameView->setPaintBehavior(paintBehavior);
     frameView->paintContentsForSnapshot(*graphicsContext.get(), paintingRect, shouldPaintSelection, FrameView::DocumentCoordinates);
     frameView->setPaintBehavior(oldPaintBehavior);
@@ -271,6 +270,36 @@ void InjectedBundleNodeHandle::setHTMLInputElementAutoFillButtonEnabled(AutoFill
     downcast<HTMLInputElement>(m_node.get()).setShowAutoFillButton(autoFillButtonType);
 }
 
+AutoFillButtonType InjectedBundleNodeHandle::htmlInputElementAutoFillButtonType() const
+{
+    if (!is<HTMLInputElement>(m_node))
+        return AutoFillButtonType::None;
+    return downcast<HTMLInputElement>(m_node.get()).autoFillButtonType();
+}
+
+AutoFillButtonType InjectedBundleNodeHandle::htmlInputElementLastAutoFillButtonType() const
+{
+    if (!is<HTMLInputElement>(m_node))
+        return AutoFillButtonType::None;
+    return downcast<HTMLInputElement>(m_node.get()).lastAutoFillButtonType();
+}
+
+bool InjectedBundleNodeHandle::isAutoFillAvailable() const
+{
+    if (!is<HTMLInputElement>(m_node))
+        return false;
+
+    return downcast<HTMLInputElement>(m_node.get()).isAutoFillAvailable();
+}
+
+void InjectedBundleNodeHandle::setAutoFillAvailable(bool autoFillAvailable)
+{
+    if (!is<HTMLInputElement>(m_node))
+        return;
+
+    downcast<HTMLInputElement>(m_node.get()).setAutoFillAvailable(autoFillAvailable);
+}
+
 IntRect InjectedBundleNodeHandle::htmlInputElementAutoFillButtonBounds()
 {
     if (!is<HTMLInputElement>(m_node))
@@ -304,7 +333,7 @@ bool InjectedBundleNodeHandle::isTextField() const
     if (!is<HTMLInputElement>(m_node))
         return false;
 
-    return downcast<HTMLInputElement>(m_node.get()).isText();
+    return downcast<HTMLInputElement>(m_node.get()).isTextField();
 }
 
 RefPtr<InjectedBundleNodeHandle> InjectedBundleNodeHandle::htmlTableCellElementCellAbove()

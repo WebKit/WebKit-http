@@ -38,13 +38,13 @@ SVGTextMetricsBuilder::SVGTextMetricsBuilder()
 
 inline bool SVGTextMetricsBuilder::currentCharacterStartsSurrogatePair() const
 {
-    return U16_IS_LEAD(m_run[m_textPosition]) && (m_textPosition + 1) < m_run.charactersLength() && U16_IS_TRAIL(m_run[m_textPosition + 1]);
+    return U16_IS_LEAD(m_run[m_textPosition]) && (m_textPosition + 1) < m_run.length() && U16_IS_TRAIL(m_run[m_textPosition + 1]);
 }
 
 bool SVGTextMetricsBuilder::advance()
 {
     m_textPosition += m_currentMetrics.length();
-    if (m_textPosition >= m_run.charactersLength())
+    if (m_textPosition >= m_run.length())
         return false;
 
     if (m_isComplexText)
@@ -135,7 +135,7 @@ void SVGTextMetricsBuilder::measureTextRenderer(RenderSVGInlineText& text, Measu
     }
 
     initializeMeasurementWithTextRenderer(text);
-    bool preserveWhiteSpace = text.style().whiteSpace() == PRE;
+    bool preserveWhiteSpace = text.style().whiteSpace() == WhiteSpace::Pre;
     int surrogatePairCharacters = 0;
 
     while (advance()) {

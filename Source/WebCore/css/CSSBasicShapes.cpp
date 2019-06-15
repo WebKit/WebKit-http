@@ -39,9 +39,9 @@
 #include "SVGPathUtilities.h"
 #include <wtf/text/StringBuilder.h>
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 static String serializePositionOffset(const Pair& offset, const Pair& other)
 {
@@ -211,7 +211,7 @@ CSSBasicShapePath::CSSBasicShapePath(std::unique_ptr<SVGPathByteStream>&& pathDa
 static String buildPathString(const WindRule& windRule, const String& path, const String& box)
 {
     StringBuilder result;
-    if (windRule == RULE_EVENODD)
+    if (windRule == WindRule::EvenOdd)
         result.appendLiteral("path(evenodd, ");
     else
         result.appendLiteral("path(");
@@ -265,7 +265,7 @@ static String buildPolygonString(const WindRule& windRule, const Vector<String>&
 
     result.reserveCapacity(length);
 
-    if (windRule == RULE_EVENODD)
+    if (windRule == WindRule::EvenOdd)
         result.appendLiteral(evenOddOpening);
     else
         result.appendLiteral(nonZeroOpening);

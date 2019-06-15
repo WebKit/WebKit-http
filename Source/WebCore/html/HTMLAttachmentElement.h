@@ -35,14 +35,29 @@ class File;
 class RenderAttachment;
 
 class HTMLAttachmentElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLAttachmentElement);
 public:
     static Ref<HTMLAttachmentElement> create(const QualifiedName&, Document&);
 
+    WEBCORE_EXPORT URL blobURL() const;
     WEBCORE_EXPORT File* file() const;
-    void setFile(File*);
+
+    enum class UpdateDisplayAttributes { No, Yes };
+    void setFile(RefPtr<File>&&, UpdateDisplayAttributes = UpdateDisplayAttributes::No);
+
+    const String& uniqueIdentifier() const { return m_uniqueIdentifier; }
+    void setUniqueIdentifier(const String& uniqueIdentifier) { m_uniqueIdentifier = uniqueIdentifier; }
+
+    WEBCORE_EXPORT void updateAttributes(std::optional<uint64_t>&& newFileSize, const String& newContentType, const String& newFilename);
+
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
+
+    String ensureUniqueIdentifier();
 
     WEBCORE_EXPORT String attachmentTitle() const;
     String attachmentType() const;
+    String attachmentPath() const;
 
     RenderAttachment* renderer() const;
 
@@ -51,7 +66,6 @@ private:
     virtual ~HTMLAttachmentElement();
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
-
     bool shouldSelectOnMouseDown() final {
 #if PLATFORM(IOS)
         return false;
@@ -63,6 +77,7 @@ private:
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     
     RefPtr<File> m_file;
+    String m_uniqueIdentifier;
 };
 
 } // namespace WebCore

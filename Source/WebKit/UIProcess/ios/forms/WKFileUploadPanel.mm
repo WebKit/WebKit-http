@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,6 @@
 #import "APIData.h"
 #import "APIOpenPanelParameters.h"
 #import "APIString.h"
-#import "PhotosSPI.h"
 #import "UIKitSPI.h"
 #import "WKContentViewInteraction.h"
 #import "WKData.h"
@@ -41,22 +40,11 @@
 #import "WebIconUtilities.h"
 #import "WebOpenPanelResultListenerProxy.h"
 #import "WebPageProxy.h"
-#import <AVFoundation/AVFoundation.h>
-#import <CoreMedia/CoreMedia.h>
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <WebCore/LocalizedStrings.h>
-#import <WebKit/WebNSFileManagerExtras.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/SoftLinking.h>
 
 using namespace WebKit;
-
-SOFT_LINK_FRAMEWORK(Photos);
-SOFT_LINK_CLASS(Photos, PHAsset);
-SOFT_LINK_CLASS(Photos, PHImageManager);
-SOFT_LINK_CLASS(Photos, PHImageRequestOptions);
-SOFT_LINK_CONSTANT(Photos, PHImageRequestOptionsResizeModeNone, NSString *);
-SOFT_LINK_CONSTANT(Photos, PHImageRequestOptionsVersionCurrent, NSString *);
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -177,7 +165,6 @@ static inline UIImage *cameraIcon()
     RetainPtr<UIPopoverController> _presentationPopover; // iPad for action sheet and Photo Library.
 #pragma clang diagnostic pop
     RetainPtr<UIDocumentMenuViewController> _documentMenuController;
-    RetainPtr<UIAlertController> _actionSheetController;
     WebCore::MediaCaptureType _mediaCaptureType;
 }
 
@@ -246,7 +233,7 @@ static inline UIImage *cameraIcon()
 
     Ref<API::Array> acceptMimeTypes = parameters->acceptMIMETypes();
     NSMutableArray *mimeTypes = [NSMutableArray arrayWithCapacity:acceptMimeTypes->size()];
-    for (const auto& mimeType : acceptMimeTypes->elementsOfType<API::String>())
+    for (auto mimeType : acceptMimeTypes->elementsOfType<API::String>())
         [mimeTypes addObject:mimeType->string()];
     _mimeTypes = adoptNS([mimeTypes copy]);
 
@@ -254,6 +241,11 @@ static inline UIImage *cameraIcon()
 #if ENABLE(MEDIA_CAPTURE)
     _mediaCaptureType = parameters->mediaCaptureType();
 #endif
+
+    if (![self platformSupportsPickerViewController]) {
+        [self _cancel];
+        return;
+    }
 
     if ([self _shouldMediaCaptureOpenMediaDevice]) {
         [self _adjustMediaCaptureType];
@@ -270,7 +262,7 @@ static inline UIImage *cameraIcon()
 - (void)dismiss
 {
     // Dismiss any view controller that is being presented. This works for all types of view controllers, popovers, etc.
-    // If there is any kind of view controller presented on this view, it will be removed. 
+    // If there is any kind of view controller presented on this view, it will be removed.
     
     [[UIViewController _viewControllerForFullScreenPresentationFromView:_view] dismissViewControllerAnimated:NO completion:nil];
     
@@ -290,9 +282,12 @@ static inline UIImage *cameraIcon()
     }
 
     if (_presentationViewController) {
-        [_presentationViewController dismissViewControllerAnimated:animated completion:^{
-            _presentationViewController = nil;
-        }];
+        UIViewController *currentPresentedViewController = [_presentationViewController presentedViewController];
+        if (currentPresentedViewController == self || currentPresentedViewController == _imagePicker.get()) {
+            [currentPresentedViewController dismissViewControllerAnimated:animated completion:^{
+                _presentationViewController = nil;
+            }];
+        }
     }
 }
 
@@ -434,7 +429,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     
     // Use a popover on the iPad if the source type is not the camera.
     // The camera will use a fullscreen, modal view controller.
-    BOOL usePopover = UICurrentUserInterfaceIdiomIsPad() && sourceType != UIImagePickerControllerSourceTypeCamera;
+    BOOL usePopover = currentUserInterfaceIdiomIsPad() && sourceType != UIImagePickerControllerSourceTypeCamera;
     if (usePopover)
         [self _presentPopoverWithContentViewController:_imagePicker.get() animated:YES];
     else
@@ -445,7 +440,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
 
 - (void)_presentMenuOptionForCurrentInterfaceIdiom:(UIViewController *)viewController
 {
-    if (UICurrentUserInterfaceIdiomIsPad())
+    if (currentUserInterfaceIdiomIsPad())
         [self _presentPopoverWithContentViewController:viewController animated:YES];
     else
         [self _presentFullscreenViewController:viewController animated:YES];
@@ -619,8 +614,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
     NSString * const kTemporaryDirectoryName = @"WKWebFileUpload";
 
     // Build temporary file path.
-    NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSString *temporaryDirectory = [fileManager _webkit_createTemporaryDirectoryWithTemplatePrefix:kTemporaryDirectoryName];
+    NSString *temporaryDirectory = WebCore::FileSystem::createTemporaryDirectory(kTemporaryDirectoryName);
     NSString *filePath = [temporaryDirectory stringByAppendingPathComponent:imageName];
     if (!filePath) {
         LOG_ERROR("WKFileUploadPanel: Failed to create temporary directory to save image");
@@ -637,7 +631,7 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         return;
     }
 
-    successBlock(adoptNS([[_WKImageFileUploadItem alloc] initWithFileURL:[NSURL fileURLWithPath:filePath]]).get());
+    successBlock(adoptNS([[_WKImageFileUploadItem alloc] initWithFileURL:[NSURL fileURLWithPath:filePath isDirectory:NO]]).get());
 }
 
 - (void)_uploadItemForJPEGRepresentationOfImage:(UIImage *)image successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
@@ -661,43 +655,6 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         // the camera, but would work for photos picked from the library.
         NSString * const kUploadImageName = @"image.jpg";
         [self _uploadItemForImageData:jpeg imageName:kUploadImageName successBlock:successBlock failureBlock:failureBlock];
-    });
-}
-
-- (void)_uploadItemForImage:(UIImage *)image withAssetURL:(NSURL *)assetURL successBlock:(void (^)(_WKFileUploadItem *))successBlock failureBlock:(void (^)(void))failureBlock
-{
-    ASSERT_ARG(image, image);
-    ASSERT_ARG(assetURL, assetURL);
-
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        PHFetchResult *result = [getPHAssetClass() fetchAssetsWithALAssetURLs:@[assetURL] options:nil];
-        if (!result.count) {
-            LOG_ERROR("WKFileUploadPanel: Failed to fetch asset with URL %@", assetURL);
-            [self _uploadItemForJPEGRepresentationOfImage:image successBlock:successBlock failureBlock:failureBlock];
-            return;
-        }
-
-        PHAsset *firstAsset = result[0];
-        [firstAsset fetchPropertySetsIfNeeded];
-        NSString *originalFilename = [[firstAsset originalMetadataProperties] originalFilename];
-        ASSERT(originalFilename);
-
-        RetainPtr<PHImageRequestOptions> options = adoptNS([allocPHImageRequestOptionsInstance() init]);
-        [options setVersion:PHImageRequestOptionsVersionCurrent];
-        [options setSynchronous:YES];
-        [options setResizeMode:PHImageRequestOptionsResizeModeNone];
-
-        PHImageManager *manager = (PHImageManager *)[getPHImageManagerClass() defaultManager];
-        [manager requestImageDataForAsset:firstAsset options:options.get() resultHandler:^(NSData *imageData, NSString *dataUTI, UIImageOrientation, NSDictionary *info)
-        {
-            if (!imageData) {
-                LOG_ERROR("WKFileUploadPanel: Failed to request image data for asset with URL %@", assetURL);
-                [self _uploadItemForJPEGRepresentationOfImage:image successBlock:successBlock failureBlock:failureBlock];
-                return;
-            }
-
-            [self _uploadItemForImageData:imageData imageName:originalFilename successBlock:successBlock failureBlock:failureBlock];
-        }];
     });
 }
 
@@ -726,6 +683,20 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         return;
     }
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    if (NSURL *imageURL = info[UIImagePickerControllerImageURL]) {
+        if (!imageURL.isFileURL) {
+            LOG_ERROR("WKFileUploadPanel: Expected image URL to be a file path, it was not");
+            ASSERT_NOT_REACHED();
+            failureBlock();
+            return;
+        }
+
+        successBlock(adoptNS([[_WKImageFileUploadItem alloc] initWithFileURL:imageURL]).get());
+        return;
+    }
+#endif
+
     UIImage *originalImage = [info objectForKey:UIImagePickerControllerOriginalImage];
     if (!originalImage) {
         LOG_ERROR("WKFileUploadPanel: Expected image data but there was none");
@@ -734,15 +705,17 @@ static NSArray *UTIsForMIMETypes(NSArray *mimeTypes)
         return;
     }
 
-    // If we have an asset URL, try to upload the native image.
-    NSURL *referenceURL = [info objectForKey:UIImagePickerControllerReferenceURL];
-    if (referenceURL) {
-        [self _uploadItemForImage:originalImage withAssetURL:referenceURL successBlock:successBlock failureBlock:failureBlock];
-        return;
-    }
-
-    // Photos taken with the camera will not have an asset URL. Fall back to a JPEG representation.
+    // Photos taken with the camera will not have an image URL. Fall back to a JPEG representation.
     [self _uploadItemForJPEGRepresentationOfImage:originalImage successBlock:successBlock failureBlock:failureBlock];
+}
+
+- (BOOL)platformSupportsPickerViewController
+{
+#if PLATFORM(WATCHOS)
+    return NO;
+#else
+    return YES;
+#endif
 }
 
 @end

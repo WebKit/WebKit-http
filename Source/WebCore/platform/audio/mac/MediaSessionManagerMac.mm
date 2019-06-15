@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #import "Logging.h"
 #import "MediaPlayer.h"
 #import "PlatformMediaSession.h"
+#import <wtf/BlockObjCExceptions.h>
 
 #import "MediaRemoteSoftLink.h"
 
@@ -53,14 +54,8 @@ PlatformMediaSessionManager* PlatformMediaSessionManager::sharedManagerIfExists(
     return platformMediaSessionManager;
 }
 
-void PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary()
-{
-    if (auto existingManager = (MediaSessionManagerMac *)PlatformMediaSessionManager::sharedManagerIfExists())
-        existingManager->scheduleUpdateNowPlayingInfo();
-}
-
 MediaSessionManagerMac::MediaSessionManagerMac()
-    : PlatformMediaSessionManager()
+    : MediaSessionManagerCocoa()
 {
     resetRestrictions();
 }
@@ -94,7 +89,7 @@ void MediaSessionManagerMac::removeSession(PlatformMediaSession& session)
 {
     PlatformMediaSessionManager::removeSession(session);
     LOG(Media, "MediaSessionManagerMac::removeSession");
-    updateNowPlayingInfo();
+    scheduleUpdateNowPlayingInfo();
 }
 
 void MediaSessionManagerMac::sessionWillEndPlayback(PlatformMediaSession& session)
@@ -107,7 +102,13 @@ void MediaSessionManagerMac::sessionWillEndPlayback(PlatformMediaSession& sessio
 void MediaSessionManagerMac::clientCharacteristicsChanged(PlatformMediaSession&)
 {
     LOG(Media, "MediaSessionManagerMac::clientCharacteristicsChanged");
-    updateNowPlayingInfo();
+    scheduleUpdateNowPlayingInfo();
+}
+    
+void MediaSessionManagerMac::sessionCanProduceAudioChanged(PlatformMediaSession& session)
+{
+    PlatformMediaSessionManager::sessionCanProduceAudioChanged(session);
+    scheduleUpdateNowPlayingInfo();
 }
 
 PlatformMediaSession* MediaSessionManagerMac::nowPlayingEligibleSession()
@@ -124,6 +125,8 @@ void MediaSessionManagerMac::updateNowPlayingInfo()
     if (!isMediaRemoteFrameworkAvailable())
         return;
 
+    BEGIN_BLOCK_OBJC_EXCEPTIONS
+
     const PlatformMediaSession* currentSession = this->nowPlayingEligibleSession();
 
     LOG(Media, "MediaSessionManagerMac::updateNowPlayingInfo - currentSession = %p", currentSession);
@@ -133,26 +136,32 @@ void MediaSessionManagerMac::updateNowPlayingInfo()
             MRMediaRemoteSetNowPlayingVisibility(MRMediaRemoteGetLocalOrigin(), MRNowPlayingClientVisibilityNeverVisible);
 
         LOG(Media, "MediaSessionManagerMac::updateNowPlayingInfo - clearing now playing info");
+
+        MRMediaRemoteSetCanBeNowPlayingApplication(false);
+        m_registeredAsNowPlayingApplication = false;
+
         MRMediaRemoteSetNowPlayingInfo(nullptr);
         m_nowPlayingActive = false;
         m_lastUpdatedNowPlayingTitle = emptyString();
         m_lastUpdatedNowPlayingDuration = NAN;
         m_lastUpdatedNowPlayingElapsedTime = NAN;
+        m_lastUpdatedNowPlayingInfoUniqueIdentifier = 0;
         MRMediaRemoteSetNowPlayingApplicationPlaybackStateForOrigin(MRMediaRemoteGetLocalOrigin(), kMRPlaybackStateStopped, dispatch_get_main_queue(), ^(MRMediaRemoteError error) {
 #if LOG_DISABLED
             UNUSED_PARAM(error);
 #else
-            LOG(Media, "MediaSessionManagerMac::updateNowPlayingInfo - MRMediaRemoteSetNowPlayingApplicationPlaybackStateForOrigin(stopped) failed with error %ud", error);
+            if (error)
+                LOG(Media, "MediaSessionManagerMac::updateNowPlayingInfo - MRMediaRemoteSetNowPlayingApplicationPlaybackStateForOrigin(stopped) failed with error %ud", error);
 #endif
         });
 
         return;
     }
 
-    static dispatch_once_t enableNowPlayingToken;
-    dispatch_once(&enableNowPlayingToken, ^() {
+    if (!m_registeredAsNowPlayingApplication) {
+        m_registeredAsNowPlayingApplication = true;
         MRMediaRemoteSetCanBeNowPlayingApplication(true);
-    });
+    }
 
     String title = currentSession->title();
     double duration = currentSession->supportsSeeking() ? currentSession->duration() : MediaPlayer::invalidTime();
@@ -170,8 +179,12 @@ void MediaSessionManagerMac::updateNowPlayingInfo()
         m_lastUpdatedNowPlayingDuration = duration;
     }
 
-    auto cfRate = CFNumberCreate(kCFAllocatorDefault, kCFNumberDoubleType, &rate);
-    CFDictionarySetValue(info.get(), kMRMediaRemoteNowPlayingInfoPlaybackRate, cfRate);
+    auto cfRate = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberDoubleType, &rate));
+    CFDictionarySetValue(info.get(), kMRMediaRemoteNowPlayingInfoPlaybackRate, cfRate.get());
+
+    m_lastUpdatedNowPlayingInfoUniqueIdentifier = currentSession->uniqueIdentifier();
+    auto cfIdentifier = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberLongLongType, &m_lastUpdatedNowPlayingInfoUniqueIdentifier));
+    CFDictionarySetValue(info.get(), kMRMediaRemoteNowPlayingInfoUniqueIdentifier, cfIdentifier.get());
 
     double currentTime = currentSession->currentTime();
     if (std::isfinite(currentTime) && currentTime != MediaPlayer::invalidTime() && currentSession->supportsSeeking()) {
@@ -202,7 +215,8 @@ void MediaSessionManagerMac::updateNowPlayingInfo()
         MRNowPlayingClientVisibility visibility = currentSession->allowsNowPlayingControlsVisibility() ? MRNowPlayingClientVisibilityAlwaysVisible : MRNowPlayingClientVisibilityNeverVisible;
         MRMediaRemoteSetNowPlayingVisibility(MRMediaRemoteGetLocalOrigin(), visibility);
     }
-#endif
+    END_BLOCK_OBJC_EXCEPTIONS
+#endif // USE(MEDIAREMOTE)
 }
 
 } // namespace WebCore

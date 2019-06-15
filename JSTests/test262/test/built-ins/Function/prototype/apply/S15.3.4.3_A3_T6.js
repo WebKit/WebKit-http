@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     If thisArg is null or undefined, the called function is passed the global
     object as the this value
 es5id: 15.3.4.3_A3_T6
@@ -12,8 +12,10 @@ description: >
 flags: [noStrict]
 ---*/
 
-function FACTORY(){
-  (function(){this.feat="kamon beyba"}).apply(null);
+function FACTORY() {
+  (function() {
+    this.feat = "kamon beyba"
+  }).apply(null);
 };
 
 var obj = new FACTORY;

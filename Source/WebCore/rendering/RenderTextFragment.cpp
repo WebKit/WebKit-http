@@ -25,10 +25,14 @@
 
 #include "RenderBlock.h"
 #include "RenderIterator.h"
-#include "RenderMultiColumnFlowThread.h"
+#include "RenderMultiColumnFlow.h"
+#include "RenderTreeBuilder.h"
 #include "Text.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderTextFragment);
 
 RenderTextFragment::RenderTextFragment(Text& textNode, const String& text, int startOffset, int length)
     : RenderText(textNode, text.substring(startOffset, length))
@@ -57,6 +61,7 @@ RenderTextFragment::RenderTextFragment(Document& textNode, const String& text)
 
 RenderTextFragment::~RenderTextFragment()
 {
+    ASSERT(!m_firstLetter);
 }
 
 bool RenderTextFragment::canBeSelectionLeaf() const
@@ -68,33 +73,23 @@ void RenderTextFragment::styleDidChange(StyleDifference diff, const RenderStyle*
 {
     RenderText::styleDidChange(diff, oldStyle);
 
-    if (RenderBlock* block = blockForAccompanyingFirstLetter()) {
-        block->mutableStyle().removeCachedPseudoStyle(FIRST_LETTER);
-        block->updateFirstLetter();
-    }
+    if (RenderBlock* block = blockForAccompanyingFirstLetter())
+        block->mutableStyle().removeCachedPseudoStyle(PseudoId::FirstLetter);
 }
 
-void RenderTextFragment::willBeDestroyed()
+void RenderTextFragment::setText(const String& newText, bool force)
 {
-    if (m_firstLetter)
-        m_firstLetter->destroy();
-    RenderText::willBeDestroyed();
-}
-
-void RenderTextFragment::setText(const String& text, bool force)
-{
-    RenderText::setText(text, force);
-
+    RenderText::setText(newText, force);
     m_start = 0;
-    m_end = textLength();
+    m_end = text().length();
     if (!m_firstLetter)
         return;
-    m_firstLetter->destroy();
-    m_firstLetter = 0;
-    if (!textNode())
-        return;
-    ASSERT(!textNode()->renderer());
-    textNode()->setRenderer(this);
+    if (RenderTreeBuilder::current())
+        RenderTreeBuilder::current()->destroy(*m_firstLetter);
+    else
+        RenderTreeBuilder(*document().renderView()).destroy(*m_firstLetter);
+    ASSERT(!m_firstLetter);
+    ASSERT(!textNode() || textNode()->renderer() == this);
 }
 
 UChar RenderTextFragment::previousCharacter() const
@@ -113,9 +108,9 @@ RenderBlock* RenderTextFragment::blockForAccompanyingFirstLetter()
     if (!m_firstLetter)
         return nullptr;
     for (auto& block : ancestorsOfType<RenderBlock>(*m_firstLetter)) {
-        if (is<RenderMultiColumnFlowThread>(block))
+        if (is<RenderMultiColumnFlow>(block))
             break;
-        if (block.style().hasPseudoStyle(FIRST_LETTER) && block.canHaveChildren())
+        if (block.style().hasPseudoStyle(PseudoId::FirstLetter) && block.canHaveChildren())
             return &block;
     }
     return nullptr;

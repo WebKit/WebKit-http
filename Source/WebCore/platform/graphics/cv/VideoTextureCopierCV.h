@@ -23,16 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VideoTextureCopierCV_h
-#define VideoTextureCopierCV_h
+#pragma once
+
+#if HAVE(CORE_VIDEO)
 
 #import "GraphicsContext3D.h"
+#import <wtf/UnsafePointer.h>
 
-typedef struct  __CVBuffer* CVImageBufferRef;
+typedef struct __CVBuffer* CVImageBufferRef;
+typedef struct __CVBuffer* CVPixelBufferRef;
 typedef CVImageBufferRef CVOpenGLTextureRef;
 typedef CVImageBufferRef CVOpenGLESTextureRef;
 
 namespace WebCore {
+
+class TextureCacheCV;
 
 class VideoTextureCopierCV {
 public:
@@ -45,15 +50,57 @@ public:
     typedef CVOpenGLTextureRef TextureType;
 #endif
 
-    bool copyVideoTextureToPlatformTexture(TextureType, size_t width, size_t height, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY);
+    bool copyImageToPlatformTexture(CVPixelBufferRef, size_t width, size_t height, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY);
+    bool copyVideoTextureToPlatformTexture(TextureType, size_t width, size_t height, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY, bool swapColorChannels = false);
 
-    GraphicsContext3D& context() { return m_context.get(); }
+    GraphicsContext3D& context() { return m_context; }
 
 private:
+    bool copyVideoTextureToPlatformTexture(Platform3DObject inputTexture, GC3Denum inputTarget, size_t width, size_t height, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY, bool swapColorChannels);
+
+    bool initializeContextObjects();
+    bool initializeUVContextObjects();
+
+#if HAVE(IOSURFACE)
+    unsigned lastTextureSeed(GC3Duint texture)
+    {
+        auto iterator = m_lastTextureSeed.find(texture);
+        return iterator == m_lastTextureSeed.end() ? 0 : iterator->value;
+    }
+#endif
+
+    Ref<GraphicsContext3D> m_sharedContext;
     Ref<GraphicsContext3D> m_context;
-    Platform3DObject m_readFramebuffer;
+    std::unique_ptr<TextureCacheCV> m_textureCache;
+    Platform3DObject m_framebuffer { 0 };
+    Platform3DObject m_program { 0 };
+    Platform3DObject m_vertexBuffer { 0 };
+    GC3Dint m_textureUniformLocation { -1 };
+    GC3Dint m_textureDimensionsUniformLocation { -1 };
+    GC3Dint m_flipYUniformLocation { -1 };
+    GC3Dint m_swapColorChannelsUniformLocation { -1 };
+    GC3Dint m_premultiplyUniformLocation { -1 };
+    GC3Dint m_positionAttributeLocation { -1 };
+    Platform3DObject m_yuvProgram { 0 };
+    Platform3DObject m_yuvVertexBuffer { 0 };
+    GC3Dint m_yTextureUniformLocation { -1 };
+    GC3Dint m_uvTextureUniformLocation { -1 };
+    GC3Dint m_yuvFlipYUniformLocation { -1 };
+    GC3Dint m_colorMatrixUniformLocation { -1 };
+    GC3Dint m_yuvPositionAttributeLocation { -1 };
+    GC3Dint m_yTextureSizeUniformLocation { -1 };
+    GC3Dint m_uvTextureSizeUniformLocation { -1 };
+
+#if HAVE(IOSURFACE)
+    bool m_lastFlipY { false };
+    UnsafePointer<IOSurfaceRef> m_lastSurface;
+    uint32_t m_lastSurfaceSeed { 0 };
+
+    using TextureSeedMap = HashMap<GC3Duint, unsigned, WTF::IntHash<GC3Duint>, WTF::UnsignedWithZeroKeyHashTraits<GC3Duint>>;
+    TextureSeedMap m_lastTextureSeed;
+#endif
 };
 
 }
 
-#endif // VideoTextureCopierCV_h
+#endif // HAVE(CORE_VIDEO)

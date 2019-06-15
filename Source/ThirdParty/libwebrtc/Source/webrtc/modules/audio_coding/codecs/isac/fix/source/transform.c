@@ -15,9 +15,10 @@
  *
  */
 
-#include "webrtc/modules/audio_coding/codecs/isac/fix/source/codec.h"
-#include "webrtc/modules/audio_coding/codecs/isac/fix/source/fft.h"
-#include "webrtc/modules/audio_coding/codecs/isac/fix/source/settings.h"
+#include "modules/audio_coding/codecs/isac/fix/source/codec.h"
+#include "modules/audio_coding/codecs/isac/fix/source/fft.h"
+#include "modules/audio_coding/codecs/isac/fix/source/settings.h"
+#include "modules/third_party/fft/fft.h"
 
 /* Tables are defined in transform_tables.c file or ARM assembly files. */
 /* Cosine table 1 in Q14 */

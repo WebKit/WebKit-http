@@ -26,32 +26,23 @@
 #import "config.h"
 #import "Editor.h"
 
+#if PLATFORM(IOS)
+
 #import "CSSComputedStyleDeclaration.h"
 #import "CSSPrimitiveValueMappings.h"
 #import "CachedImage.h"
-#import "CachedResourceLoader.h"
 #import "DataTransfer.h"
 #import "DictationCommandIOS.h"
 #import "DocumentFragment.h"
-#import "DocumentLoader.h"
 #import "DocumentMarkerController.h"
 #import "Editing.h"
 #import "EditorClient.h"
-#import "FontCascade.h"
 #import "Frame.h"
-#import "FrameLoader.h"
-#import "FrameLoaderClient.h"
-#import "HTMLAnchorElement.h"
 #import "HTMLConverter.h"
-#import "HTMLImageElement.h"
 #import "HTMLInputElement.h"
 #import "HTMLNames.h"
 #import "HTMLParserIdioms.h"
 #import "HTMLTextAreaElement.h"
-#import "LegacyWebArchive.h"
-#import "NSAttributedStringSPI.h"
-#import "NodeTraversal.h"
-#import "Page.h"
 #import "Pasteboard.h"
 #import "RenderBlock.h"
 #import "RenderImage.h"
@@ -60,9 +51,8 @@
 #import "Text.h"
 #import "TypingCommand.h"
 #import "WAKAppKitStubs.h"
+#import "WebContentReader.h"
 #import "markup.h"
-#import <MobileCoreServices/MobileCoreServices.h>
-#import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -102,37 +92,36 @@ void Editor::setTextAlignmentForChangedBaseWritingDirection(WritingDirection dir
         return;
         
     const char *newValue = nullptr;
-    ETextAlign textAlign = *value;
+    TextAlignMode textAlign = *value;
     switch (textAlign) {
-        case TASTART:
-        case TAEND:
-        {
-            switch (direction) {
-                case NaturalWritingDirection:
-                    // no-op
-                    break;
-                case LeftToRightWritingDirection:
-                    newValue = "left";
-                    break;
-                case RightToLeftWritingDirection:
-                    newValue = "right";
-                    break;
-            }
-            break;
-        }
-        case LEFT:
-        case WEBKIT_LEFT:
-            newValue = "right";
-            break;
-        case RIGHT:
-        case WEBKIT_RIGHT:
-            newValue = "left";
-            break;
-        case CENTER:
-        case WEBKIT_CENTER:
-        case JUSTIFY:
+    case TextAlignMode::Start:
+    case TextAlignMode::End: {
+        switch (direction) {
+        case NaturalWritingDirection:
             // no-op
             break;
+        case LeftToRightWritingDirection:
+            newValue = "left";
+            break;
+        case RightToLeftWritingDirection:
+            newValue = "right";
+            break;
+        }
+        break;
+    }
+    case TextAlignMode::Left:
+    case TextAlignMode::WebKitLeft:
+        newValue = "right";
+        break;
+    case TextAlignMode::Right:
+    case TextAlignMode::WebKitRight:
+        newValue = "left";
+        break;
+    case TextAlignMode::Center:
+    case TextAlignMode::WebKitCenter:
+    case TextAlignMode::Justify:
+        // no-op
+        break;
     }
 
     if (!newValue)
@@ -174,8 +163,8 @@ void Editor::removeUnchangeableStyles()
     defaultStyle->removeProperty(CSSPropertyTextDecoration);
     defaultStyle->removeProperty(CSSPropertyWebkitTextDecorationsInEffect); // implements underline
 
-    // FIXME add EditActionMatchStlye <rdar://problem/9156507> Undo rich text's paste & match style should say "Undo Match Style"
-    applyStyleToSelection(defaultStyle.get(), EditActionChangeAttributes);
+    // FIXME add EditAction::MatchStlye <rdar://problem/9156507> Undo rich text's paste & match style should say "Undo Match Style"
+    applyStyleToSelection(defaultStyle.get(), EditAction::ChangeAttributes);
 }
 
 static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& cachedImage)
@@ -199,16 +188,22 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
 {
     PasteboardImage pasteboardImage;
 
-    CachedImage* cachedImage;
-    getImage(imageElement, pasteboardImage.image, cachedImage);
-    if (!pasteboardImage.image)
+    RefPtr<Image> image;
+    CachedImage* cachedImage = nullptr;
+    getImage(imageElement, image, cachedImage);
+    if (!image)
         return;
     ASSERT(cachedImage);
 
     auto imageSourceURL = imageElement.document().completeURL(stripLeadingAndTrailingHTMLSpaces(imageElement.imageSourceURL()));
-    pasteboardImage.url.url = url.isEmpty() ? imageSourceURL : url;
-    pasteboardImage.url.title = title;
+
+    auto pasteboardImageURL = url.isEmpty() ? imageSourceURL : url;
+    if (!pasteboardImageURL.isLocalFile()) {
+        pasteboardImage.url.url = pasteboardImageURL;
+        pasteboardImage.url.title = title;
+    }
     pasteboardImage.suggestedName = imageSourceURL.lastPathComponent();
+    pasteboardImage.imageSize = image->size();
     pasteboardImage.resourceMIMEType = pasteboard.resourceMIMEType(cachedImage->response().mimeType());
     pasteboardImage.resourceData = cachedImage->resourceBuffer();
 
@@ -218,158 +213,6 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
     client()->getClientPasteboardDataForRange(imageRange.get(), pasteboardImage.clientTypes, pasteboardImage.clientData);
 
     pasteboard.write(pasteboardImage);
-}
-
-class Editor::WebContentReader final : public PasteboardWebContentReader {
-public:
-    WebContentReader(Frame& frame, Range& context, bool allowPlainText)
-        : frame(frame)
-        , context(context)
-        , allowPlainText(allowPlainText)
-        , madeFragmentFromPlainText(false)
-    {
-    }
-
-    void addFragment(RefPtr<DocumentFragment>&&);
-
-    Frame& frame;
-    Range& context;
-    const bool allowPlainText;
-
-    RefPtr<DocumentFragment> fragment;
-    bool madeFragmentFromPlainText;
-
-private:
-    bool readWebArchive(SharedBuffer*) override;
-    bool readFilenames(const Vector<String>&) override;
-    bool readHTML(const String&) override;
-    bool readRTFD(SharedBuffer&) override;
-    bool readRTF(SharedBuffer&) override;
-    bool readImage(Ref<SharedBuffer>&&, const String& type) override;
-    bool readURL(const URL&, const String& title) override;
-    bool readPlainText(const String&) override;
-};
-
-void Editor::WebContentReader::addFragment(RefPtr<DocumentFragment>&& newFragment)
-{
-    if (!newFragment)
-        return;
-
-    if (!fragment) {
-        fragment = WTFMove(newFragment);
-        return;
-    }
-
-    while (auto* firstChild = newFragment->firstChild()) {
-        if (fragment->appendChild(*firstChild).hasException())
-            break;
-    }
-}
-
-bool Editor::WebContentReader::readWebArchive(SharedBuffer* buffer)
-{
-    if (!frame.document())
-        return false;
-
-    if (!buffer)
-        return false;
-
-    auto archive = LegacyWebArchive::create(URL(), *buffer);
-    if (!archive)
-        return false;
-
-    auto* mainResource = archive->mainResource();
-    if (!mainResource)
-        return false;
-
-    auto& type = mainResource->mimeType();
-    if (!frame.loader().client().canShowMIMETypeAsHTML(type))
-        return false;
-
-    // FIXME: The code in createFragmentAndAddResources calls setDefersLoading(true). Don't we need that here?
-    if (auto* loader = frame.loader().documentLoader())
-        loader->addAllArchiveResources(*archive);
-
-    auto markupString = String::fromUTF8(mainResource->data().data(), mainResource->data().size());
-    addFragment(createFragmentFromMarkup(*frame.document(), markupString, mainResource->url(), DisallowScriptingAndPluginContent));
-    return true;
-}
-
-bool Editor::WebContentReader::readFilenames(const Vector<String>&)
-{
-    return false;
-}
-
-bool Editor::WebContentReader::readHTML(const String& string)
-{
-    if (!frame.document())
-        return false;
-
-    addFragment(createFragmentFromMarkup(*frame.document(), string, emptyString(), DisallowScriptingAndPluginContent));
-    return true;
-}
-
-bool Editor::WebContentReader::readRTFD(SharedBuffer& buffer)
-{
-    addFragment(frame.editor().createFragmentAndAddResources(adoptNS([[NSAttributedString alloc] initWithRTFD:buffer.createNSData().get() documentAttributes:nullptr]).get()));
-    return fragment;
-}
-
-bool Editor::WebContentReader::readRTF(SharedBuffer& buffer)
-{
-    addFragment(frame.editor().createFragmentAndAddResources(adoptNS([[NSAttributedString alloc] initWithRTF:buffer.createNSData().get() documentAttributes:nullptr]).get()));
-    return fragment;
-}
-
-bool Editor::WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const String& type)
-{
-    RetainPtr<CFStringRef> stringType = type.createCFString();
-    RetainPtr<NSString> filenameExtension = adoptNS((NSString *)UTTypeCopyPreferredTagWithClass(stringType.get(), kUTTagClassFilenameExtension));
-    NSString *relativeURLPart = [@"image" stringByAppendingString:filenameExtension.get()];
-    RetainPtr<NSString> mimeType = adoptNS((NSString *)UTTypeCopyPreferredTagWithClass(stringType.get(), kUTTagClassMIMEType));
-
-    addFragment(frame.editor().createFragmentForImageResourceAndAddResource(ArchiveResource::create(WTFMove(buffer), URL::fakeURLWithRelativePart(relativeURLPart), mimeType.get(), emptyString(), emptyString())));
-    return fragment;
-}
-
-bool Editor::WebContentReader::readURL(const URL& url, const String& title)
-{
-    if (url.isEmpty())
-        return false;
-
-    if (!frame.editor().client()->hasRichlyEditableSelection()) {
-        if (readPlainText([(NSURL *)url absoluteString]))
-            return true;
-    }
-
-    if ([(NSURL *)url isFileURL])
-        return false;
-
-    auto anchor = HTMLAnchorElement::create(*frame.document());
-    anchor->setAttributeWithoutSynchronization(HTMLNames::hrefAttr, url.string());
-
-    String linkText = title.length() ? title : String([[(NSURL *)url absoluteString] precomposedStringWithCanonicalMapping]);
-    anchor->appendChild(frame.document()->createTextNode(linkText));
-
-    auto newFragment = frame.document()->createDocumentFragment();
-    if (fragment)
-        newFragment->appendChild(Text::create(*frame.document(), { &space, 1 }));
-    newFragment->appendChild(anchor);
-    addFragment(WTFMove(newFragment));
-    return true;
-}
-
-bool Editor::WebContentReader::readPlainText(const String& text)
-{
-    if (!allowPlainText)
-        return false;
-
-    addFragment(createFragmentFromText(context, [text precomposedStringWithCanonicalMapping]));
-    if (!fragment)
-        return false;
-
-    madeFragmentFromPlainText = true;
-    return true;
 }
 
 // FIXME: Should give this function a name that makes it clear it adds resources to the document loader as a side effect.
@@ -391,8 +234,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText, Ma
         RefPtr<DocumentFragment> fragment = client()->documentFragmentFromDelegate(i);
         if (!fragment)
             continue;
-
-        reader.addFragment(WTFMove(fragment));
+        reader.addFragment(fragment.releaseNonNull());
     }
 
     RefPtr<DocumentFragment> fragment = reader.fragment;
@@ -553,3 +395,5 @@ void Editor::ensureLastEditCommandHasCurrentSelectionIfOpenForMoreTyping()
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(IOS)

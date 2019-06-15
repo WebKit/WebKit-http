@@ -36,6 +36,7 @@
 #include "BlobURL.h"
 #include "File.h"
 #include "ScriptExecutionContext.h"
+#include "SharedBuffer.h"
 #include "ThreadableBlobRegistry.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
@@ -96,6 +97,19 @@ Blob::Blob(Vector<BlobPartVariant>&& blobPartVariants, const BlobPropertyBag& pr
     ThreadableBlobRegistry::registerBlobURL(m_internalURL, builder.finalize(), m_type);
 }
 
+Blob::Blob(const SharedBuffer& buffer, const String& contentType)
+    : m_type(contentType)
+    , m_size(buffer.size())
+{
+    Vector<uint8_t> data;
+    data.append(buffer.data(), buffer.size());
+
+    Vector<BlobPart> blobParts;
+    blobParts.append(BlobPart(WTFMove(data)));
+    m_internalURL = BlobURL::createInternalURL();
+    ThreadableBlobRegistry::registerBlobURL(m_internalURL, WTFMove(blobParts), contentType);
+}
+
 Blob::Blob(Vector<uint8_t>&& data, const String& contentType)
     : m_type(contentType)
     , m_size(data.size())
@@ -104,6 +118,14 @@ Blob::Blob(Vector<uint8_t>&& data, const String& contentType)
     blobParts.append(BlobPart(WTFMove(data)));
     m_internalURL = BlobURL::createInternalURL();
     ThreadableBlobRegistry::registerBlobURL(m_internalURL, WTFMove(blobParts), contentType);
+}
+
+Blob::Blob(ReferencingExistingBlobConstructor, const Blob& blob)
+    : m_internalURL(BlobURL::createInternalURL())
+    , m_type(blob.type())
+    , m_size(blob.size())
+{
+    ThreadableBlobRegistry::registerBlobURL(m_internalURL, { BlobPart(blob.url()) } , m_type);
 }
 
 Blob::Blob(DeserializationContructor, const URL& srcURL, const String& type, long long size, const String& fileBackedPath)

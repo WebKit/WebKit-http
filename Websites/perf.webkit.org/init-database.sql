@@ -244,6 +244,7 @@ CREATE TABLE triggerable_repository_groups (
     repositorygroup_name varchar(256) NOT NULL,
     repositorygroup_description varchar(256),
     repositorygroup_accepts_roots boolean NOT NULL DEFAULT FALSE,
+    repositorygroup_hidden boolean NOT NULL DEFAULT FALSE,
     CONSTRAINT repository_group_name_must_be_unique_for_triggerable UNIQUE(repositorygroup_triggerable, repositorygroup_name));
 
 CREATE TABLE triggerable_repositories (
@@ -278,6 +279,8 @@ CREATE TABLE analysis_test_groups (
     testgroup_author varchar(256),
     testgroup_created_at timestamp NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
     testgroup_hidden boolean NOT NULL DEFAULT FALSE,
+    testgroup_needs_notification boolean NOT NULL DEFAULT FALSE,
+    testgroup_notification_sent_at timestamp DEFAULT NULL,
     CONSTRAINT testgroup_name_must_be_unique_for_each_task UNIQUE(testgroup_task, testgroup_name));
 CREATE INDEX testgroup_task_index ON analysis_test_groups(testgroup_task);
 
@@ -287,10 +290,14 @@ CREATE TABLE commit_sets (
 CREATE TABLE commit_set_items (
     commitset_set integer REFERENCES commit_sets NOT NULL,
     commitset_commit integer REFERENCES commits,
+    commitset_commit_owner integer REFERENCES commits DEFAULT NULL,
     commitset_patch_file integer REFERENCES uploaded_files,
     commitset_root_file integer REFERENCES uploaded_files,
+    commitset_requires_build boolean DEFAULT FALSE,
     CONSTRAINT commitset_must_have_commit_or_root CHECK (commitset_commit IS NOT NULL OR commitset_root_file IS NOT NULL),
-    CONSTRAINT commitset_with_patch_must_have_commit CHECK (commitset_patch_file IS NULL OR commitset_commit IS NOT NULL));
+    CONSTRAINT commitset_with_patch_must_have_commit CHECK (commitset_patch_file IS NULL OR commitset_commit IS NOT NULL),
+    CONSTRAINT commitset_item_with_patch_must_requires_build CHECK (commitset_patch_file IS NULL OR commitset_requires_build = TRUE),
+    CONSTRAINT commitset_item_with_owned_commit_must_requires_build CHECK (commitset_commit_owner IS NULL OR commitset_requires_build = TRUE));
 
 CREATE TYPE build_request_status_type as ENUM ('pending', 'scheduled', 'running', 'failed', 'completed', 'canceled');
 CREATE TABLE build_requests (

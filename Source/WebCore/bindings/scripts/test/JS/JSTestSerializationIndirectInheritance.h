@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include "JSDOMWrapper.h"
 #include "JSTestSerializationInherit.h"
 #include "TestSerializationIndirectInheritance.h"
 
@@ -47,6 +48,7 @@ public:
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
+    static void heapSnapshot(JSCell*, JSC::HeapSnapshotBuilder&);
     TestSerializationIndirectInheritance& wrapped() const
     {
         return static_cast<TestSerializationIndirectInheritance&>(Base::wrapped());

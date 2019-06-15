@@ -29,17 +29,12 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CommonCryptoUtilities.h"
-#include "CryptoAlgorithmRsaSsaParamsDeprecated.h"
 #include "CryptoDigestAlgorithm.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
-#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
-// FIXME: We should change data to Vector<uint8_t> type once WebKitSubtleCrypto is deprecated.
-// https://bugs.webkit.org/show_bug.cgi?id=164939
-static ExceptionOr<Vector<uint8_t>> signRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentifier hash, const PlatformRSAKey key, size_t keyLength, const uint8_t* data, size_t dataLength)
+static ExceptionOr<Vector<uint8_t>> signRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentifier hash, const PlatformRSAKey key, size_t keyLength, const Vector<uint8_t>& data)
 {
     CCDigestAlgorithm digestAlgorithm;
     if (!getCommonCryptoDigestAlgorithm(hash, digestAlgorithm))
@@ -51,7 +46,7 @@ static ExceptionOr<Vector<uint8_t>> signRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentif
     auto digest = PAL::CryptoDigest::create(*cryptoDigestAlgorithm);
     if (!digest)
         return Exception { OperationError };
-    digest->addBytes(data, dataLength);
+    digest->addBytes(data.data(), data.size());
     auto digestData = digest->computeHash();
 
     Vector<uint8_t> signature(keyLength / 8); // Per https://tools.ietf.org/html/rfc3447#section-8.2.1
@@ -64,9 +59,7 @@ static ExceptionOr<Vector<uint8_t>> signRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentif
     return WTFMove(signature);
 }
 
-// FIXME: We should change signature, data to Vector<uint8_t> type once WebKitSubtleCrypto is deprecated.
-// https://bugs.webkit.org/show_bug.cgi?id=164939
-static ExceptionOr<bool> verifyRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentifier hash, const PlatformRSAKey key, const uint8_t* signature, size_t signatureLength, const uint8_t* data, size_t dataLength)
+static ExceptionOr<bool> verifyRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentifier hash, const PlatformRSAKey key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
     CCDigestAlgorithm digestAlgorithm;
     if (!getCommonCryptoDigestAlgorithm(hash, digestAlgorithm))
@@ -78,10 +71,10 @@ static ExceptionOr<bool> verifyRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentifier hash,
     auto digest = PAL::CryptoDigest::create(*cryptoDigestAlgorithm);
     if (!digest)
         return Exception { OperationError };
-    digest->addBytes(data, dataLength);
+    digest->addBytes(data.data(), data.size());
     auto digestData = digest->computeHash();
 
-    auto status = CCRSACryptorVerify(key, ccPKCS1Padding, digestData.data(), digestData.size(), digestAlgorithm, 0, signature, signatureLength);
+    auto status = CCRSACryptorVerify(key, ccPKCS1Padding, digestData.data(), digestData.size(), digestAlgorithm, 0, signature.data(), signature.size());
     if (!status)
         return true;
     if (status == kCCNotVerified || status == kCCDecodeError) // <rdar://problem/15464982> CCRSACryptorVerify returns kCCDecodeError instead of kCCNotVerified sometimes
@@ -90,70 +83,14 @@ static ExceptionOr<bool> verifyRSASSA_PKCS1_v1_5(CryptoAlgorithmIdentifier hash,
     return Exception { OperationError };
 }
 
-void CryptoAlgorithmRSASSA_PKCS1_v1_5::platformSign(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSASSA_PKCS1_v1_5::platformSign(const CryptoKeyRSA& key, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch([key = WTFMove(key), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
-        auto result = signRSASSA_PKCS1_v1_5(rsaKey.hashAlgorithmIdentifier(), rsaKey.platformKey(), rsaKey.keySizeInBits(), data.data(), data.size());
-        if (result.hasException()) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), ec = result.releaseException().code(), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(ec);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = result.releaseReturnValue(), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
+    return signRSASSA_PKCS1_v1_5(key.hashAlgorithmIdentifier(), key.platformKey(), key.keySizeInBits(), data);
 }
 
-void CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify(Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<bool> CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify(const CryptoKeyRSA& key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch([key = WTFMove(key), signature = WTFMove(signature), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
-        auto result = verifyRSASSA_PKCS1_v1_5(rsaKey.hashAlgorithmIdentifier(), rsaKey.platformKey(), signature.data(), signature.size(), data.data(), data.size());
-        if (result.hasException()) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), ec = result.releaseException().code(), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(ec);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = result.releaseReturnValue(), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
-}
-
-ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::platformSign(const CryptoAlgorithmRsaSsaParamsDeprecated& parameters, const CryptoKeyRSA& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
-{
-    auto result = signRSASSA_PKCS1_v1_5(parameters.hash, key.platformKey(), key.keySizeInBits(), data.first, data.second);
-    if (result.hasException()) {
-        failureCallback();
-        return { };
-    }
-    callback(result.releaseReturnValue());
-    return { };
-}
-
-ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify(const CryptoAlgorithmRsaSsaParamsDeprecated& parameters, const CryptoKeyRSA& key, const CryptoOperationData& signature, const CryptoOperationData& data, BoolCallback&& callback, VoidCallback&& failureCallback)
-{
-    auto result = verifyRSASSA_PKCS1_v1_5(parameters.hash, key.platformKey(), signature.first, signature.second, data.first, data.second);
-    if (result.hasException()) {
-        failureCallback();
-        return { };
-    }
-    callback(result.releaseReturnValue());
-    return { };
+    return verifyRSASSA_PKCS1_v1_5(key.hashAlgorithmIdentifier(), key.platformKey(), signature, data);
 }
 
 } // namespace WebCore

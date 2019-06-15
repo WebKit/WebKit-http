@@ -37,10 +37,8 @@
 #import "WKDataDetectorTypesInternal.h"
 #endif
 
-using namespace WebKit;
-
 @implementation WKWebProcessPlugInRangeHandle {
-    API::ObjectStorage<InjectedBundleRangeHandle> _rangeHandle;
+    API::ObjectStorage<WebKit::InjectedBundleRangeHandle> _rangeHandle;
 }
 
 - (void)dealloc
@@ -52,17 +50,13 @@ using namespace WebKit;
 + (WKWebProcessPlugInRangeHandle *)rangeHandleWithJSValue:(JSValue *)value inContext:(JSContext *)context
 {
     JSContextRef contextRef = [context JSGlobalContextRef];
-    JSObjectRef objectRef = JSValueToObject(contextRef, [value JSValueRef], 0);
-    auto rangeHandle = InjectedBundleRangeHandle::getOrCreate(contextRef, objectRef);
-    if (!rangeHandle)
-        return nil;
-
-    return [wrapper(*rangeHandle.leakRef()) autorelease];
+    JSObjectRef objectRef = JSValueToObject(contextRef, [value JSValueRef], nullptr);
+    return wrapper(WebKit::InjectedBundleRangeHandle::getOrCreate(contextRef, objectRef));
 }
 
 - (WKWebProcessPlugInFrame *)frame
 {
-    return [wrapper(*_rangeHandle->document()->documentFrame().leakRef()) autorelease];
+    return wrapper(_rangeHandle->document()->documentFrame());
 }
 
 - (NSString *)text
@@ -71,7 +65,7 @@ using namespace WebKit;
 }
 
 #if TARGET_OS_IPHONE
-- (NSArray *)detectDataWithTypes:(WKDataDetectorTypes)types context:(NSDictionary *)context WK_API_AVAILABLE(ios(WK_IOS_TBA))
+- (NSArray *)detectDataWithTypes:(WKDataDetectorTypes)types context:(NSDictionary *)context
 {
 #if ENABLE(DATA_DETECTION)
     RefPtr<WebCore::Range> coreRange = &_rangeHandle->coreRange();
@@ -82,7 +76,7 @@ using namespace WebKit;
 }
 #endif
 
-- (InjectedBundleRangeHandle&)_rangeHandle
+- (WebKit::InjectedBundleRangeHandle&)_rangeHandle
 {
     return *_rangeHandle;
 }

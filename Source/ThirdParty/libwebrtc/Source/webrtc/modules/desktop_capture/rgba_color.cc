@@ -8,9 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/desktop_capture/rgba_color.h"
-
-#include "webrtc/typedefs.h"
+#include "modules/desktop_capture/rgba_color.h"
+#include "rtc_base/system/arch.h"
 
 namespace webrtc {
 

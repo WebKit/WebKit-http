@@ -27,7 +27,7 @@
 
 #if ENABLE(DATA_DETECTION)
 
-#include "DataDetectorsCoreSPI.h"
+#include <pal/spi/cocoa/DataDetectorsCoreSPI.h>
 #include <wtf/SoftLinking.h>
 
 #if PLATFORM(IOS)
@@ -62,7 +62,6 @@ SOFT_LINK_POINTER_FOR_HEADER(WebCore, DataDetectorsCore, DDBinderEmailKey, CFStr
 SOFT_LINK_POINTER_FOR_HEADER(WebCore, DataDetectorsCore, DDBinderTrackingNumberKey, CFStringRef)
 SOFT_LINK_POINTER_FOR_HEADER(WebCore, DataDetectorsCore, DDBinderFlightInformationKey, CFStringRef)
 SOFT_LINK_POINTER_FOR_HEADER(WebCore, DataDetectorsCore, DDBinderSignatureBlockKey, CFStringRef)
-SOFT_LINK_POINTER_FOR_HEADER(WebCore, DataDetectorsCore, DDURLScheme, NSString *)
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, DataDetectorsCore, DDScannerCopyResultsOptionsForPassiveUse, DDScannerCopyResultsOptions)
 
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, DataDetectorsCore, DDScannerEnableOptionalSource, void, (DDScannerRef scanner, DDScannerSource source, Boolean enable), (scanner, source, enable))

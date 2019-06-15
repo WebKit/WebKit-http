@@ -3,9 +3,10 @@
 
 /*---
 es6id: 18.2.1
+esid: sec-eval-x
 description: >
   eval.name is "eval".
-info: >
+info: |
   eval (x)
 
   17 ECMAScript Standard Built-in Objects:

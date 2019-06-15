@@ -51,7 +51,6 @@
 #include "TextResourceDecoder.h"
 #include "TreeDepthLimit.h"
 #include <wtf/Ref.h>
-#include <wtf/StringExtras.h>
 #include <wtf/Threading.h>
 #include <wtf/Vector.h>
 
@@ -148,11 +147,6 @@ void XMLDocumentParser::createLeafTextNode()
     m_currentNode->parserAppendChild(*m_leafTextNode);
 }
 
-static inline String toString(const xmlChar* string, size_t size) 
-{ 
-    return String::fromUTF8(reinterpret_cast<const char*>(string), size); 
-}
-
 bool XMLDocumentParser::updateLeafTextNode()
 {
     if (isStopped())
@@ -162,7 +156,7 @@ bool XMLDocumentParser::updateLeafTextNode()
         return true;
 
     // This operation might fire mutation event, see below.
-    m_leafTextNode->appendData(toString(m_bufferedText.data(), m_bufferedText.size()));
+    m_leafTextNode->appendData(String::fromUTF8(reinterpret_cast<const char*>(m_bufferedText.data()), m_bufferedText.size()));
     m_bufferedText = { };
 
     m_leafTextNode = nullptr;
@@ -270,7 +264,7 @@ bool XMLDocumentParser::parseDocumentFragment(const String& chunk, DocumentFragm
     // FIXME: We need to implement the HTML5 XML Fragment parsing algorithm:
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-xhtml-syntax.html#xml-fragment-parsing-algorithm
     // For now we have a hack for script/style innerHTML support:
-    if (contextElement && (contextElement->hasLocalName(HTMLNames::scriptTag.localName()) || contextElement->hasLocalName(HTMLNames::styleTag.localName()))) {
+    if (contextElement && (contextElement->hasLocalName(HTMLNames::scriptTag->localName()) || contextElement->hasLocalName(HTMLNames::styleTag->localName()))) {
         fragment.parserAppendChild(fragment.document().createTextNode(chunk));
         return true;
     }

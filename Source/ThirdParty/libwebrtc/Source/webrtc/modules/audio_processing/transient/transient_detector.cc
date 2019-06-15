@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/transient/transient_detector.h"
+#include "modules/audio_processing/transient/transient_detector.h"
 
 #include <float.h>
 #include <math.h>
@@ -16,11 +16,11 @@
 
 #include <algorithm>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/audio_processing/transient/common.h"
-#include "webrtc/modules/audio_processing/transient/daubechies_8_wavelet_coeffs.h"
-#include "webrtc/modules/audio_processing/transient/moving_moments.h"
-#include "webrtc/modules/audio_processing/transient/wpd_tree.h"
+#include "modules/audio_processing/transient/common.h"
+#include "modules/audio_processing/transient/daubechies_8_wavelet_coeffs.h"
+#include "modules/audio_processing/transient/moving_moments.h"
+#include "modules/audio_processing/transient/wpd_tree.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
@@ -51,8 +51,7 @@ TransientDetector::TransientDetector(int sample_rate_hz)
   wpd_tree_.reset(new WPDTree(samples_per_chunk_,
                               kDaubechies8HighPassCoefficients,
                               kDaubechies8LowPassCoefficients,
-                              kDaubechies8CoefficientsLength,
-                              kLevels));
+                              kDaubechies8CoefficientsLength, kLevels));
   for (size_t i = 0; i < kLeaves; ++i) {
     moving_moments_[i].reset(
         new MovingMoments(samples_per_transient / kLeaves));
@@ -86,8 +85,7 @@ float TransientDetector::Detect(const float* data,
   for (size_t i = 0; i < kLeaves; ++i) {
     WPDNode* leaf = wpd_tree_->NodeAt(kLevels, i);
 
-    moving_moments_[i]->CalculateMoments(leaf->data(),
-                                         tree_leaves_data_length_,
+    moving_moments_[i]->CalculateMoments(leaf->data(), tree_leaves_data_length_,
                                          first_moments_.get(),
                                          second_moments_.get());
 
@@ -127,8 +125,9 @@ float TransientDetector::Detect(const float* data,
     const float kVerticalScaling = 0.5f;
     const float kVerticalShift = 1.f;
 
-    result = (cos(result * horizontal_scaling + kHorizontalShift)
-        + kVerticalShift) * kVerticalScaling;
+    result =
+        (cos(result * horizontal_scaling + kHorizontalShift) + kVerticalShift) *
+        kVerticalScaling;
     result *= result;
   }
 

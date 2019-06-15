@@ -29,40 +29,45 @@
 namespace WebCore {
 
 class DataTransfer;
+class Node;
 class PlatformMouseEvent;
 
 class MouseEvent : public MouseRelatedEvent {
 public:
-    WEBCORE_EXPORT static Ref<MouseEvent> create(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow*, int detail, int screenX, int screenY, int pageX, int pageY,
-#if ENABLE(POINTER_LOCK)
-        int movementX, int movementY,
-#endif
-        bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer* = nullptr, bool isSimulated = false);
+    WEBCORE_EXPORT static Ref<MouseEvent> create(const AtomicString& type, CanBubble, IsCancelable, IsComposed, MonotonicTime timestamp, RefPtr<WindowProxy>&&, int detail,
+        const IntPoint& screenLocation, const IntPoint& windowLocation, const IntPoint& movementDelta, OptionSet<Modifier>, unsigned short button, unsigned short buttons,
+        EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer* = nullptr, IsSimulated = IsSimulated::No, IsTrusted = IsTrusted::Yes);
 
-    WEBCORE_EXPORT static Ref<MouseEvent> create(const AtomicString& eventType, DOMWindow*, const PlatformMouseEvent&, int detail, Node* relatedTarget);
+    WEBCORE_EXPORT static Ref<MouseEvent> create(const AtomicString& eventType, RefPtr<WindowProxy>&&, const PlatformMouseEvent&, int detail, Node* relatedTarget);
 
-    static Ref<MouseEvent> create(const AtomicString& eventType, bool canBubble, bool cancelable, DOMWindow*, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, unsigned short syntheticClickType, EventTarget* relatedTarget);
+    static Ref<MouseEvent> create(const AtomicString& eventType, CanBubble, IsCancelable, IsComposed, RefPtr<WindowProxy>&&, int detail,
+        int screenX, int screenY, int clientX, int clientY, OptionSet<Modifier>, unsigned short button, unsigned short buttons,
+        unsigned short syntheticClickType, EventTarget* relatedTarget);
 
     static Ref<MouseEvent> createForBindings() { return adoptRef(*new MouseEvent); }
 
-    static Ref<MouseEvent> create(const AtomicString& eventType, const MouseEventInit&, IsTrusted = IsTrusted::No);
+    static Ref<MouseEvent> create(const AtomicString& eventType, const MouseEventInit&);
 
     virtual ~MouseEvent();
 
-    WEBCORE_EXPORT void initMouseEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget);
-    void initMouseEventQuirk(JSC::ExecState&, ScriptExecutionContext&, const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, JSC::JSValue relatedTarget);
-    // WinIE uses 1,4,2 for left/middle/right but not for click (just for mousedown/up, maybe others),
-    // but we will match the standard DOM.
+    WEBCORE_EXPORT void initMouseEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<WindowProxy>&&,
+        int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey,
+        unsigned short button, EventTarget* relatedTarget);
+
+    void initMouseEventQuirk(JSC::ExecState&, ScriptExecutionContext&, const AtomicString& type, bool canBubble, bool cancelable, RefPtr<WindowProxy>&&,
+        int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey,
+        unsigned short button, JSC::JSValue relatedTarget);
+
     unsigned short button() const { return m_button; }
+    unsigned short buttons() const { return m_buttons; }
     unsigned short syntheticClickType() const { return m_syntheticClickType; }
     bool buttonDown() const { return m_buttonDown; }
     EventTarget* relatedTarget() const final { return m_relatedTarget.get(); }
-    void setRelatedTarget(EventTarget* relatedTarget) { m_relatedTarget = relatedTarget; }
     double force() const { return m_force; }
     void setForce(double force) { m_force = force; }
 
-    WEBCORE_EXPORT Node* toElement() const;
-    WEBCORE_EXPORT Node* fromElement() const;
+    WEBCORE_EXPORT RefPtr<Node> toElement() const;
+    WEBCORE_EXPORT RefPtr<Node> fromElement() const;
 
     DataTransfer* dataTransfer() const { return isDragEvent() ? m_dataTransfer.get() : nullptr; }
 
@@ -71,20 +76,15 @@ public:
     int which() const final;
 
 protected:
-    MouseEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow*,
-        int detail, const IntPoint& screenLocation, const IntPoint& windowLocation,
-#if ENABLE(POINTER_LOCK)
-        const IntPoint& movementDelta,
-#endif
-        bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button,
-        EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer*, bool isSimulated);
+    MouseEvent(const AtomicString& type, CanBubble, IsCancelable, IsComposed, MonotonicTime timestamp, RefPtr<WindowProxy>&&, int detail,
+        const IntPoint& screenLocation, const IntPoint& windowLocation, const IntPoint& movementDelta, OptionSet<Modifier>, unsigned short button, unsigned short buttons,
+        EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer*, IsSimulated, IsTrusted);
 
-    MouseEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*,
-        int detail, const IntPoint& screenLocation, const IntPoint& clientLocation,
-        bool ctrlKey, bool altKey, bool shiftKey, bool metaKey,
-        unsigned short button, unsigned short syntheticClickType, EventTarget* relatedTarget);
+    MouseEvent(const AtomicString& type, CanBubble, IsCancelable, IsComposed, RefPtr<WindowProxy>&&, int detail,
+        const IntPoint& screenLocation, const IntPoint& clientLocation, OptionSet<Modifier>, unsigned short button, unsigned short buttons,
+        unsigned short syntheticClickType, EventTarget* relatedTarget);
 
-    MouseEvent(const AtomicString& type, const MouseEventInit&, IsTrusted);
+    MouseEvent(const AtomicString& type, const MouseEventInit&);
 
     MouseEvent();
 
@@ -94,7 +94,10 @@ private:
 
     bool isDragEvent() const;
 
+    void setRelatedTarget(EventTarget& relatedTarget) final { m_relatedTarget = &relatedTarget; }
+
     unsigned short m_button { 0 };
+    unsigned short m_buttons { 0 };
     unsigned short m_syntheticClickType { 0 };
     bool m_buttonDown { false };
     RefPtr<EventTarget> m_relatedTarget;

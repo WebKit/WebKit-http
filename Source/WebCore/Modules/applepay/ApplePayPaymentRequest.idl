@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,24 +25,6 @@
 
 [
     Conditional=APPLE_PAY,
-] enum ApplePayMerchantCapability {
-    "supports3DS",
-    "supportsEMV",
-    "supportsCredit",
-    "supportsDebit"
-};
-
-[
-    Conditional=APPLE_PAY,
-] enum ApplePayContactField {
-    "email",
-    "name",
-    "phone",
-    "postalAddress"
-};
-
-[
-    Conditional=APPLE_PAY,
 ] enum ApplePayShippingType {
     "shipping",
     "delivery",
@@ -52,24 +34,14 @@
 
 [
     Conditional=APPLE_PAY,
-] dictionary ApplePayPaymentRequest {
+] dictionary ApplePayPaymentRequest : ApplePayRequestBase {
     required ApplePayLineItem total;
     sequence<ApplePayLineItem> lineItems;
 
-    required sequence<ApplePayMerchantCapability> merchantCapabilities;
-    required sequence<DOMString> supportedNetworks; // FIXME: Should this be an sequence of enums?
-    required DOMString countryCode;
     required DOMString currencyCode;
 
-    sequence<ApplePayContactField> requiredBillingContactFields;
-    ApplePayPaymentContact billingContact;
-
     sequence<ApplePayContactField> requiredShippingContactFields;
-    ApplePayPaymentContact shippingContact;
 
     ApplePayShippingType shippingType = "shipping";
     sequence<ApplePayShippingMethod> shippingMethods;
-
-    DOMString applicationData;
-    [Conditional=APPLE_PAY_SESSION_V3] sequence<DOMString> supportedCountries;
 };

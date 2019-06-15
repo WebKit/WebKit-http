@@ -120,6 +120,7 @@ my $idlFiles;
 my $cachedInterfaces = {};
 my $cachedExternalDictionaries = {};
 my $cachedExternalEnumerations = {};
+my $cachedTypes = {};
 
 sub assert
 {
@@ -367,6 +368,20 @@ sub ParseInterface
     }
 
     die("Could NOT find interface definition for $interfaceName in $filename");
+}
+
+sub ParseType
+{
+    my ($object, $typeString) = @_;
+
+    return $cachedTypes->{$typeString} if exists($cachedTypes->{$typeString});
+
+    my $parser = IDLParser->new(1);
+    my $type = $parser->ParseType($typeString, $idlAttributes);
+
+    $cachedTypes->{$typeString} = $type;
+
+    return $type;
 }
 
 # Helpers for all CodeGenerator***.pm modules
@@ -678,6 +693,7 @@ sub WK_ucfirst
     my $ret = ucfirst($param);
     $ret =~ s/Xml/XML/ if $ret =~ /^Xml[^a-z]/;
     $ret =~ s/Svg/SVG/ if $ret =~ /^Svg/;
+    $ret =~ s/Srgb/SRGB/ if $ret =~ /^Srgb/;
 
     return $ret;
 }
@@ -870,6 +886,7 @@ sub IsBuiltinType
     return 1 if $type->name eq "EventListener";
     return 1 if $type->name eq "JSON";
     return 1 if $type->name eq "Promise";
+    return 1 if $type->name eq "ScheduledAction";
     return 1 if $type->name eq "SerializedScriptValue";
     return 1 if $type->name eq "XPathNSResolver";
     return 1 if $type->name eq "any";
@@ -983,6 +1000,7 @@ sub ComputeIsCallbackInterface
     assert("Not a type") if ref($type) ne "IDLType";
 
     return 0 unless $object->IsInterfaceType($type);
+    return 0 if $type->name eq "WindowProxy";
 
     my $typeName = $type->name;
     my $idlFile = $object->IDLFileForInterface($typeName) or assert("Could NOT find IDL file for interface \"$typeName\"!\n");
@@ -1020,6 +1038,7 @@ sub ComputeIsCallbackFunction
     assert("Not a type") if ref($type) ne "IDLType";
 
     return 0 unless $object->IsInterfaceType($type);
+    return 0 if $type->name eq "WindowProxy";
 
     my $typeName = $type->name;
     my $idlFile = $object->IDLFileForInterface($typeName) or assert("Could NOT find IDL file for interface \"$typeName\"!\n");

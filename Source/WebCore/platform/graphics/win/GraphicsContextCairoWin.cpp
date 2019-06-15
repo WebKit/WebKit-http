@@ -28,14 +28,15 @@
 
 #include "AffineTransform.h"
 #include "DIBPixelData.h"
+#include "GraphicsContextImpl.h"
 #include "Path.h"
 
 #include <cairo-win32.h>
 #include "GraphicsContextPlatformPrivateCairo.h"
 
-using namespace std;
 
 namespace WebCore {
+using namespace std;
 
 #if PLATFORM(WIN)
 static cairo_t* createCairoContextWithHDC(HDC hdc, bool hasAlpha)
@@ -78,7 +79,8 @@ void GraphicsContext::platformInit(HDC dc, bool hasAlpha)
 
     cairo_t* cr = createCairoContextWithHDC(dc, hasAlpha);
 
-    m_data = new GraphicsContextPlatformPrivateToplevel(new PlatformContextCairo(cr));
+    m_data = new GraphicsContextPlatformPrivate(std::make_unique<PlatformContextCairo>(cr));
+    m_data->platformContext.setGraphicsContextPrivate(m_data);
     m_data->m_hdc = dc;
     if (platformContext()->cr()) {
         // Make sure the context starts in sync with our state.
@@ -96,7 +98,7 @@ static void setRGBABitmapAlpha(unsigned char* bytes, size_t length, unsigned cha
         bytes[i + 3] = level;
 }
 
-static void drawBitmapToContext(GraphicsContextPlatformPrivate* context, cairo_t* cr, const DIBPixelData& pixelData, const IntSize& translate)
+static void drawBitmapToContext(PlatformContextCairo& platformContext, const DIBPixelData& pixelData, const IntSize& translate)
 {
     // Need to make a cairo_surface_t out of the bitmap's pixel buffer and then draw
     // it into our context.
@@ -108,13 +110,14 @@ static void drawBitmapToContext(GraphicsContextPlatformPrivate* context, cairo_t
 
     // Flip the target surface so that when we set the srcImage as
     // the surface it will draw right-side-up.
+    cairo_t* cr = platformContext.cr();
     cairo_save(cr);
     cairo_translate(cr, static_cast<double>(translate.width()), static_cast<double>(translate.height()));
     cairo_scale(cr, 1, -1);
     cairo_set_source_surface(cr, surface, 0, 0);
 
-    if (context->layers.size())
-        cairo_paint_with_alpha(cr, context->layers.last());
+    if (platformContext.layers().size())
+        cairo_paint_with_alpha(cr, platformContext.layers().last());
     else
         cairo_paint(cr);
      
@@ -123,9 +126,9 @@ static void drawBitmapToContext(GraphicsContextPlatformPrivate* context, cairo_t
     cairo_restore(cr);
 }
 
-void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, bool supportAlphaBlend, bool mayCreateBitmap)
+void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, bool supportAlphaBlend)
 {
-    bool createdBitmap = mayCreateBitmap && (!m_data->m_hdc || isInTransparencyLayer());
+    bool createdBitmap = m_impl || !m_data->m_hdc || isInTransparencyLayer();
     if (!hdc || !createdBitmap) {
         m_data->restore();
         return;
@@ -146,7 +149,7 @@ void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, boo
     if (!supportAlphaBlend)
         setRGBABitmapAlpha(bytes, pixelData.size().height() * pixelData.bytesPerRow(), 255);
 
-    drawBitmapToContext(m_data, platformContext()->cr(), pixelData, IntSize(dstRect.x(), dstRect.height() + dstRect.y()));
+    drawBitmapToContext(*platformContext(), pixelData, IntSize(dstRect.x(), dstRect.height() + dstRect.y()));
 
     ::DeleteDC(hdc);
 }
@@ -154,7 +157,7 @@ void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, boo
 #if PLATFORM(WIN)
 void GraphicsContext::drawWindowsBitmap(WindowsBitmap* bitmap, const IntPoint& point)
 {
-    drawBitmapToContext(m_data, platformContext()->cr(), bitmap->windowsDIB(), IntSize(point.x(), bitmap->size().height() + point.y()));
+    drawBitmapToContext(*platformContext(), bitmap->windowsDIB(), IntSize(point.x(), bitmap->size().height() + point.y()));
 }
 
 void GraphicsContextPlatformPrivate::syncContext(cairo_t* cr)

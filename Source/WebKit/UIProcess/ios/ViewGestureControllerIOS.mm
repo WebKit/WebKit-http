@@ -28,6 +28,7 @@
 
 #if PLATFORM(IOS)
 
+#import "APINavigation.h"
 #import "DrawingAreaProxy.h"
 #import "UIKitSPI.h"
 #import "ViewGestureControllerMessages.h"
@@ -35,7 +36,6 @@
 #import "ViewSnapshotStore.h"
 #import "WKBackForwardListItemInternal.h"
 #import "WKWebViewInternal.h"
-#import "WeakObjCPtr.h"
 #import "WebBackForwardList.h"
 #import "WebPageGroup.h"
 #import "WebPageMessages.h"
@@ -43,13 +43,14 @@
 #import "WebProcessProxy.h"
 #import <UIKit/UIScreenEdgePanGestureRecognizer.h>
 #import <WebCore/IOSurface.h>
-#import <WebCore/QuartzCoreSPI.h>
-
-using namespace WebCore;
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <wtf/WeakObjCPtr.h>
 
 @interface WKSwipeTransitionController : NSObject <_UINavigationInteractiveTransitionBaseDelegate>
 - (instancetype)initWithViewGestureController:(WebKit::ViewGestureController*)gestureController gestureRecognizerView:(UIView *)gestureRecognizerView;
 - (void)invalidate;
+
+- (_UINavigationInteractiveTransitionBase *)transitionForDirection:(WebKit::ViewGestureController::SwipeDirection)direction;
 @end
 
 @interface _UIViewControllerTransitionContext (WKDetails)
@@ -61,7 +62,7 @@ using namespace WebCore;
     WebKit::ViewGestureController *_gestureController;
     RetainPtr<_UINavigationInteractiveTransitionBase> _backTransitionController;
     RetainPtr<_UINavigationInteractiveTransitionBase> _forwardTransitionController;
-    WebKit::WeakObjCPtr<UIView> _gestureRecognizerView;
+    WeakObjCPtr<UIView> _gestureRecognizerView;
 }
 
 static const float swipeSnapshotRemovalRenderTreeSizeTargetFraction = 0.5;
@@ -91,6 +92,11 @@ static const float swipeSnapshotRemovalRenderTreeSizeTargetFraction = 0.5;
 - (WebKit::ViewGestureController::SwipeDirection)directionForTransition:(_UINavigationInteractiveTransitionBase *)transition
 {
     return transition == _backTransitionController ? WebKit::ViewGestureController::SwipeDirection::Back : WebKit::ViewGestureController::SwipeDirection::Forward;
+}
+
+- (_UINavigationInteractiveTransitionBase *)transitionForDirection:(WebKit::ViewGestureController::SwipeDirection)direction
+{
+    return direction == WebKit::ViewGestureController::SwipeDirection::Back ? _backTransitionController.get() : _forwardTransitionController.get();
 }
 
 - (void)startInteractiveTransition:(_UINavigationInteractiveTransitionBase *)transition
@@ -195,17 +201,17 @@ void ViewGestureController::beginSwipeGesture(_UINavigationInteractiveTransition
     RetainPtr<UIColor> backgroundColor = [UIColor whiteColor];
     if (ViewSnapshot* snapshot = targetItem->snapshot()) {
         float deviceScaleFactor = m_webPageProxy.deviceScaleFactor();
-        FloatSize swipeLayerSizeInDeviceCoordinates(liveSwipeViewFrame.size);
+        WebCore::FloatSize swipeLayerSizeInDeviceCoordinates(liveSwipeViewFrame.size);
         swipeLayerSizeInDeviceCoordinates.scale(deviceScaleFactor);
         
         BOOL shouldRestoreScrollPosition = targetItem->pageState().mainFrameState.shouldRestoreScrollPosition;
-        IntPoint currentScrollPosition = roundedIntPoint(m_webPageProxy.viewScrollPosition());
+        WebCore::IntPoint currentScrollPosition = WebCore::roundedIntPoint(m_webPageProxy.viewScrollPosition());
 
         if (snapshot->hasImage() && snapshot->size() == swipeLayerSizeInDeviceCoordinates && deviceScaleFactor == snapshot->deviceScaleFactor() && (shouldRestoreScrollPosition || (currentScrollPosition == snapshot->viewScrollPosition())))
             [m_snapshotView layer].contents = snapshot->asLayerContents();
-        Color coreColor = snapshot->backgroundColor();
+        WebCore::Color coreColor = snapshot->backgroundColor();
         if (coreColor.isValid())
-            backgroundColor = adoptNS([[UIColor alloc] initWithCGColor:cachedCGColor(coreColor)]);
+            backgroundColor = adoptNS([[UIColor alloc] initWithCGColor:WebCore::cachedCGColor(coreColor)]);
     }
 
     [m_snapshotView setBackgroundColor:backgroundColor.get()];
@@ -287,29 +293,36 @@ void ViewGestureController::endSwipeGesture(WebBackForwardListItem* targetItem, 
     if (&m_webPageProxy != m_webPageProxyForBackForwardListForCurrentSwipe)
         m_webPageProxy.navigationGestureDidEnd();
 
-    m_webPageProxyForBackForwardListForCurrentSwipe->goToBackForwardItem(targetItem);
+    m_webPageProxyForBackForwardListForCurrentSwipe->goToBackForwardItem(*targetItem);
 
-    if (auto drawingArea = m_webPageProxy.drawingArea()) {
-        uint64_t pageID = m_webPageProxy.pageID();
-        GestureID gestureID = m_currentGestureID;
-        drawingArea->dispatchAfterEnsuringDrawing([pageID, gestureID] (CallbackBase::Error error) {
-            if (auto gestureController = controllerForGesture(pageID, gestureID))
-                gestureController->willCommitPostSwipeTransitionLayerTree(error == CallbackBase::Error::None);
-        });
-        drawingArea->hideContentUntilPendingUpdate();
-    } else {
+    if (!m_webPageProxy.drawingArea()) {
         removeSwipeSnapshot();
         return;
     }
 
-    // FIXME: Should we wait for VisuallyNonEmptyLayout like we do on Mac?
-    m_snapshotRemovalTracker.start(SnapshotRemovalTracker::RenderTreeSizeThreshold
-        | SnapshotRemovalTracker::RepaintAfterNavigation
-        | SnapshotRemovalTracker::MainFrameLoad
-        | SnapshotRemovalTracker::SubresourceLoads
-        | SnapshotRemovalTracker::ScrollPositionRestoration, [this] {
-            this->removeSwipeSnapshot();
-    });
+    m_provisionalOrSameDocumentLoadCallback = [this] {
+        if (auto drawingArea = m_webPageProxy.drawingArea()) {
+            uint64_t pageID = m_webPageProxy.pageID();
+            GestureID gestureID = m_currentGestureID;
+            drawingArea->dispatchAfterEnsuringDrawing([pageID, gestureID] (CallbackBase::Error error) {
+                if (auto gestureController = controllerForGesture(pageID, gestureID))
+                    gestureController->willCommitPostSwipeTransitionLayerTree(error == CallbackBase::Error::None);
+            });
+            drawingArea->hideContentUntilPendingUpdate();
+        } else {
+            removeSwipeSnapshot();
+            return;
+        }
+
+        // FIXME: Should we wait for VisuallyNonEmptyLayout like we do on Mac?
+        m_snapshotRemovalTracker.start(SnapshotRemovalTracker::RenderTreeSizeThreshold
+            | SnapshotRemovalTracker::RepaintAfterNavigation
+            | SnapshotRemovalTracker::MainFrameLoad
+            | SnapshotRemovalTracker::SubresourceLoads
+            | SnapshotRemovalTracker::ScrollPositionRestoration, [this] {
+                this->removeSwipeSnapshot();
+        });
+    };
 
     if (ViewSnapshot* snapshot = targetItem->snapshot()) {
         m_backgroundColorForCurrentSnapshot = snapshot->backgroundColor();
@@ -356,9 +369,29 @@ void ViewGestureController::removeSwipeSnapshot()
 
     m_swipeTransitionContext = nullptr;
 
-    m_backgroundColorForCurrentSnapshot = Color();
+    m_backgroundColorForCurrentSnapshot = WebCore::Color();
 
     didEndGesture();
+}
+
+bool ViewGestureController::beginSimulatedSwipeInDirectionForTesting(SwipeDirection direction)
+{
+    if (!canSwipeInDirection(direction))
+        return false;
+
+    _UINavigationInteractiveTransitionBase *transition = [m_swipeInteractiveTransitionDelegate transitionForDirection:direction];
+    beginSwipeGesture(transition, direction);
+    [transition _stopInteractiveTransition];
+
+    return true;
+}
+
+bool ViewGestureController::completeSimulatedSwipeInDirectionForTesting(SwipeDirection direction)
+{
+    _UINavigationInteractiveTransitionBase *transition = [m_swipeInteractiveTransitionDelegate transitionForDirection:direction];
+    [transition _completeStoppedInteractiveTransition];
+
+    return true;
 }
 
 } // namespace WebKit

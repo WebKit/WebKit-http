@@ -8,12 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_ECHO_DETECTOR_CIRCULAR_BUFFER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_ECHO_DETECTOR_CIRCULAR_BUFFER_H_
+#ifndef MODULES_AUDIO_PROCESSING_ECHO_DETECTOR_CIRCULAR_BUFFER_H_
+#define MODULES_AUDIO_PROCESSING_ECHO_DETECTOR_CIRCULAR_BUFFER_H_
 
 #include <vector>
 
-#include "webrtc/base/optional.h"
+#include "absl/types/optional.h"
 
 namespace webrtc {
 
@@ -24,7 +24,7 @@ struct CircularBuffer {
   ~CircularBuffer();
 
   void Push(float value);
-  rtc::Optional<float> Pop();
+  absl::optional<float> Pop();
   size_t Size() const { return nr_elements_in_buffer_; }
   // This function fills the buffer with zeros, but does not change its size.
   void Clear();
@@ -39,4 +39,4 @@ struct CircularBuffer {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_ECHO_DETECTOR_CIRCULAR_BUFFER_H_
+#endif  // MODULES_AUDIO_PROCESSING_ECHO_DETECTOR_CIRCULAR_BUFFER_H_

@@ -1,6 +1,17 @@
 {
     "specification": [
     {
+        "name": "Application Cache",
+        "status": {
+            "status": "Deprecated"
+        },
+        "url": "https://html.spec.whatwg.org/multipage/offline.html",
+        "webkit-url": "https://webkit.org/b/181764",
+        "keywords": ["appcache", "application cache"],
+        "category": "webapps",
+        "description": "Resources are saved for offline use using a manifest."
+    },
+    {
         "name": "Battery Status API",
         "status": {
             "status": "Removed"
@@ -14,8 +25,7 @@
     {
         "name": "Beacon API",
         "status": {
-            "status": "Under Consideration",
-            "enabled-by-default": false
+            "status": "Supported In Preview"
         },
         "url": "https://www.w3.org/TR/beacon/",
         "webkit-url": "https://webkit.org/b/147885",
@@ -23,9 +33,9 @@
         "category": "webapps",
         "description": "Schedules asynchronous and non-blocking data delivery while the current page is unloading to mitigate resource contention for other time-critical requests.",
         "contact": {
-            "name": "Jonathan Davis",
-            "email": "web-evangelist@apple.com",
-            "twitter": "@jonathandavis"
+            "name": "Chris Dumez",
+            "email": "cdumez@apple.com",
+            "twitter": "@chris_dumez"
         }
     },
     {
@@ -42,10 +52,10 @@
     {
         "name": "CSS Font Display",
         "status": {
-            "status": "Under Consideration",
+            "status": "In Development",
             "enabled-by-default": false
         },
-        "url": "https://tabatkins.github.io/specs/css-font-display/",
+        "url": "https://drafts.csswg.org/css-fonts-4/#font-display-desc",
         "keywords": ["css font display", "font display", "font-display", "css font rendering controls", "font rendering controls"],
         "category": "css",
         "description": "Allows content to specify what is shown during font loading.",
@@ -383,7 +393,7 @@
     {
         "name": "Media Capture and Streams",
         "status": {
-            "status": "Supported In Preview"
+            "status": "Supported"
         },
         "url": "https://w3c.github.io/mediacapture-main/",
         "keywords": ["mediastream", "getusermedia"],
@@ -416,7 +426,7 @@
     {
         "name": "Performance Observer",
         "status": {
-            "status": "Supported In Preview",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://w3c.github.io/performance-timeline/",
@@ -456,7 +466,7 @@
     {
         "name": "Resource Timing Level 2",
         "status": {
-            "status": "Supported In Preview",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://w3c.github.io/resource-timing/",
@@ -487,16 +497,17 @@
     {
         "name": "Service Workers",
         "status": {
-            "status": "Under Consideration"
+            "status": "Supported"
         },
-        "url": "http://www.w3.org/TR/2015/WD-service-workers-20150625/",
+        "url": "https://w3c.github.io/ServiceWorker/",
+        "webkit-url": "https://webkit.org/b/174541",
         "keywords": ["service workers"],
         "category": "webapps",
         "description": "A method for browsers to run JavaScript in the background to handle network requests and manage cached responses. Service Workers offers a replacement for Application Cache.",
         "contact": {
-            "name": "Jon Davis",
-            "twitter": "@jonathandavis",
-            "email": "web-evangelist@apple.com"
+            "name": "Brady Eidson",
+            "twitter": "@bradeeoh",
+            "email": "beidson@apple.com"
         }
     },
     {
@@ -508,7 +519,7 @@
     {
         "name": "User Timing Level 2",
         "status": {
-            "status": "Supported in Preview",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "https://w3c.github.io/user-timing/",
@@ -538,7 +549,7 @@
     {
         "name": "Web Animations",
         "status": {
-            "status": "Under Consideration"
+            "status": "Supported In Preview"
         },
         "url": "https://www.w3.org/TR/web-animations-1/",
         "keywords": ["web animations"],
@@ -552,7 +563,7 @@
     {
         "name": "Web App Manifest",
         "status": {
-            "status": "Under Consideration",
+            "status": "In Development",
             "enabled-by-default": false
         },
         "url": "https://www.w3.org/TR/appmanifest/",
@@ -580,7 +591,7 @@
     {
         "name": "Web Cryptography API",
         "status": {
-            "status": "Supported In Preview",
+            "status": "Supported",
             "enabled-by-default": true
         },
         "url": "http://www.w3.org/TR/WebCryptoAPI/",
@@ -588,7 +599,6 @@
         "keywords": ["webcrypto", "web cryptography api", "crypto"],
         "category": "webapps",
         "description": "A JavaScript API for web applications to perform cryptographic operations.",
-        "comment": "The prefixed ‘webkitSubtle’ attribute which gave access to the SubtleCrypto API is now deprecated in preference to the official “subtle” property.",
         "contact": {
             "name": "Jiewen Tan",
             "email": "jiewen_tan@apple.com"
@@ -617,7 +627,7 @@
     {
         "name": "WebRTC",
         "status": {
-            "status": "Supported In Preview"
+            "status": "Supported"
         },
         "url": "http://www.w3.org/TR/webrtc/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=124288",
@@ -628,6 +638,22 @@
             "name": "Jon Davis",
             "twitter": "@jonathandavis",
             "email": "web-evangelist@apple.com"
+        }
+    },
+    {
+        "name": "WebVR",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://w3c.github.io/webvr/spec/1.1/",
+        "keywords": ["WebVR, VR"],
+        "category": "html",
+        "description": "A JavaScript API providing access to VR devices to allow developers to build comfortable VR experiences.",
+        "contact": {
+            "name": "Sergio Villar Senin",
+            "twitter": "@svillarsenin",
+            "email": "svillar@igalia.com"
         }
     }
     ],
@@ -767,7 +793,7 @@
     {
         "name": "Conic Gradients",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
         "url": "https://www.w3.org/TR/css4-images/#conic-gradients",
         "specification": "CSS Image Values and Replaced Content Module Level 4",
@@ -825,6 +851,20 @@
         }
     },
     {
+        "name": "File and Directory Entries API",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "https://wicg.github.io/entries-api/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=175976",
+        "description": "An API to support file and directory upload by drag-and-drop operations.",
+        "contact": {
+            "name": "Chris Dumez",
+            "email": "cdumez@apple.com",
+            "twitter": "@chris_dumez"
+        }
+    },
+    {
         "name": "Filter Effects backdrop-filter property",
         "status": {
             "status": "Supported",
@@ -833,6 +873,15 @@
         "url": "http://dev.w3.org/fxtf/filters-2/#propdef-backdrop-filter",
         "specification": "Filter Effects Module Level 2",
         "description": "This property specifies styling for filters applied to the backdrop of an element."
+    },
+    {
+        "name": "Font Palettes",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "https://drafts.csswg.org/css-fonts-4/#propdef-font-palette",
+        "specification": "CSS Fonts Level 4",
+        "description": "Allows setting colors in color fonts from CSS"
     },
     {
         "name": "Force Click Events",
@@ -921,6 +970,15 @@
         "description": "The \"pointer\" media defines how percise the pointing device is. The \"hover\" media defines the ability of the poiting device to hover elements."
     },
     {
+        "name": "MediaStream Recording API",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://w3c.github.io/mediacapture-record",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=85851",
+        "comment": "Allows recording of audio and/or video MediaStream."
+    },
+    {
         "name": "MicroData",
         "status": {
             "status": "Removed"
@@ -931,14 +989,14 @@
         "comment": "WebKit used to support MicroData. The feature never gained any traction and was eventually removed to clean up the codebase."
     },
     {
-        "name": "Navigator.hardwareConcurrency",
+        "name": "Payment Request",
         "status": {
-            "status": "Supported",
-            "enabled-by-default": true
+            "status": "Supported"
         },
-        "url": "https://wiki.whatwg.org/wiki/Navigator_HW_Concurrency",
-        "webkit-url": "http://trac.webkit.org/changeset/169017",
-        "description": "Navigator.hardwareConcurrency provides the total number of logical processors available to the user agent."
+        "url": "https://www.w3.org/TR/payment-request/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=174796",
+        "keywords": ["web payments", "payment request", "apple pay"],
+        "description": "An API for merchants to request payments from users."
     },
     {
         "name": "Picture element",
@@ -1123,11 +1181,11 @@
         "description": "An API that provides access to the vibration mechanism of the hosting device."
     },
     {
-        "name": "ViewportAPI",
+        "name": "Visual Viewport API",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
-        "url": "https://github.com/WICG/ViewportAPI",
+        "url": "https://wicg.github.io/visual-viewport/",
         "description": "A proposal to add explicit APIs to the Web for querying and setting the visual viewport.",
         "keywords": ["visual viewport", "viewport", "viewportapi"]
     },
@@ -1144,10 +1202,11 @@
     {
         "name": "Web Authentication",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
         "url": "https://w3c.github.io/webauthn/",
-        "keywords": ["authentication", "credentials"],
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=181943",
+        "keywords": ["authentication", "credentials", "webauthn"],
         "description": "An API enabling the creation and use of strong, attested, cryptographic scoped credentials by web applications, for the purpose of strongly authenticating users."
     },
     {
@@ -1171,7 +1230,7 @@
     {
         "name": "Web Share",
         "status": {
-            "status": "Under Consideration"
+            "status": "In Development"
         },
         "url": "https://github.com/WICG/web-share/blob/master/docs/interface.md",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=171100",

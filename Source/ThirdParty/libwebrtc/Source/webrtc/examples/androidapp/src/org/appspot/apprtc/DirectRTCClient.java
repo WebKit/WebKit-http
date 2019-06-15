@@ -10,6 +10,7 @@
 
 package org.appspot.apprtc;
 
+import javax.annotation.Nullable;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -19,7 +20,7 @@ import org.webrtc.IceCandidate;
 import org.webrtc.PeerConnection;
 import org.webrtc.SessionDescription;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
@@ -53,6 +54,7 @@ public class DirectRTCClient implements AppRTCClient, TCPChannelClient.TCPChanne
 
   private final ExecutorService executor;
   private final SignalingEvents events;
+  @Nullable
   private TCPChannelClient tcpClient;
   private RoomConnectionParameters connectionParameters;
 
@@ -233,7 +235,7 @@ public class DirectRTCClient implements AppRTCClient, TCPChannelClient.TCPChanne
 
       SignalingParameters parameters = new SignalingParameters(
           // Ice servers are not needed for direct connections.
-          new LinkedList<PeerConnection.IceServer>(),
+          new ArrayList<>(),
           isServer, // Server side acts as the initiator on direct connections.
           null, // clientId
           null, // wssUrl
@@ -269,7 +271,7 @@ public class DirectRTCClient implements AppRTCClient, TCPChannelClient.TCPChanne
 
         SignalingParameters parameters = new SignalingParameters(
             // Ice servers are not needed for direct connections.
-            new LinkedList<PeerConnection.IceServer>(),
+            new ArrayList<>(),
             false, // This code will only be run on the client side. So, we are not the initiator.
             null, // clientId
             null, // wssUrl

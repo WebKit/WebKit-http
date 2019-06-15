@@ -46,9 +46,7 @@ AccessibilityListBox::AccessibilityListBox(RenderObject* renderer)
 {
 }
 
-AccessibilityListBox::~AccessibilityListBox()
-{
-}
+AccessibilityListBox::~AccessibilityListBox() = default;
 
 Ref<AccessibilityListBox> AccessibilityListBox::create(RenderObject* renderer)
 {
@@ -98,9 +96,9 @@ void AccessibilityListBox::setSelectedChildren(const AccessibilityChildrenVector
     }
     
     for (const auto& obj : children) {
-        if (obj->roleValue() != ListBoxOptionRole)
+        if (obj->roleValue() != AccessibilityRole::ListBoxOption)
             continue;
-                
+
         downcast<AccessibilityListBoxOption>(*obj).setSelected(true);
     }
 }
@@ -138,7 +136,7 @@ AccessibilityObject* AccessibilityListBox::listBoxOptionAccessibilityObject(HTML
     if (!element || element->hasTagName(hrTag))
         return nullptr;
     
-    AccessibilityObject& listBoxObject = *m_renderer->document().axObjectCache()->getOrCreate(ListBoxOptionRole);
+    AccessibilityObject& listBoxObject = *m_renderer->document().axObjectCache()->getOrCreate(AccessibilityRole::ListBoxOption);
     downcast<AccessibilityListBoxOption>(listBoxObject).setHTMLElement(element);
     
     return &listBoxObject;
@@ -172,7 +170,7 @@ AccessibilityObject* AccessibilityListBox::elementAccessibilityHitTest(const Int
     if (listBoxOption && !listBoxOption->accessibilityIsIgnored())
         return listBoxOption;
     
-    return axObjectCache()->getOrCreate(m_renderer);
+    return axObjectCache()->getOrCreate(renderer());
 }
 
 } // namespace WebCore

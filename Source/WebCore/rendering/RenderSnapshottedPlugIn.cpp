@@ -44,15 +44,18 @@
 #include "RenderImageResource.h"
 #include "RenderIterator.h"
 #include "RenderView.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSnapshottedPlugIn);
 
 RenderSnapshottedPlugIn::RenderSnapshottedPlugIn(HTMLPlugInImageElement& element, RenderStyle&& style)
     : RenderEmbeddedObject(element, WTFMove(style))
     , m_snapshotResource(std::make_unique<RenderImageResource>())
 {
-    m_snapshotResource->initialize(this);
+    m_snapshotResource->initialize(*this);
 }
 
 RenderSnapshottedPlugIn::~RenderSnapshottedPlugIn()
@@ -99,12 +102,12 @@ void RenderSnapshottedPlugIn::updateSnapshot(Image* image)
 
 void RenderSnapshottedPlugIn::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (paintInfo.phase == PaintPhaseForeground && plugInImageElement().displayState() < HTMLPlugInElement::Restarting) {
+    if (paintInfo.phase == PaintPhase::Foreground && plugInImageElement().displayState() < HTMLPlugInElement::Restarting) {
         paintSnapshot(paintInfo, paintOffset);
     }
 
-    PaintPhase newPhase = (paintInfo.phase == PaintPhaseChildOutlines) ? PaintPhaseOutline : paintInfo.phase;
-    newPhase = (newPhase == PaintPhaseChildBlockBackgrounds) ? PaintPhaseChildBlockBackground : newPhase;
+    PaintPhase newPhase = (paintInfo.phase == PaintPhase::ChildOutlines) ? PaintPhase::Outline : paintInfo.phase;
+    newPhase = (newPhase == PaintPhase::ChildBlockBackgrounds) ? PaintPhase::ChildBlockBackground : newPhase;
 
     PaintInfo paintInfoForChild(paintInfo);
     paintInfoForChild.phase = newPhase;
@@ -178,7 +181,7 @@ void RenderSnapshottedPlugIn::handleEvent(Event& event)
 
     if (mouseEvent.type() == eventNames().clickEvent || (m_isPotentialMouseActivation && mouseEvent.type() == eventNames().mouseupEvent)) {
         m_isPotentialMouseActivation = false;
-        bool clickWasOnOverlay = plugInImageElement().partOfSnapshotOverlay(mouseEvent.target()->toNode());
+        bool clickWasOnOverlay = plugInImageElement().partOfSnapshotOverlay(mouseEvent.target());
         plugInImageElement().userDidClickSnapshot(mouseEvent, !clickWasOnOverlay);
         mouseEvent.setDefaultHandled();
     } else if (mouseEvent.type() == eventNames().mousedownEvent) {

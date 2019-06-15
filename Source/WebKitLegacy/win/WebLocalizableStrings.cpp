@@ -45,27 +45,19 @@ WebLocalizableStringsBundle WebKitLocalizableStringsBundle = { "com.apple.WebKit
 
 typedef HashMap<String, LocalizedString*> LocalizedStringMap;
 
-static Lock& mainBundleLocStringsMutex()
-{
-    DEPRECATED_DEFINE_STATIC_LOCAL(Lock, mutex, ());
-    return mutex;
-}
+static Lock mainBundleLocStringsLock;
 
 static LocalizedStringMap& mainBundleLocStrings()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(LocalizedStringMap, map, ());
+    static NeverDestroyed<LocalizedStringMap> map;
     return map;
 }
 
-static Lock& frameworkLocStringsMutex()
-{
-    DEPRECATED_DEFINE_STATIC_LOCAL(Lock, mutex, ());
-    return mutex;
-}
+static Lock frameworkLocStringsLock;
 
 static LocalizedStringMap frameworkLocStrings()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(LocalizedStringMap, map, ());
+    static NeverDestroyed<LocalizedStringMap> map;
     return map;
 }
 
@@ -176,12 +168,12 @@ static CFStringRef copyLocalizedStringFromBundle(WebLocalizableStringsBundle* st
 static LocalizedString* findCachedString(WebLocalizableStringsBundle* stringsBundle, const String& key)
 {
     if (!stringsBundle) {
-        LockHolder lock(mainBundleLocStringsMutex());
+        auto locker = holdLock(mainBundleLocStringsLock);
         return mainBundleLocStrings().get(key);
     }
 
     if (stringsBundle->bundle == WebKitLocalizableStringsBundle.bundle) {
-        LockHolder lock(frameworkLocStringsMutex());
+        auto locker = holdLock(frameworkLocStringsLock);
         return frameworkLocStrings().get(key);
     }
 
@@ -191,12 +183,12 @@ static LocalizedString* findCachedString(WebLocalizableStringsBundle* stringsBun
 static void cacheString(WebLocalizableStringsBundle* stringsBundle, const String& key, LocalizedString* value)
 {
     if (!stringsBundle) {
-        LockHolder lock(mainBundleLocStringsMutex());
+        auto locker = holdLock(mainBundleLocStringsLock);
         mainBundleLocStrings().set(key, value);
         return;
     }
 
-    LockHolder lock(frameworkLocStringsMutex());
+    auto locker = holdLock(frameworkLocStringsLock);
     frameworkLocStrings().set(key, value);
 }
 

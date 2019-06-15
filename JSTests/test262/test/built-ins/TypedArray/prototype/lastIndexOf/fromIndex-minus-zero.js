@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.lastindexof
 description: -0 fromIndex becomes 0
-info: >
+info: |
   22.2.3.17 %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.lastIndexOf is a distinct function that implements the
@@ -18,6 +18,7 @@ info: >
     a. If n is -0, let k be +0; else let k be min(n, len - 1).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

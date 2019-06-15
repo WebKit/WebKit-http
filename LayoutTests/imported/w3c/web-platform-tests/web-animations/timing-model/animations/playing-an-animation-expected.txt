@@ -1,0 +1,7 @@
+
+PASS Playing a running animation leaves the current time unchanged 
+PASS Playing a finished animation seeks back to the start 
+PASS Playing a finished and reversed animation seeks to end 
+PASS The ready promise should be replaced if the animation is not already pending 
+PASS A pending ready promise should be resolved and not replaced when the animation enters the running state 
+

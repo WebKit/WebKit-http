@@ -5,7 +5,7 @@ description: >
     Resolving with a resolved Promise instance whose `then` method has been
     overridden from within the executor function
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     8. Let resolvingFunctions be CreateResolvingFunctions(promise).
     9. Let completion be Call(executor, undefined,
@@ -21,35 +21,41 @@ info: >
         [...]
     12. Perform EnqueueJob ("PromiseJobs", PromiseResolveThenableJob,
         «promise, resolution, thenAction»)
+flags: [async]
 ---*/
 
+var returnValue = null;
 var value = {};
 var lateCallCount = 0;
-var thenable = new Promise(function(resolve) { resolve(); });
+var thenable = new Promise(function(resolve) {
+  resolve();
+});
 
 thenable.then = function(resolve) {
   resolve(value);
 };
 
 var promise = new Promise(function(resolve) {
-  resolve(thenable);
+  returnValue = resolve(thenable);
 });
+
+assert.sameValue(returnValue, undefined, '"resolve" return value');
 
 thenable.then = function() {
   lateCallCount += 1;
 };
 
 promise.then(function(val) {
-    if (val !== value) {
-      $DONE('The promise should be fulfilled with the provided value.');
-      return;
-    }
+  if (val !== value) {
+    $DONE('The promise should be fulfilled with the provided value.');
+    return;
+  }
 
-    if (lateCallCount > 0) {
-      $DONE('The `then` method should be executed synchronously.');
-    }
+  if (lateCallCount > 0) {
+    $DONE('The `then` method should be executed synchronously.');
+  }
 
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});

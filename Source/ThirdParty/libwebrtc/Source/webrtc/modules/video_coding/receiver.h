@@ -8,18 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CODING_RECEIVER_H_
-#define WEBRTC_MODULES_VIDEO_CODING_RECEIVER_H_
+#ifndef MODULES_VIDEO_CODING_RECEIVER_H_
+#define MODULES_VIDEO_CODING_RECEIVER_H_
 
 #include <memory>
 #include <vector>
 
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/modules/video_coding/jitter_buffer.h"
-#include "webrtc/modules/video_coding/packet.h"
-#include "webrtc/modules/video_coding/timing.h"
-#include "webrtc/modules/video_coding/include/video_coding.h"
-#include "webrtc/modules/video_coding/include/video_coding_defines.h"
+#include "modules/video_coding/include/video_coding.h"
+#include "modules/video_coding/include/video_coding_defines.h"
+#include "modules/video_coding/jitter_buffer.h"
+#include "modules/video_coding/packet.h"
+#include "modules/video_coding/timing.h"
+#include "rtc_base/criticalsection.h"
 
 namespace webrtc {
 
@@ -79,9 +79,6 @@ class VCMReceiver {
   VCMNackMode NackMode() const;
   std::vector<uint16_t> NackList(bool* request_key_frame);
 
-  // Receiver video delay.
-  int SetMinReceiverDelay(int desired_delay_ms);
-
   // Decoding with errors.
   void SetDecodeErrorMode(VCMDecodeErrorMode decode_error_mode);
   VCMDecodeErrorMode DecodeErrorMode() const;
@@ -101,4 +98,4 @@ class VCMReceiver {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_VIDEO_CODING_RECEIVER_H_
+#endif  // MODULES_VIDEO_CODING_RECEIVER_H_

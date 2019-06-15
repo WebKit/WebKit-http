@@ -25,13 +25,14 @@
 
 #pragma once
 
+#include "ConstraintConcurrency.h"
+#include "ConstraintParallelism.h"
 #include "ConstraintVolatility.h"
-#include "VisitingTimeout.h"
 #include <limits.h>
 #include <wtf/FastMalloc.h>
-#include <wtf/Function.h>
-#include <wtf/MonotonicTime.h>
+#include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/SharedTask.h>
 #include <wtf/text/CString.h>
 
 namespace JSC {
@@ -44,17 +45,11 @@ class MarkingConstraint {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     JS_EXPORT_PRIVATE MarkingConstraint(
-        CString abbreviatedName, CString name,
-        ::Function<void(SlotVisitor&, const VisitingTimeout&)>,
-        ConstraintVolatility);
+        CString abbreviatedName, CString name, ConstraintVolatility,
+        ConstraintConcurrency = ConstraintConcurrency::Concurrent,
+        ConstraintParallelism = ConstraintParallelism::Sequential);
     
-    JS_EXPORT_PRIVATE MarkingConstraint(
-        CString abbreviatedName, CString name,
-        ::Function<void(SlotVisitor&, const VisitingTimeout&)>,
-        ::Function<double(SlotVisitor&)>,
-        ConstraintVolatility);
-    
-    JS_EXPORT_PRIVATE ~MarkingConstraint();
+    JS_EXPORT_PRIVATE virtual ~MarkingConstraint();
     
     unsigned index() const { return m_index; }
     
@@ -65,21 +60,24 @@ public:
     
     size_t lastVisitCount() const { return m_lastVisitCount; }
     
-    void execute(SlotVisitor&, bool& didVisitSomething, MonotonicTime timeout);
+    void execute(SlotVisitor&);
     
-    double quickWorkEstimate(SlotVisitor& visitor)
-    {
-        if (!m_quickWorkEstimateFunction)
-            return 0;
-        return m_quickWorkEstimateFunction(visitor);
-    }
+    JS_EXPORT_PRIVATE virtual double quickWorkEstimate(SlotVisitor& visitor);
     
-    double workEstimate(SlotVisitor& visitor)
-    {
-        return lastVisitCount() + quickWorkEstimate(visitor);
-    }
+    double workEstimate(SlotVisitor& visitor);
+    
+    void prepareToExecute(const AbstractLocker& constraintSolvingLocker, SlotVisitor&);
+    
+    void doParallelWork(SlotVisitor&, SharedTask<void(SlotVisitor&)>&);
     
     ConstraintVolatility volatility() const { return m_volatility; }
+    
+    ConstraintConcurrency concurrency() const { return m_concurrency; }
+    ConstraintParallelism parallelism() const { return m_parallelism; }
+
+protected:
+    virtual void executeImpl(SlotVisitor&) = 0;
+    JS_EXPORT_PRIVATE virtual void prepareToExecuteImpl(const AbstractLocker& constraintSolvingLocker, SlotVisitor&);
     
 private:
     friend class MarkingConstraintSet; // So it can set m_index.
@@ -87,10 +85,11 @@ private:
     unsigned m_index { UINT_MAX };
     CString m_abbreviatedName;
     CString m_name;
-    ::Function<void(SlotVisitor&, const VisitingTimeout& timeout)> m_executeFunction;
-    ::Function<double(SlotVisitor&)> m_quickWorkEstimateFunction;
     ConstraintVolatility m_volatility;
+    ConstraintConcurrency m_concurrency;
+    ConstraintParallelism m_parallelism;
     size_t m_lastVisitCount { 0 };
+    Lock m_lock;
 };
 
 } // namespace JSC

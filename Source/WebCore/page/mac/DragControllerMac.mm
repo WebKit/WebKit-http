@@ -37,14 +37,16 @@
 #import "EditorClient.h"
 #import "Element.h"
 #import "File.h"
+#import "Frame.h"
 #import "FrameView.h"
 #import "HTMLAttachmentElement.h"
-#import "MainFrame.h"
 #import "Page.h"
 #import "Pasteboard.h"
 #import "PasteboardStrategy.h"
 #import "PlatformStrategies.h"
 #import "Range.h"
+#import "RuntimeEnabledFeatures.h"
+#import "UTIUtilities.h"
 
 #if ENABLE(DATA_INTERACTION)
 #import <MobileCoreServices/MobileCoreServices.h>
@@ -90,6 +92,14 @@ const IntSize& DragController::maxDragImageSize()
     return maxDragImageSize;
 }
 
+String DragController::platformContentTypeForBlobType(const String& type) const
+{
+    auto utiType = UTIFromMIMEType(type);
+    if (!utiType.isEmpty())
+        return utiType;
+    return type;
+}
+
 void DragController::cleanupAfterSystemDrag()
 {
 #if PLATFORM(MAC)
@@ -125,8 +135,17 @@ void DragController::updateSupportedTypeIdentifiersForDragHandlingMethod(DragHan
         supportedTypes.append(kUTTypePlainText);
         break;
     case DragHandlingMethod::EditRichText:
-        for (NSString *type in Pasteboard::supportedWebContentPasteboardTypes())
-            supportedTypes.append(type);
+        if (RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled()) {
+            supportedTypes.append(WebArchivePboardType);
+            supportedTypes.append(kUTTypeContent);
+            supportedTypes.append(kUTTypeItem);
+        } else {
+            for (NSString *type in Pasteboard::supportedWebContentPasteboardTypes())
+                supportedTypes.append(type);
+        }
+        break;
+    case DragHandlingMethod::SetColor:
+        supportedTypes.append(UIColorPboardType);
         break;
     default:
         for (NSString *type in Pasteboard::supportedFileUploadPasteboardTypes())
@@ -138,14 +157,6 @@ void DragController::updateSupportedTypeIdentifiersForDragHandlingMethod(DragHan
 
 #endif
 
-#if ENABLE(ATTACHMENT_ELEMENT)
-void DragController::declareAndWriteAttachment(DataTransfer& dataTransfer, Element& element, const URL& url)
-{
-    const HTMLAttachmentElement& attachment = downcast<HTMLAttachmentElement>(element);
-    m_client.declareAndWriteAttachment(dataTransfer.pasteboard().name(), element, url, attachment.file()->path(), element.document().frame());
-}
-#endif
-    
 void DragController::declareAndWriteDragImage(DataTransfer& dataTransfer, Element& element, const URL& url, const String& label)
 {
     m_client.declareAndWriteDragImage(dataTransfer.pasteboard().name(), element, url, label, element.document().frame());

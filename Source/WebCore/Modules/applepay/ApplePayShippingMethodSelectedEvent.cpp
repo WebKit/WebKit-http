@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,40 +32,24 @@
 
 namespace WebCore {
 
-static inline String convert(int64_t amount)
-{
-    StringBuilder amountString;
-    amountString.appendNumber(amount / 100);
-    amountString.append('.');
-
-    unsigned decimals = amount % 100;
-    if (decimals < 10)
-        amountString.append('0');
-    amountString.appendNumber(decimals);
-
-    return amountString.toString();
-}
-
-static inline ApplePayShippingMethod convert(const PaymentRequest::ShippingMethod& shippingMethod)
+static inline ApplePayShippingMethod convert(const ApplePaySessionPaymentRequest::ShippingMethod& shippingMethod)
 {
     ApplePayShippingMethod convertedMethod;
     convertedMethod.label = shippingMethod.label;
     convertedMethod.detail = shippingMethod.detail;
     convertedMethod.identifier = shippingMethod.identifier;
-    convertedMethod.amount = convert(shippingMethod.amount);
+    convertedMethod.amount = shippingMethod.amount;
 
     return convertedMethod; 
 }
 
-ApplePayShippingMethodSelectedEvent::ApplePayShippingMethodSelectedEvent(const AtomicString& type, const PaymentRequest::ShippingMethod& shippingMethod)
-    : Event(type, false, false)
+ApplePayShippingMethodSelectedEvent::ApplePayShippingMethodSelectedEvent(const AtomicString& type, const ApplePaySessionPaymentRequest::ShippingMethod& shippingMethod)
+    : Event(type, CanBubble::No, IsCancelable::No)
     , m_shippingMethod(convert(shippingMethod))
 {
 }
 
-ApplePayShippingMethodSelectedEvent::~ApplePayShippingMethodSelectedEvent()
-{
-}
+ApplePayShippingMethodSelectedEvent::~ApplePayShippingMethodSelectedEvent() = default;
 
 EventInterface ApplePayShippingMethodSelectedEvent::eventInterface() const
 {

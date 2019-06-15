@@ -24,11 +24,11 @@
 #include "config.h"
 #include "FEDisplacementMap.h"
 
+#include "ColorUtilities.h"
 #include "Filter.h"
 #include "GraphicsContext.h"
-#include "TextStream.h"
-
-#include <runtime/Uint8ClampedArray.h>
+#include <JavaScriptCore/Uint8ClampedArray.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -46,11 +46,6 @@ Ref<FEDisplacementMap> FEDisplacementMap::create(Filter& filter, ChannelSelector
     return adoptRef(*new FEDisplacementMap(filter, xChannelSelector, yChannelSelector, scale));
 }
 
-ChannelSelectorType FEDisplacementMap::xChannelSelector() const
-{
-    return m_xChannelSelector;
-}
-
 bool FEDisplacementMap::setXChannelSelector(const ChannelSelectorType xChannelSelector)
 {
     if (m_xChannelSelector == xChannelSelector)
@@ -59,22 +54,12 @@ bool FEDisplacementMap::setXChannelSelector(const ChannelSelectorType xChannelSe
     return true;
 }
 
-ChannelSelectorType FEDisplacementMap::yChannelSelector() const
-{
-    return m_yChannelSelector;
-}
-
 bool FEDisplacementMap::setYChannelSelector(const ChannelSelectorType yChannelSelector)
 {
     if (m_yChannelSelector == yChannelSelector)
         return false;
     m_yChannelSelector = yChannelSelector;
     return true;
-}
-
-float FEDisplacementMap::scale() const
-{
-    return m_scale;
 }
 
 bool FEDisplacementMap::setScale(float scale)
@@ -114,42 +99,48 @@ void FEDisplacementMap::platformApplySoftware()
         return;
 
     IntRect effectADrawingRect = requestedRegionOfInputImageData(in->absolutePaintRect());
-    RefPtr<Uint8ClampedArray> srcPixelArrayA = in->asPremultipliedImage(effectADrawingRect);
+    auto inputImage = in->premultipliedResult(effectADrawingRect);
 
     IntRect effectBDrawingRect = requestedRegionOfInputImageData(in2->absolutePaintRect());
-    RefPtr<Uint8ClampedArray> srcPixelArrayB = in2->asUnmultipliedImage(effectBDrawingRect);
+    // The calculations using the pixel values from ‘in2’ are performed using non-premultiplied color values.
+    auto displacementImage = in2->unmultipliedResult(effectBDrawingRect);
+    
+    if (!inputImage || !displacementImage)
+        return;
 
-    ASSERT(srcPixelArrayA->length() == srcPixelArrayB->length());
+    ASSERT(inputImage->length() == displacementImage->length());
 
     Filter& filter = this->filter();
     IntSize paintSize = absolutePaintRect().size();
-    float scaleX = filter.applyHorizontalScale(m_scale);
-    float scaleY = filter.applyVerticalScale(m_scale);
-    float scaleForColorX = scaleX / 255.0;
-    float scaleForColorY = scaleY / 255.0;
-    float scaledOffsetX = 0.5 - scaleX * 0.5;
-    float scaledOffsetY = 0.5 - scaleY * 0.5;
-    int stride = paintSize.width() * 4;
+    FloatSize scale = filter.scaledByFilterResolution({ m_scale, m_scale });
+    float scaleForColorX = scale.width() / 255.0;
+    float scaleForColorY = scale.height() / 255.0;
+    float scaledOffsetX = 0.5 - scale.width() * 0.5;
+    float scaledOffsetY = 0.5 - scale.height() * 0.5;
+    
+    int displacementChannelX = xChannelIndex();
+    int displacementChannelY = yChannelIndex();
+
+    int rowBytes = paintSize.width() * 4;
+
     for (int y = 0; y < paintSize.height(); ++y) {
-        int line = y * stride;
+        int lineStartOffset = y * rowBytes;
+
         for (int x = 0; x < paintSize.width(); ++x) {
-            int dstIndex = line + x * 4;
-            int srcX = x + static_cast<int>(scaleForColorX * srcPixelArrayB->item(dstIndex + m_xChannelSelector - 1) + scaledOffsetX);
-            int srcY = y + static_cast<int>(scaleForColorY * srcPixelArrayB->item(dstIndex + m_yChannelSelector - 1) + scaledOffsetY);
-            for (unsigned channel = 0; channel < 4; ++channel) {
-                if (srcX < 0 || srcX >= paintSize.width() || srcY < 0 || srcY >= paintSize.height())
-                    dstPixelArray->set(dstIndex + channel, static_cast<unsigned char>(0));
-                else {
-                    unsigned char pixelValue = srcPixelArrayA->item(srcY * stride + srcX * 4 + channel);
-                    dstPixelArray->set(dstIndex + channel, pixelValue);
-                }
+            int dstIndex = lineStartOffset + x * 4;
+            
+            int srcX = x + static_cast<int>(scaleForColorX * displacementImage->item(dstIndex + displacementChannelX) + scaledOffsetX);
+            int srcY = y + static_cast<int>(scaleForColorY * displacementImage->item(dstIndex + displacementChannelY) + scaledOffsetY);
+
+            unsigned* dstPixelPtr = reinterpret_cast<unsigned*>(dstPixelArray->data() + dstIndex);
+            if (srcX < 0 || srcX >= paintSize.width() || srcY < 0 || srcY >= paintSize.height()) {
+                *dstPixelPtr = 0;
+                continue;
             }
+
+            *dstPixelPtr = *reinterpret_cast<unsigned*>(inputImage->data() + byteOffsetOfPixel(srcX, srcY, rowBytes));
         }
     }
-}
-
-void FEDisplacementMap::dump()
-{
 }
 
 static TextStream& operator<<(TextStream& ts, const ChannelSelectorType& type)
@@ -174,16 +165,17 @@ static TextStream& operator<<(TextStream& ts, const ChannelSelectorType& type)
     return ts;
 }
 
-TextStream& FEDisplacementMap::externalRepresentation(TextStream& ts, int indent) const
+TextStream& FEDisplacementMap::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-    writeIndent(ts, indent);
-    ts << "[feDisplacementMap";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feDisplacementMap";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << " scale=\"" << m_scale << "\" "
        << "xChannelSelector=\"" << m_xChannelSelector << "\" "
        << "yChannelSelector=\"" << m_yChannelSelector << "\"]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
-    inputEffect(1)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
+    inputEffect(1)->externalRepresentation(ts, representation);
     return ts;
 }
 

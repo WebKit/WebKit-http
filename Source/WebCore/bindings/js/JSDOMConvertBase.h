@@ -26,7 +26,7 @@
 #pragma once
 
 #include "JSDOMExceptionHandling.h"
-#include <runtime/Error.h>
+#include <JavaScriptCore/Error.h>
 
 namespace WebCore {
 
@@ -86,16 +86,24 @@ template<typename T, typename ExceptionThrower> inline typename Converter<T>::Re
     return Converter<T>::convert(state, value, globalObject, std::forward<ExceptionThrower>(exceptionThrower));
 }
 
+
+template <typename T>
+struct IsExceptionOr : public std::integral_constant<bool, WTF::IsTemplate<std::decay_t<T>, ExceptionOr>::value> { };
+
+
 // Conversion from Implementation -> JSValue
 template<typename T> struct JSConverter;
 
 template<typename T, typename U> inline JSC::JSValue toJS(U&&);
 template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState&, U&&);
 template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState&, JSDOMGlobalObject&, U&&);
-template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState&, JSC::ThrowScope&, ExceptionOr<U>&&);
-template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<U>&&);
 template<typename T, typename U> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState&, JSDOMGlobalObject&, U&&);
-template<typename T, typename U> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, ExceptionOr<U>&&);
+template<typename T, typename U> inline auto toJS(JSC::ExecState&, JSC::ThrowScope&, U&&) -> std::enable_if_t<IsExceptionOr<U>::value, JSC::JSValue>;
+template<typename T, typename U> inline auto toJS(JSC::ExecState&, JSC::ThrowScope&, U&&) -> std::enable_if_t<!IsExceptionOr<U>::value, JSC::JSValue>;
+template<typename T, typename U> inline auto toJS(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, U&&) -> std::enable_if_t<IsExceptionOr<U>::value, JSC::JSValue>;
+template<typename T, typename U> inline auto toJS(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, U&&) -> std::enable_if_t<!IsExceptionOr<U>::value, JSC::JSValue>;
+template<typename T, typename U> inline auto toJSNewlyCreated(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, U&&) -> std::enable_if_t<IsExceptionOr<U>::value, JSC::JSValue>;
+template<typename T, typename U> inline auto toJSNewlyCreated(JSC::ExecState&, JSDOMGlobalObject&, JSC::ThrowScope&, U&&) -> std::enable_if_t<!IsExceptionOr<U>::value, JSC::JSValue>;
 
 template<typename T, bool needsState = JSConverter<T>::needsState, bool needsGlobalObject = JSConverter<T>::needsGlobalObject>
 struct JSConverterOverloader;
@@ -149,7 +157,12 @@ template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState& state,
     return JSConverterOverloader<T>::convert(state, globalObject, std::forward<U>(value));
 }
 
-template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<U>&& value)
+template<typename T, typename U> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, U&& value)
+{
+    return JSConverter<T>::convertNewlyCreated(state, globalObject, std::forward<U>(value));
+}
+
+template<typename T, typename U> inline auto toJS(JSC::ExecState& state, JSC::ThrowScope& throwScope, U&& value) -> std::enable_if_t<IsExceptionOr<U>::value, JSC::JSValue>
 {
     if (UNLIKELY(value.hasException())) {
         propagateException(state, throwScope, value.releaseException());
@@ -159,7 +172,12 @@ template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState& state,
     return toJS<T>(state, value.releaseReturnValue());
 }
 
-template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, ExceptionOr<U>&& value)
+template<typename T, typename U> inline auto toJS(JSC::ExecState& state, JSC::ThrowScope&, U&& value) -> std::enable_if_t<!IsExceptionOr<U>::value, JSC::JSValue>
+{
+    return toJS<T>(state, std::forward<U>(value));
+}
+
+template<typename T, typename U> inline auto toJS(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, U&& value) -> std::enable_if_t<IsExceptionOr<U>::value, JSC::JSValue>
 {
     if (UNLIKELY(value.hasException())) {
         propagateException(state, throwScope, value.releaseException());
@@ -169,12 +187,12 @@ template<typename T, typename U> inline JSC::JSValue toJS(JSC::ExecState& state,
     return toJS<T>(state, globalObject, value.releaseReturnValue());
 }
 
-template<typename T, typename U> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, U&& value)
+template<typename T, typename U> inline auto toJS(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope&, U&& value) -> std::enable_if_t<!IsExceptionOr<U>::value, JSC::JSValue>
 {
-    return JSConverter<T>::convertNewlyCreated(state, globalObject, std::forward<U>(value));
+    return toJS<T>(state, globalObject, std::forward<U>(value));
 }
 
-template<typename T, typename U> inline JSC::JSValue toJSNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, ExceptionOr<U>&& value)
+template<typename T, typename U> inline auto toJSNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope& throwScope, U&& value) -> std::enable_if_t<IsExceptionOr<U>::value, JSC::JSValue>
 {
     if (UNLIKELY(value.hasException())) {
         propagateException(state, throwScope, value.releaseException());
@@ -182,6 +200,11 @@ template<typename T, typename U> inline JSC::JSValue toJSNewlyCreated(JSC::ExecS
     }
 
     return toJSNewlyCreated<T>(state, globalObject, value.releaseReturnValue());
+}
+
+template<typename T, typename U> inline auto toJSNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSC::ThrowScope&, U&& value) -> std::enable_if_t<!IsExceptionOr<U>::value, JSC::JSValue>
+{
+    return toJSNewlyCreated<T>(state, globalObject, std::forward<U>(value));
 }
 
 
@@ -198,5 +221,8 @@ template<typename T> struct DefaultConverter {
     // toBoolean() in JS can't call arbitrary functions.
     static constexpr bool conversionHasSideEffects = true;
 };
+
+// Conversion from JSValue -> Implementation for variadic arguments
+template<typename IDLType> struct VariadicConverter;
 
 } // namespace WebCore

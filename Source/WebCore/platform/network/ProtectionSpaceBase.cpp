@@ -27,7 +27,7 @@
 
 #include "ProtectionSpace.h"
 
-#if USE(CFURLCONNECTION) && !PLATFORM(COCOA)
+#if USE(CFURLCONNECTION)
 #include "AuthenticationCF.h"
 #include <CFNetwork/CFURLProtectionSpacePriv.h>
 #endif
@@ -108,6 +108,7 @@ bool ProtectionSpaceBase::isPasswordBased() const
     case ProtectionSpaceAuthenticationSchemeHTMLForm:
     case ProtectionSpaceAuthenticationSchemeNTLM:
     case ProtectionSpaceAuthenticationSchemeNegotiate:
+    case ProtectionSpaceAuthenticationSchemeOAuth:
         return true;
     case ProtectionSpaceAuthenticationSchemeClientCertificateRequested:
     case ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested:
@@ -117,7 +118,6 @@ bool ProtectionSpaceBase::isPasswordBased() const
 
     return true;
 }
-
 
 bool ProtectionSpaceBase::compare(const ProtectionSpace& a, const ProtectionSpace& b)
 {

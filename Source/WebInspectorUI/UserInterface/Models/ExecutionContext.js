@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ExecutionContext = class ExecutionContext extends WebInspector.Object
+WI.ExecutionContext = class ExecutionContext
 {
     constructor(target, id, name, isPageContext, frame)
     {
-        super();
-
-        console.assert(target instanceof WebInspector.Target);
-        console.assert(typeof id === "number" || id === WebInspector.RuntimeManager.TopLevelExecutionContextIdentifier);
+        console.assert(target instanceof WI.Target);
+        console.assert(typeof id === "number" || id === WI.RuntimeManager.TopLevelExecutionContextIdentifier);
         console.assert(typeof name === "string");
 
         this._target = target;

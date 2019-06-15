@@ -4,7 +4,7 @@
 es6id: 9.5.4
 description: >
     Throws a TypeError exception if trap is not callable.
-info: >
+info: |
     [[PreventExtensions]] ( )
 
     ...
@@ -21,9 +21,9 @@ info: >
 
 var target = {};
 var p = new Proxy(target, {
-    preventExtensions: {}
+  preventExtensions: {}
 });
 
 assert.throws(TypeError, function() {
-    Object.preventExtensions(p);
+  Object.preventExtensions(p);
 });

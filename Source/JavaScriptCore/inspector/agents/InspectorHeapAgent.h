@@ -25,12 +25,13 @@
 
 #pragma once
 
+#include "HeapObserver.h"
+#include "InspectorAgentBase.h"
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
-#include "heap/HeapObserver.h"
-#include "inspector/InspectorAgentBase.h"
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Seconds.h>
 
 namespace JSC {
 struct HeapSnapshotNode;
@@ -43,6 +44,7 @@ typedef String ErrorString;
 
 class JS_EXPORT_PRIVATE InspectorHeapAgent : public InspectorAgentBase, public HeapBackendDispatcherHandler, public JSC::HeapObserver {
     WTF_MAKE_NONCOPYABLE(InspectorHeapAgent);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorHeapAgent(AgentContext&);
     virtual ~InspectorHeapAgent();
@@ -57,8 +59,8 @@ public:
     void snapshot(ErrorString&, double* timestamp, String* snapshotData) final;
     void startTracking(ErrorString&) final;
     void stopTracking(ErrorString&) final;
-    void getPreview(ErrorString&, int heapObjectId, Inspector::Protocol::OptOutput<String>* resultString, RefPtr<Inspector::Protocol::Debugger::FunctionDetails>& functionDetails, RefPtr<Inspector::Protocol::Runtime::ObjectPreview>& objectPreview) final;
-    void getRemoteObject(ErrorString&, int heapObjectId, const String* const optionalObjectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result) final;
+    void getPreview(ErrorString&, int heapObjectId, std::optional<String>& resultString, RefPtr<Protocol::Debugger::FunctionDetails>&, RefPtr<Protocol::Runtime::ObjectPreview>&) final;
+    void getRemoteObject(ErrorString&, int heapObjectId, const String* optionalObjectGroup, RefPtr<Protocol::Runtime::RemoteObject>& result) final;
 
     // HeapObserver
     void willGarbageCollect() override;
@@ -67,7 +69,7 @@ public:
 protected:
     void clearHeapSnapshots();
 
-    virtual void dispatchGarbageCollectedEvent(Inspector::Protocol::Heap::GarbageCollection::Type, double startTime, double endTime);
+    virtual void dispatchGarbageCollectedEvent(Protocol::Heap::GarbageCollection::Type, Seconds startTime, Seconds endTime);
 
 private:
     std::optional<JSC::HeapSnapshotNode> nodeForHeapObjectIdentifier(ErrorString&, unsigned heapObjectIdentifier);
@@ -79,7 +81,7 @@ private:
 
     bool m_enabled { false };
     bool m_tracking { false };
-    double m_gcStartTime { NAN };
+    Seconds m_gcStartTime { Seconds::nan() };
 };
 
 } // namespace Inspector

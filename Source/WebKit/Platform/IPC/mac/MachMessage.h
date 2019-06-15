@@ -25,8 +25,11 @@
 
 #pragma once
 
+#if PLATFORM(COCOA)
+
+#include <mach/message.h>
 #include <memory>
-#include <wtf/RetainPtr.h>
+#include <wtf/text/CString.h>
 
 namespace IPC {
 
@@ -43,16 +46,22 @@ public:
 
     void leakDescriptors();
 
-    CFStringRef messageName() const { return m_messageName.get(); }
-    void setMessageName(CFStringRef messageName) { m_messageName = messageName; }
+    const CString& messageReceiverName() const { return m_messageReceiverName; }
+    void setMessageReceiverName(CString&& messageReceiverName) { m_messageReceiverName = WTFMove(messageReceiverName); }
+
+    const CString& messageName() const { return m_messageName; }
+    void setMessageName(CString&& messageName) { m_messageName = WTFMove(messageName); }
 
 private:
     explicit MachMessage(size_t);
 
-    RetainPtr<CFStringRef> m_messageName;
+    CString m_messageReceiverName;
+    CString m_messageName;
     size_t m_size;
     bool m_shouldFreeDescriptors;
-    uint8_t m_buffer[0];
+    mach_msg_header_t m_messageHeader[0];
 };
 
 }
+
+#endif // PLATFORM(COCOA)

@@ -34,14 +34,13 @@
 namespace WebCore {
 
 class Frame;
-class MainFrame;
 class Page;
 class PlatformMouseEvent;
 
 class PageOverlayController final : public GraphicsLayerClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PageOverlayController(MainFrame&);
+    PageOverlayController(Page&);
     virtual ~PageOverlayController();
 
     GraphicsLayer& layerWithDocumentOverlays();
@@ -65,7 +64,7 @@ public:
     void didChangeViewSize();
     void didChangeDocumentSize();
     void didChangeSettings();
-    void didChangeDeviceScaleFactor();
+    WEBCORE_EXPORT void didChangeDeviceScaleFactor();
     void didChangeViewExposedRect();
     void didScrollFrame(Frame&);
 
@@ -88,7 +87,7 @@ private:
 
     // GraphicsLayerClient
     void notifyFlushRequired(const GraphicsLayer*) override;
-    void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& clipRect, GraphicsLayerPaintFlags) override;
+    void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& clipRect, GraphicsLayerPaintBehavior) override;
     float deviceScaleFactor() const override;
     bool shouldSkipLayerInDump(const GraphicsLayer*, LayerTreeAsTextBehavior) const override;
     void tiledBackingUsageChanged(const GraphicsLayer*, bool) override;
@@ -99,7 +98,7 @@ private:
 
     HashMap<PageOverlay*, std::unique_ptr<GraphicsLayer>> m_overlayGraphicsLayers;
     Vector<RefPtr<PageOverlay>> m_pageOverlays;
-    MainFrame& m_mainFrame;
+    Page& m_page;
 };
 
 } // namespace WebKit

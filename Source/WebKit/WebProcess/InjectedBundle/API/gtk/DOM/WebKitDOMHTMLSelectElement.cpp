@@ -22,13 +22,12 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
 #include <WebCore/HTMLOptGroupElement.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMHTMLCollectionPrivate.h"
@@ -42,6 +41,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -72,8 +73,8 @@ static gboolean webkit_dom_html_select_element_dispatch_event(WebKitDOMEventTarg
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -91,29 +92,29 @@ static gboolean webkit_dom_html_select_element_remove_event_listener(WebKitDOMEv
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_select_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_select_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_select_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_select_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLSelectElement, webkit_dom_html_select_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLSelectElement, webkit_dom_html_select_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_select_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_AUTOFOCUS,
-    PROP_DISABLED,
-    PROP_FORM,
-    PROP_MULTIPLE,
-    PROP_NAME,
-    PROP_SIZE,
-    PROP_TYPE,
-    PROP_OPTIONS,
-    PROP_LENGTH,
-    PROP_SELECTED_INDEX,
-    PROP_VALUE,
-    PROP_WILL_VALIDATE,
+    DOM_HTML_SELECT_ELEMENT_PROP_0,
+    DOM_HTML_SELECT_ELEMENT_PROP_AUTOFOCUS,
+    DOM_HTML_SELECT_ELEMENT_PROP_DISABLED,
+    DOM_HTML_SELECT_ELEMENT_PROP_FORM,
+    DOM_HTML_SELECT_ELEMENT_PROP_MULTIPLE,
+    DOM_HTML_SELECT_ELEMENT_PROP_NAME,
+    DOM_HTML_SELECT_ELEMENT_PROP_SIZE,
+    DOM_HTML_SELECT_ELEMENT_PROP_TYPE,
+    DOM_HTML_SELECT_ELEMENT_PROP_OPTIONS,
+    DOM_HTML_SELECT_ELEMENT_PROP_LENGTH,
+    DOM_HTML_SELECT_ELEMENT_PROP_SELECTED_INDEX,
+    DOM_HTML_SELECT_ELEMENT_PROP_VALUE,
+    DOM_HTML_SELECT_ELEMENT_PROP_WILL_VALIDATE,
 };
 
 static void webkit_dom_html_select_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -121,28 +122,28 @@ static void webkit_dom_html_select_element_set_property(GObject* object, guint p
     WebKitDOMHTMLSelectElement* self = WEBKIT_DOM_HTML_SELECT_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_AUTOFOCUS:
+    case DOM_HTML_SELECT_ELEMENT_PROP_AUTOFOCUS:
         webkit_dom_html_select_element_set_autofocus(self, g_value_get_boolean(value));
         break;
-    case PROP_DISABLED:
+    case DOM_HTML_SELECT_ELEMENT_PROP_DISABLED:
         webkit_dom_html_select_element_set_disabled(self, g_value_get_boolean(value));
         break;
-    case PROP_MULTIPLE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_MULTIPLE:
         webkit_dom_html_select_element_set_multiple(self, g_value_get_boolean(value));
         break;
-    case PROP_NAME:
+    case DOM_HTML_SELECT_ELEMENT_PROP_NAME:
         webkit_dom_html_select_element_set_name(self, g_value_get_string(value));
         break;
-    case PROP_SIZE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_SIZE:
         webkit_dom_html_select_element_set_size(self, g_value_get_long(value));
         break;
-    case PROP_LENGTH:
+    case DOM_HTML_SELECT_ELEMENT_PROP_LENGTH:
         webkit_dom_html_select_element_set_length(self, g_value_get_ulong(value), nullptr);
         break;
-    case PROP_SELECTED_INDEX:
+    case DOM_HTML_SELECT_ELEMENT_PROP_SELECTED_INDEX:
         webkit_dom_html_select_element_set_selected_index(self, g_value_get_long(value));
         break;
-    case PROP_VALUE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_VALUE:
         webkit_dom_html_select_element_set_value(self, g_value_get_string(value));
         break;
     default:
@@ -156,40 +157,40 @@ static void webkit_dom_html_select_element_get_property(GObject* object, guint p
     WebKitDOMHTMLSelectElement* self = WEBKIT_DOM_HTML_SELECT_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_AUTOFOCUS:
+    case DOM_HTML_SELECT_ELEMENT_PROP_AUTOFOCUS:
         g_value_set_boolean(value, webkit_dom_html_select_element_get_autofocus(self));
         break;
-    case PROP_DISABLED:
+    case DOM_HTML_SELECT_ELEMENT_PROP_DISABLED:
         g_value_set_boolean(value, webkit_dom_html_select_element_get_disabled(self));
         break;
-    case PROP_FORM:
+    case DOM_HTML_SELECT_ELEMENT_PROP_FORM:
         g_value_set_object(value, webkit_dom_html_select_element_get_form(self));
         break;
-    case PROP_MULTIPLE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_MULTIPLE:
         g_value_set_boolean(value, webkit_dom_html_select_element_get_multiple(self));
         break;
-    case PROP_NAME:
+    case DOM_HTML_SELECT_ELEMENT_PROP_NAME:
         g_value_take_string(value, webkit_dom_html_select_element_get_name(self));
         break;
-    case PROP_SIZE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_SIZE:
         g_value_set_long(value, webkit_dom_html_select_element_get_size(self));
         break;
-    case PROP_TYPE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_TYPE:
         g_value_take_string(value, webkit_dom_html_select_element_get_select_type(self));
         break;
-    case PROP_OPTIONS:
+    case DOM_HTML_SELECT_ELEMENT_PROP_OPTIONS:
         g_value_set_object(value, webkit_dom_html_select_element_get_options(self));
         break;
-    case PROP_LENGTH:
+    case DOM_HTML_SELECT_ELEMENT_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_html_select_element_get_length(self));
         break;
-    case PROP_SELECTED_INDEX:
+    case DOM_HTML_SELECT_ELEMENT_PROP_SELECTED_INDEX:
         g_value_set_long(value, webkit_dom_html_select_element_get_selected_index(self));
         break;
-    case PROP_VALUE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_VALUE:
         g_value_take_string(value, webkit_dom_html_select_element_get_value(self));
         break;
-    case PROP_WILL_VALIDATE:
+    case DOM_HTML_SELECT_ELEMENT_PROP_WILL_VALIDATE:
         g_value_set_boolean(value, webkit_dom_html_select_element_get_will_validate(self));
         break;
     default:
@@ -206,7 +207,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_AUTOFOCUS,
+        DOM_HTML_SELECT_ELEMENT_PROP_AUTOFOCUS,
         g_param_spec_boolean(
             "autofocus",
             "HTMLSelectElement:autofocus",
@@ -216,7 +217,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DISABLED,
+        DOM_HTML_SELECT_ELEMENT_PROP_DISABLED,
         g_param_spec_boolean(
             "disabled",
             "HTMLSelectElement:disabled",
@@ -226,7 +227,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FORM,
+        DOM_HTML_SELECT_ELEMENT_PROP_FORM,
         g_param_spec_object(
             "form",
             "HTMLSelectElement:form",
@@ -236,7 +237,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_MULTIPLE,
+        DOM_HTML_SELECT_ELEMENT_PROP_MULTIPLE,
         g_param_spec_boolean(
             "multiple",
             "HTMLSelectElement:multiple",
@@ -246,7 +247,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_NAME,
+        DOM_HTML_SELECT_ELEMENT_PROP_NAME,
         g_param_spec_string(
             "name",
             "HTMLSelectElement:name",
@@ -256,7 +257,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SIZE,
+        DOM_HTML_SELECT_ELEMENT_PROP_SIZE,
         g_param_spec_long(
             "size",
             "HTMLSelectElement:size",
@@ -266,7 +267,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TYPE,
+        DOM_HTML_SELECT_ELEMENT_PROP_TYPE,
         g_param_spec_string(
             "type",
             "HTMLSelectElement:type",
@@ -276,7 +277,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_OPTIONS,
+        DOM_HTML_SELECT_ELEMENT_PROP_OPTIONS,
         g_param_spec_object(
             "options",
             "HTMLSelectElement:options",
@@ -286,7 +287,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_HTML_SELECT_ELEMENT_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "HTMLSelectElement:length",
@@ -296,7 +297,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SELECTED_INDEX,
+        DOM_HTML_SELECT_ELEMENT_PROP_SELECTED_INDEX,
         g_param_spec_long(
             "selected-index",
             "HTMLSelectElement:selected-index",
@@ -306,7 +307,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_VALUE,
+        DOM_HTML_SELECT_ELEMENT_PROP_VALUE,
         g_param_spec_string(
             "value",
             "HTMLSelectElement:value",
@@ -316,7 +317,7 @@ static void webkit_dom_html_select_element_class_init(WebKitDOMHTMLSelectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_WILL_VALIDATE,
+        DOM_HTML_SELECT_ELEMENT_PROP_WILL_VALIDATE,
         g_param_spec_boolean(
             "will-validate",
             "HTMLSelectElement:will-validate",
@@ -366,15 +367,15 @@ void webkit_dom_html_select_element_add(WebKitDOMHTMLSelectElement* self, WebKit
     else if (is<WebCore::HTMLOptGroupElement>(convertedElement))
         variantElement = &downcast<WebCore::HTMLOptGroupElement>(*convertedElement);
     else {
-        WebCore::ExceptionCodeDescription ecdesc(WebCore::TypeError);
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(WebCore::TypeError);
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return;
     }
 
     auto exception = item->add(WTFMove(variantElement), WebCore::HTMLSelectElement::HTMLElementOrInt(convertedBefore));
     if (exception.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(exception.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(exception.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -517,8 +518,8 @@ void webkit_dom_html_select_element_set_length(WebKitDOMHTMLSelectElement* self,
     WebCore::HTMLSelectElement* item = WebKit::core(self);
     auto result = item->setLength(value);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -566,3 +567,4 @@ gboolean webkit_dom_html_select_element_get_will_validate(WebKitDOMHTMLSelectEle
     gboolean result = item->willValidate();
     return result;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

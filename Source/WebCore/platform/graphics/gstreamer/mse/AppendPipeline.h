@@ -22,7 +22,7 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "MediaPlayerPrivateGStreamerMSE.h"
 #include "MediaSourceClientGStreamerMSE.h"
 #include "SourceBufferPrivateGStreamer.h"
@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(ENCRYPTED_MEDIA)
 struct PadProbeInformation {
     AppendPipeline* appendPipeline;
     const char* description;
@@ -42,13 +42,14 @@ struct PadProbeInformation {
 
 class AppendPipeline : public ThreadSafeRefCounted<AppendPipeline> {
 public:
-    enum class AppendState { Invalid, NotStarted, Ongoing, KeyNegotiation, DataStarve, Sampling, LastSample, Aborting };
+    enum class AppendState { Invalid, NotStarted, Ongoing, DataStarve, Sampling, LastSample, Aborting };
 
     AppendPipeline(Ref<MediaSourceClientGStreamerMSE>, Ref<SourceBufferPrivateGStreamer>, MediaPlayerPrivateGStreamerMSE&);
     virtual ~AppendPipeline();
 
     void handleNeedContextSyncMessage(GstMessage*);
     void handleApplicationMessage(GstMessage*);
+    void handleStateChangeMessage(GstMessage*);
 
     gint id();
     AppendState appendState() { return m_appendState; }
@@ -74,6 +75,7 @@ public:
     GstElement* appsink() { return m_appsink.get(); }
     GstCaps* demuxerSrcPadCaps() { return m_demuxerSrcPadCaps.get(); }
     GstCaps* appsinkCaps() { return m_appsinkCaps.get(); }
+    MediaPlayerPrivateGStreamerMSE* playerPrivate() { return m_playerPrivate; }
     RefPtr<WebCore::TrackPrivateBase> track() { return m_track; }
     WebCore::MediaSourceStreamTypeGStreamer streamType() { return m_streamType; }
 
@@ -92,7 +94,6 @@ private:
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
 
-private:
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
     Ref<SourceBufferPrivateGStreamer> m_sourceBufferPrivate;
     MediaPlayerPrivateGStreamerMSE* m_playerPrivate;
@@ -108,9 +109,7 @@ private:
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
     GRefPtr<GstElement> m_demux;
-#if ENABLE(ENCRYPTED_MEDIA)
-    GRefPtr<GstElement> m_decryptor;
-#endif
+    GRefPtr<GstElement> m_parser; // Optional.
     // The demuxer has one src stream only, so only one appsink is needed and linked to it.
     GRefPtr<GstElement> m_appsink;
 
@@ -132,6 +131,9 @@ private:
     struct PadProbeInformation m_appsinkDataEnteringPadProbeInformation;
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    struct PadProbeInformation m_appsinkPadEventProbeInformation;
+#endif
     // Keeps track of the states of append processing, to avoid performing actions inappropriate for the current state
     // (eg: processing more samples when the last one has been detected, etc.). See setAppendState() for valid
     // transitions.
@@ -142,7 +144,6 @@ private:
     bool m_abortPending;
 
     WebCore::MediaSourceStreamTypeGStreamer m_streamType;
-    RefPtr<WebCore::TrackPrivateBase> m_oldTrack;
     RefPtr<WebCore::TrackPrivateBase> m_track;
 
     GRefPtr<GstBuffer> m_pendingBuffer;

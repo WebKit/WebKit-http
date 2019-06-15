@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduceright
 es5id: 15.4.4.22-8-b-iii-1-5
 description: >
     Array.prototype.reduceRight - element to be retrieved is own data
@@ -9,34 +10,35 @@ description: >
     Array-like object
 ---*/
 
-        var testResult = false;
-        function callbackfn(prevVal, curVal, idx, obj) {
-            if (idx === 1) {
-                testResult = (prevVal === "20");
-            }
-        }
+var testResult = false;
 
-        var proto = {};
+function callbackfn(prevVal, curVal, idx, obj) {
+  if (idx === 1) {
+    testResult = (prevVal === "20");
+  }
+}
 
-        Object.defineProperty(proto, "2", {
-            get: function () {
-                return 11;
-            },
-            configurable: true
-        });
+var proto = {};
 
-        var Con = function () { };
-        Con.prototype = proto;
+Object.defineProperty(proto, "2", {
+  get: function() {
+    return 11;
+  },
+  configurable: true
+});
 
-        var child = new Con();
-        child.length = 3;
-        child[0] = "0";
-        child[1] = "1";
-        Object.defineProperty(proto, "2", {
-            value: "20",
-            configurable: true
-        });
+var Con = function() {};
+Con.prototype = proto;
 
-        Array.prototype.reduceRight.call(child, callbackfn);
+var child = new Con();
+child.length = 3;
+child[0] = "0";
+child[1] = "1";
+Object.defineProperty(proto, "2", {
+  value: "20",
+  configurable: true
+});
+
+Array.prototype.reduceRight.call(child, callbackfn);
 
 assert(testResult, 'testResult !== true');

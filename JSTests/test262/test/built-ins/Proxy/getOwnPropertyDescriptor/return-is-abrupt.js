@@ -4,7 +4,7 @@
 es6id: 9.5.5
 description: >
     Trap returns abrupt.
-info: >
+info: |
     [[GetOwnProperty]] (P)
 
     ...
@@ -14,11 +14,11 @@ info: >
 ---*/
 
 var p = new Proxy({}, {
-    getOwnPropertyDescriptor: function(t, prop) {
-        throw new Test262Error();
-    }
+  getOwnPropertyDescriptor: function(t, prop) {
+    throw new Test262Error();
+  }
 });
 
 assert.throws(Test262Error, function() {
-    Object.getOwnPropertyDescriptor(p, "attr");
+  Object.getOwnPropertyDescriptor(p, "attr");
 });

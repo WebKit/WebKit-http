@@ -5,7 +5,7 @@
 es6id: B.2.5.1
 description: >
   RegExp.prototype.compile.length is 2.
-info: >
+info: |
   RegExp.prototype.compile (pattern, flags )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(RegExp.prototype.compile.length, 2);
-
-verifyNotEnumerable(RegExp.prototype.compile, "length");
-verifyNotWritable(RegExp.prototype.compile, "length");
-verifyConfigurable(RegExp.prototype.compile, "length");
+verifyProperty(RegExp.prototype.compile, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 2
+});

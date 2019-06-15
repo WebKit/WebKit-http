@@ -30,8 +30,8 @@
 #if WK_API_ENABLED
 
 #import "APIIconLoadingClient.h"
-#import "WeakObjCPtr.h"
 #import <wtf/RetainPtr.h>
+#import <wtf/WeakObjCPtr.h>
 
 @class WKWebView;
 @protocol _WKIconLoadingDelegate;
@@ -55,7 +55,7 @@ private:
         ~IconLoadingClient();
 
     private:
-        void getLoadDecisionForIcon(const WebCore::LinkIcon&, WTF::Function<void (WTF::Function<void (API::Data*, WebKit::CallbackBase::Error)>&&)>&& completionHandler) override;
+        void getLoadDecisionForIcon(const WebCore::LinkIcon&, WTF::CompletionHandler<void(WTF::Function<void(API::Data*, WebKit::CallbackBase::Error)>&&)>&&) override;
 
         IconLoadingDelegate& m_iconLoadingDelegate;
     };

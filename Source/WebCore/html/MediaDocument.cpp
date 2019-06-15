@@ -51,9 +51,12 @@
 #include "ScriptController.h"
 #include "ShadowRoot.h"
 #include "TypedElementDescendantIterator.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MediaDocument);
 
 using namespace HTMLNames;
 
@@ -108,9 +111,8 @@ void MediaDocumentParser::createDocumentStructure()
     m_mediaElement = videoElement.ptr();
     videoElement->setAttributeWithoutSynchronization(controlsAttr, emptyAtom());
     videoElement->setAttributeWithoutSynchronization(autoplayAttr, emptyAtom());
-    videoElement->setAttributeWithoutSynchronization(playsinlineAttr, emptyAtom());
     videoElement->setAttributeWithoutSynchronization(srcAttr, document.url().string());
-    if (auto* loader = document.loader())
+    if (auto loader = makeRefPtr(document.loader()))
         videoElement->setAttributeWithoutSynchronization(typeAttr, loader->responseMIMEType());
 
     if (!RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled()) {
@@ -124,11 +126,11 @@ void MediaDocumentParser::createDocumentStructure()
 
     body->appendChild(videoElement);
 
-    Frame* frame = document.frame();
+    RefPtr<Frame> frame = document.frame();
     if (!frame)
         return;
 
-    frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DoNotBufferData);
+    frame->loader().activeDocumentLoader()->setMainResourceDataBufferingPolicy(DataBufferingPolicy::DoNotBufferData);
     frame->loader().setOutgoingReferrer(document.completeURL(m_outgoingReferrer));
 }
 
@@ -186,11 +188,11 @@ void MediaDocument::defaultEventHandler(Event& event)
     
     // Match the default Quicktime plugin behavior to allow
     // clicking and double-clicking to pause and play the media.
-    Node* targetNode = event.target()->toNode();
-    if (!targetNode)
+    if (!is<Node>(event.target()))
         return;
+    auto& targetNode = downcast<Node>(*event.target());
 
-    if (HTMLVideoElement* video = ancestorVideoElement(targetNode)) {
+    if (auto video = makeRefPtr(ancestorVideoElement(&targetNode))) {
         if (event.type() == eventNames().clickEvent) {
             if (!video->canPlay()) {
                 video->pause();
@@ -204,15 +206,16 @@ void MediaDocument::defaultEventHandler(Event& event)
         }
     }
 
-    if (!is<ContainerNode>(*targetNode))
+    if (!is<ContainerNode>(targetNode))
         return;
-    ContainerNode& targetContainer = downcast<ContainerNode>(*targetNode);
+    auto& targetContainer = downcast<ContainerNode>(targetNode);
+
     if (event.type() == eventNames().keydownEvent && is<KeyboardEvent>(event)) {
-        HTMLVideoElement* video = descendantVideoElement(targetContainer);
+        auto video = makeRefPtr(descendantVideoElement(targetContainer));
         if (!video)
             return;
 
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
+        auto& keyboardEvent = downcast<KeyboardEvent>(event);
         if (keyboardEvent.keyIdentifier() == "U+0020") { // space
             if (video->paused()) {
                 if (video->canPlay())
@@ -236,7 +239,7 @@ void MediaDocument::mediaElementSawUnsupportedTracks()
 
 void MediaDocument::replaceMediaElementTimerFired()
 {
-    auto* htmlBody = bodyOrFrameset();
+    auto htmlBody = makeRefPtr(bodyOrFrameset());
     if (!htmlBody)
         return;
 
@@ -244,7 +247,7 @@ void MediaDocument::replaceMediaElementTimerFired()
     htmlBody->setAttributeWithoutSynchronization(marginwidthAttr, AtomicString("0", AtomicString::ConstructFromLiteral));
     htmlBody->setAttributeWithoutSynchronization(marginheightAttr, AtomicString("0", AtomicString::ConstructFromLiteral));
 
-    if (auto* videoElement = descendantVideoElement(*htmlBody)) {
+    if (auto videoElement = makeRefPtr(descendantVideoElement(*htmlBody))) {
         auto embedElement = HTMLEmbedElement::create(*this);
 
         embedElement->setAttributeWithoutSynchronization(widthAttr, AtomicString("100%", AtomicString::ConstructFromLiteral));
@@ -253,7 +256,7 @@ void MediaDocument::replaceMediaElementTimerFired()
         embedElement->setAttributeWithoutSynchronization(srcAttr, url().string());
 
         ASSERT(loader());
-        if (auto* loader = this->loader())
+        if (auto loader = makeRefPtr(this->loader()))
             embedElement->setAttributeWithoutSynchronization(typeAttr, loader->writer().mimeType());
 
         videoElement->parentNode()->replaceChild(embedElement, *videoElement);

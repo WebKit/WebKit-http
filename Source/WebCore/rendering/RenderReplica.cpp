@@ -30,9 +30,12 @@
 #include "RenderReplica.h"
 
 #include "RenderLayer.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderReplica);
 
 RenderReplica::RenderReplica(Document& document, RenderStyle&& style)
     : RenderBox(document, WTFMove(style), 0)
@@ -44,9 +47,7 @@ RenderReplica::RenderReplica(Document& document, RenderStyle&& style)
     setReplaced(true);
 }
 
-RenderReplica::~RenderReplica()
-{
-}
+RenderReplica::~RenderReplica() = default;
     
 void RenderReplica::layout()
 {
@@ -65,19 +66,19 @@ void RenderReplica::computePreferredLogicalWidths()
 
 void RenderReplica::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseMask)
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Mask)
         return;
  
     LayoutPoint adjustedPaintOffset = paintOffset + location();
 
-    if (paintInfo.phase == PaintPhaseForeground) {
+    if (paintInfo.phase == PaintPhase::Foreground) {
         // Turn around and paint the parent layer. Use temporary clipRects, so that the layer doesn't end up caching clip rects
         // computing using the wrong rootLayer
         RenderLayer* rootPaintingLayer = layer()->transform() ? layer()->parent() : layer()->enclosingTransformedAncestor();
-        RenderLayer::LayerPaintingInfo paintingInfo(rootPaintingLayer, paintInfo.rect, PaintBehaviorNormal, LayoutSize(), 0);
-        RenderLayer::PaintLayerFlags flags = RenderLayer::PaintLayerHaveTransparency | RenderLayer::PaintLayerAppliedTransform | RenderLayer::PaintLayerTemporaryClipRects | RenderLayer::PaintLayerPaintingReflection;
+        RenderLayer::LayerPaintingInfo paintingInfo(rootPaintingLayer, paintInfo.rect, PaintBehavior::Normal, LayoutSize(), 0);
+        OptionSet<RenderLayer::PaintLayerFlag> flags { RenderLayer::PaintLayerHaveTransparency, RenderLayer::PaintLayerAppliedTransform, RenderLayer::PaintLayerTemporaryClipRects, RenderLayer::PaintLayerPaintingReflection };
         layer()->parent()->paintLayer(paintInfo.context(), paintingInfo, flags);
-    } else if (paintInfo.phase == PaintPhaseMask)
+    } else if (paintInfo.phase == PaintPhase::Mask)
         paintMask(paintInfo, adjustedPaintOffset);
 }
 

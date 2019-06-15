@@ -3,7 +3,7 @@
 /*---
 description: Rejecting through an abrupt completion
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     9. Let completion be Call(executor, undefined,
        «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»).
@@ -25,12 +25,12 @@ var p = new Promise(function() {
 });
 
 p.then(function() {
-    $DONE('The promise should not be fulfilled.');
-  }, function(x) {
-    if (x !== thenable) {
-      $DONE('The promise should be rejected with the resolution value.');
-      return;
-    }
+  $DONE('The promise should not be fulfilled.');
+}, function(x) {
+  if (x !== thenable) {
+    $DONE('The promise should be rejected with the resolution value.');
+    return;
+  }
 
-    $DONE();
-  });
+  $DONE();
+});

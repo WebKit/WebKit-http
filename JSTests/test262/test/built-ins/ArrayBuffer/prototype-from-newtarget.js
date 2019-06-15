@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer-length
 es6id: 24.1.2.1
 description: >
   The [[Prototype]] internal slot is computed from NewTarget.
-info: >
+info: |
   ArrayBuffer( length )
 
   ArrayBuffer called with argument length performs the following steps:
@@ -24,7 +25,7 @@ features: [Reflect.construct]
 var arrayBuffer = Reflect.construct(ArrayBuffer, [8], Object);
 assert.sameValue(Object.getPrototypeOf(arrayBuffer), Object.prototype, "NewTarget is built-in Object constructor");
 
-var newTarget = function(){}.bind(null);
+var newTarget = function() {}.bind(null);
 Object.defineProperty(newTarget, "prototype", {
   get: function() {
     return Array.prototype;

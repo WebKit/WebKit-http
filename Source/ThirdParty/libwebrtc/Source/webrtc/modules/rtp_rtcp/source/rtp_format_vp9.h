@@ -18,16 +18,15 @@
 // false as long as there are more packets left to fetch.
 //
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTP_FORMAT_VP9_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTP_FORMAT_VP9_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTP_FORMAT_VP9_H_
+#define MODULES_RTP_RTCP_SOURCE_RTP_FORMAT_VP9_H_
 
 #include <queue>
 #include <string>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/modules/rtp_rtcp/source/rtp_format.h"
-#include "webrtc/typedefs.h"
+#include "modules/include/module_common_types.h"
+#include "modules/rtp_rtcp/source/rtp_format.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -37,11 +36,7 @@ class RtpPacketizerVp9 : public RtpPacketizer {
                    size_t max_payload_length,
                    size_t last_packet_reduction_len);
 
-  virtual ~RtpPacketizerVp9();
-
-  ProtectionType GetProtectionType() override;
-
-  StorageType GetStorageType(uint32_t retransmission_settings) override;
+  ~RtpPacketizerVp9() override;
 
   std::string ToString() override;
 
@@ -91,10 +86,9 @@ class RtpPacketizerVp9 : public RtpPacketizer {
   RTC_DISALLOW_COPY_AND_ASSIGN(RtpPacketizerVp9);
 };
 
-
 class RtpDepacketizerVp9 : public RtpDepacketizer {
  public:
-  virtual ~RtpDepacketizerVp9() {}
+  ~RtpDepacketizerVp9() override = default;
 
   bool Parse(ParsedPayload* parsed_payload,
              const uint8_t* payload,
@@ -102,4 +96,4 @@ class RtpDepacketizerVp9 : public RtpDepacketizer {
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTP_FORMAT_VP9_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTP_FORMAT_VP9_H_

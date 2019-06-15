@@ -5,7 +5,7 @@ es6id: 9.5.3
 description: >
     The trap is called with handler on its context and the target object as the
     first parabeter
-info: >
+info: |
     [[IsExtensible]] ( )
 
     ...
@@ -17,11 +17,11 @@ info: >
 var _target, _handler;
 var target = {};
 var handler = {
-    isExtensible: function(t) {
-        _handler = this;
-        _target = t;
-        return Object.isExtensible(t);
-    }
+  isExtensible: function(t) {
+    _handler = this;
+    _target = t;
+    return Object.isExtensible(t);
+  }
 }
 var p = new Proxy(target, handler);
 

@@ -5,7 +5,7 @@ description: >
     Resolving with a thenable object value after execution of the executor
     function
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     8. Let resolvingFunctions be CreateResolvingFunctions(promise).
     9. Let completion be Call(executor, undefined,
@@ -24,22 +24,27 @@ info: >
 flags: [async]
 ---*/
 
+var returnValue = null;
 var value = {};
 var resolve;
-var thenable = new Promise(function(resolve) { resolve(value); });
+var thenable = new Promise(function(resolve) {
+  resolve(value);
+});
 var promise = new Promise(function(_resolve) {
   resolve = _resolve;
 });
 
 promise.then(function(val) {
-    if (val !== value) {
-      $DONE('The promise should be fulfilled with the provided value.');
-      return;
-    }
+  if (val !== value) {
+    $DONE('The promise should be fulfilled with the provided value.');
+    return;
+  }
 
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});
 
-resolve(thenable);
+returnValue = resolve(thenable);
+
+assert.sameValue(returnValue, undefined, '"resolve" return value');

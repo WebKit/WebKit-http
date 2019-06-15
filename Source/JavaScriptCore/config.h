@@ -23,6 +23,11 @@
 #include "cmakeconfig.h"
 #endif
 
+#define JSC_API_AVAILABLE(...)
+// Use zero since it will be less than any possible version number.
+#define JSC_MAC_VERSION_TBA 0
+#define JSC_IOS_VERSION_TBA 0
+
 #include "JSExportMacros.h"
 
 #ifdef __cplusplus
@@ -32,9 +37,3 @@
 #endif
 
 #include <wtf/DisallowCType.h>
-
-#if COMPILER(MSVC)
-#define SKIP_STATIC_CONSTRUCTORS_ON_MSVC 1
-#else
-#define SKIP_STATIC_CONSTRUCTORS_ON_GCC 1
-#endif

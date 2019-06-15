@@ -21,28 +21,25 @@
 
 #include "WebViewTest.h"
 
-static void webkitFrameTestRun(WebViewTest* test, const char* testName)
-{
-    static const char* testHTML = "<html><body></body></html>";
-    test->loadHtml(testHTML, 0);
-    test->waitUntilLoadFinished();
-
-    g_assert(test->runWebProcessTest("WebKitFrame", testName));
-}
-
 static void testWebKitFrameMainFrame(WebViewTest* test, gconstpointer)
 {
-    webkitFrameTestRun(test, "main-frame");
+    g_assert(test->runWebProcessTest("WebKitFrame", "main-frame"));
 }
 
 static void testWebKitFrameURI(WebViewTest* test, gconstpointer)
 {
-    webkitFrameTestRun(test, "uri");
+    g_assert(test->runWebProcessTest("WebKitFrame", "uri"));
 }
 
 static void testWebKitFrameJavaScriptContext(WebViewTest* test, gconstpointer)
 {
-    webkitFrameTestRun(test, "javascript-context");
+    g_assert(test->runWebProcessTest("WebKitFrame", "javascript-context"));
+}
+
+static void testWebKitFrameJavaScriptValues(WebViewTest* test, gconstpointer)
+{
+    static const char* testHTML = "<html><body><p id='paragraph'>This is a test</p><img id='image' src='foo.png'></body></html>";
+    g_assert(test->runWebProcessTest("WebKitFrame", "javascript-values", testHTML));
 }
 
 void beforeAll()
@@ -50,6 +47,7 @@ void beforeAll()
     WebViewTest::add("WebKitFrame", "main-frame", testWebKitFrameMainFrame);
     WebViewTest::add("WebKitFrame", "uri", testWebKitFrameURI);
     WebViewTest::add("WebKitFrame", "javascript-context", testWebKitFrameJavaScriptContext);
+    WebViewTest::add("WebKitFrame", "javascript-values", testWebKitFrameJavaScriptValues);
 }
 
 void afterAll()

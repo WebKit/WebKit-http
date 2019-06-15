@@ -8,36 +8,32 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/media/base/mediaengine.h"
-
-#if !defined(DISABLE_MEDIA_ENGINE_FACTORY)
-
-#if defined(HAVE_WEBRTC_VOICE) && defined(HAVE_WEBRTC_VIDEO)
-#include "webrtc/media/engine/webrtcmediaengine.h"
-#endif  // HAVE_WEBRTC_VOICE && HAVE_WEBRTC_VIDEO
+#include "media/base/mediaengine.h"
 
 namespace cricket {
 
-MediaEngineFactory::MediaEngineCreateFunction
-    MediaEngineFactory::create_function_ = NULL;
-
-MediaEngineFactory::MediaEngineCreateFunction
-    MediaEngineFactory::SetCreateFunction(MediaEngineCreateFunction function) {
-  MediaEngineCreateFunction old_function = create_function_;
-  create_function_ = function;
-  return old_function;
-}
-
-};  // namespace cricket
-
-#endif  // DISABLE_MEDIA_ENGINE_FACTORY
-
-namespace cricket {
+RtpCapabilities::RtpCapabilities() = default;
+RtpCapabilities::~RtpCapabilities() = default;
 
 webrtc::RtpParameters CreateRtpParametersWithOneEncoding() {
   webrtc::RtpParameters parameters;
   webrtc::RtpEncodingParameters encoding;
   parameters.encodings.push_back(encoding);
+  return parameters;
+}
+
+webrtc::RtpParameters CreateRtpParametersWithEncodings(StreamParams sp) {
+  std::vector<uint32_t> primary_ssrcs;
+  sp.GetPrimarySsrcs(&primary_ssrcs);
+  size_t encoding_count = primary_ssrcs.size();
+
+  std::vector<webrtc::RtpEncodingParameters> encodings(encoding_count);
+  for (size_t i = 0; i < encodings.size(); ++i) {
+    encodings[i].ssrc = primary_ssrcs[i];
+  }
+  webrtc::RtpParameters parameters;
+  parameters.encodings = encodings;
+  parameters.rtcp.cname = sp.cname;
   return parameters;
 }
 

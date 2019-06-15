@@ -37,14 +37,14 @@
 
 namespace WebCore {
 
-CachedTextTrack::CachedTextTrack(CachedResourceRequest&& request, SessionID sessionID)
-    : CachedResource(WTFMove(request), TextTrackResource, sessionID)
+CachedTextTrack::CachedTextTrack(CachedResourceRequest&& request, PAL::SessionID sessionID)
+    : CachedResource(WTFMove(request), Type::TextTrackResource, sessionID)
 {
 }
 
-void CachedTextTrack::updateData(SharedBuffer* data)
+void CachedTextTrack::doUpdateBuffer(SharedBuffer* data)
 {
-    ASSERT(dataBufferingPolicy() == BufferData);
+    ASSERT(dataBufferingPolicy() == DataBufferingPolicy::BufferData);
     m_data = data;
     setEncodedSize(data ? data->size() : 0);
 
@@ -53,15 +53,15 @@ void CachedTextTrack::updateData(SharedBuffer* data)
         client->deprecatedDidReceiveCachedResource(*this);
 }
 
-void CachedTextTrack::addDataBuffer(SharedBuffer& data)
+void CachedTextTrack::updateBuffer(SharedBuffer& data)
 {
-    updateData(&data);
-    CachedResource::addDataBuffer(data);
+    doUpdateBuffer(&data);
+    CachedResource::updateBuffer(data);
 }
 
 void CachedTextTrack::finishLoading(SharedBuffer* data)
 {
-    updateData(data);
+    doUpdateBuffer(data);
     CachedResource::finishLoading(data);
 }
 

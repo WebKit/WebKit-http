@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +43,7 @@ Disassembler::Disassembler(Graph& graph)
     : m_graph(graph)
 {
     m_dumpContext.graph = &m_graph;
-    m_labelForBlockIndex.resize(graph.numBlocks());
+    m_labelForBlockIndex.grow(graph.numBlocks());
 }
 
 void Disassembler::dump(PrintStream& out, LinkBuffer& linkBuffer)
@@ -95,8 +95,8 @@ Vector<Disassembler::DumpedOp> Disassembler::createDumpList(LinkBuffer& linkBuff
     dumpHeader(out, linkBuffer);
     append(result, out, previousOrigin);
     
-    m_graph.ensureDominators();
-    m_graph.ensureNaturalLoops();
+    m_graph.ensureCPSDominators();
+    m_graph.ensureCPSNaturalLoops();
     
     const char* prefix = "    ";
     const char* disassemblyPrefix = "        ";
@@ -159,17 +159,17 @@ void Disassembler::dumpDisassembly(PrintStream& out, const char* prefix, LinkBuf
         amountOfNodeWhiteSpace = 0;
     else
         amountOfNodeWhiteSpace = Graph::amountOfNodeWhiteSpace(context);
-    auto prefixBuffer = std::make_unique<char[]>(prefixLength + amountOfNodeWhiteSpace + 1);
-    memcpy(prefixBuffer.get(), prefix, prefixLength);
+    Vector<char> prefixBuffer(prefixLength + amountOfNodeWhiteSpace + 1);
+    memcpy(prefixBuffer.data(), prefix, prefixLength);
     for (int i = 0; i < amountOfNodeWhiteSpace; ++i)
         prefixBuffer[i + prefixLength] = ' ';
     prefixBuffer[prefixLength + amountOfNodeWhiteSpace] = 0;
     
-    CodeLocationLabel start = linkBuffer.locationOf(previousLabel);
-    CodeLocationLabel end = linkBuffer.locationOf(currentLabel);
+    CodeLocationLabel<DisassemblyPtrTag> start = linkBuffer.locationOf<DisassemblyPtrTag>(previousLabel);
+    CodeLocationLabel<DisassemblyPtrTag> end = linkBuffer.locationOf<DisassemblyPtrTag>(currentLabel);
     previousLabel = currentLabel;
-    ASSERT(bitwise_cast<uintptr_t>(end.executableAddress()) >= bitwise_cast<uintptr_t>(start.executableAddress()));
-    disassemble(start, bitwise_cast<uintptr_t>(end.executableAddress()) - bitwise_cast<uintptr_t>(start.executableAddress()), prefixBuffer.get(), out);
+    ASSERT(end.dataLocation<uintptr_t>() >= start.dataLocation<uintptr_t>());
+    disassemble(start, end.dataLocation<uintptr_t>() - start.dataLocation<uintptr_t>(), prefixBuffer.data(), out);
 }
 
 } } // namespace JSC::DFG

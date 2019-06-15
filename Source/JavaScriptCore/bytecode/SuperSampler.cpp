@@ -28,7 +28,6 @@
 
 #include "MacroAssembler.h"
 #include "Options.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/Lock.h>
 #include <wtf/Threading.h>
@@ -37,7 +36,7 @@ namespace JSC {
 
 volatile uint32_t g_superSamplerCount;
 
-static StaticLock lock;
+static Lock lock;
 static double in;
 static double out;
 
@@ -60,7 +59,7 @@ void initializeSuperSampler()
                         else
                             out++;
                     }
-                    sleepMS(sleepQuantum);
+                    sleep(Seconds::fromMilliseconds(sleepQuantum));
                 }
                 printSuperSamplerState();
                 if (static_cast<int32_t>(g_superSamplerCount) < 0)

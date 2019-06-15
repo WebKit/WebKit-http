@@ -9,12 +9,12 @@
  */
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/modules/audio_processing/audio_buffer.h"
-#include "webrtc/modules/audio_processing/low_cut_filter.h"
-#include "webrtc/modules/audio_processing/test/audio_buffer_tools.h"
-#include "webrtc/modules/audio_processing/test/bitexactness_tools.h"
-#include "webrtc/test/gtest.h"
+#include "api/array_view.h"
+#include "modules/audio_processing/audio_buffer.h"
+#include "modules/audio_processing/low_cut_filter.h"
+#include "modules/audio_processing/test/audio_buffer_tools.h"
+#include "modules/audio_processing/test/bitexactness_tools.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace {
@@ -51,12 +51,10 @@ void RunBitexactnessTest(int sample_rate,
       (stream_config.num_frames() * stream_config.num_channels());
   for (size_t frame_no = 0; frame_no < num_frames_to_process; ++frame_no) {
     std::vector<float> frame_input(
-        input.begin() +
-            stream_config.num_frames() * stream_config.num_channels() *
-                frame_no,
-        input.begin() +
-            stream_config.num_frames() * stream_config.num_channels() *
-                (frame_no + 1));
+        input.begin() + stream_config.num_frames() *
+                            stream_config.num_channels() * frame_no,
+        input.begin() + stream_config.num_frames() *
+                            stream_config.num_channels() * (frame_no + 1));
 
     output = ProcessOneFrame(frame_input, stream_config, &low_cut_filter);
   }

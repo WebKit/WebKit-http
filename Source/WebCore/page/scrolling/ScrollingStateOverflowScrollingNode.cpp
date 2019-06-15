@@ -29,7 +29,7 @@
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #include "ScrollingStateTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -48,9 +48,7 @@ ScrollingStateOverflowScrollingNode::ScrollingStateOverflowScrollingNode(const S
 {
 }
 
-ScrollingStateOverflowScrollingNode::~ScrollingStateOverflowScrollingNode()
-{
-}
+ScrollingStateOverflowScrollingNode::~ScrollingStateOverflowScrollingNode() = default;
 
 Ref<ScrollingStateNode> ScrollingStateOverflowScrollingNode::clone(ScrollingStateTree& adoptiveTree)
 {

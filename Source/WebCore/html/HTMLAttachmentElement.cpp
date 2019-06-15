@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,21 @@
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
+#include "DOMURL.h"
+#include "Document.h"
+#include "Editor.h"
 #include "File.h"
+#include "Frame.h"
 #include "HTMLNames.h"
 #include "RenderAttachment.h"
+#include "SharedBuffer.h"
+#include <pal/FileSizeFormatter.h>
+#include <wtf/IsoMallocInlines.h>
+#include <wtf/UUID.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLAttachmentElement);
 
 using namespace HTMLNames;
 
@@ -42,9 +52,7 @@ HTMLAttachmentElement::HTMLAttachmentElement(const QualifiedName& tagName, Docum
     ASSERT(hasTagName(attachmentTag));
 }
 
-HTMLAttachmentElement::~HTMLAttachmentElement()
-{
-}
+HTMLAttachmentElement::~HTMLAttachmentElement() = default;
 
 Ref<HTMLAttachmentElement> HTMLAttachmentElement::create(const QualifiedName& tagName, Document& document)
 {
@@ -61,12 +69,51 @@ File* HTMLAttachmentElement::file() const
     return m_file.get();
 }
 
-void HTMLAttachmentElement::setFile(File* file)
+URL HTMLAttachmentElement::blobURL() const
 {
-    m_file = file;
+    return { { }, attributeWithoutSynchronization(HTMLNames::webkitattachmentbloburlAttr).string() };
+}
+
+void HTMLAttachmentElement::setFile(RefPtr<File>&& file, UpdateDisplayAttributes updateAttributes)
+{
+    m_file = WTFMove(file);
+
+    if (updateAttributes == UpdateDisplayAttributes::Yes) {
+        if (m_file) {
+            setAttributeWithoutSynchronization(HTMLNames::titleAttr, m_file->name());
+            setAttributeWithoutSynchronization(HTMLNames::subtitleAttr, fileSizeDescription(m_file->size()));
+            setAttributeWithoutSynchronization(HTMLNames::typeAttr, m_file->type());
+        } else {
+            removeAttribute(HTMLNames::titleAttr);
+            removeAttribute(HTMLNames::subtitleAttr);
+            removeAttribute(HTMLNames::typeAttr);
+        }
+    }
 
     if (auto* renderer = this->renderer())
         renderer->invalidate();
+}
+
+Node::InsertedIntoAncestorResult HTMLAttachmentElement::insertedIntoAncestor(InsertionType type, ContainerNode& ancestor)
+{
+    auto result = HTMLElement::insertedIntoAncestor(type, ancestor);
+    if (type.connectedToDocument)
+        document().didInsertAttachmentElement(*this);
+    return result;
+}
+
+void HTMLAttachmentElement::removedFromAncestor(RemovalType type, ContainerNode& ancestor)
+{
+    HTMLElement::removedFromAncestor(type, ancestor);
+    if (type.disconnectedFromDocument)
+        document().didRemoveAttachmentElement(*this);
+}
+
+String HTMLAttachmentElement::ensureUniqueIdentifier()
+{
+    if (m_uniqueIdentifier.isEmpty())
+        m_uniqueIdentifier = createCanonicalUUIDString();
+    return m_uniqueIdentifier;
 }
 
 void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -90,6 +137,32 @@ String HTMLAttachmentElement::attachmentTitle() const
 String HTMLAttachmentElement::attachmentType() const
 {
     return attributeWithoutSynchronization(typeAttr);
+}
+
+String HTMLAttachmentElement::attachmentPath() const
+{
+    return attributeWithoutSynchronization(webkitattachmentpathAttr);
+}
+
+void HTMLAttachmentElement::updateAttributes(std::optional<uint64_t>&& newFileSize, const String& newContentType, const String& newFilename)
+{
+    if (!newFilename.isNull())
+        setAttributeWithoutSynchronization(HTMLNames::titleAttr, newFilename);
+    else
+        removeAttribute(HTMLNames::titleAttr);
+
+    if (!newContentType.isNull())
+        setAttributeWithoutSynchronization(HTMLNames::typeAttr, newContentType);
+    else
+        removeAttribute(HTMLNames::typeAttr);
+
+    if (newFileSize)
+        setAttributeWithoutSynchronization(HTMLNames::subtitleAttr, fileSizeDescription(*newFileSize));
+    else
+        removeAttribute(HTMLNames::subtitleAttr);
+
+    if (auto* renderer = this->renderer())
+        renderer->invalidate();
 }
 
 } // namespace WebCore

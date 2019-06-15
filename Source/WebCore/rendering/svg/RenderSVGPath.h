@@ -30,6 +30,7 @@
 namespace WebCore {
 
 class RenderSVGPath final : public RenderSVGShape {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGPath);
 public:
     RenderSVGPath(SVGGraphicsElement&, RenderStyle&&);
     virtual ~RenderSVGPath();
@@ -42,7 +43,7 @@ private:
     FloatRect calculateUpdatedStrokeBoundingBox() const;
 
     void strokeShape(GraphicsContext&) const override;
-    bool shapeDependentStrokeContains(const FloatPoint&) override;
+    bool shapeDependentStrokeContains(const FloatPoint&, PointCoordinateSpace = GlobalCoordinateSpace) override;
 
     bool shouldStrokeZeroLengthSubpath() const;
     Path* zeroLengthLinecapPath(const FloatPoint&) const;

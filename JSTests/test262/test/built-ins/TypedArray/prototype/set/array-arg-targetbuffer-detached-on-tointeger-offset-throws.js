@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-array-offset
 description: >
   Throws a TypeError if targetBuffer is detached on ToInteger(offset)
-info: >
+info: |
   22.2.3.23.1 %TypedArray%.prototype.set (array [ , offset ] )
 
   1. Assert: array is any ECMAScript language value other than an Object with a
@@ -18,6 +18,7 @@ info: >
   9. If IsDetachedBuffer(targetBuffer) is true, throw a TypeError exception.
   ...
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

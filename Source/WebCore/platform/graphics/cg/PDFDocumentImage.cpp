@@ -40,13 +40,13 @@
 #include "Length.h"
 #include "NotImplemented.h"
 #include "SharedBuffer.h"
-#include "TextStream.h"
 #include <CoreGraphics/CGContext.h>
 #include <CoreGraphics/CGPDFDocument.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RAMSize.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/TextStream.h>
 
 #if !PLATFORM(COCOA)
 #include "ImageSourceCG.h"
@@ -56,15 +56,10 @@ namespace WebCore {
 
 PDFDocumentImage::PDFDocumentImage(ImageObserver* observer)
     : Image(observer)
-    , m_cachedBytes(0)
-    , m_rotationDegrees(0)
-    , m_hasPage(false)
 {
 }
 
-PDFDocumentImage::~PDFDocumentImage()
-{
-}
+PDFDocumentImage::~PDFDocumentImage() = default;
 
 String PDFDocumentImage::filenameExtension() const
 {
@@ -112,15 +107,24 @@ void PDFDocumentImage::setPdfImageCachingPolicy(PDFImageCachingPolicy pdfImageCa
 
 bool PDFDocumentImage::cacheParametersMatch(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect) const
 {
-    if (dstRect.size() != m_cachedDestinationSize)
-        return false;
-
+    // Old and new source rectangles have to match.
     if (srcRect != m_cachedSourceRect)
         return false;
 
-    if (!m_cachedImageRect.contains(context.clipBounds()))
+    // Old and new scaling factors "dest / src" have to match.
+    if (dstRect.size() != m_cachedDestinationRect.size())
         return false;
 
+    // m_cachedImageRect can be moved if srcRect and dstRect.size() did not change.
+    FloatRect movedCachedImageRect = m_cachedImageRect;
+    movedCachedImageRect.move(FloatSize(dstRect.location() - m_cachedDestinationRect.location()));
+
+    // movedCachedImageRect has to contain the whole dirty rectangle.
+    FloatRect dirtyRect = intersection(context.clipBounds(), dstRect);
+    if (!movedCachedImageRect.contains(dirtyRect))
+        return false;
+
+    // Old and new context scaling factors have to match as well.
     AffineTransform::DecomposedType decomposedTransform;
     context.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale).decompose(decomposedTransform);
 
@@ -153,7 +157,7 @@ static void transformContextForPainting(GraphicsContext& context, const FloatRec
     // drawPDFPage() relies on drawing the whole PDF into a context starting at (0, 0). We need
     // to transform the destination context such that srcRect of the source context will be drawn
     // in dstRect of destination context.
-    context.translate(dstRect.x() - srcRect.x(), dstRect.y() - srcRect.y());
+    context.translate(dstRect.location() - srcRect.location());
     context.scale(FloatSize(hScale, -vScale));
     context.translate(0, -srcRect.height());
 }
@@ -195,24 +199,13 @@ void PDFDocumentImage::decodedSizeChanged(size_t newCachedBytes)
 
 void PDFDocumentImage::updateCachedImageIfNeeded(GraphicsContext& context, const FloatRect& dstRect, const FloatRect& srcRect)
 {
-#if PLATFORM(IOS)
-    // On iOS, some clients use low-quality image interpolation always, which throws off this optimization,
-    // as we never get the subsequent high-quality paint. Since live resize is rare on iOS, disable the optimization.
-    // FIXME (136593): It's also possible to do the wrong thing here if CSS specifies low-quality interpolation via the "image-rendering"
-    // property, on all platforms. We should only do this optimization if we're actually in a ImageQualityController live resize,
-    // and are guaranteed to do a high-quality paint later.
-    bool repaintIfNecessary = true;
-#else
-    // If we have an existing image, reuse it if we're doing a low-quality paint, even if cache parameters don't match;
-    // we'll rerender when we do the subsequent high-quality paint.
-    InterpolationQuality interpolationQuality = context.imageInterpolationQuality();
-    bool repaintIfNecessary = interpolationQuality != InterpolationNone && interpolationQuality != InterpolationLow;
-#endif
-
-    // Clipped option is for testing only. Force recaching the PDF with each draw.
-    if (m_pdfImageCachingPolicy != PDFImageCachingClipBoundsOnly) {
-        if (m_cachedImageBuffer && (!repaintIfNecessary || cacheParametersMatch(context, dstRect, srcRect)))
-            return;
+    // Clipped option is for testing only. Force re-caching the PDF with each draw.
+    bool forceUpdateCachedImage = m_pdfImageCachingPolicy == PDFImageCachingClipBoundsOnly || !m_cachedImageBuffer;
+    if (!forceUpdateCachedImage && cacheParametersMatch(context, dstRect, srcRect)) {
+        // Adjust the view-port rectangles if no re-caching will happen.
+        m_cachedImageRect.move(FloatSize(dstRect.location() - m_cachedDestinationRect.location()));
+        m_cachedDestinationRect = dstRect;
+        return;
     }
 
     switch (m_pdfImageCachingPolicy) {
@@ -224,7 +217,7 @@ void PDFDocumentImage::updateCachedImageIfNeeded(GraphicsContext& context, const
         m_cachedImageRect = cachedImageRect(context, dstRect);
         break;
     case PDFImageCachingClipBoundsOnly:
-        m_cachedImageRect = context.clipBounds();
+        m_cachedImageRect = intersection(context.clipBounds(), dstRect);
         break;
     case PDFImageCachingEnabled:
         m_cachedImageRect = dstRect;
@@ -256,8 +249,9 @@ void PDFDocumentImage::updateCachedImageIfNeeded(GraphicsContext& context, const
     drawPDFPage(bufferContext);
 
     m_cachedTransform = context.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
-    m_cachedDestinationSize = dstRect.size();
+    m_cachedDestinationRect = dstRect;
     m_cachedSourceRect = srcRect;
+    ++m_cachingCountForTesting;
 
     IntSize internalSize = m_cachedImageBuffer->internalSize();
     decodedSizeChanged(internalSize.unclampedArea() * 4);
@@ -334,7 +328,7 @@ static void applyRotationForPainting(GraphicsContext& context, FloatSize size, i
     if (rotationDegrees == 90)
         context.translate(0, size.height());
     else if (rotationDegrees == 180)
-        context.translate(size.width(), size.height());
+        context.translate(size);
     else if (rotationDegrees == 270)
         context.translate(size.width(), 0);
 
@@ -345,13 +339,13 @@ void PDFDocumentImage::drawPDFPage(GraphicsContext& context)
 {
     applyRotationForPainting(context, size(), m_rotationDegrees);
 
-    context.translate(-m_cropBox.x(), -m_cropBox.y());
+    context.translate(-m_cropBox.location());
 
 #if USE(DIRECT2D)
     notImplemented();
 #else
     // CGPDF pages are indexed from 1.
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
+#if PLATFORM(COCOA)
     CGContextDrawPDFPageWithAnnotations(context.platformContext(), CGPDFDocumentGetPage(m_document.get(), 1), nullptr);
 #else
     CGContextDrawPDFPage(context.platformContext(), CGPDFDocumentGetPage(m_document.get(), 1));
@@ -360,6 +354,25 @@ void PDFDocumentImage::drawPDFPage(GraphicsContext& context)
 }
 
 #endif // !USE(PDFKIT_FOR_PDFDOCUMENTIMAGE)
+
+#if PLATFORM(MAC)
+
+RetainPtr<CFMutableDataRef> PDFDocumentImage::convertPostScriptDataToPDF(RetainPtr<CFDataRef>&& postScriptData)
+{
+    // Convert PostScript to PDF using the Quartz 2D API.
+    // http://developer.apple.com/documentation/GraphicsImaging/Conceptual/drawingwithquartz2d/dq_ps_convert/chapter_16_section_1.html
+
+    CGPSConverterCallbacks callbacks = { };
+    auto converter = adoptCF(CGPSConverterCreate(0, &callbacks, 0));
+    auto provider = adoptCF(CGDataProviderCreateWithCFData(postScriptData.get()));
+    auto pdfData = adoptCF(CFDataCreateMutable(kCFAllocatorDefault, 0));
+    auto consumer = adoptCF(CGDataConsumerCreateWithCFData(pdfData.get()));
+
+    CGPSConverterConvert(converter.get(), provider.get(), consumer.get(), 0);
+    return pdfData;
+}
+
+#endif
 
 void PDFDocumentImage::dump(TextStream& ts) const
 {

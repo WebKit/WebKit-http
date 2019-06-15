@@ -2,14 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Object function is called with one argument value,
     and the value neither is null nor undefined, and is supplied, return ToObject(value)
 es5id: 15.2.1.1_A2_T13
 description: Calling Object function with boolean expression as argument value
 ---*/
 
-var obj = Object((1===1)&&(!false));
+var obj = Object((1 === 1) && (!false));
 
 //CHECK#1
 if (obj.constructor !== Boolean) {
@@ -27,6 +27,6 @@ if (!(obj)) {
 }
 
 //CHECK#3
-if (obj===true) {
+if (obj === true) {
   $ERROR('#3: Object(expression) returns ToObject(expression)');
 }

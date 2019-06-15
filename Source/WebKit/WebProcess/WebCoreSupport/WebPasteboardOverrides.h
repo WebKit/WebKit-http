@@ -23,11 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPasteboardOverrides_h
-#define WebPasteboardOverrides_h
+#pragma once
 
 #include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
@@ -35,7 +33,7 @@
 namespace WebKit {
 
 class WebPasteboardOverrides {
-    friend class NeverDestroyed<WebPasteboardOverrides>;
+    friend NeverDestroyed<WebPasteboardOverrides>;
 public:
     static WebPasteboardOverrides& sharedPasteboardOverrides();
 
@@ -56,5 +54,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebPasteboardOverrides_h

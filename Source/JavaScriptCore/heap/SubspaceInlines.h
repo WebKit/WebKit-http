@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,8 @@
 
 #pragma once
 
-#include "JSCell.h"
-#include "MarkedAllocatorInlines.h"
+#include "BlockDirectoryInlines.h"
+#include "JSCast.h"
 #include "MarkedBlock.h"
 #include "MarkedSpace.h"
 #include "Subspace.h"
@@ -34,17 +34,28 @@
 namespace JSC {
 
 template<typename Func>
+void Subspace::forEachDirectory(const Func& func)
+{
+    for (BlockDirectory* directory = m_firstDirectory; directory; directory = directory->nextDirectoryInSubspace())
+        func(*directory);
+}
+
+template<typename Func>
 void Subspace::forEachMarkedBlock(const Func& func)
 {
-    for (MarkedAllocator* allocator = m_firstAllocator; allocator; allocator = allocator->nextAllocatorInSubspace())
-        allocator->forEachBlock(func);
+    forEachDirectory(
+        [&] (BlockDirectory& directory) {
+            directory.forEachBlock(func);
+        });
 }
 
 template<typename Func>
 void Subspace::forEachNotEmptyMarkedBlock(const Func& func)
 {
-    for (MarkedAllocator* allocator = m_firstAllocator; allocator; allocator = allocator->nextAllocatorInSubspace())
-        allocator->forEachNotEmptyBlock(func);
+    forEachDirectory(
+        [&] (BlockDirectory& directory) {
+            directory.forEachNotEmptyBlock(func);
+        });
 }
 
 template<typename Func>
@@ -60,7 +71,7 @@ void Subspace::forEachMarkedCell(const Func& func)
     forEachNotEmptyMarkedBlock(
         [&] (MarkedBlock::Handle* handle) {
             handle->forEachMarkedCell(
-                [&] (HeapCell* cell, HeapCell::Kind kind) -> IterationStatus { 
+                [&] (size_t, HeapCell* cell, HeapCell::Kind kind) -> IterationStatus {
                     func(cell, kind);
                     return IterationStatus::Continue;
                 });
@@ -73,12 +84,59 @@ void Subspace::forEachMarkedCell(const Func& func)
 }
 
 template<typename Func>
+RefPtr<SharedTask<void(SlotVisitor&)>> Subspace::forEachMarkedCellInParallel(const Func& func)
+{
+    class Task : public SharedTask<void(SlotVisitor&)> {
+    public:
+        Task(Subspace& subspace, const Func& func)
+            : m_subspace(subspace)
+            , m_blockSource(subspace.parallelNotEmptyMarkedBlockSource())
+            , m_func(func)
+        {
+        }
+        
+        void run(SlotVisitor& visitor) override
+        {
+            while (MarkedBlock::Handle* handle = m_blockSource->run()) {
+                handle->forEachMarkedCell(
+                    [&] (size_t, HeapCell* cell, HeapCell::Kind kind) -> IterationStatus {
+                        m_func(visitor, cell, kind);
+                        return IterationStatus::Continue;
+                    });
+            }
+            
+            {
+                auto locker = holdLock(m_lock);
+                if (!m_needToVisitLargeAllocations)
+                    return;
+                m_needToVisitLargeAllocations = false;
+            }
+            
+            m_subspace.forEachLargeAllocation(
+                [&] (LargeAllocation* allocation) {
+                    if (allocation->isMarked())
+                        m_func(visitor, allocation->cell(), m_subspace.m_attributes.cellKind);
+                });
+        }
+        
+    private:
+        Subspace& m_subspace;
+        RefPtr<SharedTask<MarkedBlock::Handle*()>> m_blockSource;
+        Func m_func;
+        Lock m_lock;
+        bool m_needToVisitLargeAllocations { true };
+    };
+    
+    return adoptRef(new Task(*this, func));
+}
+
+template<typename Func>
 void Subspace::forEachLiveCell(const Func& func)
 {
     forEachMarkedBlock(
         [&] (MarkedBlock::Handle* handle) {
             handle->forEachLiveCell(
-                [&] (HeapCell* cell, HeapCell::Kind kind) -> IterationStatus { 
+                [&] (size_t, HeapCell* cell, HeapCell::Kind kind) -> IterationStatus {
                     func(cell, kind);
                     return IterationStatus::Continue;
                 });

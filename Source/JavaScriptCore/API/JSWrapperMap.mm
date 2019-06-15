@@ -62,6 +62,8 @@ static const uint32_t firstSDKVersionWithInitConstructorSupport = 0xA0A00; // OS
 
 @end
 
+static const constexpr unsigned InitialBufferSize { 256 };
+
 // Default conversion of selectors to property names.
 // All semicolons are removed, lowercase letters following a semicolon are capitalized.
 static NSString *selectorToPropertyName(const char* start)
@@ -75,10 +77,10 @@ static NSString *selectorToPropertyName(const char* start)
     size_t header = firstColon - start;
     // The new string needs to be long enough to hold 'header', plus the remainder of the string, excluding
     // at least one ':', but including a '\0'. (This is conservative if there are more than one ':').
-    char* buffer = static_cast<char*>(malloc(header + strlen(firstColon + 1) + 1));
+    Vector<char, InitialBufferSize> buffer(header + strlen(firstColon + 1) + 1);
     // Copy 'header' characters, set output to point to the end of this & input to point past the first ':'.
-    memcpy(buffer, start, header);
-    char* output = buffer + header;
+    memcpy(buffer.data(), start, header);
+    char* output = buffer.data() + header;
     const char* input = start + header + 1;
 
     // On entry to the loop, we have already skipped over a ':' from the input.
@@ -89,7 +91,7 @@ static NSString *selectorToPropertyName(const char* start)
         while ((c = *(input++)) == ':');
         // Copy the character, converting to upper case if necessary.
         // If the character we copy is '\0', then we're done!
-        if (!(*(output++) = toupper(c)))
+        if (!(*(output++) = toASCIIUpper(c)))
             goto done;
         // Loop over characters other than ':'.
         while ((c = *(input++)) != ':') {
@@ -101,31 +103,31 @@ static NSString *selectorToPropertyName(const char* start)
         // If we get here, we've consumed a ':' - wash, rinse, repeat.
     }
 done:
-    NSString *result = [NSString stringWithUTF8String:buffer];
-    free(buffer);
-    return result;
+    return [NSString stringWithUTF8String:buffer.data()];
 }
 
 static bool constructorHasInstance(JSContextRef ctx, JSObjectRef constructorRef, JSValueRef possibleInstance, JSValueRef*)
 {
     JSC::ExecState* exec = toJS(ctx);
-    JSC::JSLockHolder locker(exec);
+    JSC::VM& vm = exec->vm();
+    JSC::JSLockHolder locker(vm);
 
     JSC::JSObject* constructor = toJS(constructorRef);
     JSC::JSValue instance = toJS(exec, possibleInstance);
-    return JSC::JSObject::defaultHasInstance(exec, instance, constructor->get(exec, exec->propertyNames().prototype));
+    return JSC::JSObject::defaultHasInstance(exec, instance, constructor->get(exec, vm.propertyNames->prototype));
 }
 
 static JSC::JSObject* makeWrapper(JSContextRef ctx, JSClassRef jsClass, id wrappedObject)
 {
     JSC::ExecState* exec = toJS(ctx);
-    JSC::JSLockHolder locker(exec);
+    JSC::VM& vm = exec->vm();
+    JSC::JSLockHolder locker(vm);
 
     ASSERT(jsClass);
     JSC::JSCallbackObject<JSC::JSAPIWrapperObject>* object = JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::create(exec, exec->lexicalGlobalObject(), exec->lexicalGlobalObject()->objcWrapperObjectStructure(), jsClass, 0);
-    object->setWrappedObject(wrappedObject);
+    object->setWrappedObject((__bridge void*)wrappedObject);
     if (JSC::JSObject* prototype = jsClass->prototype(exec))
-        object->setPrototypeDirect(exec->vm(), prototype);
+        object->setPrototypeDirect(vm, prototype);
 
     return object;
 }
@@ -260,19 +262,25 @@ static void copyMethodsToObject(JSContext *context, Class objcClass, Protocol *p
     [renameMap release];
 }
 
-static bool parsePropertyAttributes(objc_property_t property, char*& getterName, char*& setterName)
+struct Property {
+    const char* name;
+    RetainPtr<NSString> getterName;
+    RetainPtr<NSString> setterName;
+};
+
+static bool parsePropertyAttributes(objc_property_t objcProperty, Property& property)
 {
     bool readonly = false;
     unsigned attributeCount;
-    objc_property_attribute_t* attributes = property_copyAttributeList(property, &attributeCount);
+    auto attributes = adoptSystem<objc_property_attribute_t[]>(property_copyAttributeList(objcProperty, &attributeCount));
     if (attributeCount) {
         for (unsigned i = 0; i < attributeCount; ++i) {
             switch (*(attributes[i].name)) {
             case 'G':
-                getterName = strdup(attributes[i].value);
+                property.getterName = @(attributes[i].value);
                 break;
             case 'S':
-                setterName = strdup(attributes[i].value);
+                property.setterName = @(attributes[i].value);
                 break;
             case 'R':
                 readonly = true;
@@ -281,33 +289,28 @@ static bool parsePropertyAttributes(objc_property_t property, char*& getterName,
                 break;
             }
         }
-        free(attributes);
     }
     return readonly;
 }
 
-static char* makeSetterName(const char* name)
+static RetainPtr<NSString> makeSetterName(const char* name)
 {
     size_t nameLength = strlen(name);
-    char* setterName = (char*)malloc(nameLength + 5); // "set" Name ":\0"
-    setterName[0] = 's';
-    setterName[1] = 'e';
-    setterName[2] = 't';
-    setterName[3] = toupper(*name);
-    memcpy(setterName + 4, name + 1, nameLength - 1);
-    setterName[nameLength + 3] = ':';
-    setterName[nameLength + 4] = '\0';
-    return setterName;
+    // "set" Name ":\0"  => nameLength + 5.
+    Vector<char, 128> buffer(nameLength + 5);
+    buffer[0] = 's';
+    buffer[1] = 'e';
+    buffer[2] = 't';
+    buffer[3] = toASCIIUpper(*name);
+    memcpy(buffer.data() + 4, name + 1, nameLength - 1);
+    buffer[nameLength + 3] = ':';
+    buffer[nameLength + 4] = '\0';
+    return @(buffer.data());
 }
 
 static void copyPrototypeProperties(JSContext *context, Class objcClass, Protocol *protocol, JSValue *prototypeValue)
 {
     // First gather propreties into this list, then handle the methods (capturing the accessor methods).
-    struct Property {
-        const char* name;
-        char* getterName;
-        char* setterName;
-    };
     __block Vector<Property> propertyList;
 
     // Map recording the methods used as getters/setters.
@@ -316,41 +319,36 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     // Useful value.
     JSValue *undefined = [JSValue valueWithUndefinedInContext:context];
 
-    forEachPropertyInProtocol(protocol, ^(objc_property_t property){
-        char* getterName = 0;
-        char* setterName = 0;
-        bool readonly = parsePropertyAttributes(property, getterName, setterName);
-        const char* name = property_getName(property);
+    forEachPropertyInProtocol(protocol, ^(objc_property_t objcProperty) {
+        const char* name = property_getName(objcProperty);
+        Property property { name, nullptr, nullptr };
+        bool readonly = parsePropertyAttributes(objcProperty, property);
 
-        // Add the names of the getter & setter methods to 
-        if (!getterName)
-            getterName = strdup(name);
-        accessorMethods[@(getterName)] = undefined;
+        // Add the names of the getter & setter methods to
+        if (!property.getterName)
+            property.getterName = @(name);
+        accessorMethods[property.getterName.get()] = undefined;
         if (!readonly) {
-            if (!setterName)
-                setterName = makeSetterName(name);
-            accessorMethods[@(setterName)] = undefined;
+            if (!property.setterName)
+                property.setterName = makeSetterName(name);
+            accessorMethods[property.setterName.get()] = undefined;
         }
 
         // Add the properties to a list.
-        propertyList.append((Property){ name, getterName, setterName });
+        propertyList.append(WTFMove(property));
     });
 
     // Copy methods to the prototype, capturing accessors in the accessorMethods map.
     copyMethodsToObject(context, objcClass, protocol, YES, prototypeValue, accessorMethods);
 
     // Iterate the propertyList & generate accessor properties.
-    for (size_t i = 0; i < propertyList.size(); ++i) {
-        Property& property = propertyList[i];
-
-        JSValue *getter = accessorMethods[@(property.getterName)];
-        free(property.getterName);
+    for (auto& property : propertyList) {
+        JSValue* getter = accessorMethods[property.getterName.get()];
         ASSERT(![getter isUndefined]);
 
-        JSValue *setter = undefined;
+        JSValue* setter = undefined;
         if (property.setterName) {
-            setter = accessorMethods[@(property.setterName)];
-            free(property.setterName);
+            setter = accessorMethods[property.setterName.get()];
             ASSERT(![setter isUndefined]);
         }
         
@@ -369,6 +367,7 @@ static void copyPrototypeProperties(JSContext *context, Class objcClass, Protoco
     JSClassRef m_classRef;
     JSC::Weak<JSC::JSObject> m_prototype;
     JSC::Weak<JSC::JSObject> m_constructor;
+    JSC::Weak<JSC::Structure> m_structure;
 }
 
 - (instancetype)initForClass:(Class)cls;
@@ -409,7 +408,7 @@ static JSC::JSObject* allocateConstructorForCustomClass(JSContext *context, cons
         return constructorWithCustomBrand(context, [NSString stringWithFormat:@"%sConstructor", className], cls);
 
     // For each protocol that the class implements, gather all of the init family methods into a hash table.
-    __block HashMap<String, Protocol *> initTable;
+    __block HashMap<String, CFTypeRef> initTable;
     Protocol *exportProtocol = getJSExportProtocol();
     for (Class currentClass = cls; currentClass; currentClass = class_getSuperclass(currentClass)) {
         forEachProtocolImplementingProtocol(currentClass, exportProtocol, ^(Protocol *protocol, bool&) {
@@ -417,7 +416,7 @@ static JSC::JSObject* allocateConstructorForCustomClass(JSContext *context, cons
                 const char* name = sel_getName(selector);
                 if (!isInitFamilyMethod(@(name)))
                     return;
-                initTable.set(name, protocol);
+                initTable.set(name, (__bridge CFTypeRef)protocol);
             });
         });
     }
@@ -437,7 +436,7 @@ static JSC::JSObject* allocateConstructorForCustomClass(JSContext *context, cons
 
             numberOfInitsFound++;
             initMethod = selector;
-            initProtocol = iter->value;
+            initProtocol = (__bridge Protocol *)iter->value;
             types = method_getTypeEncoding(method);
         });
 
@@ -519,10 +518,14 @@ typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
         }
     }
 
-    JSC::JSObject* prototype = [self prototypeInContext:context];
+    JSC::Structure* structure = [self structureInContext:context];
 
-    JSC::JSObject* wrapper = makeWrapper([context JSGlobalContextRef], m_classRef, object);
-    JSObjectSetPrototype([context JSGlobalContextRef], toRef(wrapper), toRef(prototype));
+    JSC::ExecState* exec = toJS([context JSGlobalContextRef]);
+    JSC::VM& vm = exec->vm();
+    JSC::JSLockHolder locker(vm);
+
+    auto wrapper = JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::create(exec, exec->lexicalGlobalObject(), structure, m_classRef, 0);
+    wrapper->setWrappedObject((__bridge void*)object);
     return wrapper;
 }
 
@@ -544,11 +547,25 @@ typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
     return prototype;
 }
 
+- (JSC::Structure*)structureInContext:(JSContext *)context
+{
+    JSC::Structure* structure = m_structure.get();
+    if (structure)
+        return structure;
+
+    JSC::ExecState* exec = toJS([context JSGlobalContextRef]);
+    JSC::JSGlobalObject* globalObject = toJSGlobalObject([context JSGlobalContextRef]);
+    JSC::JSObject* prototype = [self prototypeInContext:context];
+    m_structure = JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::createStructure(exec->vm(), globalObject, prototype);
+
+    return m_structure.get();
+}
+
 @end
 
 @implementation JSWrapperMap {
     NSMutableDictionary *m_classMap;
-    std::unique_ptr<JSC::WeakGCMap<id, JSC::JSObject>> m_cachedJSWrappers;
+    std::unique_ptr<JSC::WeakGCMap<__unsafe_unretained id, JSC::JSObject>> m_cachedJSWrappers;
     NSMapTable *m_cachedObjCWrappers;
 }
 
@@ -562,7 +579,7 @@ typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
     NSPointerFunctionsOptions valueOptions = NSPointerFunctionsWeakMemory | NSPointerFunctionsObjectPersonality;
     m_cachedObjCWrappers = [[NSMapTable alloc] initWithKeyOptions:keyOptions valueOptions:valueOptions capacity:0];
 
-    m_cachedJSWrappers = std::make_unique<JSC::WeakGCMap<id, JSC::JSObject>>(toJS(context)->vm());
+    m_cachedJSWrappers = std::make_unique<JSC::WeakGCMap<__unsafe_unretained id, JSC::JSObject>>(toJS(context)->vm());
 
     ASSERT(!toJSGlobalObject(context)->wrapperMap());
     toJSGlobalObject(context)->setWrapperMap(self);
@@ -627,10 +644,10 @@ typedef std::pair<JSC::JSObject*, JSC::JSObject*> ConstructorPrototypePair;
 - (JSValue *)objcWrapperForJSValueRef:(JSValueRef)value inContext:context
 {
     ASSERT(toJSGlobalObject([context JSGlobalContextRef])->wrapperMap() == self);
-    JSValue *wrapper = static_cast<JSValue *>(NSMapGet(m_cachedObjCWrappers, value));
+    JSValue *wrapper = (__bridge JSValue *)NSMapGet(m_cachedObjCWrappers, value);
     if (!wrapper) {
         wrapper = [[[JSValue alloc] initWithValue:value inContext:context] autorelease];
-        NSMapInsert(m_cachedObjCWrappers, value, wrapper);
+        NSMapInsert(m_cachedObjCWrappers, value, (__bridge void*)wrapper);
     }
     return wrapper;
 }
@@ -646,8 +663,8 @@ id tryUnwrapObjcObject(JSGlobalContextRef context, JSValueRef value)
     ASSERT(!exception);
     JSC::JSLockHolder locker(toJS(context));
     JSC::VM& vm = toJS(context)->vm();
-    if (toJS(object)->inherits(vm, JSC::JSCallbackObject<JSC::JSAPIWrapperObject>::info()))
-        return (id)JSC::jsCast<JSC::JSAPIWrapperObject*>(toJS(object))->wrappedObject();
+    if (toJS(object)->inherits<JSC::JSCallbackObject<JSC::JSAPIWrapperObject>>(vm))
+        return (__bridge id)JSC::jsCast<JSC::JSAPIWrapperObject*>(toJS(object))->wrappedObject();
     if (id target = tryUnwrapConstructor(&vm, object))
         return target;
     return nil;

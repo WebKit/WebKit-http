@@ -33,14 +33,15 @@
 #include "InjectedBundleRangeHandle.h"
 #include "WKAPICast.h"
 #include "WKBundleAPICast.h"
+#include "WKData.h"
+#include "WKRetainPtr.h"
 #include "WKString.h"
 #include "WebPage.h"
 #include <WebCore/DocumentFragment.h>
 #include <wtf/text/WTFString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 InjectedBundlePageEditorClient::InjectedBundlePageEditorClient(const WKBundlePageEditorClientBase& client)
 {
@@ -163,10 +164,10 @@ void InjectedBundlePageEditorClient::getPasteboardDataForRange(WebPage& page, Ra
 
         ASSERT(typesArray->size() == dataArray->size());
 
-        for (const auto& type : typesArray->elementsOfType<API::String>())
+        for (auto type : typesArray->elementsOfType<API::String>())
             pasteboardTypes.append(type->string());
 
-        for (const auto& item : dataArray->elementsOfType<API::Data>()) {
+        for (auto item : dataArray->elementsOfType<API::Data>()) {
             RefPtr<SharedBuffer> buffer = SharedBuffer::create(item->bytes(), item->size());
             pasteboardData.append(buffer);
         }
@@ -187,6 +188,16 @@ void InjectedBundlePageEditorClient::didWriteToPasteboard(WebPage& page)
 {
     if (m_client.didWriteToPasteboard)
         m_client.didWriteToPasteboard(toAPI(&page), m_client.base.clientInfo);
+}
+
+String InjectedBundlePageEditorClient::replacementURLForResource(WebPage& page, Ref<SharedBuffer>&& resourceData, const String& mimeType)
+{
+    if (!m_client.replacementURLForResource)
+        return { };
+
+    auto data = adoptWK(WKDataCreate(reinterpret_cast<const unsigned char*>(resourceData->data()), resourceData->size()));
+    auto type = adoptWK(toCopiedAPI(mimeType));
+    return toWTFString(m_client.replacementURLForResource(toAPI(&page), data.get(), type.get(), m_client.base.clientInfo));
 }
 
 } // namespace WebKit

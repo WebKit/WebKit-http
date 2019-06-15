@@ -28,11 +28,11 @@
 
 #if USE(QUICK_LOOK)
 
-#import "FileSystemIOS.h"
-#import "NSFileManagerSPI.h"
+#import "FileSystem.h"
 #import "PreviewConverter.h"
 #import "ResourceRequest.h"
 #import "SchemeRegistry.h"
+#import <pal/spi/cocoa/NSFileManagerSPI.h>
 #import <wtf/Lock.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -40,17 +40,15 @@
 
 namespace WebCore {
 
+const char* QLPreviewProtocol = "x-apple-ql-id";
+
 NSSet *QLPreviewGetSupportedMIMETypesSet()
 {
-    static NeverDestroyed<RetainPtr<NSSet>> set = QLPreviewGetSupportedMIMETypes();
-    return set.get().get();
+    static NSSet *set = [QLPreviewGetSupportedMIMETypes() retain];
+    return set;
 }
 
-static Lock& qlPreviewConverterDictionaryMutex()
-{
-    static NeverDestroyed<Lock> mutex;
-    return mutex;
-}
+static Lock qlPreviewConverterDictionaryLock;
 
 static NSMutableDictionary *QLPreviewConverterDictionary()
 {
@@ -66,7 +64,7 @@ static NSMutableDictionary *QLContentDictionary()
 
 void removeQLPreviewConverterForURL(NSURL *url)
 {
-    LockHolder lock(qlPreviewConverterDictionaryMutex());
+    auto locker = holdLock(qlPreviewConverterDictionaryLock);
     [QLPreviewConverterDictionary() removeObjectForKey:url];
     [QLContentDictionary() removeObjectForKey:url];
 }
@@ -75,7 +73,7 @@ static void addQLPreviewConverterWithFileForURL(NSURL *url, id converter, NSStri
 {
     ASSERT(url);
     ASSERT(converter);
-    LockHolder lock(qlPreviewConverterDictionaryMutex());
+    auto locker = holdLock(qlPreviewConverterDictionaryLock);
     [QLPreviewConverterDictionary() setObject:converter forKey:url];
     [QLContentDictionary() setObject:(fileName ? fileName : @"") forKey:url];
 }
@@ -94,32 +92,15 @@ RetainPtr<NSURLRequest> registerQLPreviewConverterIfNeeded(NSURL *url, NSString 
         // the URL that the WebDataSource will see during -dealloc.
         addQLPreviewConverterWithFileForURL(previewRequest.url(), converter->platformConverter(), nil);
 
-        return previewRequest.nsURLRequest(DoNotUpdateHTTPBody);
+        return previewRequest.nsURLRequest(HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody);
     }
 
     return nil;
 }
 
-static Vector<char> createQLPreviewProtocol()
-{
-    Vector<char> previewProtocol;
-    const char* qlPreviewScheme = [QLPreviewScheme UTF8String];
-    previewProtocol.append(qlPreviewScheme, strlen(qlPreviewScheme) + 1);
-    return previewProtocol;
-}
-
-const char* QLPreviewProtocol()
-{
-    static NeverDestroyed<Vector<char>> previewProtocol(createQLPreviewProtocol());
-    return previewProtocol.get().data();
-}
-
 bool isQuickLookPreviewURL(const URL& url)
 {
-    // Use some known protocols as a short-cut to avoid loading the QuickLook framework.
-    if (url.protocolIsInHTTPFamily() || url.isBlankURL() || url.protocolIsBlob() || url.protocolIsData() || SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol().toString()))
-        return false;
-    return url.protocolIs(QLPreviewProtocol());
+    return url.protocolIs(QLPreviewProtocol);
 }
 
 static NSDictionary *temporaryFileAttributes()
@@ -143,7 +124,7 @@ static NSDictionary *temporaryDirectoryAttributes()
 
 NSString *createTemporaryFileForQuickLook(NSString *fileName)
 {
-    NSString *downloadDirectory = createTemporaryDirectory(@"QuickLookContent");
+    NSString *downloadDirectory = FileSystem::createTemporaryDirectory(@"QuickLookContent");
     if (!downloadDirectory)
         return nil;
 

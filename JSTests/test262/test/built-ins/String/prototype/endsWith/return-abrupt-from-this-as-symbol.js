@@ -4,14 +4,14 @@
 es6id: 21.1.3.6
 description: >
   Returns abrupt from ToString(this) where this is a Symbol
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   1. Let O be RequireObjectCoercible(this value).
   2. Let S be ToString(O).
   3. ReturnIfAbrupt(S).
   ...
-features: [Symbol]
+features: [Symbol, String.prototype.endsWith]
 ---*/
 
 var s = Symbol('');

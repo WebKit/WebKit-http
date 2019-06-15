@@ -23,14 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef KJS_BINDINGS_OBJC_UTILITY_H
-#define KJS_BINDINGS_OBJC_UTILITY_H
+#pragma once
 
 #include <CoreFoundation/CoreFoundation.h>
 
 #include "objc_header.h"
-#include <runtime/Error.h>
-#include <runtime/JSObject.h>
+#include <JavaScriptCore/Error.h>
+#include <JavaScriptCore/JSObject.h>
 
 OBJC_CLASS NSString;
 
@@ -38,7 +37,7 @@ namespace JSC {
 namespace Bindings {
 
 typedef union {
-    ObjectStructPtr objectValue;
+    CFTypeRef objectValue;
     bool booleanValue;
     char charValue;
     short shortValue;
@@ -79,5 +78,3 @@ JSObject *throwError(ExecState*, ThrowScope&, NSString *message);
 
 } // namespace Bindings
 } // namespace JSC
-
-#endif

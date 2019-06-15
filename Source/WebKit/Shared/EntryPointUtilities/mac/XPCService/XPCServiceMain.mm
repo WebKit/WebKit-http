@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,11 +25,16 @@
 
 #import "config.h"
 #import "WebProcessCocoa.h"
+#import "XPCServiceEntryPoint.h"
 
 #import <CoreFoundation/CoreFoundation.h>
 #import <wtf/OSObjectPtr.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/spi/darwin/XPCSPI.h>
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#import <pal/spi/mac/NSApplicationSPI.h>
+#endif
 
 namespace WebKit {
 
@@ -55,7 +60,7 @@ static void XPCServiceEventHandler(xpc_connection_t peer)
                 typedef void (*InitializerFunction)(xpc_connection_t, xpc_object_t, xpc_object_t);
                 InitializerFunction initializerFunctionPtr = reinterpret_cast<InitializerFunction>(CFBundleGetFunctionPointerForName(webKitBundle, entryPointFunctionName));
                 if (!initializerFunctionPtr) {
-                    NSLog(@"Unable to find entry point in WebKit.framework with name: %@", (NSString *)entryPointFunctionName);
+                    NSLog(@"Unable to find entry point in WebKit.framework with name: %@", (__bridge NSString *)entryPointFunctionName);
                     exit(EXIT_FAILURE);
                 }
 
@@ -87,11 +92,7 @@ static void XPCServiceEventHandler(xpc_connection_t peer)
     xpc_connection_resume(peer);
 }
 
-} // namespace WebKit
-
-using namespace WebKit;
-
-int main(int argc, char** argv)
+int XPCServiceMain()
 {
 #if defined(__i386__)
     // FIXME: This should only be done for the 32-bit plug-in XPC service so we rely on the fact that
@@ -143,8 +144,23 @@ int main(int argc, char** argv)
 #if PLATFORM(MAC)
     // Don't allow Apple Events in WebKit processes. This can be removed when <rdar://problem/14012823> is fixed.
     setenv("__APPLEEVENTSSERVICENAME", "", 1);
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    // We don't need to talk to the dock.
+    if (Class nsApplicationClass = NSClassFromString(@"NSApplication")) {
+        if ([nsApplicationClass respondsToSelector:@selector(_preventDockConnections)])
+            [nsApplicationClass _preventDockConnections];
+    }
+#endif
 #endif
 
     xpc_main(XPCServiceEventHandler);
     return 0;
+}
+
+} // namespace WebKit
+
+int main(int argc, char** argv)
+{
+    return WebKit::XPCServiceMain();
 }

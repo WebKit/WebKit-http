@@ -1,16 +1,17 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.3
-description: |
+esid: sec-get-%typedarray%.prototype.byteoffset
+description: >
   Return value from [[ByteOffset]] internal slot
-info: >
+info: |
   22.2.3.3 get %TypedArray%.prototype.byteOffset
 
   ...
   6. Let offset be the value of O's [[ByteOffset]] internal slot.
   7. Return size.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

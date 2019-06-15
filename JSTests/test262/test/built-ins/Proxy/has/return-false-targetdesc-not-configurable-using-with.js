@@ -5,7 +5,7 @@ es6id: 9.5.7
 description: >
     A property cannot be reported as non-existent, if it exists as a
     non-configurable own property of the target object.
-info: >
+info: |
     [[HasProperty]] (P)
 
     ...
@@ -20,19 +20,19 @@ flags: [noStrict]
 
 var target = {};
 var handler = {
-    has: function(t, prop) {
-        return 0;
-    }
+  has: function(t, prop) {
+    return 0;
+  }
 };
 var p = new Proxy(target, handler);
 
 Object.defineProperty(target, "attr", {
-    configurable: false,
-    value: 1
+  configurable: false,
+  value: 1
 });
 
 assert.throws(TypeError, function() {
-    with (p) {
-        (attr);
-    }
+  with(p) {
+    (attr);
+  }
 });

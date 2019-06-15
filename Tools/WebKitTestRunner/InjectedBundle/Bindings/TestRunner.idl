@@ -31,10 +31,13 @@ interface TestRunner {
     void dumpChildFramesAsText();
     void waitForPolicyDelegate();
     void waitUntilDone();
-    void waitUntilDownloadFinished();
     void notifyDone();
-    double preciseTime();
-    readonly attribute double timeout;
+    double preciseTime(); // seconds since the epoch
+    readonly attribute double timeout; // milliseconds
+
+    // Downloads.
+    void waitUntilDownloadFinished();
+    void setShouldLogDownloadCallbacks(boolean value);
 
     // Other dumping.
     void dumpBackForwardList();
@@ -53,6 +56,12 @@ interface TestRunner {
     void dumpDatabaseCallbacks();
     void dumpDOMAsWebArchive();
     void dumpPolicyDelegateCallbacks();
+    void dumpResourceLoadStatistics();
+
+    void clearDOMCaches();
+    void clearDOMCache(DOMString origin);
+    boolean hasDOMCache(DOMString origin);
+    unsigned long domCacheSize(DOMString origin);
 
     // Special options.
     void keepWebHistory();
@@ -82,13 +91,14 @@ interface TestRunner {
     void setAsynchronousSpellCheckingEnabled(boolean value);
     void setPrinting();
     void setShouldDecideNavigationPolicyAfterDelay(boolean value);
+    void setShouldDecideResponsePolicyAfterDelay(boolean value);
     void setNavigationGesturesEnabled(boolean value);
     void setIgnoresViewportScaleLimits(boolean value);
     void setShouldDownloadUndisplayableMIMETypes(boolean value);
 
     // Special DOM functions.
     void clearBackForwardList();
-    void execCommand(DOMString name, DOMString argument);
+    void execCommand(DOMString name, DOMString showUI, DOMString value);
     boolean isCommandEnabled(DOMString name);
     unsigned long windowCount();
 
@@ -101,8 +111,13 @@ interface TestRunner {
     void display();
     void displayAndTrackRepaints();
 
+    // Failed load condition testing
+    void forceImmediateCompletion();
+
     // Printing
     boolean isPageBoxVisible(long pageIndex);
+
+    void dumpAllHTTPRedirectedResponseHeaders();
 
     [PassContext] void setValueForUser(object element, DOMString value);
 
@@ -151,6 +166,9 @@ interface TestRunner {
     void setDefersLoading(boolean flag);
     void setStopProvisionalFrameLoads();
 
+    readonly attribute boolean didReceiveServerRedirectForProvisionalNavigation;
+    void clearDidReceiveServerRedirectForProvisionalNavigation();
+
     // Focus testing.
     void addChromeInputField(object callback);
     void removeChromeInputField(object callback);
@@ -164,7 +182,6 @@ interface TestRunner {
 
     // Cookies testing
     void setAlwaysAcceptCookies(boolean accept);
-    void setCookieStoragePartitioningEnabled(boolean enabled);
 
     void overridePreference(DOMString preference, DOMString value);
 
@@ -183,7 +200,7 @@ interface TestRunner {
 
     // Geolocation
     void setGeolocationPermission(boolean value);
-    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, optional object altitude, optional object altitudeAccuracy, optional object heading, optional object speed);
+    void setMockGeolocationPosition(double latitude, double longitude, double accuracy, optional object altitude, optional object altitudeAccuracy, optional object heading, optional object speed, optional object floorLevel);
     void setMockGeolocationPositionUnavailableError(DOMString errorMessage);
     boolean isGeolocationProviderActive();
 
@@ -222,7 +239,8 @@ interface TestRunner {
     
     // Override plugin load policy.
     void setBlockAllPlugins(boolean shouldBlock);
-    
+    void setPluginSupportedMode(DOMString mode);
+
     // Hooks to the JSC compiler.
     object failNextNewCodeBlock();
     object numberOfDFGCompiles(object function);
@@ -254,21 +272,30 @@ interface TestRunner {
     void installStatisticsDidModifyDataRecordsCallback(object callback);
     void installStatisticsDidScanDataRecordsCallback(object callback);
     void installStatisticsDidRunTelemetryCallback(object callback);
-    void setStatisticsLastSeen(DOMString hostName, double seconds);
-    void setStatisticsPrevalentResource(DOMString hostName, boolean value);
+    void setStatisticsDebugMode(boolean value, object completionHandler);
+    void setStatisticsPrevalentResourceForDebugMode(DOMString hostName, object completionHandler);
+    void setStatisticsLastSeen(DOMString hostName, double seconds, object completionHandler);
+    void setStatisticsPrevalentResource(DOMString hostName, boolean value, object completionHandler);
+    void setStatisticsVeryPrevalentResource(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsPrevalentResource(DOMString hostName);
-    void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value);
+    boolean isStatisticsVeryPrevalentResource(DOMString hostName);
+    boolean isStatisticsRegisteredAsSubresourceUnder(DOMString subresourceHost, DOMString topFrameHost);
+    boolean isStatisticsRegisteredAsSubFrameUnder(DOMString subFrameHost, DOMString topFrameHost);
+    boolean isStatisticsRegisteredAsRedirectingTo(DOMString hostRedirectedFrom, DOMString hostRedirectedTo);
+    void setStatisticsHasHadUserInteraction(DOMString hostName, boolean value, object completionHandler);
     boolean isStatisticsHasHadUserInteraction(DOMString hostName);
     void setStatisticsGrandfathered(DOMString hostName, boolean value);
     boolean isStatisticsGrandfathered(DOMString hostName);
     void setStatisticsSubframeUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
     void setStatisticsSubresourceUnderTopFrameOrigin(DOMString hostName, DOMString topFrameHostName);
     void setStatisticsSubresourceUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
+    void setStatisticsSubresourceUniqueRedirectFrom(DOMString hostName, DOMString hostNameRedirectedTo);
+    void setStatisticsTopFrameUniqueRedirectTo(DOMString hostName, DOMString hostNameRedirectedTo);
+    void setStatisticsTopFrameUniqueRedirectFrom(DOMString hostName, DOMString hostNameRedirectedTo);
     void setStatisticsTimeToLiveUserInteraction(double seconds);
-    void setStatisticsTimeToLiveCookiePartitionFree(double seconds);
+    void statisticsNotifyObserver();
     void statisticsProcessStatisticsAndDataRecords();
-    void statisticsUpdateCookiePartitioning();
-    void statisticsSetShouldPartitionCookiesForHost(DOMString hostName, boolean value);
+    void statisticsUpdateCookieBlocking(object completionHandler);
     void statisticsSubmitTelemetry();
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(boolean value);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(boolean value);
@@ -277,16 +304,50 @@ interface TestRunner {
     void setStatisticsGrandfatheringTime(double seconds);
     void setStatisticsMaxStatisticsEntries(unsigned long entries);
     void setStatisticsPruneEntriesDownTo(unsigned long entries);
-    void statisticsClearInMemoryAndPersistentStore();
-    void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned long hours);
-    void statisticsResetToConsistentState();
+    void statisticsClearInMemoryAndPersistentStore(object callback);
+    void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned long hours, object callback);
+    void statisticsClearThroughWebsiteDataRemoval(object callback);
+    void statisticsResetToConsistentState(object completionHandler);
+
+    // Injected bundle form client.
+    void installTextDidChangeInTextFieldCallback(object callback);
+    void installTextFieldDidBeginEditingCallback(object callback);
+    void installTextFieldDidEndEditingCallback(object callback);
+
+    // Storage Access API
+    void setStorageAccessAPIEnabled(boolean enabled);
+    void getAllStorageAccessEntries(object callback);
 
     // Open panel
     void setOpenPanelFiles(object filesArray);
 
-    void setWebRTCLegacyAPIEnabled(boolean value);
+    void setMDNSICECandidatesEnabled(boolean value);
+    void setWebRTCUnifiedPlanEnabled(boolean value);
+    void setCustomUserAgent(DOMString userAgent);
+
+    void setWebAPIStatisticsEnabled(boolean value);
 
     void terminateNetworkProcess();
+    void terminateServiceWorkerProcess();
+    void terminateStorageProcess();
+
+    readonly attribute boolean didCancelClientRedirect;
 
     void removeAllSessionCredentials(object callback);
+
+    void getApplicationManifestThen(object callback);
+
+    void installFakeHelvetica(DOMString configuration);
+
+    void addMockCameraDevice(DOMString persistentId, DOMString label);
+    void addMockMicrophoneDevice(DOMString persistentId, DOMString label);
+    void addMockScreenDevice(DOMString persistentId, DOMString label);
+    void clearMockMediaDevices();
+    void removeMockMediaDevice(DOMString persistentId);
+    void resetMockMediaDevices();
+
+    void injectUserScript(DOMString string);
+    readonly attribute unsigned long userScriptInjectedCount;
+
+    void sendDisplayConfigurationChangedMessageForTesting();
 };

@@ -81,10 +81,10 @@ function validateAndNormalizeQueuingStrategy(size, highWaterMark)
     if (size !== @undefined && typeof size !== "function")
         @throwTypeError("size parameter must be a function");
 
-    const normalizedStrategy = { };
-
-    normalizedStrategy.size = size;
-    normalizedStrategy.highWaterMark = @Number(highWaterMark);
+    const normalizedStrategy = {
+        size: size,
+        highWaterMark: @toNumber(highWaterMark)
+    };
 
     if (@isNaN(normalizedStrategy.highWaterMark) || normalizedStrategy.highWaterMark < 0)
         @throwRangeError("highWaterMark value is negative or not a number");
@@ -105,6 +105,9 @@ function dequeueValue(queue)
 
     const record = queue.content.@shift();
     queue.size -= record.size;
+    // As described by spec, below case may occur due to rounding errors.
+    if (queue.size < 0)
+        queue.size = 0;
     return record.value;
 }
 
@@ -112,7 +115,7 @@ function enqueueValueWithSize(queue, value, size)
 {
     "use strict";
 
-    size = @Number(size);
+    size = @toNumber(size);
     if (!@isFinite(size) || size < 0)
         @throwRangeError("size has an incorrect value");
     queue.content.@push({ value: value, size: size });

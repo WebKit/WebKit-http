@@ -42,9 +42,8 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
     
 void WebEditorClient::handleKeyboardEvent(KeyboardEvent* event)
 {
@@ -57,24 +56,6 @@ void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
     if (event->handledByInputMethod())
         event->setDefaultHandled();
 }
-    
-NSString *WebEditorClient::userVisibleString(NSURL *url)
-{
-    return WebCore::userVisibleString(url);
-}
-
-NSURL *WebEditorClient::canonicalizeURL(NSURL *url)
-{
-    return URLByCanonicalizingURL(url);
-}
-
-NSURL *WebEditorClient::canonicalizeURLString(NSString *URLString)
-{
-    NSURL *URL = nil;
-    if (looksLikeAbsoluteURL(URLString))
-        URL = URLByCanonicalizingURL(URLWithUserTypedString(URLString, nil));
-    return URL;
-}
 
 void WebEditorClient::setInsertionPasteboard(const String&)
 {
@@ -82,7 +63,7 @@ void WebEditorClient::setInsertionPasteboard(const String&)
     notImplemented();
 }
 
-static void changeWordCase(WebPage* page, SEL selector)
+static void changeWordCase(WebPage* page, NSString *(*changeCase)(NSString *))
 {
     Frame& frame = page->corePage()->focusController().focusedOrMainFrame();
     if (!frame.editor().canEdit())
@@ -91,22 +72,28 @@ static void changeWordCase(WebPage* page, SEL selector)
     frame.editor().command("selectWord").execute();
 
     NSString *selectedString = frame.displayStringModifiedByEncoding(frame.editor().selectedText());
-    page->replaceSelectionWithText(&frame, [selectedString performSelector:selector]);
+    page->replaceSelectionWithText(&frame, changeCase(selectedString));
 }
 
 void WebEditorClient::uppercaseWord()
 {
-    changeWordCase(m_page, @selector(uppercaseString));
+    changeWordCase(m_page, [] (NSString *string) {
+        return [string uppercaseString];
+    });
 }
 
 void WebEditorClient::lowercaseWord()
 {
-    changeWordCase(m_page, @selector(lowercaseString));
+    changeWordCase(m_page, [] (NSString *string) {
+        return [string lowercaseString];
+    });
 }
 
 void WebEditorClient::capitalizeWord()
 {
-    changeWordCase(m_page, @selector(capitalizedString));
+    changeWordCase(m_page, [] (NSString *string) {
+        return [string capitalizedString];
+    });
 }
 
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)
@@ -118,7 +105,7 @@ void WebEditorClient::showSubstitutionsPanel(bool)
 
 bool WebEditorClient::substitutionsPanelIsShowing()
 {
-    bool isShowing;
+    bool isShowing { false };
     m_page->sendSync(Messages::WebPageProxy::SubstitutionsPanelIsShowing(), Messages::WebPageProxy::SubstitutionsPanelIsShowing::Reply(isShowing));
     return isShowing;
 }

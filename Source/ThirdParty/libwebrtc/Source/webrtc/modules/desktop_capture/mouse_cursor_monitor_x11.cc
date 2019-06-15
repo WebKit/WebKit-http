@@ -10,17 +10,18 @@
 
 #include <memory>
 
-#include "webrtc/modules/desktop_capture/mouse_cursor_monitor.h"
+#include "modules/desktop_capture/mouse_cursor_monitor.h"
 
-#include <X11/extensions/Xfixes.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#include <X11/extensions/Xfixes.h>
 
-#include "webrtc/base/logging.h"
-#include "webrtc/modules/desktop_capture/desktop_capture_options.h"
-#include "webrtc/modules/desktop_capture/desktop_frame.h"
-#include "webrtc/modules/desktop_capture/mouse_cursor.h"
-#include "webrtc/modules/desktop_capture/x11/x_error_trap.h"
+#include "modules/desktop_capture/desktop_capture_options.h"
+#include "modules/desktop_capture/desktop_capture_types.h"
+#include "modules/desktop_capture/desktop_frame.h"
+#include "modules/desktop_capture/mouse_cursor.h"
+#include "modules/desktop_capture/x11/x_error_trap.h"
+#include "rtc_base/logging.h"
 
 namespace {
 
@@ -34,12 +35,12 @@ Window GetTopLevelWindow(Display* display, Window window) {
   while (true) {
     // If the window is in WithdrawnState then look at all of its children.
     ::Window root, parent;
-    ::Window *children;
+    ::Window* children;
     unsigned int num_children;
     if (!XQueryTree(display, window, &root, &parent, &children,
                     &num_children)) {
-      LOG(LS_ERROR) << "Failed to query for child windows although window"
-                    << "does not have a valid WM_STATE.";
+      RTC_LOG(LS_ERROR) << "Failed to query for child windows although window"
+                        << "does not have a valid WM_STATE.";
       return None;
     }
     if (children)
@@ -103,12 +104,9 @@ MouseCursorMonitorX11::MouseCursorMonitorX11(
   std::unique_ptr<DesktopFrame> default_cursor(
       new BasicDesktopFrame(DesktopSize(kSize, kSize)));
   const uint8_t pixels[kSize * kSize] = {
-    0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0xff, 0xff, 0xff, 0x00,
-    0x00, 0xff, 0xff, 0xff, 0x00,
-    0x00, 0xff, 0xff, 0xff, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00
-  };
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff,
+      0x00, 0x00, 0xff, 0xff, 0xff, 0x00, 0x00, 0xff, 0xff,
+      0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
   uint8_t* ptr = default_cursor->data();
   for (int y = 0; y < kSize; ++y) {
     for (int x = 0; x < kSize; ++x) {
@@ -147,7 +145,7 @@ void MouseCursorMonitorX11::Init(Callback* callback, Mode mode) {
 
     CaptureCursor();
   } else {
-    LOG(LS_INFO) << "X server does not support XFixes.";
+    RTC_LOG(LS_INFO) << "X server does not support XFixes.";
   }
 }
 
@@ -200,8 +198,9 @@ void MouseCursorMonitorX11::Capture() {
       }
     }
 
-    callback_->OnMouseCursorPosition(state,
-                                     webrtc::DesktopVector(win_x, win_y));
+    // X11 always starts the coordinate from (0, 0), so we do not need to
+    // translate here.
+    callback_->OnMouseCursorPosition(DesktopVector(root_x, root_y));
   }
 }
 
@@ -226,11 +225,11 @@ void MouseCursorMonitorX11::CaptureCursor() {
     XErrorTrap error_trap(display());
     img = XFixesGetCursorImage(display());
     if (!img || error_trap.GetLastErrorAndDisable() != 0)
-       return;
-   }
+      return;
+  }
 
-   std::unique_ptr<DesktopFrame> image(
-       new BasicDesktopFrame(DesktopSize(img->width, img->height)));
+  std::unique_ptr<DesktopFrame> image(
+      new BasicDesktopFrame(DesktopSize(img->width, img->height)));
 
   // Xlib stores 32-bit data in longs, even if longs are 64-bits long.
   unsigned long* src = img->pixels;
@@ -250,7 +249,8 @@ void MouseCursorMonitorX11::CaptureCursor() {
 
 // static
 MouseCursorMonitor* MouseCursorMonitor::CreateForWindow(
-    const DesktopCaptureOptions& options, WindowId window) {
+    const DesktopCaptureOptions& options,
+    WindowId window) {
   if (!options.x_display())
     return NULL;
   window = GetTopLevelWindow(options.x_display()->display(), window);
@@ -266,6 +266,12 @@ MouseCursorMonitor* MouseCursorMonitor::CreateForScreen(
     return NULL;
   return new MouseCursorMonitorX11(
       options, DefaultRootWindow(options.x_display()->display()));
+}
+
+std::unique_ptr<MouseCursorMonitor> MouseCursorMonitor::Create(
+    const DesktopCaptureOptions& options) {
+  return std::unique_ptr<MouseCursorMonitor>(
+      CreateForScreen(options, kFullDesktopScreenId));
 }
 
 }  // namespace webrtc

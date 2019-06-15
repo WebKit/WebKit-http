@@ -47,9 +47,6 @@ webkit.org/b/156612 http/tests/security/contentSecurityPolicy/object-redirect-bl
 
 # AX tests that require hit testing do not work in WK2.
 webkit.org/b/71298 accessibility/loading-iframe-updates-axtree.html
-webkit.org/b/71298 accessibility/mac/html-slider-indicator.html
-webkit.org/b/71298 accessibility/mac/listbox-hit-test.html
-webkit.org/b/71298 accessibility/mac/iframe-with-title-correct-hierarchy.html
 
 # This test has been skipped for a long time. Temporarily marking as flaky to see what bots think.
 webkit.org/b/48354 compositing/iframes/iframe-src-change.html [ Pass Failure ]
@@ -84,31 +81,15 @@ fast/dom/tab-in-right-alignment.html
 fast/events/ime-composition-events-001.html
 fast/forms/cursor-at-editable-content-boundary.html
 fast/text/international/thai-cursor-position.html
-editing/mac/input/5576619.html
-editing/mac/input/bold-node.html
-editing/mac/input/caret-primary-bidi.html
-editing/mac/input/firstrectforcharacterrange-caret-in-br.html
-editing/mac/input/firstrectforcharacterrange-plain.html
-editing/mac/input/firstrectforcharacterrange-styled.html
-editing/mac/input/firstrectforcharacterrange-vertical.html
-editing/mac/input/hangul-enter-confirms-and-sends-keypress.html
-editing/mac/input/insert-delete-smp-symbol.html
-editing/mac/input/kotoeri-enter-to-confirm-and-newline.html
-editing/mac/input/range-for-empty-document.html
-editing/mac/input/replace-invalid-range.html
-editing/mac/input/secure-input.html
-editing/mac/input/text-input-controller.html
-editing/mac/input/text-input-controller-no-editable-no-crash.html
-editing/mac/input/wrapped-line-char-rect.html
-editing/mac/input/NSBackgroundColor-transparent.html
-editing/mac/pasteboard/paste-and-match-style-selector-event.html
-editing/mac/selection/25228.html
 platform/mac/fast/dom/character-index-for-point.html
 platform/mac/fast/text/attributed-substring-from-range-001.html
 platform/mac/fast/text/attributed-substring-from-range-002.html
 platform/mac/fast/text/attributed-substring-from-range-in-textfield.html
 platform/mac/fast/text/attributed-substring-from-range.html
 platform/mac/fast/text/justified-text-rect.html
+
+# [WebKit2] WebKitTestRunner doesn't support emulating pressing a tab key during IME composition
+webkit.org/b/188428 editing/input/press-tab-during-ime-composition.html
 
 # WebKitTestRunner needs testRunner.setMainFrameIsFirstResponder
 # <https://bugs.webkit.org/show_bug.cgi?id=42685>
@@ -144,22 +125,18 @@ http/tests/globalhistory/history-delegate-basic-visited-links.html
 http/tests/globalhistory/history-delegate-basic-refresh-redirect.html
 
 # transitions/default-timing-function.html failing on WebKit2 since it was added
+# legacy-animation-engine/transitions/default-timing-function.html failing on WebKit2 since it was added
 # <https://bugs.webkit.org/show_bug.cgi?id=56531>
 transitions/default-timing-function.html
-
-# WebKitTestRunner needs testRunner.setCallCloseOnWebViews
-# http://webkit.org/b/46714
-plugins/geturlnotify-during-document-teardown.html
-plugins/open-and-close-window-with-plugin.html
-
-accessibility/mac/search-predicate.html
+legacy-animation-engine/transitions/default-timing-function.html
 
 # Sometimes fails
 # http://webkit.org/b/58990
 editing/undo/undo-iframe-location-change.html
 
 # PasteBoard::plainText() does not support file names.
-editing/pasteboard/drag-files-to-editable-element.html
+editing/pasteboard/drag-files-to-editable-element-as-attachment.html [ Skip ]
+editing/pasteboard/drag-files-to-editable-element-as-URLs.html [ Skip ]
 
 # Times out
 # https://bugs.webkit.org/show_bug.cgi?id=63806
@@ -168,14 +145,6 @@ http/tests/cache/history-only-cached-subresource-loads-max-age-https.html
 # Frame::findString does nothing on pages that prevent selection
 # https://bugs.webkit.org/show_bug.cgi?id=40361
 editing/text-iterator/findString-selection-disabled.html
-
-# testRunner.setWindowIsKey() has no effect on the web process side in WebKit2
-# https://bugs.webkit.org/show_bug.cgi?id=81736 rdar://problem/11088268
-fast/events/blur-focus-window-should-blur-focus-element.html
-fast/selectors/querySelector-window-inactive.html
-fast/selectors/selection-window-inactive.html
-fast/dom/Window/window-focus-self.html
-scrollbars/corner-resizer-window-inactive.html
 
 # WebKitTestRunner needs to implement testRunner.closeIdleLocalStorageDatabases().
 # https://bugs.webkit.org/show_bug.cgi?id=103861
@@ -191,14 +160,7 @@ plugins/npruntime/embed-property-iframe-equality.html
 
 webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure ]
 
-webkit.org/b/127683 http/tests/navigation/new-window-redirect-history.html [ Skip ]
-
-# Causes next test to crash only on WebKit2
-webkit.org/b/98345 fast/parser/document-open-in-unload.html [ Skip ]
-
 webkit.org/b/141122 editing/selection/programmatic-selection-on-mac-is-directionless.html [ Pass Failure ]
-
-webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
 
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-cancel.html [ Pass Failure ]
 
@@ -236,6 +198,11 @@ fast/block/lineboxcontain/font.html
 http/tests/download/default-encoding.html
 http/tests/download/inherited-encoding-form-submission-result.html
 http/tests/download/inherited-encoding.html
+
+# Incomplete-image tests fail in WebKitTestRunner
+# https://bugs.webkit.org/show_bug.cgi?id=186613
+http/tests/images/loading-image-border.html
+http/tests/images/loading-image-no-border.html
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -287,7 +254,6 @@ http/tests/loading/cross-origin-XHR-willLoadRequest.html
 # WebKit2 needs showModalDialog
 fast/events/scroll-event-during-modal-dialog.html
 fast/harness/show-modal-dialog.html
-http/tests/security/cross-origin-modal-dialog-base.html [ Skip ]
 
 # WebKit2 needs to support synchronous creation of about:blank/data:url frames
 fast/dom/HTMLDocument/hasFocus.html
@@ -455,6 +421,7 @@ plugins/plugin-initiate-popup-window.html
 storage/websql/open-database-while-transaction-in-progress.html
 svg/hixie/cascade/002.xml
 transitions/font-family-during-transition.html
+legacy-animation-engine/transitions/font-family-during-transition.html
 
 # [WK2] http/tests/navigation/anchor-frames-cross-origin.html fails.
 # https://bugs.webkit.org/show_bug.cgi?id=83581
@@ -495,8 +462,11 @@ webkit.org/b/158703 userscripts/window-onerror-for-isolated-world-3.html [ Skip 
 # These transition tests are flaky, sometimes it seems like the transition timing
 # is off when the test completes
 transitions/color-transition-all.html
+legacy-animation-engine/transitions/color-transition-all.html
 transitions/min-max-width-height-transitions.html
+legacy-animation-engine/transitions/min-max-width-height-transitions.html
 transitions/text-indent-transition.html
+legacy-animation-engine/transitions/text-indent-transition.html
 
 # These storage tests fail in WebKit2 on the bot, but not running locally
 storage/websql/multiple-databases-garbage-collection.html
@@ -536,6 +506,17 @@ fast/preloader/document-write-2.html [ Pass Failure ]
 
 ########################################
 ### START OF (4) Features that are not supported in WebKit2 and likely never will be
+
+# Plug-ins are disallowed from evaluating JavaScript from NPP_Destroy().
+plugins/attach-during-destroy.html [ WontFix ]
+plugins/destroy-reentry.html [ WontFix ]
+plugins/document-open.html [ WontFix ]
+webkit.org/b/48929 plugins/evaluate-js-after-removing-plugin-element.html [ WontFix ]
+plugins/geturlnotify-during-document-teardown.html [ WontFix ]
+plugins/js-from-destroy.html [ WontFix ]
+plugins/nested-plugin-objects.html [ WontFix ]
+plugins/netscape-destroy-plugin-script-objects.html [ WontFix ]
+plugins/open-and-close-window-with-plugin.html [ WontFix ]
 
 # Internals.registerDefaultPortForProtocol() does not affect NetworkProcess. We should
 # look to remove it and write these test to make use of an HTTP server running on port 80.
@@ -587,7 +568,30 @@ platform/mac/fast/events/objc-event-api.html
 
 # WebKitTestRunner needs an implementation of eventSender.beginDragWithFiles
 # https://bugs.webkit.org/show_bug.cgi?id=64285
-editing/pasteboard/file-drag-to-editable.html
+editing/pasteboard/datatransfer-items-drop-plaintext-file.html
+editing/pasteboard/datatransfer-types-dropping-text-file.html
+editing/pasteboard/drag-and-drop-color-input.html
+editing/pasteboard/drag-and-drop-color-input-events.html
+editing/pasteboard/drag-and-drop-image-contenteditable.html
+editing/pasteboard/drag-and-drop-inputimage-contenteditable.html
+editing/pasteboard/drag-and-drop-objectimage-contenteditable.html
+editing/pasteboard/drag-drop-copy-content.html
+editing/pasteboard/drag-drop-dead-frame.html
+editing/pasteboard/drag-drop-input-textarea.html
+editing/pasteboard/drag-drop-list.html
+editing/pasteboard/drag-drop-modifies-page.html
+editing/pasteboard/drag-drop-url-text.html
+editing/pasteboard/drag-image-in-about-blank-frame.html
+editing/pasteboard/drag-image-to-contenteditable-in-iframe.html
+editing/pasteboard/drag-list-item.html
+editing/pasteboard/drag-selected-image-to-contenteditable.html
+editing/pasteboard/drop-file-svg.html
+editing/pasteboard/drop-inputtext-acquires-style.html
+editing/pasteboard/drop-link.html
+editing/pasteboard/drop-text-events.html
+editing/pasteboard/drop-text-without-selection.html
+editing/pasteboard/entries-api
+editing/pasteboard/file-drag-to-editable.html [ Skip ]
 editing/pasteboard/file-input-files-access.html
 fast/dom/FileList-iterator.html
 fast/dom/Window/window-postmessage-clone-frames.html
@@ -618,11 +622,14 @@ fast/files/workers/worker-read-blob-async.html
 fast/files/workers/worker-read-blob-sync.html
 fast/files/workers/worker-read-file-async.html
 fast/files/workers/worker-read-file-sync.html
+fast/forms/file/entries-api/drag-folder-webkitEntries.html
+fast/forms/file/entries-api/webkitdirectory-drag-folder.html
+fast/forms/file/entries-api/webkitdirectory-drag-folder-webkitEntries.html
 fast/forms/file/file-input-change-event.html
 fast/forms/file/file-input-reset.html
 fast/forms/file/get-file-upload.html
-fast/forms/file/input-file-directory-upload.html
 fast/forms/file/input-file-re-render.html
+fast/forms/file/input-file-value.html
 fast/forms/file/input-file-write-files.html
 fast/forms/file/recover-file-input-in-unposted-form.html
 fast/forms/file/selected-files-from-history-state.html
@@ -690,23 +697,48 @@ http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
 
 # Resource Load Statistics are only supported in WebKit2.
-http/tests/loading/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Pass Timeout ]
-http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html [ Pass ]
-webkit.org/b/171785 http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html [ Pass Failure ]
-webkit.org/b/171756 http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Pass Failure ]
-http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
-webkit.org/b/172452 http/tests/loading/resourceLoadStatistics/grandfathering.html [ Pass Failure Timeout ]
-webkit.org/b/173499 http/tests/loading/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
-http/tests/loading/resourceLoadStatistics/prune-statistics.html [ Pass ]
+http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Pass ]
+http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Pass ]
+http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html [ Pass ]
+webkit.org/b/187053 http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction.html [ Pass Timeout ]
+http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-to-prevalent.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-to-prevalent.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html [ Pass ]
+http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
+http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
+webkit.org/b/180703 http/tests/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
+http/tests/resourceLoadStatistics/prune-statistics.html [ Pass ]
+http/tests/resourceLoadStatistics [ Pass ]
+http/tests/websocket/connection-refusal-in-frame-resource-load-statistics.html [ Pass ]
+# These are only supported behind a compile time flag in macOS High Sierra + iOS 11, and above.
+http/tests/resourceLoadStatistics/cookie-deletion.html [ Skip ]
+http/tests/resourceLoadStatistics/cookies-with-and-without-user-interaction.html [ Skip ]
+http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Skip ]
+http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Skip ]
+http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Skip ]
+http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html [ Skip ]
+http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html [ Skip ]
+
+# Process swapping is only implemented on WebKit2.
+http/tests/navigation/process-swap-window-open.html [ Pass ]
+
+# Cross-Origin-Resource-Policy response header is only implemented in WebKit2.
+http/wpt/cross-origin-resource-policy/ [ Pass ]
+
+http/tests/navigation/useragent-reload.php [ Pass ]
+storage/indexeddb/modern/opendatabase-after-storage-crash.html [ Pass ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################
@@ -722,3 +754,18 @@ http/tests/loading/resourceLoadStatistics/prune-statistics.html [ Pass ]
 
 webkit.org/b/168092 media/track/track-cues-sorted-before-dispatch.html [ Pass Failure ]
 
+webkit.org/b/172662 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary-cookie.html [ Pass Failure ]
+webkit.org/b/172662 [ Debug ] http/tests/cache/disk-cache/redirect-chain-limits.html [ Pass Failure ]
+
+webkit.org/b/174471 webrtc/filtering-ice-candidate-after-reload.html [ Pass Timeout ]
+
+webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]
+
+webkit.org/b/183139 fast/events/blur-focus-window-should-blur-focus-element.html
+webkit.org/b/183140 fast/selectors/querySelector-window-inactive.html
+
+webkit.org/b/183801 http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html [ Pass Failure ]
+
+webkit.org/b/186406 compositing/iframes/display-none-subframe.html [ Pass Failure ]
+
+webkit.org/b/187766 http/wpt/service-workers/update-service-worker.https.html [ Pass Timeout ]

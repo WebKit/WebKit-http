@@ -7,19 +7,19 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_MODULES_DESKTOP_CAPTURE_DESKTOP_CAPTURE_OPTIONS_H_
-#define WEBRTC_MODULES_DESKTOP_CAPTURE_DESKTOP_CAPTURE_OPTIONS_H_
+#ifndef MODULES_DESKTOP_CAPTURE_DESKTOP_CAPTURE_OPTIONS_H_
+#define MODULES_DESKTOP_CAPTURE_DESKTOP_CAPTURE_OPTIONS_H_
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/scoped_ref_ptr.h"
+#include "rtc_base/constructormagic.h"
+#include "rtc_base/scoped_ref_ptr.h"
 
 #if defined(USE_X11)
-#include "webrtc/modules/desktop_capture/x11/shared_x_display.h"
+#include "modules/desktop_capture/x11/shared_x_display.h"
 #endif
 
 #if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
-#include "webrtc/modules/desktop_capture/mac/desktop_configuration_monitor.h"
-#include "webrtc/modules/desktop_capture/mac/full_screen_chrome_window_detector.h"
+#include "modules/desktop_capture/mac/desktop_configuration_monitor.h"
+#include "modules/desktop_capture/mac/full_screen_chrome_window_detector.h"
 #endif
 
 namespace webrtc {
@@ -49,14 +49,22 @@ class DesktopCaptureOptions {
 #endif
 
 #if defined(WEBRTC_MAC) && !defined(WEBRTC_IOS)
+  // TODO(zijiehe): Remove both DesktopConfigurationMonitor and
+  // FullScreenChromeWindowDetector out of DesktopCaptureOptions. It's not
+  // reasonable for external consumers to set these two parameters.
   DesktopConfigurationMonitor* configuration_monitor() const {
     return configuration_monitor_;
   }
+  // If nullptr is set, ScreenCapturer won't work and WindowCapturer may return
+  // inaccurate result from IsOccluded() function.
   void set_configuration_monitor(
       rtc::scoped_refptr<DesktopConfigurationMonitor> m) {
     configuration_monitor_ = m;
   }
 
+  // TODO(zijiehe): Instead of FullScreenChromeWindowDetector, provide a
+  // FullScreenWindowDetector for external consumers to detect the target
+  // fullscreen window.
   FullScreenChromeWindowDetector* full_screen_chrome_window_detector() const {
     return full_screen_window_detector_;
   }
@@ -64,6 +72,9 @@ class DesktopCaptureOptions {
       rtc::scoped_refptr<FullScreenChromeWindowDetector> detector) {
     full_screen_window_detector_ = detector;
   }
+
+  bool allow_iosurface() const { return allow_iosurface_; }
+  void set_allow_iosurface(bool allow) { allow_iosurface_ = allow; }
 #endif
 
   // Flag indicating that the capturer should use screen change notifications.
@@ -83,8 +94,6 @@ class DesktopCaptureOptions {
   // Flag that should be set if the consumer uses updated_region() and the
   // capturer should try to provide correct updated_region() for the frames it
   // generates (e.g. by comparing each frame with the previous one).
-  // TODO(zijiehe): WindowCapturer ignores this opinion until we merge
-  // ScreenCapturer and WindowCapturer interfaces.
   bool detect_updated_region() const { return detect_updated_region_; }
   void set_detect_updated_region(bool detect_updated_region) {
     detect_updated_region_ = detect_updated_region;
@@ -99,9 +108,7 @@ class DesktopCaptureOptions {
   }
   // Allowing directx based capturer or not, this capturer works on windows 7
   // with platform update / windows 8 or upper.
-  bool allow_directx_capturer() const {
-    return allow_directx_capturer_;
-  }
+  bool allow_directx_capturer() const { return allow_directx_capturer_; }
   void set_allow_directx_capturer(bool enabled) {
     allow_directx_capturer_ = enabled;
   }
@@ -116,6 +123,7 @@ class DesktopCaptureOptions {
   rtc::scoped_refptr<DesktopConfigurationMonitor> configuration_monitor_;
   rtc::scoped_refptr<FullScreenChromeWindowDetector>
       full_screen_window_detector_;
+  bool allow_iosurface_ = false;
 #endif
 
 #if defined(WEBRTC_WIN)
@@ -133,4 +141,4 @@ class DesktopCaptureOptions {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_DESKTOP_CAPTURE_DESKTOP_CAPTURE_OPTIONS_H_
+#endif  // MODULES_DESKTOP_CAPTURE_DESKTOP_CAPTURE_OPTIONS_H_

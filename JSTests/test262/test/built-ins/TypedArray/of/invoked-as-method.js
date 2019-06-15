@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.of
 description: >
   "of" cannot be invoked as a method of %TypedArray%
-info: >
+info: |
   22.2.2.2 %TypedArray%.of ( ...items )
 
   ...
@@ -16,6 +16,7 @@ info: >
   1. Let newTypedArray be ? Construct(constructor, argumentList).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.throws(TypeError, function() {

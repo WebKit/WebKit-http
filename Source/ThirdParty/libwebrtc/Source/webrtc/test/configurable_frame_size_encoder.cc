@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/configurable_frame_size_encoder.h"
+#include "test/configurable_frame_size_encoder.h"
 
 #include <string.h>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/common_video/include/video_frame.h"
-#include "webrtc/modules/video_coding/include/video_codec_interface.h"
-#include "webrtc/test/gtest.h"
+#include "common_video/include/video_frame.h"
+#include "modules/video_coding/include/video_codec_interface.h"
+#include "rtc_base/checks.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace test {
@@ -42,8 +42,8 @@ int32_t ConfigurableFrameSizeEncoder::Encode(
     const VideoFrame& inputImage,
     const CodecSpecificInfo* codecSpecificInfo,
     const std::vector<FrameType>* frame_types) {
-  EncodedImage encodedImage(
-      buffer_.get(), current_frame_size_, max_frame_size_);
+  EncodedImage encodedImage(buffer_.get(), current_frame_size_,
+                            max_frame_size_);
   encodedImage._completeFrame = true;
   encodedImage._encodedHeight = inputImage.height();
   encodedImage._encodedWidth = inputImage.width();
@@ -74,12 +74,8 @@ int32_t ConfigurableFrameSizeEncoder::SetChannelParameters(uint32_t packet_loss,
 }
 
 int32_t ConfigurableFrameSizeEncoder::SetRateAllocation(
-    const BitrateAllocation& allocation,
+    const VideoBitrateAllocation& allocation,
     uint32_t framerate) {
-  return WEBRTC_VIDEO_CODEC_OK;
-}
-
-int32_t ConfigurableFrameSizeEncoder::SetPeriodicKeyFrames(bool enable) {
   return WEBRTC_VIDEO_CODEC_OK;
 }
 

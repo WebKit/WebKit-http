@@ -30,10 +30,8 @@
 
 #import "WKWebProcessPlugInNodeHandleInternal.h"
 
-using namespace WebKit;
-
 @implementation WKWebProcessPlugInHitTestResult {
-    API::ObjectStorage<InjectedBundleHitTestResult> _hitTestResult;
+    API::ObjectStorage<WebKit::InjectedBundleHitTestResult> _hitTestResult;
 }
 
 - (void)dealloc
@@ -44,8 +42,7 @@ using namespace WebKit;
 
 - (WKWebProcessPlugInNodeHandle *)nodeHandle
 {
-    auto nodeHandle = _hitTestResult->nodeHandle();
-    return nodeHandle ? [wrapper(*nodeHandle.leakRef()) autorelease] : nil;
+    return WebKit::wrapper(_hitTestResult->nodeHandle());
 }
 
 #pragma mark WKObject protocol implementation

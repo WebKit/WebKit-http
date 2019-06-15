@@ -30,14 +30,16 @@
 
 // FIXME 169871: should be subclass of EventTarget
 [
+    ActiveDOMObject,
     Conditional=MEDIA_STREAM,
     NoInterfaceObject,
-] interface MediaDevices {
+] interface MediaDevices : EventTarget {
     attribute EventHandler ondevicechange;
     Promise<sequence<MediaDeviceInfo>> enumerateDevices();
 
     MediaTrackSupportedConstraints getSupportedConstraints();
     [PrivateIdentifier, PublicIdentifier] Promise<MediaStream> getUserMedia(optional MediaStreamConstraints constraints);
+    [EnabledAtRuntime=ScreenCapture] Promise<MediaStream> getDisplayMedia(optional MediaStreamConstraints constraints);
 };
 
 [
@@ -45,4 +47,14 @@
 ] dictionary MediaStreamConstraints {
     (boolean or MediaTrackConstraints) video = false;
     (boolean or MediaTrackConstraints) audio = false;
+};
+
+[
+    Conditional=MEDIA_STREAM,
+    EnabledAtRuntime=ScreenCapture
+] enum DisplayCaptureSurfaceType {
+    "monitor",
+    "window",
+    "application",
+    "browser"
 };

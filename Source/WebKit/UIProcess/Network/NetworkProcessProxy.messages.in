@@ -29,7 +29,11 @@ messages -> NetworkProcessProxy LegacyReceiver {
     DidDeleteWebsiteData(uint64_t callbackID)
     DidDeleteWebsiteDataForOrigins(uint64_t callbackID)
 
-    GrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID, Vector<String> paths)
+    DidSyncAllCookies()
+
+    DidWriteBlobToFilePath(bool success, uint64_t callbackID)
+
+    GrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID, Vector<String> paths)
 
     ProcessReadyToSuspend()
     SetIsHoldingLockedFiles(bool isHoldingLockedFiles)
@@ -39,7 +43,15 @@ messages -> NetworkProcessProxy LegacyReceiver {
     LogDiagnosticMessageWithResult(uint64_t pageID, String message, String description, uint32_t result, enum WebCore::ShouldSample shouldSample)
     LogDiagnosticMessageWithValue(uint64_t pageID, String message, String description, double value, unsigned significantFigures, enum WebCore::ShouldSample shouldSample)
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    CanAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t pageID, uint64_t frameID, WebCore::ProtectionSpace protectionSpace)
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    DidUpdateBlockCookies(uint64_t callbackId)
+    StorageAccessRequestResult(bool wasGranted, uint64_t contextId)
+    AllStorageAccessEntriesResult(Vector<String> domains, uint64_t contextId)
+    DidRemoveAllStorageAccess(uint64_t contextId)
 #endif
+#if ENABLE(CONTENT_EXTENSIONS)
+    ContentExtensionRules(WebKit::UserContentControllerIdentifier identifier)
+#endif
+
+    RetrieveCacheStorageParameters(PAL::SessionID sessionID)
 }

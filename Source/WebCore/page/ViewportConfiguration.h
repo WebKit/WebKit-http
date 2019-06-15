@@ -25,17 +25,21 @@
 
 #pragma once
 
+#include "DisabledAdaptations.h"
 #include "FloatSize.h"
 #include "IntSize.h"
 #include "ViewportArguments.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/OptionSet.h>
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
 
 static const double forceAlwaysUserScalableMaximumScale = 5.0;
 static const double forceAlwaysUserScalableMinimumScale = 1.0;
-
-class TextStream;
 
 class ViewportConfiguration {
     WTF_MAKE_NONCOPYABLE(ViewportConfiguration); WTF_MAKE_FAST_ALLOCATED;
@@ -54,6 +58,14 @@ public:
         bool widthIsSet { false };
         bool heightIsSet { false };
         bool initialScaleIsSet { false };
+
+        bool operator==(const Parameters& other) const
+        {
+            return width == other.width && height == other.height
+                && initialScale == other.initialScale && minimumScale == other.minimumScale && maximumScale == other.maximumScale
+                && allowsUserScaling == other.allowsUserScaling && allowsShrinkToFit == other.allowsShrinkToFit && avoidsUnsafeArea == other.avoidsUnsafeArea
+                && widthIsSet == other.widthIsSet && heightIsSet == other.heightIsSet && initialScaleIsSet == other.initialScaleIsSet;
+        }
     };
 
     WEBCORE_EXPORT ViewportConfiguration();
@@ -64,8 +76,13 @@ public:
     const IntSize& contentsSize() const { return m_contentSize; }
     WEBCORE_EXPORT bool setContentsSize(const IntSize&);
 
+    const FloatSize& viewLayoutSize() const { return m_viewLayoutSize; }
+
     const FloatSize& minimumLayoutSize() const { return m_minimumLayoutSize; }
-    WEBCORE_EXPORT bool setMinimumLayoutSize(const FloatSize&);
+    WEBCORE_EXPORT bool setViewLayoutSize(const FloatSize&);
+
+    const OptionSet<DisabledAdaptations>& disabledAdaptations() const { return m_disabledAdaptations; }
+    WEBCORE_EXPORT bool setDisabledAdaptations(const OptionSet<DisabledAdaptations>&);
 
     const ViewportArguments& viewportArguments() const { return m_viewportArguments; }
     WEBCORE_EXPORT bool setViewportArguments(const ViewportArguments&);
@@ -91,7 +108,7 @@ public:
     WEBCORE_EXPORT static Parameters testingParameters();
     
 #ifndef NDEBUG
-    WTF::CString description() const;
+    String description() const;
     WEBCORE_EXPORT void dump() const;
 #endif
 
@@ -102,20 +119,27 @@ private:
     int layoutWidth() const;
     int layoutHeight() const;
 
+    bool shouldOverrideDeviceWidthAndShrinkToFit() const;
+    bool shouldIgnoreScalingConstraintsRegardlessOfContentSize() const;
     bool shouldIgnoreScalingConstraints() const;
     bool shouldIgnoreVerticalScalingConstraints() const;
     bool shouldIgnoreHorizontalScalingConstraints() const;
+
+    void updateMinimumLayoutSize();
 
     Parameters m_configuration;
     Parameters m_defaultConfiguration;
     IntSize m_contentSize;
     FloatSize m_minimumLayoutSize;
+    FloatSize m_viewLayoutSize;
     ViewportArguments m_viewportArguments;
+    OptionSet<DisabledAdaptations> m_disabledAdaptations;
 
     bool m_canIgnoreScalingConstraints;
     bool m_forceAlwaysUserScalable;
 };
 
-TextStream& operator<<(TextStream&, const ViewportConfiguration::Parameters&);
+WTF::TextStream& operator<<(WTF::TextStream&, const ViewportConfiguration::Parameters&);
+WTF::TextStream& operator<<(WTF::TextStream&, const ViewportConfiguration&);
 
 } // namespace WebCore

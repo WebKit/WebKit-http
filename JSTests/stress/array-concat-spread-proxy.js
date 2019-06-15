@@ -35,5 +35,6 @@ function arrayEq(a, b) {
         Array.prototype.concat.call(p,[]);
         passed = false;
     } catch (e) { }
-
+    if (!passed)
+        throw "failed to throw spreading revoked proxy";
 }

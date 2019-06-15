@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_DESKTOP_CAPTURE_MAC_DESKTOP_CONFIGURATION_H_
-#define WEBRTC_MODULES_DESKTOP_CAPTURE_MAC_DESKTOP_CONFIGURATION_H_
+#ifndef MODULES_DESKTOP_CAPTURE_MAC_DESKTOP_CONFIGURATION_H_
+#define MODULES_DESKTOP_CAPTURE_MAC_DESKTOP_CONFIGURATION_H_
 
 #include <ApplicationServices/ApplicationServices.h>
 #include <vector>
 
-#include "webrtc/typedefs.h"
-#include "webrtc/modules/desktop_capture/desktop_geometry.h"
+#include "modules/desktop_capture/desktop_geometry.h"
 
 namespace webrtc {
 
@@ -40,6 +39,9 @@ struct MacDisplayConfiguration {
 
   // Scale factor from DIPs to physical pixels.
   float dip_to_pixel_scale = 1.0f;
+
+  // Display type, built-in or external.
+  bool is_builtin;
 };
 
 typedef std::vector<MacDisplayConfiguration> MacDisplayConfigurations;
@@ -57,15 +59,19 @@ struct MacDesktopConfiguration {
   MacDesktopConfiguration& operator=(const MacDesktopConfiguration& other);
   MacDesktopConfiguration& operator=(MacDesktopConfiguration&& other);
 
-  // Returns the desktop & display configurations in Cocoa-style "bottom-up"
+  // Returns the desktop & display configurations.
+  // If BottomLeftOrigin is used, the output is in Cocoa-style "bottom-up"
   // (the origin is the bottom-left of the primary monitor, and coordinates
-  // increase as you move up the screen).
+  // increase as you move up the screen). Otherwise, the configuration will be
+  // converted to follow top-left coordinate system as Windows and X11.
   static MacDesktopConfiguration GetCurrent(Origin origin);
 
   // Returns true if the given desktop configuration equals this one.
   bool Equals(const MacDesktopConfiguration& other);
 
-  // Returns the pointer to the display configuration with the specified id.
+  // If |id| corresponds to the built-in display, return its configuration,
+  // otherwise return the configuration for the display with the specified id,
+  // or nullptr if no such display exists.
   const MacDisplayConfiguration* FindDisplayConfigurationById(
       CGDirectDisplayID id);
 
@@ -85,4 +91,4 @@ struct MacDesktopConfiguration {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_DESKTOP_CAPTURE_MAC_DESKTOP_CONFIGURATION_H_
+#endif  // MODULES_DESKTOP_CAPTURE_MAC_DESKTOP_CONFIGURATION_H_

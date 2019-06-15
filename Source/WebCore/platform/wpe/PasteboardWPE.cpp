@@ -37,11 +37,6 @@ std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
     return std::make_unique<Pasteboard>();
 }
 
-std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
-{
-    return std::make_unique<Pasteboard>();
-}
-
 Pasteboard::Pasteboard()
 {
 }
@@ -54,16 +49,34 @@ bool Pasteboard::hasData()
     return !types.isEmpty();
 }
 
-Vector<String> Pasteboard::types()
+Vector<String> Pasteboard::typesSafeForBindings(const String&)
+{
+    notImplemented();
+    return { };
+}
+
+Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
 {
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types);
     return types;
 }
 
+String Pasteboard::readOrigin()
+{
+    notImplemented(); // webkit.org/b/177633: [GTK] Move to new Pasteboard API
+    return { };
+}
+
 String Pasteboard::readString(const String& type)
 {
     return platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, type);
+}
+
+String Pasteboard::readStringInCustomData(const String&)
+{
+    notImplemented();
+    return { };
 }
 
 void Pasteboard::writeString(const String& type, const String& text)
@@ -84,9 +97,13 @@ void Pasteboard::read(PasteboardPlainText& text)
     text.text = platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, "text/plain;charset=utf-8");
 }
 
-void Pasteboard::read(PasteboardWebContentReader&)
+void Pasteboard::read(PasteboardWebContentReader&, WebContentReadingPolicy)
 {
     notImplemented();
+}
+
+void Pasteboard::read(PasteboardFileReader&)
+{
 }
 
 void Pasteboard::write(const PasteboardURL& url)
@@ -108,9 +125,10 @@ void Pasteboard::write(const PasteboardWebContent& content)
     platformStrategies()->pasteboardStrategy()->writeToPasteboard(content);
 }
 
-Vector<String> Pasteboard::readFilenames()
+Pasteboard::FileContentState Pasteboard::fileContentState()
 {
-    return Vector<String>();
+    notImplemented();
+    return FileContentState::NoFileOrImageData;
 }
 
 bool Pasteboard::canSmartReplace()
@@ -127,7 +145,11 @@ void Pasteboard::writePlainText(const String& text, SmartReplaceOption)
     writeString("text/plain;charset=utf-8", text);
 }
 
-void Pasteboard::writePasteboard(const Pasteboard&)
+void Pasteboard::writeCustomData(const PasteboardCustomData&)
+{
+}
+
+void Pasteboard::write(const Color&)
 {
 }
 

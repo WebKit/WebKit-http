@@ -53,7 +53,7 @@
 
 namespace WebCore {
 
-static StaticLock threadSetMutex;
+static Lock threadSetMutex;
 
 static HashSet<WorkerThread*>& workerThreads()
 {
@@ -64,7 +64,7 @@ static HashSet<WorkerThread*>& workerThreads()
 
 unsigned WorkerThread::workerThreadCount()
 {
-    std::lock_guard<StaticLock> lock(threadSetMutex);
+    std::lock_guard<Lock> lock(threadSetMutex);
 
     return workerThreads().size();
 }
@@ -72,81 +72,87 @@ unsigned WorkerThread::workerThreadCount()
 struct WorkerThreadStartupData {
     WTF_MAKE_NONCOPYABLE(WorkerThreadStartupData); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WorkerThreadStartupData(const URL& scriptURL, const String& identifier, const String& userAgent, const String& sourceCode, WorkerThreadStartMode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin& topOrigin, MonotonicTime timeOrigin);
+    WorkerThreadStartupData(const URL& scriptURL, const String& name, const String& identifier, const String& userAgent, bool isOnline, const String& sourceCode, WorkerThreadStartMode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin& topOrigin, MonotonicTime timeOrigin, PAL::SessionID);
 
     URL m_scriptURL;
+    Ref<SecurityOrigin> m_origin;
+    String m_name;
     String m_identifier;
     String m_userAgent;
     String m_sourceCode;
     WorkerThreadStartMode m_startMode;
     ContentSecurityPolicyResponseHeaders m_contentSecurityPolicyResponseHeaders;
     bool m_shouldBypassMainWorldContentSecurityPolicy;
+    bool m_isOnline;
     Ref<SecurityOrigin> m_topOrigin;
     MonotonicTime m_timeOrigin;
+    PAL::SessionID m_sessionID;
 };
 
-WorkerThreadStartupData::WorkerThreadStartupData(const URL& scriptURL, const String& identifier, const String& userAgent, const String& sourceCode, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin& topOrigin, MonotonicTime timeOrigin)
+WorkerThreadStartupData::WorkerThreadStartupData(const URL& scriptURL, const String& name, const String& identifier, const String& userAgent, bool isOnline, const String& sourceCode, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin& topOrigin, MonotonicTime timeOrigin, PAL::SessionID sessionID)
     : m_scriptURL(scriptURL.isolatedCopy())
+    , m_origin(SecurityOrigin::create(m_scriptURL)->isolatedCopy())
+    , m_name(name.isolatedCopy())
     , m_identifier(identifier.isolatedCopy())
     , m_userAgent(userAgent.isolatedCopy())
     , m_sourceCode(sourceCode.isolatedCopy())
     , m_startMode(startMode)
     , m_contentSecurityPolicyResponseHeaders(contentSecurityPolicyResponseHeaders.isolatedCopy())
     , m_shouldBypassMainWorldContentSecurityPolicy(shouldBypassMainWorldContentSecurityPolicy)
+    , m_isOnline(isOnline)
     , m_topOrigin(topOrigin.isolatedCopy())
     , m_timeOrigin(timeOrigin)
+    , m_sessionID(sessionID.isolatedCopy())
 {
 }
 
-WorkerThread::WorkerThread(const URL& scriptURL, const String& identifier, const String& userAgent, const String& sourceCode, WorkerLoaderProxy& workerLoaderProxy, WorkerReportingProxy& workerReportingProxy, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, JSC::RuntimeFlags runtimeFlags)
+WorkerThread::WorkerThread(const URL& scriptURL, const String& name, const String& identifier, const String& userAgent, bool isOnline, const String& sourceCode, WorkerLoaderProxy& workerLoaderProxy, WorkerDebuggerProxy& workerDebuggerProxy, WorkerReportingProxy& workerReportingProxy, WorkerThreadStartMode startMode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, const SecurityOrigin& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, JSC::RuntimeFlags runtimeFlags, PAL::SessionID sessionID)
     : m_workerLoaderProxy(workerLoaderProxy)
+    , m_workerDebuggerProxy(workerDebuggerProxy)
     , m_workerReportingProxy(workerReportingProxy)
     , m_runtimeFlags(runtimeFlags)
-    , m_startupData(std::make_unique<WorkerThreadStartupData>(scriptURL, identifier, userAgent, sourceCode, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, topOrigin, timeOrigin))
+    , m_startupData(std::make_unique<WorkerThreadStartupData>(scriptURL, name, identifier, userAgent, isOnline, sourceCode, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, topOrigin, timeOrigin, sessionID))
 #if ENABLE(INDEXED_DATABASE)
     , m_idbConnectionProxy(connectionProxy)
 #endif
-#if ENABLE(WEB_SOCKETS)
     , m_socketProvider(socketProvider)
-#endif
 {
 #if !ENABLE(INDEXED_DATABASE)
     UNUSED_PARAM(connectionProxy);
 #endif
-#if !ENABLE(WEB_SOCKETS)
-    UNUSED_PARAM(socketProvider);
-#endif
 
-    std::lock_guard<StaticLock> lock(threadSetMutex);
+    std::lock_guard<Lock> lock(threadSetMutex);
 
     workerThreads().add(this);
 }
 
 WorkerThread::~WorkerThread()
 {
-    std::lock_guard<StaticLock> lock(threadSetMutex);
+    std::lock_guard<Lock> lock(threadSetMutex);
 
     ASSERT(workerThreads().contains(this));
     workerThreads().remove(this);
 }
 
-bool WorkerThread::start()
+void WorkerThread::start(WTF::Function<void(const String&)>&& evaluateCallback)
 {
     // Mutex protection is necessary to ensure that m_thread is initialized when the thread starts.
     LockHolder lock(m_threadCreationAndWorkerGlobalScopeMutex);
 
     if (m_thread)
-        return true;
+        return;
 
-    m_thread = Thread::create("WebCore: Worker", [this] {
+    m_evaluateCallback = WTFMove(evaluateCallback);
+
+    m_thread = Thread::create(isServiceWorkerThread() ? "WebCore: Service Worker" : "WebCore: Worker", [this] {
         workerThread();
     });
-
-    return m_thread;
 }
 
 void WorkerThread::workerThread()
 {
+    auto protectedThis = makeRef(*this);
+
     // Propagate the mainThread's fenv to workers.
 #if PLATFORM(IOS)
     FloatingPointEnvironment::singleton().propagateMainThreadEnvironment();
@@ -163,7 +169,7 @@ void WorkerThread::workerThread()
         // while WorkerThread::stop() is accessing it. Note that WorkerThread::stop() can
         // be called before we've finished creating the WorkerGlobalScope.
         LockHolder lock(m_threadCreationAndWorkerGlobalScopeMutex);
-        m_workerGlobalScope = createWorkerGlobalScope(m_startupData->m_scriptURL, m_startupData->m_identifier, m_startupData->m_userAgent, m_startupData->m_contentSecurityPolicyResponseHeaders, m_startupData->m_shouldBypassMainWorldContentSecurityPolicy, WTFMove(m_startupData->m_topOrigin), m_startupData->m_timeOrigin);
+        m_workerGlobalScope = createWorkerGlobalScope(m_startupData->m_scriptURL, WTFMove(m_startupData->m_origin), m_startupData->m_name, m_startupData->m_identifier, m_startupData->m_userAgent, m_startupData->m_isOnline, m_startupData->m_contentSecurityPolicyResponseHeaders, m_startupData->m_shouldBypassMainWorldContentSecurityPolicy, WTFMove(m_startupData->m_topOrigin), m_startupData->m_timeOrigin, m_startupData->m_sessionID);
 
         scriptController = m_workerGlobalScope->script();
 
@@ -183,7 +189,14 @@ void WorkerThread::workerThread()
             scriptController->forbidExecution();
     }
 
-    scriptController->evaluate(ScriptSourceCode(m_startupData->m_sourceCode, m_startupData->m_scriptURL));
+    String exceptionMessage;
+    scriptController->evaluate(ScriptSourceCode(m_startupData->m_sourceCode, m_startupData->m_scriptURL), &exceptionMessage);
+    
+    callOnMainThread([evaluateCallback = WTFMove(m_evaluateCallback), message = exceptionMessage.isolatedCopy()] {
+        if (evaluateCallback)
+            evaluateCallback(message);
+    });
+    
     // Free the startup data to cause its member variable deref's happen on the worker's thread (since
     // all ref/derefs of these objects are happening on the thread at this point). Note that
     // WorkerThread::~WorkerThread happens on a different thread where it was created.
@@ -210,14 +223,20 @@ void WorkerThread::workerThread()
         // context will trigger the main thread to race against us to delete the WorkerThread
         // object, and the WorkerThread object owns the mutex we need to unlock after this.
         workerGlobalScopeToDelete = WTFMove(m_workerGlobalScope);
+
+        if (m_stoppedCallback)
+            callOnMainThread(WTFMove(m_stoppedCallback));
     }
 
     // The below assignment will destroy the context, which will in turn notify messaging proxy.
     // We cannot let any objects survive past thread exit, because no other thread will run GC or otherwise destroy them.
     workerGlobalScopeToDelete = nullptr;
 
-    // Clean up WebCore::ThreadGlobalData before WTF::WTFThreadData goes away!
+    // Clean up WebCore::ThreadGlobalData before WTF::Thread goes away!
     threadGlobalData().destroy();
+
+    // Send the last WorkerThread Ref to be Deref'ed on the main thread.
+    callOnMainThread([protectedThis = WTFMove(protectedThis)] { });
 
     // The thread object may be already destroyed from notification now, don't try to access "this".
     protector->detach();
@@ -245,12 +264,23 @@ void WorkerThread::runEventLoop()
     m_runLoop.run(m_workerGlobalScope.get());
 }
 
-void WorkerThread::stop()
+void WorkerThread::stop(WTF::Function<void()>&& stoppedCallback)
 {
     // Mutex protection is necessary to ensure that m_workerGlobalScope isn't changed by
     // WorkerThread::workerThread() while we're accessing it. Note also that stop() can
     // be called before m_workerGlobalScope is fully created.
-    LockHolder lock(m_threadCreationAndWorkerGlobalScopeMutex);
+    auto locker = Locker<Lock>::tryLock(m_threadCreationAndWorkerGlobalScopeMutex);
+    if (!locker) {
+        // The thread is still starting, spin the runloop and try again to avoid deadlocks if the worker thread
+        // needs to interact with the main thread during startup.
+        callOnMainThread([this, stoppedCallback = WTFMove(stoppedCallback)]() mutable {
+            stop(WTFMove(stoppedCallback));
+        });
+        return;
+    }
+
+    ASSERT(!m_stoppedCallback);
+    m_stoppedCallback = WTFMove(stoppedCallback);
 
     // Ensure that tasks are being handled by thread event loop. If script execution weren't forbidden, a while(1) loop in JS could keep the thread alive forever.
     if (m_workerGlobalScope) {
@@ -259,17 +289,7 @@ void WorkerThread::stop()
         m_runLoop.postTaskAndTerminate({ ScriptExecutionContext::Task::CleanupTask, [] (ScriptExecutionContext& context ) {
             WorkerGlobalScope& workerGlobalScope = downcast<WorkerGlobalScope>(context);
 
-#if ENABLE(INDEXED_DATABASE)
-            workerGlobalScope.stopIndexedDatabase();
-#endif
-
-            workerGlobalScope.stopActiveDOMObjects();
-
-            workerGlobalScope.inspectorController().workerTerminating();
-
-            // Event listeners would keep DOMWrapperWorld objects alive for too long. Also, they have references to JS objects,
-            // which become dangling once Heap is destroyed.
-            workerGlobalScope.removeAllEventListeners();
+            workerGlobalScope.prepareForTermination();
 
             // Stick a shutdown command at the end of the queue, so that we deal
             // with all the cleanup tasks the databases post first.
@@ -287,7 +307,7 @@ void WorkerThread::stop()
 
 void WorkerThread::releaseFastMallocFreeMemoryInAllThreads()
 {
-    std::lock_guard<StaticLock> lock(threadSetMutex);
+    std::lock_guard<Lock> lock(threadSetMutex);
 
     for (auto* workerThread : workerThreads()) {
         workerThread->runLoop().postTask([] (ScriptExecutionContext&) {
@@ -307,11 +327,7 @@ IDBClient::IDBConnectionProxy* WorkerThread::idbConnectionProxy()
 
 SocketProvider* WorkerThread::socketProvider()
 {
-#if ENABLE(WEB_SOCKETS)
     return m_socketProvider.get();
-#else
-    return nullptr;
-#endif
 }
 
 } // namespace WebCore

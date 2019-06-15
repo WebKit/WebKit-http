@@ -44,7 +44,6 @@
 #import "WebHistoryInternal.h"
 #import "WebKitFullScreenListener.h"
 #import "WebKitPrefix.h"
-#import "WebKitSystemInterface.h"
 #import "WebNSURLRequestExtras.h"
 #import "WebOpenPanelResultListener.h"
 #import "WebPlugin.h"
@@ -59,6 +58,8 @@
 #import <WebCore/ContextMenu.h>
 #import <WebCore/ContextMenuController.h>
 #import <WebCore/Cursor.h>
+#import <WebCore/DataListSuggestionPicker.h>
+#import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/Element.h>
 #import <WebCore/FileChooser.h>
 #import <WebCore/FileIconLoader.h>
@@ -79,6 +80,7 @@
 #import <WebCore/Page.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/ResourceRequest.h>
+#import <WebCore/SSLKeyGenerator.h>
 #import <WebCore/SerializedCryptoKeyWrap.h>
 #import <WebCore/Widget.h>
 #import <WebCore/WindowFeatures.h>
@@ -116,6 +118,8 @@ NSString *WebConsoleMessageCSSMessageSource = @"CSSMessageSource";
 NSString *WebConsoleMessageSecurityMessageSource = @"SecurityMessageSource";
 NSString *WebConsoleMessageContentBlockerMessageSource = @"ContentBlockerMessageSource";
 NSString *WebConsoleMessageOtherMessageSource = @"OtherMessageSource";
+NSString *WebConsoleMessageMediaMessageSource = @"MediaMessageSource";
+NSString *WebConsoleMessageWebRTCMessageSource = @"WebRTCMessageSource";
 
 NSString *WebConsoleMessageDebugMessageLevel = @"DebugMessageLevel";
 NSString *WebConsoleMessageLogMessageLevel = @"LogMessageLevel";
@@ -391,6 +395,10 @@ inline static NSString *stringForMessageSource(MessageSource source)
         return WebConsoleMessageContentBlockerMessageSource;
     case MessageSource::Other:
         return WebConsoleMessageOtherMessageSource;
+    case MessageSource::Media:
+        return WebConsoleMessageMediaMessageSource;
+    case MessageSource::WebRTC:
+        return WebConsoleMessageWebRTCMessageSource;
     }
     ASSERT_NOT_REACHED();
     return @"";
@@ -551,9 +559,9 @@ void WebChromeClient::setStatusbarText(const String& status)
 {
     // We want the temporaries allocated here to be released even before returning to the 
     // event loop; see <http://bugs.webkit.org/show_bug.cgi?id=9880>.
-    NSAutoreleasePool* localPool = [[NSAutoreleasePool alloc] init];
-    CallUIDelegate(m_webView, @selector(webView:setStatusText:), (NSString *)status);
-    [localPool drain];
+    @autoreleasepool {
+        CallUIDelegate(m_webView, @selector(webView:setStatusText:), (NSString *)status);
+    }
 }
 
 bool WebChromeClient::supportsImmediateInvalidation()
@@ -716,6 +724,14 @@ std::unique_ptr<ColorChooser> WebChromeClient::createColorChooser(ColorChooserCl
 
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+std::unique_ptr<DataListSuggestionPicker> WebChromeClient::createDataListSuggestionPicker(DataListSuggestionsClient& client)
+{
+    ASSERT_NOT_REACHED();
+    return nullptr;
+}
+#endif
+
 #if ENABLE(POINTER_LOCK)
 bool WebChromeClient::requestPointerLock()
 {
@@ -758,6 +774,10 @@ void WebChromeClient::runOpenPanel(Frame&, FileChooser& chooser)
         [listener cancel];
     [listener release];
     END_BLOCK_OBJC_EXCEPTIONS;
+}
+
+void WebChromeClient::showShareSheet(ShareDataWithParsedURL&, CompletionHandler<void(bool)>&&)
+{
 }
 
 void WebChromeClient::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& iconLoader)
@@ -876,12 +896,6 @@ bool WebChromeClient::selectItemAlignmentFollowsMenuWritingDirection()
     return true;
 }
 
-bool WebChromeClient::hasOpenedPopup() const
-{
-    notImplemented();
-    return false;
-}
-
 RefPtr<WebCore::PopupMenu> WebChromeClient::createPopupMenu(WebCore::PopupMenuClient& client) const
 {
 #if !PLATFORM(IOS)
@@ -912,6 +926,10 @@ bool WebChromeClient::shouldPaintEntireContents() const
 
 void WebChromeClient::attachRootGraphicsLayer(Frame& frame, GraphicsLayer* graphicsLayer)
 {
+#if !PLATFORM(MAC)
+    UNUSED_PARAM(frame);
+    UNUSED_PARAM(graphicsLayer);
+#else
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
     NSView *documentView = [[kit(&frame) frameView] documentView];
@@ -927,6 +945,7 @@ void WebChromeClient::attachRootGraphicsLayer(Frame& frame, GraphicsLayer* graph
     else
         [webHTMLView detachRootLayer];
     END_BLOCK_OBJC_EXCEPTIONS;
+#endif
 }
 
 void WebChromeClient::attachViewOverlayGraphicsLayer(Frame&, GraphicsLayer*)
@@ -953,14 +972,15 @@ void WebChromeClient::scheduleCompositingLayerFlush()
 bool WebChromeClient::supportsVideoFullscreen(HTMLMediaElementEnums::VideoFullscreenMode)
 {
 #if PLATFORM(IOS)
-    if (!Settings::avKitEnabled())
+    if (!DeprecatedGlobalSettings::avKitEnabled())
         return false;
 #endif
     return true;
 }
 
-void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode mode)
+void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode mode, bool standby)
 {
+    ASSERT_UNUSED(standby, !standby);
     ASSERT(mode != HTMLMediaElementEnums::VideoFullscreenModeNone);
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     [m_webView _enterVideoFullscreenForVideoElement:&videoElement mode:mode];
@@ -1049,7 +1069,7 @@ bool WebChromeClient::wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>&
     SEL selector = @selector(webCryptoMasterKeyForWebView:);
     if ([[m_webView UIDelegate] respondsToSelector:selector]) {
         NSData *keyData = CallUIDelegate(m_webView, selector);
-        masterKey.append((uint8_t*)[keyData bytes], [keyData length]);
+        masterKey.append(static_cast<uint8_t*>(const_cast<void*>([keyData bytes])), [keyData length]);
     } else if (!getDefaultWebCryptoMasterKey(masterKey))
         return false;
 
@@ -1062,7 +1082,7 @@ bool WebChromeClient::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<
     SEL selector = @selector(webCryptoMasterKeyForWebView:);
     if ([[m_webView UIDelegate] respondsToSelector:selector]) {
         NSData *keyData = CallUIDelegate(m_webView, selector);
-        masterKey.append((uint8_t*)[keyData bytes], [keyData length]);
+        masterKey.append(static_cast<uint8_t*>(const_cast<void*>([keyData bytes])), [keyData length]);
     } else if (!getDefaultWebCryptoMasterKey(masterKey))
         return false;
 
@@ -1118,3 +1138,11 @@ void WebChromeClient::setMockMediaPlaybackTargetPickerState(const String& name, 
 }
 
 #endif
+
+String WebChromeClient::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const WebCore::URL& url) const
+{
+    SEL selector = @selector(signedPublicKeyAndChallengeStringForWebView:);
+    if ([[m_webView UIDelegate] respondsToSelector:selector])
+        return CallUIDelegate(m_webView, selector);
+    return WebCore::signedPublicKeyAndChallengeString(keySizeIndex, challengeString, url);
+}

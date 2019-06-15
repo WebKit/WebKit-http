@@ -2,8 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.4.3.1
+esid: sec-weakset.prototype.add
 description: Throws TypeError if `value` is not Object.
-info: >
+info: |
   WeakSet.prototype.add ( value )
 
   4. If Type(value) is not Object, throw a TypeError exception.

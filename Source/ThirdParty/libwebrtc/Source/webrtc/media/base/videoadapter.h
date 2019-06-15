@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_BASE_VIDEOADAPTER_H_
-#define WEBRTC_MEDIA_BASE_VIDEOADAPTER_H_
+#ifndef MEDIA_BASE_VIDEOADAPTER_H_
+#define MEDIA_BASE_VIDEOADAPTER_H_
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/media/base/videocommon.h"
+#include "absl/types/optional.h"
+#include "media/base/videocommon.h"
+#include "rtc_base/constructormagic.h"
+#include "rtc_base/criticalsection.h"
 
 namespace cricket {
 
@@ -48,7 +48,7 @@ class VideoAdapter {
   // requested aspect ratio is orientation agnostic and will be adjusted to
   // maintain the input orientation, so it doesn't matter if e.g. 1280x720 or
   // 720x1280 is requested.
-  void OnOutputFormatRequest(const VideoFormat& format);
+  void OnOutputFormatRequest(const absl::optional<VideoFormat>& format);
 
   // Requests the output frame size from |AdaptFrameResolution| to have as close
   // as possible to |target_pixel_count| pixels (if set) but no more than
@@ -58,7 +58,7 @@ class VideoAdapter {
   // Set |max_pixel_count| and/or |max_framerate_fps| to
   // std::numeric_limit<int>::max() if no upper limit is desired.
   void OnResolutionFramerateRequest(
-      const rtc::Optional<int>& target_pixel_count,
+      const absl::optional<int>& target_pixel_count,
       int max_pixel_count,
       int max_framerate_fps);
 
@@ -75,15 +75,17 @@ class VideoAdapter {
   // Resolution must be divisible by this factor.
   const int required_resolution_alignment_;
   // The target timestamp for the next frame based on requested format.
-  rtc::Optional<int64_t> next_frame_timestamp_ns_ GUARDED_BY(critical_section_);
+  absl::optional<int64_t> next_frame_timestamp_ns_
+      RTC_GUARDED_BY(critical_section_);
 
   // Max number of pixels requested via calls to OnOutputFormatRequest,
   // OnResolutionRequest respectively.
   // The adapted output format is the minimum of these.
-  rtc::Optional<VideoFormat> requested_format_ GUARDED_BY(critical_section_);
-  int resolution_request_target_pixel_count_ GUARDED_BY(critical_section_);
-  int resolution_request_max_pixel_count_ GUARDED_BY(critical_section_);
-  int max_framerate_request_ GUARDED_BY(critical_section_);
+  absl::optional<VideoFormat> requested_format_
+      RTC_GUARDED_BY(critical_section_);
+  int resolution_request_target_pixel_count_ RTC_GUARDED_BY(critical_section_);
+  int resolution_request_max_pixel_count_ RTC_GUARDED_BY(critical_section_);
+  int max_framerate_request_ RTC_GUARDED_BY(critical_section_);
 
   // The critical section to protect the above variables.
   rtc::CriticalSection critical_section_;
@@ -93,4 +95,4 @@ class VideoAdapter {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_BASE_VIDEOADAPTER_H_
+#endif  // MEDIA_BASE_VIDEOADAPTER_H_

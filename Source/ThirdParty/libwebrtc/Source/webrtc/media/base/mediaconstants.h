@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_BASE_MEDIACONSTANTS_H_
-#define WEBRTC_MEDIA_BASE_MEDIACONSTANTS_H_
+#ifndef MEDIA_BASE_MEDIACONSTANTS_H_
+#define MEDIA_BASE_MEDIACONSTANTS_H_
 
 #include <string>
 
@@ -30,11 +30,13 @@ extern const char kRtxCodecName[];
 extern const char kRedCodecName[];
 extern const char kUlpfecCodecName[];
 extern const char kFlexfecCodecName[];
+extern const char kMultiplexCodecName[];
 
 extern const char kFlexfecFmtpRepairWindow[];
 
 // Codec parameters
 extern const char kCodecParamAssociatedPayloadType[];
+extern const char kCodecParamAssociatedCodecName[];
 
 extern const char kOpusCodecName[];
 extern const char kIsacCodecName[];
@@ -99,6 +101,9 @@ extern const char kRtcpFbParamTransportCc[];
 // ccm submessages according to RFC 5104
 extern const char kRtcpFbParamCcm[];
 extern const char kRtcpFbCcmParamFir[];
+// Receiver reference time report
+// https://tools.ietf.org/html/rfc3611 section 4.4
+extern const char kRtcpFbParamRrtr[];
 // Google specific parameters
 extern const char kCodecParamMaxBitrate[];
 extern const char kCodecParamMinBitrate[];
@@ -132,6 +137,10 @@ extern const char kH264FmtpSpropParameterSets[];
 extern const char kH264ProfileLevelConstrainedBaseline[];
 
 extern const int kDefaultVideoMaxFramerate;
+
+extern const size_t kConferenceMaxNumSpatialLayers;
+extern const size_t kConferenceMaxNumTemporalLayers;
+extern const size_t kConferenceDefaultNumTemporalLayers;
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_BASE_MEDIACONSTANTS_H_
+#endif  // MEDIA_BASE_MEDIACONSTANTS_H_

@@ -23,54 +23,55 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TextEditor = class TextEditor extends WebInspector.View
+WI.TextEditor = class TextEditor extends WI.View
 {
     constructor(element, mimeType, delegate)
     {
         super(element);
 
-        this.element.classList.add("text-editor", WebInspector.SyntaxHighlightedStyleClassName);
+        this.element.classList.add("text-editor", WI.SyntaxHighlightedStyleClassName);
 
-        this._codeMirror = WebInspector.CodeMirrorEditor.create(this.element, {
+        this._codeMirror = WI.CodeMirrorEditor.create(this.element, {
             readOnly: true,
-            indentWithTabs: WebInspector.settings.indentWithTabs.value,
-            indentUnit: WebInspector.settings.indentUnit.value,
-            tabSize: WebInspector.settings.tabSize.value,
+            indentWithTabs: WI.settings.indentWithTabs.value,
+            indentUnit: WI.settings.indentUnit.value,
+            tabSize: WI.settings.tabSize.value,
             lineNumbers: true,
-            lineWrapping: WebInspector.settings.enableLineWrapping.value,
+            lineWrapping: WI.settings.enableLineWrapping.value,
             matchBrackets: true,
             autoCloseBrackets: true,
-            showWhitespaceCharacters: WebInspector.settings.showWhitespaceCharacters.value,
+            showWhitespaceCharacters: WI.settings.showWhitespaceCharacters.value,
             styleSelectedText: true,
         });
 
-        WebInspector.settings.indentWithTabs.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
-            this._codeMirror.setOption("indentWithTabs", WebInspector.settings.indentWithTabs.value);
+        WI.settings.indentWithTabs.addEventListener(WI.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("indentWithTabs", WI.settings.indentWithTabs.value);
         });
 
-        WebInspector.settings.indentUnit.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
-            this._codeMirror.setOption("indentUnit", WebInspector.settings.indentUnit.value);
+        WI.settings.indentUnit.addEventListener(WI.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("indentUnit", WI.settings.indentUnit.value);
         });
 
-        WebInspector.settings.tabSize.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
-            this._codeMirror.setOption("tabSize", WebInspector.settings.tabSize.value);
+        WI.settings.tabSize.addEventListener(WI.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("tabSize", WI.settings.tabSize.value);
         });
 
-        WebInspector.settings.enableLineWrapping.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
-            this._codeMirror.setOption("lineWrapping", WebInspector.settings.enableLineWrapping.value);
+        WI.settings.enableLineWrapping.addEventListener(WI.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("lineWrapping", WI.settings.enableLineWrapping.value);
         });
 
-        WebInspector.settings.showWhitespaceCharacters.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
-            this._codeMirror.setOption("showWhitespaceCharacters", WebInspector.settings.showWhitespaceCharacters.value);
+        WI.settings.showWhitespaceCharacters.addEventListener(WI.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("showWhitespaceCharacters", WI.settings.showWhitespaceCharacters.value);
         });
 
+        this._codeMirror.on("focus", this._editorFocused.bind(this));
         this._codeMirror.on("change", this._contentChanged.bind(this));
         this._codeMirror.on("gutterClick", this._gutterMouseDown.bind(this));
         this._codeMirror.on("gutterContextMenu", this._gutterContextMenu.bind(this));
         this._codeMirror.getScrollerElement().addEventListener("click", this._openClickedLinks.bind(this), true);
 
-        this._completionController = new WebInspector.CodeMirrorCompletionController(this._codeMirror, this);
-        this._tokenTrackingController = new WebInspector.CodeMirrorTokenTrackingController(this._codeMirror, this);
+        this._completionController = new WI.CodeMirrorCompletionController(this._codeMirror, this);
+        this._tokenTrackingController = new WI.CodeMirrorTokenTrackingController(this._codeMirror, this);
 
         this._initialStringNotSet = true;
 
@@ -117,10 +118,9 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (this._initialStringNotSet)
                 this._codeMirror.removeLineClass(0, "wrap");
 
-            if (this._codeMirror.getValue() !== newString) {
+            if (this._codeMirror.getValue() !== newString)
                 this._codeMirror.setValue(newString);
-                console.assert(this.string.length === newString.length, "A lot of our code depends on precise text offsets, so the string should remain the same.");
-            } else {
+            else {
                 // Ensure we at display content even if the value did not change. This often happens when auto formatting.
                 this.layout();
             }
@@ -128,7 +128,15 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (this._initialStringNotSet) {
                 this._codeMirror.clearHistory();
                 this._codeMirror.markClean();
+
                 this._initialStringNotSet = false;
+
+                // There may have been an attempt at a search before the initial string was set. If so, reperform it now that we have content.
+                if (this._searchQuery) {
+                    let query = this._searchQuery;
+                    this._searchQuery = null;
+                    this.performSearch(query);
+                }
             }
 
             // Update the execution line now that we might have content for that line.
@@ -188,7 +196,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     canBeFormatted()
     {
-        // Can be overriden by subclasses.
+        // Can be overridden by subclasses.
         return this.hasFormatter();
     }
 
@@ -293,6 +301,10 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         this._searchQuery = query;
 
+        // Defer until the initial string is set.
+        if (this._initialStringNotSet)
+            return;
+
         // Allow subclasses to handle the searching if they have a better way.
         // If we are formatted, just use CodeMirror's search.
         if (typeof this.customPerformSearch === "function" && !this.formatted) {
@@ -313,7 +325,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
                 numberOfSearchResultsDidChangeTimeout = null;
             }
 
-            this.dispatchEventToListeners(WebInspector.TextEditor.Event.NumberOfSearchResultsDidChange);
+            this.dispatchEventToListeners(WI.TextEditor.Event.NumberOfSearchResultsDidChange);
         }
 
         function batchSearch()
@@ -324,7 +336,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
             var newSearchResults = [];
             var foundResult = false;
-            for (var i = 0; i < WebInspector.TextEditor.NumberOfFindsPerSearchBatch && (foundResult = searchCursor.findNext()); ++i) {
+            for (var i = 0; i < WI.TextEditor.NumberOfFindsPerSearchBatch && (foundResult = searchCursor.findNext()); ++i) {
                 var textRange = this._textRangeFromCodeMirrorPosition(searchCursor.from(), searchCursor.to());
                 newSearchResults.push(textRange);
             }
@@ -364,7 +376,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         // Still dispatch the event even if the number didn't change. The execution state still
         // could have changed (e.g. continuing in a loop with a breakpoint inside).
-        this.dispatchEventToListeners(WebInspector.TextEditor.Event.ExecutionLineNumberDidChange);
+        this.dispatchEventToListeners(WI.TextEditor.Event.ExecutionLineNumberDidChange);
     }
 
     addSearchResults(textRanges)
@@ -377,7 +389,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         {
             for (var i = 0; i < textRanges.length; ++i) {
                 var position = this._codeMirrorPositionFromTextRange(textRanges[i]);
-                var mark = this._codeMirror.markText(position.start, position.end, {className: WebInspector.TextEditor.SearchResultStyleClassName});
+                var mark = this._codeMirror.markText(position.start, position.end, {className: WI.TextEditor.SearchResultStyleClassName});
                 this._searchResults.push(mark);
             }
 
@@ -393,12 +405,10 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     searchCleared()
     {
-        function clearResults() {
-            for (var i = 0; i < this._searchResults.length; ++i)
-                this._searchResults[i].clear();
-        }
-
-        this._codeMirror.operation(clearResults.bind(this));
+        this._codeMirror.operation(() => {
+            for (let searchResult of this._searchResults)
+                searchResult.clear();
+        });
 
         this._searchQuery = null;
         this._searchResults = [];
@@ -456,19 +466,19 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     getTextInRange(startPosition, endPosition)
     {
-        return this._codeMirror.getRange(startPosition, endPosition);
+        return this._codeMirror.getRange(startPosition.toCodeMirror(), endPosition.toCodeMirror());
     }
 
     addStyleToTextRange(startPosition, endPosition, styleClassName)
     {
-        endPosition.ch += 1;
-        return this._codeMirror.getDoc().markText(startPosition, endPosition, {className: styleClassName, inclusiveLeft: true, inclusiveRight: true});
+        endPosition = endPosition.offsetColumn(1);
+        return this._codeMirror.getDoc().markText(startPosition.toCodeMirror(), endPosition.toCodeMirror(), {className: styleClassName, inclusiveLeft: true, inclusiveRight: true});
     }
 
     revealPosition(position, textRangeToSelect, forceUnformatted, noHighlight)
     {
-        console.assert(position === undefined || position instanceof WebInspector.SourceCodePosition, "revealPosition called without a SourceCodePosition");
-        if (!(position instanceof WebInspector.SourceCodePosition))
+        console.assert(position === undefined || position instanceof WI.SourceCodePosition, "revealPosition called without a SourceCodePosition");
+        if (!(position instanceof WI.SourceCodePosition))
             return;
 
         if (!this._visible || this._initialStringNotSet || this._deferReveal) {
@@ -498,12 +508,12 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         if (!textRangeToSelect) {
             let column = Number.constrain(position.columnNumber, 0, this._codeMirror.getLine(line).length - 1);
-            textRangeToSelect = new WebInspector.TextRange(line, column, line, column);
+            textRangeToSelect = new WI.TextRange(line, column, line, column);
         }
 
         function removeStyleClass()
         {
-            this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.HighlightedStyleClassName);
+            this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.HighlightedStyleClassName);
         }
 
         function revealAndHighlightLine()
@@ -519,15 +529,15 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
                 return;
 
             // Avoid highlighting the execution line while debugging.
-            if (WebInspector.debuggerManager.paused && line === this._executionLineNumber)
+            if (WI.debuggerManager.paused && line === this._executionLineNumber)
                 return;
 
-            this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.HighlightedStyleClassName);
+            this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.HighlightedStyleClassName);
 
             // Use a timeout instead of a animationEnd event listener because the line element might
             // be removed if the user scrolls during the animation. In that case animationEnd isn't
             // fired, and the line would highlight again the next time it scrolls into view.
-            setTimeout(removeStyleClass.bind(this), WebInspector.TextEditor.HighlightAnimationDuration);
+            setTimeout(removeStyleClass.bind(this), WI.TextEditor.HighlightAnimationDuration);
         }
 
         this._codeMirror.operation(revealAndHighlightLine.bind(this));
@@ -553,11 +563,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     close()
     {
-        WebInspector.settings.indentWithTabs.removeEventListener(null, null, this);
-        WebInspector.settings.indentUnit.removeEventListener(null, null, this);
-        WebInspector.settings.tabSize.removeEventListener(null, null, this);
-        WebInspector.settings.enableLineWrapping.removeEventListener(null, null, this);
-        WebInspector.settings.showWhitespaceCharacters.removeEventListener(null, null, this);
+        WI.settings.indentWithTabs.removeEventListener(null, null, this);
+        WI.settings.indentUnit.removeEventListener(null, null, this);
+        WI.settings.tabSize.removeEventListener(null, null, this);
+        WI.settings.enableLineWrapping.removeEventListener(null, null, this);
+        WI.settings.showWhitespaceCharacters.removeEventListener(null, null, this);
     }
 
     setBreakpointInfoForLineAndColumn(lineNumber, columnNumber, breakpointInfo)
@@ -623,7 +633,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         var widgetElement = document.createElement("div");
         var lineWidget = this._codeMirror.addLineWidget(lineHandle, widgetElement, {coverGutter: false, noHScroll: true});
-        return new WebInspector.LineWidget(lineWidget, widgetElement);
+        return new WI.LineWidget(lineWidget, widgetElement);
     }
 
     get lineCount()
@@ -648,12 +658,12 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     get markers()
     {
-        return this._codeMirror.getAllMarks().map(WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker);
+        return this._codeMirror.getAllMarks().map(WI.TextMarker.textMarkerForCodeMirrorTextMarker);
     }
 
     markersAtPosition(position)
     {
-        return this._codeMirror.findMarksAt(position).map(WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker);
+        return this._codeMirror.findMarksAt(position).map(WI.TextMarker.textMarkerForCodeMirrorTextMarker);
     }
 
     createColorMarkers(range)
@@ -679,16 +689,16 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     editingControllerForMarker(editableMarker)
     {
         switch (editableMarker.type) {
-        case WebInspector.TextMarker.Type.Color:
-            return new WebInspector.CodeMirrorColorEditingController(this._codeMirror, editableMarker);
-        case WebInspector.TextMarker.Type.Gradient:
-            return new WebInspector.CodeMirrorGradientEditingController(this._codeMirror, editableMarker);
-        case WebInspector.TextMarker.Type.CubicBezier:
-            return new WebInspector.CodeMirrorBezierEditingController(this._codeMirror, editableMarker);
-        case WebInspector.TextMarker.Type.Spring:
-            return new WebInspector.CodeMirrorSpringEditingController(this._codeMirror, editableMarker);
+        case WI.TextMarker.Type.Color:
+            return new WI.CodeMirrorColorEditingController(this._codeMirror, editableMarker);
+        case WI.TextMarker.Type.Gradient:
+            return new WI.CodeMirrorGradientEditingController(this._codeMirror, editableMarker);
+        case WI.TextMarker.Type.CubicBezier:
+            return new WI.CodeMirrorBezierEditingController(this._codeMirror, editableMarker);
+        case WI.TextMarker.Type.Spring:
+            return new WI.CodeMirrorSpringEditingController(this._codeMirror, editableMarker);
         default:
-            return new WebInspector.CodeMirrorEditingController(this._codeMirror, editableMarker);
+            return new WI.CodeMirrorEditingController(this._codeMirror, editableMarker);
         }
     }
 
@@ -709,6 +719,35 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         return {startOffset, endOffset};
     }
 
+    visibleRangePositions()
+    {
+        let visibleRange = this._codeMirror.getViewport();
+        let startLine;
+        let endLine;
+
+        if (this._formatterSourceMap) {
+            startLine = this._formatterSourceMap.formattedToOriginal(Math.max(visibleRange.from - 1, 0), 0).lineNumber;
+            endLine = this._formatterSourceMap.formattedToOriginal(visibleRange.to - 1, 0).lineNumber;
+        } else {
+            startLine = visibleRange.from;
+            endLine = visibleRange.to;
+        }
+
+        return {
+            startPosition: new WI.SourceCodePosition(startLine, 0),
+            endPosition: new WI.SourceCodePosition(endLine, 0)
+        };
+    }
+
+    originalPositionToCurrentPosition(position)
+    {
+        if (!this._formatterSourceMap)
+            return position;
+
+        let {lineNumber, columnNumber} = this._formatterSourceMap.originalToFormatted(position.lineNumber, position.columnNumber);
+        return new WI.SourceCodePosition(lineNumber, columnNumber);
+    }
+
     originalOffsetToCurrentPosition(offset)
     {
         var position = null;
@@ -723,7 +762,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     currentOffsetToCurrentPosition(offset)
     {
-        return this._codeMirror.getDoc().posFromIndex(offset);
+        let pos = this._codeMirror.getDoc().posFromIndex(offset);
+        return new WI.SourceCodePosition(pos.line, pos.ch);
     }
 
     currentPositionToOriginalOffset(position)
@@ -743,18 +783,18 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (!this._formatterSourceMap)
             return position;
 
-        let location = this._formatterSourceMap.formattedToOriginal(position.line, position.ch);
-        return {line: location.lineNumber, ch: location.columnNumber};
+        let location = this._formatterSourceMap.formattedToOriginal(position.lineNumber, position.columnNumber);
+        return new WI.SourceCodePosition(location.lineNumber, location.columnNumber);
     }
 
     currentPositionToCurrentOffset(position)
     {
-        return this._codeMirror.getDoc().indexFromPos(position);
+        return this._codeMirror.getDoc().indexFromPos(position.toCodeMirror());
     }
 
     setInlineWidget(position, inlineElement)
     {
-        return this._codeMirror.setUniqueBookmark(position, {widget: inlineElement});
+        return this._codeMirror.setUniqueBookmark(position.toCodeMirror(), {widget: inlineElement});
     }
 
     addScrollHandler(handler)
@@ -803,7 +843,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             this._formatted = !!this._formatterSourceMap;
 
             if (this._formatted !== originalFormatted)
-                this.dispatchEventToListeners(WebInspector.TextEditor.Event.FormattingDidChange);
+                this.dispatchEventToListeners(WI.TextEditor.Event.FormattingDidChange);
 
             return this._formatted;
         });
@@ -836,13 +876,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     _startWorkerPrettyPrint(beforePrettyPrintState, callback)
     {
         let sourceText = this._codeMirror.getValue();
-        let indentString = WebInspector.indentString();
+        let indentString = WI.indentString();
         const includeSourceMapData = true;
 
-        let sourceType = this._delegate ? this._delegate.textEditorScriptSourceType(this) : WebInspector.Script.SourceType.Program;
-        const isModule = sourceType === WebInspector.Script.SourceType.Module;
+        let sourceType = this._delegate ? this._delegate.textEditorScriptSourceType(this) : WI.Script.SourceType.Program;
+        const isModule = sourceType === WI.Script.SourceType.Module;
 
-        let workerProxy = WebInspector.FormatterWorkerProxy.singleton();
+        let workerProxy = WI.FormatterWorkerProxy.singleton();
         workerProxy.formatJavaScript(sourceText, isModule, indentString, includeSourceMapData, ({formattedText, sourceMapData}) => {
             // Handle if formatting failed, which is possible for invalid programs.
             if (formattedText === null) {
@@ -855,11 +895,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     _startCodeMirrorPrettyPrint(beforePrettyPrintState, callback)
     {
-        let indentString = WebInspector.indentString();
+        let indentString = WI.indentString();
         let start = {line: 0, ch: 0};
         let end = {line: this._codeMirror.lineCount() - 1};
         let builder = new FormatterContentBuilder(indentString);
-        let formatter = new WebInspector.Formatter(this._codeMirror, builder);
+        let formatter = new WI.Formatter(this._codeMirror, builder);
         formatter.format(start, end);
 
         let formattedText = builder.formattedContent;
@@ -870,7 +910,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     _finishPrettyPrint(beforePrettyPrintState, formattedText, sourceMapData, callback)
     {
         this._codeMirror.operation(() => {
-            this._formatterSourceMap = WebInspector.FormatterSourceMap.fromSourceMapData(sourceMapData);
+            this._formatterSourceMap = WI.FormatterSourceMap.fromSourceMapData(sourceMapData);
             this._codeMirror.setValue(formattedText);
             this._updateAfterFormatting(true, beforePrettyPrintState);
         });
@@ -898,13 +938,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (pretty) {
             if (this._positionToReveal) {
                 let newRevealPosition = this._formatterSourceMap.originalToFormatted(this._positionToReveal.lineNumber, this._positionToReveal.columnNumber);
-                this._positionToReveal = new WebInspector.SourceCodePosition(newRevealPosition.lineNumber, newRevealPosition.columnNumber);
+                this._positionToReveal = new WI.SourceCodePosition(newRevealPosition.lineNumber, newRevealPosition.columnNumber);
             }
 
             if (this._textRangeToSelect) {
                 let mappedRevealSelectionStart = this._formatterSourceMap.originalToFormatted(this._textRangeToSelect.startLine, this._textRangeToSelect.startColumn);
                 let mappedRevealSelectionEnd = this._formatterSourceMap.originalToFormatted(this._textRangeToSelect.endLine, this._textRangeToSelect.endColumn);
-                this._textRangeToSelect = new WebInspector.TextRange(mappedRevealSelectionStart.lineNumber, mappedRevealSelectionStart.columnNumber, mappedRevealSelectionEnd.lineNumber, mappedRevealSelectionEnd.columnNumber);
+                this._textRangeToSelect = new WI.TextRange(mappedRevealSelectionStart.lineNumber, mappedRevealSelectionStart.columnNumber, mappedRevealSelectionEnd.lineNumber, mappedRevealSelectionEnd.columnNumber);
             }
 
             if (!isNaN(this._executionLineNumber)) {
@@ -919,13 +959,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         } else {
             if (this._positionToReveal) {
                 let newRevealPosition = this._formatterSourceMap.formattedToOriginal(this._positionToReveal.lineNumber, this._positionToReveal.columnNumber);
-                this._positionToReveal = new WebInspector.SourceCodePosition(newRevealPosition.lineNumber, newRevealPosition.columnNumber);
+                this._positionToReveal = new WI.SourceCodePosition(newRevealPosition.lineNumber, newRevealPosition.columnNumber);
             }
 
             if (this._textRangeToSelect) {
                 let mappedRevealSelectionStart = this._formatterSourceMap.formattedToOriginal(this._textRangeToSelect.startLine, this._textRangeToSelect.startColumn);
                 let mappedRevealSelectionEnd = this._formatterSourceMap.formattedToOriginal(this._textRangeToSelect.endLine, this._textRangeToSelect.endColumn);
-                this._textRangeToSelect = new WebInspector.TextRange(mappedRevealSelectionStart.lineNumber, mappedRevealSelectionStart.columnNumber, mappedRevealSelectionEnd.lineNumber, mappedRevealSelectionEnd.columnNumber);
+                this._textRangeToSelect = new WI.TextRange(mappedRevealSelectionStart.lineNumber, mappedRevealSelectionStart.columnNumber, mappedRevealSelectionEnd.lineNumber, mappedRevealSelectionEnd.columnNumber);
             }
 
             if (!isNaN(this._executionLineNumber)) {
@@ -970,6 +1010,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         return !this._codeMirror.isClean();
     }
 
+    _editorFocused(codeMirror)
+    {
+        this.dispatchEventToListeners(WI.TextEditor.Event.Focused);
+    }
+
     _contentChanged(codeMirror, change)
     {
         if (this._ignoreCodeMirrorContentDidChangeEvent > 0)
@@ -978,13 +1023,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         var replacedRanges = [];
         var newRanges = [];
         while (change) {
-            replacedRanges.push(new WebInspector.TextRange(
+            replacedRanges.push(new WI.TextRange(
                 change.from.line,
                 change.from.ch,
                 change.to.line,
                 change.to.ch
             ));
-            newRanges.push(new WebInspector.TextRange(
+            newRanges.push(new WI.TextRange(
                 change.from.line,
                 change.from.ch,
                 change.from.line + change.text.length - 1,
@@ -1001,10 +1046,10 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (this._delegate && typeof this._delegate.textEditorUpdatedFormatting === "function")
                 this._delegate.textEditorUpdatedFormatting(this);
 
-            this.dispatchEventToListeners(WebInspector.TextEditor.Event.FormattingDidChange);
+            this.dispatchEventToListeners(WI.TextEditor.Event.FormattingDidChange);
         }
 
-        this.dispatchEventToListeners(WebInspector.TextEditor.Event.ContentDidChange);
+        this.dispatchEventToListeners(WI.TextEditor.Event.ContentDidChange);
     }
 
     _textRangeFromCodeMirrorPosition(start, end)
@@ -1012,7 +1057,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         console.assert(start);
         console.assert(end);
 
-        return new WebInspector.TextRange(start.line, start.ch, end.line, end.ch);
+        return new WI.TextRange(start.line, start.ch, end.line, end.ch);
     }
 
     _codeMirrorPositionFromTextRange(textRange)
@@ -1039,7 +1084,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     _revealSearchResult(result, changeFocus, directionInCaseOfRevalidation)
     {
-        var position = result.find();
+        let position = result.find();
 
         // Check for a valid position, it might have been removed from editing by the user.
         // If the position is invalide, revalidate all positions reveal as needed.
@@ -1062,50 +1107,55 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (changeFocus)
             this._codeMirror.focus();
 
+        // Collect info for the bouncy highlight.
+        let highlightEditorPosition = this._codeMirror.getCursor("start");
+        let textContent = this._codeMirror.getSelection();
+
         // Remove the bouncy highlight if it is still around. The animation will not
         // start unless we remove it and add it back to the document.
-        if (this._bouncyHighlightElement)
-            this._bouncyHighlightElement.remove();
+        this._removeBouncyHighlightElementIfNeeded();
 
         // Create the bouncy highlight.
         this._bouncyHighlightElement = document.createElement("div");
-        this._bouncyHighlightElement.className = WebInspector.TextEditor.BouncyHighlightStyleClassName;
-
-        // Collect info for the bouncy highlight.
-        var textContent = this._codeMirror.getSelection();
-        var coordinates = this._codeMirror.cursorCoords(true, "page");
-
-        // Adjust the coordinates to be based in the text editor's space.
-        let textEditorRect = this.element.getBoundingClientRect();
-        coordinates.top -= textEditorRect.top;
-        coordinates.left -= textEditorRect.left;
-
-        // Position and show the bouncy highlight.
+        this._bouncyHighlightElement.className = WI.TextEditor.BouncyHighlightStyleClassName;
         this._bouncyHighlightElement.textContent = textContent;
-        this._bouncyHighlightElement.style.top = coordinates.top + "px";
-        this._bouncyHighlightElement.style.left = coordinates.left + "px";
-        this.element.appendChild(this._bouncyHighlightElement);
 
-        let scrollHandler = () => {
-            if (this._bouncyHighlightElement)
-                this._bouncyHighlightElement.remove();
-        };
+        function positionBouncyHighlight() {
+            // Adjust the coordinates to be based in the text editor's space.
+            let coordinates = this._codeMirror.cursorCoords(highlightEditorPosition, "page");
+            let textEditorRect = this.element.getBoundingClientRect();
+            coordinates.top -= textEditorRect.top;
+            coordinates.left -= textEditorRect.left;
 
-        this.addScrollHandler(scrollHandler);
-
-        function animationEnded()
-        {
-            if (!this._bouncyHighlightElement)
-                return;
-
-            this._bouncyHighlightElement.remove();
-            delete this._bouncyHighlightElement;
-
-            this.removeScrollHandler(scrollHandler);
+            // Position the bouncy highlight.
+            this._bouncyHighlightElement.style.top = coordinates.top + "px";
+            this._bouncyHighlightElement.style.left = coordinates.left + "px";
         }
 
+        // Position and show the highlight.
+        positionBouncyHighlight.call(this);
+        this.element.appendChild(this._bouncyHighlightElement);
+
+        // Reposition the highlight if the editor scrolls.
+        this._bouncyHighlightScrollHandler = () => { positionBouncyHighlight.call(this); };
+        this.addScrollHandler(this._bouncyHighlightScrollHandler);
+
         // Listen for the end of the animation so we can remove the element.
-        this._bouncyHighlightElement.addEventListener("animationend", animationEnded.bind(this));
+        this._bouncyHighlightElement.addEventListener("animationend", () => {
+            this._removeBouncyHighlightElementIfNeeded();
+        });
+    }
+
+    _removeBouncyHighlightElementIfNeeded()
+    {
+        if (!this._bouncyHighlightElement)
+            return;
+
+        this.removeScrollHandler(this._bouncyHighlightScrollHandler);
+        this._bouncyHighlightScrollHandler = null;
+
+        this._bouncyHighlightElement.remove();
+        this._bouncyHighlightElement = null;
     }
 
     _binarySearchInsertionIndexInSearchResults(object, comparator)
@@ -1149,7 +1199,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             var searchResultMarker = searchResult.find();
             if (!searchResultMarker)
                 return null;
-            return WebInspector.compareCodeMirrorPositions(current, searchResultMarker.from);
+            return WI.compareCodeMirrorPositions(current, searchResultMarker.from);
         });
 
         if (index === null) {
@@ -1176,7 +1226,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             var searchResultMarker = searchResult.find();
             if (!searchResultMarker)
                 return null;
-            return WebInspector.compareCodeMirrorPositions(current, searchResultMarker.from);
+            return WI.compareCodeMirrorPositions(current, searchResultMarker.from);
         });
 
         if (index === null) {
@@ -1205,7 +1255,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         var currentCursorPosition = this._codeMirror.getCursor("start");
         var lastRevealedSearchResultPosition = lastRevealedSearchResultMarker.from;
 
-        return WebInspector.compareCodeMirrorPositions(currentCursorPosition, lastRevealedSearchResultPosition) !== 0;
+        return WI.compareCodeMirrorPositions(currentCursorPosition, lastRevealedSearchResultPosition) !== 0;
     }
 
     _revalidateSearchResults(direction)
@@ -1223,7 +1273,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         console.assert(updatedSearchResults.length !== this._searchResults.length);
 
         this._searchResults = updatedSearchResults;
-        this.dispatchEventToListeners(WebInspector.TextEditor.Event.NumberOfSearchResultsDidChange);
+        this.dispatchEventToListeners(WI.TextEditor.Event.NumberOfSearchResultsDidChange);
 
         if (this._searchResults.length) {
             if (direction > 0)
@@ -1237,7 +1287,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     {
         if (this._executionMultilineHandles.length) {
             for (let lineHandle of this._executionMultilineHandles)
-                this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.ExecutionLineStyleClassName);
             this._executionMultilineHandles = [];
         }
     }
@@ -1246,7 +1296,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     {
         this._codeMirror.operation(() => {
             if (this._executionLineHandle) {
-                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WI.TextEditor.ExecutionLineStyleClassName);
                 this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", "primary");
             }
 
@@ -1255,9 +1305,9 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             this._executionLineHandle = !isNaN(this._executionLineNumber) ? this._codeMirror.getLineHandle(this._executionLineNumber) : null;
 
             if (this._executionLineHandle) {
-                this._codeMirror.addLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                this._codeMirror.addLineClass(this._executionLineHandle, "wrap", WI.TextEditor.ExecutionLineStyleClassName);
                 this._codeMirror.addLineClass(this._executionLineHandle, "wrap", "primary");
-                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.HighlightedStyleClassName);
+                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WI.TextEditor.HighlightedStyleClassName);
             }
         });
     }
@@ -1272,13 +1322,9 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (isNaN(this._executionLineNumber))
             return;
 
-        let currentPosition = {line: this._executionLineNumber, ch: this._executionColumnNumber};
-        let originalOffset = this.currentPositionToOriginalOffset(currentPosition);
-        let originalCodeMirrorPosition = this.currentPositionToOriginalPosition(currentPosition);
-        let originalPosition = new WebInspector.SourceCodePosition(originalCodeMirrorPosition.line, originalCodeMirrorPosition.ch);
-        let characterAtOffset = this._codeMirror.getRange(currentPosition, {line: this._executionLineNumber, ch: this._executionColumnNumber + 1});
+        let currentPosition = new WI.SourceCodePosition(this._executionLineNumber, this._executionColumnNumber);
 
-        this._delegate.textEditorExecutionHighlightRange(originalOffset, originalPosition, characterAtOffset, (range) => {
+        this._delegate.textEditorExecutionHighlightRange(currentPosition, (range) => {
             let start, end;
             if (!range) {
                 // Highlight the rest of the line.
@@ -1286,8 +1332,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
                 end = {line: this._executionLineNumber};
             } else {
                 // Highlight the range.
-                start = this.originalOffsetToCurrentPosition(range[0]);
-                end = this.originalOffsetToCurrentPosition(range[1]);
+                start = range.startPosition;
+                end = range.endPosition;
             }
 
             // Ensure the marker is cleared in case there were multiple updates very quickly.
@@ -1307,7 +1353,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (start.line !== end.line) {
                 for (let line = start.line; line < end.line; ++line) {
                     let lineHandle = this._codeMirror.getLineHandle(line);
-                    this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                    this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.ExecutionLineStyleClassName);
                     this._executionMultilineHandles.push(lineHandle);
                 }
             }
@@ -1337,7 +1383,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
                 allAutoContinue = false;
         }
 
-        allResolved = allResolved && WebInspector.debuggerManager.breakpointsEnabled;
+        allResolved = allResolved && WI.debuggerManager.breakpointsEnabled;
 
         function updateStyles()
         {
@@ -1347,27 +1393,27 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (!lineHandle)
                 return;
 
-            this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.HasBreakpointStyleClassName);
+            this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.HasBreakpointStyleClassName);
 
             if (allResolved)
-                this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointResolvedStyleClassName);
+                this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointResolvedStyleClassName);
             else
-                this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointResolvedStyleClassName);
+                this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointResolvedStyleClassName);
 
             if (allDisabled)
-                this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointDisabledStyleClassName);
+                this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointDisabledStyleClassName);
             else
-                this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointDisabledStyleClassName);
+                this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointDisabledStyleClassName);
 
             if (allAutoContinue)
-                this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointAutoContinueStyleClassName);
+                this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointAutoContinueStyleClassName);
             else
-                this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointAutoContinueStyleClassName);
+                this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointAutoContinueStyleClassName);
 
             if (multiple)
-                this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.MultipleBreakpointsStyleClassName);
+                this._codeMirror.addLineClass(lineHandle, "wrap", WI.TextEditor.MultipleBreakpointsStyleClassName);
             else
-                this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.MultipleBreakpointsStyleClassName);
+                this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.MultipleBreakpointsStyleClassName);
         }
 
         this._codeMirror.operation(updateStyles.bind(this));
@@ -1401,11 +1447,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             if (!lineHandle)
                 return;
 
-            this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.HasBreakpointStyleClassName);
-            this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointResolvedStyleClassName);
-            this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointDisabledStyleClassName);
-            this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.BreakpointAutoContinueStyleClassName);
-            this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.MultipleBreakpointsStyleClassName);
+            this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.HasBreakpointStyleClassName);
+            this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointResolvedStyleClassName);
+            this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointDisabledStyleClassName);
+            this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.BreakpointAutoContinueStyleClassName);
+            this._codeMirror.removeLineClass(lineHandle, "wrap", WI.TextEditor.MultipleBreakpointsStyleClassName);
         }
 
         this._codeMirror.operation(updateStyles.bind(this));
@@ -1428,7 +1474,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (event.button !== 0 || event.ctrlKey)
             return;
 
-        if (!this._codeMirror.hasLineClass(lineNumber, "wrap", WebInspector.TextEditor.HasBreakpointStyleClassName)) {
+        if (!this._codeMirror.hasLineClass(lineNumber, "wrap", WI.TextEditor.HasBreakpointStyleClassName)) {
             console.assert(!(lineNumber in this._breakpoints));
 
             // No breakpoint, add a new one.
@@ -1446,7 +1492,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         console.assert(lineNumber in this._breakpoints);
 
-        if (this._codeMirror.hasLineClass(lineNumber, "wrap", WebInspector.TextEditor.MultipleBreakpointsStyleClassName)) {
+        if (this._codeMirror.hasLineClass(lineNumber, "wrap", WI.TextEditor.MultipleBreakpointsStyleClassName)) {
             console.assert(!isEmptyObject(this._breakpoints[lineNumber]));
             return;
         }
@@ -1526,7 +1572,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (lineNumber !== undefined) {
             // We have a new line that will now show the dragged breakpoint.
             var newColumnBreakpoints = {};
-            var columnNumber = (lineNumber === this._lineNumberWithMousedDownBreakpoint ? this._columnNumberWithDraggedBreakpoint : 0);
+            var columnNumber = lineNumber === this._lineNumberWithMousedDownBreakpoint ? this._columnNumberWithDraggedBreakpoint : 0;
             newColumnBreakpoints[columnNumber] = this._draggingBreakpointInfo;
             this._previousColumnBreakpointInfo = this._allColumnBreakpointInfoForLine(lineNumber);
             this._setColumnBreakpointInfoForLine(lineNumber, newColumnBreakpoints);
@@ -1617,7 +1663,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             baseURL = this._delegate.textEditorBaseURL(this);
 
         // Open the link after resolving the absolute URL from the base URL.
-        WebInspector.openURL(absoluteURL(url, baseURL));
+        WI.openURL(absoluteURL(url, baseURL));
 
         // Stop processing the event.
         event.preventDefault();
@@ -1643,19 +1689,20 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     }
 };
 
-WebInspector.TextEditor.HighlightedStyleClassName = "highlighted";
-WebInspector.TextEditor.SearchResultStyleClassName = "search-result";
-WebInspector.TextEditor.HasBreakpointStyleClassName = "has-breakpoint";
-WebInspector.TextEditor.BreakpointResolvedStyleClassName = "breakpoint-resolved";
-WebInspector.TextEditor.BreakpointAutoContinueStyleClassName = "breakpoint-auto-continue";
-WebInspector.TextEditor.BreakpointDisabledStyleClassName = "breakpoint-disabled";
-WebInspector.TextEditor.MultipleBreakpointsStyleClassName = "multiple-breakpoints";
-WebInspector.TextEditor.ExecutionLineStyleClassName = "execution-line";
-WebInspector.TextEditor.BouncyHighlightStyleClassName = "bouncy-highlight";
-WebInspector.TextEditor.NumberOfFindsPerSearchBatch = 10;
-WebInspector.TextEditor.HighlightAnimationDuration = 2000;
+WI.TextEditor.HighlightedStyleClassName = "highlighted";
+WI.TextEditor.SearchResultStyleClassName = "search-result";
+WI.TextEditor.HasBreakpointStyleClassName = "has-breakpoint";
+WI.TextEditor.BreakpointResolvedStyleClassName = "breakpoint-resolved";
+WI.TextEditor.BreakpointAutoContinueStyleClassName = "breakpoint-auto-continue";
+WI.TextEditor.BreakpointDisabledStyleClassName = "breakpoint-disabled";
+WI.TextEditor.MultipleBreakpointsStyleClassName = "multiple-breakpoints";
+WI.TextEditor.ExecutionLineStyleClassName = "execution-line";
+WI.TextEditor.BouncyHighlightStyleClassName = "bouncy-highlight";
+WI.TextEditor.NumberOfFindsPerSearchBatch = 10;
+WI.TextEditor.HighlightAnimationDuration = 2000;
 
-WebInspector.TextEditor.Event = {
+WI.TextEditor.Event = {
+    Focused: "text-editor-focused",
     ExecutionLineNumberDidChange: "text-editor-execution-line-number-did-change",
     NumberOfSearchResultsDidChange: "text-editor-number-of-search-results-did-change",
     ContentDidChange: "text-editor-content-did-change",

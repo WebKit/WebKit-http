@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_VIDEO_H264_H264_BITSTREAM_PARSER_H_
-#define WEBRTC_COMMON_VIDEO_H264_H264_BITSTREAM_PARSER_H_
+#ifndef COMMON_VIDEO_H264_H264_BITSTREAM_PARSER_H_
+#define COMMON_VIDEO_H264_H264_BITSTREAM_PARSER_H_
 #include <stddef.h>
 #include <stdint.h>
 
-#include "webrtc/base/optional.h"
-#include "webrtc/common_video/h264/pps_parser.h"
-#include "webrtc/common_video/h264/sps_parser.h"
+#include "absl/types/optional.h"
+#include "common_video/h264/pps_parser.h"
+#include "common_video/h264/sps_parser.h"
 
 namespace rtc {
 class BitBufferWriter;
@@ -53,13 +53,13 @@ class H264BitstreamParser {
                                   uint8_t nalu_type);
 
   // SPS/PPS state, updated when parsing new SPS/PPS, used to parse slices.
-  rtc::Optional<SpsParser::SpsState> sps_;
-  rtc::Optional<PpsParser::PpsState> pps_;
+  absl::optional<SpsParser::SpsState> sps_;
+  absl::optional<PpsParser::PpsState> pps_;
 
   // Last parsed slice QP.
-  rtc::Optional<int32_t> last_slice_qp_delta_;
+  absl::optional<int32_t> last_slice_qp_delta_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_VIDEO_H264_H264_BITSTREAM_PARSER_H_
+#endif  // COMMON_VIDEO_H264_H264_BITSTREAM_PARSER_H_

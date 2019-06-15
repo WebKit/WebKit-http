@@ -5,7 +5,7 @@ description: >
     Resolved promises ignore rejections through immediate invocation of the
     provided resolving function
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     9. Let completion be Call(executor, undefined,
        «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»).
@@ -21,14 +21,17 @@ info: >
 flags: [async]
 ---*/
 
+var returnValue = null;
 var thenable = new Promise(function() {});
 var p = new Promise(function(resolve, reject) {
   resolve();
-  reject(thenable);
+  returnValue = reject(thenable);
 });
 
+assert.sameValue(returnValue, undefined, '"reject" function return value');
+
 p.then(function() {
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});

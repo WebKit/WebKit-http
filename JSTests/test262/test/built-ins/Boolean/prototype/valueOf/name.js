@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-boolean.prototype.valueof
 es6id: 19.3.3.3
 description: >
   Boolean.prototype.valueOf.name is "valueOf".
-info: >
+info: |
   Boolean.prototype.valueOf ( )
 
   17 ECMAScript Standard Built-in Objects:

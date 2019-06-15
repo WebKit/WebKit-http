@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     String.prototype.split (separator, limit) returns an Array object into which substrings of the result of converting this object to a string have
     been stored. If separator is a regular expression then
     inside of SplitMatch helper the [[Match]] method of R is called giving it the arguments corresponding
@@ -19,7 +19,7 @@ var __split = __string.split(__re, "hi");
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if (__split.constructor !== Array) {
-  $ERROR('#1: var __string = new String("hello"); var __re = /l/; __split = __string.split(__re, "hi"); __split.constructor === Array. Actual: '+__split.constructor );
+  $ERROR('#1: var __string = new String("hello"); var __re = /l/; __split = __string.split(__re, "hi"); __split.constructor === Array. Actual: ' + __split.constructor);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -27,7 +27,7 @@ if (__split.constructor !== Array) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (__split.length !== 0) {
-  $ERROR('#2: var __string = new String("hello"); var __re = /l/; __split = __string.split(__re, "hi"); __split.length === 0. Actual: '+__split.length );
+  $ERROR('#2: var __string = new String("hello"); var __re = /l/; __split = __string.split(__re, "hi"); __split.length === 0. Actual: ' + __split.length);
 }
 //
 //////////////////////////////////////////////////////////////////////////////

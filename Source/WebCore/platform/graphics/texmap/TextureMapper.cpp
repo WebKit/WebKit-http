@@ -25,7 +25,6 @@
 #include "GraphicsLayer.h"
 #include "TextureMapperImageBuffer.h"
 #include "Timer.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 

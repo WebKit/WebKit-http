@@ -37,10 +37,6 @@ ALWAYS_INLINE GCDeferralContext::GCDeferralContext(Heap& heap)
 
 ALWAYS_INLINE GCDeferralContext::~GCDeferralContext()
 {
-    ASSERT(!DisallowGC::isInEffectOnCurrentThread());
-#if ENABLE(GC_VALIDATION)
-    ASSERT(!m_heap.vm()->isInitializingObject());
-#endif
     if (UNLIKELY(m_shouldGC))
         m_heap.collectIfNecessaryOrDefer();
 }

@@ -45,6 +45,11 @@ ALWAYS_INLINE bool isAutofilled(const Element& element)
     return is<HTMLInputElement>(element) && downcast<HTMLInputElement>(element).isAutoFilled();
 }
 
+ALWAYS_INLINE bool isAutofilledStrongPassword(const Element& element)
+{
+    return is<HTMLInputElement>(element) && downcast<HTMLInputElement>(element).isAutoFilled() && downcast<HTMLInputElement>(element).hasAutoFillStrongPasswordButton();
+}
+
 ALWAYS_INLINE bool matchesDefaultPseudoClass(const Element& element)
 {
     return element.matchesDefaultPseudoClass();
@@ -359,6 +364,13 @@ ALWAYS_INLINE bool matchesFullScreenDocumentPseudoClass(const Element& element)
     if (!element.document().webkitIsFullScreen())
         return false;
     return true;
+}
+
+ALWAYS_INLINE bool matchesFullScreenControlsHiddenPseudoClass(const Element& element)
+{
+    if (&element != element.document().webkitCurrentFullScreenElement())
+        return false;
+    return element.document().areFullscreenControlsHidden();
 }
 #endif
 

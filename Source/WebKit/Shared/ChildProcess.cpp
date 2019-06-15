@@ -28,8 +28,18 @@
 
 #include "Logging.h"
 #include "SandboxInitializationParameters.h"
-#include <WebCore/SessionID.h>
+#include <WebCore/SchemeRegistry.h>
+#include <pal/SessionID.h>
+
+#if !OS(WINDOWS)
 #include <unistd.h>
+#endif
+
+#if OS(LINUX)
+#include <wtf/MemoryPressureHandler.h>
+#endif
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -44,7 +54,16 @@ ChildProcess::~ChildProcess()
 {
 }
 
-static void didCloseOnConnectionWorkQueue(IPC::Connection*)
+void ChildProcess::didClose(IPC::Connection&)
+{
+}
+
+NO_RETURN static void callExitNow(IPC::Connection*)
+{
+    _exit(EXIT_SUCCESS);
+}
+
+static void callExitSoon(IPC::Connection*)
 {
     // If the connection has been closed and we haven't responded in the main thread for 10 seconds
     // the process will exit forcibly.
@@ -61,6 +80,9 @@ static void didCloseOnConnectionWorkQueue(IPC::Connection*)
 
 void ChildProcess::initialize(const ChildProcessInitializationParameters& parameters)
 {
+    RELEASE_ASSERT_WITH_MESSAGE(parameters.processIdentifier, "Unable to initialize child process without a WebCore process identifier");
+    Process::setIdentifier(*parameters.processIdentifier);
+
     platformInitialize();
 
 #if PLATFORM(COCOA)
@@ -73,11 +95,15 @@ void ChildProcess::initialize(const ChildProcessInitializationParameters& parame
     SandboxInitializationParameters sandboxParameters;
     initializeSandbox(parameters, sandboxParameters);
 
-    // In WebKit2, only the UI process should ever be generating non-default SessionIDs.
-    WebCore::SessionID::enableGenerationProtection();
+    // In WebKit2, only the UI process should ever be generating non-default PAL::SessionIDs.
+    PAL::SessionID::enableGenerationProtection();
 
     m_connection = IPC::Connection::createClientConnection(parameters.connectionIdentifier, *this);
-    m_connection->setDidCloseOnConnectionWorkQueueCallback(didCloseOnConnectionWorkQueue);
+    if (shouldCallExitWhenConnectionIsClosed())
+        m_connection->setDidCloseOnConnectionWorkQueueCallback(callExitNow);
+    else
+        m_connection->setDidCloseOnConnectionWorkQueueCallback(callExitSoon);
+
     initializeConnection(m_connection.get());
     m_connection->open();
 }
@@ -191,6 +217,11 @@ void ChildProcess::shutDown()
     terminate();
 }
 
+void ChildProcess::registerURLSchemeServiceWorkersCanHandle(const String& urlScheme) const
+{
+    WebCore::SchemeRegistry::registerURLSchemeServiceWorkersCanHandle(urlScheme);
+}
+
 #if !PLATFORM(COCOA)
 void ChildProcess::platformInitialize()
 {
@@ -205,6 +236,14 @@ void ChildProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReferen
     WTFLogAlways("Received invalid message: '%s::%s'", messageReceiverName.toString().data(), messageName.toString().data());
     CRASH();
 }
+
+#if OS(LINUX)
+void ChildProcess::didReceiveMemoryPressureEvent(bool isCritical)
+{
+    MemoryPressureHandler::singleton().triggerMemoryPressureEvent(isCritical);
+}
 #endif
+
+#endif // !PLATFORM(COCOA)
 
 } // namespace WebKit

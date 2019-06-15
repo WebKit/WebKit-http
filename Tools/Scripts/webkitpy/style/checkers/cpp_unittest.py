@@ -386,6 +386,7 @@ class FunctionDetectionTest(CppStyleTestBase):
         self.assertEqual(function_state.is_pure, function_information['is_pure'])
         self.assertEqual(function_state.is_virtual(), function_information['is_virtual'])
         self.assertEqual(function_state.is_declaration, function_information['is_declaration'])
+        self.assertEqual(function_state.export_macro(), function_information['export_macro'] if 'export_macro' in function_information else None)
         self.assert_positions_equal(function_state.function_name_start_position, function_information['function_name_start_position'])
         self.assert_positions_equal(function_state.parameter_start_position, function_information['parameter_start_position'])
         self.assert_positions_equal(function_state.parameter_end_position, function_information['parameter_end_position'])
@@ -623,6 +624,75 @@ class FunctionDetectionTest(CppStyleTestBase):
              'is_virtual': False,
              'is_pure': False,
              'is_declaration': True})
+
+    def test_webcore_export(self):
+        self.perform_function_detection(
+            ['void theTestFunctionName();'],
+            {'name': 'theTestFunctionName',
+             'modifiers_and_return_type': 'void',
+             'function_name_start_position': (0, 5),
+             'parameter_start_position': (0, 24),
+             'parameter_end_position': (0, 26),
+             'body_start_position': (0, 26),
+             'end_position': (0, 27),
+             'is_final': False,
+             'is_override': False,
+             'is_virtual': False,
+             'is_pure': False,
+             'is_declaration': True,
+             'export_macro': None})
+
+        self.perform_function_detection(
+            ['WEBCORE_EXPORT void theTestFunctionName();'],
+            {'name': 'theTestFunctionName',
+             'modifiers_and_return_type': 'WEBCORE_EXPORT void',
+             'function_name_start_position': (0, 20),
+             'parameter_start_position': (0, 39),
+             'parameter_end_position': (0, 41),
+             'body_start_position': (0, 41),
+             'end_position': (0, 42),
+             'is_final': False,
+             'is_override': False,
+             'is_virtual': False,
+             'is_pure': False,
+             'is_declaration': True,
+             'export_macro': 'WEBCORE_EXPORT'})
+
+        self.perform_function_detection(
+            ['void theTestFunctionName()',
+             '{',
+             '}'],
+            {'name': 'theTestFunctionName',
+             'modifiers_and_return_type': 'void',
+             'function_name_start_position': (0, 5),
+             'parameter_start_position': (0, 24),
+             'parameter_end_position': (0, 26),
+             'body_start_position': (1, 0),
+             'end_position': (2, 1),
+             'is_final': False,
+             'is_override': False,
+             'is_virtual': False,
+             'is_pure': False,
+             'is_declaration': False,
+             'export_macro': None})
+
+        self.perform_function_detection(
+            ['WEBCORE_EXPORT void theTestFunctionName()',
+             '{',
+             '}'],
+            {'name': 'theTestFunctionName',
+             'modifiers_and_return_type': 'WEBCORE_EXPORT void',
+             'function_name_start_position': (0, 20),
+             'parameter_start_position': (0, 39),
+             'parameter_end_position': (0, 41),
+             'body_start_position': (1, 0),
+             'end_position': (2, 1),
+             'is_final': False,
+             'is_override': False,
+             'is_virtual': False,
+             'is_pure': False,
+             'is_declaration': False,
+             'export_macro': 'WEBCORE_EXPORT'})
 
     def test_ignore_macros(self):
         self.perform_function_detection(['void aFunctionName(int); \\'], None)
@@ -1528,6 +1598,16 @@ class CppStyleTest(CppStyleTestBase):
                          ' for improved thread safety.'
                          '  [runtime/threadsafe_fn] [2]')
 
+    def test_debug_security_assertion(self):
+        self.assert_lint(
+            'ASSERT_WITH_SECURITY_IMPLICATION(value)',
+            'Please replace ASSERT_WITH_SECURITY_IMPLICATION() with '
+            'RELEASE_ASSERT_WITH_SECURITY_IMPLICATION().'
+            '  [security/assertion] [5]')
+        self.assert_lint(
+            'RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(value)',
+            '')
+
     # Test for insecure string functions like strcpy()/strcat().
     def test_insecure_string_operations(self):
         self.assert_lint(
@@ -1577,6 +1657,15 @@ class CppStyleTest(CppStyleTestBase):
             '  [security/temp_file] [5]')
         self.assert_lint('mkstemp(template);', '')
         self.assert_lint('mkostemp(template);', '')
+
+    def test_dispatch_set_target_queue(self):
+        self.assert_lint(
+            '''\
+            globalQueue = dispatch_queue_create("My Serial Queue", DISPATCH_QUEUE_SERIAL);
+            dispatch_set_target_queue(globalQueue, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));''',
+            'Never use dispatch_set_target_queue.  Use dispatch_queue_create_with_target instead.'
+            '  [runtime/dispatch_set_target_queue] [5]')
+        self.assert_lint('globalQueue = dispatch_queue_create_with_target("My Serial Queue", DISPATCH_QUEUE_SERIAL, dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0));', '')
 
     # Variable-length arrays are not permitted.
     def test_variable_length_array_detection(self):
@@ -1792,12 +1881,23 @@ class CppStyleTest(CppStyleTestBase):
             'int foo() override {',
             'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
+            'int foo() const final {',
+            'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'int foo() final {',
+            'Place brace on its own line for function definitions.  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
             'int foo() const\n'
             '{\n'
             '}\n',
             '')
         self.assert_multi_line_lint(
             'int foo() override\n'
+            '{\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
+            'int foo() final\n'
             '{\n'
             '}\n',
             '')
@@ -1818,6 +1918,11 @@ class CppStyleTest(CppStyleTestBase):
             '')
         self.assert_multi_line_lint(
             'int foo() const override\n'
+            '{\n'
+            '}\n',
+            '')
+        self.assert_multi_line_lint(
+            'int foo() const final\n'
             '{\n'
             '}\n',
             '')
@@ -1903,6 +2008,7 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('dispatch_async(dispatch_get_main_queue(), ^{', '')
         self.assert_lint('[outOfBandTracks.get() addObject:@{', '')
         self.assert_lint('EXPECT_DEBUG_DEATH({', '')
+        self.assert_lint('LOCAL_LOG(R"({ "url": "%{public}s",)", url.string().utf8().data());', '')
 
     def test_spacing_between_braces(self):
         self.assert_lint('    { }', '')
@@ -1931,14 +2037,16 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_lint('        ^(var , var_ref) {', 'Extra space in block arguments.  [whitespace/brackets] [4]', 'foo.m')
         self.assert_lint('        ^(var,var_ref) {', 'Missing space after ,  [whitespace/comma] [3]', 'foo.m')
         self.assert_lint('        ^(var, var_ref) {', 'Place brace on its own line for function definitions.  [whitespace/braces] [4]', 'foo.cpp')
-        self.assert_lint('        ^ {', '', 'foo.m')
-        self.assert_lint('        ^{', 'No space between ^ and block definition.  [whitespace/brackets] [4]', 'foo.m')
+        self.assert_lint('        ^{', '', 'foo.m')
+        self.assert_lint('        ^ {', 'Extra space between ^ and block definition.  [whitespace/brackets] [4]', 'foo.m')
+        self.assert_lint('        ^   {', 'Extra space between ^ and block definition.  [whitespace/brackets] [4]', 'foo.m')
         self.assert_lint('        ^ (arg1, arg2) {', 'Extra space between ^ and block arguments.  [whitespace/brackets] [4]', 'foo.m')
+        self.assert_lint('        ^(arg1, arg2){', 'Missing space before {  [whitespace/braces] [5]', 'foo.m')
 
     def test_objective_c_block_as_argument(self):
         self.assert_lint('        withLambda:^(var, var_ref) {', '', 'foo.mm')
-        self.assert_lint('        withLambda:^ {', '', 'foo.m')
-        self.assert_lint('        withLambda:^{', 'No space between ^ and block definition.  [whitespace/brackets] [4]', 'foo.m')
+        self.assert_lint('        withLambda:^{', '', 'foo.m')
+        self.assert_lint('        withLambda:^ {', 'Extra space between ^ and block definition.  [whitespace/brackets] [4]', 'foo.m')
 
     def test_spacing_around_else(self):
         self.assert_lint('}else {', 'Missing space before else'
@@ -2022,6 +2130,8 @@ class CppStyleTest(CppStyleTestBase):
         self.assert_multi_line_lint('#include <sys/io.h>\n', '')
         self.assert_multi_line_lint('#import <foo/bar.h>\n', '')
         self.assert_multi_line_lint('#if __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
+        self.assert_multi_line_lint('#elif __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
+        self.assert_multi_line_lint('#endif // __has_include(<ApplicationServices/ApplicationServicesPriv.h>)\n', '')
         self.assert_lint('Foo&& a = bar();', '')
 
     def test_operator_methods(self):
@@ -2789,6 +2899,11 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#include "array.lut.h"\n',
                                          '')
 
+        self.assert_language_rules_check('foo.h',
+                                         '#include <gtest/gtest.h> // NOLINT\n'
+                                         '#include <gtest/gtest-spi.h>\n',
+                                         '')
+
     def test_check_alphabetical_include_order_errors_reported_for_both_lines(self):
         # If one of the two lines of out of order headers are filtered, the error should be
         # reported on the other line.
@@ -2853,7 +2968,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#else\n'
                                          '#include "foobar.h"\n'
                                          '#endif"\n'
-                                         '#include "bar.h"\n', # No flag because previous is in preprocessor section
+                                         '#include "bar.h"\n',  # No flag because previous is in preprocessor section.
                                          '')
 
         self.assert_language_rules_check('foo.cpp',
@@ -2864,7 +2979,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#include "baz.h"\n'
                                          '#endif"\n'
                                          '#include "bar.h"\n'
-                                         '#include "a.h"\n', # Should still flag this.
+                                         '#include "a.h"\n',  # Should still flag this.
                                          'Alphabetical sorting problem.  [build/include_order] [4]')
 
         self.assert_language_rules_check('foo.cpp',
@@ -2873,7 +2988,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '\n'
                                          '#ifdef BAZ\n'
                                          '#include "baz.h"\n'
-                                         '#include "bar.h"\n' #Should still flag this
+                                         '#include "bar.h"\n'  # Should still flag this.
                                          '#endif"\n',
                                          'Alphabetical sorting problem.  [build/include_order] [4]')
 
@@ -2888,7 +3003,7 @@ class OrderOfIncludesTest(CppStyleTestBase):
                                          '#include "foobar.h"\n'
                                          '#endif"\n'
                                          '#include "bar.h"\n'
-                                         '#include "a.h"\n', # Should still flag this.
+                                         '#include "a.h"\n',  # Should still flag this.
                                          'Alphabetical sorting problem.  [build/include_order] [4]')
 
         # Check that after an already included error, the sorting rules still work.
@@ -4500,6 +4615,18 @@ class WebKitStyleTest(CppStyleTestBase):
             '}\n',
             'This { should be at the end of the previous line  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
+            'typedef CF_OPTIONS(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef CF_OPTIONS(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
             'typedef NS_ENUM(NSInteger, type)\n'
             '{\n'
             '    0,\n'
@@ -4508,6 +4635,30 @@ class WebKitStyleTest(CppStyleTestBase):
             'This { should be at the end of the previous line  [whitespace/braces] [4]')
         self.assert_multi_line_lint(
             'typedef NS_ENUM(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
+            'typedef NS_ERROR_ENUM(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef NS_ERROR_ENUM(NSInteger, type) {\n'
+            '    0,\n'
+            '    1\n'
+            '};', '')
+        self.assert_multi_line_lint(
+            'typedef NS_OPTIONS(NSInteger, type)\n'
+            '{\n'
+            '    0,\n'
+            '    1\n'
+            '};',
+            'This { should be at the end of the previous line  [whitespace/braces] [4]')
+        self.assert_multi_line_lint(
+            'typedef NS_OPTIONS(NSInteger, type) {\n'
             '    0,\n'
             '    1\n'
             '};', '')
@@ -4523,6 +4674,10 @@ class WebKitStyleTest(CppStyleTestBase):
             '    Value1,\n'
             '    Value2\n'
             '};', '')
+        self.assert_multi_line_lint(
+            '[delegate setPolicyForURL:^_WKWebsitePolicy(NSURL *url) {\n'
+            '    return _WKWebsitePolicyDoIt;\n'
+            '}];', '', file_name='foo.mm')
 
         # 3. One-line control clauses should not use braces unless
         #    comments are included or a single statement spans multiple
@@ -5402,6 +5557,12 @@ class WebKitStyleTest(CppStyleTestBase):
         self.assert_lint('::ShowWindow(m_overlay);', '')
         self.assert_lint('o = foo(b ? bar() : baz());', '')
         self.assert_lint('MYMACRO(a ? b() : c);', '')
+
+    def test_min_versions_of_wk_api_available(self):
+        self.assert_lint('WK_API_AVAILABLE(macosx(1.2.3), ios(3.4.5))', '')  # version numbers are OK.
+        self.assert_lint('WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))', '')  # WK_MAC_TBA and WK_IOS_TBA are OK.
+        self.assert_lint('WK_API_AVAILABLE(macosx(WK_IOS_TBA), ios(3.4.5))', 'WK_IOS_TBA is neither a version number nor WK_MAC_TBA  [build/wk_api_available] [5]')
+        self.assert_lint('WK_API_AVAILABLE(macosx(1.2.3), ios(WK_MAC_TBA))', 'WK_MAC_TBA is neither a version number nor WK_IOS_TBA  [build/wk_api_available] [5]')
 
     def test_other(self):
         # FIXME: Implement this.

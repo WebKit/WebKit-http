@@ -38,7 +38,7 @@ class NetscapePlugInStreamLoader;
 
 class NetscapePlugInStreamLoaderClient {
 public:
-    virtual void willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&&, const ResourceResponse& redirectResponse, WTF::Function<void (ResourceRequest&&)>&&) = 0;
+    virtual void willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&&, const ResourceResponse& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&&) = 0;
     virtual void didReceiveResponse(NetscapePlugInStreamLoader*, const ResourceResponse&) = 0;
     virtual void didReceiveData(NetscapePlugInStreamLoader*, const char*, int) = 0;
     virtual void didFail(NetscapePlugInStreamLoader*, const ResourceError&) = 0;
@@ -46,21 +46,21 @@ public:
     virtual bool wantsAllStreams() const { return false; }
 
 protected:
-    virtual ~NetscapePlugInStreamLoaderClient() { }
+    virtual ~NetscapePlugInStreamLoaderClient() = default;
 };
 
 class NetscapePlugInStreamLoader final : public ResourceLoader {
 public:
-    WEBCORE_EXPORT static RefPtr<NetscapePlugInStreamLoader> create(Frame&, NetscapePlugInStreamLoaderClient&, const ResourceRequest&);
+    WEBCORE_EXPORT static void create(Frame&, NetscapePlugInStreamLoaderClient&, ResourceRequest&&, CompletionHandler<void(RefPtr<NetscapePlugInStreamLoader>&&)>&&);
     virtual ~NetscapePlugInStreamLoader();
 
     WEBCORE_EXPORT bool isDone() const;
 
 private:
-    bool init(const ResourceRequest&) override;
+    void init(ResourceRequest&&, CompletionHandler<void(bool)>&&) override;
 
-    void willSendRequest(ResourceRequest&&, const ResourceResponse& redirectResponse, WTF::Function<void(ResourceRequest&&)>&& callback) override;
-    void didReceiveResponse(const ResourceResponse&) override;
+    void willSendRequest(ResourceRequest&&, const ResourceResponse& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&& callback) override;
+    void didReceiveResponse(const ResourceResponse&, CompletionHandler<void()>&& policyCompletionHandler) override;
     void didReceiveData(const char*, unsigned, long long encodedDataLength, DataPayloadType) override;
     void didReceiveBuffer(Ref<SharedBuffer>&&, long long encodedDataLength, DataPayloadType) override;
     void didFinishLoading(const NetworkLoadMetrics&) override;

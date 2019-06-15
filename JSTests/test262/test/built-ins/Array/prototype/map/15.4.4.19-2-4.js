@@ -2,19 +2,20 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.map
 es5id: 15.4.4.19-2-4
 description: >
     Array.prototype.map - when 'length' is own data property that
     overrides an inherited data property on an Array
 ---*/
 
-        function callbackfn(val, idx, obj) {
-            return val > 10;
-        }
-        var arrProtoLen;
+function callbackfn(val, idx, obj) {
+  return val > 10;
+}
+var arrProtoLen;
 
-            arrProtoLen = Array.prototype.length;
-            Array.prototype.length = 0;
-            var testResult = [12, 11].map(callbackfn);
+arrProtoLen = Array.prototype.length;
+Array.prototype.length = 0;
+var testResult = [12, 11].map(callbackfn);
 
 assert.sameValue(testResult.length, 2, 'testResult.length');

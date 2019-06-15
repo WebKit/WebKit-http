@@ -24,7 +24,9 @@
 
 #include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
+#include "JSDOMPromiseDeferred.h"
 #include "Timer.h"
+#include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
@@ -61,6 +63,8 @@ public:
     void setImage(CachedImage*);
 #endif
     void clearImage(); // Cancels pending beforeload and load events, and doesn't dispatch new ones.
+    
+    void decode(Ref<DeferredPromise>&&);
 
     void setLoadManually(bool loadManually) { m_loadManually = loadManually; }
 
@@ -96,6 +100,10 @@ private:
     void clearImageWithoutConsideringPendingLoadEvent();
     void clearFailedLoadURL();
 
+    bool hasPendingDecodePromises() const { return !m_decodingPromises.isEmpty(); }
+    void decodeError(const char*);
+    void decode();
+    
     void timerFired();
 
     Element& m_element;
@@ -103,6 +111,7 @@ private:
     Timer m_derefElementTimer;
     RefPtr<Element> m_protectedElement;
     AtomicString m_failedLoadURL;
+    Vector<RefPtr<DeferredPromise>, 1> m_decodingPromises;
     bool m_hasPendingBeforeLoadEvent : 1;
     bool m_hasPendingLoadEvent : 1;
     bool m_hasPendingErrorEvent : 1;

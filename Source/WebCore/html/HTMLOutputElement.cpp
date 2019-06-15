@@ -33,9 +33,12 @@
 
 #include "HTMLFormElement.h"
 #include "HTMLNames.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLOutputElement);
 
 using namespace HTMLNames;
 
@@ -76,7 +79,7 @@ void HTMLOutputElement::childrenChanged(const ChildChange& change)
 {
     HTMLFormControlElement::childrenChanged(change);
 
-    if (change.source == ChildChangeSourceParser || m_isSetTextContentInProgress) {
+    if (change.source == ChildChangeSource::Parser || m_isSetTextContentInProgress) {
         m_isSetTextContentInProgress = false;
         return;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016, 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,29 +30,54 @@
 #import <Foundation/Foundation.h>
 #import <WebKit/WKBase.h>
 
+NS_ASSUME_NONNULL_BEGIN
+
 @class WKWebView;
 @class _WKAutomationSession;
+
+typedef NS_ENUM(NSInteger, _WKAutomationSessionJavaScriptDialogType) {
+    _WKAutomationSessionJavaScriptDialogTypeNone = 1,
+    _WKAutomationSessionJavaScriptDialogTypeAlert,
+    _WKAutomationSessionJavaScriptDialogTypeConfirm,
+    _WKAutomationSessionJavaScriptDialogTypePrompt,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
+typedef NS_ENUM(NSUInteger, _WKAutomationSessionBrowsingContextOptions) {
+    _WKAutomationSessionBrowsingContextOptionsPreferNewTab = 1 << 0,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @protocol _WKAutomationSessionDelegate <NSObject>
 @optional
 
 - (void)_automationSessionDidDisconnectFromRemote:(_WKAutomationSession *)automationSession;
 
-- (WKWebView *)_automationSessionDidRequestNewWebView:(_WKAutomationSession *)automationSession WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (BOOL)_automationSession:(_WKAutomationSession *)automationSession isShowingJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (void)_automationSession:(_WKAutomationSession *)automationSession dismissCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (void)_automationSession:(_WKAutomationSession *)automationSession acceptCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (NSString *)_automationSession:(_WKAutomationSession *)automationSession messageOfCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
-- (void)_automationSession:(_WKAutomationSession *)automationSession setUserInput:(NSString *)value forCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestNewWebViewWithOptions:(_WKAutomationSessionBrowsingContextOptions)options completionHandler:(void(^)(WKWebView * _Nullable))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestHideWindowOfWebView:(WKWebView *)webView completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestRestoreWindowOfWebView:(WKWebView *)webView completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestMaximizeWindowOfWebView:(WKWebView *)webView completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestSwitchToWebView:(WKWebView *)webView completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (BOOL)_automationSession:(_WKAutomationSession *)automationSession isShowingJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_automationSession:(_WKAutomationSession *)automationSession dismissCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_automationSession:(_WKAutomationSession *)automationSession acceptCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (nullable NSString *)_automationSession:(_WKAutomationSession *)automationSession messageOfCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_automationSession:(_WKAutomationSession *)automationSession setUserInput:(NSString *)value forCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (_WKAutomationSessionJavaScriptDialogType)_automationSession:(_WKAutomationSession *)automationSession typeOfCurrentJavaScriptDialogForWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
-// FIXME: Objective-C delegate methods shouldn't use C API types like WKPageRef. We need to
+// FIXME 37408718: Objective-C delegate methods shouldn't use C API types like WKPageRef. We need to
 // migrate clients to use WKWebView, or expose the same behavior via a C SPI for those clients.
-- (WKPageRef)_automationSessionDidRequestNewWindow:(_WKAutomationSession *)automationSession;
-- (BOOL)_automationSession:(_WKAutomationSession *)automationSession isShowingJavaScriptDialogOnPage:(WKPageRef)page;
-- (void)_automationSession:(_WKAutomationSession *)automationSession dismissCurrentJavaScriptDialogOnPage:(WKPageRef)page;
-- (void)_automationSession:(_WKAutomationSession *)automationSession acceptCurrentJavaScriptDialogOnPage:(WKPageRef)page;
-- (NSString *)_automationSession:(_WKAutomationSession *)automationSession messageOfCurrentJavaScriptDialogOnPage:(WKPageRef)page;
-- (void)_automationSession:(_WKAutomationSession *)automationSession setUserInput:(NSString *)value forCurrentJavaScriptDialogOnPage:(WKPageRef)page;
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestNewPageWithOptions:(_WKAutomationSessionBrowsingContextOptions)options completionHandler:(void(^)(WKPageRef))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestHideWindowOfPage:(WKPageRef)page completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestRestoreWindowOfPage:(WKPageRef)page completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestMaximizeWindowOfPage:(WKPageRef)page completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_automationSession:(_WKAutomationSession *)automationSession requestSwitchToPage:(WKPageRef)page completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (BOOL)_automationSession:(_WKAutomationSession *)automationSession isShowingJavaScriptDialogOnPage:(WKPageRef)page WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_automationSession:(_WKAutomationSession *)automationSession dismissCurrentJavaScriptDialogOnPage:(WKPageRef)page WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_automationSession:(_WKAutomationSession *)automationSession acceptCurrentJavaScriptDialogOnPage:(WKPageRef)page WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (nullable NSString *)_automationSession:(_WKAutomationSession *)automationSession messageOfCurrentJavaScriptDialogOnPage:(WKPageRef)page WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (void)_automationSession:(_WKAutomationSession *)automationSession setUserInput:(NSString *)value forCurrentJavaScriptDialogOnPage:(WKPageRef)page WK_API_AVAILABLE(macosx(10.13), ios(11.0));
+- (_WKAutomationSessionJavaScriptDialogType)_automationSession:(_WKAutomationSession *)automationSession typeOfCurrentJavaScriptDialogOnPage:(WKPageRef)page WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 @end
+
+NS_ASSUME_NONNULL_END
 
 #endif // WK_API_ENABLED

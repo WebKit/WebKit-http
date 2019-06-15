@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.filter
 description: >
   Return does not share buffer
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -12,6 +12,7 @@ info: >
   ...
   13. Return A.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

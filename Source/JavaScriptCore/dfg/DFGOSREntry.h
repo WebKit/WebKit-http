@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,8 @@
 #pragma once
 
 #include "DFGAbstractValue.h"
+#include "DFGFlushFormat.h"
+#include "MacroAssemblerCodeRef.h"
 #include "Operands.h"
 #include <wtf/BitVector.h>
 
@@ -69,11 +71,22 @@ inline unsigned getOSREntryDataBytecodeIndex(OSREntryData* osrEntryData)
     return osrEntryData->m_bytecodeIndex;
 }
 
+struct CatchEntrypointData {
+    // We use this when doing OSR entry at catch. We prove the arguments
+    // are of the expected type before entering at a catch block.
+    MacroAssemblerCodePtr<ExceptionHandlerPtrTag> machineCode;
+    Vector<FlushFormat> argumentFormats;
+    unsigned bytecodeIndex;
+};
+
 // Returns a pointer to a data buffer that the OSR entry thunk will recognize and
 // parse. If this returns null, it means 
 void* prepareOSREntry(ExecState*, CodeBlock*, unsigned bytecodeIndex);
+
+// If null is returned, we can't OSR enter. If it's not null, it's the PC to jump to.
+MacroAssemblerCodePtr<ExceptionHandlerPtrTag> prepareCatchOSREntry(ExecState*, CodeBlock*, unsigned bytecodeIndex);
 #else
-inline void* prepareOSREntry(ExecState*, CodeBlock*, unsigned) { return 0; }
+inline MacroAssemblerCodePtr<ExceptionHandlerPtrTag> prepareOSREntry(ExecState*, CodeBlock*, unsigned) { return nullptr; }
 #endif
 
 } } // namespace JSC::DFG

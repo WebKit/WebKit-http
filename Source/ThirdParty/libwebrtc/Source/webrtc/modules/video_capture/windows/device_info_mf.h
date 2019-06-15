@@ -8,10 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CAPTURE_WINDOWS_DEVICE_INFO_MF_H_
-#define WEBRTC_MODULES_VIDEO_CAPTURE_WINDOWS_DEVICE_INFO_MF_H_
+#ifndef MODULES_VIDEO_CAPTURE_WINDOWS_DEVICE_INFO_MF_H_
+#define MODULES_VIDEO_CAPTURE_WINDOWS_DEVICE_INFO_MF_H_
 
-#include "webrtc/modules/video_capture/device_info_impl.h"
+#include "modules/video_capture/device_info_impl.h"
 
 namespace webrtc {
 namespace videocapturemodule {
@@ -25,7 +25,8 @@ class DeviceInfoMF : public DeviceInfoImpl {
   int32_t Init();
   virtual uint32_t NumberOfDevices();
 
-  virtual int32_t GetDeviceName(uint32_t deviceNumber, char* deviceNameUTF8,
+  virtual int32_t GetDeviceName(uint32_t deviceNumber,
+                                char* deviceNameUTF8,
                                 uint32_t deviceNameLength,
                                 char* deviceUniqueIdUTF8,
                                 uint32_t deviceUniqueIdUTF8Length,
@@ -33,11 +34,14 @@ class DeviceInfoMF : public DeviceInfoImpl {
                                 uint32_t productUniqueIdUTF8Length);
 
   virtual int32_t DisplayCaptureSettingsDialogBox(
-      const char* deviceUniqueIdUTF8, const char* dialogTitleUTF8,
-      void* parentWindow, uint32_t positionX, uint32_t positionY);
+      const char* deviceUniqueIdUTF8,
+      const char* dialogTitleUTF8,
+      void* parentWindow,
+      uint32_t positionX,
+      uint32_t positionY);
 };
 
 }  // namespace videocapturemodule
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_VIDEO_CAPTURE_WINDOWS_DEVICE_INFO_MF_H_
+#endif  // MODULES_VIDEO_CAPTURE_WINDOWS_DEVICE_INFO_MF_H_

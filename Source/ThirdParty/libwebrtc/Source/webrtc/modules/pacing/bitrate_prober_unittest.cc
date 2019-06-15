@@ -10,8 +10,8 @@
 
 #include <limits>
 
-#include "webrtc/modules/pacing/bitrate_prober.h"
-#include "webrtc/test/gtest.h"
+#include "modules/pacing/bitrate_prober.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -49,7 +49,7 @@ TEST(BitrateProberTest, VerifyStatesAndTimeBetweenProbes) {
   // Verify that the actual bitrate is withing 10% of the target.
   double bitrate = kProbeSize * (kClusterSize - 1) * 8 * 1000.0 / now_ms;
   EXPECT_GT(bitrate, kTestBitrate1 * 0.9);
-  EXPECT_LT(bitrate,  kTestBitrate1 * 1.1);
+  EXPECT_LT(bitrate, kTestBitrate1 * 1.1);
 
   now_ms += prober.TimeUntilNextProbe(now_ms);
   int64_t probe2_started = now_ms;
@@ -66,7 +66,7 @@ TEST(BitrateProberTest, VerifyStatesAndTimeBetweenProbes) {
   EXPECT_GE(duration, kMinProbeDurationMs);
   bitrate = kProbeSize * (kClusterSize - 1) * 8 * 1000.0 / duration;
   EXPECT_GT(bitrate, kTestBitrate2 * 0.9);
-  EXPECT_LT(bitrate,  kTestBitrate2 * 1.1);
+  EXPECT_LT(bitrate, kTestBitrate2 * 1.1);
 
   EXPECT_EQ(-1, prober.TimeUntilNextProbe(now_ms));
   EXPECT_FALSE(prober.IsProbing());
@@ -88,14 +88,10 @@ TEST(BitrateProberTest, DoesntProbeWithoutRecentPackets) {
   // Let time pass, no large enough packets put into prober.
   now_ms += 6000;
   EXPECT_EQ(-1, prober.TimeUntilNextProbe(now_ms));
-  // Insert a large-enough packet after downtime while probing should reset to
-  // perform a new probe since the requested one didn't finish.
+  // Check that legacy behaviour where prober is reset in TimeUntilNextProbe is
+  // no longer there. Probes are no longer retried if they are timed out.
   prober.OnIncomingPacket(1000);
-  EXPECT_EQ(0, prober.TimeUntilNextProbe(now_ms));
-  prober.ProbeSent(now_ms, 1000);
-  // Next packet should be part of new probe and be sent with non-zero delay.
-  prober.OnIncomingPacket(1000);
-  EXPECT_GT(prober.TimeUntilNextProbe(now_ms), 0);
+  EXPECT_EQ(-1, prober.TimeUntilNextProbe(now_ms));
 }
 
 TEST(BitrateProberTest, DoesntInitializeProbingForSmallPackets) {

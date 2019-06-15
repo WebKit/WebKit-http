@@ -384,7 +384,7 @@ String SQLiteStatement::getColumnBlobAsString(int col)
 
     const void* blob = sqlite3_column_blob(m_statement, col);
     if (!blob)
-        return String();
+        return emptyString();
 
     int size = sqlite3_column_bytes(m_statement, col);
     if (size < 0)

@@ -46,10 +46,8 @@
 #import <WebCore/HTMLTextAreaElement.h>
 #import <WebCore/Page.h>
 
-using namespace WebCore;
-
 namespace WebKit {
-
+using namespace WebCore;
 using namespace HTMLNames;
 
 RefPtr<PDFPluginAnnotation> PDFPluginAnnotation::create(PDFAnnotation *annotation, PDFLayerController *pdfLayerController, PDFPlugin* plugin)
@@ -110,9 +108,9 @@ void PDFPluginAnnotation::updateGeometry()
     styledElement->setInlineStyleProperty(CSSPropertyTop, documentSize.height() - annotationRect.origin.y - annotationRect.size.height - scrollPosition.y(), CSSPrimitiveValue::CSS_PX);
 }
 
-bool PDFPluginAnnotation::handleEvent(Event* event)
+bool PDFPluginAnnotation::handleEvent(Event& event)
 {
-    if (event->type() == eventNames().blurEvent || event->type() == eventNames().changeEvent) {
+    if (event.type() == eventNames().blurEvent || event.type() == eventNames().changeEvent) {
         m_plugin->setActiveAnnotation(0);
         return true;
     }
@@ -120,7 +118,7 @@ bool PDFPluginAnnotation::handleEvent(Event* event)
     return false;
 }
 
-void PDFPluginAnnotation::PDFPluginAnnotationEventListener::handleEvent(ScriptExecutionContext*, Event* event)
+void PDFPluginAnnotation::PDFPluginAnnotationEventListener::handleEvent(ScriptExecutionContext&, Event& event)
 {
     if (m_annotation)
         m_annotation->handleEvent(event);

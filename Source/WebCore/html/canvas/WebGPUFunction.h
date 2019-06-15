@@ -27,26 +27,24 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WebGPUObject.h"
+#include "GPUFunction.h"
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class GPUFunction;
-class WebGPULibrary;
-
-class WebGPUFunction : public WebGPUObject {
+class WebGPUFunction : public RefCounted<WebGPUFunction> {
 public:
-    virtual ~WebGPUFunction();
-    static Ref<WebGPUFunction> create(WebGPURenderingContext*, WebGPULibrary*, const String& name);
+    static Ref<WebGPUFunction> create(GPUFunction&&);
 
-    String name() const;
-
-    GPUFunction* function() const { return m_function.get(); }
+    String name() const { return m_function.name(); }
+    const GPUFunction& function() const { return m_function; }
 
 private:
-    WebGPUFunction(WebGPURenderingContext*, WebGPULibrary*, const String& name);
+    explicit WebGPUFunction(GPUFunction&&);
 
-    RefPtr<GPUFunction> m_function;
+    GPUFunction m_function;
 };
     
 } // namespace WebCore

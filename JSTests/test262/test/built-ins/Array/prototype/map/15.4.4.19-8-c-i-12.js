@@ -2,32 +2,33 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.map
 es5id: 15.4.4.19-8-c-i-12
 description: >
     Array.prototype.map - element to be retrieved is own accessor
     property that overrides an inherited data property on an Array
 ---*/
 
-        var kValue = "abc";
+var kValue = "abc";
 
-        function callbackfn(val, idx, obj) {
-            if (idx === 0) {
-                return val === kValue;
-            }
-            return false;
-        }
+function callbackfn(val, idx, obj) {
+  if (idx === 0) {
+    return val === kValue;
+  }
+  return false;
+}
 
-        var arr = [];
+var arr = [];
 
-            Array.prototype[0] = 11;
+Array.prototype[0] = 11;
 
-            Object.defineProperty(arr, "0", {
-                get: function () {
-                    return kValue;
-                },
-                configurable: true
-            });
+Object.defineProperty(arr, "0", {
+  get: function() {
+    return kValue;
+  },
+  configurable: true
+});
 
-            var testResult = arr.map(callbackfn);
+var testResult = arr.map(callbackfn);
 
 assert.sameValue(testResult[0], true, 'testResult[0]');

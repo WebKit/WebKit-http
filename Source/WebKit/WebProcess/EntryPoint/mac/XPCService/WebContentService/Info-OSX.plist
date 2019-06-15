@@ -5,7 +5,7 @@
 	<key>CFBundleFollowParentLocalization</key>
 	<true/>
 	<key>CFBundleGetInfoString</key>
-	<string>${BUNDLE_VERSION}, Copyright 2003-2017 Apple Inc.</string>
+	<string>${BUNDLE_VERSION}, Copyright 2003-2018 Apple Inc.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>English</string>
 	<key>CFBundleExecutable</key>
@@ -45,7 +45,7 @@
 		<key>ServiceType</key>
 		<string>Application</string>
 		<key>RunLoopType</key>
-		<string>_NSApplicationMain</string>
+		<string>${RUNLOOP_TYPE}</string>
 		<key>_MultipleInstances</key>
 		<true/>
 		<key>_HighBitsASLR</key>

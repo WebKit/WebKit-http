@@ -22,10 +22,9 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMDOMSelectionPrivate.h"
 #include "WebKitDOMNodePrivate.h"
 #include "WebKitDOMPrivate.h"
@@ -39,6 +38,8 @@
 typedef struct _WebKitDOMDOMSelectionPrivate {
     RefPtr<WebCore::DOMSelection> coreObject;
 } WebKitDOMDOMSelectionPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -69,18 +70,18 @@ WebKitDOMDOMSelection* wrapDOMSelection(WebCore::DOMSelection* coreObject)
 G_DEFINE_TYPE(WebKitDOMDOMSelection, webkit_dom_dom_selection, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_ANCHOR_NODE,
-    PROP_ANCHOR_OFFSET,
-    PROP_FOCUS_NODE,
-    PROP_FOCUS_OFFSET,
-    PROP_IS_COLLAPSED,
-    PROP_RANGE_COUNT,
-    PROP_TYPE,
-    PROP_BASE_NODE,
-    PROP_BASE_OFFSET,
-    PROP_EXTENT_NODE,
-    PROP_EXTENT_OFFSET,
+    DOM_DOM_SELECTION_PROP_0,
+    DOM_DOM_SELECTION_PROP_ANCHOR_NODE,
+    DOM_DOM_SELECTION_PROP_ANCHOR_OFFSET,
+    DOM_DOM_SELECTION_PROP_FOCUS_NODE,
+    DOM_DOM_SELECTION_PROP_FOCUS_OFFSET,
+    DOM_DOM_SELECTION_PROP_IS_COLLAPSED,
+    DOM_DOM_SELECTION_PROP_RANGE_COUNT,
+    DOM_DOM_SELECTION_PROP_TYPE,
+    DOM_DOM_SELECTION_PROP_BASE_NODE,
+    DOM_DOM_SELECTION_PROP_BASE_OFFSET,
+    DOM_DOM_SELECTION_PROP_EXTENT_NODE,
+    DOM_DOM_SELECTION_PROP_EXTENT_OFFSET,
 };
 
 static void webkit_dom_dom_selection_finalize(GObject* object)
@@ -98,37 +99,37 @@ static void webkit_dom_dom_selection_get_property(GObject* object, guint propert
     WebKitDOMDOMSelection* self = WEBKIT_DOM_DOM_SELECTION(object);
 
     switch (propertyId) {
-    case PROP_ANCHOR_NODE:
+    case DOM_DOM_SELECTION_PROP_ANCHOR_NODE:
         g_value_set_object(value, webkit_dom_dom_selection_get_anchor_node(self));
         break;
-    case PROP_ANCHOR_OFFSET:
+    case DOM_DOM_SELECTION_PROP_ANCHOR_OFFSET:
         g_value_set_ulong(value, webkit_dom_dom_selection_get_anchor_offset(self));
         break;
-    case PROP_FOCUS_NODE:
+    case DOM_DOM_SELECTION_PROP_FOCUS_NODE:
         g_value_set_object(value, webkit_dom_dom_selection_get_focus_node(self));
         break;
-    case PROP_FOCUS_OFFSET:
+    case DOM_DOM_SELECTION_PROP_FOCUS_OFFSET:
         g_value_set_ulong(value, webkit_dom_dom_selection_get_focus_offset(self));
         break;
-    case PROP_IS_COLLAPSED:
+    case DOM_DOM_SELECTION_PROP_IS_COLLAPSED:
         g_value_set_boolean(value, webkit_dom_dom_selection_get_is_collapsed(self));
         break;
-    case PROP_RANGE_COUNT:
+    case DOM_DOM_SELECTION_PROP_RANGE_COUNT:
         g_value_set_ulong(value, webkit_dom_dom_selection_get_range_count(self));
         break;
-    case PROP_TYPE:
+    case DOM_DOM_SELECTION_PROP_TYPE:
         g_value_take_string(value, webkit_dom_dom_selection_get_selection_type(self));
         break;
-    case PROP_BASE_NODE:
+    case DOM_DOM_SELECTION_PROP_BASE_NODE:
         g_value_set_object(value, webkit_dom_dom_selection_get_base_node(self));
         break;
-    case PROP_BASE_OFFSET:
+    case DOM_DOM_SELECTION_PROP_BASE_OFFSET:
         g_value_set_ulong(value, webkit_dom_dom_selection_get_base_offset(self));
         break;
-    case PROP_EXTENT_NODE:
+    case DOM_DOM_SELECTION_PROP_EXTENT_NODE:
         g_value_set_object(value, webkit_dom_dom_selection_get_extent_node(self));
         break;
-    case PROP_EXTENT_OFFSET:
+    case DOM_DOM_SELECTION_PROP_EXTENT_OFFSET:
         g_value_set_ulong(value, webkit_dom_dom_selection_get_extent_offset(self));
         break;
     default:
@@ -158,7 +159,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ANCHOR_NODE,
+        DOM_DOM_SELECTION_PROP_ANCHOR_NODE,
         g_param_spec_object(
             "anchor-node",
             "DOMSelection:anchor-node",
@@ -168,7 +169,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ANCHOR_OFFSET,
+        DOM_DOM_SELECTION_PROP_ANCHOR_OFFSET,
         g_param_spec_ulong(
             "anchor-offset",
             "DOMSelection:anchor-offset",
@@ -178,7 +179,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FOCUS_NODE,
+        DOM_DOM_SELECTION_PROP_FOCUS_NODE,
         g_param_spec_object(
             "focus-node",
             "DOMSelection:focus-node",
@@ -188,7 +189,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FOCUS_OFFSET,
+        DOM_DOM_SELECTION_PROP_FOCUS_OFFSET,
         g_param_spec_ulong(
             "focus-offset",
             "DOMSelection:focus-offset",
@@ -198,7 +199,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_IS_COLLAPSED,
+        DOM_DOM_SELECTION_PROP_IS_COLLAPSED,
         g_param_spec_boolean(
             "is-collapsed",
             "DOMSelection:is-collapsed",
@@ -208,7 +209,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_RANGE_COUNT,
+        DOM_DOM_SELECTION_PROP_RANGE_COUNT,
         g_param_spec_ulong(
             "range-count",
             "DOMSelection:range-count",
@@ -218,7 +219,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TYPE,
+        DOM_DOM_SELECTION_PROP_TYPE,
         g_param_spec_string(
             "type",
             "DOMSelection:type",
@@ -228,7 +229,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BASE_NODE,
+        DOM_DOM_SELECTION_PROP_BASE_NODE,
         g_param_spec_object(
             "base-node",
             "DOMSelection:base-node",
@@ -238,7 +239,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BASE_OFFSET,
+        DOM_DOM_SELECTION_PROP_BASE_OFFSET,
         g_param_spec_ulong(
             "base-offset",
             "DOMSelection:base-offset",
@@ -248,7 +249,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_EXTENT_NODE,
+        DOM_DOM_SELECTION_PROP_EXTENT_NODE,
         g_param_spec_object(
             "extent-node",
             "DOMSelection:extent-node",
@@ -258,7 +259,7 @@ static void webkit_dom_dom_selection_class_init(WebKitDOMDOMSelectionClass* requ
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_EXTENT_OFFSET,
+        DOM_DOM_SELECTION_PROP_EXTENT_OFFSET,
         g_param_spec_ulong(
             "extent-offset",
             "DOMSelection:extent-offset",
@@ -292,8 +293,8 @@ void webkit_dom_dom_selection_collapse_to_end(WebKitDOMDOMSelection* self, GErro
     WebCore::DOMSelection* item = WebKit::core(self);
     auto result = item->collapseToEnd();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -305,8 +306,8 @@ void webkit_dom_dom_selection_collapse_to_start(WebKitDOMDOMSelection* self, GEr
     WebCore::DOMSelection* item = WebKit::core(self);
     auto result = item->collapseToStart();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -349,8 +350,8 @@ void webkit_dom_dom_selection_extend(WebKitDOMDOMSelection* self, WebKitDOMNode*
     WebCore::Node* convertedNode = WebKit::core(node);
     auto result = item->extend(*convertedNode, offset);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -362,8 +363,8 @@ WebKitDOMRange* webkit_dom_dom_selection_get_range_at(WebKitDOMDOMSelection* sel
     WebCore::DOMSelection* item = WebKit::core(self);
     auto result = item->getRangeAt(index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue().ptr());
@@ -530,3 +531,4 @@ gulong webkit_dom_dom_selection_get_extent_offset(WebKitDOMDOMSelection* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

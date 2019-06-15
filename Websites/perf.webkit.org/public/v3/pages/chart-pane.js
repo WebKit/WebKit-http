@@ -39,6 +39,38 @@ const ChartTrendLineTypes = [
         ]
     },
     {
+        id: 6,
+        label: 'Segmentation with Welch\'s t-test change detection',
+        execute: async function (source, parameters) {
+            const segmentation =  await source.measurementSet.fetchSegmentation('segmentTimeSeriesByMaximizingSchwarzCriterion', parameters,
+                source.type, source.includeOutliers, source.extendToFuture);
+            if (!segmentation)
+                return segmentation;
+
+            const metric = Metric.findById(source.measurementSet.metricId());
+            const timeSeries = source.measurementSet.fetchedTimeSeries(source.type, source.includeOutliers, source.extendToFuture);
+            segmentation.analysisAnnotations = Statistics.findRangesForChangeDetectionsWithWelchsTTest(timeSeries.values(),
+                segmentation, parameters[parameters.length - 1]).map((range) => {
+                const startPoint = timeSeries.findPointByIndex(range.startIndex);
+                const endPoint = timeSeries.findPointByIndex(range.endIndex);
+                const summary = metric.labelForDifference(range.segmentationStartValue, range.segmentationEndValue, 'progression', 'regression');
+                return {
+                    task: null,
+                    fillStyle: ChartStyles.annotationFillStyleForTask(null),
+                    startTime: startPoint.time,
+                    endTime: endPoint.time,
+                    label: `Potential ${summary.changeLabel}`,
+                };
+            });
+            return segmentation;
+        },
+        parameterList: [
+            {label: "Segment count weight", value: 2.5, min: 0.01, max: 10, step: 0.01},
+            {label: "Grid size", value: 500, min: 100, max: 10000, step: 10},
+            {label: "t-test significance", value: 0.99, options: Statistics.supportedOneSideTTestProbabilities()},
+        ]
+    },
+    {
         id: 1,
         label: 'Simple Moving Average',
         parameterList: [
@@ -84,7 +116,15 @@ class ChartPane extends ChartPaneBase {
     {
         this.part('close').listenToAction('activate', () => {
             this._chartsPage.closePane(this);
-        })
+        });
+        const createWithTestGroupCheckbox = this.content('create-with-test-group');
+        const repetitionCount = this.content('confirm-repetition');
+        const notifyOnCompletion = this.content('notify-on-completion');
+        createWithTestGroupCheckbox.onchange = () => {
+            const shouldDisable = !createWithTestGroupCheckbox.checked;
+            repetitionCount.disabled = shouldDisable;
+            notifyOnCompletion.disabled = shouldDisable;
+        }
     }
 
     serializeState()
@@ -194,19 +234,24 @@ class ChartPane extends ChartPaneBase {
         super._indicatorDidChange(indicatorID, isLocked);
     }
 
-    _analyzeRange(startPoint, endPoint)
+    async _analyzeRange(startPoint, endPoint)
     {
         const router = this._chartsPage.router();
         const newWindow = window.open(router.url('analysis/task/create', {inProgress: true}), '_blank');
 
-        const analyzePopover = this.content().querySelector('.chart-pane-analyze-popover');
-        const name = analyzePopover.querySelector('input').value;
-        AnalysisTask.create(name, startPoint.id, endPoint.id).then((data) => {
-            newWindow.location.href = router.url('analysis/task/' + data['taskId']);
+        const name = this.content('task-name').value;
+        const createWithTestGroup = this.content('create-with-test-group').checked;
+        const repetitionCount = this.content('confirm-repetition').value;
+        const notifyOnCompletion = this.content('notify-on-completion').checked;
+
+        try {
+            const analysisTask = await (createWithTestGroup ?
+                AnalysisTask.create(name, startPoint, endPoint, 'Confirm', repetitionCount, notifyOnCompletion) : AnalysisTask.create(name, startPoint, endPoint));
+            newWindow.location.href = router.url('analysis/task/' + analysisTask.id());
             this.fetchAnalysisTasks(true);
-        }, (error) => {
+        } catch(error) {
             newWindow.location.href = router.url('analysis/task/create', {error: error});
-        });
+        }
     }
 
     _markAsOutlier(markAsOutlier, points)
@@ -417,11 +462,20 @@ class ChartPane extends ChartPaneBase {
             this.renderReplace(this.content().querySelector('.trend-line-parameter-list'), [
                 element('h3', 'Parameters'),
                 element('ul', this._trendLineType.parameterList.map(function (parameter, index) {
+                    if (parameter.options) {
+                        const select = element('select', parameter.options.map((option) =>
+                            element('option', {value: option, selected: option == parameter.value}, option)));
+                        select.onchange = self._trendLineParameterDidChange.bind(self);
+                        select.parameterIndex = index;
+                        return element('li', element('label', [parameter.label + ': ', select]));
+                    }
+
                     var attributes = {type: 'number'};
                     for (var name in parameter)
                         attributes[name] = parameter[name];
+
                     attributes.value = configuredParameters[index];
-                    var input = element('input', attributes);
+                    const input = element('input', attributes);
                     input.parameterIndex = index;
                     input.oninput = self._trendLineParameterDidChange.bind(self);
                     input.onchange = self._trendLineParameterDidChange.bind(self);
@@ -475,7 +529,7 @@ class ChartPane extends ChartPaneBase {
         this._updateTrendLine();
     }
 
-    _updateTrendLine()
+    async _updateTrendLine()
     {
         if (!this._mainChart.sourceList())
             return;
@@ -484,7 +538,6 @@ class ChartPane extends ChartPaneBase {
         var currentTrendLineType = this._trendLineType || ChartTrendLineTypes.DefaultType;
         var currentTrendLineParameters = this._trendLineParameters || this._defaultParametersForTrendLine(currentTrendLineType);
         var currentTrendLineVersion = this._trendLineVersion;
-        var self = this;
         var sourceList = this._mainChart.sourceList();
 
         if (!currentTrendLineType.execute) {
@@ -492,14 +545,17 @@ class ChartPane extends ChartPaneBase {
             this.enqueueToRender();
         } else {
             // Wait for all trendlines to be ready. Otherwise we might see FOC when the domain is expanded.
-            Promise.all(sourceList.map(function (source, sourceIndex) {
-                return currentTrendLineType.execute.call(null, source, currentTrendLineParameters).then(function (trendlineSeries) {
-                    if (self._trendLineVersion == currentTrendLineVersion)
-                        self._mainChart.setTrendLine(sourceIndex, trendlineSeries);
-                });
-            })).then(function () {
-                self.enqueueToRender();
-            });
+            await Promise.all(sourceList.map(async (source, sourceIndex) => {
+                const trendlineSeries = await currentTrendLineType.execute.call(null, source, currentTrendLineParameters);
+                if (this._trendLineVersion == currentTrendLineVersion)
+                    this._mainChart.setTrendLine(sourceIndex, trendlineSeries);
+
+                if (trendlineSeries && trendlineSeries.analysisAnnotations)
+                    this._detectedAnnotations = trendlineSeries.analysisAnnotations;
+                else
+                    this._detectedAnnotations = null;
+            }));
+            this.enqueueToRender();
         }
     }
 
@@ -515,8 +571,26 @@ class ChartPane extends ChartPaneBase {
                     <ul class="chart-pane-action-buttons buttoned-toolbar"></ul>
                     <ul class="chart-pane-alternative-platforms popover" style="display:none"></ul>
                     <form class="chart-pane-analyze-popover popover" style="display:none">
-                        <input type="text" required>
+                        <input type="text" id="task-name" required>
                         <button>Create</button>
+                        <li>
+                            <label><input type="checkbox" id="create-with-test-group" checked></label>
+                            <label>Confirm with</label>
+                                <select id="confirm-repetition">
+                                    <option>1</option>
+                                    <option>2</option>
+                                    <option>3</option>
+                                    <option selected>4</option>
+                                    <option>5</option>
+                                    <option>6</option>
+                                    <option>7</option>
+                                    <option>8</option>
+                                    <option>9</option>
+                                    <option>10</option>
+                                </select>
+                            <label>iterations</label>
+                            <label><input type="checkbox" id="notify-on-completion" checked> Notify on completion</label>
+                        </li>
                     </form>
                     <ul class="chart-pane-filtering-options popover" style="display:none">
                         <li><label><input type="checkbox" class="enable-sampling">Sampling</label></li>
@@ -576,7 +650,7 @@ class ChartPane extends ChartPaneBase {
                 padding: 0 0;
             }
 
-            .chart-pane-actions ul {
+            .chart-pane-actions ul, form {
                 display: block;
                 padding: 0;
                 margin: 0 0.5rem;

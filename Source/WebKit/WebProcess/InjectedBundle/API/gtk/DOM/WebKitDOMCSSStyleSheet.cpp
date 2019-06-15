@@ -22,10 +22,9 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMCSSRuleListPrivate.h"
 #include "WebKitDOMCSSRulePrivate.h"
 #include "WebKitDOMCSSStyleSheetPrivate.h"
@@ -34,6 +33,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -58,10 +59,10 @@ WebKitDOMCSSStyleSheet* wrapCSSStyleSheet(WebCore::CSSStyleSheet* coreObject)
 G_DEFINE_TYPE(WebKitDOMCSSStyleSheet, webkit_dom_css_style_sheet, WEBKIT_DOM_TYPE_STYLE_SHEET)
 
 enum {
-    PROP_0,
-    PROP_OWNER_RULE,
-    PROP_CSS_RULES,
-    PROP_RULES,
+    DOM_CSS_STYLE_SHEET_PROP_0,
+    DOM_CSS_STYLE_SHEET_PROP_OWNER_RULE,
+    DOM_CSS_STYLE_SHEET_PROP_CSS_RULES,
+    DOM_CSS_STYLE_SHEET_PROP_RULES,
 };
 
 static void webkit_dom_css_style_sheet_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
@@ -69,13 +70,13 @@ static void webkit_dom_css_style_sheet_get_property(GObject* object, guint prope
     WebKitDOMCSSStyleSheet* self = WEBKIT_DOM_CSS_STYLE_SHEET(object);
 
     switch (propertyId) {
-    case PROP_OWNER_RULE:
+    case DOM_CSS_STYLE_SHEET_PROP_OWNER_RULE:
         g_value_set_object(value, webkit_dom_css_style_sheet_get_owner_rule(self));
         break;
-    case PROP_CSS_RULES:
+    case DOM_CSS_STYLE_SHEET_PROP_CSS_RULES:
         g_value_set_object(value, webkit_dom_css_style_sheet_get_css_rules(self));
         break;
-    case PROP_RULES:
+    case DOM_CSS_STYLE_SHEET_PROP_RULES:
         g_value_set_object(value, webkit_dom_css_style_sheet_get_rules(self));
         break;
     default:
@@ -91,7 +92,7 @@ static void webkit_dom_css_style_sheet_class_init(WebKitDOMCSSStyleSheetClass* r
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_OWNER_RULE,
+        DOM_CSS_STYLE_SHEET_PROP_OWNER_RULE,
         g_param_spec_object(
             "owner-rule",
             "CSSStyleSheet:owner-rule",
@@ -101,7 +102,7 @@ static void webkit_dom_css_style_sheet_class_init(WebKitDOMCSSStyleSheetClass* r
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CSS_RULES,
+        DOM_CSS_STYLE_SHEET_PROP_CSS_RULES,
         g_param_spec_object(
             "css-rules",
             "CSSStyleSheet:css-rules",
@@ -111,7 +112,7 @@ static void webkit_dom_css_style_sheet_class_init(WebKitDOMCSSStyleSheetClass* r
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_RULES,
+        DOM_CSS_STYLE_SHEET_PROP_RULES,
         g_param_spec_object(
             "rules",
             "CSSStyleSheet:rules",
@@ -136,8 +137,8 @@ gulong webkit_dom_css_style_sheet_insert_rule(WebKitDOMCSSStyleSheet* self, cons
     WTF::String convertedRule = WTF::String::fromUTF8(rule);
     auto result = item->insertRule(convertedRule, index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return 0;
     }
     return result.releaseReturnValue();
@@ -151,8 +152,8 @@ void webkit_dom_css_style_sheet_delete_rule(WebKitDOMCSSStyleSheet* self, gulong
     WebCore::CSSStyleSheet* item = WebKit::core(self);
     auto result = item->deleteRule(index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -168,8 +169,8 @@ glong webkit_dom_css_style_sheet_add_rule(WebKitDOMCSSStyleSheet* self, const gc
     WTF::String convertedStyle = WTF::String::fromUTF8(style);
     auto result = item->addRule(convertedSelector, convertedStyle, index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return -1;
     }
     return result.releaseReturnValue();
@@ -183,8 +184,8 @@ void webkit_dom_css_style_sheet_remove_rule(WebKitDOMCSSStyleSheet* self, gulong
     WebCore::CSSStyleSheet* item = WebKit::core(self);
     auto result = item->removeRule(index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -215,3 +216,4 @@ WebKitDOMCSSRuleList* webkit_dom_css_style_sheet_get_rules(WebKitDOMCSSStyleShee
     return WebKit::kit(gobjectResult.get());
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

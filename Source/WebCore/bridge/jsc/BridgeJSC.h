@@ -28,8 +28,8 @@
 #define BridgeJSC_h
 
 #include "Bridge.h"
-#include <runtime/JSCInlines.h>
-#include <runtime/JSString.h>
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/JSString.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
@@ -54,18 +54,18 @@ public:
     virtual JSValue valueFromInstance(ExecState*, const Instance*) const = 0;
     virtual bool setValueToInstance(ExecState*, const Instance*, JSValue) const = 0;
 
-    virtual ~Field() { }
+    virtual ~Field() = default;
 };
 
 class Class {
     WTF_MAKE_NONCOPYABLE(Class); WTF_MAKE_FAST_ALLOCATED;
 public:
-    Class() { }
+    Class() = default;
     virtual Method* methodNamed(PropertyName, Instance*) const = 0;
     virtual Field* fieldNamed(PropertyName, Instance*) const = 0;
     virtual JSValue fallbackObject(ExecState*, Instance*, PropertyName) { return jsUndefined(); }
 
-    virtual ~Class() { }
+    virtual ~Class() = default;
 };
 
 class Instance : public RefCounted<Instance> {

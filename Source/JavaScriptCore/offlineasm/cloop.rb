@@ -1,4 +1,4 @@
-# Copyright (C) 2012, 2014 Apple Inc. All rights reserved.
+# Copyright (C) 2012-2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -302,6 +302,15 @@ class AbsoluteAddress
     end
 end
 
+class LabelReference
+    def intMemRef
+        "*CAST<intptr_t*>(&#{cLabel})"
+    end
+    def cloopEmitLea(destination, type)
+        $asm.putc "#{destination.clValue(:voidPtr)} = CAST<void*>(&#{cLabel});"
+    end
+end
+
 
 #
 # Lea support.
@@ -471,71 +480,26 @@ def cloopEmitOpAndBranch(operands, operator, type, conditionTest)
     $asm.putc "}"
 end
 
-def cloopAddOverflowTest(operands, type)
-    case type
-    when :int32
-        tempType = "int32_t"
-        signBit = "SIGN_BIT32"
-    else
-        raise "Unimplemented type"
-    end
-
-    $asm.putc "    #{tempType} a = #{operands[0].clValue(type)};"
-    $asm.putc "    #{tempType} b = #{operands[1].clValue(type)};"
-    $asm.putc "    // sign(b) sign(a) | Overflows if:"
-    $asm.putc "    // 0       0       | sign(b+a) = 1 (pos + pos != neg)"
-    $asm.putc "    // 0       1       | never"
-    $asm.putc "    // 1       0       | never"
-    $asm.putc "    // 1       1       | sign(b+a) = 0 (neg + neg != pos)"
-    "((#{signBit}(b) == #{signBit}(a)) && (#{signBit}(b+a) != #{signBit}(a)))"
-end
-
-def cloopSubOverflowTest(operands, type)
-    case type
-    when :int32
-        tempType = "int32_t"
-        signBit = "SIGN_BIT32"
-    else
-        raise "Unimplemented type"
-    end
-
-    $asm.putc "    #{tempType} a = #{operands[0].clValue(type)};"
-    $asm.putc "    #{tempType} b = #{operands[1].clValue(type)};"
-    $asm.putc "    // sign(b) sign(a) | Overflows if:"
-    $asm.putc "    // 0       0       | never"
-    $asm.putc "    // 0       1       | sign(b-a) = 1 (pos - neg != pos)"
-    $asm.putc "    // 1       0       | sign(b-a) = 0 (neg - pos != pos)"
-    $asm.putc "    // 1       1       | never"
-    "((#{signBit}(b) != #{signBit}(a)) && (#{signBit}(b-a) == #{signBit}(a)))"
-end
-
-def cloopMulOverflowTest(operands, type)
-    case type
-    when :int32
-        tempType = "uint32_t"
-    else
-        raise "Unimplemented type"
-    end
-    $asm.putc "    #{tempType} a = #{operands[0].clValue(type)};"
-    $asm.putc "    #{tempType} b = #{operands[1].clValue(type)};"
-    "((b | a) >> 15)"
-end
-
 def cloopEmitOpAndBranchIfOverflow(operands, operator, type)
+    case type
+    when :int32
+        tempType = "int32_t"
+    else
+        raise "Unimplemented type"
+    end
+
     $asm.putc "{"
 
     # Emit the overflow test based on the operands and the type:
     case operator
-    when "+"; overflowTest = cloopAddOverflowTest(operands, type)
-    when "-"; overflowTest = cloopSubOverflowTest(operands, type)
-    when "*"; overflowTest = cloopMulOverflowTest(operands, type)
+    when "+"; operation = "add"
+    when "-"; operation = "sub"
+    when "*"; operation = "multiply"
     else
         raise "Unimplemented opeartor"
     end
 
-    $asm.putc "    bool didOverflow = #{overflowTest};"
-    $asm.putc "    #{operands[1].clValue(type)} = #{operands[1].clValue(type)} #{operator} #{operands[0].clValue(type)};"
-    $asm.putc "    if (didOverflow)"
+    $asm.putc "    if (!WTF::ArithmeticOperations<#{tempType}, #{tempType}, #{tempType}>::#{operation}(#{operands[1].clValue(type)}, #{operands[0].clValue(type)}, #{operands[1].clValue(type)}))"
     $asm.putc "        goto #{operands[2].cLabel};"
     $asm.putc "}"
 end
@@ -543,22 +507,19 @@ end
 # operands: callTarget, currentFrame, currentPC
 def cloopEmitCallSlowPath(operands)
     $asm.putc "{"
+    $asm.putc "    cloopStack.setCurrentStackPointer(sp.vp);"
     $asm.putc "    SlowPathReturnType result = #{operands[0].cLabel}(#{operands[1].clDump}, #{operands[2].clDump});"
     $asm.putc "    decodeResult(result, t0.vp, t1.vp);"
     $asm.putc "}"
 end
 
 def cloopEmitCallSlowPathVoid(operands)
+    $asm.putc "cloopStack.setCurrentStackPointer(sp.vp);"
     $asm.putc "#{operands[0].cLabel}(#{operands[1].clDump}, #{operands[2].clDump});"
 end
 
 class Instruction
-    @@didReturnFromJSLabelCounter = 0
-
     def lowerC_LOOP
-        $asm.codeOrigin codeOriginString if $enableCodeOriginComments
-        $asm.annotation annotation if $enableInstrAnnotations && (opcode != "cloopDo")
-
         case opcode
         when "addi"
             cloopEmitOperation(operands, :int32, "+")
@@ -1115,16 +1076,17 @@ class Instruction
         # use of the call instruction. Instead, we just implement JS calls
         # as an opcode dispatch.
         when "cloopCallJSFunction"
-            @@didReturnFromJSLabelCounter += 1
-            $asm.putc "lr.opcode = getOpcode(llint_cloop_did_return_from_js_#{@@didReturnFromJSLabelCounter});"
+            uid = $asm.newUID
+            $asm.putc "lr.opcode = getOpcode(llint_cloop_did_return_from_js_#{uid});"
             $asm.putc "opcode = #{operands[0].clValue(:opcode)};"
             $asm.putc "DISPATCH_OPCODE();"
-            $asm.putsLabel("llint_cloop_did_return_from_js_#{@@didReturnFromJSLabelCounter}", false)
+            $asm.putsLabel("llint_cloop_did_return_from_js_#{uid}", false)
 
         # We can't do generic function calls with an arbitrary set of args, but
         # fortunately we don't have to here. All native function calls always
         # have a fixed prototype of 1 args: the passed ExecState.
         when "cloopCallNative"
+            $asm.putc "cloopStack.setCurrentStackPointer(sp.vp);"
             $asm.putc "nativeFunc = #{operands[0].clValue(:nativeFunc)};"
             $asm.putc "functionReturnValue = JSValue::decode(nativeFunc(t0.execState));"
             $asm.putc "#if USE(JSVALUE32_64)"
@@ -1152,5 +1114,11 @@ class Instruction
         else
             lowerDefault
         end
+    end
+
+    def recordMetaDataC_LOOP
+        $asm.codeOrigin codeOriginString if $enableCodeOriginComments
+        $asm.annotation annotation if $enableInstrAnnotations && (opcode != "cloopDo")
+        $asm.debugAnnotation codeOrigin.debugDirective if $enableDebugAnnotations
     end
 end

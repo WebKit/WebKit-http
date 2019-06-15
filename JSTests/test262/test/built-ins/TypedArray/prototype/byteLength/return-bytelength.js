@@ -1,16 +1,17 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.2
-description: |
+esid: sec-get-%typedarray%.prototype.bytelength
+description: >
   Return value from [[ByteLength]] internal slot
-info: >
+info: |
   22.2.3.2 get %TypedArray%.prototype.byteLength
 
   ...
   6. Let size be the value of O's [[ByteLength]] internal slot.
   7. Return size.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

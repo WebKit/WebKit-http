@@ -45,11 +45,6 @@ static bool isDirectiveValueCharacter(UChar c)
     return isASCIISpace(c) || (c >= 0x21 && c <= 0x7e); // Whitespace + VCHAR
 }
 
-static bool isNotASCIISpace(UChar c)
-{
-    return !isASCIISpace(c);
-}
-
 static inline bool checkEval(ContentSecurityPolicySourceListDirective* directive)
 {
     return !directive || directive->allowEval();
@@ -75,13 +70,36 @@ static inline bool checkNonce(ContentSecurityPolicySourceListDirective* directiv
     return !directive || directive->allows(nonce);
 }
 
+// Used to compute the comparison URL when checking frame-ancestors. We do this weird conversion so that child
+// frames of a page with a unique origin (e.g. about:blank) are not blocked due to their frame-ancestors policy
+// and do not need to add the parent's URL to their policy. The latter could allow the child page to be framed
+// by anyone. See <https://github.com/w3c/webappsec/issues/311> for more details.
+static inline URL urlFromOrigin(const SecurityOrigin& origin)
+{
+    return { URL { }, origin.toString() };
+}
+
 static inline bool checkFrameAncestors(ContentSecurityPolicySourceListDirective* directive, const Frame& frame)
 {
     if (!directive)
         return true;
     bool didReceiveRedirectResponse = false;
     for (Frame* current = frame.tree().parent(); current; current = current->tree().parent()) {
-        if (!directive->allows(current->document()->url(), didReceiveRedirectResponse, ContentSecurityPolicySourceListDirective::ShouldAllowEmptyURLIfSourceListIsNotNone::No))
+        URL origin = urlFromOrigin(current->document()->securityOrigin());
+        if (!origin.isValid() || !directive->allows(origin, didReceiveRedirectResponse, ContentSecurityPolicySourceListDirective::ShouldAllowEmptyURLIfSourceListIsNotNone::No))
+            return false;
+    }
+    return true;
+}
+
+static inline bool checkFrameAncestors(ContentSecurityPolicySourceListDirective* directive, const Vector<RefPtr<SecurityOrigin>>& ancestorOrigins)
+{
+    if (!directive)
+        return true;
+    bool didReceiveRedirectResponse = false;
+    for (auto& origin : ancestorOrigins) {
+        URL originURL = urlFromOrigin(*origin);
+        if (!originURL.isValid() || !directive->allows(originURL, didReceiveRedirectResponse, ContentSecurityPolicySourceListDirective::ShouldAllowEmptyURLIfSourceListIsNotNone::No))
             return false;
     }
     return true;
@@ -240,6 +258,13 @@ const ContentSecurityPolicyDirective* ContentSecurityPolicyDirectiveList::violat
     return m_frameAncestors.get();
 }
 
+const ContentSecurityPolicyDirective* ContentSecurityPolicyDirectiveList::violatedDirectiveForFrameAncestorOrigins(const Vector<RefPtr<SecurityOrigin>>& ancestorOrigins) const
+{
+    if (checkFrameAncestors(m_frameAncestors.get(), ancestorOrigins))
+        return nullptr;
+    return m_frameAncestors.get();
+}
+
 const ContentSecurityPolicyDirective* ContentSecurityPolicyDirectiveList::violatedDirectiveForImage(const URL& url, bool didReceiveRedirectResponse) const
 {
     ContentSecurityPolicySourceListDirective* operativeDirective = this->operativeDirective(m_imgSrc.get());
@@ -247,6 +272,16 @@ const ContentSecurityPolicyDirective* ContentSecurityPolicyDirectiveList::violat
         return nullptr;
     return operativeDirective;
 }
+
+#if ENABLE(APPLICATION_MANIFEST)
+const ContentSecurityPolicyDirective* ContentSecurityPolicyDirectiveList::violatedDirectiveForManifest(const URL& url, bool didReceiveRedirectResponse) const
+{
+    ContentSecurityPolicySourceListDirective* operativeDirective = this->operativeDirective(m_manifestSrc.get());
+    if (checkSource(operativeDirective, url, didReceiveRedirectResponse))
+        return nullptr;
+    return operativeDirective;
+}
+#endif // ENABLE(APPLICATION_MANIFEST)
 
 const ContentSecurityPolicyDirective* ContentSecurityPolicyDirectiveList::violatedDirectiveForMedia(const URL& url, bool didReceiveRedirectResponse) const
 {
@@ -319,6 +354,10 @@ void ContentSecurityPolicyDirectiveList::parse(const String& policy, ContentSecu
                     m_policy.reportInvalidDirectiveInHTTPEquivMeta(name);
                     continue;
                 }
+            } else if (policyFrom == ContentSecurityPolicy::PolicyFrom::InheritedForPluginDocument) {
+                if (!equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::pluginTypes)
+                    && !equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::reportURI))
+                    continue;
             }
             addDirective(name, value);
         }
@@ -480,6 +519,10 @@ void ContentSecurityPolicyDirectiveList::addDirective(const String& name, const 
         setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_imgSrc);
     else if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::fontSrc))
         setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_fontSrc);
+#if ENABLE(APPLICATION_MANIFEST)
+    else if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::manifestSrc))
+        setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_manifestSrc);
+#endif
     else if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::mediaSrc))
         setCSPDirective<ContentSecurityPolicySourceListDirective>(name, value, m_mediaSrc);
     else if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::connectSrc))

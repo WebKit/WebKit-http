@@ -81,7 +81,7 @@ private:
             if (m_node->isBinaryUseKind(ObjectUse)
                 || (m_node->child1().useKind() == ObjectUse && m_node->child2().useKind() == ObjectOrOtherUse)
                 || (m_node->child1().useKind() == ObjectOrOtherUse && m_node->child2().useKind() == ObjectUse)
-                || (m_node->child1().useKind() == OtherUse || m_node->child2().useKind() == OtherUse))
+                || (m_node->child1().useKind() == KnownOtherUse || m_node->child2().useKind() == KnownOtherUse))
                 handleMasqueradesAsUndefined();
             break;
             
@@ -109,10 +109,6 @@ private:
     }
     
     void addLazily(WatchpointSet* set)
-    {
-        m_graph.watchpoints().addLazily(set);
-    }
-    void addLazily(InlineWatchpointSet& set)
     {
         m_graph.watchpoints().addLazily(set);
     }

@@ -36,18 +36,13 @@
 namespace WebCore {
 
 class InspectorHistory final {
-    WTF_MAKE_NONCOPYABLE(InspectorHistory); WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(InspectorHistory);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     class Action {
         WTF_MAKE_FAST_ALLOCATED;
     public:
-        explicit Action(const String& name)
-            : m_name { name }
-        {
-        }
-
         virtual ~Action() = default;
-        virtual String toString() { return m_name; }
 
         virtual String mergeId() { return emptyString(); }
         virtual void merge(std::unique_ptr<Action>) { };

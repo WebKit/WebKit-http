@@ -29,7 +29,7 @@
 
 namespace JSC {
 
-class ProxyConstructor : public InternalFunction {
+class ProxyConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = Base::StructureFlags;
@@ -40,15 +40,13 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype) 
     { 
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info()); 
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info()); 
     }
 
     void finishCreation(VM&, const char* name, JSGlobalObject*);
 
 private:
     ProxyConstructor(VM&, Structure*);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 
     static EncodedJSValue getGetter(ExecState*, EncodedJSValue thisValue, PropertyName);
 };

@@ -3,7 +3,7 @@
 /*---
 description: Resolving with a non-thenable object value from a rejected promise
 es6id: 25.4.5.3
-info: >
+info: |
     [...]
     7. Return PerformPromiseThen(promise, onFulfilled, onRejected,
        resultCapability).
@@ -33,21 +33,25 @@ info: >
 flags: [async]
 ---*/
 
-var nonThenable = { then: null };
-var p1 = new Promise(function(_, reject) { reject(); });
+var nonThenable = {
+  then: null
+};
+var p1 = new Promise(function(_, reject) {
+  reject();
+});
 var p2;
 
 p2 = p1.then(function() {}, function() {
-    return nonThenable;
-  });
+  return nonThenable;
+});
 
 p2.then(function(value) {
-    if (value !== nonThenable) {
-      $DONE('The promise should be fulfilled with the provided value.');
-      return;
-    }
+  if (value !== nonThenable) {
+    $DONE('The promise should be fulfilled with the provided value.');
+    return;
+  }
 
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});

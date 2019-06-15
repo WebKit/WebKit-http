@@ -8,19 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/neteq/tools/neteq_performance_test.h"
+#include "modules/audio_coding/neteq/tools/neteq_performance_test.h"
 
-#include "webrtc/api/audio_codecs/builtin_audio_decoder_factory.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/common_types.h"
-#include "webrtc/modules/audio_coding/codecs/pcm16b/pcm16b.h"
-#include "webrtc/modules/audio_coding/neteq/include/neteq.h"
-#include "webrtc/modules/audio_coding/neteq/tools/audio_loop.h"
-#include "webrtc/modules/audio_coding/neteq/tools/rtp_generator.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/system_wrappers/include/clock.h"
-#include "webrtc/test/testsupport/fileutils.h"
-#include "webrtc/typedefs.h"
+#include "api/audio/audio_frame.h"
+#include "api/audio_codecs/builtin_audio_decoder_factory.h"
+#include "common_types.h"  // NOLINT(build/include)
+#include "modules/audio_coding/codecs/pcm16b/pcm16b.h"
+#include "modules/audio_coding/neteq/include/neteq.h"
+#include "modules/audio_coding/neteq/tools/audio_loop.h"
+#include "modules/audio_coding/neteq/tools/rtp_generator.h"
+#include "rtc_base/checks.h"
+#include "system_wrappers/include/clock.h"
+#include "test/testsupport/fileutils.h"
 
 using webrtc::NetEq;
 using webrtc::test::AudioLoop;
@@ -80,7 +79,7 @@ int64_t NetEqPerformanceTest::Run(int runtime_ms,
   AudioFrame out_frame;
   while (time_now_ms < runtime_ms) {
     while (packet_input_time_ms <= time_now_ms) {
-      // Drop every N packets, where N = FLAGS_lossrate.
+      // Drop every N packets, where N = FLAG_lossrate.
       bool lost = false;
       if (lossrate > 0) {
         lost = ((rtp_header.sequenceNumber - 1) % lossrate) == 0;
@@ -95,15 +94,14 @@ int64_t NetEqPerformanceTest::Run(int runtime_ms,
       }
 
       // Get next packet.
-      packet_input_time_ms = rtp_gen.GetRtpHeader(kPayloadType,
-                                                  kInputBlockSizeSamples,
-                                                  &rtp_header);
+      packet_input_time_ms = rtp_gen.GetRtpHeader(
+          kPayloadType, kInputBlockSizeSamples, &rtp_header);
       input_samples = audio_loop.GetNextBlock();
       if (input_samples.empty())
         return -1;
       payload_len = WebRtcPcm16b_Encode(input_samples.data(),
                                         input_samples.size(), input_payload);
-      assert(payload_len == kInputBlockSizeSamples * sizeof(int16_t));
+      RTC_DCHECK_EQ(payload_len, kInputBlockSizeSamples * sizeof(int16_t));
     }
 
     // Get output audio, but don't do anything with it.
@@ -113,8 +111,7 @@ int64_t NetEqPerformanceTest::Run(int runtime_ms,
     if (error != NetEq::kOK)
       return -1;
 
-    assert(out_frame.samples_per_channel_ ==
-           static_cast<size_t>(kSampRateHz * 10 / 1000));
+    RTC_DCHECK_EQ(out_frame.samples_per_channel_, (kSampRateHz * 10) / 1000);
 
     static const int kOutputBlockSizeMs = 10;
     time_now_ms += kOutputBlockSizeMs;

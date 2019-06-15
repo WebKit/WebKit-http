@@ -1,10 +1,9 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.14
 esid: sec-%typedarray%.prototype.includes
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.14 %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -16,7 +15,7 @@ info: >
   1. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var includes = TypedArray.prototype.includes;

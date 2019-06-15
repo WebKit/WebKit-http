@@ -5,6 +5,7 @@ es6id: 19.4
 description: >
     Object.preventExtensions(obj) where obj contains symbol properties.
 flags: [onlyStrict]
+features: [Symbol]
 ---*/
 var symA = Symbol("A");
 var symB = Symbol("B");
@@ -19,13 +20,12 @@ assert.throws(TypeError, function() {
 });
 
 assert.throws(TypeError, function() {
-  Object.defineProperty(obj, symC, { value: 1 });
+  Object.defineProperty(obj, symC, {
+    value: 1
+  });
 });
 
 assert.sameValue(obj[symA], 2, "The value of `obj[symA]` is `2`");
 assert.sameValue(delete obj[symA], true, "`delete obj[symA]` is `true`");
 assert.sameValue(obj[symB], undefined, "The value of `obj[symB]` is `undefined`");
 assert.sameValue(obj[symC], undefined, "The value of `obj[symC]` is `undefined`");
-
-
-

@@ -37,11 +37,15 @@ import sys
 import time
 import unittest
 
+from contextlib import contextmanager
+
 from webkitpy.common.system.executive_mock import MockExecutive
 from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.outputcapture import OutputCapture
 from webkitpy.common.system.systemhost_mock import MockSystemHost
+from webkitpy.common.version_name_map import INTERNAL_TABLE
 from webkitpy.port.base import Port
+from webkitpy.port.config import apple_additions
 from webkitpy.port.image_diff import ImageDiffer
 from webkitpy.port.server_process_mock import MockServerProcess
 from webkitpy.layout_tests.servers import http_server_base
@@ -71,6 +75,35 @@ class TestWebKitPort(Port):
 
     def _tests_for_disabled_features(self):
         return ["accessibility", ]
+
+
+@contextmanager
+def bind_mock_apple_additions():
+    from webkitpy.common.version_name_map import PUBLIC_TABLE, VersionNameMap
+
+    class MockAppleAdditions(object):
+
+        @staticmethod
+        def layout_tests_path():
+            return '/additional_testing_path/'
+
+        @staticmethod
+        def version_name_mapping(platform=None):
+            result = VersionNameMap(platform)
+            result.mapping[INTERNAL_TABLE] = {}
+            for platform in result.mapping[PUBLIC_TABLE]:
+                result.mapping[INTERNAL_TABLE][platform] = {}
+                for name, version in result.mapping[PUBLIC_TABLE][platform].iteritems():
+                    result.mapping[INTERNAL_TABLE][platform]['add-' + name] = version
+            return result
+
+    # apple_additions is a memoized function. Take advantage of this fact and manipulate the cache
+    # to temporarily return a mocked result
+    apple_additions._results_cache[()] = MockAppleAdditions
+    VersionNameMap.map._results_cache = {}
+    yield
+    apple_additions._results_cache[()] = None
+    VersionNameMap.map._results_cache = {}
 
 
 class PortTestCase(unittest.TestCase):
@@ -117,7 +150,7 @@ class PortTestCase(unittest.TestCase):
                 test_socket = socket.socket()
                 test_socket.connect((host, port))
                 self.fail()
-            except IOError, e:
+            except IOError as e:
                 self.assertTrue(e.errno in (errno.ECONNREFUSED, errno.ECONNRESET))
             finally:
                 test_socket.close()
@@ -127,7 +160,7 @@ class PortTestCase(unittest.TestCase):
             try:
                 test_socket = socket.socket()
                 test_socket.connect((host, port))
-            except IOError, e:
+            except IOError as e:
                 self.fail('failed to connect to %s:%d' % (host, port))
             finally:
                 test_socket.close()
@@ -135,7 +168,7 @@ class PortTestCase(unittest.TestCase):
     def integration_test_check_sys_deps(self):
         port = self.make_port()
         # Only checking that no exception is raised.
-        port.check_sys_deps(True)
+        port.check_sys_deps()
 
     def integration_test_helper(self):
         port = self.make_port()
@@ -159,14 +192,14 @@ class PortTestCase(unittest.TestCase):
             try:
                 try:
                     test_socket.bind(('localhost', port_number))
-                except socket.error, e:
+                except socket.error as e:
                     if e.errno in (errno.EADDRINUSE, errno.EALREADY):
                         self.fail('could not bind to port %d' % port_number)
                     raise
                 try:
                     port.start_http_server()
                     self.fail('should not have been able to start the server while bound to %d' % port_number)
-                except http_server_base.ServerError, e:
+                except http_server_base.ServerError as e:
                     pass
             finally:
                 port.stop_http_server()
@@ -333,7 +366,7 @@ class PortTestCase(unittest.TestCase):
                 try:
                     port.start_websocket_server()
                     self.fail('should not have been able to start the server while bound to %d' % port_number)
-                except http_server_base.ServerError, e:
+                except http_server_base.ServerError as e:
                     pass
             finally:
                 port.stop_websocket_server()
@@ -530,18 +563,18 @@ class PortTestCase(unittest.TestCase):
         # Delay setting _executive to avoid logging during construction
         port._executive = MockExecutive(should_log=True)
         port._options = MockOptions(configuration="Release")  # This should not be necessary, but I think TestWebKitPort is actually reading from disk (and thus detects the current configuration).
-        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\n"
+        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\n"
         self.assertTrue(output.assert_outputs(self, port._build_driver, expected_logs=expected_logs))
 
         # Make sure WebKitTestRunner is used.
         port._options = MockOptions(webkit_test_runner=True, configuration="Release")
-        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\nMOCK run_command: ['Tools/Scripts/build-webkittestrunner', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}\n"
+        expected_logs = "MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\nMOCK run_command: ['Tools/Scripts/build-webkittestrunner', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}\n"
         self.assertTrue(output.assert_outputs(self, port._build_driver, expected_logs=expected_logs))
 
         # Make sure we show the build log when --verbose is passed, which we simulate by setting the logging level to DEBUG.
         output.set_log_level(logging.DEBUG)
         port._options = MockOptions(configuration="Release")
-        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}
+        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}
 Output of ['Tools/Scripts/build-dumprendertree', '--release']:
 MOCK output of child process
 """
@@ -551,7 +584,7 @@ MOCK output of child process
         # Make sure that failure to build returns False.
         port._executive = MockExecutive(should_log=True, should_throw=True)
         # Because WK2 currently has to build both webkittestrunner and DRT, if DRT fails, that's the only one it tries.
-        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'MOCK_ENVIRON_COPY': '1'}
+        expected_logs = """MOCK run_command: ['Tools/Scripts/build-dumprendertree', '--release'], cwd=/mock-checkout, env={'MOCK_ENVIRON_COPY': '1'}
 MOCK ScriptError
 
 MOCK output of child process
@@ -596,7 +629,7 @@ MOCK output of child process
         self._assert_config_file_for_platform(port, 'linux2', 'debian-httpd-2.2.conf')
 
         self._assert_config_file_for_platform(port, 'mac', 'apache2.2-httpd.conf')
-        self._assert_config_file_for_platform(port, 'win32', 'apache2.2-httpd-win.conf')  # win32 isn't a supported sys.platform.  AppleWin/WinCairo ports all use cygwin.
+        self._assert_config_file_for_platform(port, 'win32', 'win-httpd-2.2-php7.conf')  # WinCairo uses win32. Only AppleWin port uses cygwin.
         self._assert_config_file_for_platform(port, 'barf', 'apache2.2-httpd.conf')
 
     def test_path_to_apache_config_file(self):
@@ -633,19 +666,19 @@ MOCK output of child process
             return True
 
         port._build_driver = build_driver_called
-        port.check_build(False)
+        port.check_build()
         self.assertTrue(self.build_called)
 
         port = self.make_port(options=MockOptions(root='/tmp', build=True))
         self.build_called = False
         port._build_driver = build_driver_called
-        port.check_build(False)
+        port.check_build()
         self.assertFalse(self.build_called, None)
 
         port = self.make_port(options=MockOptions(build=False))
         self.build_called = False
         port._build_driver = build_driver_called
-        port.check_build(False)
+        port.check_build()
         self.assertFalse(self.build_called, None)
 
     def test_additional_platform_directory(self):

@@ -22,11 +22,10 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMCharacterDataPrivate.h"
 #include "WebKitDOMElementPrivate.h"
 #include "WebKitDOMEventPrivate.h"
@@ -36,6 +35,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -66,8 +67,8 @@ static gboolean webkit_dom_character_data_dispatch_event(WebKitDOMEventTarget* t
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -85,19 +86,19 @@ static gboolean webkit_dom_character_data_remove_event_listener(WebKitDOMEventTa
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_character_data_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_character_data_dispatch_event;
     iface->add_event_listener = webkit_dom_character_data_add_event_listener;
     iface->remove_event_listener = webkit_dom_character_data_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMCharacterData, webkit_dom_character_data, WEBKIT_DOM_TYPE_NODE, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMCharacterData, webkit_dom_character_data, WEBKIT_DOM_TYPE_NODE, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_character_data_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_DATA,
-    PROP_LENGTH,
+    DOM_CHARACTER_DATA_PROP_0,
+    DOM_CHARACTER_DATA_PROP_DATA,
+    DOM_CHARACTER_DATA_PROP_LENGTH,
 };
 
 static void webkit_dom_character_data_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -105,7 +106,7 @@ static void webkit_dom_character_data_set_property(GObject* object, guint proper
     WebKitDOMCharacterData* self = WEBKIT_DOM_CHARACTER_DATA(object);
 
     switch (propertyId) {
-    case PROP_DATA:
+    case DOM_CHARACTER_DATA_PROP_DATA:
         webkit_dom_character_data_set_data(self, g_value_get_string(value), nullptr);
         break;
     default:
@@ -119,10 +120,10 @@ static void webkit_dom_character_data_get_property(GObject* object, guint proper
     WebKitDOMCharacterData* self = WEBKIT_DOM_CHARACTER_DATA(object);
 
     switch (propertyId) {
-    case PROP_DATA:
+    case DOM_CHARACTER_DATA_PROP_DATA:
         g_value_take_string(value, webkit_dom_character_data_get_data(self));
         break;
-    case PROP_LENGTH:
+    case DOM_CHARACTER_DATA_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_character_data_get_length(self));
         break;
     default:
@@ -139,7 +140,7 @@ static void webkit_dom_character_data_class_init(WebKitDOMCharacterDataClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DATA,
+        DOM_CHARACTER_DATA_PROP_DATA,
         g_param_spec_string(
             "data",
             "CharacterData:data",
@@ -149,7 +150,7 @@ static void webkit_dom_character_data_class_init(WebKitDOMCharacterDataClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_CHARACTER_DATA_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "CharacterData:length",
@@ -196,8 +197,8 @@ void webkit_dom_character_data_insert_data(WebKitDOMCharacterData* self, gulong 
     WTF::String convertedData = WTF::String::fromUTF8(data);
     auto result = item->insertData(offset, convertedData);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -209,8 +210,8 @@ void webkit_dom_character_data_delete_data(WebKitDOMCharacterData* self, gulong 
     WebCore::CharacterData* item = WebKit::core(self);
     auto result = item->deleteData(offset, length);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -224,8 +225,8 @@ void webkit_dom_character_data_replace_data(WebKitDOMCharacterData* self, gulong
     WTF::String convertedData = WTF::String::fromUTF8(data);
     auto result = item->replaceData(offset, length, convertedData);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -257,3 +258,4 @@ gulong webkit_dom_character_data_get_length(WebKitDOMCharacterData* self)
     gulong result = item->length();
     return result;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

@@ -8,19 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/media/base/videoadapter.h"
+#include "media/base/videoadapter.h"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <limits>
+#include <utility>
 
-#include "webrtc/base/arraysize.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/media/base/mediaconstants.h"
-#include "webrtc/media/base/videocommon.h"
+#include "absl/types/optional.h"
+#include "media/base/mediaconstants.h"
+#include "media/base/videocommon.h"
+#include "rtc_base/arraysize.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
 
 namespace {
 struct Fraction {
@@ -150,8 +151,7 @@ bool VideoAdapter::KeepFrame(int64_t in_timestamp_ns) {
   // First timestamp received or timestamp is way outside expected range, so
   // reset. Set first timestamp target to just half the interval to prefer
   // keeping frames in case of jitter.
-  next_frame_timestamp_ns_ =
-      rtc::Optional<int64_t>(in_timestamp_ns + frame_interval_ns / 2);
+  next_frame_timestamp_ns_ = in_timestamp_ns + frame_interval_ns / 2;
   return true;
 }
 
@@ -181,15 +181,12 @@ bool VideoAdapter::AdaptFrameResolution(int in_width,
     if ((frames_in_ - frames_out_) % 90 == 0) {
       // TODO(fbarchard): Reduce to LS_VERBOSE when adapter info is not needed
       // in default calls.
-      LOG(LS_INFO) << "VAdapt Drop Frame: scaled " << frames_scaled_
-                   << " / out " << frames_out_
-                   << " / in " << frames_in_
-                   << " Changes: " << adaption_changes_
-                   << " Input: " << in_width
-                   << "x" << in_height
-                   << " timestamp: " << in_timestamp_ns
-                   << " Output: i"
-                   << (requested_format_ ? requested_format_->interval : 0);
+      RTC_LOG(LS_INFO) << "VAdapt Drop Frame: scaled " << frames_scaled_
+                       << " / out " << frames_out_ << " / in " << frames_in_
+                       << " Changes: " << adaption_changes_
+                       << " Input: " << in_width << "x" << in_height
+                       << " timestamp: " << in_timestamp_ns << " Output: i"
+                       << (requested_format_ ? requested_format_->interval : 0);
     }
 
     // Drop frame.
@@ -197,8 +194,8 @@ bool VideoAdapter::AdaptFrameResolution(int in_width,
   }
 
   // Calculate how the input should be cropped.
-  if (!requested_format_ ||
-      requested_format_->width == 0 || requested_format_->height == 0) {
+  if (!requested_format_ || requested_format_->width == 0 ||
+      requested_format_->height == 0) {
     *cropped_width = in_width;
     *cropped_height = in_height;
   } else {
@@ -239,16 +236,17 @@ bool VideoAdapter::AdaptFrameResolution(int in_width,
   if (scale.numerator != scale.denominator)
     ++frames_scaled_;
 
-  if (previous_width_ && (previous_width_ != *out_width ||
-                          previous_height_ != *out_height)) {
+  if (previous_width_ &&
+      (previous_width_ != *out_width || previous_height_ != *out_height)) {
     ++adaption_changes_;
-    LOG(LS_INFO) << "Frame size changed: scaled " << frames_scaled_ << " / out "
-                 << frames_out_ << " / in " << frames_in_
-                 << " Changes: " << adaption_changes_ << " Input: " << in_width
-                 << "x" << in_height
-                 << " Scale: " << scale.numerator << "/" << scale.denominator
-                 << " Output: " << *out_width << "x" << *out_height << " i"
-                 << (requested_format_ ? requested_format_->interval : 0);
+    RTC_LOG(LS_INFO) << "Frame size changed: scaled " << frames_scaled_
+                     << " / out " << frames_out_ << " / in " << frames_in_
+                     << " Changes: " << adaption_changes_
+                     << " Input: " << in_width << "x" << in_height
+                     << " Scale: " << scale.numerator << "/"
+                     << scale.denominator << " Output: " << *out_width << "x"
+                     << *out_height << " i"
+                     << (requested_format_ ? requested_format_->interval : 0);
   }
 
   previous_width_ = *out_width;
@@ -257,14 +255,15 @@ bool VideoAdapter::AdaptFrameResolution(int in_width,
   return true;
 }
 
-void VideoAdapter::OnOutputFormatRequest(const VideoFormat& format) {
+void VideoAdapter::OnOutputFormatRequest(
+    const absl::optional<VideoFormat>& format) {
   rtc::CritScope cs(&critical_section_);
-  requested_format_ = rtc::Optional<VideoFormat>(format);
-  next_frame_timestamp_ns_ = rtc::Optional<int64_t>();
+  requested_format_ = format;
+  next_frame_timestamp_ns_ = absl::nullopt;
 }
 
 void VideoAdapter::OnResolutionFramerateRequest(
-    const rtc::Optional<int>& target_pixel_count,
+    const absl::optional<int>& target_pixel_count,
     int max_pixel_count,
     int max_framerate_fps) {
   rtc::CritScope cs(&critical_section_);

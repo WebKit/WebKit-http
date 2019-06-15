@@ -39,12 +39,15 @@
 #include "ScaleTransformOperation.h"
 #include "TransformOperations.h"
 #include <cmath>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
 
 using namespace MathMLNames;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMathMLOperator);
 
 RenderMathMLOperator::RenderMathMLOperator(MathMLOperatorElement& element, RenderStyle&& style)
     : RenderMathMLToken(element, WTFMove(style))
@@ -119,6 +122,7 @@ void RenderMathMLOperator::stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit 
 {
     ASSERT(isStretchy());
     ASSERT(isVertical());
+    ASSERT(!isStretchWidthLocked());
 
     if (!isVertical() || (heightAboveBaseline == m_stretchHeightAboveBaseline && depthBelowBaseline == m_stretchDepthBelowBaseline))
         return;
@@ -159,6 +163,7 @@ void RenderMathMLOperator::stretchTo(LayoutUnit width)
 {
     ASSERT(isStretchy());
     ASSERT(!isVertical());
+    ASSERT(!isStretchWidthLocked());
 
     if (isVertical() || m_stretchWidth == width)
         return;
@@ -166,11 +171,14 @@ void RenderMathMLOperator::stretchTo(LayoutUnit width)
     m_stretchWidth = width;
     m_mathOperator.stretchTo(style(), width);
 
+    setLogicalWidth(leadingSpace() + width + trailingSpace());
     setLogicalHeight(m_mathOperator.ascent() + m_mathOperator.descent());
 }
 
 void RenderMathMLOperator::resetStretchSize()
 {
+    ASSERT(!isStretchWidthLocked());
+
     if (isVertical()) {
         m_stretchHeightAboveBaseline = 0;
         m_stretchDepthBelowBaseline = 0;
@@ -230,7 +238,7 @@ void RenderMathMLOperator::layoutBlock(bool relayoutChildren, LayoutUnit pageLog
         setLogicalWidth(width);
 
         // We then move the children to take spacing into account.
-        LayoutPoint horizontalShift(style().direction() == LTR ? leadingSpaceValue : -leadingSpaceValue, 0);
+        LayoutPoint horizontalShift(style().direction() == TextDirection::LTR ? leadingSpaceValue : -leadingSpaceValue, 0);
         for (auto* child = firstChildBox(); child; child = child->nextSiblingBox())
             child->setLocation(child->location() + horizontalShift);
     }
@@ -302,10 +310,6 @@ void RenderMathMLOperator::paint(PaintInfo& info, const LayoutPoint& paintOffset
 
     LayoutPoint operatorTopLeft = paintOffset + location();
     operatorTopLeft.move(style().isLeftToRightDirection() ? leadingSpace() : trailingSpace(), 0);
-
-    // Center horizontal operators.
-    if (!isVertical())
-        operatorTopLeft.move(-(m_mathOperator.width() - width()) / 2, 0);
 
     m_mathOperator.paint(style(), info, operatorTopLeft);
 }

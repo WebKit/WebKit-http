@@ -28,9 +28,11 @@
 
 #if PLATFORM(MAC)
 
-#import "NSPasteboardSPI.h"
+#import "LegacyNSPasteboardTypes.h"
+#import "Pasteboard.h"
 #import "PasteboardWriterData.h"
 #import "SharedBuffer.h"
+#import <pal/spi/mac/NSPasteboardSPI.h>
 
 namespace WebCore {
 
@@ -77,11 +79,11 @@ RetainPtr<id <NSPasteboardWriting>> createPasteboardWriter(const PasteboardWrite
 
         // NSURLPboardType.
         if (NSURL *baseCocoaURL = cocoaURL.baseURL)
-            [pasteboardItem setPropertyList:@[ cocoaURL.relativeString, baseCocoaURL.absoluteString ] forType:toUTI(NSURLPboardType).get()];
+            [pasteboardItem setPropertyList:@[ cocoaURL.relativeString, baseCocoaURL.absoluteString ] forType:toUTI(WebCore::legacyURLPasteboardType()).get()];
         else if (cocoaURL)
-            [pasteboardItem setPropertyList:@[ cocoaURL.absoluteString, @"" ] forType:toUTI(NSURLPboardType).get()];
+            [pasteboardItem setPropertyList:@[ cocoaURL.absoluteString, @"" ] forType:toUTI(WebCore::legacyURLPasteboardType()).get()];
         else
-            [pasteboardItem setPropertyList:@[ @"", @"" ] forType:toUTI(NSURLPboardType).get()];
+            [pasteboardItem setPropertyList:@[ @"", @"" ] forType:toUTI(WebCore::legacyURLPasteboardType()).get()];
 
         if (cocoaURL.fileURL)
             [pasteboardItem setString:cocoaURL.absoluteString forType:(NSString *)kUTTypeFileURL];
@@ -114,6 +116,10 @@ RetainPtr<id <NSPasteboardWriting>> createPasteboardWriter(const PasteboardWrite
 
         for (unsigned i = 0; i < webContent->clientTypes.size(); ++i)
             [pasteboardItem setData:webContent->clientData[i]->createNSData().get() forType:toUTIUnlessAlreadyUTI(webContent->clientTypes[i]).get()];
+
+        PasteboardCustomData customData;
+        customData.origin = webContent->contentOrigin;
+        [pasteboardItem setData:customData.createSharedBuffer()->createNSData().get() forType:toUTIUnlessAlreadyUTI(String(PasteboardCustomData::cocoaType())).get()];
     }
 
     return pasteboardItem;

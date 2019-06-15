@@ -40,14 +40,6 @@
     align-self: self-end;
 }
 
-#alignSelfLeft {
-    align-self: left;
-}
-
-#alignSelfRight {
-    align-self: right;
-}
-
 #alignSelfFlexStart {
     align-self: flex-start;
 }
@@ -56,36 +48,28 @@
     align-self: flex-end;
 }
 
-#alignSelfEndUnsafe {
-    align-self: end unsafe;
+#alignSelfUnsafeEnd {
+    align-self: unsafe end ;
 }
 
-#alignSelfCenterUnsafe {
-    align-self: center unsafe;
+#alignSelfUnsafeCenter {
+    align-self: unsafe center ;
 }
 
-#alignSelfSelfEndSafe {
-    align-self: self-end safe;
+#alignSelfSafeSelfEnd {
+    align-self: safe self-end;
 }
 
-#alignSelfSelfStartSafe {
-    align-self: self-start safe;
+#alignSelfSafeSelfStart {
+    align-self: safe self-start;
 }
 
-#alignSelfRightSafe {
-    align-self: right safe;
+#alignSelfUnsafeFlexStart {
+    align-self: unsafe flex-start;
 }
 
-#alignSelfLeftUnsafe {
-    align-self: left unsafe;
-}
-
-#alignSelfFlexStartUnsafe {
-    align-self: flex-start unsafe;
-}
-
-#alignSelfFlexEndSafe {
-    align-self: flex-end safe;
+#alignSelfSafeFlexEnd {
+    align-self: safe flex-end;
 }
 </style>
 <p>Test that setting and getting align-self works as expected</p>
@@ -99,19 +83,15 @@
 <div id="alignSelfCenter"></div>
 <div id="alignSelfSelfStart"></div>
 <div id="alignSelfSelfEnd"></div>
-<div id="alignSelfLeft"></div>
-<div id="alignSelfRight"></div>
 <div id="alignSelfFlexStart"></div>
 <div id="alignSelfFlexEnd"></div>
 
-<div id="alignSelfEndUnsafe"></div>
-<div id="alignSelfCenterUnsafe"></div>
-<div id="alignSelfSelfEndSafe"></div>
-<div id="alignSelfSelfStartSafe"></div>
-<div id="alignSelfRightSafe"></div>
-<div id="alignSelfLeftUnsafe"></div>
-<div id="alignSelfFlexStartUnsafe"></div>
-<div id="alignSelfFlexEndSafe"></div>
+<div id="alignSelfUnsafeEnd"></div>
+<div id="alignSelfUnsafeCenter"></div>
+<div id="alignSelfSafeSelfEnd"></div>
+<div id="alignSelfSafeSelfStart"></div>
+<div id="alignSelfUnsafeFlexStart"></div>
+<div id="alignSelfSafeFlexEnd"></div>
 <script src="../resources/testharness.js"></script>
 <script src="../resources/testharnessreport.js"></script>
 <script src="resources/alignment-parsing-utils-th.js"></script>
@@ -137,31 +117,23 @@ test(function() {
     checkValues(alignSelfSelfEnd, "alignSelf", "align-self", "", "self-end");
     var alignSelfSelfStart = document.getElementById("alignSelfSelfStart");
     checkValues(alignSelfSelfStart, "alignSelf", "align-self", "", "self-start");
-    var alignSelfLeft = document.getElementById("alignSelfLeft");
-    checkValues(alignSelfLeft, "alignSelf", "align-self", "", "left");
-    var alignSelfRight = document.getElementById("alignSelfRight");
-    checkValues(alignSelfRight, "alignSelf", "align-self", "", "right");
     var alignSelfFlexStart = document.getElementById("alignSelfFlexStart");
     checkValues(alignSelfFlexStart, "alignSelf", "align-self", "", "flex-start");
     var alignSelfFlexEnd = document.getElementById("alignSelfFlexEnd");
     checkValues(alignSelfFlexEnd, "alignSelf", "align-self", "", "flex-end");
 
-    var alignSelfEndUnsafe = document.getElementById("alignSelfEndUnsafe");
-    checkValues(alignSelfEndUnsafe, "alignSelf", "align-self", "", "end unsafe");
-    var alignSelfCenterUnsafe = document.getElementById("alignSelfCenterUnsafe");
-    checkValues(alignSelfCenterUnsafe, "alignSelf", "align-self", "", "center unsafe");
-    var alignSelfSelfEndSafe = document.getElementById("alignSelfSelfEndSafe");
-    checkValues(alignSelfSelfEndSafe, "alignSelf", "align-self", "", "self-end safe");
-    var alignSelfSelfStartSafe = document.getElementById("alignSelfSelfStartSafe");
-    checkValues(alignSelfSelfStartSafe, "alignSelf", "align-self", "", "self-start safe");
-    var alignSelfRightSafe = document.getElementById("alignSelfRightSafe");
-    checkValues(alignSelfRightSafe, "alignSelf", "align-self", "", "right safe");
-    var alignSelfLeftUnsafe = document.getElementById("alignSelfLeftUnsafe");
-    checkValues(alignSelfLeftUnsafe, "alignSelf", "align-self", "", "left unsafe");
-    var alignSelfFlexStartUnsafe = document.getElementById("alignSelfFlexStartUnsafe");
-    checkValues(alignSelfFlexStartUnsafe, "alignSelf", "align-self", "", "flex-start unsafe");
-    var alignSelfFlexEndSafe = document.getElementById("alignSelfFlexEndSafe");
-    checkValues(alignSelfFlexEndSafe, "alignSelf", "align-self", "", "flex-end safe");
+    var alignSelfUnsafeEnd = document.getElementById("alignSelfUnsafeEnd");
+    checkValues(alignSelfUnsafeEnd, "alignSelf", "align-self", "", "unsafe end");
+    var alignSelfUnsafeCenter = document.getElementById("alignSelfUnsafeCenter");
+    checkValues(alignSelfUnsafeCenter, "alignSelf", "align-self", "", "unsafe center");
+    var alignSelfSafeSelfEnd = document.getElementById("alignSelfSafeSelfEnd");
+    checkValues(alignSelfSafeSelfEnd, "alignSelf", "align-self", "", "safe self-end");
+    var alignSelfSafeSelfStart = document.getElementById("alignSelfSafeSelfStart");
+    checkValues(alignSelfSafeSelfStart, "alignSelf", "align-self", "", "safe self-start");
+    var alignSelfUnsafeFlexStart = document.getElementById("alignSelfUnsafeFlexStart");
+    checkValues(alignSelfUnsafeFlexStart, "alignSelf", "align-self", "", "unsafe flex-start");
+    var alignSelfSafeFlexEnd = document.getElementById("alignSelfSafeFlexEnd");
+    checkValues(alignSelfSafeFlexEnd, "alignSelf", "align-self", "", "safe flex-end");
 }, "Test getting align-self set through CSS.");
 
 test(function() {
@@ -179,13 +151,10 @@ test(function() {
     checkValues(element, "alignSelf", "align-self",  "center", "center");
 
     element.style.alignSelf = "unsafe start";
-    checkValues(element, "alignSelf", "align-self",  "start unsafe", "start unsafe");
+    checkValues(element, "alignSelf", "align-self",  "unsafe start", "unsafe start");
 
-    element.style.alignSelf = "flex-end safe";
-    checkValues(element, "alignSelf", "align-self",  "flex-end safe", "flex-end safe");
-
-    element.style.alignSelf = "right";
-    checkValues(element, "alignSelf", "align-self",  "right", "right");
+    element.style.alignSelf = "safe flex-end";
+    checkValues(element, "alignSelf", "align-self",  "safe flex-end", "safe flex-end");
 
     element.style.alignSelf = "center";
     checkValues(element, "alignSelf", "align-self",  "center", "center");
@@ -222,13 +191,20 @@ test(function() {
     container.appendChild(element);
     document.body.appendChild(container);
 
-    checkBadValues(element, "alignSelf", "align-self",  "auto safe");
+    checkBadValues(element, "alignSelf", "align-self",  "left");
+    checkBadValues(element, "alignSelf", "align-self",  "right");
+    checkBadValues(element, "alignSelf", "align-self",  "safe auto");
     checkBadValues(element, "alignSelf", "align-self",  "auto left");
+    checkBadValues(element, "alignSelf", "align-self",  "safe right");
     checkBadValues(element, "alignSelf", "align-self",  "normal unsafe");
     checkBadValues(element, "alignSelf", "align-self",  "normal stretch");
     checkBadValues(element, "alignSelf", "align-self",  "baseline normal");
     checkBadValues(element, "alignSelf", "align-self",  "baseline safe");
     checkBadValues(element, "alignSelf", "align-self",  "baseline center");
+    checkBadValues(element, "alignSelf", "align-self",  "first baseline center");
+    checkBadValues(element, "alignSelf", "align-self",  "last baseline center");
+    checkBadValues(element, "alignSelf", "align-self",  "baseline last");
+    checkBadValues(element, "alignSelf", "align-self",  "baseline first");
     checkBadValues(element, "alignSelf", "align-self",  "stretch unsafe");
     checkBadValues(element, "alignSelf", "align-self",  "stretch right");
     checkBadValues(element, "alignSelf", "align-self",  "unsafe unsafe");
@@ -248,6 +224,8 @@ test(function() {
     checkBadValues(element, "alignSelf", "align-self",  "legacy stretch");
     checkBadValues(element, "alignSelf", "align-self",  "legacy");
     checkBadValues(element, "alignSelf", "align-self",  "legacy left right");
+    checkBadValues(element, "alignSelf", "align-self",  "start safe");
+    checkBadValues(element, "alignSelf", "align-self",  "end unsafe");
 }, "Test bad combinations of align-self");
 
 test(function() {
@@ -257,35 +235,35 @@ test(function() {
 
 test(function() {
     container.style.display = "grid";
-    checkInitialValues(element, "alignSelf", "align-self", "left safe", "auto");
+    checkInitialValues(element, "alignSelf", "align-self", "safe start", "auto");
 }, "Test the value 'initial' for grid containers");
 
 test(function() {
     container.style.display = "flex";
-    checkInitialValues(element, "alignSelf", "align-self", "right unsafe", "auto");
+    checkInitialValues(element, "alignSelf", "align-self", "unsafe end", "auto");
 }, "Test the value 'initial' for flex containers");
 
 test(function() {
     container.style.display = "";
     element.style.position = "absolute";
-    checkInitialValues(element, "alignSelf", "align-self", "left", "auto");
+    checkInitialValues(element, "alignSelf", "align-self", "start", "auto");
 }, "Test the value 'initial' for positioned elements");
 
 test(function() {
     container.style.display = "grid";
     element.style.position = "absolute";
-    checkInitialValues(element, "alignSelf", "align-self", "right", "auto");
+    checkInitialValues(element, "alignSelf", "align-self", "end", "auto");
 }, "Test the value 'initial' for positioned elements in grid containers");
 
 test(function() {
     container.style.display = "flex";
     element.style.position = "absolute";
     checkInitialValues(element, "alignSelf", "align-self", "end", "auto");
-}, "Test the value 'initial' for positioned elements in grid containers");
+}, "Test the value 'initial' for positioned elements in flex containers");
 
 test(function() {
     checkInheritValues("alignSelf", "align-self", "end");
-    checkInheritValues("alignSelf", "align-self", "left safe");
-    checkInheritValues("alignSelf", "align-self", "center unsafe");
+    checkInheritValues("alignSelf", "align-self", "safe start");
+    checkInheritValues("alignSelf", "align-self", "unsafe center");
 }, "Test the value 'inherit'");
 </script>

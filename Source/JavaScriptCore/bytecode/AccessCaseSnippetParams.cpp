@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,15 +59,12 @@ public:
 
         jit.makeSpaceOnStackForCCall();
 
-        // FIXME: Currently, we do not check any ARM EABI things here.
-        // But it is OK because a compile error happens when you pass JSValueRegs as an argument.
-        // https://bugs.webkit.org/show_bug.cgi?id=163099
-        jit.setupArgumentsWithExecState(std::get<ArgumentsIndex>(m_arguments)...);
+        jit.setupArguments<FunctionType>(std::get<ArgumentsIndex>(m_arguments)...);
 
-        CCallHelpers::Call operationCall = jit.call();
+        CCallHelpers::Call operationCall = jit.call(OperationPtrTag);
         auto function = m_function;
         jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-            linkBuffer.link(operationCall, FunctionPtr(function));
+            linkBuffer.link(operationCall, FunctionPtr<OperationPtrTag>(function));
         });
 
         jit.setupResults(m_result);

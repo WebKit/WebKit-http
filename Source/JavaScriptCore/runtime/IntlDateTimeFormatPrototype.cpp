@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2015 Andy VanWagoner (andy@vanwagoner.family)
  * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -37,6 +37,7 @@
 #include "JSBoundFunction.h"
 #include "JSCInlines.h"
 #include "JSObjectInlines.h"
+#include <wtf/DateMath.h>
 
 namespace JSC {
 
@@ -82,38 +83,34 @@ void IntlDateTimeFormatPrototype::finishCreation(VM& vm, JSGlobalObject* globalO
 {
     Base::finishCreation(vm);
 #if JSC_ICU_HAS_UFIELDPOSITER
-    JSFunction* formatToPartsFunction = JSFunction::create(vm, globalObject, 0, vm.propertyNames->formatToParts.string(), IntlDateTimeFormatPrototypeFuncFormatToParts);
-    putDirectWithoutTransition(vm, vm.propertyNames->formatToParts, formatToPartsFunction, DontEnum);
+    JSFunction* formatToPartsFunction = JSFunction::create(vm, globalObject, 1, vm.propertyNames->formatToParts.string(), IntlDateTimeFormatPrototypeFuncFormatToParts);
+    putDirectWithoutTransition(vm, vm.propertyNames->formatToParts, formatToPartsFunction, static_cast<unsigned>(PropertyAttribute::DontEnum));
 #else
     UNUSED_PARAM(globalObject);
 #endif
+
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Object"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
 }
 
 static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatFuncFormatDateTime(ExecState* state)
 {
     VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    // 12.3.4 DateTime Format Functions (ECMA-402 2.0)
-    // 1. Let dtf be the this value.
-    // 2. Assert: Type(dtf) is Object and dtf has an [[initializedDateTimeFormat]] internal slot whose value is true.
+    // 12.1.7 DateTime Format Functions (ECMA-402)
+    // https://tc39.github.io/ecma402/#sec-formatdatetime
+
     IntlDateTimeFormat* format = jsCast<IntlDateTimeFormat*>(state->thisValue());
 
     JSValue date = state->argument(0);
     double value;
 
-    // 3. If date is not provided or is undefined, then
-    if (date.isUndefined()) {
-        // a. Let x be %Date_now%().
+    if (date.isUndefined())
         value = JSValue::decode(dateNow(state)).toNumber(state);
-    } else {
-        // 4. Else
-        // a. Let x be ToNumber(date).
-        value = date.toNumber(state);
-        // b. ReturnIfAbrupt(x).
+    else {
+        value = WTF::timeClip(date.toNumber(state));
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
-    // 5. Return FormatDateTime(dtf, x).
     scope.release();
     return JSValue::encode(format->format(*state, value));
 }
@@ -137,17 +134,17 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeGetterFormat(ExecState* 
 
     // 2. ReturnIfAbrupt(dtf).
     if (!dtf)
-        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.DateTimeFormat.prototype.format called on value that's not an object initialized as a DateTimeFormat")));
+        return JSValue::encode(throwTypeError(state, scope, "Intl.DateTimeFormat.prototype.format called on value that's not an object initialized as a DateTimeFormat"_s));
 
     JSBoundFunction* boundFormat = dtf->boundFormat();
     // 3. If the [[boundFormat]] internal slot of this DateTimeFormat object is undefined,
     if (!boundFormat) {
-        JSGlobalObject* globalObject = dtf->globalObject();
+        JSGlobalObject* globalObject = dtf->globalObject(vm);
         // a. Let F be a new built-in function object as defined in 12.3.4.
         // b. The value of F’s length property is 1. (Note: F’s length property was 0 in ECMA-402 1.0)
-        JSFunction* targetObject = JSFunction::create(vm, globalObject, 1, ASCIILiteral("format"), IntlDateTimeFormatFuncFormatDateTime, NoIntrinsic);
+        JSFunction* targetObject = JSFunction::create(vm, globalObject, 1, "format"_s, IntlDateTimeFormatFuncFormatDateTime, NoIntrinsic);
         // c. Let bf be BoundFunctionCreate(F, «this value»).
-        boundFormat = JSBoundFunction::create(vm, state, globalObject, targetObject, dtf, nullptr, 1, ASCIILiteral("format"));
+        boundFormat = JSBoundFunction::create(vm, state, globalObject, targetObject, dtf, nullptr, 1, "format"_s);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         // d. Set dtf.[[boundFormat]] to bf.
         dtf->setBoundFormat(vm, boundFormat);
@@ -167,7 +164,7 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncFormatToParts(ExecSt
 
     IntlDateTimeFormat* dateTimeFormat = jsDynamicCast<IntlDateTimeFormat*>(vm, state->thisValue());
     if (!dateTimeFormat)
-        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.DateTimeFormat.prototype.formatToParts called on value that's not an object initialized as a DateTimeFormat")));
+        return JSValue::encode(throwTypeError(state, scope, "Intl.DateTimeFormat.prototype.formatToParts called on value that's not an object initialized as a DateTimeFormat"_s));
 
     JSValue date = state->argument(0);
     double value;
@@ -175,7 +172,7 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncFormatToParts(ExecSt
     if (date.isUndefined())
         value = JSValue::decode(dateNow(state)).toNumber(state);
     else {
-        value = date.toNumber(state);
+        value = WTF::timeClip(date.toNumber(state));
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
@@ -201,7 +198,7 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncResolvedOptions(Exec
     }
 
     if (!dateTimeFormat)
-        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.DateTimeFormat.prototype.resolvedOptions called on value that's not an object initialized as a DateTimeFormat")));
+        return JSValue::encode(throwTypeError(state, scope, "Intl.DateTimeFormat.prototype.resolvedOptions called on value that's not an object initialized as a DateTimeFormat"_s));
 
     scope.release();
     return JSValue::encode(dateTimeFormat->resolvedOptions(*state));

@@ -26,17 +26,22 @@
 #pragma once
 
 #include "Connection.h"
-#include "PlatformProcessIdentifier.h"
+#include <WebCore/Process.h>
 #include <wtf/HashMap.h>
+#include <wtf/ProcessID.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Threading.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(WIN)
+#include <wtf/win/Win32Handle.h>
+#endif
+
 namespace WebKit {
 
-class ProcessLauncher : public ThreadSafeRefCounted<ProcessLauncher> {
+class ProcessLauncher : public ThreadSafeRefCounted<ProcessLauncher>, public CanMakeWeakPtr<ProcessLauncher> {
 public:
     class Client {
     public:
@@ -52,14 +57,16 @@ public:
         Plugin64,
 #endif
         Network,
-#if ENABLE(DATABASE_PROCESS)
-        Database,
-#endif
+        Storage,
     };
 
     struct LaunchOptions {
         ProcessType processType;
+        WebCore::ProcessIdentifier processIdentifier;
         HashMap<String, String> extraInitializationData;
+        bool nonValidInjectedCodeAllowed { false };
+        bool shouldMakeProcessLaunchFailForTesting { false };
+        CString customWebContentServiceBundleIdentifier;
 
 #if ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(WPE))
         String processCmdPrefix;
@@ -72,7 +79,7 @@ public:
     }
 
     bool isLaunching() const { return m_isLaunching; }
-    PlatformProcessIdentifier processIdentifier() const { return m_processIdentifier; }
+    ProcessID processIdentifier() const { return m_processIdentifier; }
 
     void terminateProcess();
     void invalidate();
@@ -81,7 +88,7 @@ private:
     ProcessLauncher(Client*, const LaunchOptions& launchOptions);
 
     void launchProcess();
-    void didFinishLaunchingProcess(PlatformProcessIdentifier, IPC::Connection::Identifier);
+    void didFinishLaunchingProcess(ProcessID, IPC::Connection::Identifier);
 
     void platformInvalidate();
 
@@ -91,10 +98,13 @@ private:
     OSObjectPtr<xpc_connection_t> m_xpcConnection;
 #endif
 
-    WeakPtrFactory<ProcessLauncher> m_weakPtrFactory;
+#if PLATFORM(WIN)
+    WTF::Win32Handle m_hProcess;
+#endif
+
     const LaunchOptions m_launchOptions;
     bool m_isLaunching;
-    PlatformProcessIdentifier m_processIdentifier;
+    ProcessID m_processIdentifier;
 };
 
 } // namespace WebKit

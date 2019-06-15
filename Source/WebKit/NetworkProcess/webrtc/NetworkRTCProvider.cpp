@@ -31,13 +31,18 @@
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcess.h"
+#include "NetworkRTCResolver.h"
 #include "NetworkRTCSocket.h"
 #include "WebRTCResolverMessages.h"
 #include "WebRTCSocketMessages.h"
 #include <WebCore/LibWebRTCMacros.h>
-#include <webrtc/base/asyncpacketsocket.h>
+#include <webrtc/rtc_base/asyncpacketsocket.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/WTFString.h>
+
+#if PLATFORM(COCOA)
+#include "NetworkRTCResolverCocoa.h"
+#endif
 
 namespace WebKit {
 
@@ -69,13 +74,14 @@ NetworkRTCProvider::~NetworkRTCProvider()
     ASSERT(!m_connection);
     ASSERT(!m_sockets.size());
     ASSERT(!m_rtcMonitor.isStarted());
-
-    for (auto identifier : m_resolvers.keys())
-        stopResolver(identifier);
 }
 
 void NetworkRTCProvider::close()
 {
+    // Cancel all pending DNS resolutions.
+    while (!m_resolvers.isEmpty())
+        stopResolver(*m_resolvers.keys().begin());
+
     m_connection = nullptr;
     m_rtcMonitor.stopUpdating();
 
@@ -160,66 +166,60 @@ void NetworkRTCProvider::didReceiveNetworkRTCSocketMessage(IPC::Connection& conn
     NetworkRTCSocket(decoder.destinationID(), *this).didReceiveMessage(connection, decoder);
 }
 
+#if PLATFORM(COCOA)
+
 void NetworkRTCProvider::createResolver(uint64_t identifier, const String& address)
 {
-    CFHostRef host = CFHostCreateWithName(kCFAllocatorDefault, address.createCFString().get());
-    ASSERT(host);
+    auto resolver = NetworkRTCResolver::create(identifier, [this, identifier](WebCore::DNSAddressesOrError&& result) mutable {
+        if (!result.has_value()) {
+            if (result.error() != WebCore::DNSError::Cancelled)
+                m_connection->connection().send(Messages::WebRTCResolver::ResolvedAddressError(1), identifier);
+            return;
+        }
 
-    auto resolver = std::make_unique<Resolver>(identifier, *this, host);
+        auto addresses = WTF::map(result.value(), [] (auto& address) {
+            return RTCNetwork::IPAddress { rtc::IPAddress { address.getSinAddr() } };
+        });
 
-    CFHostClientContext context = { 0, resolver.get(), nullptr, nullptr, nullptr };
-    CFHostSetClient(host, NetworkRTCProvider::resolvedName, &context);
-    CFHostScheduleWithRunLoop(host, CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-    Boolean result = CFHostStartInfoResolution(host, kCFHostAddresses, nullptr);
-    ASSERT_UNUSED(result, result);
-
+        m_connection->connection().send(Messages::WebRTCResolver::SetResolvedAddress(addresses), identifier);
+    });
+    resolver->start(address);
     m_resolvers.add(identifier, WTFMove(resolver));
-}
-
-NetworkRTCProvider::Resolver::~Resolver()
-{
-    CFHostUnscheduleFromRunLoop(host.get(), CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-    CFHostSetClient(host.get(), nullptr, nullptr);
 }
 
 void NetworkRTCProvider::stopResolver(uint64_t identifier)
 {
-    auto resolver = m_resolvers.take(identifier);
-    if (resolver)
-        CFHostCancelInfoResolution(resolver->host.get(), CFHostInfoType::kCFHostAddresses);
+    if (auto resolver = m_resolvers.take(identifier))
+        resolver->stop();
 }
 
-void NetworkRTCProvider::resolvedName(CFHostRef hostRef, CFHostInfoType typeInfo, const CFStreamError *error, void *info)
+#else
+
+void NetworkRTCProvider::createResolver(uint64_t identifier, const String& address)
 {
-    ASSERT_UNUSED(typeInfo, !typeInfo);
+    auto completionHandler = [this, identifier](WebCore::DNSAddressesOrError&& result) mutable {
+        if (!result.has_value()) {
+            if (result.error() != WebCore::DNSError::Cancelled)
+                m_connection->connection().send(Messages::WebRTCResolver::ResolvedAddressError(1), identifier);
+            return;
+        }
 
-    if (error->domain) {
-        // FIXME: Need to handle failure, but info is not provided in the callback.
-        return;
-    }
+        auto addresses = WTF::map(result.value(), [] (auto& address) {
+            return RTCNetwork::IPAddress { rtc::IPAddress { address.getSinAddr() } };
+        });
 
-    ASSERT(info);
-    auto* resolverInfo = static_cast<Resolver*>(info);
-    auto resolver = resolverInfo->rtcProvider.m_resolvers.take(resolverInfo->identifier);
-    if (!resolver)
-        return;
+        m_connection->connection().send(Messages::WebRTCResolver::SetResolvedAddress(addresses), identifier);
+    };
 
-    Boolean result;
-    CFArrayRef resolvedAddresses = (CFArrayRef)CFHostGetAddressing(hostRef, &result);
-    ASSERT_UNUSED(result, result);
-
-    size_t count = CFArrayGetCount(resolvedAddresses);
-    Vector<RTCNetwork::IPAddress> addresses;
-    addresses.reserveInitialCapacity(count);
-
-    for (size_t index = 0; index < count; ++index) {
-        CFDataRef data = (CFDataRef)CFArrayGetValueAtIndex(resolvedAddresses, index);
-        auto* address = reinterpret_cast<const struct sockaddr_in*>(CFDataGetBytePtr(data));
-        addresses.uncheckedAppend(RTCNetwork::IPAddress(rtc::IPAddress(address->sin_addr)));
-    }
-    ASSERT(resolver->rtcProvider.m_connection);
-    resolver->rtcProvider.m_connection->connection().send(Messages::WebRTCResolver::SetResolvedAddress(addresses), resolver->identifier);
+    WebCore::resolveDNS(address, identifier, WTFMove(completionHandler));
 }
+
+void NetworkRTCProvider::stopResolver(uint64_t identifier)
+{
+    WebCore::stopResolveDNS(identifier);
+}
+
+#endif
 
 void NetworkRTCProvider::closeListeningSockets(Function<void()>&& completionHandler)
 {

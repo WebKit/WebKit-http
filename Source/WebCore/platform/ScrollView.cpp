@@ -35,18 +35,14 @@
 #include "ScrollAnimator.h"
 #include "Scrollbar.h"
 #include "ScrollbarTheme.h"
-#include "TextStream.h"
 #include <wtf/StdLibExtras.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
-ScrollView::ScrollView()
-{
-}
+ScrollView::ScrollView() = default;
 
-ScrollView::~ScrollView()
-{
-}
+ScrollView::~ScrollView() = default;
 
 void ScrollView::addChild(Widget& child)
 {
@@ -192,11 +188,6 @@ void ScrollView::setPaintsEntireContents(bool paintsEntireContents)
     m_paintsEntireContents = paintsEntireContents;
 }
 
-void ScrollView::setClipsRepaints(bool clipsRepaints)
-{
-    m_clipsRepaints = clipsRepaints;
-}
-
 void ScrollView::setDelegatesScrolling(bool delegatesScrolling)
 {
     if (m_delegatesScrolling == delegatesScrolling)
@@ -310,6 +301,8 @@ void ScrollView::setFixedLayoutSize(const IntSize& newSize)
 {
     if (fixedLayoutSize() == newSize)
         return;
+
+    LOG_WITH_STREAM(Layout, stream << "ScrollView " << this << " setFixedLayoutSize " << newSize);
     m_fixedLayoutSize = newSize;
     if (m_useFixedLayout)
         availableContentSizeChanged(AvailableSizeChangeReason::AreaSizeChanged);
@@ -616,7 +609,7 @@ void ScrollView::updateScrollbars(const ScrollPosition& desiredPosition)
 
         bool needAnotherPass = false;
         if (!hasOverlayScrollbars) {
-            // If we ever turn one scrollbar off, always turn the other one off too.  Never ever
+            // If we ever turn one scrollbar off, do not turn the other one on. Never ever
             // try to both gain/lose a scrollbar in the same pass.
             if (!m_updateScrollbarsPass && docSize.width() <= fullVisibleSize.width() && docSize.height() <= fullVisibleSize.height()) {
                 if (hScroll == ScrollbarAuto)
@@ -624,11 +617,11 @@ void ScrollView::updateScrollbars(const ScrollPosition& desiredPosition)
                 if (vScroll == ScrollbarAuto)
                     newHasVerticalScrollbar = false;
             }
-            if (!newHasHorizontalScrollbar && hasHorizontalScrollbar && vScroll != ScrollbarAlwaysOn) {
+            if (!newHasHorizontalScrollbar && hasHorizontalScrollbar && vScroll != ScrollbarAlwaysOn && !hasVerticalScrollbar) {
                 newHasVerticalScrollbar = false;
                 needAnotherPass = true;
             }
-            if (!newHasVerticalScrollbar && hasVerticalScrollbar && hScroll != ScrollbarAlwaysOn) {
+            if (!newHasVerticalScrollbar && hasVerticalScrollbar && hScroll != ScrollbarAlwaysOn && !hasHorizontalScrollbar) {
                 newHasHorizontalScrollbar = false;
                 needAnotherPass = true;
             }
@@ -854,6 +847,9 @@ IntPoint ScrollView::contentsToContainingViewContents(const IntPoint& point) con
 
 IntRect ScrollView::contentsToContainingViewContents(IntRect rect) const
 {
+    if (delegatesScrolling())
+        return convertToContainingView(contentsToView(rect));
+    
     if (const ScrollView* parentScrollView = parent()) {
         IntRect rectInContainingView = convertToContainingView(contentsToView(rect));
         return parentScrollView->viewToContents(rectInContainingView);
@@ -1071,7 +1067,7 @@ void ScrollView::positionScrollbarLayers()
 void ScrollView::repaintContentRectangle(const IntRect& rect)
 {
     IntRect paintRect = rect;
-    if (clipsRepaints() && !paintsEntireContents())
+    if (!paintsEntireContents())
         paintRect.intersect(visibleContentRect(LegacyIOSDocumentVisibleRect));
     if (paintRect.isEmpty())
         return;
@@ -1129,7 +1125,7 @@ void ScrollView::scrollbarStyleChanged(ScrollbarStyle newStyle, bool forceUpdate
 
 void ScrollView::paintScrollCorner(GraphicsContext& context, const IntRect& cornerRect)
 {
-    ScrollbarTheme::theme().paintScrollCorner(this, context, cornerRect);
+    ScrollbarTheme::theme().paintScrollCorner(context, cornerRect);
 }
 
 void ScrollView::paintScrollbar(GraphicsContext& context, Scrollbar& bar, const IntRect& rect)
@@ -1171,7 +1167,7 @@ void ScrollView::paint(GraphicsContext& context, const IntRect& rect, SecurityOr
         return;
     }
 
-    if (context.paintingDisabled() && !context.updatingControlTints())
+    if (context.paintingDisabled() && !context.performingPaintInvalidation())
         return;
 
     notifyPageThatContentAreaWillPaint();

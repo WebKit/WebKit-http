@@ -31,10 +31,10 @@
 
 #include "FontDescription.h"
 #include "FontPlatformData.h"
-#include "NoEventDispatchAssertion.h"
 #include "SVGDocument.h"
 #include "SVGFontElement.h"
 #include "SVGFontFaceElement.h"
+#include "ScriptDisallowedScope.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
 #include "TypedElementDescendantIterator.h"
@@ -46,8 +46,8 @@
 
 namespace WebCore {
 
-CachedSVGFont::CachedSVGFont(CachedResourceRequest&& request, SessionID sessionID)
-    : CachedFont(WTFMove(request), sessionID, SVGFontResource)
+CachedSVGFont::CachedSVGFont(CachedResourceRequest&& request, PAL::SessionID sessionID)
+    : CachedFont(WTFMove(request), sessionID, Type::SVGFontResource)
     , m_externalSVGFontElement(nullptr)
 {
 }
@@ -75,7 +75,7 @@ bool CachedSVGFont::ensureCustomFontData(const AtomicString& remoteURI)
             m_externalSVGDocument = SVGDocument::create(nullptr, URL());
             auto decoder = TextResourceDecoder::create("application/xml");
 
-            NoEventDispatchAssertion::EventAllowedScope allowedScope(*m_externalSVGDocument);
+            ScriptDisallowedScope::DisableAssertionsInScope disabledScope;
 
             m_externalSVGDocument->setContent(decoder->decodeAndFlush(m_data->data(), m_data->size()));
             sawError = decoder->sawError();

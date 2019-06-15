@@ -36,6 +36,7 @@ namespace WebCore {
 class MathMLOperatorElement;
 
 class RenderMathMLOperator : public RenderMathMLToken {
+    WTF_MAKE_ISO_ALLOCATED(RenderMathMLOperator);
 public:
     RenderMathMLOperator(MathMLOperatorElement&, RenderStyle&&);
     RenderMathMLOperator(Document&, RenderStyle&&);
@@ -45,6 +46,8 @@ public:
     void stretchTo(LayoutUnit width);
     LayoutUnit stretchSize() const { return isVertical() ? m_stretchHeightAboveBaseline + m_stretchDepthBelowBaseline : m_stretchWidth; }
     void resetStretchSize();
+    void setStretchWidthLocked(bool stretchWidthLocked) { m_isStretchWidthLocked = stretchWidthLocked; }
+    bool isStretchWidthLocked() const { return m_isStretchWidthLocked; }
 
     virtual bool hasOperatorFlag(MathMLOperatorDictionary::Flag) const;
     bool isLargeOperatorInDisplayStyle() const { return !hasOperatorFlag(MathMLOperatorDictionary::Stretchy) && hasOperatorFlag(MathMLOperatorDictionary::LargeOp) && mathMLStyle().displayStyle(); }
@@ -77,13 +80,14 @@ private:
     bool isInvisibleOperator() const;
 
     std::optional<int> firstLineBaseline() const final;
-    RenderMathMLOperator* unembellishedOperator() final { return this; }
+    RenderMathMLOperator* unembellishedOperator() const final { return const_cast<RenderMathMLOperator*>(this); }
 
     LayoutUnit verticalStretchedOperatorShift() const;
 
     LayoutUnit m_stretchHeightAboveBaseline { 0 };
     LayoutUnit m_stretchDepthBelowBaseline { 0 };
     LayoutUnit m_stretchWidth;
+    bool m_isStretchWidthLocked { false };
 
     MathOperator m_mathOperator;
 };

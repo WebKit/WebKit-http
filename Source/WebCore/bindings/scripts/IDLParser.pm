@@ -346,6 +346,30 @@ sub Parse
     return $document;
 }
 
+sub ParseType
+{
+    my ($self, $type, $idlAttributes) = @_;
+
+    $self->{Line} = $type;
+    $self->{DocumentContent} = $type;
+    $self->{ExtendedAttributeMap} = $idlAttributes;
+
+    addBuiltinTypedefs();
+
+    my $result;
+
+    $self->getToken();
+    eval {
+        $result = $self->parseType();
+
+        my $next = $self->nextToken();
+        $self->assertTokenType($next, EmptyToken);
+    };
+    assert $@ . " parsing type ${type}" if $@;
+
+    return $result;
+}
+
 sub nextToken
 {
     my $self = shift;
@@ -2295,7 +2319,7 @@ sub parseExtendedAttributeRest2
         $self->assertTokenValue($self->getToken(), "(", __LINE__);
         my @arguments = $self->parseIdentifierList();
         $self->assertTokenValue($self->getToken(), ")", __LINE__);
-        return @arguments;
+        return \@arguments;
     }
     if ($next->type() == IdentifierToken) {
         my $name = $self->parseName();

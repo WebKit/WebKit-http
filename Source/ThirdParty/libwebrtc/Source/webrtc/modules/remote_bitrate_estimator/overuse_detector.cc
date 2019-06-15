@@ -8,22 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/remote_bitrate_estimator/overuse_detector.h"
+#include "modules/remote_bitrate_estimator/overuse_detector.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <algorithm>
-#include <sstream>
 #include <string>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/safe_minmax.h"
-#include "webrtc/modules/remote_bitrate_estimator/include/bwe_defines.h"
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe_test_logging.h"
-#include "webrtc/modules/rtp_rtcp/source/rtp_utility.h"
-#include "webrtc/system_wrappers/include/field_trial.h"
+#include "modules/remote_bitrate_estimator/include/bwe_defines.h"
+#include "modules/remote_bitrate_estimator/test/bwe_test_logging.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/numerics/safe_minmax.h"
+#include "system_wrappers/include/field_trial.h"
 
 namespace webrtc {
 
@@ -143,8 +142,7 @@ void OveruseDetector::UpdateThreshold(double modified_offset, int64_t now_ms) {
   const double k = fabs(modified_offset) < threshold_ ? k_down_ : k_up_;
   const int64_t kMaxTimeDeltaMs = 100;
   int64_t time_delta_ms = std::min(now_ms - last_update_ms_, kMaxTimeDeltaMs);
-  threshold_ +=
-      k * (fabs(modified_offset) - threshold_) * time_delta_ms;
+  threshold_ += k * (fabs(modified_offset) - threshold_) * time_delta_ms;
   threshold_ = rtc::SafeClamp(threshold_, 6.f, 600.f);
   last_update_ms_ = now_ms;
 }

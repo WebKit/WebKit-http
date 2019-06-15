@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,29 +31,52 @@
 
 #pragma once
 
-#if ENABLE(DATA_TRANSFER_ITEMS)
-
-#include "DataTransferItem.h"
+#include "DataTransfer.h"
+#include "ExceptionOr.h"
+#include "ScriptWrappable.h"
 #include <wtf/Forward.h>
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
+class DataTransferItem;
 class File;
 
-// FIXME: Unclear why this need to be an abstract base class.
-class DataTransferItemList : public RefCounted<DataTransferItemList> {
+class DataTransferItemList : public ScriptWrappable, public CanMakeWeakPtr<DataTransferItemList> {
+    WTF_MAKE_NONCOPYABLE(DataTransferItemList); WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual ~DataTransferItemList() { }
+    DataTransferItemList(DataTransfer&);
+    ~DataTransferItemList();
 
-    virtual unsigned length() const = 0;
-    virtual DataTransferItem* item(unsigned index) = 0;
-    virtual ExceptionOr<void> deleteItem(unsigned index) = 0;
-    virtual void clear() = 0;
-    virtual ExceptionOr<void> add(const String& data, const String& type) = 0;
-    virtual void add(RefPtr<File>&&) = 0;
+    // DataTransfer owns DataTransferItemList, and DataTransfer is kept alive as long as DataTransferItemList is alive.
+    void ref() { m_dataTransfer.ref(); }
+    void deref() { m_dataTransfer.deref(); }
+    DataTransfer& dataTransfer() { return m_dataTransfer; }
+
+    // DOM API
+    unsigned length() const;
+    RefPtr<DataTransferItem> item(unsigned index);
+    ExceptionOr<RefPtr<DataTransferItem>> add(const String& data, const String& type);
+    RefPtr<DataTransferItem> add(Ref<File>&&);
+    ExceptionOr<void> remove(unsigned index);
+    void clear();
+
+    void didClearStringData(const String& type);
+    void didSetStringData(const String& type);
+    bool hasItems() const { return m_items.has_value(); }
+    const Vector<Ref<DataTransferItem>>& items() const
+    {
+        ASSERT(m_items);
+        return *m_items;
+    }
+
+private:
+    Vector<Ref<DataTransferItem>>& ensureItems() const;
+
+    DataTransfer& m_dataTransfer;
+    mutable std::optional<Vector<Ref<DataTransferItem>>> m_items;
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(DATA_TRANSFER_ITEMS)

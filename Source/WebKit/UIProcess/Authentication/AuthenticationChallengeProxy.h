@@ -27,6 +27,7 @@
 
 #include "APIObject.h"
 #include <WebCore/AuthenticationChallenge.h>
+#include <wtf/WeakPtr.h>
 
 namespace IPC {
 class Connection;
@@ -36,14 +37,15 @@ namespace WebKit {
 
 class AuthenticationDecisionListener;
 class ChildProcessProxy;
+class SecKeyProxyStore;
 class WebCredential;
 class WebProtectionSpace;
 
 class AuthenticationChallengeProxy : public API::ObjectImpl<API::Object::Type::AuthenticationChallenge> {
 public:
-    static Ref<AuthenticationChallengeProxy> create(const WebCore::AuthenticationChallenge& authenticationChallenge, uint64_t challengeID, IPC::Connection* connection)
+    static Ref<AuthenticationChallengeProxy> create(WebCore::AuthenticationChallenge&& authenticationChallenge, uint64_t challengeID, IPC::Connection* connection)
     {
-        return adoptRef(*new AuthenticationChallengeProxy(authenticationChallenge, challengeID, connection));
+        return adoptRef(*new AuthenticationChallengeProxy(WTFMove(authenticationChallenge), challengeID, connection));
     }
     
     ~AuthenticationChallengeProxy();
@@ -59,8 +61,16 @@ public:
     int previousFailureCount() const { return m_coreAuthenticationChallenge.previousFailureCount(); }
     const WebCore::AuthenticationChallenge& core() { return m_coreAuthenticationChallenge; }
 
+#if HAVE(SEC_KEY_PROXY)
+    void setSecKeyProxyStore(SecKeyProxyStore&);
+#endif
+
 private:
-    AuthenticationChallengeProxy(const WebCore::AuthenticationChallenge&, uint64_t challengeID, IPC::Connection*);
+    AuthenticationChallengeProxy(WebCore::AuthenticationChallenge&&, uint64_t challengeID, IPC::Connection*);
+
+#if HAVE(SEC_KEY_PROXY)
+    void sendClientCertificateCredentialOverXpc(uint64_t challengeID, const WebCore::Credential&) const;
+#endif
 
     WebCore::AuthenticationChallenge m_coreAuthenticationChallenge;
     uint64_t m_challengeID;
@@ -68,6 +78,10 @@ private:
     RefPtr<AuthenticationDecisionListener> m_listener;
     mutable RefPtr<WebCredential> m_webCredential;
     mutable RefPtr<WebProtectionSpace> m_webProtectionSpace;
+
+#if HAVE(SEC_KEY_PROXY)
+    WeakPtr<SecKeyProxyStore> m_secKeyProxyStore;
+#endif
 };
 
 } // namespace WebKit

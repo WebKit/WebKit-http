@@ -32,10 +32,10 @@
 #include "Frame.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWindowCustom.h"
-#include "JSMainThreadExecState.h"
+#include "JSExecState.h"
 #include "Page.h"
 #include "PageConsoleClient.h"
-#include <runtime/JSLock.h>
+#include <JavaScriptCore/JSLock.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -49,9 +49,10 @@ ExceptionOr<Ref<JSCustomXPathNSResolver>> JSCustomXPathNSResolver::create(ExecSt
 
     auto* resolverObject = value.getObject();
     if (!resolverObject)
-        return Exception { TYPE_MISMATCH_ERR };
+        return Exception { TypeMismatchError };
 
-    return adoptRef(*new JSCustomXPathNSResolver(state.vm(), resolverObject, asJSDOMWindow(state.vmEntryGlobalObject())));
+    VM& vm = state.vm();
+    return adoptRef(*new JSCustomXPathNSResolver(vm, resolverObject, asJSDOMWindow(vm.vmEntryGlobalObject(&state))));
 }
 
 JSCustomXPathNSResolver::JSCustomXPathNSResolver(VM& vm, JSObject* customResolver, JSDOMWindow* globalObject)
@@ -60,9 +61,7 @@ JSCustomXPathNSResolver::JSCustomXPathNSResolver(VM& vm, JSObject* customResolve
 {
 }
 
-JSCustomXPathNSResolver::~JSCustomXPathNSResolver()
-{
-}
+JSCustomXPathNSResolver::~JSCustomXPathNSResolver() = default;
 
 String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
 {
@@ -71,15 +70,16 @@ String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
     JSLockHolder lock(commonVM());
 
     ExecState* exec = m_globalObject->globalExec();
+    VM& vm = exec->vm();
         
     JSValue function = m_customResolver->get(exec, Identifier::fromString(exec, "lookupNamespaceURI"));
     CallData callData;
-    CallType callType = getCallData(function, callData);
+    CallType callType = getCallData(vm, function, callData);
     if (callType == CallType::None) {
-        callType = m_customResolver->methodTable()->getCallData(m_customResolver.get(), callData);
+        callType = m_customResolver->methodTable(vm)->getCallData(m_customResolver.get(), callData);
         if (callType == CallType::None) {
             if (PageConsoleClient* console = m_globalObject->wrapped().console())
-                console->addMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("XPathNSResolver does not have a lookupNamespaceURI method."));
+                console->addMessage(MessageSource::JS, MessageLevel::Error, "XPathNSResolver does not have a lookupNamespaceURI method."_s);
             return String();
         }
         function = m_customResolver.get();
@@ -89,9 +89,10 @@ String JSCustomXPathNSResolver::lookupNamespaceURI(const String& prefix)
 
     MarkedArgumentBuffer args;
     args.append(jsStringWithCache(exec, prefix));
+    ASSERT(!args.hasOverflowed());
 
     NakedPtr<JSC::Exception> exception;
-    JSValue retval = JSMainThreadExecState::call(exec, function, callType, callData, m_customResolver.get(), args, exception);
+    JSValue retval = JSExecState::call(exec, function, callType, callData, m_customResolver.get(), args, exception);
 
     String result;
     if (exception)

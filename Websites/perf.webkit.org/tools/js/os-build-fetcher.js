@@ -15,11 +15,11 @@ class OSBuildFetcher {
     constructor(osConfig, remoteAPI, slaveAuth, subprocess, logger)
     {
         this._osConfig = osConfig;
-        this._reportedRevisions = new Set();
         this._logger = logger;
         this._slaveAuth = slaveAuth;
         this._remoteAPI = remoteAPI;
         this._subprocess = subprocess;
+        this._maxSubmitCount = osConfig['maxSubmitCount'] || 20;
     }
 
     static fetchAndReportAllInOrder(fetcherList)
@@ -31,7 +31,18 @@ class OSBuildFetcher {
     {
         return this._fetchAvailableBuilds().then((results) => {
             this._logger.log(`Submitting ${results.length} builds for ${this._osConfig['name']}`);
-            return this._submitCommits(results);
+            if (results.length == 0)
+                return this._submitCommits(results);
+
+            const splittedResults = [];
+            for (let startIndex = 0; startIndex < results.length; startIndex += this._maxSubmitCount)
+                splittedResults.push(results.slice(startIndex, startIndex + this._maxSubmitCount));
+
+            return mapInSerialPromiseChain(splittedResults, this._submitCommits.bind(this)).then((responses) => {
+                assert(responses.every((response) => response['status'] == 'OK'));
+                assert(responses.length > 0);
+                return responses[0];
+            });
         });
     }
 
@@ -50,15 +61,15 @@ class OSBuildFetcher {
             const url = `/api/commits/${escape(repositoryName)}/last-reported?from=${minRevisionOrder}&to=${maxRevisionOrder}`;
 
             return this._remoteAPI.getJSONWithStatus(url).then((result) => {
-                const minOrder = result['commits'].length == 1 ? parseInt(result['commits'][0]['order']) : 0;
-                return this._commitsForAvailableBuilds(repositoryName, command['command'], command['linesToIgnore'], minOrder);
+                const minOrder = result['commits'].length == 1 ? parseInt(result['commits'][0]['order']) + 1 : minRevisionOrder;
+                return this._commitsForAvailableBuilds(repositoryName, command['command'], command['linesToIgnore'], minOrder, maxRevisionOrder);
             }).then((commits) => {
-                const label = 'name' in command ? `"${command['name']}"` : `"command['minRevision']" to "command['maxRevision']"`;
+                const label = 'name' in command ? `"${command['name']}"` : `"${command['minRevision']}" to "${command['maxRevision']}"`;
                 this._logger.log(`Found ${commits.length} builds for ${label}`);
 
-                if ('subCommitCommand' in command) {
-                    this._logger.log(`Resolving subcommits for "${label}"`);
-                    return this._addSubCommitsForBuild(commits, command['subCommitCommand']);
+                if ('ownedCommitCommand' in command) {
+                    this._logger.log(`Resolving ownedCommits for ${label}`);
+                    return this._addOwnedCommitsForBuild(commits, command['ownedCommitCommand']);
                 }
 
                 return commits;
@@ -78,7 +89,7 @@ class OSBuildFetcher {
         return ((major * 100 + kind) * 10000 + minor) * 100 + variant;
     }
 
-    _commitsForAvailableBuilds(repository, command, linesToIgnore, minOrder)
+    _commitsForAvailableBuilds(repository, command, linesToIgnore, minOrder, maxOrder)
     {
         return this._subprocess.execute(command).then((output) => {
             let lines = output.split('\n');
@@ -87,21 +98,22 @@ class OSBuildFetcher {
                 lines = lines.filter((line) => !regex.exec(line));
             }
             return lines.map((revision) => ({repository, revision, 'order': this._computeOrder(revision)}))
-                .filter((commit) => commit['order'] > minOrder);
+                .filter((commit) => commit['order'] >= minOrder && commit['order'] <= maxOrder);
         });
     }
 
-    _addSubCommitsForBuild(commits, command)
+    _addOwnedCommitsForBuild(commits, command)
     {
         return mapInSerialPromiseChain(commits, (commit) => {
-            return this._subprocess.execute(command.concat(commit['revision'])).then((subCommitOutput) => {
-                const subCommits = JSON.parse(subCommitOutput);
-                for (let repositoryName in subCommits) {
-                    const subCommit = subCommits[repositoryName];
-                    assert.deepEqual(Object.keys(subCommit), ['revision']);
-                    assert(typeof(subCommit['revision']) == 'string');
+            return this._subprocess.execute(command.concat(commit['revision'])).then((ownedCommitOutput) => {
+                const ownedCommits = JSON.parse(ownedCommitOutput);
+                this._logger.log(`Got ${Object.keys((ownedCommits)).length} owned commits for "${commit['revision']}"`);
+                for (let repositoryName in ownedCommits) {
+                    const ownedCommit = ownedCommits[repositoryName];
+                    assert.deepEqual(Object.keys(ownedCommit), ['revision']);
+                    assert(typeof(ownedCommit['revision']) == 'string');
                 }
-                commit['subCommits'] = subCommits;
+                commit['ownedCommits'] = ownedCommits;
                 return commit;
             });
         });

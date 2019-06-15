@@ -23,10 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebKitLogging_h
-#define WebKitLogging_h
+#pragma once
 
-#include <WebCore/LogMacros.h>
+#include <pal/LogMacros.h>
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
@@ -41,15 +40,21 @@ extern "C" {
 #endif
 
 #define WEBKIT2_LOG_CHANNELS(M) \
+    M(ActivityState) \
+    M(BackForward) \
+    M(CacheStorage) \
     M(ContextMenu) \
     M(DragAndDrop) \
+    M(Fullscreen) \
     M(Gamepad) \
     M(IconDatabase) \
-    M(IDB) \
     M(IndexedDB) \
     M(IPC) \
     M(KeyHandling) \
     M(Layers) \
+    M(Loading) \
+    M(LocalStorageDatabaseTracker) \
+    M(MouseHandling) \
     M(Network) \
     M(NetworkCache) \
     M(NetworkCacheSpeculativePreloading) \
@@ -59,11 +64,16 @@ extern "C" {
     M(PerformanceLogging) \
     M(Plugins) \
     M(Printing) \
+    M(Process) \
     M(ProcessSuspension) \
+    M(ProcessSwapping) \
+    M(ProximityNetworking) \
     M(RemoteLayerTree) \
     M(Resize) \
     M(ResourceLoadStatistics) \
+    M(ResourceLoadStatisticsDebug) \
     M(Selection) \
+    M(ServiceWorker) \
     M(SessionState) \
     M(StorageAPI) \
     M(TextInput) \
@@ -83,4 +93,3 @@ WEBKIT2_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 
 #endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
-#endif // Logging_h

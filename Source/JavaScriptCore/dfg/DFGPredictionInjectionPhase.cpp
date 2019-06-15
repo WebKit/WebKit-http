@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -51,13 +51,14 @@ public:
         {
             ConcurrentJSLocker locker(profiledBlock()->m_lock);
             
+            // We only do this for the arguments at the first block. The arguments from
+            // other entrypoints have already been populated with their predictions.
+            auto& arguments = m_graph.m_rootToArguments.find(m_graph.block(0))->value;
+
             for (size_t arg = 0; arg < static_cast<size_t>(codeBlock()->numParameters()); ++arg) {
-                ValueProfile* profile = profiledBlock()->valueProfileForArgument(arg);
-                if (!profile)
-                    continue;
-            
-                m_graph.m_arguments[arg]->variableAccessData()->predict(
-                    profile->computeUpdatedPrediction(locker));
+                ValueProfile& profile = profiledBlock()->valueProfileForArgument(arg);
+                arguments[arg]->variableAccessData()->predict(
+                    profile.computeUpdatedPrediction(locker));
             }
         }
         
@@ -67,16 +68,17 @@ public:
                 continue;
             if (!block->isOSRTarget)
                 continue;
-            if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex)
+            if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex())
                 continue;
-            for (size_t i = 0; i < m_graph.m_plan.mustHandleValues.size(); ++i) {
-                int operand = m_graph.m_plan.mustHandleValues.operandForIndex(i);
+            const Operands<JSValue>& mustHandleValues = m_graph.m_plan.mustHandleValues();
+            for (size_t i = 0; i < mustHandleValues.size(); ++i) {
+                int operand = mustHandleValues.operandForIndex(i);
                 Node* node = block->variablesAtHead.operand(operand);
                 if (!node)
                     continue;
                 ASSERT(node->accessesStack(m_graph));
                 node->variableAccessData()->predict(
-                    speculationFromValue(m_graph.m_plan.mustHandleValues[i]));
+                    speculationFromValue(mustHandleValues[i]));
             }
         }
         

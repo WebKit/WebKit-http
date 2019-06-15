@@ -34,8 +34,26 @@ enum class RTCSignalingState {
     HaveRemoteOffer,
     HaveLocalPranswer,
     HaveRemotePranswer,
+    Closed,
 };
 
+String convertEnumerationToString(RTCSignalingState); // in JSCRTCSignalingState.cpp
+
 }; // namespace WebCore
+
+namespace WTF {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WebCore::RTCSignalingState> {
+    static String toString(const WebCore::RTCSignalingState state)
+    {
+        return convertEnumerationToString(state);
+    }
+};
+
+}; // namespace WTF
 
 #endif

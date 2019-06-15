@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-
 /*---
+esid: sec-array.prototype.concat
 es6id: 22.1.3.1_3
 description: Array.prototype.concat array like primitive non number length
 includes: [compareArray.js]
+features: [Symbol.isConcatSpreadable]
 ---*/
 var obj = {
   "1": "A",
@@ -14,7 +15,17 @@ var obj = {
   "5": "C"
 };
 obj[Symbol.isConcatSpreadable] = true;
-obj.length = {toString: function() { return "SIX"; }, valueOf: null };
+obj.length = {
+  toString: function() {
+    return "SIX";
+  },
+  valueOf: null
+};
 assert(compareArray([].concat(obj), []));
-obj.length = {toString: null, valueOf: function() { return "SIX"; } };
+obj.length = {
+  toString: null,
+  valueOf: function() {
+    return "SIX";
+  }
+};
 assert(compareArray([].concat(obj), []));

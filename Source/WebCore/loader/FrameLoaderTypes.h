@@ -28,6 +28,8 @@
 
 #pragma once
 
+#include "IntRect.h"
+
 namespace WebCore {
 
 enum FrameState {
@@ -38,10 +40,11 @@ enum FrameState {
     FrameStateComplete
 };
 
-enum PolicyAction {
-    PolicyUse,
-    PolicyDownload,
-    PolicyIgnore
+enum class PolicyAction {
+    Use,
+    Download,
+    Ignore,
+    Suspend,
 };
 
 enum class ReloadOption {
@@ -146,4 +149,48 @@ enum class HasInsecureContent {
     No,
 };
 
+
+struct SystemPreviewInfo {
+    IntRect systemPreviewRect;
+    bool isSystemPreview { false };
+};
+
+enum class LoadCompletionType {
+    Finish,
+    Cancel
+};
+
 } // namespace WebCore
+
+namespace WTF {
+
+template<typename> struct EnumTraits;
+template<typename E, E...> struct EnumValues;
+
+template<> struct EnumTraits<WebCore::PolicyAction> {
+    using values = EnumValues<
+        WebCore::PolicyAction,
+        WebCore::PolicyAction::Use,
+        WebCore::PolicyAction::Download,
+        WebCore::PolicyAction::Ignore,
+        WebCore::PolicyAction::Suspend
+    >;
+};
+
+template<> struct EnumTraits<WebCore::FrameLoadType> {
+    using values = EnumValues<
+        WebCore::FrameLoadType,
+        WebCore::FrameLoadType::Standard,
+        WebCore::FrameLoadType::Back,
+        WebCore::FrameLoadType::Forward,
+        WebCore::FrameLoadType::IndexedBackForward,
+        WebCore::FrameLoadType::Reload,
+        WebCore::FrameLoadType::Same,
+        WebCore::FrameLoadType::RedirectWithLockedBackForwardList,
+        WebCore::FrameLoadType::Replace,
+        WebCore::FrameLoadType::ReloadFromOrigin,
+        WebCore::FrameLoadType::ReloadExpiredOnly
+    >;
+};
+
+} // namespace WTF

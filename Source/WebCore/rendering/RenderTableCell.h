@@ -37,6 +37,7 @@ static const unsigned maxColumnIndex = 0x1FFFFFE; // 33554430
 enum IncludeBorderColorOrNot { DoNotIncludeBorderColor, IncludeBorderColor };
 
 class RenderTableCell final : public RenderBlockFlow {
+    WTF_MAKE_ISO_ALLOCATED(RenderTableCell);
 public:
     RenderTableCell(Element&, RenderStyle&&);
     RenderTableCell(Document&, RenderStyle&&);
@@ -101,15 +102,15 @@ public:
     LayoutUnit paddingBefore() const override;
     LayoutUnit paddingAfter() const override;
 
-    void setOverrideLogicalContentHeightFromRowHeight(LayoutUnit);
+    void setOverrideContentLogicalHeightFromRowHeight(LayoutUnit);
 
     void scrollbarsChanged(bool horizontalScrollbarChanged, bool verticalScrollbarChanged) override;
 
     bool cellWidthChanged() const { return m_cellWidthChanged; }
     void setCellWidthChanged(bool b = true) { m_cellWidthChanged = b; }
 
-    static std::unique_ptr<RenderTableCell> createAnonymousWithParentRenderer(const RenderTableRow&);
-    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
+    static RenderPtr<RenderTableCell> createAnonymousWithParentRenderer(const RenderTableRow&);
+    RenderPtr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
 
     // This function is used to unify which table part's style we use for computing direction and
     // writing mode. Writing modes are not allowed on row group and row but direction is.
@@ -138,7 +139,7 @@ protected:
     void computePreferredLogicalWidths() override;
 
 private:
-    static std::unique_ptr<RenderTableCell> createTableCellWithStyle(Document&, const RenderStyle&);
+    static RenderPtr<RenderTableCell> createTableCellWithStyle(Document&, const RenderStyle&);
 
     const char* renderName() const override { return (isAnonymous() || isPseudoElement()) ? "RenderTableCell (anonymous)" : "RenderTableCell"; }
 
@@ -197,6 +198,8 @@ private:
 
     void nextSibling() const = delete;
     void previousSibling() const = delete;
+
+    bool hasLineIfEmpty() const final;
 
     // Note MSVC will only pack members if they have identical types, hence we use unsigned instead of bool here.
     unsigned m_column : 25;
@@ -290,15 +293,15 @@ inline LayoutUnit RenderTableCell::logicalHeightForRowSizing() const
     LayoutUnit styleLogicalHeight = valueForLength(style().logicalHeight(), 0);
     // In strict mode, box-sizing: content-box do the right thing and actually add in the border and padding.
     // Call computedCSSPadding* directly to avoid including implicitPadding.
-    if (!document().inQuirksMode() && style().boxSizing() != BORDER_BOX)
+    if (!document().inQuirksMode() && style().boxSizing() != BoxSizing::BorderBox)
         styleLogicalHeight += computedCSSPaddingBefore() + computedCSSPaddingAfter() + borderBefore() + borderAfter();
     return std::max(styleLogicalHeight, adjustedLogicalHeight);
 }
 
 inline bool RenderTableCell::isBaselineAligned() const
 {
-    EVerticalAlign va = style().verticalAlign();
-    return va == BASELINE || va == TEXT_BOTTOM || va == TEXT_TOP || va == SUPER || va == SUB || va == LENGTH;
+    VerticalAlign va = style().verticalAlign();
+    return va == VerticalAlign::Baseline || va == VerticalAlign::TextBottom || va == VerticalAlign::TextTop || va == VerticalAlign::Super || va == VerticalAlign::Sub || va == VerticalAlign::Length;
 }
 
 inline const BorderValue& RenderTableCell::borderAdjoiningTableStart() const
@@ -375,7 +378,7 @@ inline void RenderTableCell::invalidateHasEmptyCollapsedBorders()
     m_hasEmptyCollapsedEndBorder = false;
 }
 
-inline std::unique_ptr<RenderBox> RenderTableCell::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+inline RenderPtr<RenderBox> RenderTableCell::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
 {
     return RenderTableCell::createTableCellWithStyle(renderer.document(), renderer.style());
 }

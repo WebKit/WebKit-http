@@ -8,10 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_audio/audio_ring_buffer.h"
+#include "common_audio/audio_ring_buffer.h"
 
-#include "webrtc/base/checks.h"
-#include "webrtc/common_audio/ring_buffer.h"
+#include "common_audio/ring_buffer.h"
+#include "rtc_base/checks.h"
 
 // This is a simple multi-channel wrapper over the ring_buffer.h C interface.
 
@@ -24,11 +24,12 @@ AudioRingBuffer::AudioRingBuffer(size_t channels, size_t max_frames) {
 }
 
 AudioRingBuffer::~AudioRingBuffer() {
-  for (auto buf : buffers_)
+  for (auto* buf : buffers_)
     WebRtc_FreeBuffer(buf);
 }
 
-void AudioRingBuffer::Write(const float* const* data, size_t channels,
+void AudioRingBuffer::Write(const float* const* data,
+                            size_t channels,
                             size_t frames) {
   RTC_DCHECK_EQ(buffers_.size(), channels);
   for (size_t i = 0; i < channels; ++i) {
@@ -57,7 +58,7 @@ size_t AudioRingBuffer::WriteFramesAvailable() const {
 }
 
 void AudioRingBuffer::MoveReadPositionForward(size_t frames) {
-  for (auto buf : buffers_) {
+  for (auto* buf : buffers_) {
     const size_t moved =
         static_cast<size_t>(WebRtc_MoveReadPtr(buf, static_cast<int>(frames)));
     RTC_CHECK_EQ(moved, frames);
@@ -65,7 +66,7 @@ void AudioRingBuffer::MoveReadPositionForward(size_t frames) {
 }
 
 void AudioRingBuffer::MoveReadPositionBackward(size_t frames) {
-  for (auto buf : buffers_) {
+  for (auto* buf : buffers_) {
     const size_t moved = static_cast<size_t>(
         -WebRtc_MoveReadPtr(buf, -static_cast<int>(frames)));
     RTC_CHECK_EQ(moved, frames);

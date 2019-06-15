@@ -3,13 +3,13 @@
 
 /*---
 author: Brian Terlson <brian.terlson@microsoft.com>
-esid: pending
+esid: sec-async-function-constructor
 description: >
   %AsyncFunction% creates functions with or without new and handles arguments
   similarly to functions.
 ---*/
 
-var AsyncFunction = async function foo() { }.constructor;
+var AsyncFunction = async function foo() {}.constructor;
 var fn;
 
 fn = AsyncFunction("a", "await 1;");

@@ -28,7 +28,7 @@
 #include <WebCore/EditorInsertAction.h>
 #include <WebCore/TextAffinity.h>
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 class CSSStyleDeclaration;
@@ -65,6 +65,7 @@ public:
     virtual void getPasteboardDataForRange(WebKit::WebPage&, WebCore::Range*, Vector<WTF::String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) { }
     virtual void didWriteToPasteboard(WebKit::WebPage&) { }
     virtual bool performTwoStepDrop(WebKit::WebPage&, WebCore::DocumentFragment&, WebCore::Range&, bool) { return false; }
+    virtual WTF::String replacementURLForResource(WebKit::WebPage&, Ref<WebCore::SharedBuffer>&&, const WTF::String&) { return { }; }
 };
 
 } // namespace InjectedBundle

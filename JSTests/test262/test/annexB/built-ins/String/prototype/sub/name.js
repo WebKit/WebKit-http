@@ -5,7 +5,7 @@
 es6id: B.2.3.13
 description: >
   String.prototype.sub.name is "sub".
-info: >
+info: |
   String.prototype.sub ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.sub.name, "sub");
-
-verifyNotEnumerable(String.prototype.sub, "name");
-verifyNotWritable(String.prototype.sub, "name");
-verifyConfigurable(String.prototype.sub, "name");
+verifyProperty(String.prototype.sub, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "sub"
+});

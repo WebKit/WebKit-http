@@ -1,4 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -26,9 +27,13 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from webkitpy.common.version import Version
+from webkitpy.common.version_name_map import PUBLIC_TABLE, INTERNAL_TABLE, VersionNameMap
+
 
 class MockPlatformInfo(object):
-    def __init__(self, os_name='mac', os_version='snowleopard'):
+    def __init__(self, os_name='mac', os_version=Version.from_name('Snow Leopard')):
+        assert isinstance(os_version, Version)
         self.os_name = os_name
         self.os_version = os_version
         self.expected_xcode_simctl_list = None
@@ -45,6 +50,9 @@ class MockPlatformInfo(object):
     def is_win(self):
         return self.os_name == 'win'
 
+    def is_native_win(self):
+        return self.is_win() and not self.is_cygwin()
+
     def is_cygwin(self):
         return self.os_name == 'cygwin'
 
@@ -54,6 +62,16 @@ class MockPlatformInfo(object):
     def display_name(self):
         return "MockPlatform 1.0"
 
+    def os_version_name(self, table=None):
+        if not self.os_version:
+            return None
+        if table:
+            return VersionNameMap.map(self).to_name(self.os_version, table=table)
+        version_name = VersionNameMap.map(self).to_name(self.os_version, table=PUBLIC_TABLE)
+        if not version_name:
+            version_name = VersionNameMap.map(self).to_name(self.os_version, table=INTERNAL_TABLE)
+        return version_name
+
     def total_bytes_memory(self):
         return 3 * 1024 * 1024 * 1024  # 3GB is a reasonable amount of ram to mock.
 
@@ -61,10 +79,10 @@ class MockPlatformInfo(object):
         return 80
 
     def xcode_sdk_version(self, sdk_name):
-        return '8.1'
+        return Version(8, 1)
 
     def xcode_version(self):
-        return '8.0'
+        return Version(8, 0)
 
     def xcode_simctl_list(self):
         return self.expected_xcode_simctl_list

@@ -31,6 +31,31 @@ var unexpectedErrorMessage; // set by onerror when expectingError is not true
         return document.createElement(tagName);
     }
 
+    var rootElement = null;
+    function ensureRootElement()
+    {
+        if (!rootElement || !rootElement.isConnected) {
+            rootElement = document.body || document.documentElement;
+            if (document.documentElement.namespaceURI == 'http://www.w3.org/2000/svg') {
+                // FIXME: Make the test harness use SVG elements naively.
+                var foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
+                foreignObject.setAttribute('x', '0px');
+                foreignObject.setAttribute('y', '0px');
+                foreignObject.setAttribute('width', '100%');
+                foreignObject.setAttribute('height', '100%');
+                foreignObject.setAttribute('style', 'padding: 10px; background-color: rgba(255, 255, 255, 0.5)');
+                document.documentElement.appendChild(foreignObject);
+                rootElement = foreignObject;
+            }
+        }
+        return rootElement;
+    }
+
+    moveForeignObjectToTopIfNeeded = function () {
+        if (rootElement && rootElement.localName == 'foreignObject')
+            document.documentElement.appendChild(rootElement);
+    }
+
     function getOrCreate(id, tagName)
     {
         var element = document.getElementById(id);
@@ -40,7 +65,8 @@ var unexpectedErrorMessage; // set by onerror when expectingError is not true
         element = createHTMLElement(tagName);
         element.id = id;
         var refNode;
-        var parent = document.body || document.documentElement;
+        var parent = ensureRootElement();
+
         if (id == "description")
             refNode = getOrCreate("console", "div");
         else
@@ -69,8 +95,8 @@ var unexpectedErrorMessage; // set by onerror when expectingError is not true
     debug = function debug(msg)
     {
         var span = createHTMLElement("span");
-        getOrCreate("console", "div").appendChild(span); // insert it first so XHTML knows the namespace
         span.innerHTML = msg + '<br />';
+        getOrCreate("console", "div").appendChild(span);
     };
 
     var css =
@@ -91,7 +117,7 @@ var unexpectedErrorMessage; // set by onerror when expectingError is not true
     {
         var styleElement = createHTMLElement("style");
         styleElement.textContent = css;
-        (document.head || document.documentElement).appendChild(styleElement);
+        (document.head || ensureRootElement()).appendChild(styleElement);
     }
 
     function handleTestFinished()
@@ -256,6 +282,45 @@ function shouldBe(_a, _b, _quiet)
         testFailed(_a + " should be " + stringify(_bv) + ". Was " + stringify(_av) + ".");
     else
         testFailed(_a + " should be " + stringify(_bv) + " (of type " + typeof _bv + "). Was " + _av + " (of type " + typeof _av + ").");
+}
+
+function shouldBeOneOfValues(_a, _values)
+{
+    if ((typeof _a != "function" && typeof _a != "string"))
+        debug("WARN: shouldBeOneOfValues() expects the first argument to be a function or a string");
+    if (!Array.isArray(_values)) {
+        testFailed("The second argument to shouldBeOneOfValues() must be an array of values");
+        return;
+    }
+
+    var _exception;
+    var _av;
+    try {
+        _av = (typeof _a == "function" ? _a() : eval(_a));
+    } catch (e) {
+        _exception = e;
+    }
+
+    var stringifiedValues = '';
+    for (var i = 0; i < _values.length; ++i) {
+        if (i) {
+            if (i + 1 == _values.length)
+                stringifiedValues += ', and ';
+            else
+                stringifiedValues += ','
+        }
+        stringifiedValues += "`" + stringify(_values[i]) + "`";
+    }
+    if (_exception)
+        testFailed(_a + " should be one of " + stringifiedValues + ". Threw exception " + _exception);
+    else {
+        var matchedValue = _values.find(function (value) { return isResultCorrect(_av, value); });
+        if (matchedValue) {
+            testPassed(_a + " is one of " + stringifiedValues);
+        } else {
+            testFailed(_a + " should be one of " + stringifiedValues + ". Was " + stringify(_av) + ".");
+        }
+    }
 }
 
 // Execute condition every 5 milliseconds until it succeeds.
@@ -748,6 +813,7 @@ function finishJSTest()
     if (!self.wasPostTestScriptParsed)
         return;
     isSuccessfullyParsed();
+    moveForeignObjectToTopIfNeeded();
     if (self.jsTestIsAsync && self.testRunner)
         testRunner.notifyDone();
 }

@@ -22,10 +22,9 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMNodePrivate.h"
 #include "WebKitDOMPrivate.h"
 #include "WebKitDOMXPathResultPrivate.h"
@@ -38,6 +37,8 @@
 typedef struct _WebKitDOMXPathResultPrivate {
     RefPtr<WebCore::XPathResult> coreObject;
 } WebKitDOMXPathResultPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,14 +69,14 @@ WebKitDOMXPathResult* wrapXPathResult(WebCore::XPathResult* coreObject)
 G_DEFINE_TYPE(WebKitDOMXPathResult, webkit_dom_xpath_result, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_RESULT_TYPE,
-    PROP_NUMBER_VALUE,
-    PROP_STRING_VALUE,
-    PROP_BOOLEAN_VALUE,
-    PROP_SINGLE_NODE_VALUE,
-    PROP_INVALID_ITERATOR_STATE,
-    PROP_SNAPSHOT_LENGTH,
+    DOM_XPATH_RESULT_PROP_0,
+    DOM_XPATH_RESULT_PROP_RESULT_TYPE,
+    DOM_XPATH_RESULT_PROP_NUMBER_VALUE,
+    DOM_XPATH_RESULT_PROP_STRING_VALUE,
+    DOM_XPATH_RESULT_PROP_BOOLEAN_VALUE,
+    DOM_XPATH_RESULT_PROP_SINGLE_NODE_VALUE,
+    DOM_XPATH_RESULT_PROP_INVALID_ITERATOR_STATE,
+    DOM_XPATH_RESULT_PROP_SNAPSHOT_LENGTH,
 };
 
 static void webkit_dom_xpath_result_finalize(GObject* object)
@@ -93,25 +94,25 @@ static void webkit_dom_xpath_result_get_property(GObject* object, guint property
     WebKitDOMXPathResult* self = WEBKIT_DOM_XPATH_RESULT(object);
 
     switch (propertyId) {
-    case PROP_RESULT_TYPE:
+    case DOM_XPATH_RESULT_PROP_RESULT_TYPE:
         g_value_set_uint(value, webkit_dom_xpath_result_get_result_type(self));
         break;
-    case PROP_NUMBER_VALUE:
+    case DOM_XPATH_RESULT_PROP_NUMBER_VALUE:
         g_value_set_double(value, webkit_dom_xpath_result_get_number_value(self, nullptr));
         break;
-    case PROP_STRING_VALUE:
+    case DOM_XPATH_RESULT_PROP_STRING_VALUE:
         g_value_take_string(value, webkit_dom_xpath_result_get_string_value(self, nullptr));
         break;
-    case PROP_BOOLEAN_VALUE:
+    case DOM_XPATH_RESULT_PROP_BOOLEAN_VALUE:
         g_value_set_boolean(value, webkit_dom_xpath_result_get_boolean_value(self, nullptr));
         break;
-    case PROP_SINGLE_NODE_VALUE:
+    case DOM_XPATH_RESULT_PROP_SINGLE_NODE_VALUE:
         g_value_set_object(value, webkit_dom_xpath_result_get_single_node_value(self, nullptr));
         break;
-    case PROP_INVALID_ITERATOR_STATE:
+    case DOM_XPATH_RESULT_PROP_INVALID_ITERATOR_STATE:
         g_value_set_boolean(value, webkit_dom_xpath_result_get_invalid_iterator_state(self));
         break;
-    case PROP_SNAPSHOT_LENGTH:
+    case DOM_XPATH_RESULT_PROP_SNAPSHOT_LENGTH:
         g_value_set_ulong(value, webkit_dom_xpath_result_get_snapshot_length(self, nullptr));
         break;
     default:
@@ -141,7 +142,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_RESULT_TYPE,
+        DOM_XPATH_RESULT_PROP_RESULT_TYPE,
         g_param_spec_uint(
             "result-type",
             "XPathResult:result-type",
@@ -151,7 +152,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_NUMBER_VALUE,
+        DOM_XPATH_RESULT_PROP_NUMBER_VALUE,
         g_param_spec_double(
             "number-value",
             "XPathResult:number-value",
@@ -161,7 +162,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_STRING_VALUE,
+        DOM_XPATH_RESULT_PROP_STRING_VALUE,
         g_param_spec_string(
             "string-value",
             "XPathResult:string-value",
@@ -171,7 +172,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BOOLEAN_VALUE,
+        DOM_XPATH_RESULT_PROP_BOOLEAN_VALUE,
         g_param_spec_boolean(
             "boolean-value",
             "XPathResult:boolean-value",
@@ -181,7 +182,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SINGLE_NODE_VALUE,
+        DOM_XPATH_RESULT_PROP_SINGLE_NODE_VALUE,
         g_param_spec_object(
             "single-node-value",
             "XPathResult:single-node-value",
@@ -191,7 +192,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_INVALID_ITERATOR_STATE,
+        DOM_XPATH_RESULT_PROP_INVALID_ITERATOR_STATE,
         g_param_spec_boolean(
             "invalid-iterator-state",
             "XPathResult:invalid-iterator-state",
@@ -201,7 +202,7 @@ static void webkit_dom_xpath_result_class_init(WebKitDOMXPathResultClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SNAPSHOT_LENGTH,
+        DOM_XPATH_RESULT_PROP_SNAPSHOT_LENGTH,
         g_param_spec_ulong(
             "snapshot-length",
             "XPathResult:snapshot-length",
@@ -225,8 +226,8 @@ WebKitDOMNode* webkit_dom_xpath_result_iterate_next(WebKitDOMXPathResult* self, 
     WebCore::XPathResult* item = WebKit::core(self);
     auto result = item->iterateNext();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue());
@@ -240,8 +241,8 @@ WebKitDOMNode* webkit_dom_xpath_result_snapshot_item(WebKitDOMXPathResult* self,
     WebCore::XPathResult* item = WebKit::core(self);
     auto result = item->snapshotItem(index);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue());
@@ -264,8 +265,8 @@ gdouble webkit_dom_xpath_result_get_number_value(WebKitDOMXPathResult* self, GEr
     WebCore::XPathResult* item = WebKit::core(self);
     auto result = item->numberValue();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return 0;
     }
     return result.releaseReturnValue();
@@ -291,8 +292,8 @@ gboolean webkit_dom_xpath_result_get_boolean_value(WebKitDOMXPathResult* self, G
     WebCore::XPathResult* item = WebKit::core(self);
     auto result = item->booleanValue();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -306,8 +307,8 @@ WebKitDOMNode* webkit_dom_xpath_result_get_single_node_value(WebKitDOMXPathResul
     WebCore::XPathResult* item = WebKit::core(self);
     auto result = item->singleNodeValue();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue());
@@ -330,9 +331,10 @@ gulong webkit_dom_xpath_result_get_snapshot_length(WebKitDOMXPathResult* self, G
     WebCore::XPathResult* item = WebKit::core(self);
     auto result = item->snapshotLength();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
     return result.releaseReturnValue();
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

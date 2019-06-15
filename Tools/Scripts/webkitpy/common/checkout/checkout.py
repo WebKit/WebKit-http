@@ -137,7 +137,8 @@ class Checkout(object):
 
     def recent_commit_infos_for_files(self, paths):
         revisions = set(sum(map(self._scm.revisions_changing_file, paths), []))
-        return set(map(self.commit_info_for_revision, revisions))
+        # Remove a None entry from the set. This can happen if a revision does have an associated ChangeLog entry (e.g. r185745).
+        return set(map(self.commit_info_for_revision, revisions)) - set([None])
 
     def suggested_reviewers(self, git_commit, changed_files=None):
         changed_files = self.modified_non_changelogs(git_commit, changed_files)
@@ -149,7 +150,7 @@ class Checkout(object):
     def bug_id_for_this_commit(self, git_commit, changed_files=None):
         try:
             return parse_bug_id_from_changelog(self.commit_message_for_this_commit(git_commit, changed_files).message())
-        except ScriptError, e:
+        except ScriptError as e:
             pass  # We might not have ChangeLogs.
 
     def apply_patch(self, patch):

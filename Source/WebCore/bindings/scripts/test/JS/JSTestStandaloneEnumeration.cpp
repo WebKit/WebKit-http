@@ -24,24 +24,29 @@
 
 #include "JSTestStandaloneEnumeration.h"
 
-#include <runtime/JSCInlines.h>
-#include <runtime/JSString.h>
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/JSString.h>
 #include <wtf/NeverDestroyed.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
-template<> JSString* convertEnumerationToJS(ExecState& state, TestStandaloneEnumeration enumerationValue)
+String convertEnumerationToString(TestStandaloneEnumeration enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("enumValue1"),
         MAKE_STATIC_STRING_IMPL("enumValue2"),
     };
     static_assert(static_cast<size_t>(TestStandaloneEnumeration::EnumValue1) == 0, "TestStandaloneEnumeration::EnumValue1 is not 0 as expected");
     static_assert(static_cast<size_t>(TestStandaloneEnumeration::EnumValue2) == 1, "TestStandaloneEnumeration::EnumValue2 is not 1 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
-    return jsStringWithCache(&state, values[static_cast<size_t>(enumerationValue)]);
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+template<> JSString* convertEnumerationToJS(ExecState& state, TestStandaloneEnumeration enumerationValue)
+{
+    return jsStringWithCache(&state, convertEnumerationToString(enumerationValue));
 }
 
 template<> std::optional<TestStandaloneEnumeration> parseEnumeration<TestStandaloneEnumeration>(ExecState& state, JSValue value)

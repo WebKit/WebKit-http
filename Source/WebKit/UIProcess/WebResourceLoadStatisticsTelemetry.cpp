@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WebResourceLoadStatisticsTelemetry.h"
 
+#include "ResourceLoadStatisticsMemoryStore.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
-#include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/ResourceLoadStatistics.h>
 #include <wtf/MainThread.h>
@@ -36,11 +36,11 @@
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringBuilder.h>
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
 const unsigned minimumPrevalentResourcesForTelemetry = 3;
+const unsigned significantFiguresForLoggedValues = 3;
 static bool notifyPagesWhenTelemetryWasCaptured = false;
 
 struct PrevalentResourceTelemetry {
@@ -50,9 +50,11 @@ struct PrevalentResourceTelemetry {
     unsigned subframeUnderTopFrameOrigins;
     unsigned subresourceUnderTopFrameOrigins;
     unsigned subresourceUniqueRedirectsTo;
+    unsigned timesAccessedAsFirstPartyDueToUserInteraction;
+    unsigned timesAccessedAsFirstPartyDueToStorageAccessAPI;
 };
 
-static Vector<PrevalentResourceTelemetry> sortedPrevalentResourceTelemetry(const WebResourceLoadStatisticsStore& store)
+static Vector<PrevalentResourceTelemetry> sortedPrevalentResourceTelemetry(const ResourceLoadStatisticsMemoryStore& store)
 {
     ASSERT(!RunLoop::isMain());
     Vector<PrevalentResourceTelemetry> sorted;
@@ -67,7 +69,9 @@ static Vector<PrevalentResourceTelemetry> sortedPrevalentResourceTelemetry(const
             daysSinceUserInteraction,
             statistic.subframeUnderTopFrameOrigins.size(),
             statistic.subresourceUnderTopFrameOrigins.size(),
-            statistic.subresourceUniqueRedirectsTo.size()
+            statistic.subresourceUniqueRedirectsTo.size(),
+            statistic.timesAccessedAsFirstPartyDueToUserInteraction,
+            statistic.timesAccessedAsFirstPartyDueToStorageAccessAPI
         });
     });
 
@@ -145,40 +149,52 @@ static WebPageProxy* nonEphemeralWebPageProxy()
     
 static void submitTopList(unsigned numberOfResourcesFromTheTop, const Vector<PrevalentResourceTelemetry>& sortedPrevalentResources, const Vector<PrevalentResourceTelemetry>& sortedPrevalentResourcesWithoutUserInteraction, WebPageProxy& webPageProxy)
 {
-    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> subframeUnderTopFrameOriginsGetter = [] (const PrevalentResourceTelemetry& t) {
+    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> subframeUnderTopFrameOriginsGetter = [] (auto& t) {
         return t.subframeUnderTopFrameOrigins;
     };
-    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> subresourceUnderTopFrameOriginsGetter = [] (const PrevalentResourceTelemetry& t) {
+    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> subresourceUnderTopFrameOriginsGetter = [] (auto& t) {
         return t.subresourceUnderTopFrameOrigins;
     };
-    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> subresourceUniqueRedirectsToGetter = [] (const PrevalentResourceTelemetry& t) {
+    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> subresourceUniqueRedirectsToGetter = [] (auto& t) {
         return t.subresourceUniqueRedirectsTo;
     };
-    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> numberOfTimesDataRecordsRemovedGetter = [] (const PrevalentResourceTelemetry& t) {
+    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> numberOfTimesDataRecordsRemovedGetter = [] (auto& t) {
         return t.numberOfTimesDataRecordsRemoved;
     };
-    
+    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> numberOfTimesAccessedAsFirstPartyDueToUserInteractionGetter = [] (auto& t) {
+        return t.timesAccessedAsFirstPartyDueToUserInteraction;
+    };
+    WTF::Function<unsigned(const PrevalentResourceTelemetry& telemetry)> numberOfTimesAccessedAsFirstPartyDueToStorageAccessAPIGetter = [] (auto& t) {
+        return t.timesAccessedAsFirstPartyDueToStorageAccessAPI;
+    };
+
     unsigned topPrevalentResourcesWithUserInteraction = numberOfResourcesWithUserInteraction(sortedPrevalentResources, 0, numberOfResourcesFromTheTop - 1);
     unsigned topSubframeUnderTopFrameOrigins = median(sortedPrevalentResourcesWithoutUserInteraction, 0, numberOfResourcesFromTheTop - 1, subframeUnderTopFrameOriginsGetter);
     unsigned topSubresourceUnderTopFrameOrigins = median(sortedPrevalentResourcesWithoutUserInteraction, 0, numberOfResourcesFromTheTop - 1, subresourceUnderTopFrameOriginsGetter);
     unsigned topSubresourceUniqueRedirectsTo = median(sortedPrevalentResourcesWithoutUserInteraction, 0, numberOfResourcesFromTheTop - 1, subresourceUniqueRedirectsToGetter);
     unsigned topNumberOfTimesDataRecordsRemoved = median(sortedPrevalentResourcesWithoutUserInteraction, 0, numberOfResourcesFromTheTop - 1, numberOfTimesDataRecordsRemovedGetter);
-    
+    unsigned topNumberOfTimesAccessedAsFirstPartyDueToUserInteraction = median(sortedPrevalentResourcesWithoutUserInteraction, 0, numberOfResourcesFromTheTop - 1, numberOfTimesAccessedAsFirstPartyDueToUserInteractionGetter);
+    unsigned topNumberOfTimesAccessedAsFirstPartyDueToStorageAccessAPI = median(sortedPrevalentResourcesWithoutUserInteraction, 0, numberOfResourcesFromTheTop - 1, numberOfTimesAccessedAsFirstPartyDueToStorageAccessAPIGetter);
+
     StringBuilder preambleBuilder;
     preambleBuilder.appendLiteral("top");
     preambleBuilder.appendNumber(numberOfResourcesFromTheTop);
     String descriptionPreamble = preambleBuilder.toString();
     
     webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "PrevalentResourcesWithUserInteraction",
-        topPrevalentResourcesWithUserInteraction, 0, ShouldSample::No);
+        topPrevalentResourcesWithUserInteraction, significantFiguresForLoggedValues, ShouldSample::No);
     webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "SubframeUnderTopFrameOrigins",
-        topSubframeUnderTopFrameOrigins, 0, ShouldSample::No);
+        topSubframeUnderTopFrameOrigins, significantFiguresForLoggedValues, ShouldSample::No);
     webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "SubresourceUnderTopFrameOrigins",
-        topSubresourceUnderTopFrameOrigins, 0, ShouldSample::No);
+        topSubresourceUnderTopFrameOrigins, significantFiguresForLoggedValues, ShouldSample::No);
     webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "SubresourceUniqueRedirectsTo",
-        topSubresourceUniqueRedirectsTo, 0, ShouldSample::No);
+        topSubresourceUniqueRedirectsTo, significantFiguresForLoggedValues, ShouldSample::No);
     webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "NumberOfTimesDataRecordsRemoved",
-        topNumberOfTimesDataRecordsRemoved, 0, ShouldSample::No);
+        topNumberOfTimesDataRecordsRemoved, significantFiguresForLoggedValues, ShouldSample::No);
+    webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "NumberOfTimesAccessedAsFirstPartyDueToUserInteraction",
+        topNumberOfTimesAccessedAsFirstPartyDueToUserInteraction, significantFiguresForLoggedValues, ShouldSample::No);
+    webPageProxy.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), descriptionPreamble + "NumberOfTimesAccessedAsFirstPartyDueToStorageAccessAPI",
+        topNumberOfTimesAccessedAsFirstPartyDueToStorageAccessAPI, significantFiguresForLoggedValues, ShouldSample::No);
 }
     
 static void submitTopLists(const Vector<PrevalentResourceTelemetry>& sortedPrevalentResources, const Vector<PrevalentResourceTelemetry>& sortedPrevalentResourcesWithoutUserInteraction, WebPageProxy& webPageProxy)
@@ -207,9 +223,9 @@ void static notifyPages(unsigned totalPrevalentResources, unsigned totalPrevalen
 {
     RunLoop::main().dispatch([totalPrevalentResources, totalPrevalentResourcesWithUserInteraction, top3SubframeUnderTopFrameOrigins] {
         API::Dictionary::MapType messageBody;
-        messageBody.set(ASCIILiteral("TotalPrevalentResources"), API::UInt64::create(totalPrevalentResources));
-        messageBody.set(ASCIILiteral("TotalPrevalentResourcesWithUserInteraction"), API::UInt64::create(totalPrevalentResourcesWithUserInteraction));
-        messageBody.set(ASCIILiteral("Top3SubframeUnderTopFrameOrigins"), API::UInt64::create(top3SubframeUnderTopFrameOrigins));
+        messageBody.set("TotalPrevalentResources"_s, API::UInt64::create(totalPrevalentResources));
+        messageBody.set("TotalPrevalentResourcesWithUserInteraction"_s, API::UInt64::create(totalPrevalentResourcesWithUserInteraction));
+        messageBody.set("Top3SubframeUnderTopFrameOrigins"_s, API::UInt64::create(top3SubframeUnderTopFrameOrigins));
         WebProcessProxy::notifyPageStatisticsTelemetryFinished(API::Dictionary::create(messageBody).ptr());
     });
 }
@@ -224,7 +240,7 @@ void static notifyPages(const Vector<PrevalentResourceTelemetry>& sortedPrevalen
     notifyPages(sortedPrevalentResources.size(), totalNumberOfPrevalentResourcesWithUserInteraction, median(sortedPrevalentResourcesWithoutUserInteraction, 0, 2, subframeUnderTopFrameOriginsGetter));
 }
     
-void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const WebResourceLoadStatisticsStore& resourceLoadStatisticsStore)
+void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const ResourceLoadStatisticsMemoryStore& resourceLoadStatisticsStore)
 {
     ASSERT(!RunLoop::isMain());
     
@@ -245,27 +261,31 @@ void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const WebResourceLoa
             sortedPrevalentResourcesWithoutUserInteraction.uncheckedAppend(prevalentResource);
     }
     
-    auto webPageProxy = nonEphemeralWebPageProxy();
-    if (!webPageProxy) {
-        notifyPages(0, 0, 0);
-        return;
-    }
-    
-    if (notifyPagesWhenTelemetryWasCaptured) {
-        notifyPages(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, prevalentResourcesDaysSinceUserInteraction.size());
-        // The notify pages function is for testing so we don't need to do an actual submission.
-        return;
-    }
-    
-    webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("totalNumberOfPrevalentResources"), sortedPrevalentResources.size(), 0, ShouldSample::No);
-    webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("totalNumberOfPrevalentResourcesWithUserInteraction"), prevalentResourcesDaysSinceUserInteraction.size(), 0, ShouldSample::No);
-    
-    if (prevalentResourcesDaysSinceUserInteraction.size() > 0)
-        webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("topPrevalentResourceWithUserInteractionDaysSinceUserInteraction"), prevalentResourcesDaysSinceUserInteraction[0], 0, ShouldSample::No);
-    if (prevalentResourcesDaysSinceUserInteraction.size() > 1)
-        webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("medianPrevalentResourcesWithUserInteractionDaysSinceUserInteraction"), median(prevalentResourcesDaysSinceUserInteraction), 0, ShouldSample::No);
-    
-    submitTopLists(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, *webPageProxy);
+    // Dispatch on the main thread to make sure the WebPageProxy we're using doesn't go away.
+    RunLoop::main().dispatch([sortedPrevalentResources = WTFMove(sortedPrevalentResources), sortedPrevalentResourcesWithoutUserInteraction = WTFMove(sortedPrevalentResourcesWithoutUserInteraction), prevalentResourcesDaysSinceUserInteraction = WTFMove(prevalentResourcesDaysSinceUserInteraction)] () {
+        auto webPageProxy = nonEphemeralWebPageProxy();
+        if (!webPageProxy) {
+            if (notifyPagesWhenTelemetryWasCaptured)
+                notifyPages(0, 0, 0);
+            return;
+        }
+        
+        if (notifyPagesWhenTelemetryWasCaptured) {
+            notifyPages(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, prevalentResourcesDaysSinceUserInteraction.size());
+            // The notify pages function is for testing so we don't need to do an actual submission.
+            return;
+        }
+        
+        webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), "totalNumberOfPrevalentResources"_s, sortedPrevalentResources.size(), significantFiguresForLoggedValues, ShouldSample::No);
+        webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), "totalNumberOfPrevalentResourcesWithUserInteraction"_s, prevalentResourcesDaysSinceUserInteraction.size(), significantFiguresForLoggedValues, ShouldSample::No);
+        
+        if (prevalentResourcesDaysSinceUserInteraction.size() > 0)
+            webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), "topPrevalentResourceWithUserInteractionDaysSinceUserInteraction"_s, prevalentResourcesDaysSinceUserInteraction[0], significantFiguresForLoggedValues, ShouldSample::No);
+        if (prevalentResourcesDaysSinceUserInteraction.size() > 1)
+            webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), "medianPrevalentResourcesWithUserInteractionDaysSinceUserInteraction"_s, median(prevalentResourcesDaysSinceUserInteraction), significantFiguresForLoggedValues, ShouldSample::No);
+        
+        submitTopLists(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, *webPageProxy);
+    });
 }
     
 void WebResourceLoadStatisticsTelemetry::setNotifyPagesWhenTelemetryWasCaptured(bool always)

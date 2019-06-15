@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.slice
 description: ToInteger(end)
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice( start , end )
 
   ...
@@ -11,6 +11,7 @@ info: >
   ToInteger(end).
   ...
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 var obj = {

@@ -8,21 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_TOOLS_AUDIO_CODEC_SPEED_TEST_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_TOOLS_AUDIO_CODEC_SPEED_TEST_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_TOOLS_AUDIO_CODEC_SPEED_TEST_H_
+#define MODULES_AUDIO_CODING_CODECS_TOOLS_AUDIO_CODEC_SPEED_TEST_H_
 
 #include <memory>
 #include <string>
 
-#include "webrtc/test/gtest.h"
-#include "webrtc/typedefs.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
 // Define coding parameter as
 // <channels, bit_rate, file_name, extension, if_save_output>.
-typedef std::tr1::tuple<size_t, int, std::string, std::string, bool>
-    coding_param;
+typedef std::tuple<size_t, int, std::string, std::string, bool> coding_param;
 
 class AudioCodecSpeedTest : public testing::TestWithParam<coding_param> {
  protected:
@@ -37,15 +35,18 @@ class AudioCodecSpeedTest : public testing::TestWithParam<coding_param> {
   // 2. save the bit stream to |bit_stream| of |max_bytes| bytes in size,
   // 3. assign |encoded_bytes| with the length of the bit stream (in bytes),
   // 4. return the cost of time (in millisecond) spent on actual encoding.
-  virtual float EncodeABlock(int16_t* in_data, uint8_t* bit_stream,
-                             size_t max_bytes, size_t* encoded_bytes) = 0;
+  virtual float EncodeABlock(int16_t* in_data,
+                             uint8_t* bit_stream,
+                             size_t max_bytes,
+                             size_t* encoded_bytes) = 0;
 
   // DecodeABlock(...) does the following:
   // 1. decodes the bit stream in |bit_stream| with a length of |encoded_bytes|
   // (in bytes),
   // 2. save the decoded audio in |out_data|,
   // 3. return the cost of time (in millisecond) spent on actual decoding.
-  virtual float DecodeABlock(const uint8_t* bit_stream, size_t encoded_bytes,
+  virtual float DecodeABlock(const uint8_t* bit_stream,
+                             size_t encoded_bytes,
                              int16_t* out_data) = 0;
 
   // Encoding and decode an audio of |audio_duration| (in seconds) and
@@ -89,4 +90,4 @@ class AudioCodecSpeedTest : public testing::TestWithParam<coding_param> {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_CODECS_TOOLS_AUDIO_CODEC_SPEED_TEST_H_
+#endif  // MODULES_AUDIO_CODING_CODECS_TOOLS_AUDIO_CODEC_SPEED_TEST_H_

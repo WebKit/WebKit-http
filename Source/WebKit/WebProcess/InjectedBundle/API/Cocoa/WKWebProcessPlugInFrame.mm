@@ -44,19 +44,13 @@
 #import <WebCore/LinkIconCollector.h>
 #import <WebCore/LinkIconType.h>
 
-using namespace WebKit;
-
 @implementation WKWebProcessPlugInFrame {
-    API::ObjectStorage<WebFrame> _frame;
+    API::ObjectStorage<WebKit::WebFrame> _frame;
 }
 
 + (instancetype)lookUpFrameFromHandle:(_WKFrameHandle *)handle
 {
-    WebFrame* webFrame = WebProcess::singleton().webFrame(handle._frameID);
-    if (!webFrame)
-        return nil;
-
-    return wrapper(*webFrame);
+    return wrapper(WebKit::WebProcess::singleton().webFrame(handle._frameID));
 }
 
 - (void)dealloc
@@ -72,8 +66,7 @@ using namespace WebKit;
 
 - (WKWebProcessPlugInHitTestResult *)hitTest:(CGPoint)point
 {
-    auto hitTestResult = _frame->hitTest(WebCore::IntPoint(point));
-    return [wrapper(*hitTestResult.leakRef()) autorelease];
+    return wrapper(_frame->hitTest(WebCore::IntPoint(point)));
 }
 
 - (JSValue *)jsNodeForNodeHandle:(WKWebProcessPlugInNodeHandle *)nodeHandle inWorld:(WKWebProcessPlugInScriptWorld *)world
@@ -90,7 +83,7 @@ using namespace WebKit;
 
 - (WKWebProcessPlugInBrowserContextController *)_browserContextController
 {
-    return wrapper(*_frame->page());
+    return WebKit::wrapper(*_frame->page());
 }
 
 - (NSURL *)URL
@@ -100,7 +93,7 @@ using namespace WebKit;
 
 - (NSArray *)childFrames
 {
-    return [wrapper(_frame->childFrames().leakRef()) autorelease];
+    return WebKit::wrapper(_frame->childFrames());
 }
 
 - (BOOL)containsAnyFormElements
@@ -110,7 +103,7 @@ using namespace WebKit;
 
 - (_WKFrameHandle *)handle
 {
-    return [wrapper(API::FrameHandle::create(_frame->frameID()).leakRef()) autorelease];
+    return wrapper(API::FrameHandle::create(_frame->frameID()));
 }
 
 static RetainPtr<NSArray> collectIcons(WebCore::Frame* frame, OptionSet<WebCore::LinkIconType> iconTypes)
@@ -124,7 +117,7 @@ static RetainPtr<NSArray> collectIcons(WebCore::Frame* frame, OptionSet<WebCore:
         }
     }
 
-    return result.autorelease();
+    return WTFMove(result);
 }
 
 - (NSArray *)appleTouchIconURLs
@@ -139,8 +132,7 @@ static RetainPtr<NSArray> collectIcons(WebCore::Frame* frame, OptionSet<WebCore:
 
 - (WKWebProcessPlugInFrame *)_parentFrame
 {
-    WebFrame *parentFrame = _frame->parentFrame();
-    return parentFrame ? wrapper(*parentFrame) : nil;
+    return wrapper(_frame->parentFrame());
 }
 
 - (BOOL)_hasCustomContentProvider

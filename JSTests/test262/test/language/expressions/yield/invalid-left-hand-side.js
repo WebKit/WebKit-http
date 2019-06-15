@@ -16,8 +16,12 @@ info: |
     NewExpression[?Yield]
     CallExpression[?Yield]
 features: [generators]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 function* g() {
   yield = 1;

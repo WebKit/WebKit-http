@@ -49,8 +49,8 @@ void ArrayIteratorPrototype::finishCreation(VM& vm, JSGlobalObject*)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Array Iterator"), DontEnum | ReadOnly);
-    vm.prototypeMap.addPrototype(this);
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Array Iterator"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    didBecomePrototype();
 }
 
 // ------------------------------ Array Functions ----------------------------

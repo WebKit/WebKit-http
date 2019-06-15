@@ -26,10 +26,12 @@
 #include "config.h"
 #include "JSModuleRecord.h"
 
+#include "BuiltinNames.h"
 #include "Error.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
+#include "JSModuleLoader.h"
 #include "JSModuleNamespaceObject.h"
 #include "UnlinkedModuleProgramCodeBlock.h"
 
@@ -76,22 +78,23 @@ void JSModuleRecord::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.append(thisObject->m_moduleProgramExecutable);
 }
 
-void JSModuleRecord::link(ExecState* exec)
+void JSModuleRecord::link(ExecState* exec, JSValue scriptFetcher)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     ModuleProgramExecutable* executable = ModuleProgramExecutable::create(exec, sourceCode());
+    EXCEPTION_ASSERT(!!scope.exception() == !executable);
     if (!executable) {
         throwSyntaxError(exec, scope);
         return;
     }
-    instantiateDeclarations(exec, executable);
+    instantiateDeclarations(exec, executable, scriptFetcher);
     RETURN_IF_EXCEPTION(scope, void());
     m_moduleProgramExecutable.set(vm, this, executable);
 }
 
-void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecutable* moduleProgramExecutable)
+void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecutable* moduleProgramExecutable, JSValue scriptFetcher)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -110,6 +113,7 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
         const ExportEntry& exportEntry = pair.value;
         if (exportEntry.type == JSModuleRecord::ExportEntry::Type::Indirect) {
             Resolution resolution = resolveExport(exec, exportEntry.exportName);
+            RETURN_IF_EXCEPTION(scope, void());
             switch (resolution.type) {
             case Resolution::Type::NotFound:
                 throwSyntaxError(exec, scope, makeString("Indirectly exported binding name '", String(exportEntry.exportName.impl()), "' is not found."));
@@ -136,13 +140,16 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
     for (const auto& pair : importEntries()) {
         const ImportEntry& importEntry = pair.value;
         AbstractModuleRecord* importedModule = hostResolveImportedModule(exec, importEntry.moduleRequest);
-        if (importEntry.isNamespace(vm)) {
+        RETURN_IF_EXCEPTION(scope, void());
+        if (importEntry.type == AbstractModuleRecord::ImportEntryType::Namespace) {
             JSModuleNamespaceObject* namespaceObject = importedModule->getModuleNamespace(exec);
             RETURN_IF_EXCEPTION(scope, void());
             bool putResult = false;
             symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, importEntry.localName, namespaceObject, /* shouldThrowReadOnlyError */ false, /* ignoreReadOnlyErrors */ true, putResult);
+            RETURN_IF_EXCEPTION(scope, void());
         } else {
             Resolution resolution = importedModule->resolveExport(exec, importEntry.importName);
+            RETURN_IF_EXCEPTION(scope, void());
             switch (resolution.type) {
             case Resolution::Type::NotFound:
                 throwSyntaxError(exec, scope, makeString("Importing binding name '", String(importEntry.importName.impl()), "' is not found."));
@@ -173,6 +180,7 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
         if (!offset.isStack()) {
             bool putResult = false;
             symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, Identifier::fromUid(exec, variable.key.get()), jsUndefined(), /* shouldThrowReadOnlyError */ false, /* ignoreReadOnlyErrors */ true, putResult);
+            RETURN_IF_EXCEPTION(scope, void());
         }
     }
 
@@ -195,7 +203,16 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
             JSFunction* function = JSFunction::create(vm, unlinkedFunctionExecutable->link(vm, moduleProgramExecutable->source()), moduleEnvironment);
             bool putResult = false;
             symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, unlinkedFunctionExecutable->name(), function, /* shouldThrowReadOnlyError */ false, /* ignoreReadOnlyErrors */ true, putResult);
+            RETURN_IF_EXCEPTION(scope, void());
         }
+    }
+
+    {
+        JSObject* metaProperties = exec->lexicalGlobalObject()->moduleLoader()->createImportMetaProperties(exec, identifierToJSValue(vm, moduleKey()), this, scriptFetcher);
+        RETURN_IF_EXCEPTION(scope, void());
+        bool putResult = false;
+        symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, vm.propertyNames->builtinNames().metaPrivateName(), metaProperties, /* shouldThrowReadOnlyError */ false, /* ignoreReadOnlyErrors */ true, putResult);
+        RETURN_IF_EXCEPTION(scope, void());
     }
 
     m_moduleEnvironment.set(vm, this, moduleEnvironment);
@@ -205,9 +222,10 @@ JSValue JSModuleRecord::evaluate(ExecState* exec)
 {
     if (!m_moduleProgramExecutable)
         return jsUndefined();
+    VM& vm = exec->vm();
     ModuleProgramExecutable* executable = m_moduleProgramExecutable.get();
     m_moduleProgramExecutable.clear();
-    return exec->interpreter()->executeModuleProgram(executable, exec, m_moduleEnvironment.get());
+    return vm.interpreter->executeModuleProgram(executable, exec, m_moduleEnvironment.get());
 }
 
 } // namespace JSC

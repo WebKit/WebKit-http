@@ -29,20 +29,26 @@
 #include "config.h"
 #include "FileHandle.h"
 
-#include <wtf/StringExtras.h>
-
 namespace WebCore {
 
-FileHandle::FileHandle(const String& path, FileOpenMode mode)
-    : m_path(path)
-    , m_mode(mode)
+FileHandle::FileHandle(const String& path, FileSystem::FileOpenMode mode)
+    : m_path { path }
+    , m_mode { mode }
 {
 }
 
 FileHandle::FileHandle(FileHandle&& other)
-    : m_path(WTFMove(other.m_path))
-    , m_mode(WTFMove(other.m_mode))
-    , m_fileHandle(std::exchange(other.m_fileHandle, invalidPlatformFileHandle))
+    : m_path { WTFMove(other.m_path) }
+    , m_mode { WTFMove(other.m_mode) }
+    , m_fileHandle { std::exchange(other.m_fileHandle, FileSystem::invalidPlatformFileHandle) }
+{
+}
+
+FileHandle::FileHandle(const String& path, FileSystem::FileOpenMode mode, OptionSet<FileSystem::FileLockMode> lockMode)
+    : m_path { path }
+    , m_mode { mode }
+    , m_lockMode { lockMode }
+    , m_shouldLock { true }
 {
 }
 
@@ -56,16 +62,16 @@ FileHandle& FileHandle::operator=(FileHandle&& other)
     close();
     m_path = WTFMove(other.m_path);
     m_mode = WTFMove(other.m_mode);
-    m_fileHandle = std::exchange(other.m_fileHandle, invalidPlatformFileHandle);
+    m_fileHandle = std::exchange(other.m_fileHandle, FileSystem::invalidPlatformFileHandle);
     return *this;
 }
 
 FileHandle::operator bool() const
 {
-    return isHandleValid(m_fileHandle);
+    return FileSystem::isHandleValid(m_fileHandle);
 }
 
-bool FileHandle::open(const String& path, FileOpenMode mode)
+bool FileHandle::open(const String& path, FileSystem::FileOpenMode mode)
 {
     if (*this && path == m_path && mode == m_mode)
         return true;
@@ -79,7 +85,7 @@ bool FileHandle::open(const String& path, FileOpenMode mode)
 bool FileHandle::open()
 {
     if (!*this)
-        m_fileHandle = openFile(m_path, m_mode);
+        m_fileHandle = m_shouldLock ? FileSystem::openAndLockFile(m_path, m_mode, m_lockMode) :  FileSystem::openFile(m_path, m_mode);
     return static_cast<bool>(*this);
 }
 
@@ -87,14 +93,14 @@ int FileHandle::read(void* data, int length)
 {
     if (!open())
         return -1;
-    return readFromFile(m_fileHandle, static_cast<char*>(data), length);
+    return FileSystem::readFromFile(m_fileHandle, static_cast<char*>(data), length);
 }
 
 int FileHandle::write(const void* data, int length)
 {
     if (!open())
         return -1;
-    return writeToFile(m_fileHandle, static_cast<const char*>(data), length);
+    return FileSystem::writeToFile(m_fileHandle, static_cast<const char*>(data), length);
 }
 
 bool FileHandle::printf(const char* format, ...)
@@ -117,7 +123,11 @@ bool FileHandle::printf(const char* format, ...)
 
 void FileHandle::close()
 {
-    closeFile(m_fileHandle);
+    if (m_shouldLock && *this) {
+        // FileSystem::unlockAndCloseFile requires the file handle to be valid while closeFile does not
+        FileSystem::unlockAndCloseFile(m_fileHandle);
+    } else
+        FileSystem::closeFile(m_fileHandle);
 }
 
 } // namespace WebCore

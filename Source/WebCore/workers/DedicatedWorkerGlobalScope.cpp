@@ -41,22 +41,21 @@
 
 namespace WebCore {
 
-Ref<DedicatedWorkerGlobalScope> DedicatedWorkerGlobalScope::create(const URL& url, const String& identifier, const String& userAgent, DedicatedWorkerThread& thread, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
+Ref<DedicatedWorkerGlobalScope> DedicatedWorkerGlobalScope::create(const URL& url, Ref<SecurityOrigin>&& origin, const String& name, const String& identifier, const String& userAgent, bool isOnline, DedicatedWorkerThread& thread, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
 {
-    auto context = adoptRef(*new DedicatedWorkerGlobalScope(url, identifier, userAgent, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider));
+    auto context = adoptRef(*new DedicatedWorkerGlobalScope(url, WTFMove(origin), name, identifier, userAgent, isOnline, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider, sessionID));
     if (!shouldBypassMainWorldContentSecurityPolicy)
         context->applyContentSecurityPolicyResponseHeaders(contentSecurityPolicyResponseHeaders);
     return context;
 }
 
-DedicatedWorkerGlobalScope::DedicatedWorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, DedicatedWorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
-    : WorkerGlobalScope(url, identifier, userAgent, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider)
+DedicatedWorkerGlobalScope::DedicatedWorkerGlobalScope(const URL& url, Ref<SecurityOrigin>&& origin, const String& name, const String& identifier, const String& userAgent, bool isOnline, DedicatedWorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
+    : WorkerGlobalScope(url, WTFMove(origin), identifier, userAgent, isOnline, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider, sessionID)
+    , m_name(name)
 {
 }
 
-DedicatedWorkerGlobalScope::~DedicatedWorkerGlobalScope()
-{
-}
+DedicatedWorkerGlobalScope::~DedicatedWorkerGlobalScope() = default;
 
 EventTargetInterface DedicatedWorkerGlobalScope::eventTargetInterface() const
 {
@@ -74,7 +73,8 @@ ExceptionOr<void> DedicatedWorkerGlobalScope::postMessage(JSC::ExecState& state,
     auto channels = MessagePort::disentanglePorts(WTFMove(ports));
     if (channels.hasException())
         return channels.releaseException();
-    thread().workerObjectProxy().postMessageToWorkerObject(message.releaseReturnValue(), channels.releaseReturnValue());
+
+    thread().workerObjectProxy().postMessageToWorkerObject({ message.releaseReturnValue(), channels.releaseReturnValue() });
     return { };
 }
 

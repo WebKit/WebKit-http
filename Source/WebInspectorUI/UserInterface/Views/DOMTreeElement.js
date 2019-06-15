@@ -28,7 +28,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElement
+WI.DOMTreeElement = class DOMTreeElement extends WI.TreeElement
 {
     constructor(node, elementCloseTag)
     {
@@ -40,8 +40,8 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (this.representedObject.nodeType() === Node.ELEMENT_NODE && !elementCloseTag)
             this._canAddAttributes = true;
         this._searchQuery = null;
-        this._expandedChildrenLimit = WebInspector.DOMTreeElement.InitialChildrenLimit;
-        this._breakpointStatus = WebInspector.DOMTreeElement.BreakpointStatus.None;
+        this._expandedChildrenLimit = WI.DOMTreeElement.InitialChildrenLimit;
+        this._breakpointStatus = WI.DOMTreeElement.BreakpointStatus.None;
         this._animatingHighlight = false;
         this._shouldHighlightAfterReveal = false;
         this._boundHighlightAnimationEnd = this._highlightAnimationEnd.bind(this);
@@ -50,7 +50,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         this._recentlyModifiedAttributes = [];
         this._boundNodeChangedAnimationEnd = this._nodeChangedAnimationEnd.bind(this);
 
-        node.addEventListener(WebInspector.DOMNode.Event.EnabledPseudoClassesChanged, this._nodePseudoClassesDidChange, this);
+        node.addEventListener(WI.DOMNode.Event.EnabledPseudoClassesChanged, this._nodePseudoClassesDidChange, this);
+
+        this._ignoreSingleTextChild = false;
+        this._forceUpdateTitle = false;
     }
 
     // Static
@@ -58,12 +61,12 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     static shadowRootTypeDisplayName(type)
     {
         switch (type) {
-        case WebInspector.DOMNode.ShadowRootType.UserAgent:
-            return WebInspector.UIString("User Agent");
-        case WebInspector.DOMNode.ShadowRootType.Open:
-            return WebInspector.UIString("Open");
-        case WebInspector.DOMNode.ShadowRootType.Closed:
-            return WebInspector.UIString("Closed");
+        case WI.DOMNode.ShadowRootType.UserAgent:
+            return WI.UIString("User Agent");
+        case WI.DOMNode.ShadowRootType.Open:
+            return WI.UIString("Open");
+        case WI.DOMNode.ShadowRootType.Closed:
+            return WI.UIString("Closed");
         }
     }
 
@@ -80,9 +83,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             return;
 
         let increment;
-        if (this._breakpointStatus === WebInspector.DOMTreeElement.BreakpointStatus.None)
+        if (this._breakpointStatus === WI.DOMTreeElement.BreakpointStatus.None)
             increment = 1;
-        else if (status === WebInspector.DOMTreeElement.BreakpointStatus.None)
+        else if (status === WI.DOMTreeElement.BreakpointStatus.None)
             increment = -1;
 
         this._breakpointStatus = status;
@@ -138,7 +141,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     emphasizeSearchHighlight()
     {
-        var highlightElement = this.title.querySelector("." + WebInspector.DOMTreeElement.SearchHighlightStyleClassName);
+        var highlightElement = this.title.querySelector("." + WI.DOMTreeElement.SearchHighlightStyleClassName);
         console.assert(highlightElement);
         if (!highlightElement)
             return;
@@ -147,7 +150,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             this._bouncyHighlightElement.remove();
 
         this._bouncyHighlightElement = document.createElement("div");
-        this._bouncyHighlightElement.className = WebInspector.DOMTreeElement.BouncyHighlightStyleClassName;
+        this._bouncyHighlightElement.className = WI.DOMTreeElement.BouncyHighlightStyleClassName;
         this._bouncyHighlightElement.textContent = highlightElement.textContent;
 
         // Position and show the bouncy highlight adjusting the coordinates to be inside the TreeOutline's space.
@@ -283,6 +286,38 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         return this.children[index];
     }
 
+    toggleElementVisibility()
+    {
+        let effectiveNode = this.representedObject;
+        if (effectiveNode.isPseudoElement()) {
+            effectiveNode = effectiveNode.parentNode;
+            console.assert(effectiveNode);
+            if (!effectiveNode)
+                return;
+        }
+
+        if (effectiveNode.nodeType() !== Node.ELEMENT_NODE)
+            return;
+
+        function inspectedPage_node_injectStyleAndToggleClass() {
+            let hideElementStyleSheetIdOrClassName = "__WebInspectorHideElement__";
+            let styleElement = document.getElementById(hideElementStyleSheetIdOrClassName);
+            if (!styleElement) {
+                styleElement = document.createElement("style");
+                styleElement.id = hideElementStyleSheetIdOrClassName;
+                styleElement.textContent = "." + hideElementStyleSheetIdOrClassName + " { visibility: hidden !important; }";
+                document.head.appendChild(styleElement);
+            }
+
+            this.classList.toggle(hideElementStyleSheetIdOrClassName);
+        }
+
+        WI.RemoteObject.resolveNode(effectiveNode).then((object) => {
+            object.callFunction(inspectedPage_node_injectStyleAndToggleClass, undefined, false, () => { });
+            object.release();
+        });
+    }
+
     _createTooltipForNode()
     {
         var node = this.representedObject;
@@ -301,28 +336,22 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 var naturalWidth = properties[2];
                 var naturalHeight = properties[3];
                 if (offsetHeight === naturalHeight && offsetWidth === naturalWidth)
-                    this.tooltip = WebInspector.UIString("%d \xd7 %d pixels").format(offsetWidth, offsetHeight);
+                    this.tooltip = WI.UIString("%d \xd7 %d pixels").format(offsetWidth, offsetHeight);
                 else
-                    this.tooltip = WebInspector.UIString("%d \xd7 %d pixels (Natural: %d \xd7 %d pixels)").format(offsetWidth, offsetHeight, naturalWidth, naturalHeight);
+                    this.tooltip = WI.UIString("%d \xd7 %d pixels (Natural: %d \xd7 %d pixels)").format(offsetWidth, offsetHeight, naturalWidth, naturalHeight);
             } catch (e) {
                 console.error(e);
             }
         }
 
-        function resolvedNode(object)
-        {
-            if (!object)
-                return;
-
-            function dimensions()
-            {
+        WI.RemoteObject.resolveNode(node).then((object) => {
+            function inspectedPage_node_dimensions() {
                 return "[" + this.offsetWidth + "," + this.offsetHeight + "," + this.naturalWidth + "," + this.naturalHeight + "]";
             }
 
-            object.callFunction(dimensions, undefined, false, setTooltip.bind(this));
+            object.callFunction(inspectedPage_node_dimensions, undefined, false, setTooltip.bind(this));
             object.release();
-        }
-        WebInspector.RemoteObject.resolveNode(node, "", resolvedNode.bind(this));
+        });
     }
 
     updateSelectionArea()
@@ -387,7 +416,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     insertChildElement(child, index, closingTag)
     {
-        var newElement = new WebInspector.DOMTreeElement(child, closingTag);
+        var newElement = new WI.DOMTreeElement(child, closingTag);
         newElement.selectable = this.treeOutline._selectEnabled;
         this.insertChild(newElement, index);
         return newElement;
@@ -525,7 +554,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 button.className = "show-all-nodes";
                 button.value = "";
 
-                var item = new WebInspector.TreeElement(button, null, false);
+                var item = new WI.TreeElement(button, null, false);
                 item.selectable = false;
                 item.expandAllButton = true;
 
@@ -536,7 +565,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             } else if (!this.expandAllButtonElement.__treeElement.parent)
                 this.insertChild(this.expandAllButtonElement.__treeElement, targetButtonIndex);
 
-            this.expandAllButtonElement.textContent = WebInspector.UIString("Show All Nodes (%d More)").format(totalChildrenCount - expandedChildCount);
+            this.expandAllButtonElement.textContent = WI.UIString("Show All Nodes (%d More)").format(totalChildrenCount - expandedChildCount);
         } else if (this.expandAllButtonElement)
             this.expandAllButtonElement = null;
     }
@@ -544,7 +573,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     handleLoadAllChildren()
     {
         var visibleChildren = this._visibleChildren();
-        this.expandedChildrenLimit = Math.max(visibleChildren.length, this.expandedChildrenLimit + WebInspector.DOMTreeElement.InitialChildrenLimit);
+        this.expandedChildrenLimit = Math.max(visibleChildren.length, this.expandedChildrenLimit + WI.DOMTreeElement.InitialChildrenLimit);
     }
 
     onexpand()
@@ -587,7 +616,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         this.updateSelectionArea();
 
         listItemElement.addEventListener("animationend", this._boundHighlightAnimationEnd);
-        listItemElement.classList.add(WebInspector.DOMTreeElement.HighlightStyleClassName);
+        listItemElement.classList.add(WI.DOMTreeElement.HighlightStyleClassName);
     }
 
     onselect(treeElement, selectedByUser)
@@ -595,7 +624,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         this.treeOutline.suppressRevealAndSelect = true;
         this.treeOutline.selectDOMNode(this.representedObject, selectedByUser);
         if (selectedByUser)
-            WebInspector.domTreeManager.highlightDOMNode(this.representedObject.id);
+            WI.domTreeManager.highlightDOMNode(this.representedObject.id);
         this.treeOutline.updateSelection();
         this.treeOutline.suppressRevealAndSelect = false;
     }
@@ -703,92 +732,95 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         return false;
     }
 
-    _populateTagContextMenu(contextMenu, event)
+    _populateTagContextMenu(contextMenu, event, subMenus)
     {
         let node = this.representedObject;
-        if (!node.isInUserAgentShadowTree()) {
-            let attribute = event.target.enclosingNodeOrSelfWithClass("html-attribute");
+        let isNonShadowEditable = !node.isInUserAgentShadowTree() && this.editable;
 
-            if (event.target && event.target.tagName === "A") {
-                let url = event.target.href;
-
-                contextMenu.appendItem(WebInspector.UIString("Open in New Tab"), () => {
-                    const frame = null;
-                    WebInspector.openURL(url, frame, {alwaysOpenExternally: true});
-                });
-
-                if (WebInspector.frameResourceManager.resourceForURL(url)) {
-                    contextMenu.appendItem(WebInspector.UIString("Reveal in Resources Tab"), () => {
-                        let frame = WebInspector.frameResourceManager.frameForIdentifier(node.frameIdentifier);
-
-                        const options = {
-                            ignoreNetworkTab: true,
-                            ignoreSearchTab: true,
-                        };
-                        WebInspector.openURL(url, frame, options);
-                    });
-                }
-
-                contextMenu.appendItem(WebInspector.UIString("Copy Link Address"), () => {
-                    InspectorFrontendHost.copyText(url);
-                });
-
-                contextMenu.appendSeparator();
-            }
-
-            // Add attribute-related actions.
-            if (this.editable) {
-                contextMenu.appendItem(WebInspector.UIString("Add Attribute"), this._addNewAttribute.bind(this));
-                if (attribute)
-                    contextMenu.appendItem(WebInspector.UIString("Edit Attribute"), this._startEditingAttribute.bind(this, attribute, event.target));
-                contextMenu.appendSeparator();
-            }
-
-            if (WebInspector.cssStyleManager.canForcePseudoClasses()) {
-                let pseudoSubMenu = contextMenu.appendSubMenuItem(WebInspector.UIString("Forced Pseudo-Classes"));
-                this._populateForcedPseudoStateItems(pseudoSubMenu);
-                contextMenu.appendSeparator();
-            }
+        if (event.target && event.target.tagName === "A") {
+            let url = event.target.href;
+            let frame = WI.frameResourceManager.frameForIdentifier(node.frameIdentifier);
+            WI.appendContextMenuItemsForURL(contextMenu, url, {frame});
         }
 
-        this._populateNodeContextMenu(contextMenu);
+        contextMenu.appendSeparator();
+
+        this._populateNodeContextMenu(contextMenu, subMenus);
+
+        contextMenu.appendItem(WI.UIString("Toggle Visibility"), this.toggleElementVisibility.bind(this));
+
+        subMenus.add.appendItem(WI.UIString("Attribute"), this._addNewAttribute.bind(this), !isNonShadowEditable);
+
+        let attribute = event.target.enclosingNodeOrSelfWithClass("html-attribute");
+        subMenus.edit.appendItem(WI.UIString("Attribute"), this._startEditingAttribute.bind(this, attribute, event.target), !attribute || ! isNonShadowEditable);
+
+        let attributeName = null;
+        if (attribute) {
+            let attributeNameElement = attribute.getElementsByClassName("html-attribute-name")[0];
+            if (attributeNameElement)
+                attributeName = attributeNameElement.textContent.trim();
+        }
+
+        let attributeValue = this.representedObject.getAttribute(attributeName);
+        subMenus.copy.appendItem(WI.UIString("Attribute"), () => {
+            let text = attributeName;
+            if (attributeValue)
+                text += "=\"" + attributeValue.replace(/"/g, "\\\"") + "\"";
+            InspectorFrontendHost.copyText(text);
+        }, !attribute || !isNonShadowEditable);
+
+        subMenus.delete.appendItem(WI.UIString("Attribute"), () => {
+            this.representedObject.removeAttribute(attributeName);
+        }, !attribute || !isNonShadowEditable);
+
+        subMenus.edit.appendItem(WI.UIString("Tag"), () => {
+            this._startEditingTagName();
+        }, !isNonShadowEditable);
+
+        contextMenu.appendSeparator();
+
+        if (WI.cssStyleManager.canForcePseudoClasses()) {
+            let pseudoSubMenu = contextMenu.appendSubMenuItem(WI.UIString("Forced Pseudo-Classes"));
+
+            let enabledPseudoClasses = this.representedObject.enabledPseudoClasses;
+            WI.CSSStyleManager.ForceablePseudoClasses.forEach((pseudoClass) => {
+                let enabled = enabledPseudoClasses.includes(pseudoClass);
+                pseudoSubMenu.appendCheckboxItem(pseudoClass.capitalize(), () => {
+                    this.representedObject.setPseudoClassEnabled(pseudoClass, !enabled);
+                }, enabled);
+            });
+
+            contextMenu.appendSeparator();
+        }
     }
 
-    _populateForcedPseudoStateItems(subMenu)
+    _populateTextContextMenu(contextMenu, textNode, subMenus)
     {
-        var node = this.representedObject;
-        var enabledPseudoClasses = node.enabledPseudoClasses;
-        // These strings don't need to be localized as they are CSS pseudo-classes.
-        WebInspector.CSSStyleManager.ForceablePseudoClasses.forEach(function(pseudoClass) {
-            var label = pseudoClass.capitalize();
-            var enabled = enabledPseudoClasses.includes(pseudoClass);
-            subMenu.appendCheckboxItem(label, function() {
-                node.setPseudoClassEnabled(pseudoClass, !enabled);
-            }, enabled, false);
-        });
+        this._populateNodeContextMenu(contextMenu, subMenus);
+
+        subMenus.edit.appendItem(WI.UIString("Text"), this._startEditingTextNode.bind(this, textNode), !this.editable);
+
+        subMenus.copy.appendItem(WI.UIString("Text"), () => {
+            InspectorFrontendHost.copyText(textNode.textContent);
+        }, !textNode.textContent.length);
     }
 
-    _populateTextContextMenu(contextMenu, textNode)
-    {
-        if (this.editable)
-            contextMenu.appendItem(WebInspector.UIString("Edit Text"), this._startEditingTextNode.bind(this, textNode));
-
-        this._populateNodeContextMenu(contextMenu);
-    }
-
-    _populateNodeContextMenu(contextMenu)
+    _populateNodeContextMenu(contextMenu, subMenus)
     {
         let node = this.representedObject;
 
-        // Add free-form node-related actions.
-        if (this.editable)
-            contextMenu.appendItem(WebInspector.UIString("Edit as HTML"), this._editAsHTML.bind(this));
-        if (!node.isPseudoElement())
-            contextMenu.appendItem(WebInspector.UIString("Copy as HTML"), this._copyHTML.bind(this));
-        if (this.editable)
-            contextMenu.appendItem(WebInspector.UIString("Delete Node"), this.remove.bind(this));
-        if (node.nodeType() === Node.ELEMENT_NODE)
-            contextMenu.appendItem(WebInspector.UIString("Scroll Into View"), this._scrollIntoView.bind(this));
+        let isEditableNode = node.nodeType() === Node.ELEMENT_NODE && this.editable;
+        let forbiddenClosingTag = WI.DOMTreeElement.ForbiddenClosingTagElements.has(node.nodeNameInCorrectCase());
+        subMenus.add.appendItem(WI.UIString("Child"), this._addHTML.bind(this), forbiddenClosingTag || !isEditableNode);
+        subMenus.add.appendItem(WI.UIString("Previous Sibling"), this._addPreviousSibling.bind(this), !isEditableNode);
+        subMenus.add.appendItem(WI.UIString("Next Sibling"), this._addNextSibling.bind(this), !isEditableNode);
+
+        subMenus.edit.appendItem(WI.UIString("HTML"), this._editAsHTML.bind(this), !this.editable);
+        subMenus.copy.appendItem(WI.UIString("HTML"), this._copyHTML.bind(this), node.isPseudoElement());
+        subMenus.delete.appendItem(WI.UIString("Node"), this.remove.bind(this), !this.editable);
+
+        for (let subMenu of Object.values(subMenus))
+            contextMenu.pushItem(subMenu);
     }
 
     _startEditing()
@@ -850,7 +882,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _startEditingAttribute(attribute, elementForSelection)
     {
-        if (WebInspector.isBeingEdited(attribute))
+        if (WI.isBeingEdited(attribute))
             return true;
 
         var attributeNameElement = attribute.getElementsByClassName("html-attribute-name")[0];
@@ -876,9 +908,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         // Remove zero-width spaces that were added by nodeTitleInfo.
         removeZeroWidthSpaceRecursive(attribute);
 
-        var config = new WebInspector.EditingConfig(this._attributeEditingCommitted.bind(this), this._editingCancelled.bind(this), attributeName);
+        var config = new WI.EditingConfig(this._attributeEditingCommitted.bind(this), this._editingCancelled.bind(this), attributeName);
         config.setNumberCommitHandler(this._attributeNumberEditingCommitted.bind(this));
-        this._editing = WebInspector.startEditing(attribute, config);
+        this._editing = WI.startEditing(attribute, config);
 
         window.getSelection().setBaseAndExtent(elementForSelection, 0, elementForSelection, 1);
 
@@ -887,12 +919,12 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _startEditingTextNode(textNode)
     {
-        if (WebInspector.isBeingEdited(textNode))
+        if (WI.isBeingEdited(textNode))
             return true;
 
-        var config = new WebInspector.EditingConfig(this._textNodeEditingCommitted.bind(this), this._editingCancelled.bind(this));
+        var config = new WI.EditingConfig(this._textNodeEditingCommitted.bind(this), this._editingCancelled.bind(this));
         config.spellcheck = true;
-        this._editing = WebInspector.startEditing(textNode, config);
+        this._editing = WI.startEditing(textNode, config);
         window.getSelection().setBaseAndExtent(textNode, 0, textNode, 1);
 
         return true;
@@ -907,10 +939,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         var tagName = tagNameElement.textContent;
-        if (WebInspector.DOMTreeElement.EditTagBlacklist[tagName.toLowerCase()])
+        if (WI.DOMTreeElement.EditTagBlacklist.has(tagName.toLowerCase()))
             return false;
 
-        if (WebInspector.isBeingEdited(tagNameElement))
+        if (WI.isBeingEdited(tagNameElement))
             return true;
 
         let closingTagElement = this._distinctClosingTagElement();
@@ -939,33 +971,45 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
         tagNameElement.addEventListener("keyup", keyupListener, false);
 
-        var config = new WebInspector.EditingConfig(editingComitted.bind(this), editingCancelled.bind(this), tagName);
-        this._editing = WebInspector.startEditing(tagNameElement, config);
+        var config = new WI.EditingConfig(editingComitted.bind(this), editingCancelled.bind(this), tagName);
+        this._editing = WI.startEditing(tagNameElement, config);
         window.getSelection().setBaseAndExtent(tagNameElement, 0, tagNameElement, 1);
         return true;
     }
 
-    _startEditingAsHTML(commitCallback, error, initialValue)
+    _startEditingAsHTML(commitCallback, options = {})
     {
-        if (error)
-            return;
-        if (this._htmlEditElement && WebInspector.isBeingEdited(this._htmlEditElement))
+        if (this._htmlEditElement && WI.isBeingEdited(this._htmlEditElement))
             return;
 
-        this._htmlEditElement = document.createElement("div");
-        this._htmlEditElement.textContent = initialValue;
-
-        // Hide header items.
-        var child = this.listItemElement.firstChild;
-        while (child) {
-            child.style.display = "none";
-            child = child.nextSibling;
+        if (options.hideExistingElements) {
+            let child = this.listItemElement.firstChild;
+            while (child) {
+                child.style.display = "none";
+                child = child.nextSibling;
+            }
+            if (this._childrenListNode)
+                this._childrenListNode.style.display = "none";
         }
-        // Hide children item.
-        if (this._childrenListNode)
-            this._childrenListNode.style.display = "none";
-        // Append editor.
-        this.listItemElement.appendChild(this._htmlEditElement);
+
+        let positionInside = options.position === "afterbegin" || options.position === "beforeend";
+        if (positionInside && this._childrenListNode) {
+            this._htmlEditElement = document.createElement("li");
+
+            let referenceNode = options.position === "afterbegin" ? this._childrenListNode.firstElementChild : this._childrenListNode.lastElementChild;
+            this._childrenListNode.insertBefore(this._htmlEditElement, referenceNode);
+        } else if (options.position && !positionInside) {
+            this._htmlEditElement = document.createElement("li");
+
+            let targetNode = (options.position === "afterend" && this._childrenListNode) ? this._childrenListNode : this.listItemElement;
+            targetNode.insertAdjacentElement(options.position, this._htmlEditElement);
+        } else {
+            this._htmlEditElement = document.createElement("div");
+            this.listItemElement.appendChild(this._htmlEditElement);
+        }
+
+        if (options.initialValue)
+            this._htmlEditElement.textContent = options.initialValue;
 
         this.updateSelectionArea();
 
@@ -980,24 +1024,35 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             this._editing = false;
 
             // Remove editor.
-            this.listItemElement.removeChild(this._htmlEditElement);
+            this._htmlEditElement.remove();
             this._htmlEditElement = null;
-            // Unhide children item.
-            if (this._childrenListNode)
-                this._childrenListNode.style.removeProperty("display");
-            // Unhide header items.
-            var child = this.listItemElement.firstChild;
-            while (child) {
-                child.style.removeProperty("display");
-                child = child.nextSibling;
+
+            if (options.hideExistingElements) {
+                if (this._childrenListNode)
+                    this._childrenListNode.style.removeProperty("display");
+                let child = this.listItemElement.firstChild;
+                while (child) {
+                    child.style.removeProperty("display");
+                    child = child.nextSibling;
+                }
             }
 
             this.updateSelectionArea();
         }
 
-        var config = new WebInspector.EditingConfig(commit.bind(this), dispose.bind(this));
+        var config = new WI.EditingConfig(commit.bind(this), dispose.bind(this));
         config.setMultiline(true);
-        this._editing = WebInspector.startEditing(this._htmlEditElement, config);
+        this._editing = WI.startEditing(this._htmlEditElement, config);
+
+        if (options.initialValue && !isNaN(options.startPosition)) {
+            let range = document.createRange();
+            range.setStart(this._htmlEditElement.firstChild, options.startPosition);
+            range.collapse(true);
+
+            let selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+        }
     }
 
     _attributeEditingCommitted(element, newText, oldText, attributeName, moveDirection)
@@ -1009,6 +1064,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
         if (!moveDirection && newText === oldText)
             return;
+
+        // FIXME: Workaround for <https://webkit.org/b/123163> &nbsp; is forced on SPACE between text nodes.
+        const nbspRegex = /\xA0/g;
+        newText = newText.replace(nbspRegex, " ");
 
         var treeOutline = this.treeOutline;
         function moveToNextAttributeIfNeeded(error)
@@ -1116,7 +1175,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 return;
             }
 
-            var node = WebInspector.domTreeManager.nodeForId(nodeId);
+            var node = WI.domTreeManager.nodeForId(nodeId);
 
             // Select it and expand if necessary. We force tree update so that it processes dom events and is up to date.
             treeOutline._updateModifiedNodes();
@@ -1177,7 +1236,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     {
         // If we are editing, return early to prevent canceling the edit.
         // After editing is committed updateTitle will be called.
-        if (this._editing)
+        if (this._editing && !this._forceUpdateTitle)
             return;
 
         if (onlySearchQueryChanged) {
@@ -1216,7 +1275,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 attrValueElement.textContent = value;
             } else {
                 if (value.startsWith("data:"))
-                    value = value.trimMiddle(60);
+                    value = value.truncateMiddle(60);
 
                 attrValueElement = document.createElement("a");
                 attrValueElement.href = rewrittenURL;
@@ -1308,13 +1367,13 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             case Node.DOCUMENT_FRAGMENT_NODE:
                 var fragmentElement = info.titleDOM.createChild("span", "html-fragment");
                 if (node.shadowRootType()) {
-                    fragmentElement.textContent = WebInspector.UIString("Shadow Content (%s)").format(WebInspector.DOMTreeElement.shadowRootTypeDisplayName(node.shadowRootType()));
+                    fragmentElement.textContent = WI.UIString("Shadow Content (%s)").format(WI.DOMTreeElement.shadowRootTypeDisplayName(node.shadowRootType()));
                     this.listItemElement.classList.add("shadow");
                 } else if (node.parentNode && node.parentNode.templateContent() === node) {
-                    fragmentElement.textContent = WebInspector.UIString("Template Content");
+                    fragmentElement.textContent = WI.UIString("Template Content");
                     this.listItemElement.classList.add("template");
                 } else {
-                    fragmentElement.textContent = WebInspector.UIString("Document Fragment");
+                    fragmentElement.textContent = WI.UIString("Document Fragment");
                     this.listItemElement.classList.add("fragment");
                 }
                 break;
@@ -1343,9 +1402,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                 this._buildTagDOM(info.titleDOM, tagName, false, false);
 
                 var textChild = this._singleTextChild(node);
-                var showInlineText = textChild && textChild.nodeValue().length < WebInspector.DOMTreeElement.MaximumInlineTextChildLength;
+                var showInlineText = textChild && textChild.nodeValue().length < WI.DOMTreeElement.MaximumInlineTextChildLength;
 
-                if (!this.expanded && (!showInlineText && (this.treeOutline.isXMLMimeType || !WebInspector.DOMTreeElement.ForbiddenClosingTagElements[tagName]))) {
+                if (!this.expanded && (!showInlineText && (this.treeOutline.isXMLMimeType || !WI.DOMTreeElement.ForbiddenClosingTagElements.has(tagName)))) {
                     if (this.hasChildren) {
                         var textNodeElement = info.titleDOM.createChild("span", "html-text-node");
                         textNodeElement.textContent = ellipsis;
@@ -1362,9 +1421,9 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
                     var nodeNameLowerCase = node.nodeName().toLowerCase();
 
                     if (nodeNameLowerCase === "script")
-                        textNodeElement.appendChild(WebInspector.syntaxHighlightStringAsDocumentFragment(textChild.nodeValue().trim(), "text/javascript"));
+                        textNodeElement.appendChild(WI.syntaxHighlightStringAsDocumentFragment(textChild.nodeValue().trim(), "text/javascript"));
                     else if (nodeNameLowerCase === "style")
-                        textNodeElement.appendChild(WebInspector.syntaxHighlightStringAsDocumentFragment(textChild.nodeValue().trim(), "text/css"));
+                        textNodeElement.appendChild(WI.syntaxHighlightStringAsDocumentFragment(textChild.nodeValue().trim(), "text/css"));
                     else
                         textNodeElement.textContent = textChild.nodeValue();
 
@@ -1378,10 +1437,10 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             case Node.TEXT_NODE:
                 if (node.parentNode && node.parentNode.nodeName().toLowerCase() === "script") {
                     var newNode = info.titleDOM.createChild("span", "html-text-node large");
-                    newNode.appendChild(WebInspector.syntaxHighlightStringAsDocumentFragment(trimedNodeValue(), "text/javascript"));
+                    newNode.appendChild(WI.syntaxHighlightStringAsDocumentFragment(trimedNodeValue(), "text/javascript"));
                 } else if (node.parentNode && node.parentNode.nodeName().toLowerCase() === "style") {
                     var newNode = info.titleDOM.createChild("span", "html-text-node large");
-                    newNode.appendChild(WebInspector.syntaxHighlightStringAsDocumentFragment(trimedNodeValue(), "text/css"));
+                    newNode.appendChild(WI.syntaxHighlightStringAsDocumentFragment(trimedNodeValue(), "text/css"));
                 } else {
                     info.titleDOM.append("\"");
                     var textNodeElement = info.titleDOM.createChild("span", "html-text-node");
@@ -1430,7 +1489,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _singleTextChild(node)
     {
-        if (!node)
+        if (!node || this._ignoreSingleTextChild)
             return null;
 
         var firstChild = node.firstChild;
@@ -1452,7 +1511,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
     {
         if (node.nodeType() === Node.ELEMENT_NODE) {
             var textChild = this._singleTextChild(node);
-            if (textChild && textChild.nodeValue().length < WebInspector.DOMTreeElement.MaximumInlineTextChildLength)
+            if (textChild && textChild.nodeValue().length < WI.DOMTreeElement.MaximumInlineTextChildLength)
                 return true;
         }
         return false;
@@ -1521,24 +1580,78 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         this.representedObject.removeNode(removeNodeCallback);
     }
 
-    _scrollIntoView()
+    _insertAdjacentHTML(position, options = {})
     {
-        function resolvedNode(object)
-        {
-            if (!object)
-                return;
+        let hasChildren = this.hasChildren;
 
-            function scrollIntoView()
-            {
-                this.scrollIntoViewIfNeeded(true);
+        let commitCallback = (value) => {
+            this._ignoreSingleTextChild = false;
+
+            if (!value.length) {
+                if (!hasChildren) {
+                    this._forceUpdateTitle = true;
+                    this.hasChildren = false;
+                    this._forceUpdateTitle = false;
+                }
+                return;
             }
 
-            object.callFunction(scrollIntoView, undefined, false, function() {});
-            object.release();
+            this.representedObject.insertAdjacentHTML(position, value);
+        };
+
+        if (position === "afterbegin" || position === "beforeend") {
+            this._ignoreSingleTextChild = true;
+            this.hasChildren = true;
+            this.expand();
         }
 
-        let node = this.representedObject;
-        WebInspector.RemoteObject.resolveNode(node, "", resolvedNode);
+        this._startEditingAsHTML(commitCallback, {...options, position});
+    }
+
+    _addHTML(event)
+    {
+        let options = {};
+        switch (this.representedObject.nodeNameInCorrectCase()) {
+        case "ul":
+        case "ol":
+            options.initialValue = "<li></li>";
+            options.startPosition = 4;
+            break;
+        case "table":
+        case "thead":
+        case "tbody":
+        case "tfoot":
+            options.initialValue = "<tr></tr>";
+            options.startPosition = 4;
+            break;
+        case "tr":
+            options.initializing = "<td></td>";
+            options.startPosition = 4;
+            break;
+        }
+        this._insertAdjacentHTML("beforeend", options);
+    }
+
+    _addPreviousSibling(event)
+    {
+        let options = {};
+        let nodeName = this.representedObject.nodeNameInCorrectCase();
+        if (nodeName === "li" || nodeName === "tr" || nodeName === "th" || nodeName === "td") {
+            options.initialValue = `<${nodeName}></${nodeName}>`;
+            options.startPosition = nodeName.length + 2;
+        }
+        this._insertAdjacentHTML("beforebegin", options);
+    }
+
+    _addNextSibling(event)
+    {
+        let options = {};
+        let nodeName = this.representedObject.nodeNameInCorrectCase();
+        if (nodeName === "li" || nodeName === "tr" || nodeName === "th" || nodeName === "td") {
+            options.initialValue = `<${nodeName}></${nodeName}>`;
+            options.startPosition = nodeName.length + 2;
+        }
+        this._insertAdjacentHTML("afterend", options);
     }
 
     _editAsHTML()
@@ -1575,7 +1688,15 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             node.setOuterHTML(value, selectNode);
         }
 
-        node.getOuterHTML(this._startEditingAsHTML.bind(this, commitChange));
+        node.getOuterHTML((error, initialValue) => {
+            if (error)
+                return;
+
+            this._startEditingAsHTML(commitChange, {
+                initialValue,
+                hideExistingElements: true,
+            });
+        });
     }
 
     _copyHTML()
@@ -1608,7 +1729,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             matchRanges.push({offset: 0, length: text.length});
 
         this._highlightResult = [];
-        WebInspector.highlightRangesWithStyleClass(this.title, matchRanges, WebInspector.DOMTreeElement.SearchHighlightStyleClassName, this._highlightResult);
+        WI.highlightRangesWithStyleClass(this.title, matchRanges, WI.DOMTreeElement.SearchHighlightStyleClassName, this._highlightResult);
     }
 
     _markNodeChanged()
@@ -1669,7 +1790,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         if (!listItemElement)
             return;
 
-        let hasBreakpoint = this._breakpointStatus !== WebInspector.DOMTreeElement.BreakpointStatus.None;
+        let hasBreakpoint = this._breakpointStatus !== WI.DOMTreeElement.BreakpointStatus.None;
         let hasSubtreeBreakpoints = !!this._subtreeBreakpointCount;
 
         if (!hasBreakpoint && !hasSubtreeBreakpoints) {
@@ -1679,7 +1800,7 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
         }
 
         if (!this._statusImageElement) {
-            this._statusImageElement = useSVGSymbol("Images/DOMBreakpoint.svg", "status-image");
+            this._statusImageElement = WI.ImageUtilities.useSVGSymbol("Images/DOMBreakpoint.svg", "status-image");
             this._statusImageElement.classList.add("breakpoint");
             this._statusImageElement.addEventListener("click", this._statusImageClicked.bind(this));
             this._statusImageElement.addEventListener("contextmenu", this._statusImageContextmenu.bind(this));
@@ -1690,19 +1811,19 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
         this.listItemElement.insertBefore(this._statusImageElement, this.listItemElement.firstChild);
 
-        let disabled = this._breakpointStatus === WebInspector.DOMTreeElement.BreakpointStatus.DisabledBreakpoint;
+        let disabled = this._breakpointStatus === WI.DOMTreeElement.BreakpointStatus.DisabledBreakpoint;
         this._statusImageElement.classList.toggle("disabled", disabled);
     }
 
     _statusImageClicked(event)
     {
-        if (this._breakpointStatus === WebInspector.DOMTreeElement.BreakpointStatus.None)
+        if (this._breakpointStatus === WI.DOMTreeElement.BreakpointStatus.None)
             return;
 
         if (event.button !== 0 || event.ctrlKey)
             return;
 
-        let breakpoints = WebInspector.domDebuggerManager.domBreakpointsForNode(this.representedObject);
+        let breakpoints = WI.domDebuggerManager.domBreakpointsForNode(this.representedObject);
         if (!breakpoints || !breakpoints.length)
             return;
 
@@ -1712,20 +1833,20 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
 
     _statusImageContextmenu(event)
     {
-        let hasBreakpoint = this._breakpointStatus !== WebInspector.DOMTreeElement.BreakpointStatus.None;
+        let hasBreakpoint = this._breakpointStatus !== WI.DOMTreeElement.BreakpointStatus.None;
         let hasSubtreeBreakpoints = !!this._subtreeBreakpointCount;
         if (!hasBreakpoint && !hasSubtreeBreakpoints)
             return;
 
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
+        let contextMenu = WI.ContextMenu.createFromEvent(event);
         if (hasBreakpoint) {
             const allowEditing = true;
-            WebInspector.DOMBreakpointTreeController.appendBreakpointContextMenuItems(contextMenu, this.representedObject, allowEditing);
+            WI.DOMBreakpointTreeController.appendBreakpointContextMenuItems(contextMenu, this.representedObject, allowEditing);
             return;
         }
 
-        contextMenu.appendItem(WebInspector.UIString("Reveal Breakpoint"), () => {
-            let breakpointTreeElement = this.selfOrDescendant((treeElement) => treeElement.breakpointStatus && treeElement.breakpointStatus !== WebInspector.DOMTreeElement.BreakpointStatus.None);
+        contextMenu.appendItem(WI.UIString("Reveal Breakpoint"), () => {
+            let breakpointTreeElement = this.selfOrDescendant((treeElement) => treeElement.breakpointStatus && treeElement.breakpointStatus !== WI.DOMTreeElement.BreakpointStatus.None);
             console.assert(breakpointTreeElement, "Missing breakpoint descendant.", this);
             if (!breakpointTreeElement)
                 return;
@@ -1741,38 +1862,34 @@ WebInspector.DOMTreeElement = class DOMTreeElement extends WebInspector.TreeElem
             return;
 
         listItemElement.removeEventListener("animationend", this._boundHighlightAnimationEnd);
-        listItemElement.classList.remove(WebInspector.DOMTreeElement.HighlightStyleClassName);
+        listItemElement.classList.remove(WI.DOMTreeElement.HighlightStyleClassName);
 
         this._animatingHighlight = false;
     }
 };
 
-WebInspector.DOMTreeElement.InitialChildrenLimit = 500;
-WebInspector.DOMTreeElement.MaximumInlineTextChildLength = 80;
+WI.DOMTreeElement.InitialChildrenLimit = 500;
+WI.DOMTreeElement.MaximumInlineTextChildLength = 80;
 
 // A union of HTML4 and HTML5-Draft elements that explicitly
 // or implicitly (for HTML5) forbid the closing tag.
-WebInspector.DOMTreeElement.ForbiddenClosingTagElements = [
+WI.DOMTreeElement.ForbiddenClosingTagElements = new Set([
     "area", "base", "basefont", "br", "canvas", "col", "command", "embed", "frame",
     "hr", "img", "input", "keygen", "link", "meta", "param", "source",
     "wbr", "track", "menuitem"
-].keySet();
+]);
 
 // These tags we do not allow editing their tag name.
-WebInspector.DOMTreeElement.EditTagBlacklist = [
+WI.DOMTreeElement.EditTagBlacklist = new Set([
     "html", "head", "body"
-].keySet();
+]);
 
-WebInspector.DOMTreeElement.ChangeType = {
-    Attribute: "dom-tree-element-change-type-attribute"
-};
-
-WebInspector.DOMTreeElement.BreakpointStatus = {
+WI.DOMTreeElement.BreakpointStatus = {
     None: Symbol("none"),
     Breakpoint: Symbol("breakpoint"),
     DisabledBreakpoint: Symbol("disabled-breakpoint"),
 };
 
-WebInspector.DOMTreeElement.HighlightStyleClassName = "highlight";
-WebInspector.DOMTreeElement.SearchHighlightStyleClassName = "search-highlight";
-WebInspector.DOMTreeElement.BouncyHighlightStyleClassName = "bouncy-highlight";
+WI.DOMTreeElement.HighlightStyleClassName = "highlight";
+WI.DOMTreeElement.SearchHighlightStyleClassName = "search-highlight";
+WI.DOMTreeElement.BouncyHighlightStyleClassName = "bouncy-highlight";

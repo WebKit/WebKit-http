@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer-length
 es6id: 24.1.2.1
 description: >
   The new ArrayBuffer instance is created prior to allocating the Data Block.
-info: >
+info: |
   ArrayBuffer( length )
 
   ...
@@ -22,9 +23,9 @@ info: >
 features: [Reflect.construct]
 ---*/
 
-function DummyError() { }
+function DummyError() {}
 
-var newTarget = function(){}.bind(null);
+var newTarget = function() {}.bind(null);
 Object.defineProperty(newTarget, "prototype", {
   get: function() {
     throw new DummyError();

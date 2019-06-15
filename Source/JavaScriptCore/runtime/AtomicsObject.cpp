@@ -81,7 +81,7 @@ void AtomicsObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
     ASSERT(inherits(vm, info()));
     
 #define PUT_DIRECT_NATIVE_FUNC(lowerName, upperName, count) \
-    putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, #lowerName), count, atomicsFunc ## upperName, Atomics ## upperName ## Intrinsic, DontEnum);
+    putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, #lowerName), count, atomicsFunc ## upperName, Atomics ## upperName ## Intrinsic, static_cast<unsigned>(PropertyAttribute::DontEnum));
     FOR_EACH_ATOMICS_FUNC(PUT_DIRECT_NATIVE_FUNC)
 #undef PUT_DIRECT_NATIVE_FUNC
 }
@@ -114,7 +114,7 @@ unsigned validatedAccessIndex(VM& vm, ExecState* exec, JSValue accessIndexValue,
         else {
             accessIndexValue = jsNumber(accessIndexDouble);
             if (!accessIndexValue.isInt32()) {
-                throwRangeError(exec, scope, ASCIILiteral("Access index is not an integer."));
+                throwRangeError(exec, scope, "Access index is not an integer."_s);
                 return 0;
             }
         }
@@ -123,7 +123,7 @@ unsigned validatedAccessIndex(VM& vm, ExecState* exec, JSValue accessIndexValue,
     
     ASSERT(typedArrayView->length() <= static_cast<unsigned>(INT_MAX));
     if (static_cast<unsigned>(accessIndex) >= typedArrayView->length()) {
-        throwRangeError(exec, scope, ASCIILiteral("Access index out of bounds for atomic access."));
+        throwRangeError(exec, scope, "Access index out of bounds for atomic access."_s);
         return 0;
     }
     
@@ -137,7 +137,7 @@ EncodedJSValue atomicOperationWithArgs(VM& vm, ExecState* exec, const JSValue* a
 
     JSValue typedArrayValue = args[0];
     if (!typedArrayValue.isCell()) {
-        throwTypeError(exec, scope, ASCIILiteral("Typed array argument must be a cell."));
+        throwTypeError(exec, scope, "Typed array argument must be a cell."_s);
         return JSValue::encode(jsUndefined());
     }
     
@@ -153,13 +153,13 @@ EncodedJSValue atomicOperationWithArgs(VM& vm, ExecState* exec, const JSValue* a
     case Uint32ArrayType:
         break;
     default:
-        throwTypeError(exec, scope, ASCIILiteral("Typed array argument must be an Int8Array, Int16Array, Int32Array, Uint8Array, Uint16Array, or Uint32Array."));
+        throwTypeError(exec, scope, "Typed array argument must be an Int8Array, Int16Array, Int32Array, Uint8Array, Uint16Array, or Uint32Array."_s);
         return JSValue::encode(jsUndefined());
     }
     
     JSArrayBufferView* typedArrayView = jsCast<JSArrayBufferView*>(typedArrayCell);
     if (!typedArrayView->isShared()) {
-        throwTypeError(exec, scope, ASCIILiteral("Typed array argument must wrap a SharedArrayBuffer."));
+        throwTypeError(exec, scope, "Typed array argument must wrap a SharedArrayBuffer."_s);
         return JSValue::encode(jsUndefined());
     }
     
@@ -365,12 +365,12 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWait(ExecState* exec)
     
     JSInt32Array* typedArray = jsDynamicCast<JSInt32Array*>(vm, exec->argument(0));
     if (!typedArray) {
-        throwTypeError(exec, scope, ASCIILiteral("Typed array for wait/wake must be an Int32Array."));
+        throwTypeError(exec, scope, "Typed array for wait/wake must be an Int32Array."_s);
         return JSValue::encode(jsUndefined());
     }
     
     if (!typedArray->isShared()) {
-        throwTypeError(exec, scope, ASCIILiteral("Typed array for wait/wake must wrap a SharedArrayBuffer."));
+        throwTypeError(exec, scope, "Typed array for wait/wake must wrap a SharedArrayBuffer."_s);
         return JSValue::encode(jsUndefined());
     }
 
@@ -386,7 +386,7 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWait(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, JSValue::encode(jsUndefined()));
     
     if (!vm.m_typedArrayController->isAtomicsWaitAllowedOnCurrentThread()) {
-        throwTypeError(exec, scope, ASCIILiteral("Atomics.wait cannot be called from the current thread."));
+        throwTypeError(exec, scope, "Atomics.wait cannot be called from the current thread."_s);
         return JSValue::encode(jsUndefined());
     }
     
@@ -425,7 +425,7 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWait(ExecState* exec)
         resultString = "timed-out";
     else
         resultString = "ok";
-    return JSValue::encode(jsString(exec, ASCIILiteral(resultString)));
+    return JSValue::encode(jsString(exec, resultString));
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncWake(ExecState* exec)
@@ -435,12 +435,12 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWake(ExecState* exec)
     
     JSInt32Array* typedArray = jsDynamicCast<JSInt32Array*>(vm, exec->argument(0));
     if (!typedArray) {
-        throwTypeError(exec, scope, ASCIILiteral("Typed array for wait/wake must be an Int32Array."));
+        throwTypeError(exec, scope, "Typed array for wait/wake must be an Int32Array."_s);
         return JSValue::encode(jsUndefined());
     }
     
     if (!typedArray->isShared()) {
-        throwTypeError(exec, scope, ASCIILiteral("Typed array for wait/wake must wrap a SharedArrayBuffer."));
+        throwTypeError(exec, scope, "Typed array for wait/wake must wrap a SharedArrayBuffer."_s);
         return JSValue::encode(jsUndefined());
     }
 

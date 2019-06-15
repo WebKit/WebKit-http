@@ -43,14 +43,14 @@ FileMonitor::FileMonitor(const String& path, Ref<WorkQueue>&& handlerQueue, WTF:
     if (!modificationHandler)
         return;
 
-    auto handle = openFile(path, OpenForEventsOnly);
-    if (handle == invalidPlatformFileHandle) {
+    auto handle = FileSystem::openFile(path, FileSystem::FileOpenMode::EventsOnly);
+    if (handle == FileSystem::invalidPlatformFileHandle) {
         RELEASE_LOG_ERROR(ResourceLoadStatistics, "Failed to open statistics file for monitoring: %s", path.utf8().data());
         return;
     }
 
     // The source (platformMonitor) retains the dispatch queue.
-    m_platformMonitor = adoptDispatch(dispatch_source_create(DISPATCH_SOURCE_TYPE_VNODE, handle, monitorMask, handlerQueue->dispatchQueue()));
+    m_platformMonitor = adoptOSObject(dispatch_source_create(DISPATCH_SOURCE_TYPE_VNODE, handle, monitorMask, handlerQueue->dispatchQueue()));
 
     LOG(ResourceLoadStatistics, "Creating monitor %p", m_platformMonitor.get());
 
@@ -71,7 +71,7 @@ FileMonitor::FileMonitor(const String& path, Ref<WorkQueue>&& handlerQueue, WTF:
     }).get());
     
     dispatch_source_set_cancel_handler(m_platformMonitor.get(), [handle] () mutable {
-        closeFile(handle);
+        FileSystem::closeFile(handle);
     });
     
     dispatch_resume(m_platformMonitor.get());

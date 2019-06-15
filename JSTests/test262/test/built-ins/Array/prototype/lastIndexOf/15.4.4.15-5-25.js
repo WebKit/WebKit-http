@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-5-25
 description: >
     Array.prototype.lastIndexOf use inherited valueOf method when
@@ -9,24 +10,24 @@ description: >
     inherited valueOf methods
 ---*/
 
-        var toStringAccessed = false;
-        var valueOfAccessed = false;
+var toStringAccessed = false;
+var valueOfAccessed = false;
 
-        var proto = {
-            valueOf: function () {
-                valueOfAccessed = true;
-                return 1;
-            }
-        };
+var proto = {
+  valueOf: function() {
+    valueOfAccessed = true;
+    return 1;
+  }
+};
 
-        var Con = function () {};
-        Con.prototype = proto;
+var Con = function() {};
+Con.prototype = proto;
 
-        var child = new Con();
-        child.toString = function () {
-            toStringAccessed = true;
-            return 1;
-        };
+var child = new Con();
+child.toString = function() {
+  toStringAccessed = true;
+  return 1;
+};
 
 assert.sameValue([0, true].lastIndexOf(true, child), 1, '[0, true].lastIndexOf(true, child)');
 assert(valueOfAccessed, 'valueOfAccessed !== true');

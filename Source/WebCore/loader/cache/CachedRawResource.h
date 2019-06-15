@@ -33,7 +33,7 @@ class SubresourceLoader;
 
 class CachedRawResource final : public CachedResource {
 public:
-    CachedRawResource(CachedResourceRequest&&, Type, SessionID);
+    CachedRawResource(CachedResourceRequest&&, Type, PAL::SessionID);
 
     // FIXME: AssociatedURLLoader shouldn't be a DocumentThreadableLoader and therefore shouldn't
     // use CachedRawResource. However, it is, and it needs to be able to defer loading.
@@ -55,14 +55,14 @@ public:
 
 private:
     void didAddClient(CachedResourceClient&) final;
-    void addDataBuffer(SharedBuffer&) final;
-    void addData(const char* data, unsigned length) final;
+    void updateBuffer(SharedBuffer&) final;
+    void updateData(const char* data, unsigned length) final;
     void finishLoading(SharedBuffer*) final;
 
     bool shouldIgnoreHTTPStatusCodeErrors() const override { return true; }
     void allClientsRemoved() override;
 
-    void redirectReceived(ResourceRequest&, const ResourceResponse&) override;
+    void redirectReceived(ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&) override;
     void responseReceived(const ResourceResponse&) override;
     bool shouldCacheResponse(const ResourceResponse&) override;
     void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
@@ -73,12 +73,9 @@ private:
     std::optional<SharedBufferDataView> calculateIncrementalDataChunk(const SharedBuffer*) const;
     void notifyClientsDataWasReceived(const char* data, unsigned length);
 
-#if USE(SOUP)
-    char* getOrCreateReadBuffer(size_t requestedSize, size_t& actualSize) override;
-#endif
-
     unsigned long m_identifier;
     bool m_allowEncodedDataReplacement;
+    bool m_inIncrementalDataNotify { false };
 
     struct RedirectPair {
     public:
@@ -92,7 +89,12 @@ private:
         const ResourceResponse m_redirectResponse;
     };
 
-    Vector<RedirectPair> m_redirectChain;
+    Vector<RedirectPair, 0, CrashOnOverflow, 0> m_redirectChain;
+
+    struct DelayedFinishLoading {
+        RefPtr<SharedBuffer> buffer;
+    };
+    std::optional<DelayedFinishLoading> m_delayedFinishLoading;
 };
 
 } // namespace WebCore

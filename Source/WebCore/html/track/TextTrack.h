@@ -42,7 +42,7 @@ class VTTRegionList;
 
 class TextTrackClient {
 public:
-    virtual ~TextTrackClient() { }
+    virtual ~TextTrackClient() = default;
     virtual void textTrackKindChanged(TextTrack&) = 0;
     virtual void textTrackModeChanged(TextTrack&) = 0;
     virtual void textTrackAddCues(TextTrack&, const TextTrackCueList&) = 0;
@@ -146,6 +146,10 @@ public:
 
 protected:
     TextTrack(ScriptExecutionContext*, TextTrackClient*, const AtomicString& kind, const AtomicString& id, const AtomicString& label, const AtomicString& language, TextTrackType);
+
+#if !RELEASE_LOG_DISABLED
+    const char* logClassName() const override { return "TextTrack"; }
+#endif
 
     RefPtr<TextTrackCueList> m_cues;
 

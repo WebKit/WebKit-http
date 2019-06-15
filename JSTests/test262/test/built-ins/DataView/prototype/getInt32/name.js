@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-dataview.prototype.getint32
 es6id: 24.2.4.9
 description: >
   DataView.prototype.getInt32.name is "getInt32".
-info: >
+info: |
   DataView.prototype.getInt32 ( byteOffset [ , littleEndian ] )
 
   17 ECMAScript Standard Built-in Objects:

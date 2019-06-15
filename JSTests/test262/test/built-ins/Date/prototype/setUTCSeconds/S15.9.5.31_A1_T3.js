@@ -3,6 +3,7 @@
 
 /*---
 info: The Date.prototype property "setUTCSeconds" has { DontEnum } attributes
+esid: sec-date.prototype.setutcseconds
 es5id: 15.9.5.31_A1_T3
 description: Checking DontEnum attribute
 ---*/
@@ -11,8 +12,8 @@ if (Date.prototype.propertyIsEnumerable('setUTCSeconds')) {
   $ERROR('#1: The Date.prototype.setUTCSeconds property has the attribute DontEnum');
 }
 
-for(var x in Date.prototype) {
-  if(x === "setUTCSeconds") {
+for (var x in Date.prototype) {
+  if (x === "setUTCSeconds") {
     $ERROR('#2: The Date.prototype.setUTCSeconds has the attribute DontEnum');
   }
 }

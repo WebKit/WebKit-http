@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # Copyright (C) 2011 Google Inc.  All rights reserved.
 #
@@ -19,6 +19,7 @@
 #
 
 use strict;
+use warnings;
 use FindBin;
 use lib $FindBin::Bin;
 
@@ -34,6 +35,7 @@ my $supplementalDependencyFile;
 my $windowConstructorsFile;
 my $workerGlobalScopeConstructorsFile;
 my $dedicatedWorkerGlobalScopeConstructorsFile;
+my $serviceWorkerGlobalScopeConstructorsFile;
 my $supplementalMakefileDeps;
 
 GetOptions('defines=s' => \$defines,
@@ -43,6 +45,7 @@ GetOptions('defines=s' => \$defines,
            'windowConstructorsFile=s' => \$windowConstructorsFile,
            'workerGlobalScopeConstructorsFile=s' => \$workerGlobalScopeConstructorsFile,
            'dedicatedWorkerGlobalScopeConstructorsFile=s' => \$dedicatedWorkerGlobalScopeConstructorsFile,
+           'serviceWorkerGlobalScopeConstructorsFile=s' => \$serviceWorkerGlobalScopeConstructorsFile,
            'supplementalMakefileDeps=s' => \$supplementalMakefileDeps);
 
 die('Must specify #define macros using --defines.') unless defined($defines);
@@ -50,12 +53,14 @@ die('Must specify an output file using --supplementalDependencyFile.') unless de
 die('Must specify an output file using --windowConstructorsFile.') unless defined($windowConstructorsFile);
 die('Must specify an output file using --workerGlobalScopeConstructorsFile.') unless defined($workerGlobalScopeConstructorsFile);
 die('Must specify an output file using --dedicatedWorkerGlobalScopeConstructorsFile.') unless defined($dedicatedWorkerGlobalScopeConstructorsFile);
+die('Must specify an output file using --serviceWorkerGlobalScopeConstructorsFile.') unless defined($serviceWorkerGlobalScopeConstructorsFile);
 die('Must specify the file listing all IDLs using --idlFilesList.') unless defined($idlFilesList);
 
 $supplementalDependencyFile = CygwinPathIfNeeded($supplementalDependencyFile);
 $windowConstructorsFile = CygwinPathIfNeeded($windowConstructorsFile);
 $workerGlobalScopeConstructorsFile = CygwinPathIfNeeded($workerGlobalScopeConstructorsFile);
 $dedicatedWorkerGlobalScopeConstructorsFile = CygwinPathIfNeeded($dedicatedWorkerGlobalScopeConstructorsFile);
+$serviceWorkerGlobalScopeConstructorsFile = CygwinPathIfNeeded($serviceWorkerGlobalScopeConstructorsFile);
 $supplementalMakefileDeps = CygwinPathIfNeeded($supplementalMakefileDeps);
 
 open FH, "< $idlFilesList" or die "Cannot open $idlFilesList\n";
@@ -74,6 +79,7 @@ my %supplementals;
 my $windowConstructorsCode = "";
 my $workerGlobalScopeConstructorsCode = "";
 my $dedicatedWorkerGlobalScopeConstructorsCode = "";
+my $serviceWorkerGlobalScopeConstructorsCode = "";
 
 # Get rid of duplicates in idlFiles array.
 my %idlFileHash = map { $_, 1 } @idlFiles;
@@ -135,6 +141,8 @@ foreach my $idlFile (sort keys %idlFileHash) {
                     $workerGlobalScopeConstructorsCode .= $attributeCode;
                 } elsif ($globalContext eq "DedicatedWorker") {
                     $dedicatedWorkerGlobalScopeConstructorsCode .= $attributeCode;
+                } elsif ($globalContext eq "ServiceWorker") {
+                    $serviceWorkerGlobalScopeConstructorsCode .= $attributeCode;
                 } else {
                     die "Unsupported global context '$globalContext' used in [Exposed] at $idlFile";
                 }
@@ -148,12 +156,13 @@ foreach my $idlFile (sort keys %idlFileHash) {
 GeneratePartialInterface("DOMWindow", $windowConstructorsCode, $windowConstructorsFile);
 GeneratePartialInterface("WorkerGlobalScope", $workerGlobalScopeConstructorsCode, $workerGlobalScopeConstructorsFile);
 GeneratePartialInterface("DedicatedWorkerGlobalScope", $dedicatedWorkerGlobalScopeConstructorsCode, $dedicatedWorkerGlobalScopeConstructorsFile);
+GeneratePartialInterface("ServiceWorkerGlobalScope", $serviceWorkerGlobalScopeConstructorsCode, $serviceWorkerGlobalScopeConstructorsFile);
 
 # Resolves partial interfaces and implements dependencies.
 foreach my $idlFile (sort keys %supplementalDependencies) {
     my $baseFiles = $supplementalDependencies{$idlFile};
     foreach my $baseFile (@{$baseFiles}) {
-        my $targetIdlFile = $interfaceNameToIdlFile{$baseFile};
+        my $targetIdlFile = $interfaceNameToIdlFile{$baseFile} or die "${baseFile}.idl not found, but it is supplemented by $idlFile";
         push(@{$supplementals{$targetIdlFile}}, $idlFile);
     }
     delete $supplementals{$idlFile};

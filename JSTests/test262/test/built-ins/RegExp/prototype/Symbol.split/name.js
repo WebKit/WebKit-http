@@ -3,7 +3,7 @@
 /*---
 es6id: 21.2.5.11
 description: RegExp.prototype[Symbol.split] `name` property
-info: >
+info: |
     The value of the name property of this function is "[Symbol.split]".
 
     ES6 Section 17:
@@ -14,6 +14,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol.split]
 ---*/
 
 assert.sameValue(RegExp.prototype[Symbol.split].name, '[Symbol.split]');

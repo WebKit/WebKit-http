@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Igalia S.L.
+ * Copyright (C) 2011, 2017 Igalia S.L.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -36,6 +36,7 @@
 #include "WebPageProxy.h"
 #include <WebCore/IntRect.h>
 #include <WebCore/LinkIcon.h>
+#include <wtf/CompletionHandler.h>
 #include <wtf/text/CString.h>
 
 void webkitWebViewCreatePage(WebKitWebView*, Ref<API::PageConfiguration>&&);
@@ -43,8 +44,10 @@ WebKit::WebPageProxy& webkitWebViewGetPage(WebKitWebView*);
 void webkitWebViewLoadChanged(WebKitWebView*, WebKitLoadEvent);
 void webkitWebViewLoadFailed(WebKitWebView*, WebKitLoadEvent, const char* failingURI, GError*);
 void webkitWebViewLoadFailedWithTLSErrors(WebKitWebView*, const char* failingURI, GError*, GTlsCertificateFlags, GTlsCertificate*);
+#if PLATFORM(GTK)
 void webkitWebViewGetLoadDecisionForIcon(WebKitWebView*, const WebCore::LinkIcon&, Function<void(bool)>&&);
 void webkitWebViewSetIcon(WebKitWebView*, const WebCore::LinkIcon&, API::Data&);
+#endif
 WebKit::WebPageProxy* webkitWebViewCreateNewPage(WebKitWebView*, const WebCore::WindowFeatures&, WebKitNavigationAction*);
 void webkitWebViewReadyToShowPage(WebKitWebView*);
 void webkitWebViewRunAsModal(WebKitWebView*);
@@ -53,6 +56,13 @@ void webkitWebViewRunJavaScriptAlert(WebKitWebView*, const CString& message);
 bool webkitWebViewRunJavaScriptConfirm(WebKitWebView*, const CString& message);
 CString webkitWebViewRunJavaScriptPrompt(WebKitWebView*, const CString& message, const CString& defaultText);
 bool webkitWebViewRunJavaScriptBeforeUnloadConfirm(WebKitWebView*, const CString& message);
+bool webkitWebViewIsShowingScriptDialog(WebKitWebView*);
+bool webkitWebViewIsScriptDialogRunning(WebKitWebView*, WebKitScriptDialog*);
+String webkitWebViewGetCurrentScriptDialogMessage(WebKitWebView*);
+void webkitWebViewSetCurrentScriptDialogUserInput(WebKitWebView*, const String&);
+void webkitWebViewAcceptCurrentScriptDialog(WebKitWebView*);
+void webkitWebViewDismissCurrentScriptDialog(WebKitWebView*);
+std::optional<WebKitScriptDialogType> webkitWebViewGetCurrentScriptDialogType(WebKitWebView*);
 void webkitWebViewMakePermissionRequest(WebKitWebView*, WebKitPermissionRequest*);
 void webkitWebViewMakePolicyDecision(WebKitWebView*, WebKitPolicyDecisionType, WebKitPolicyDecision*);
 void webkitWebViewMouseTargetChanged(WebKitWebView*, const WebKit::WebHitTestResultData&, WebKit::WebEvent::Modifiers);
@@ -61,8 +71,13 @@ void webkitWebViewPrintFrame(WebKitWebView*, WebKit::WebFrameProxy*);
 void webkitWebViewResourceLoadStarted(WebKitWebView*, WebKit::WebFrameProxy*, uint64_t resourceIdentifier, WebKitURIRequest*);
 void webkitWebViewRunFileChooserRequest(WebKitWebView*, WebKitFileChooserRequest*);
 WebKitWebResource* webkitWebViewGetLoadingWebResource(WebKitWebView*, uint64_t resourceIdentifier);
+#if PLATFORM(GTK)
 void webKitWebViewDidReceiveSnapshot(WebKitWebView*, uint64_t callbackID, WebKit::WebImage*);
+#endif
 void webkitWebViewRemoveLoadingWebResource(WebKitWebView*, uint64_t resourceIdentifier);
+void webkitWebViewMaximizeWindow(WebKitWebView*, CompletionHandler<void()>&&);
+void webkitWebViewMinimizeWindow(WebKitWebView*, CompletionHandler<void()>&&);
+void webkitWebViewRestoreWindow(WebKitWebView*, CompletionHandler<void()>&&);
 void webkitWebViewEnterFullScreen(WebKitWebView*);
 void webkitWebViewExitFullScreen(WebKitWebView*);
 void webkitWebViewPopulateContextMenu(WebKitWebView*, const Vector<WebKit::WebContextMenuItemData>& proposedMenu, const WebKit::WebHitTestResultData&, GVariant*);
@@ -70,7 +85,7 @@ void webkitWebViewSubmitFormRequest(WebKitWebView*, WebKitFormSubmissionRequest*
 void webkitWebViewHandleAuthenticationChallenge(WebKitWebView*, WebKit::AuthenticationChallengeProxy*);
 void webkitWebViewInsecureContentDetected(WebKitWebView*, WebKitInsecureContentEvent);
 bool webkitWebViewEmitShowNotification(WebKitWebView*, WebKitNotification*);
-void webkitWebViewWebProcessCrashed(WebKitWebView*);
+void webkitWebViewWebProcessTerminated(WebKitWebView*, WebKitWebProcessTerminationReason);
 void webkitWebViewIsPlayingAudioChanged(WebKitWebView*);
 void webkitWebViewSelectionDidChange(WebKitWebView*);
 void webkitWebViewRequestInstallMissingMediaPlugins(WebKitWebView*, WebKit::InstallMissingMediaPluginsPermissionRequest&);

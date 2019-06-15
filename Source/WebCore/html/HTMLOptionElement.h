@@ -32,6 +32,7 @@ class HTMLDataListElement;
 class HTMLSelectElement;
 
 class HTMLOptionElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLOptionElement);
 public:
     static Ref<HTMLOptionElement> create(Document&);
     static Ref<HTMLOptionElement> create(const QualifiedName&, Document&);
@@ -49,9 +50,9 @@ public:
     WEBCORE_EXPORT void setSelected(bool);
 
 #if ENABLE(DATALIST_ELEMENT)
-    HTMLDataListElement* ownerDataListElement() const;
+    WEBCORE_EXPORT HTMLDataListElement* ownerDataListElement() const;
 #endif
-    HTMLSelectElement* ownerSelectElement() const;
+    WEBCORE_EXPORT HTMLSelectElement* ownerSelectElement() const;
 
     WEBCORE_EXPORT String label() const;
     String displayLabel() const;
@@ -59,7 +60,7 @@ public:
 
     bool ownElementDisabled() const { return m_disabled; }
 
-    bool isDisabledFormControl() const final;
+    WEBCORE_EXPORT bool isDisabledFormControl() const final;
 
     String textIndentedToRespectGroupLabel() const;
 
@@ -74,7 +75,7 @@ private:
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
     void accessKeyAction(bool) final;
 
     void childrenChanged(const ChildChange&) final;

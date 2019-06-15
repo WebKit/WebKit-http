@@ -23,6 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+const SkipSeconds = 15;
+const MinimumSizeToShowAnyControl = 47;
+const MaximumSizeToShowSmallProminentControl = 88;
+
 let mediaControlsHost;
 
 // This is called from HTMLMediaElement::ensureMediaControlsInjectedScript().
@@ -37,17 +41,21 @@ function createControls(shadowRoot, media, host)
     return new MediaController(shadowRoot, media, host);
 }
 
-function UIString(string)
+function UIString(stringToLocalize, replacementString)
 {
-    let localizedStrings = {};
+    let allLocalizedStrings = {};
     try {
-        localizedStrings = UIStrings;
+        allLocalizedStrings = UIStrings;
     } catch (error) {}
 
-    if (localizedStrings[string])
-        return localizedStrings[string];
+    const localizedString = allLocalizedStrings[stringToLocalize];
+    if (!localizedString)
+        return stringToLocalize;
 
-    return string;
+    if (replacementString)
+        return localizedString.replace("%s", replacementString);
+
+    return localizedString;
 }
 
 function formatTimeByUnit(value)

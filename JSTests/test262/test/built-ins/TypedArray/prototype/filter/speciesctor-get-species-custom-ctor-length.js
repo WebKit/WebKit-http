@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.filter
 description: >
   Does not throw a TypeError if new typedArray's length >= captured
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -24,7 +24,7 @@ info: >
     argumentList[0], throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -25,6 +25,7 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 
 
+import json
 import logging
 import string
 from string import Template
@@ -129,15 +130,14 @@ class JSBackendCommandsGenerator(Generator):
             }
             lines.append('InspectorBackend.registerCommand("%(domain)s.%(commandName)s", [%(callParams)s], [%(returnParams)s]);' % command_args)
 
-        if commands or events:
-            activate_args = {
-                'domain': domain.domain_name,
-                'availability': domain.availability,
-            }
-            if domain.availability:
-                lines.append('InspectorBackend.activateDomain("%(domain)s", "%(availability)s");' % activate_args)
-            else:
-                lines.append('InspectorBackend.activateDomain("%(domain)s");' % activate_args)
+        activate_args = {
+            'domain': domain.domain_name,
+            'availability': json.dumps(domain.availability) if domain.availability else '',
+        }
+        if domain.availability:
+            lines.append('InspectorBackend.activateDomain("%(domain)s", %(availability)s);' % activate_args)
+        else:
+            lines.append('InspectorBackend.activateDomain("%(domain)s");' % activate_args)
 
         if domain.workerSupported:
             lines.append('InspectorBackend.workerSupportedDomain("%s");' % domain.domain_name)

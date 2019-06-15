@@ -5,7 +5,7 @@
 description: >
     Substitution pattern: one-digit capturing group reference
 es6id: 21.2.5.8
-info: >
+info: |
     16. Repeat, for each result in results,
         [...]
         m. If functionalReplace is true, then
@@ -28,8 +28,10 @@ info: >
     Replacement text:
     The nth element of captures, where n is a single digit in the range 1 to 9.
     If n≤m and the nth element of captures is undefined, use the empty String
-    instead. If n>m, the result is implementation-defined.
+    instead. If n>m, no replacement is done.
 features: [Symbol.replace]
 ---*/
 
 assert.sameValue(/b(c)(z)?(.)/[Symbol.replace]('abcde', '[$1$2$3]'), 'a[cd]e');
+
+assert.sameValue(/b(c)(z)?(.)/[Symbol.replace]('abcde', '[$1$2$3$4$0]'), 'a[cd$4$0]e');

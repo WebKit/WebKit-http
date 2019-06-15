@@ -26,9 +26,12 @@
 #include "CSSStyleSheet.h"
 #include "Document.h"
 #include "SVGNames.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StdLibExtras.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGStyleElement);
 
 inline SVGStyleElement::SVGStyleElement(const QualifiedName& tagName, Document& document, bool createdByParser)
     : SVGElement(tagName, document)
@@ -55,7 +58,7 @@ bool SVGStyleElement::disabled() const
 
 void SVGStyleElement::setDisabled(bool setDisabled)
 {
-    if (CSSStyleSheet* styleSheet = sheet())
+    if (auto styleSheet = makeRefPtr(sheet()))
         styleSheet->setDisabled(setDisabled);
 }
 
@@ -113,19 +116,18 @@ void SVGStyleElement::finishParsingChildren()
     SVGElement::finishParsingChildren();
 }
 
-Node::InsertionNotificationRequest SVGStyleElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGStyleElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    bool wasInDocument = isConnected();
-    auto result = SVGElement::insertedInto(rootParent);
-    if (rootParent.isConnected() && !wasInDocument)
+    auto result = SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
         m_styleSheetOwner.insertedIntoDocument(*this);
     return result;
 }
 
-void SVGStyleElement::removedFrom(ContainerNode& rootParent)
+void SVGStyleElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGElement::removedFrom(rootParent);
-    if (rootParent.isConnected() && !isConnected())
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         m_styleSheetOwner.removedFromDocument(*this);
 }
 

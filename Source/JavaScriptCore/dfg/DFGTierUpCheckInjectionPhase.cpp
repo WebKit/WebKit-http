@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -50,6 +50,8 @@ static FunctionWhitelist& ensureGlobalFTLWhitelist()
     return ftlWhitelist;
 }
 
+using NaturalLoop = CPSNaturalLoop;
+
 class TierUpCheckInjectionPhase : public Phase {
 public:
     TierUpCheckInjectionPhase(Graph& graph)
@@ -59,8 +61,8 @@ public:
     
     bool run()
     {
-        RELEASE_ASSERT(m_graph.m_plan.mode == DFGMode);
-        
+        RELEASE_ASSERT(m_graph.m_plan.mode() == DFGMode);
+
         if (!Options::useFTLJIT())
             return false;
         
@@ -72,7 +74,7 @@ public:
 
         if (!ensureGlobalFTLWhitelist().contains(m_graph.m_profiledBlock))
             return false;
-
+        
 #if ENABLE(FTL_JIT)
         FTL::CapabilityLevel level = FTL::canCompile(m_graph);
         if (level == FTL::CannotCompile)
@@ -81,8 +83,8 @@ public:
         if (!Options::useOSREntryToFTL())
             level = FTL::CanCompile;
         
-        m_graph.ensureNaturalLoops();
-        NaturalLoops& naturalLoops = *m_graph.m_naturalLoops;
+        m_graph.ensureCPSNaturalLoops();
+        CPSNaturalLoops& naturalLoops = *m_graph.m_cpsNaturalLoops;
         HashMap<const NaturalLoop*, unsigned> naturalLoopToLoopHint = buildNaturalLoopToLoopHintMap(naturalLoops);
 
         HashMap<unsigned, LoopHintDescriptor> tierUpHierarchy;
@@ -108,7 +110,7 @@ public:
 
                 unsigned bytecodeIndex = origin.semantic.bytecodeIndex;
                 if (canOSREnter)
-                    m_graph.m_plan.tierUpAndOSREnterBytecodes.append(bytecodeIndex);
+                    m_graph.m_plan.tierUpAndOSREnterBytecodes().append(bytecodeIndex);
 
                 if (const NaturalLoop* loop = naturalLoops.innerMostLoopOf(block)) {
                     LoopHintDescriptor descriptor;
@@ -120,8 +122,7 @@ public:
                         if (it != naturalLoopToLoopHint.end())
                             descriptor.osrEntryCandidates.append(it->value);
                     }
-                    if (!descriptor.osrEntryCandidates.isEmpty())
-                        tierUpHierarchy.add(bytecodeIndex, WTFMove(descriptor));
+                    tierUpHierarchy.add(bytecodeIndex, WTFMove(descriptor));
                 }
                 break;
             }
@@ -146,9 +147,9 @@ public:
             }
 
             if (!tierUpCandidates.isEmpty())
-                m_graph.m_plan.tierUpInLoopHierarchy.add(entry.key, WTFMove(tierUpCandidates));
+                m_graph.m_plan.tierUpInLoopHierarchy().add(entry.key, WTFMove(tierUpCandidates));
         }
-        m_graph.m_plan.willTryToTierUp = true;
+        m_graph.m_plan.setWillTryToTierUp(true);
         return true;
 #else // ENABLE(FTL_JIT)
         RELEASE_ASSERT_NOT_REACHED();
@@ -182,7 +183,7 @@ private:
         return true;
     }
 
-    HashMap<const NaturalLoop*, unsigned> buildNaturalLoopToLoopHintMap(const NaturalLoops& naturalLoops)
+    HashMap<const NaturalLoop*, unsigned> buildNaturalLoopToLoopHintMap(const CPSNaturalLoops& naturalLoops)
     {
         HashMap<const NaturalLoop*, unsigned> naturalLoopsToLoopHint;
 

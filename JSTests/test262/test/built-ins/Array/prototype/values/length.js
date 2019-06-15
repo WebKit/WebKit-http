@@ -1,9 +1,10 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-array.prototype.values
 es6id: 22.1.3.29
 description: Array.prototype.values `length` property
-info: >
+info: |
     ES6 Section 17:
     Every built-in Function object, including constructors, has a length
     property whose value is an integer. Unless otherwise specified, this value

@@ -5,7 +5,7 @@ es6id: 23.1.1.1
 description: >
   Contructor returns a map object set with the elements from the iterable
   argument.
-info: >
+info: |
   Map ( [ iterable ] )
 
   ...
@@ -17,8 +17,8 @@ info: >
 ---*/
 
 var m = new Map([
-  [ "attr", 1 ],
-  [ "foo", 2 ]
+  ["attr", 1],
+  ["foo", 2]
 ]);
 
 assert.sameValue(m.size, 2, 'The value of `m.size` is `2`');

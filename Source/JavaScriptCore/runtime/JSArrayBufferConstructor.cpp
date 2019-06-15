@@ -44,23 +44,26 @@ const ClassInfo JSArrayBufferConstructor::s_info = {
     CREATE_METHOD_TABLE(JSArrayBufferConstructor)
 };
 
+static EncodedJSValue JSC_HOST_CALL callArrayBuffer(ExecState*);
+static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState*);
+
 JSArrayBufferConstructor::JSArrayBufferConstructor(VM& vm, Structure* structure, ArrayBufferSharingMode sharingMode)
-    : Base(vm, structure)
+    : Base(vm, structure, callArrayBuffer, constructArrayBuffer)
     , m_sharingMode(sharingMode)
 {
 }
 
 void JSArrayBufferConstructor::finishCreation(VM& vm, JSArrayBufferPrototype* prototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, ASCIILiteral(arrayBufferSharingModeName(m_sharingMode)));
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), DontEnum | ReadOnly);
-    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
+    Base::finishCreation(vm, arrayBufferSharingModeName(m_sharingMode));
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 
     if (m_sharingMode == ArrayBufferSharingMode::Default) {
-        JSGlobalObject* globalObject = this->globalObject();
-        JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isView, arrayBufferFuncIsView, DontEnum, 1);
-        JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().isViewPrivateName(), arrayBufferFuncIsView, DontEnum, 1);
+        JSGlobalObject* globalObject = this->globalObject(vm);
+        JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isView, arrayBufferFuncIsView, static_cast<unsigned>(PropertyAttribute::DontEnum), 1);
+        JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().isViewPrivateName(), arrayBufferFuncIsView, static_cast<unsigned>(PropertyAttribute::DontEnum), 1);
     }
 }
 
@@ -77,7 +80,7 @@ Structure* JSArrayBufferConstructor::createStructure(
     VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
     return Structure::create(
-        vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
 }
 
 static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
@@ -88,7 +91,7 @@ static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
     JSArrayBufferConstructor* constructor =
         jsCast<JSArrayBufferConstructor*>(exec->jsCallee());
 
-    Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), constructor->globalObject()->arrayBufferStructure(constructor->sharingMode()));
+    Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), constructor->globalObject(vm)->arrayBufferStructure(constructor->sharingMode()));
     RETURN_IF_EXCEPTION(scope, { });
 
     unsigned length;
@@ -119,19 +122,6 @@ static EncodedJSValue JSC_HOST_CALL callArrayBuffer(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "ArrayBuffer"));
-}
-
-ConstructType JSArrayBufferConstructor::getConstructData(
-    JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructArrayBuffer;
-    return ConstructType::Host;
-}
-
-CallType JSArrayBufferConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callArrayBuffer;
-    return CallType::Host;
 }
 
 // ------------------------------ Functions --------------------------------

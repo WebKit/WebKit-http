@@ -43,7 +43,7 @@ class GeolocationPosition;
 - (void)geolocationAuthorizationGranted;
 - (void)geolocationAuthorizationDenied;
 
-- (void)positionChanged:(WebCore::GeolocationPosition*)position;
+- (void)positionChanged:(WebCore::GeolocationPosition&&)position;
 - (void)errorOccurred:(NSString *)errorMessage;
 - (void)resetGeolocation;
 @end

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,20 +32,28 @@
 
 namespace JSC {
 
-class WebAssemblyWrapperFunction : public WebAssemblyFunctionBase {
+using Wasm::WasmToWasmImportableFunction;
+
+class WebAssemblyWrapperFunction final : public WebAssemblyFunctionBase {
 public:
     using Base = WebAssemblyFunctionBase;
 
     const static unsigned StructureFlags = Base::StructureFlags;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.webAssemblyWrapperFunctionSpace;
+    }
 
     DECLARE_INFO;
 
     static WebAssemblyWrapperFunction* create(VM&, JSGlobalObject*, JSObject*, unsigned importIndex, JSWebAssemblyInstance*, Wasm::SignatureIndex);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    Wasm::SignatureIndex signatureIndex() const { return m_wasmFunction.signatureIndex; }
-    Wasm::WasmEntrypointLoadLocation  wasmEntrypointLoadLocation() const { return m_wasmFunction.code; }
-    Wasm::CallableFunction callableFunction() const { return m_wasmFunction; }
+    Wasm::SignatureIndex signatureIndex() const { return m_importableFunction.signatureIndex; }
+    WasmToWasmImportableFunction::LoadLocation  entrypointLoadLocation() const { return m_importableFunction.entrypointLoadLocation; }
+    WasmToWasmImportableFunction importableFunction() const { return m_importableFunction; }
     JSObject* function() { return m_function.get(); }
 
 protected:
@@ -54,13 +62,13 @@ protected:
     void finishCreation(VM&, NativeExecutable*, unsigned length, const String& name, JSObject*, JSWebAssemblyInstance*);
 
 private:
-    WebAssemblyWrapperFunction(VM&, JSGlobalObject*, Structure*, Wasm::CallableFunction);
+    WebAssemblyWrapperFunction(VM&, JSGlobalObject*, Structure*, WasmToWasmImportableFunction);
 
-    WriteBarrier<JSObject> m_function;
-    // It's safe to just hold the raw CallableFunction because we have a reference
+    PoisonedWriteBarrier<WebAssemblyWrapperFunctionPoison, JSObject> m_function;
+    // It's safe to just hold the raw WasmToWasmImportableFunction because we have a reference
     // to our Instance, which points to the CodeBlock, which points to the Module
     // that exported us, which ensures that the actual Signature/code doesn't get deallocated.
-    Wasm::CallableFunction m_wasmFunction;
+    WasmToWasmImportableFunction m_importableFunction;
 };
 
 } // namespace JSC

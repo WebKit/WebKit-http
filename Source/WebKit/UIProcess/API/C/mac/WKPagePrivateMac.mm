@@ -30,6 +30,7 @@
 #import "PageLoadStateObserver.h"
 #import "WKAPICast.h"
 #import "WKNSURLExtras.h"
+#import "WKNavigationInternal.h"
 #import "WKViewInternal.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
@@ -138,6 +139,19 @@ bool WKPageIsURLKnownHSTSHost(WKPageRef page, WKURLRef url)
     return webPageProxy->process().processPool().isURLKnownHSTSHost(toImpl(url)->string(), privateBrowsingEnabled);
 }
 
+#if !TARGET_OS_IPHONE && (defined(__clang__) && defined(__APPLE__) && !defined(__i386__))
+WKNavigation *WKPageLoadURLRequestReturningNavigation(WKPageRef pageRef, WKURLRequestRef urlRequestRef)
+{
+    auto resourceRequest = toImpl(urlRequestRef)->resourceRequest();
+    return wrapper(toImpl(pageRef)->loadRequest(WTFMove(resourceRequest)));
+}
+
+WKNavigation *WKPageLoadFileReturningNavigation(WKPageRef pageRef, WKURLRef fileURL, WKURLRef resourceDirectoryURL)
+{
+    return wrapper(toImpl(pageRef)->loadFile(toWTFString(fileURL), toWTFString(resourceDirectoryURL)));
+}
+#endif
+
 #if PLATFORM(MAC)
 bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef pageRef)
 {
@@ -148,14 +162,14 @@ bool WKPageIsPlayingVideoInEnhancedFullscreen(WKPageRef pageRef)
 void WKPageSetFullscreenDelegate(WKPageRef page, id <_WKFullscreenDelegate> delegate)
 {
 #if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
-    static_cast<WebKit::FullscreenClient&>(toImpl(page)->fullscreenClient()).setDelegate(delegate);
+    downcast<WebKit::FullscreenClient>(toImpl(page)->fullscreenClient()).setDelegate(delegate);
 #endif
 }
 
 id <_WKFullscreenDelegate> WKPageGetFullscreenDelegate(WKPageRef page)
 {
 #if WK_API_ENABLED && ENABLE(FULLSCREEN_API)
-    return static_cast<WebKit::FullscreenClient&>(toImpl(page)->fullscreenClient()).delegate().autorelease();
+    return downcast<WebKit::FullscreenClient>(toImpl(page)->fullscreenClient()).delegate().autorelease();
 #else
     return nil;
 #endif

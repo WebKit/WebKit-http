@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.fill
-es6id: 22.2.3.8
 description: >
   Return abrupt if end is a Symbol.
-info: >
+info: |
   22.2.3.8 %TypedArray%.prototype.fill (value [ , start [ , end ] ] )
 
   %TypedArray%.prototype.fill is a distinct function that implements the same
@@ -25,8 +24,8 @@ info: >
   5. If end is undefined, let relativeEnd be len; else let relativeEnd be ?
   ToInteger(end).
   ...
-features: [Symbol]
 includes: [testTypedArray.js]
+features: [Symbol, TypedArray]
 ---*/
 
 var end = Symbol(1);

@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The String.prototype.split.length property does not have the attribute
     DontDelete
 es5id: 15.5.4.14_A9
@@ -14,7 +14,7 @@ description: >
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#0
 if (!(String.prototype.split.hasOwnProperty('length'))) {
-  $ERROR('#0: String.prototype.split.hasOwnProperty(\'length\') return true. Actual: '+String.prototype.split.hasOwnProperty('length'));
+  $ERROR('#0: String.prototype.split.hasOwnProperty(\'length\') return true. Actual: ' + String.prototype.split.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -30,7 +30,7 @@ if (!delete String.prototype.split.length) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (String.prototype.split.hasOwnProperty('length')) {
-  $ERROR('#2: delete String.prototype.split.length; String.prototype.split.hasOwnProperty(\'length\') return false. Actual: '+String.prototype.split.hasOwnProperty('length'));
+  $ERROR('#2: delete String.prototype.split.length; String.prototype.split.hasOwnProperty(\'length\') return false. Actual: ' + String.prototype.split.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////

@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_VIDEOSOURCEPROXY_H_
-#define WEBRTC_API_VIDEOSOURCEPROXY_H_
+#ifndef API_VIDEOSOURCEPROXY_H_
+#define API_VIDEOSOURCEPROXY_H_
 
-#include "webrtc/api/proxy.h"
-#include "webrtc/api/mediastreaminterface.h"
+#include "api/mediastreaminterface.h"
+#include "api/proxy.h"
 
 namespace webrtc {
 
@@ -21,21 +21,21 @@ namespace webrtc {
 // TODO(deadbeef): Move this to .cc file and out of api/. What threads methods
 // are called on is an implementation detail.
 BEGIN_PROXY_MAP(VideoTrackSource)
-  PROXY_SIGNALING_THREAD_DESTRUCTOR()
-  PROXY_CONSTMETHOD0(SourceState, state)
-  PROXY_CONSTMETHOD0(bool, remote)
-  PROXY_CONSTMETHOD0(bool, is_screencast)
-  PROXY_CONSTMETHOD0(rtc::Optional<bool>, needs_denoising)
-  PROXY_METHOD1(bool, GetStats, Stats*)
-  PROXY_WORKER_METHOD2(void,
-                       AddOrUpdateSink,
-                       rtc::VideoSinkInterface<VideoFrame>*,
-                       const rtc::VideoSinkWants&)
-  PROXY_WORKER_METHOD1(void, RemoveSink, rtc::VideoSinkInterface<VideoFrame>*)
-  PROXY_METHOD1(void, RegisterObserver, ObserverInterface*)
-  PROXY_METHOD1(void, UnregisterObserver, ObserverInterface*)
+PROXY_SIGNALING_THREAD_DESTRUCTOR()
+PROXY_CONSTMETHOD0(SourceState, state)
+PROXY_CONSTMETHOD0(bool, remote)
+PROXY_CONSTMETHOD0(bool, is_screencast)
+PROXY_CONSTMETHOD0(absl::optional<bool>, needs_denoising)
+PROXY_METHOD1(bool, GetStats, Stats*)
+PROXY_WORKER_METHOD2(void,
+                     AddOrUpdateSink,
+                     rtc::VideoSinkInterface<VideoFrame>*,
+                     const rtc::VideoSinkWants&)
+PROXY_WORKER_METHOD1(void, RemoveSink, rtc::VideoSinkInterface<VideoFrame>*)
+PROXY_METHOD1(void, RegisterObserver, ObserverInterface*)
+PROXY_METHOD1(void, UnregisterObserver, ObserverInterface*)
 END_PROXY_MAP()
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_VIDEOSOURCEPROXY_H_
+#endif  // API_VIDEOSOURCEPROXY_H_

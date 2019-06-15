@@ -27,13 +27,14 @@ namespace WebCore {
 class HTMLProgressElement;
 
 class RenderProgress final : public RenderBlockFlow {
+    WTF_MAKE_ISO_ALLOCATED(RenderProgress);
 public:
     RenderProgress(HTMLElement&, RenderStyle&&);
     virtual ~RenderProgress();
 
     double position() const { return m_position; }
     double animationProgress() const;
-    double animationStartTime() const { return m_animationStartTime; }
+    MonotonicTime animationStartTime() const { return m_animationStartTime; }
 
     bool isDeterminate() const;
     void updateFromElement() override;
@@ -49,10 +50,10 @@ private:
     void updateAnimationState();
 
     double m_position;
-    double m_animationStartTime;
-    Seconds m_animationRepeatInterval;
-    double m_animationDuration;
-    bool m_animating;
+    MonotonicTime m_animationStartTime;
+    Seconds m_animationRepeatInterval { 0_s };
+    Seconds m_animationDuration { 0_s };
+    bool m_animating { false };
     Timer m_animationTimer;
 };
 

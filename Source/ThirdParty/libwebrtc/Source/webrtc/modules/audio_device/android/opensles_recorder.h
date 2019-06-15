@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_DEVICE_ANDROID_OPENSLES_RECORDER_H_
-#define WEBRTC_MODULES_AUDIO_DEVICE_ANDROID_OPENSLES_RECORDER_H_
+#ifndef MODULES_AUDIO_DEVICE_ANDROID_OPENSLES_RECORDER_H_
+#define MODULES_AUDIO_DEVICE_ANDROID_OPENSLES_RECORDER_H_
 
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_Android.h>
@@ -17,13 +17,13 @@
 
 #include <memory>
 
-#include "webrtc/base/thread_checker.h"
-#include "webrtc/modules/audio_device/android/audio_common.h"
-#include "webrtc/modules/audio_device/android/audio_manager.h"
-#include "webrtc/modules/audio_device/android/opensles_common.h"
-#include "webrtc/modules/audio_device/include/audio_device_defines.h"
-#include "webrtc/modules/audio_device/audio_device_generic.h"
-#include "webrtc/modules/utility/include/helpers_android.h"
+#include "modules/audio_device/android/audio_common.h"
+#include "modules/audio_device/android/audio_manager.h"
+#include "modules/audio_device/android/opensles_common.h"
+#include "modules/audio_device/audio_device_generic.h"
+#include "modules/audio_device/include/audio_device_defines.h"
+#include "modules/utility/include/helpers_android.h"
+#include "rtc_base/thread_checker.h"
 
 namespace webrtc {
 
@@ -176,9 +176,9 @@ class OpenSLESRecorder {
 
   // Queue of audio buffers to be used by the recorder object for capturing
   // audio. They will be used in a Round-robin way and the size of each buffer
-  // is given by AudioParameters::GetBytesPerBuffer(), i.e., it corresponds to
+  // is given by AudioParameters::frames_per_buffer(), i.e., it corresponds to
   // the native OpenSL ES buffer size.
-  std::unique_ptr<std::unique_ptr<SLint8[]>[]> audio_buffers_;
+  std::unique_ptr<std::unique_ptr<SLint16[]>[]> audio_buffers_;
 
   // Keeps track of active audio buffer 'n' in the audio_buffers_[n] queue.
   // Example (kNumOfOpenSLESBuffers = 2): counts 0, 1, 0, 1, ...
@@ -190,4 +190,4 @@ class OpenSLESRecorder {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_DEVICE_ANDROID_OPENSLES_RECORDER_H_
+#endif  // MODULES_AUDIO_DEVICE_ANDROID_OPENSLES_RECORDER_H_

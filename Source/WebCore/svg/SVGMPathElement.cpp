@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,24 +26,17 @@
 #include "SVGDocumentExtensions.h"
 #include "SVGNames.h"
 #include "SVGPathElement.h"
-#include "XLinkNames.h"
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_STRING(SVGMPathElement, XLinkNames::hrefAttr, Href, href)
-DEFINE_ANIMATED_BOOLEAN(SVGMPathElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGMPathElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(href)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGMPathElement);
 
 inline SVGMPathElement::SVGMPathElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
+    , SVGExternalResourcesRequired(this)
+    , SVGURIReference(this)
 {
     ASSERT(hasTagName(SVGNames::mpathTag));
-    registerAnimatedPropertiesForSVGMPathElement();
 }
 
 Ref<SVGMPathElement> SVGMPathElement::create(const QualifiedName& tagName, Document& document)
@@ -62,7 +56,7 @@ void SVGMPathElement::buildPendingResource()
         return;
 
     String id;
-    Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
+    auto target = makeRefPtr(SVGURIReference::targetElementFromIRIString(href(), document(), &id));
     if (!target) {
         // Do not register as pending if we are already pending this resource.
         if (document().accessSVGExtensions().isPendingResource(this, id))
@@ -75,7 +69,7 @@ void SVGMPathElement::buildPendingResource()
     } else if (target->isSVGElement()) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target));
+        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target.get()));
     }
 
     targetPathChanged();
@@ -86,24 +80,24 @@ void SVGMPathElement::clearResourceReferences()
     document().accessSVGExtensions().removeAllTargetReferencesForElement(this);
 }
 
-Node::InsertionNotificationRequest SVGMPathElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGMPathElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(rootParent);
-    if (rootParent.isConnected())
-        return InsertionShouldCallFinishedInsertingSubtree;
-    return InsertionDone;
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void SVGMPathElement::finishedInsertingSubtree()
+void SVGMPathElement::didFinishInsertingNode()
 {
     buildPendingResource();
 }
 
-void SVGMPathElement::removedFrom(ContainerNode& rootParent)
+void SVGMPathElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGElement::removedFrom(rootParent);
-    notifyParentOfPathChange(&rootParent);
-    if (rootParent.isConnected())
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    notifyParentOfPathChange(&oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         clearResourceReferences();
 }
 
@@ -123,9 +117,10 @@ void SVGMPathElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     SVGElement::svgAttributeChanged(attrName);
+    SVGExternalResourcesRequired::svgAttributeChanged(attrName);
 }
 
-SVGPathElement* SVGMPathElement::pathElement()
+RefPtr<SVGPathElement> SVGMPathElement::pathElement()
 {
     Element* target = targetElementFromIRIString(href(), document());
     if (is<SVGPathElement>(target))

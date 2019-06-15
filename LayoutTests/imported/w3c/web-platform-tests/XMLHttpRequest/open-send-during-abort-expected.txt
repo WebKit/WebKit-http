@@ -1,3 +1,0 @@
-
-FAIL XMLHttpRequest: open() during abort() assert_array_equals: property 2, expected 1 but got 0
-

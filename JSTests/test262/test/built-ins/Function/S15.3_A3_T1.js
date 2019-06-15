@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Since when call is used for Function constructor themself new function instance creates
     and then first argument(thisArg) should be ignored
 es5id: 15.3_A3_T1
@@ -11,7 +11,11 @@ description: First argument is object
 
 //CHECK#1 - does not throw
 var f = Function.call(mars, "return name;");
-var mars={name:"mars", color:"red", number:4};
+var mars = {
+  name: "mars",
+  color: "red",
+  number: 4
+};
 
 var f = Function.call(mars, "this.godname=\"ares\"; return this.color;");
 
@@ -23,6 +27,6 @@ if (about_mars !== undefined) {
 }
 
 //CHECK#3
-if (this.godname !== "ares" && mars.godname===undefined) {
+if (this.godname !== "ares" && mars.godname === undefined) {
   $ERROR('#3: When applied to the Function object itself, thisArg should be ignored');
 }

@@ -5,7 +5,7 @@
 es6id: B.2.1.1
 description: >
   escape.name is "escape".
-info: >
+info: |
   escape (string)
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(escape.name, "escape");
-
-verifyNotEnumerable(escape, "name");
-verifyNotWritable(escape, "name");
-verifyConfigurable(escape, "name");
+verifyProperty(escape, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "escape"
+});

@@ -40,6 +40,8 @@ class Node;
 class Scrollbar;
 class URL;
 
+enum class HitTestProgress { Stop, Continue };
+
 class HitTestResult {
 public:
     typedef ListHashSet<RefPtr<Node>> NodeSet;
@@ -103,9 +105,6 @@ public:
     WEBCORE_EXPORT URL absolutePDFURL() const;
     WEBCORE_EXPORT URL absoluteMediaURL() const;
     WEBCORE_EXPORT URL absoluteLinkURL() const;
-#if ENABLE(ATTACHMENT_ELEMENT)
-    WEBCORE_EXPORT URL absoluteAttachmentURL() const;
-#endif
     WEBCORE_EXPORT String textContent() const;
     bool isOverLink() const;
     WEBCORE_EXPORT bool isContentEditable() const;
@@ -129,26 +128,23 @@ public:
 
     WEBCORE_EXPORT bool isDownloadableMedia() const;
     WEBCORE_EXPORT bool isOverTextInsideFormControlElement() const;
-    WEBCORE_EXPORT bool allowsCopy() const;
 
-    // Returns true if it is rect-based hit test and needs to continue until the rect is fully
-    // enclosed by the boundaries of a node.
-    bool addNodeToRectBasedTestResult(Node*, const HitTestRequest&, const HitTestLocation& pointInContainer, const LayoutRect& = LayoutRect());
-    bool addNodeToRectBasedTestResult(Node*, const HitTestRequest&, const HitTestLocation& pointInContainer, const FloatRect&);
-    void append(const HitTestResult&);
+    HitTestProgress addNodeToListBasedTestResult(Node*, const HitTestRequest&, const HitTestLocation& pointInContainer, const LayoutRect& = LayoutRect());
+    HitTestProgress addNodeToListBasedTestResult(Node*, const HitTestRequest&, const HitTestLocation& pointInContainer, const FloatRect&);
+    void append(const HitTestResult&, const HitTestRequest&);
 
-    // If m_rectBasedTestResult is 0 then set it to a new NodeSet. Return *m_rectBasedTestResult. Lazy allocation makes
+    // If m_listBasedTestResult is 0 then set it to a new NodeSet. Return *m_listBasedTestResult. Lazy allocation makes
     // sense because the NodeSet is seldom necessary, and it's somewhat expensive to allocate and initialize. This method does
-    // the same thing as mutableRectBasedTestResult(), but here the return value is const.
-    WEBCORE_EXPORT const NodeSet& rectBasedTestResult() const;
+    // the same thing as mutableListBasedTestResult(), but here the return value is const.
+    WEBCORE_EXPORT const NodeSet& listBasedTestResult() const;
 
     Vector<String> dictationAlternatives() const;
 
-    Node* targetNode() const;
+    WEBCORE_EXPORT Node* targetNode() const;
     WEBCORE_EXPORT Element* targetElement() const;
 
 private:
-    NodeSet& mutableRectBasedTestResult(); // See above.
+    NodeSet& mutableListBasedTestResult(); // See above.
 
 #if ENABLE(VIDEO)
     HTMLMediaElement* mediaElement() const;
@@ -164,7 +160,7 @@ private:
     RefPtr<Scrollbar> m_scrollbar;
     bool m_isOverWidget; // Returns true if we are over a widget (and not in the border/padding area of a RenderWidget for example).
 
-    mutable std::unique_ptr<NodeSet> m_rectBasedTestResult;
+    mutable std::unique_ptr<NodeSet> m_listBasedTestResult;
 };
 
 WEBCORE_EXPORT String displayString(const String&, const Node*);

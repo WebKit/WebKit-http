@@ -3,7 +3,7 @@
 /*---
 esid: sec-get-%typedarray%.prototype-@@tostringtag
 description: The getter method does not throw with a detached buffer
-info: >
+info: |
   22.2.3.32 get %TypedArray%.prototype [ @@toStringTag ]
 
   ...
@@ -11,6 +11,7 @@ info: >
   5. Assert: name is a String value.
   6. Return name.
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [Symbol.toStringTag, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

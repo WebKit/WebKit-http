@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
  * Portions Copyright (c) 2010 Motorola Mobility, Inc.  All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,6 +38,7 @@
 #endif
 
 #if USE(WINDOWS_EVENT_LOOP)
+#include <wtf/HashMap.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 #endif
@@ -57,6 +59,7 @@ QT_END_NAMESPACE
 namespace WTF {
 
 class WorkQueue final : public FunctionDispatcher {
+
 public:
     enum class Type {
         Serial,
@@ -108,14 +111,11 @@ private:
 #elif USE(WINDOWS_EVENT_LOOP)
     volatile LONG m_isWorkThreadRegistered;
 
-    Mutex m_functionQueueLock;
+    Lock m_functionQueueLock;
     Vector<Function<void()>> m_functionQueue;
 
     HANDLE m_timerQueue;
 #elif USE(GLIB_EVENT_LOOP) || USE(GENERIC_EVENT_LOOP)
-    RefPtr<Thread> m_workQueueThread;
-    Lock m_initializeRunLoopConditionMutex;
-    Condition m_initializeRunLoopCondition;
     RunLoop* m_runLoop;
 #elif PLATFORM(QT) && USE(UNIX_DOMAIN_SOCKETS)
     class WorkItemQt;

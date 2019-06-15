@@ -23,12 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APIWebsiteDataStore_h
-#define APIWebsiteDataStore_h
+#pragma once
 
 #include "APIHTTPCookieStore.h"
 #include "WebsiteDataStore.h"
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 #include <wtf/text/WTFString.h>
 
 namespace API {
@@ -36,47 +35,60 @@ namespace API {
 class WebsiteDataStore final : public ObjectImpl<Object::Type::WebsiteDataStore> {
 public:
     static Ref<WebsiteDataStore> defaultDataStore();
+    static bool defaultDataStoreExists();
+
     static Ref<WebsiteDataStore> createNonPersistentDataStore();
     static Ref<WebsiteDataStore> createLegacy(WebKit::WebsiteDataStore::Configuration);
 
-    explicit WebsiteDataStore(WebKit::WebsiteDataStore::Configuration, WebCore::SessionID);
+    explicit WebsiteDataStore(WebKit::WebsiteDataStore::Configuration, PAL::SessionID);
     virtual ~WebsiteDataStore();
 
     bool isPersistent();
 
     bool resourceLoadStatisticsEnabled() const;
     void setResourceLoadStatisticsEnabled(bool);
+    bool resourceLoadStatisticsDebugMode() const;
+    void setResourceLoadStatisticsDebugMode(bool);
 
-    WebKit::WebsiteDataStore& websiteDataStore() { return *m_websiteDataStore; }
+    WebKit::WebsiteDataStore& websiteDataStore() { return m_websiteDataStore.get(); }
     HTTPCookieStore& httpCookieStore();
 
-    static String defaultApplicationCacheDirectory();
-    static String defaultNetworkCacheDirectory();
-    static String defaultMediaCacheDirectory();
-
-    static String defaultIndexedDBDatabaseDirectory();
-    static String defaultLocalStorageDirectory();
-    static String defaultMediaKeysStorageDirectory();
-    static String defaultWebSQLDatabaseDirectory();
-    static String defaultResourceLoadStatisticsDirectory();
-
-    static String defaultJavaScriptConfigurationDirectory();
+    static WTF::String defaultApplicationCacheDirectory();
+    static WTF::String defaultCacheStorageDirectory();
+    static WTF::String defaultNetworkCacheDirectory();
+    static WTF::String defaultMediaCacheDirectory();
+    static WTF::String defaultIndexedDBDatabaseDirectory();
+    static WTF::String defaultServiceWorkerRegistrationDirectory();
+    static WTF::String defaultLocalStorageDirectory();
+    static WTF::String defaultMediaKeysStorageDirectory();
+    static WTF::String defaultWebSQLDatabaseDirectory();
+    static WTF::String defaultResourceLoadStatisticsDirectory();
+    static WTF::String defaultJavaScriptConfigurationDirectory();
 
     static WebKit::WebsiteDataStore::Configuration defaultDataStoreConfiguration();
+
+    static WTF::String legacyDefaultApplicationCacheDirectory();
+    static WTF::String legacyDefaultNetworkCacheDirectory();
+    static WTF::String legacyDefaultLocalStorageDirectory();
+    static WTF::String legacyDefaultIndexedDBDatabaseDirectory();
+    static WTF::String legacyDefaultWebSQLDatabaseDirectory();
+    static WTF::String legacyDefaultMediaKeysStorageDirectory();
+    static WTF::String legacyDefaultMediaCacheDirectory();
+    static WTF::String legacyDefaultJavaScriptConfigurationDirectory();
+
+    static WebKit::WebsiteDataStore::Configuration legacyDefaultDataStoreConfiguration();
 
 private:
     enum ShouldCreateDirectory { CreateDirectory, DontCreateDirectory };
 
     WebsiteDataStore();
 
-    static String tempDirectoryFileSystemRepresentation(const String& directoryName, ShouldCreateDirectory shouldCreateDirectory = CreateDirectory);
-    static String cacheDirectoryFileSystemRepresentation(const String& directoryName);
-    static String websiteDataDirectoryFileSystemRepresentation(const String& directoryName);
+    static WTF::String tempDirectoryFileSystemRepresentation(const WTF::String& directoryName, ShouldCreateDirectory = CreateDirectory);
+    static WTF::String cacheDirectoryFileSystemRepresentation(const WTF::String& directoryName);
+    static WTF::String websiteDataDirectoryFileSystemRepresentation(const WTF::String& directoryName);
 
-    RefPtr<WebKit::WebsiteDataStore> m_websiteDataStore;
+    Ref<WebKit::WebsiteDataStore> m_websiteDataStore;
     RefPtr<HTTPCookieStore> m_apiHTTPCookieStore;
 };
 
 }
-
-#endif // APIWebsiteDataStore_h

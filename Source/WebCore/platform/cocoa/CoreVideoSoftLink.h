@@ -23,14 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CoreVideoSoftLink_h
-#define CoreVideoSoftLink_h
+#pragma once
+
+#if HAVE(CORE_VIDEO)
 
 #include <CoreVideo/CoreVideo.h>
 #include <wtf/SoftLinking.h>
 
+typedef struct __IOSurface* IOSurfaceRef;
+
 SOFT_LINK_FRAMEWORK_FOR_HEADER(WebCore, CoreVideo)
 
+SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVBufferGetAttachment, CFTypeRef, (CVBufferRef buffer, CFStringRef key, CVAttachmentMode* attachmentMode), (buffer, key, attachmentMode))
+#define CVBufferGetAttachment softLink_CoreVideo_CVBufferGetAttachment
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferGetTypeID, CFTypeID, (), ())
 #define CVPixelBufferGetTypeID softLink_CoreVideo_CVPixelBufferGetTypeID
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferGetWidth, size_t, (CVPixelBufferRef pixelBuffer), (pixelBuffer))
@@ -55,6 +60,8 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferPoolCreate, CVRet
 #define CVPixelBufferPoolCreate softLink_CoreVideo_CVPixelBufferPoolCreate
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferPoolCreatePixelBuffer, CVReturn, (CFAllocatorRef allocator, CVPixelBufferPoolRef pixelBufferPool, CVPixelBufferRef* pixelBufferOut), (allocator, pixelBufferPool, pixelBufferOut))
 #define CVPixelBufferPoolCreatePixelBuffer softLink_CoreVideo_CVPixelBufferPoolCreatePixelBuffer
+SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferGetIOSurface, IOSurfaceRef, (CVPixelBufferRef pixelBuffer), (pixelBuffer))
+#define CVPixelBufferGetIOSurface softLink_CoreVideo_CVPixelBufferGetIOSurface
 
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferPixelFormatTypeKey, CFStringRef)
 #define kCVPixelBufferPixelFormatTypeKey get_CoreVideo_kCVPixelBufferPixelFormatTypeKey()
@@ -70,8 +77,22 @@ SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferIOSurfacePropert
 #define kCVPixelBufferIOSurfacePropertiesKey get_CoreVideo_kCVPixelBufferIOSurfacePropertiesKey()
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferPoolMinimumBufferCountKey, CFStringRef)
 #define kCVPixelBufferPoolMinimumBufferCountKey get_CoreVideo_kCVPixelBufferPoolMinimumBufferCountKey()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrixKey, CFStringRef)
+#define kCVImageBufferYCbCrMatrixKey get_CoreVideo_kCVImageBufferYCbCrMatrixKey()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrix_ITU_R_709_2, CFStringRef)
+#define kCVImageBufferYCbCrMatrix_ITU_R_709_2 get_CoreVideo_kCVImageBufferYCbCrMatrix_ITU_R_709_2()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrix_ITU_R_601_4, CFStringRef)
+#define kCVImageBufferYCbCrMatrix_ITU_R_601_4 get_CoreVideo_kCVImageBufferYCbCrMatrix_ITU_R_601_4()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrix_SMPTE_240M_1995, CFStringRef)
+#define kCVImageBufferYCbCrMatrix_SMPTE_240M_1995 get_CoreVideo_kCVImageBufferYCbCrMatrix_SMPTE_240M_1995()
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrix_DCI_P3, CFStringRef)
+#define kCVImageBufferYCbCrMatrix_DCI_P3 get_CoreVideo_kCVImageBufferYCbCrMatrix_DCI_P3()
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrix_P3_D65, CFStringRef)
+#define kCVImageBufferYCbCrMatrix_P3_D65 get_CoreVideo_kCVImageBufferYCbCrMatrix_P3_D65()
+SOFT_LINK_CONSTANT_MAY_FAIL_FOR_HEADER(WebCore, CoreVideo, kCVImageBufferYCbCrMatrix_ITU_R_2020, CFStringRef)
+#define kCVImageBufferYCbCrMatrix_ITU_R_2020 get_CoreVideo_kCVImageBufferYCbCrMatrix_ITU_R_2020()
 
-#if PLATFORM(IOS)
+#if USE(OPENGL_ES)
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVOpenGLESTextureCacheCreate, CVReturn, (CFAllocatorRef allocator, CFDictionaryRef cacheAttributes, CVEAGLContext eaglContext, CFDictionaryRef textureAttributes, CVOpenGLESTextureCacheRef* cacheOut), (allocator, cacheAttributes, eaglContext, textureAttributes, cacheOut))
 #define CVOpenGLESTextureCacheCreate softLink_CoreVideo_CVOpenGLESTextureCacheCreate
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVOpenGLESTextureCacheCreateTextureFromImage, CVReturn, (CFAllocatorRef allocator, CVOpenGLESTextureCacheRef textureCache, CVImageBufferRef sourceImage, CFDictionaryRef textureAttributes, GLenum target, GLint internalFormat, GLsizei width, GLsizei height, GLenum format, GLenum type, size_t planeIndex, CVOpenGLESTextureRef* textureOut), (allocator, textureCache, sourceImage, textureAttributes, target, internalFormat, width, height, format, type, planeIndex, textureOut))
@@ -86,6 +107,8 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferCreate, CVReturn,
 #define CVPixelBufferCreate softLink_CoreVideo_CVPixelBufferCreate
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVPixelBufferCreateWithBytes, CVReturn, (CFAllocatorRef allocator, size_t width, size_t height, OSType pixelFormatType, void* data, size_t bytesPerRow, void (*releaseCallback)(void*, const void*), void* releasePointer, CFDictionaryRef pixelBufferAttributes, CVPixelBufferRef *pixelBufferOut), (allocator, width, height, pixelFormatType, data, bytesPerRow, releaseCallback, releasePointer, pixelBufferAttributes, pixelBufferOut))
 #define CVPixelBufferCreateWithBytes softLink_CoreVideo_CVPixelBufferCreateWithBytes
+SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVOpenGLESTextureGetCleanTexCoords, void, (CVOpenGLESTextureRef image, GLfloat lowerLeft[2], GLfloat lowerRight[2], GLfloat upperLeft[2], GLfloat upperRight[2]), (image, lowerLeft, lowerRight, upperLeft, upperRight))
+#define CVOpenGLESTextureGetCleanTexCoords softLink_CoreVideo_CVOpenGLESTextureGetCleanTexCoords
 
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferCGBitmapContextCompatibilityKey, CFStringRef)
 #define kCVPixelBufferCGBitmapContextCompatibilityKey get_CoreVideo_kCVPixelBufferCGBitmapContextCompatibilityKey()
@@ -104,9 +127,20 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVOpenGLTextureGetTarget, GLen
 #define CVOpenGLTextureGetTarget softLink_CoreVideo_CVOpenGLTextureGetTarget
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVOpenGLTextureGetName, GLuint, (CVOpenGLTextureRef image), (image))
 #define CVOpenGLTextureGetName softLink_CoreVideo_CVOpenGLTextureGetName
+SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, CoreVideo, CVOpenGLTextureGetCleanTexCoords, void, (CVOpenGLTextureRef image, GLfloat lowerLeft[2], GLfloat lowerRight[2], GLfloat upperLeft[2], GLfloat upperRight[2]), (image, lowerLeft, lowerRight, upperLeft, upperRight))
+#define CVOpenGLTextureGetCleanTexCoords softLink_CoreVideo_CVOpenGLTextureGetCleanTexCoords
 
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey, CFStringRef)
 #define kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey get_CoreVideo_kCVPixelBufferIOSurfaceOpenGLFBOCompatibilityKey()
 #endif
 
-#endif // CoreVideoSoftLink_h
+#if PLATFORM(MAC)
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferExtendedPixelsRightKey, CFStringRef)
+#define kCVPixelBufferExtendedPixelsRightKey get_CoreVideo_kCVPixelBufferExtendedPixelsRightKey()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferExtendedPixelsBottomKey, CFStringRef)
+#define kCVPixelBufferExtendedPixelsBottomKey get_CoreVideo_kCVPixelBufferExtendedPixelsBottomKey()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, CoreVideo, kCVPixelBufferOpenGLCompatibilityKey, CFStringRef)
+#define kCVPixelBufferOpenGLCompatibilityKey get_CoreVideo_kCVPixelBufferOpenGLCompatibilityKey()
+#endif
+
+#endif // HAVE(CORE_VIDEO)

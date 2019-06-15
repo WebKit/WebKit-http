@@ -33,21 +33,16 @@
 #include "DrawingArea.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
+#include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
-#include <WebCore/MainFrame.h>
 #include <WebCore/PageOverlayController.h>
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#include "ThreadSafeCoordinatedSurface.h"
-#endif
 
 #if USE(GLIB_EVENT_LOOP)
 #include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 Ref<CoordinatedLayerTreeHost> CoordinatedLayerTreeHost::create(WebPage& webPage)
 {
@@ -69,7 +64,6 @@ CoordinatedLayerTreeHost::CoordinatedLayerTreeHost(WebPage& webPage)
 #endif
     m_coordinator.createRootLayer(m_webPage.size());
 
-    CoordinatedSurface::setFactory(createCoordinatedSurface);
     scheduleLayerFlush();
 }
 
@@ -145,13 +139,13 @@ void CoordinatedLayerTreeHost::sizeDidChange(const IntSize& newSize)
     scheduleLayerFlush();
 }
 
-void CoordinatedLayerTreeHost::setVisibleContentsRect(const FloatRect& rect, const FloatPoint& trajectoryVector)
+void CoordinatedLayerTreeHost::setVisibleContentsRect(const FloatRect& rect)
 {
-    m_coordinator.setVisibleContentsRect(rect, trajectoryVector);
+    m_coordinator.setVisibleContentsRect(rect);
     scheduleLayerFlush();
 }
 
-void CoordinatedLayerTreeHost::renderNextFrame()
+void CoordinatedLayerTreeHost::renderNextFrame(bool forceRepaint)
 {
     m_isWaitingForRenderer = false;
     bool scheduledWhileWaitingForRenderer = std::exchange(m_scheduledWhileWaitingForRenderer, false);
@@ -173,8 +167,10 @@ void CoordinatedLayerTreeHost::renderNextFrame()
         m_forceRepaintAsync.needsFreshFlush = false;
     }
 
-    if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isActive()) {
+    if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isActive() || forceRepaint) {
         m_layerFlushTimer.stop();
+        if (forceRepaint)
+            m_coordinator.forceFrameSync();
         layerFlushTimerFired();
     }
 }
@@ -192,6 +188,7 @@ void CoordinatedLayerTreeHost::layerFlushTimerFired()
         return;
 
     m_coordinator.syncDisplayState();
+    m_webPage.flushPendingEditorStateUpdate();
 
     if (!m_isValid || !m_coordinator.rootCompositingLayer())
         return;
@@ -209,30 +206,24 @@ void CoordinatedLayerTreeHost::layerFlushTimerFired()
     }
 }
 
-void CoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, GraphicsContext&, const IntRect&)
-{
-}
-
 void CoordinatedLayerTreeHost::commitSceneState(const CoordinatedGraphicsState& state)
 {
     m_isWaitingForRenderer = true;
 }
 
-RefPtr<CoordinatedSurface> CoordinatedLayerTreeHost::createCoordinatedSurface(const IntSize& size, CoordinatedSurface::Flags flags)
+void CoordinatedLayerTreeHost::flushLayersAndForceRepaint()
 {
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    return ThreadSafeCoordinatedSurface::create(size, flags);
-#else
-    UNUSED_PARAM(size);
-    UNUSED_PARAM(flags);
-    return nullptr;
-#endif
+    if (m_layerFlushTimer.isActive())
+        m_layerFlushTimer.stop();
+
+    m_coordinator.forceFrameSync();
+    layerFlushTimerFired();
 }
 
 void CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 {
     m_coordinator.deviceOrPageScaleFactorChanged();
-    m_webPage.mainFrame()->pageOverlayController().didChangeDeviceScaleFactor();
+    m_webPage.corePage()->pageOverlayController().didChangeDeviceScaleFactor();
 }
 
 void CoordinatedLayerTreeHost::pageBackgroundTransparencyChanged()
@@ -254,16 +245,6 @@ void CoordinatedLayerTreeHost::scheduleAnimation()
 
     scheduleLayerFlush();
     m_layerFlushTimer.startOneShot(1_s * m_coordinator.nextAnimationServiceTime());
-}
-
-void CoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
-{
-    m_coordinator.commitScrollOffset(layerID, offset);
-}
-
-void CoordinatedLayerTreeHost::clearUpdateAtlases()
-{
-    m_coordinator.clearUpdateAtlases();
 }
 
 } // namespace WebKit

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,19 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginProcess_h
-#define PluginProcess_h
+#pragma once
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #include "ChildProcess.h"
 #include <WebCore/CountedUserActivity.h>
 #include <wtf/Forward.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
-#include <WebCore/MachSendRight.h>
+#include <wtf/MachSendRight.h>
 #endif
 
 namespace WebKit {
@@ -47,9 +45,11 @@ struct PluginProcessCreationParameters;
 class PluginProcess : public ChildProcess
 {
     WTF_MAKE_NONCOPYABLE(PluginProcess);
-    friend class NeverDestroyed<PluginProcess>;
+    friend NeverDestroyed<PluginProcess>;
+
 public:
     static PluginProcess& singleton();
+    static constexpr ProcessType processType = ProcessType::Plugin;
 
     void removeWebProcessConnection(WebProcessConnection*);
 
@@ -61,7 +61,7 @@ public:
     void setModalWindowIsShowing(bool);
     void setFullscreenWindowIsShowing(bool);
 
-    const WebCore::MachSendRight& compositingRenderServerPort() const { return m_compositingRenderServerPort; }
+    const WTF::MachSendRight& compositingRenderServerPort() const { return m_compositingRenderServerPort; }
 
     bool launchProcess(const String& launchPath, const Vector<String>& arguments);
     bool launchApplicationAtURL(const String& urlString, const Vector<String>& arguments);
@@ -76,6 +76,10 @@ public:
 private:
     ~PluginProcess();
 
+#if PLATFORM(MAC)
+    bool shouldOverrideQuarantine() final;
+#endif
+
     // ChildProcess
     void initializeProcess(const ChildProcessInitializationParameters&) override;
     void initializeProcessName(const ChildProcessInitializationParameters&) override;
@@ -89,7 +93,6 @@ private:
 
     // IPC::Connection::Client
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
-    void didClose(IPC::Connection&) override;
 
     // Message handlers.
     void didReceivePluginProcessMessage(IPC::Connection&, IPC::Decoder&);
@@ -97,7 +100,7 @@ private:
     void createWebProcessConnection();
 
     void getSitesWithData(uint64_t callbackID);
-    void deleteWebsiteData(std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
+    void deleteWebsiteData(WallTime modifiedSince, uint64_t callbackID);
     void deleteWebsiteDataForHostNames(const Vector<String>& hostNames, uint64_t callbackID);
 
     void platformInitializePluginProcess(PluginProcessCreationParameters&&);
@@ -123,7 +126,7 @@ private:
 
 #if PLATFORM(COCOA)
     // The Mach port used for accelerated compositing.
-    WebCore::MachSendRight m_compositingRenderServerPort;
+    WTF::MachSendRight m_compositingRenderServerPort;
 
     String m_nsurlCacheDirectory;
 #endif
@@ -134,5 +137,3 @@ private:
 } // namespace WebKit
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-
-#endif // PluginProcess_h

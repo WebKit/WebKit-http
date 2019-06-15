@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,25 +34,25 @@
 #include "WebProcess.h"
 #include <WebCore/Chrome.h>
 #include <WebCore/Document.h>
+#include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/InspectorFrontendClient.h>
 #include <WebCore/InspectorPageAgent.h>
-#include <WebCore/MainFrame.h>
+#include <WebCore/NavigationAction.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/WindowFeatures.h>
-
-using namespace WebCore;
 
 static const float minimumAttachedHeight = 250;
 static const float maximumAttachedHeightRatio = 0.75;
 static const float minimumAttachedWidth = 500;
 
 namespace WebKit {
+using namespace WebCore;
 
 Ref<WebInspector> WebInspector::create(WebPage* page)
 {
@@ -85,7 +85,7 @@ void WebInspector::openFrontendConnection(bool underTest)
     }
     IPC::Attachment connectionClientPort(clientIdentifier);
 #elif OS(DARWIN)
-    mach_port_t listeningPort;
+    mach_port_t listeningPort = MACH_PORT_NULL;
     if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort) != KERN_SUCCESS)
         CRASH();
 
@@ -94,16 +94,21 @@ void WebInspector::openFrontendConnection(bool underTest)
 
     IPC::Connection::Identifier connectionIdentifier(listeningPort);
     IPC::Attachment connectionClientPort(listeningPort, MACH_MSG_TYPE_MOVE_SEND);
-
+#elif PLATFORM(WIN)
+    IPC::Connection::Identifier connectionIdentifier, connClient;
+    IPC::Connection::createServerAndClientIdentifiers(connectionIdentifier, connClient);
+    IPC::Attachment connectionClientPort(connClient);
 #else
     notImplemented();
     return;
 #endif
 
+#if USE(UNIX_DOMAIN_SOCKETS) || OS(DARWIN) || PLATFORM(WIN)
     m_frontendConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
     m_frontendConnection->open();
 
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebInspectorProxy::CreateInspectorPage(connectionClientPort, canAttachWindow(), underTest), m_page->pageID());
+#endif
 }
 
 void WebInspector::closeFrontendConnection()
@@ -149,12 +154,14 @@ void WebInspector::close()
 
 void WebInspector::openInNewTab(const String& urlString)
 {
+    UserGestureIndicator indicator { ProcessingUserGesture };
+
     Page* inspectedPage = m_page->corePage();
     if (!inspectedPage)
         return;
 
     Frame& inspectedMainFrame = inspectedPage->mainFrame();
-    FrameLoadRequest frameLoadRequest { *inspectedMainFrame.document(), inspectedMainFrame.document()->securityOrigin(), { urlString }, ASCIILiteral("_blank"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
+    FrameLoadRequest frameLoadRequest { *inspectedMainFrame.document(), inspectedMainFrame.document()->securityOrigin(), { urlString }, "_blank"_s, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow, InitiatedByMainFrame::Unknown };
 
     NavigationAction action { *inspectedMainFrame.document(), frameLoadRequest.resourceRequest(), frameLoadRequest.initiatedByMainFrame(), NavigationType::LinkClicked };
     Page* newPage = inspectedPage->chrome().createWindow(inspectedMainFrame, frameLoadRequest, { }, action);

@@ -74,6 +74,8 @@ ALL PROPERTIES:
     indexOf
     lastIndexOf
     filter
+    flat
+    flatMap
     reduce
     reduceRight
     map
@@ -125,6 +127,8 @@ OWN PROPERTIES:
     indexOf
     lastIndexOf
     filter
+    flat
+    flatMap
     reduce
     reduceRight
     map
@@ -161,6 +165,8 @@ DISPLAYABLE PROPERTIES:
     indexOf
     lastIndexOf
     filter
+    flat
+    flatMap
     reduce
     reduceRight
     map
@@ -197,6 +203,8 @@ ALL PROPERTIES:
     indexOf
     lastIndexOf
     filter
+    flat
+    flatMap
     reduce
     reduceRight
     map
@@ -401,8 +409,6 @@ description: function unboundFunction() {
 OWN PROPERTIES:
     name
     length
-    arguments
-    caller
     __proto__
     targetFunction
     boundThis
@@ -410,9 +416,9 @@ OWN PROPERTIES:
 
 DISPLAYABLE PROPERTIES:
     length
-    arguments
-    caller
     name
+    caller
+    arguments
     __proto__
     targetFunction
     boundThis
@@ -420,13 +426,13 @@ DISPLAYABLE PROPERTIES:
 
 ALL PROPERTIES:
     length
-    arguments
-    caller
     name
     toString
     apply
     call
     bind
+    caller
+    arguments
     constructor
     Symbol(Symbol.hasInstance)
     toLocaleString

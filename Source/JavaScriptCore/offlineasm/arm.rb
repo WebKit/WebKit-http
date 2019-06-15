@@ -1,4 +1,4 @@
-# Copyright (C) 2011, 2012, 2015-2016 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2018 Apple Inc. All rights reserved.
 # Copyright (C) 2013 University of Szeged. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -220,6 +220,59 @@ end
 # Actual lowering code follows.
 #
 
+def armOpcodeReversedOperands(opcode)
+    m = /\Ab[ipb]/.match(opcode)
+
+    operation =
+        case m.post_match
+        when "eq" then "eq"
+        when "neq" then "neq"
+        when "a" then "b"
+        when "aeq" then "beq"
+        when "b" then "a"
+        when "beq" then "aeq"
+        when "gt" then "lt"
+        when "gteq" then "lteq"
+        when "lt" then "gt"
+        when "lteq" then "gteq"
+        else
+            raise "unknown operation #{m.post_match}"
+        end
+
+    "#{m[0]}#{operation}"
+end
+
+def armLowerStackPointerInComparison(list)
+    newList = []
+    list.each {
+        | node |
+        if node.is_a? Instruction
+            case node.opcode
+            when "bieq", "bpeq", "bbeq",
+                "bineq", "bpneq", "bbneq",
+                "bia", "bpa", "bba",
+                "biaeq", "bpaeq", "bbaeq",
+                "bib", "bpb", "bbb",
+                "bibeq", "bpbeq", "bbbeq",
+                "bigt", "bpgt", "bbgt",
+                "bigteq", "bpgteq", "bbgteq",
+                "bilt", "bplt", "bblt",
+                "bilteq", "bplteq", "bblteq"
+                if node.operands[1].is_a?(RegisterID) && node.operands[1].name == "sp"
+                    newList << Instruction.new(codeOrigin, armOpcodeReversedOperands(node.opcode), [node.operands[1], node.operands[0]] + node.operands[2..-1])
+                else
+                    newList << node
+                end
+            else
+                newList << node
+            end
+        else
+            newList << node
+        end
+    }
+    newList
+end
+
 class Sequence
     def getModifiedListARM
         raise unless $activeBackend == "ARM"
@@ -258,6 +311,7 @@ class Sequence
         result = riscLowerRegisterReuse(result)
         result = assignRegistersToTemporaries(result, :gpr, ARM_EXTRA_GPRS)
         result = assignRegistersToTemporaries(result, :fpr, ARM_EXTRA_FPRS)
+        result = armLowerStackPointerInComparison(result)
         return result
     end
 end
@@ -348,10 +402,6 @@ class Instruction
     end
 
     def lowerARMCommon
-        $asm.codeOrigin codeOriginString if $enableCodeOriginComments
-        $asm.annotation annotation if $enableInstrAnnotations
-        $asm.debugAnnotation codeOrigin.debugDirective if $enableDebugAnnotations
-
         case opcode
         when "addi", "addp", "addis", "addps"
             if opcode == "addis" or opcode == "addps"

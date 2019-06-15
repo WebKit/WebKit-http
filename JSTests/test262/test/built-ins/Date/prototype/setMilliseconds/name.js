@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.setmilliseconds
 es6id: 20.3.4.23
 description: >
   Date.prototype.setMilliseconds.name is "setMilliseconds".
-info: >
+info: |
   Date.prototype.setMilliseconds ( ms )
 
   17 ECMAScript Standard Built-in Objects:

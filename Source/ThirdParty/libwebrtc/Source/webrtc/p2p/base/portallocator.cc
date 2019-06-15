@@ -8,10 +8,50 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/base/checks.h"
-#include "webrtc/p2p/base/portallocator.h"
+#include "p2p/base/portallocator.h"
+
+#include <utility>
+
+#include "rtc_base/checks.h"
 
 namespace cricket {
+
+RelayServerConfig::RelayServerConfig(RelayType type) : type(type) {}
+
+RelayServerConfig::RelayServerConfig(const rtc::SocketAddress& address,
+                                     const std::string& username,
+                                     const std::string& password,
+                                     ProtocolType proto)
+    : type(RELAY_TURN), credentials(username, password) {
+  ports.push_back(ProtocolAddress(address, proto));
+}
+
+RelayServerConfig::RelayServerConfig(const std::string& address,
+                                     int port,
+                                     const std::string& username,
+                                     const std::string& password,
+                                     ProtocolType proto)
+    : RelayServerConfig(rtc::SocketAddress(address, port),
+                        username,
+                        password,
+                        proto) {}
+
+// Legacy constructor where "secure" and PROTO_TCP implies PROTO_TLS.
+RelayServerConfig::RelayServerConfig(const std::string& address,
+                                     int port,
+                                     const std::string& username,
+                                     const std::string& password,
+                                     ProtocolType proto,
+                                     bool secure)
+    : RelayServerConfig(address,
+                        port,
+                        username,
+                        password,
+                        (proto == PROTO_TCP && secure ? PROTO_TLS : proto)) {}
+
+RelayServerConfig::RelayServerConfig(const RelayServerConfig&) = default;
+
+RelayServerConfig::~RelayServerConfig() = default;
 
 PortAllocatorSession::PortAllocatorSession(const std::string& content_name,
                                            int component,
@@ -29,11 +69,66 @@ PortAllocatorSession::PortAllocatorSession(const std::string& content_name,
   RTC_DCHECK(ice_ufrag.empty() == ice_pwd.empty());
 }
 
+PortAllocatorSession::~PortAllocatorSession() = default;
+
+bool PortAllocatorSession::IsCleared() const {
+  return false;
+}
+
+bool PortAllocatorSession::IsStopped() const {
+  return false;
+}
+
+void PortAllocatorSession::GetCandidateStatsFromReadyPorts(
+    CandidateStatsList* candidate_stats_list) const {
+  auto ports = ReadyPorts();
+  for (auto* port : ports) {
+    auto candidates = port->Candidates();
+    for (const auto& candidate : candidates) {
+      CandidateStats candidate_stats(candidate);
+      port->GetStunStats(&candidate_stats.stun_stats);
+      candidate_stats_list->push_back(std::move(candidate_stats));
+    }
+  }
+}
+
+uint32_t PortAllocatorSession::generation() {
+  return generation_;
+}
+
+void PortAllocatorSession::set_generation(uint32_t generation) {
+  generation_ = generation;
+}
+
+PortAllocator::PortAllocator()
+    : flags_(kDefaultPortAllocatorFlags),
+      min_port_(0),
+      max_port_(0),
+      max_ipv6_networks_(kDefaultMaxIPv6Networks),
+      step_delay_(kDefaultStepDelay),
+      allow_tcp_listen_(true),
+      candidate_filter_(CF_ALL) {
+  // The allocator will be attached to a thread in Initialize.
+  thread_checker_.DetachFromThread();
+}
+
+void PortAllocator::Initialize() {
+  RTC_DCHECK(thread_checker_.CalledOnValidThread());
+  initialized_ = true;
+}
+
+PortAllocator::~PortAllocator() {
+  CheckRunOnValidThreadIfInitialized();
+}
+
 bool PortAllocator::SetConfiguration(
     const ServerAddresses& stun_servers,
     const std::vector<RelayServerConfig>& turn_servers,
     int candidate_pool_size,
-    bool prune_turn_ports) {
+    bool prune_turn_ports,
+    webrtc::TurnCustomizer* turn_customizer,
+    const absl::optional<int>& stun_candidate_keepalive_interval) {
+  CheckRunOnValidThreadIfInitialized();
   bool ice_servers_changed =
       (stun_servers != stun_servers_ || turn_servers != turn_servers_);
   stun_servers_ = stun_servers;
@@ -42,15 +137,15 @@ bool PortAllocator::SetConfiguration(
 
   if (candidate_pool_frozen_) {
     if (candidate_pool_size != candidate_pool_size_) {
-      LOG(LS_ERROR) << "Trying to change candidate pool size after pool was "
-                    << "frozen.";
+      RTC_LOG(LS_ERROR)
+          << "Trying to change candidate pool size after pool was frozen.";
       return false;
     }
     return true;
   }
 
   if (candidate_pool_size < 0) {
-    LOG(LS_ERROR) << "Can't set negative pool size.";
+    RTC_LOG(LS_ERROR) << "Can't set negative pool size.";
     return false;
   }
 
@@ -62,11 +157,23 @@ bool PortAllocator::SetConfiguration(
     pooled_sessions_.clear();
   }
 
+  turn_customizer_ = turn_customizer;
+
   // If |candidate_pool_size_| is less than the number of pooled sessions, get
   // rid of the extras.
   while (candidate_pool_size_ < static_cast<int>(pooled_sessions_.size())) {
     pooled_sessions_.front().reset(nullptr);
     pooled_sessions_.pop_front();
+  }
+
+  // |stun_candidate_keepalive_interval_| will be used in STUN port allocation
+  // in future sessions. We also update the ready ports in the pooled sessions.
+  // Ports in sessions that are taken and owned by P2PTransportChannel will be
+  // updated there via IceConfig.
+  stun_candidate_keepalive_interval_ = stun_candidate_keepalive_interval;
+  for (const auto& session : pooled_sessions_) {
+    session->SetStunKeepaliveIntervalForReadyPorts(
+        stun_candidate_keepalive_interval_);
   }
 
   // If |candidate_pool_size_| is greater than the number of pooled sessions,
@@ -85,6 +192,7 @@ std::unique_ptr<PortAllocatorSession> PortAllocator::CreateSession(
     int component,
     const std::string& ice_ufrag,
     const std::string& ice_pwd) {
+  CheckRunOnValidThreadAndInitialized();
   auto session = std::unique_ptr<PortAllocatorSession>(
       CreateSessionInternal(content_name, component, ice_ufrag, ice_pwd));
   session->SetCandidateFilter(candidate_filter());
@@ -96,6 +204,7 @@ std::unique_ptr<PortAllocatorSession> PortAllocator::TakePooledSession(
     int component,
     const std::string& ice_ufrag,
     const std::string& ice_pwd) {
+  CheckRunOnValidThreadAndInitialized();
   RTC_DCHECK(!ice_ufrag.empty());
   RTC_DCHECK(!ice_pwd.empty());
   if (pooled_sessions_.empty()) {
@@ -112,6 +221,7 @@ std::unique_ptr<PortAllocatorSession> PortAllocator::TakePooledSession(
 }
 
 const PortAllocatorSession* PortAllocator::GetPooledSession() const {
+  CheckRunOnValidThreadAndInitialized();
   if (pooled_sessions_.empty()) {
     return nullptr;
   }
@@ -119,11 +229,21 @@ const PortAllocatorSession* PortAllocator::GetPooledSession() const {
 }
 
 void PortAllocator::FreezeCandidatePool() {
+  CheckRunOnValidThreadAndInitialized();
   candidate_pool_frozen_ = true;
 }
 
 void PortAllocator::DiscardCandidatePool() {
+  CheckRunOnValidThreadIfInitialized();
   pooled_sessions_.clear();
+}
+
+void PortAllocator::GetCandidateStatsFromPooledSessions(
+    CandidateStatsList* candidate_stats_list) {
+  CheckRunOnValidThreadAndInitialized();
+  for (const auto& session : pooled_sessions()) {
+    session->GetCandidateStatsFromReadyPorts(candidate_stats_list);
+  }
 }
 
 }  // namespace cricket

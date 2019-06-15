@@ -26,6 +26,8 @@
 #import "config.h"
 #import "Widget.h"
 
+#if PLATFORM(MAC)
+
 #import "Chrome.h"
 #import "Cursor.h"
 #import "Document.h"
@@ -60,7 +62,7 @@ namespace WebCore {
 
 static void safeRemoveFromSuperview(NSView *view)
 {
-    // If the the view is the first responder, then set the window's first responder to nil so
+    // If the view is the first responder, then set the window's first responder to nil so
     // we don't leave the window pointing to a view that's no longer in it.
     NSWindow *window = [view window];
     NSResponder *firstResponder = [window firstResponder];
@@ -206,7 +208,10 @@ void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPoli
     Ref<Widget> protectedThis(*this);
 
     NSGraphicsContext *currentContext = [NSGraphicsContext currentContext];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if (currentContext == [[view window] graphicsContext] || ![currentContext isDrawingToScreen]) {
+#pragma clang diagnostic pop
         // This is the common case of drawing into a window or an inclusive layer, or printing.
         BEGIN_BLOCK_OBJC_EXCEPTIONS;
         [view displayRectIgnoringOpacity:[view convertRect:r fromView:[view superview]]];
@@ -233,7 +238,10 @@ void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPoli
     }
 
     CGContextRef cgContext = p.platformContext();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     ASSERT(cgContext == [currentContext graphicsPort]);
+#pragma clang diagnostic pop
     CGContextSaveGState(cgContext);
 
     NSRect viewFrame = [view frame];
@@ -247,7 +255,10 @@ void Widget::paint(GraphicsContext& p, const IntRect& r, SecurityOriginPaintPoli
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithGraphicsPort:cgContext flipped:NO];
+#pragma clang diagnostic pop
         [view displayRectIgnoringOpacity:[view convertRect:r fromView:[view superview]] inContext:nsContext];
     }
     END_BLOCK_OBJC_EXCEPTIONS;
@@ -339,3 +350,5 @@ void Widget::setPlatformWidget(NSView *widget)
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(MAC)

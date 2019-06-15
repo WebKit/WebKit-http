@@ -55,6 +55,8 @@ struct Trigger {
     };
     ConditionType conditionType { ConditionType::None };
 
+    WEBCORE_EXPORT Trigger isolatedCopy() const;
+    
     ~Trigger()
     {
         ASSERT(conditions.isEmpty() == (conditionType == ConditionType::None));
@@ -66,6 +68,7 @@ struct Trigger {
     {
         return urlFilter.isEmpty()
             && !urlFilterIsCaseSensitive
+            && !topURLConditionIsCaseSensitive
             && !flags
             && conditions.isEmpty()
             && conditionType == ConditionType::None;
@@ -75,6 +78,7 @@ struct Trigger {
     {
         return urlFilter == other.urlFilter
             && urlFilterIsCaseSensitive == other.urlFilterIsCaseSensitive
+            && topURLConditionIsCaseSensitive == other.topURLConditionIsCaseSensitive
             && flags == other.flags
             && conditions == other.conditions
             && conditionType == other.conditionType;
@@ -130,25 +134,19 @@ struct TriggerHashTraits : public WTF::CustomHashTraits<Trigger> {
 };
 
 struct Action {
-    Action()
-        : m_type(ActionType::InvalidAction)
-        , m_actionID(std::numeric_limits<uint32_t>::max())
-    {
-    }
-
     Action(ActionType type, const String& stringArgument, uint32_t actionID = std::numeric_limits<uint32_t>::max())
         : m_type(type)
         , m_actionID(actionID)
         , m_stringArgument(stringArgument)
     {
-        ASSERT(type == ActionType::CSSDisplayNoneSelector || type == ActionType::CSSDisplayNoneStyleSheet);
+        ASSERT(hasStringArgument(type));
     }
 
     Action(ActionType type, uint32_t actionID = std::numeric_limits<uint32_t>::max())
         : m_type(type)
         , m_actionID(actionID)
     {
-        ASSERT(type != ActionType::CSSDisplayNoneSelector && type != ActionType::CSSDisplayNoneStyleSheet);
+        ASSERT(!hasStringArgument(type));
     }
 
     bool operator==(const Action& other) const
@@ -169,7 +167,16 @@ struct Action {
     uint32_t actionID() const { return m_actionID; }
     const String& stringArgument() const { return m_stringArgument; }
 
+    WEBCORE_EXPORT Action isolatedCopy() const;
+    
 private:
+    Action(String&& extensionIdentifier, ActionType type, uint32_t actionID, String&& stringArgument)
+        : m_extensionIdentifier(WTFMove(extensionIdentifier))
+        , m_type(type)
+        , m_actionID(actionID)
+        , m_stringArgument(WTFMove(stringArgument))
+    { }
+
     String m_extensionIdentifier;
     ActionType m_type;
     uint32_t m_actionID;
@@ -178,10 +185,19 @@ private:
     
 class ContentExtensionRule {
 public:
-    ContentExtensionRule(Trigger&&, Action&&);
+    WEBCORE_EXPORT ContentExtensionRule(Trigger&&, Action&&);
 
     const Trigger& trigger() const { return m_trigger; }
     const Action& action() const { return m_action; }
+
+    ContentExtensionRule isolatedCopy() const
+    {
+        return { m_trigger.isolatedCopy(), m_action.isolatedCopy() };
+    }
+    bool operator==(const ContentExtensionRule& other) const
+    {
+        return m_trigger == other.m_trigger && m_action == other.m_action;
+    }
 
 private:
     Trigger m_trigger;

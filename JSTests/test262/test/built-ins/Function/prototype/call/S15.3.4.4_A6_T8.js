@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The call method takes one or more arguments, thisArg and (optionally) arg1, arg2 etc, and performs
     a function call using the [[Call]] property of the object
 es5id: 15.3.4.4_A6_T8
@@ -11,9 +11,9 @@ description: >
     function call without declaration used
 ---*/
 
-(function (){
-  Function("a1,a2,a3","this.shifted=a1.length+a2+a3;").call(this,arguments,"",2);
-})("",4,2,null);
+(function() {
+  Function("a1,a2,a3", "this.shifted=a1.length+a2+a3;").call(this, arguments, "", 2);
+})("", 4, 2, null);
 
 //CHECK#2
 if (this["shifted"] !== "42") {

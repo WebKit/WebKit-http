@@ -31,19 +31,18 @@
 #include "CAAudioStreamDescription.h"
 #include "CARingBuffer.h"
 #include "Logging.h"
-#include "MediaTimeAVFoundation.h"
 #include <AudioToolbox/AudioConverter.h>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 #include <mutex>
+#include <pal/avfoundation/MediaTimeAVFoundation.h>
 #include <syslog.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/StringPrintStream.h>
 
-#include "CoreMediaSoftLink.h"
+#include <pal/cf/CoreMediaSoftLink.h>
 
 namespace WebCore {
-
+using namespace PAL;
 using namespace JSC;
 
 Ref<AudioSampleDataSource> AudioSampleDataSource::create(size_t maximumSampleCount)
@@ -192,7 +191,7 @@ void AudioSampleDataSource::pushSamples(const AudioStreamBasicDescription& sampl
     ASSERT(m_ringBuffer);
     
     WebAudioBufferList list(*m_inputDescription, sampleBuffer);
-    pushSamplesInternal(list, toMediaTime(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)), CMSampleBufferGetNumSamples(sampleBuffer));
+    pushSamplesInternal(list, PAL::toMediaTime(PAL::CMSampleBufferGetPresentationTimeStamp(sampleBuffer)), PAL::CMSampleBufferGetNumSamples(sampleBuffer));
 }
 
 void AudioSampleDataSource::pushSamples(const MediaTime& sampleTime, const PlatformAudioData& audioData, size_t sampleCount)

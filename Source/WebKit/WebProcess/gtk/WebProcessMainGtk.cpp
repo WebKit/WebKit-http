@@ -33,15 +33,13 @@
 #include <gtk/gtk.h>
 #include <libintl.h>
 #include <libsoup/soup.h>
-#include <wtf/CurrentTime.h>
 
 #if PLATFORM(X11)
 #include <X11/Xlib.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 class WebProcessMain final: public ChildProcessMainBase {
 public:

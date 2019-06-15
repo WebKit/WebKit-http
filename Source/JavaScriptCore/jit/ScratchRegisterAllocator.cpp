@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -189,7 +189,7 @@ void ScratchRegisterAllocator::preserveUsedRegistersToScratchBufferForCall(Macro
     }
     RELEASE_ASSERT(count * sizeof(JSValue) == desiredScratchBufferSizeForCall());
     
-    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->activeLengthPtr()), scratchGPR);
+    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), scratchGPR);
     jit.storePtr(MacroAssembler::TrustedImmPtr(static_cast<size_t>(count * sizeof(JSValue))), scratchGPR);
 }
 
@@ -210,8 +210,8 @@ void ScratchRegisterAllocator::restoreUsedRegistersFromScratchBufferForCall(Macr
     }
     RELEASE_ASSERT(scratchGPR != InvalidGPRReg);
     
-    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->activeLengthPtr()), scratchGPR);
-    jit.storePtr(MacroAssembler::TrustedImmPtr(0), scratchGPR);
+    jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), scratchGPR);
+    jit.storePtr(MacroAssembler::TrustedImmPtr(nullptr), scratchGPR);
 
     // Restore double registers first.
     unsigned count = usedRegisters.numberOfSetGPRs();

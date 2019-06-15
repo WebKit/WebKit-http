@@ -3,13 +3,14 @@
 /*---
 esid: sec-%typedarray%.prototype.slice
 description: Use internal ArrayLength instead of getting a length property
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
   3. Let len be the value of O's [[ArrayLength]] internal slot.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var getCalls = 0;

@@ -18,19 +18,23 @@ import android.opengl.EGLContext;
 import android.opengl.EGLDisplay;
 import android.opengl.EGLExt;
 import android.opengl.EGLSurface;
+import android.os.Build;
+import javax.annotation.Nullable;
 import android.view.Surface;
+import org.webrtc.EglBase;
 
 /**
  * Holds EGL state and utility methods for handling an EGL14 EGLContext, an EGLDisplay,
  * and an EGLSurface.
  */
+@SuppressWarnings("ReferenceEquality") // We want to compare to EGL14 constants.
 @TargetApi(18)
-class EglBase14 extends EglBase {
+class EglBase14 implements EglBase {
   private static final String TAG = "EglBase14";
   private static final int EGLExt_SDK_VERSION = android.os.Build.VERSION_CODES.JELLY_BEAN_MR2;
   private static final int CURRENT_SDK_VERSION = android.os.Build.VERSION.SDK_INT;
   private EGLContext eglContext;
-  private EGLConfig eglConfig;
+  @Nullable private EGLConfig eglConfig;
   private EGLDisplay eglDisplay;
   private EGLSurface eglSurface = EGL14.EGL_NO_SURFACE;
 
@@ -43,8 +47,16 @@ class EglBase14 extends EglBase {
     return (CURRENT_SDK_VERSION >= EGLExt_SDK_VERSION);
   }
 
-  public static class Context extends EglBase.Context {
+  public static class Context implements EglBase.Context {
     private final android.opengl.EGLContext egl14Context;
+
+    @Override
+    @SuppressWarnings("deprecation")
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    public long getNativeEglContext() {
+      return CURRENT_SDK_VERSION >= Build.VERSION_CODES.LOLLIPOP ? egl14Context.getNativeHandle()
+                                                                 : egl14Context.getHandle();
+    }
 
     public Context(android.opengl.EGLContext eglContext) {
       this.egl14Context = eglContext;
@@ -196,6 +208,7 @@ class EglBase14 extends EglBase {
     }
   }
 
+  @Override
   public void swapBuffers(long timeStampNs) {
     checkIsNotReleased();
     if (eglSurface == EGL14.EGL_NO_SURFACE) {
@@ -245,7 +258,7 @@ class EglBase14 extends EglBase {
 
   // Return an EGLConfig, or die trying.
   private static EGLContext createEglContext(
-      EglBase14.Context sharedContext, EGLDisplay eglDisplay, EGLConfig eglConfig) {
+      @Nullable EglBase14.Context sharedContext, EGLDisplay eglDisplay, EGLConfig eglConfig) {
     if (sharedContext != null && sharedContext.egl14Context == EGL14.EGL_NO_CONTEXT) {
       throw new RuntimeException("Invalid sharedContext");
     }

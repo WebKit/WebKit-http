@@ -8,12 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_BUFFER_LEVEL_FILTER_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_BUFFER_LEVEL_FILTER_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_BUFFER_LEVEL_FILTER_H_
+#define MODULES_AUDIO_CODING_NETEQ_BUFFER_LEVEL_FILTER_H_
 
 #include <stddef.h>
 
-#include "webrtc/base/constructormagic.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -28,7 +28,8 @@ class BufferLevelFilter {
   // corresponding number of packets, and is subtracted from the filtered
   // value (thus bypassing the filter operation). |packet_len_samples| is the
   // number of audio samples carried in each incoming packet.
-  virtual void Update(size_t buffer_size_packets, int time_stretched_samples,
+  virtual void Update(size_t buffer_size_packets,
+                      int time_stretched_samples,
                       size_t packet_len_samples);
 
   // Set the current target buffer level (obtained from
@@ -46,4 +47,4 @@ class BufferLevelFilter {
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_BUFFER_LEVEL_FILTER_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_BUFFER_LEVEL_FILTER_H_

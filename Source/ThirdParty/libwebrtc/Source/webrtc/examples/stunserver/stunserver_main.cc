@@ -14,8 +14,8 @@
 
 #include <iostream>
 
-#include "webrtc/p2p/base/stunserver.h"
-#include "webrtc/base/thread.h"
+#include "p2p/base/stunserver.h"
+#include "rtc_base/thread.h"
 
 using cricket::StunServer;
 
@@ -31,7 +31,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  rtc::Thread *pthMain = rtc::Thread::Current();
+  rtc::Thread* pthMain = rtc::Thread::Current();
 
   rtc::AsyncUDPSocket* server_socket =
       rtc::AsyncUDPSocket::Create(pthMain->socketserver(), server_addr);

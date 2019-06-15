@@ -22,16 +22,18 @@
 #include "config.h"
 #include "RenderSVGResourceRadialGradient.h"
 
+#include <wtf/IsoMallocInlines.h>
+
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGResourceRadialGradient);
 
 RenderSVGResourceRadialGradient::RenderSVGResourceRadialGradient(SVGRadialGradientElement& element, RenderStyle&& style)
     : RenderSVGResourceGradient(element, WTFMove(style))
 {
 }
 
-RenderSVGResourceRadialGradient::~RenderSVGResourceRadialGradient()
-{
-}
+RenderSVGResourceRadialGradient::~RenderSVGResourceRadialGradient() = default;
 
 bool RenderSVGResourceRadialGradient::collectGradientAttributes()
 {
@@ -59,16 +61,12 @@ float RenderSVGResourceRadialGradient::focalRadius(const RadialGradientAttribute
     return SVGLengthContext::resolveLength(&radialGradientElement(), attributes.gradientUnits(), attributes.fr());
 }
 
-void RenderSVGResourceRadialGradient::buildGradient(GradientData* gradientData) const
+void RenderSVGResourceRadialGradient::buildGradient(GradientData* gradientData, const RenderStyle& style) const
 {
-    gradientData->gradient = Gradient::create(this->focalPoint(m_attributes),
-        this->focalRadius(m_attributes),
-        this->centerPoint(m_attributes),
-        this->radius(m_attributes));
-
+    gradientData->gradient = Gradient::create(Gradient::RadialData { this->focalPoint(m_attributes), this->centerPoint(m_attributes), this->focalRadius(m_attributes), this->radius(m_attributes), 1 });
     gradientData->gradient->setSpreadMethod(platformSpreadMethodFromSVGType(m_attributes.spreadMethod()));
 
-    addStops(gradientData, m_attributes.stops());
+    addStops(gradientData, m_attributes.stops(), style);
 }
 
 }

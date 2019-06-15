@@ -2,15 +2,17 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.4.1.1
+esid: sec-weakset-iterable
 description: >
   Return IteratorClose(iter, status) if fail on adding value on constructing.
-info: >
+info: |
   WeakSet ( [ iterable ] )
 
   ...
   9. Repeat
     f. Let status be Call(adder, set, «nextValue»).
     g. If status is an abrupt completion, return IteratorClose(iter, status).
+features: [Symbol.iterator]
 ---*/
 
 var count = 0;
@@ -18,14 +20,19 @@ var iterable = {};
 iterable[Symbol.iterator] = function() {
   return {
     next: function() {
-      return { value: null, done: false };
+      return {
+        value: null,
+        done: false
+      };
     },
     return: function() {
       count += 1;
     }
   };
 };
-WeakSet.prototype.add = function() { throw new Test262Error(); };
+WeakSet.prototype.add = function() {
+  throw new Test262Error();
+};
 
 assert.throws(Test262Error, function() {
   new WeakSet(iterable);

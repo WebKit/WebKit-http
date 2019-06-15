@@ -31,8 +31,8 @@
 #include "JSDOMWindowBase.h"
 #include "runtime_object.h"
 #include "runtime_root.h"
-#include "runtime/JSLock.h"
-#include "runtime/ObjectPrototype.h"
+#include <JavaScriptCore/JSLock.h>
+#include <JavaScriptCore/ObjectPrototype.h>
 
 
 #if PLATFORM(QT)
@@ -49,9 +49,7 @@ Array::Array(RefPtr<RootObject>&& rootObject)
     ASSERT(m_rootObject);
 }
 
-Array::~Array()
-{
-}
+Array::~Array() = default;
 
 Instance::Instance(RefPtr<RootObject>&& rootObject)
     : m_rootObject(WTFMove(rootObject))

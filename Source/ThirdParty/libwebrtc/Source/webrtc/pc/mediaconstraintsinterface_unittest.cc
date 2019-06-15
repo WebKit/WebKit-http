@@ -8,10 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/api/mediaconstraintsinterface.h"
+#include "api/mediaconstraintsinterface.h"
 
-#include "webrtc/api/test/fakeconstraints.h"
-#include "webrtc/base/gunit.h"
+#include "api/test/fakeconstraints.h"
+#include "rtc_base/gunit.h"
 
 namespace webrtc {
 
@@ -28,13 +28,7 @@ bool Matches(const PeerConnectionInterface::RTCConfiguration& a,
          a.screencast_min_bitrate == b.screencast_min_bitrate &&
          a.combined_audio_video_bwe == b.combined_audio_video_bwe &&
          a.enable_dtls_srtp == b.enable_dtls_srtp &&
-         a.media_config.enable_dscp == b.media_config.enable_dscp &&
-         a.media_config.video.enable_cpu_overuse_detection ==
-             b.media_config.video.enable_cpu_overuse_detection &&
-         a.media_config.video.disable_prerenderer_smoothing ==
-             b.media_config.video.disable_prerenderer_smoothing &&
-         a.media_config.video.suspend_below_min_bitrate ==
-             b.media_config.video.suspend_below_min_bitrate;
+         a.media_config == b.media_config;
 }
 
 TEST(MediaConstraintsInterface, CopyConstraintsIntoRtcConfiguration) {
@@ -62,7 +56,7 @@ TEST(MediaConstraintsInterface, CopyConstraintsIntoRtcConfiguration) {
   // values that are already present.
   constraints = FakeConstraints();
   configuration = old_configuration;
-  configuration.enable_dtls_srtp = rtc::Optional<bool>(true);
+  configuration.enable_dtls_srtp = true;
   configuration.audio_jitter_buffer_max_packets = 34;
   CopyConstraintsIntoRtcConfiguration(&constraints, &configuration);
   EXPECT_EQ(34, configuration.audio_jitter_buffer_max_packets);

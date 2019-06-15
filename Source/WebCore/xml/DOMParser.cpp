@@ -20,13 +20,12 @@
 #include "DOMParser.h"
 
 #include "DOMImplementation.h"
-#include "ExceptionCode.h"
 #include "SecurityOriginPolicy.h"
 
 namespace WebCore {
 
 inline DOMParser::DOMParser(Document& contextDocument)
-    : m_contextDocument(contextDocument.createWeakPtr())
+    : m_contextDocument(makeWeakPtr(contextDocument))
 {
 }
 

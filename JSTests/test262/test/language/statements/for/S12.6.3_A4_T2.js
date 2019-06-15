@@ -2,14 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     "in"-expression is not allowed as a ExpressionNoIn in "for
     (ExpressionNoIn; FirstExpression; SecondExpression) Statement"
     IterationStatement
 es5id: 12.6.3_A4_T2
 description: Checking if execution of "for (1 in arr;1;){}" fails
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 arr = [1,2,3,4,5];
 

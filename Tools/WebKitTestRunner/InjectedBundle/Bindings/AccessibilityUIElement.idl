@@ -53,7 +53,7 @@ interface AccessibilityUIElement {
     readonly attribute DOMString helpText;
     readonly attribute DOMString valueDescription;
     readonly attribute DOMString url;
-    readonly attribute DOMString speak;
+    readonly attribute DOMString speakAs;
     readonly attribute DOMString orientation;
     readonly attribute long insertionPointLineNumber;
     readonly attribute DOMString selectedTextRange;
@@ -115,8 +115,12 @@ interface AccessibilityUIElement {
     // Actions.
     void increment();
     void decrement();
+    void asyncIncrement();
+    void asyncDecrement();
     void press();
+    void syncPress();
     void showMenu();
+    boolean dismiss();
 
     // Attribute info.
     DOMString allAttributes();
@@ -173,6 +177,7 @@ interface AccessibilityUIElement {
     DOMString boundsForRange(unsigned long location, unsigned long length);
     DOMString stringForRange(unsigned long location, unsigned long length);
     DOMString attributedStringForRange(unsigned long location, unsigned long length);
+    DOMString attributedStringForElement();
     boolean attributedStringRangeIsMisspelled(unsigned long location, unsigned long length);
     [PassContext] unsigned long uiElementCountForSearchPredicate(AccessibilityUIElement startElement, boolean isDirectionNext, object searchKey, DOMString searchText, boolean visibleOnly, boolean immediateDescendantsOnly);
     [PassContext] AccessibilityUIElement uiElementForSearchPredicate(AccessibilityUIElement startElement, boolean isDirectionNext, object searchKey, DOMString searchText, boolean visibleOnly, boolean immediateDescendantsOnly);
@@ -208,6 +213,8 @@ interface AccessibilityUIElement {
     AccessibilityTextMarker nextTextMarker(AccessibilityTextMarker marker);
     AccessibilityUIElement accessibilityElementForTextMarker(AccessibilityTextMarker marker);
     DOMString stringForTextMarkerRange(AccessibilityTextMarkerRange range);
+    DOMString attributedStringForTextMarkerRange(AccessibilityTextMarkerRange range);
+    DOMString attributedStringForTextMarkerRangeWithOptions(AccessibilityTextMarkerRange range, boolean includeSpellCheck);
     long textMarkerRangeLength(AccessibilityTextMarkerRange range);
     boolean attributedStringForTextMarkerRangeContainsAttribute(DOMString attr, AccessibilityTextMarkerRange range);
     long indexForTextMarker(AccessibilityTextMarker marker);

@@ -26,35 +26,36 @@
 
 #include "GraphicsContext.h"
 #include "HitTestRequest.h"
+#include "HitTestResult.h"
 #include "LayoutRepainter.h"
 #include "RenderIterator.h"
 #include "RenderSVGResourceFilter.h"
+#include "RenderTreeBuilder.h"
 #include "RenderView.h"
 #include "SVGRenderingContext.h"
 #include "SVGResources.h"
 #include "SVGResourcesCache.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGContainer);
+
 RenderSVGContainer::RenderSVGContainer(SVGElement& element, RenderStyle&& style)
     : RenderSVGModelObject(element, WTFMove(style))
-    , m_objectBoundingBoxValid(false)
-    , m_needsBoundariesUpdate(true)
 {
 }
 
-RenderSVGContainer::~RenderSVGContainer()
-{
-}
+RenderSVGContainer::~RenderSVGContainer() = default;
 
 void RenderSVGContainer::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
 
-    // RenderSVGRoot disables layoutState for the SVG rendering tree.
-    ASSERT(!view().layoutStateEnabled());
+    // RenderSVGRoot disables paint offset cache for the SVG rendering tree.
+    ASSERT(!view().frameView().layoutContext().isPaintOffsetCacheEnabled());
 
     LayoutRepainter repainter(*this, SVGRenderSupport::checkForSVGRepaintDuringLayout(*this) || selfWillPaint());
 
@@ -87,19 +88,6 @@ void RenderSVGContainer::layout()
     clearNeedsLayout();
 }
 
-void RenderSVGContainer::addChild(RenderObject* child, RenderObject* beforeChild)
-{
-    RenderSVGModelObject::addChild(child, beforeChild);
-    SVGResourcesCache::clientWasAddedToTree(*child);
-}
-
-void RenderSVGContainer::removeChild(RenderObject& child)
-{
-    SVGResourcesCache::clientWillBeRemovedFromTree(child);
-    RenderSVGModelObject::removeChild(child);
-}
-
-
 bool RenderSVGContainer::selfWillPaint()
 {
     auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*this);
@@ -130,7 +118,7 @@ void RenderSVGContainer::paint(PaintInfo& paintInfo, const LayoutPoint&)
 
         SVGRenderingContext renderingContext;
         bool continueRendering = true;
-        if (childPaintInfo.phase == PaintPhaseForeground) {
+        if (childPaintInfo.phase == PaintPhase::Foreground) {
             renderingContext.prepareToRenderSVGContent(*this, childPaintInfo);
             continueRendering = renderingContext.isRenderingPrepared();
         }
@@ -146,8 +134,8 @@ void RenderSVGContainer::paint(PaintInfo& paintInfo, const LayoutPoint&)
     // to avoid our clip killing our outline rect. Thus we translate our
     // outline rect into parent coords before drawing.
     // FIXME: This means our focus ring won't share our rotation like it should.
-    // We should instead disable our clip during PaintPhaseOutline
-    if (paintInfo.phase == PaintPhaseSelfOutline && style().outlineWidth() && style().visibility() == VISIBLE) {
+    // We should instead disable our clip during PaintPhase::Outline
+    if (paintInfo.phase == PaintPhase::SelfOutline && style().outlineWidth() && style().visibility() == Visibility::Visible) {
         IntRect paintRectInParent = enclosingIntRect(localToParentTransform().mapRect(repaintRect));
         paintOutline(paintInfo, paintRectInParent);
     }
@@ -181,14 +169,16 @@ bool RenderSVGContainer::nodeAtFloatPoint(const HitTestRequest& request, HitTest
     for (RenderObject* child = lastChild(); child; child = child->previousSibling()) {
         if (child->nodeAtFloatPoint(request, result, localPoint, hitTestAction)) {
             updateHitTestResult(result, LayoutPoint(localPoint));
-            return true;
+            if (result.addNodeToListBasedTestResult(child->node(), request, localPoint) == HitTestProgress::Stop)
+                return true;
         }
     }
 
     // Accessibility wants to return SVG containers, if appropriate.
     if (request.type() & HitTestRequest::AccessibilityHitTest && m_objectBoundingBox.contains(localPoint)) {
         updateHitTestResult(result, LayoutPoint(localPoint));
-        return true;
+        if (result.addNodeToListBasedTestResult(&element(), request, localPoint) == HitTestProgress::Stop)
+            return true;
     }
     
     // Spec: Only graphical elements can be targeted by the mouse, period.

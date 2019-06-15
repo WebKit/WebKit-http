@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.1.3.14
+esid: sec-array.prototype.lastindexof
+es6id: 22.1.3.15
 description: >
   Array.prototype.lastIndexOf.name is "lastIndexOf".
-info: >
+info: |
   Array.prototype.lastIndexOf ( searchElement [ , fromIndex ] )
 
   17 ECMAScript Standard Built-in Objects:

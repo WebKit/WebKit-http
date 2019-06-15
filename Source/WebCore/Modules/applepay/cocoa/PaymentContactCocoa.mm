@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,8 @@
 #if ENABLE(APPLE_PAY)
 
 #import "ApplePayPaymentContact.h"
-#import "PassKitSPI.h"
 #import <Contacts/Contacts.h>
+#import <pal/spi/cocoa/PassKitSPI.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/StringBuilder.h>
 
@@ -48,14 +48,92 @@ SOFT_LINK_CLASS(PassKit, PKContact)
 
 namespace WebCore {
 
-static RetainPtr<PKContact> convert(const ApplePayPaymentContact& contact)
+static NSString *subLocality(CNPostalAddress *address)
+{
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    if (![address respondsToSelector:@selector(subLocality)])
+        return nil;
+#endif
+    return address.subLocality;
+#else
+    UNUSED_PARAM(address);
+    return nil;
+#endif
+}
+
+static void setSubLocality(CNMutablePostalAddress *address, NSString *subLocality)
+{
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    if (![address respondsToSelector:@selector(setSubLocality:)])
+        return;
+#endif
+    address.subLocality = subLocality;
+#else
+    UNUSED_PARAM(address);
+    UNUSED_PARAM(subLocality);
+#endif
+}
+
+static NSString *subAdministrativeArea(CNPostalAddress *address)
+{
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    if (![address respondsToSelector:@selector(subAdministrativeArea)])
+        return nil;
+#endif
+    return address.subAdministrativeArea;
+#else
+    UNUSED_PARAM(address);
+    return nil;
+#endif
+}
+
+static void setSubAdministrativeArea(CNMutablePostalAddress *address, NSString *subAdministrativeArea)
+{
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101204)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+    if (![address respondsToSelector:@selector(setSubAdministrativeArea:)])
+        return;
+#endif
+    address.subAdministrativeArea = subAdministrativeArea;
+#else
+    UNUSED_PARAM(address);
+    UNUSED_PARAM(subAdministrativeArea);
+#endif
+}
+
+static RetainPtr<PKContact> convert(unsigned version, const ApplePayPaymentContact& contact)
 {
     auto result = adoptNS([allocPKContactInstance() init]);
 
-    if (!contact.familyName.isEmpty() || !contact.givenName.isEmpty()) {
+    NSString *familyName = nil;
+    NSString *phoneticFamilyName = nil;
+    if (!contact.familyName.isEmpty()) {
+        familyName = contact.familyName;
+        if (version >= 3 && !contact.phoneticFamilyName.isEmpty())
+            phoneticFamilyName = contact.phoneticFamilyName;
+    }
+
+    NSString *givenName = nil;
+    NSString *phoneticGivenName = nil;
+    if (!contact.givenName.isEmpty()) {
+        givenName = contact.givenName;
+        if (version >= 3 && !contact.phoneticGivenName.isEmpty())
+            phoneticGivenName = contact.phoneticGivenName;
+    }
+
+    if (familyName || givenName) {
         auto name = adoptNS([[NSPersonNameComponents alloc] init]);
-        [name setFamilyName:contact.familyName];
-        [name setGivenName:contact.givenName];
+        [name setFamilyName:familyName];
+        [name setGivenName:givenName];
+        if (phoneticFamilyName || phoneticGivenName) {
+            auto phoneticName = adoptNS([[NSPersonNameComponents alloc] init]);
+            [phoneticName setFamilyName:phoneticFamilyName];
+            [phoneticName setGivenName:phoneticGivenName];
+            [name setPhoneticRepresentation:phoneticName.get()];
+        }
         [result setName:name.get()];
     }
 
@@ -74,14 +152,18 @@ static RetainPtr<PKContact> convert(const ApplePayPaymentContact& contact)
             if (i != contact.addressLines->size() - 1)
                 builder.append('\n');
         }
-        
+
         // FIXME: StringBuilder should hava a toNSString() function to avoid the extra String allocation.
         [address setStreet:builder.toString()];
 
+        if (!contact.subLocality.isEmpty())
+            setSubLocality(address.get(), contact.subLocality);
         if (!contact.locality.isEmpty())
             [address setCity:contact.locality];
         if (!contact.postalCode.isEmpty())
             [address setPostalCode:contact.postalCode];
+        if (!contact.subAdministrativeArea.isEmpty())
+            setSubAdministrativeArea(address.get(), contact.subAdministrativeArea);
         if (!contact.administrativeArea.isEmpty())
             [address setState:contact.administrativeArea];
         if (!contact.country.isEmpty())
@@ -95,47 +177,53 @@ static RetainPtr<PKContact> convert(const ApplePayPaymentContact& contact)
     return result;
 }
 
-static ApplePayPaymentContact convert(PKContact *contact)
+static ApplePayPaymentContact convert(unsigned version, PKContact *contact)
 {
     ASSERT(contact);
 
     ApplePayPaymentContact result;
 
-    if (contact.phoneNumber)
-        result.phoneNumber = contact.phoneNumber.stringValue;
-    if (contact.emailAddress)
-        result.emailAddress = contact.emailAddress;
-    if (contact.name.givenName)
-        result.givenName = contact.name.givenName;
-    if (contact.name.familyName)
-        result.familyName = contact.name.familyName;
-    if (contact.postalAddress.street.length) {
-        Vector<String> addressLines;
-        String(contact.postalAddress.street).split("\n", addressLines);
+    result.phoneNumber = contact.phoneNumber.stringValue;
+    result.emailAddress = contact.emailAddress;
+
+    NSPersonNameComponents *name = contact.name;
+    result.givenName = name.givenName;
+    result.familyName = name.familyName;
+    if (name)
+        result.localizedName = [NSPersonNameComponentsFormatter localizedStringFromPersonNameComponents:name style:NSPersonNameComponentsFormatterStyleDefault options:0];
+
+    if (version >= 3) {
+        NSPersonNameComponents *phoneticName = name.phoneticRepresentation;
+        result.phoneticGivenName = phoneticName.givenName;
+        result.phoneticFamilyName = phoneticName.familyName;
+        if (phoneticName)
+            result.localizedPhoneticName = [NSPersonNameComponentsFormatter localizedStringFromPersonNameComponents:name style:NSPersonNameComponentsFormatterStyleDefault options:NSPersonNameComponentsFormatterPhonetic];
+    }
+
+    CNPostalAddress *postalAddress = contact.postalAddress;
+    if (postalAddress.street.length) {
+        Vector<String> addressLines = String(postalAddress.street).split('\n');
         result.addressLines = WTFMove(addressLines);
     }
-    if (contact.postalAddress.city)
-        result.locality = contact.postalAddress.city;
-    if (contact.postalAddress.postalCode)
-        result.postalCode = contact.postalAddress.postalCode;
-    if (contact.postalAddress.state)
-        result.administrativeArea = contact.postalAddress.state;
-    if (contact.postalAddress.country)
-        result.country = contact.postalAddress.country;
-    if (contact.postalAddress.ISOCountryCode)
-        result.countryCode = contact.postalAddress.ISOCountryCode;
+    result.subLocality = subLocality(postalAddress);
+    result.locality = postalAddress.city;
+    result.postalCode = postalAddress.postalCode;
+    result.subAdministrativeArea = subAdministrativeArea(postalAddress);
+    result.administrativeArea = postalAddress.state;
+    result.country = postalAddress.country;
+    result.countryCode = postalAddress.ISOCountryCode;
 
     return result;
 }
 
-PaymentContact PaymentContact::fromApplePayPaymentContact(const ApplePayPaymentContact& contact)
+PaymentContact PaymentContact::fromApplePayPaymentContact(unsigned version, const ApplePayPaymentContact& contact)
 {
-    return PaymentContact(convert(contact).get());
+    return PaymentContact(convert(version, contact).get());
 }
 
-ApplePayPaymentContact PaymentContact::toApplePayPaymentContact() const
+ApplePayPaymentContact PaymentContact::toApplePayPaymentContact(unsigned version) const
 {
-    return convert(m_pkContact.get());
+    return convert(version, m_pkContact.get());
 }
 
 }

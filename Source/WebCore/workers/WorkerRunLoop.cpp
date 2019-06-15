@@ -39,7 +39,6 @@
 #include "WorkerGlobalScope.h"
 #include "WorkerThread.h"
 #include <JavaScriptCore/PromiseDeferredTimer.h>
-#include <wtf/CurrentTime.h>
 
 #if USE(GLIB)
 #include <glib.h>
@@ -105,7 +104,7 @@ String WorkerRunLoop::defaultMode()
 
 String WorkerRunLoop::debuggerMode()
 {
-    return ASCIILiteral("debugger");
+    return "debugger"_s;
 }
 
 class RunLoopSetup {
@@ -151,7 +150,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
 MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, const ModePredicate& predicate, WaitMode waitMode)
 {
     ASSERT(context);
-    ASSERT(context->thread().threadID() == currentThread());
+    ASSERT(context->thread().thread() == &Thread::current());
 
     JSC::JSRunLoopTimer::TimerNotificationCallback timerAddedTask = WTF::createSharedTask<JSC::JSRunLoopTimer::TimerNotificationType>([this] {
         // We don't actually do anything here, we just want to loop around runInMode
@@ -221,7 +220,7 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
 void WorkerRunLoop::runCleanupTasks(WorkerGlobalScope* context)
 {
     ASSERT(context);
-    ASSERT(context->thread().threadID() == currentThread());
+    ASSERT(context->thread().thread() == &Thread::current());
     ASSERT(m_messageQueue.killed());
 
     while (true) {

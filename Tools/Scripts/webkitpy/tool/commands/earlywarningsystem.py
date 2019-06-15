@@ -39,6 +39,7 @@ from webkitpy.common.system.executive import ScriptError
 from webkitpy.tool.bot.earlywarningsystemtask import EarlyWarningSystemTask, EarlyWarningSystemTaskDelegate
 from webkitpy.tool.bot.bindingstestresultsreader import BindingsTestResultsReader
 from webkitpy.tool.bot.layouttestresultsreader import LayoutTestResultsReader
+from webkitpy.tool.bot.webkitpytestresultsreader import WebkitpyTestResultsReader
 from webkitpy.tool.bot.jsctestresultsreader import JSCTestResultsReader
 from webkitpy.tool.bot.patchanalysistask import UnableToApplyPatch, PatchIsNotValid, PatchIsNotApplicable
 from webkitpy.tool.bot.queueengine import QueueEngine
@@ -62,6 +63,8 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
             self._test_results_reader = JSCTestResultsReader(self._tool, self._port.jsc_results_directory())
         elif self.group() == "bindings":
             self._test_results_reader = BindingsTestResultsReader(self._tool, self._port.jsc_results_directory())
+        elif self.group() == "webkitpy":
+            self._test_results_reader = WebkitpyTestResultsReader(self._tool, self._port.python_unittest_results_directory())
         else:
             self._test_results_reader = LayoutTestResultsReader(self._tool, self._port.results_directory(), self._log_directory())
 
@@ -85,6 +88,8 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
             message += "\n\n%s" % extra_message_text
         # FIXME: We might want to add some text about rejecting from the commit-queue in
         # the case where patch.commit_queue() isn't already set to '-'.
+        if not self._can_access_bug(patch.bug_id()):
+            return
         if self.watchers:
             tool.bugs.add_cc_to_bug(patch.bug_id(), self.watchers)
         tool.bugs.set_flag_on_attachment(patch.id(), "commit-queue", "-", message)
@@ -99,18 +104,19 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
             succeeded = task.run()
             if not succeeded:
                 # Caller unlocks when review_patch returns True, so we only need to unlock on transient failure.
+                # Unlocking the patch would result in patch being re-tried.
                 self._unlock_patch(patch)
             return succeeded
         except PatchIsNotValid as error:
             self._did_error(patch, "%s did not process patch. Reason: %s" % (self.name, error.failure_message))
             return False
-        except UnableToApplyPatch, e:
+        except UnableToApplyPatch as e:
             self._did_error(patch, "%s unable to apply patch." % self.name)
             return False
-        except PatchIsNotApplicable, e:
+        except PatchIsNotApplicable as e:
             self._did_skip(patch)
             return False
-        except ScriptError, e:
+        except ScriptError as e:
             self._post_reject_message_on_bug(self._tool, patch, task.failure_status_id, self._failing_tests_message(task, patch))
             results_archive = task.results_archive_from_patch_test_run(patch)
             if results_archive:
@@ -127,7 +133,7 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
         self.run_webkit_patch(command + [self._deprecated_port.flag()] + (['--architecture=%s' % self._port.architecture()] if self._port.architecture() and self._port.did_override_architecture else []))
 
     def command_passed(self, message, patch):
-        pass
+        self._update_status(message, patch=patch)
 
     def command_failed(self, message, script_error, patch):
         failure_log = self._log_from_script_error_for_upload(script_error)
@@ -146,7 +152,7 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
         return self._group
 
     def refetch_patch(self, patch):
-        return self._tool.bugs.fetch_attachment(patch.id())
+        return super(AbstractEarlyWarningSystem, self)._refetch_patch(patch)
 
     def report_flaky_tests(self, patch, flaky_test_results, results_archive):
         pass
@@ -156,7 +162,7 @@ class AbstractEarlyWarningSystem(AbstractReviewQueue, EarlyWarningSystemTaskDele
     @classmethod
     def handle_script_error(cls, tool, state, script_error):
         # FIXME: Why does this not exit(1) like the superclass does?
-        _log.error(script_error.message_with_output())
+        _log.error(script_error.message_with_output(output_limit=5000))
 
     @classmethod
     def load_ews_classes(cls):

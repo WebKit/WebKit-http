@@ -47,7 +47,6 @@
 #include "Document.h"
 #include "DynamicsCompressorNode.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "FFTFrame.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -67,7 +66,7 @@
 #include "ScriptController.h"
 #include "ScriptProcessorNode.h"
 #include "WaveShaperNode.h"
-#include <inspector/ScriptCallStack.h>
+#include <JavaScriptCore/ScriptCallStack.h>
 
 #if ENABLE(MEDIA_STREAM)
 #include "MediaStream.h"
@@ -86,7 +85,7 @@
 #endif
 
 #if USE(GSTREAMER)
-#include "GStreamerUtilities.h"
+#include "GStreamerCommon.h"
 #endif
 
 #if PLATFORM(IOS)
@@ -94,15 +93,12 @@
 #include "Settings.h"
 #endif
 
-#include <runtime/ArrayBuffer.h>
+#include <JavaScriptCore/ArrayBuffer.h>
 #include <wtf/Atomics.h>
 #include <wtf/MainThread.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
-
-// FIXME: check the proper way to reference an undefined thread ID
-const int UndefinedThreadIdentifier = 0xffffffff;
 
 const unsigned MaxPeriodicWaveLength = 4096;
 
@@ -137,7 +133,6 @@ AudioContext::AudioContext(Document& document)
     : ActiveDOMObject(&document)
     , m_mediaSession(PlatformMediaSession::create(*this))
     , m_eventQueue(std::make_unique<GenericEventQueue>(*this))
-    , m_graphOwnerThread(UndefinedThreadIdentifier)
 {
     constructCommon();
 
@@ -153,7 +148,6 @@ AudioContext::AudioContext(Document& document, unsigned numberOfChannels, size_t
     , m_isOfflineContext(true)
     , m_mediaSession(PlatformMediaSession::create(*this))
     , m_eventQueue(std::make_unique<GenericEventQueue>(*this))
-    , m_graphOwnerThread(UndefinedThreadIdentifier)
 {
     constructCommon();
 
@@ -168,20 +162,14 @@ void AudioContext::constructCommon()
     // Lets mark it as ActiveDOMObject with pending activity and unmark it in clear method.
     setPendingActivity(this);
 
-#if USE(GSTREAMER)
-    initializeGStreamer();
-#endif
-
     FFTFrame::initialize();
     
     m_listener = AudioListener::create();
 
-#if PLATFORM(IOS)
-    if (document()->settings().audioPlaybackRequiresUserGesture())
+    if (document()->audioPlaybackRequiresUserGesture())
         addBehaviorRestriction(RequireUserGestureForAudioStartRestriction);
     else
         m_restrictions = NoRestrictions;
-#endif
 
 #if PLATFORM(COCOA)
     addBehaviorRestriction(RequirePageConsentForAudioStartRestriction);
@@ -289,7 +277,7 @@ void AudioContext::addReaction(State state, DOMPromiseDeferred<void>&& promise)
 {
     size_t stateIndex = static_cast<size_t>(state);
     if (stateIndex >= m_stateReactions.size())
-        m_stateReactions.resize(stateIndex + 1);
+        m_stateReactions.grow(stateIndex + 1);
 
     m_stateReactions[stateIndex].append(WTFMove(promise));
 }
@@ -300,7 +288,7 @@ void AudioContext::setState(State state)
         return;
 
     m_state = state;
-    m_eventQueue->enqueueEvent(Event::create(eventNames().statechangeEvent, true, false));
+    m_eventQueue->enqueueEvent(Event::create(eventNames().statechangeEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
 
     size_t stateIndex = static_cast<size_t>(state);
     if (stateIndex >= m_stateReactions.size())
@@ -355,7 +343,7 @@ Document* AudioContext::document() const
     return downcast<Document>(m_scriptExecutionContext);
 }
 
-const Document* AudioContext::hostingDocument() const
+Document* AudioContext::hostingDocument() const
 {
     return downcast<Document>(m_scriptExecutionContext);
 }
@@ -399,11 +387,22 @@ void AudioContext::visibilityStateChanged()
     }
 }
 
+bool AudioContext::wouldTaintOrigin(const URL& url) const
+{
+    if (url.protocolIsData())
+        return false;
+
+    if (auto* document = this->document())
+        return !document->securityOrigin().canRequest(url);
+
+    return false;
+}
+
 ExceptionOr<Ref<AudioBuffer>> AudioContext::createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate)
 {
     auto audioBuffer = AudioBuffer::create(numberOfChannels, numberOfFrames, sampleRate);
     if (!audioBuffer)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
     return audioBuffer.releaseNonNull();
 }
 
@@ -411,7 +410,7 @@ ExceptionOr<Ref<AudioBuffer>> AudioContext::createBuffer(ArrayBuffer& arrayBuffe
 {
     auto audioBuffer = AudioBuffer::createFromAudioFileData(arrayBuffer.data(), arrayBuffer.byteLength(), mixToMono, sampleRate());
     if (!audioBuffer)
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     return audioBuffer.releaseNonNull();
 }
 
@@ -441,7 +440,7 @@ ExceptionOr<Ref<MediaElementAudioSourceNode>> AudioContext::createMediaElementSo
     lazyInitialize();
     
     if (mediaElement.audioSourceNode())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     auto node = MediaElementAudioSourceNode::create(*this, mediaElement);
 
@@ -461,7 +460,7 @@ ExceptionOr<Ref<MediaStreamAudioSourceNode>> AudioContext::createMediaStreamSour
 
     auto audioTracks = mediaStream.getAudioTracks();
     if (audioTracks.isEmpty())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     MediaStreamTrack* providerTrack = nullptr;
     for (auto& track : audioTracks) {
@@ -471,7 +470,7 @@ ExceptionOr<Ref<MediaStreamAudioSourceNode>> AudioContext::createMediaStreamSour
         }
     }
     if (!providerTrack)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     lazyInitialize();
 
@@ -521,7 +520,7 @@ ExceptionOr<Ref<ScriptProcessorNode>> AudioContext::createScriptProcessor(size_t
     case 16384:
         break;
     default:
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     }
 
     // An IndexSizeError exception must be thrown if bufferSize or numberOfInputChannels or numberOfOutputChannels
@@ -529,19 +528,19 @@ ExceptionOr<Ref<ScriptProcessorNode>> AudioContext::createScriptProcessor(size_t
     // In this case an IndexSizeError must be thrown.
 
     if (!numberOfInputChannels && !numberOfOutputChannels)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     // This parameter [numberOfInputChannels] determines the number of channels for this node's input. Values of
     // up to 32 must be supported. A NotSupportedError must be thrown if the number of channels is not supported.
 
     if (numberOfInputChannels > maxNumberOfChannels())
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     // This parameter [numberOfOutputChannels] determines the number of channels for this node's output. Values of
     // up to 32 must be supported. A NotSupportedError must be thrown if the number of channels is not supported.
 
     if (numberOfOutputChannels > maxNumberOfChannels())
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     auto node = ScriptProcessorNode::create(*this, m_destinationNode->sampleRate(), bufferSize, numberOfInputChannels, numberOfOutputChannels);
 
@@ -611,7 +610,7 @@ ExceptionOr<Ref<ChannelSplitterNode>> AudioContext::createChannelSplitter(size_t
     lazyInitialize();
     auto node = ChannelSplitterNode::create(*this, m_destinationNode->sampleRate(), numberOfOutputs);
     if (!node)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     return node.releaseNonNull();
 }
 
@@ -621,7 +620,7 @@ ExceptionOr<Ref<ChannelMergerNode>> AudioContext::createChannelMerger(size_t num
     lazyInitialize();
     auto node = ChannelMergerNode::create(*this, m_destinationNode->sampleRate(), numberOfInputs);
     if (!node)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     return node.releaseNonNull();
 }
 
@@ -643,7 +642,7 @@ ExceptionOr<Ref<PeriodicWave>> AudioContext::createPeriodicWave(Float32Array& re
 {
     ASSERT(isMainThread());
     if (real.length() != imaginary.length() || (real.length() > MaxPeriodicWaveLength) || !real.length())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     lazyInitialize();
     return PeriodicWave::create(sampleRate(), real, imaginary);
 }
@@ -697,23 +696,23 @@ void AudioContext::lock(bool& mustReleaseLock)
     // Don't allow regular lock in real-time audio thread.
     ASSERT(isMainThread());
 
-    ThreadIdentifier thisThread = currentThread();
+    Thread& thisThread = Thread::current();
 
-    if (thisThread == m_graphOwnerThread) {
+    if (&thisThread == m_graphOwnerThread) {
         // We already have the lock.
         mustReleaseLock = false;
     } else {
         // Acquire the lock.
         m_contextGraphMutex.lock();
-        m_graphOwnerThread = thisThread;
+        m_graphOwnerThread = &thisThread;
         mustReleaseLock = true;
     }
 }
 
 bool AudioContext::tryLock(bool& mustReleaseLock)
 {
-    ThreadIdentifier thisThread = currentThread();
-    bool isAudioThread = thisThread == audioThread();
+    Thread& thisThread = Thread::current();
+    bool isAudioThread = &thisThread == audioThread();
 
     // Try to catch cases of using try lock on main thread - it should use regular lock.
     ASSERT(isAudioThread || isAudioThreadFinished());
@@ -726,7 +725,7 @@ bool AudioContext::tryLock(bool& mustReleaseLock)
     
     bool hasLock;
     
-    if (thisThread == m_graphOwnerThread) {
+    if (&thisThread == m_graphOwnerThread) {
         // Thread already has the lock.
         hasLock = true;
         mustReleaseLock = false;
@@ -735,7 +734,7 @@ bool AudioContext::tryLock(bool& mustReleaseLock)
         hasLock = m_contextGraphMutex.tryLock();
         
         if (hasLock)
-            m_graphOwnerThread = thisThread;
+            m_graphOwnerThread = &thisThread;
 
         mustReleaseLock = hasLock;
     }
@@ -745,20 +744,20 @@ bool AudioContext::tryLock(bool& mustReleaseLock)
 
 void AudioContext::unlock()
 {
-    ASSERT(currentThread() == m_graphOwnerThread);
+    ASSERT(m_graphOwnerThread == &Thread::current());
 
-    m_graphOwnerThread = UndefinedThreadIdentifier;
+    m_graphOwnerThread = nullptr;
     m_contextGraphMutex.unlock();
 }
 
 bool AudioContext::isAudioThread() const
 {
-    return currentThread() == m_audioThread;
+    return m_audioThread == &Thread::current();
 }
 
 bool AudioContext::isGraphOwner() const
 {
-    return currentThread() == m_graphOwnerThread;
+    return m_graphOwnerThread == &Thread::current();
 }
 
 void AudioContext::addDeferredFinishDeref(AudioNode* node)
@@ -990,7 +989,7 @@ void AudioContext::nodeWillBeginPlayback()
 bool AudioContext::willBeginPlayback()
 {
     if (userGestureRequiredForAudioStart()) {
-        if (!processingUserGestureForMedia())
+        if (!processingUserGestureForMedia() && !document()->isCapturing())
             return false;
         removeBehaviorRestriction(AudioContext::RequireUserGestureForAudioStartRestriction);
     }
@@ -1100,7 +1099,7 @@ void AudioContext::decrementActiveSourceCount()
 void AudioContext::suspend(DOMPromiseDeferred<void>&& promise)
 {
     if (isOfflineContext()) {
-        promise.reject(INVALID_STATE_ERR);
+        promise.reject(InvalidStateError);
         return;
     }
 
@@ -1129,7 +1128,7 @@ void AudioContext::suspend(DOMPromiseDeferred<void>&& promise)
 void AudioContext::resume(DOMPromiseDeferred<void>&& promise)
 {
     if (isOfflineContext()) {
-        promise.reject(INVALID_STATE_ERR);
+        promise.reject(InvalidStateError);
         return;
     }
 
@@ -1158,7 +1157,7 @@ void AudioContext::resume(DOMPromiseDeferred<void>&& promise)
 void AudioContext::close(DOMPromiseDeferred<void>&& promise)
 {
     if (isOfflineContext()) {
-        promise.reject(INVALID_STATE_ERR);
+        promise.reject(InvalidStateError);
         return;
     }
 

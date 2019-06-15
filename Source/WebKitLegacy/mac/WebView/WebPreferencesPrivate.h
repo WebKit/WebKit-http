@@ -62,10 +62,10 @@ typedef enum {
     WebKitFrameFlatteningFullyEnabled
 } WebKitFrameFlattening;
 
-extern NSString *WebPreferencesChangedNotification;
-extern NSString *WebPreferencesRemovedNotification;
-extern NSString *WebPreferencesChangedInternalNotification;
-extern NSString *WebPreferencesCacheModelChangedInternalNotification;
+extern NSString *WebPreferencesChangedNotification WEBKIT_DEPRECATED_MAC(10_3, 10_14);
+extern NSString *WebPreferencesRemovedNotification WEBKIT_DEPRECATED_MAC(10_3, 10_14);
+extern NSString *WebPreferencesChangedInternalNotification WEBKIT_DEPRECATED_MAC(10_3, 10_14);
+extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPRECATED_MAC(10_5, 10_14);
 
 @interface WebPreferences (WebPrivate)
 
@@ -144,6 +144,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)allowFileAccessFromFileURLs;
 - (void)setAllowFileAccessFromFileURLs:(BOOL)flag;
 
+- (BOOL)allowCrossOriginSubresourcesToAskForCredentials;
+- (void)setAllowCrossOriginSubresourcesToAskForCredentials:(BOOL)flag;
+
 - (BOOL)needsStorageAccessFromFileURLsQuirk;
 - (void)setNeedsStorageAccessFromFileURLsQuirk:(BOOL)flag;
 
@@ -179,9 +182,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setPeerConnectionEnabled:(BOOL)flag;
 - (BOOL)peerConnectionEnabled;
-
-- (void)setWebRTCLegacyAPIEnabled:(BOOL)flag;
-- (BOOL)webRTCLegacyAPIEnabled;
 
 #if !TARGET_OS_IPHONE
 // zero means do AutoScale
@@ -423,14 +423,10 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setAVFoundationNSURLSessionEnabled:(BOOL)flag;
 - (BOOL)isAVFoundationNSURLSessionEnabled;
 
-- (void)setQTKitEnabled:(BOOL)flag;
-- (BOOL)isQTKitEnabled;
-
 // Deprecated, has no effect.
 - (void)setVideoPluginProxyEnabled:(BOOL)flag;
 - (BOOL)isVideoPluginProxyEnabled;
 
-// WebSocket support depends on ENABLE(WEB_SOCKETS).
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag;
 - (BOOL)isHixie76WebSocketProtocolEnabled;
 
@@ -535,6 +531,18 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setCustomElementsEnabled:(BOOL)flag;
 - (BOOL)customElementsEnabled;
 
+- (void)setDataTransferItemsEnabled:(BOOL)flag;
+- (BOOL)dataTransferItemsEnabled;
+
+- (void)setCustomPasteboardDataEnabled:(BOOL)flag;
+- (BOOL)customPasteboardDataEnabled;
+
+- (BOOL)cacheAPIEnabled;
+- (void)setCacheAPIEnabled:(BOOL)enabled;
+
+- (BOOL)crossOriginWindowPolicySupportEnabled;
+- (void)setCrossOriginWindowPolicySupportEnabled:(BOOL)enabled;
+
 - (void)setFetchAPIEnabled:(BOOL)flag;
 - (BOOL)fetchAPIEnabled;
 
@@ -547,22 +555,36 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setDownloadAttributeEnabled:(BOOL)flag;
 - (BOOL)downloadAttributeEnabled;
 
-- (void)setCSSGridLayoutEnabled:(BOOL)flag;
-- (BOOL)isCSSGridLayoutEnabled;
+- (void)setDirectoryUploadEnabled:(BOOL)flag;
+- (BOOL)directoryUploadEnabled;
 
 - (void)setWebAnimationsEnabled:(BOOL)flag;
 - (BOOL)webAnimationsEnabled;
 
+- (void)setFetchAPIKeepAliveEnabled:(BOOL)flag;
+- (BOOL)fetchAPIKeepAliveEnabled;
+
 - (void)setModernMediaControlsEnabled:(BOOL)flag;
 - (BOOL)modernMediaControlsEnabled;
 
-- (void)setCredentialManagementEnabled:(BOOL)flag;
-- (BOOL)credentialManagementEnabled;
+- (void)setWebAnimationsCSSIntegrationEnabled:(BOOL)flag;
+- (BOOL)webAnimationsCSSIntegrationEnabled;
+
+- (void)setWebAuthenticationEnabled:(BOOL)flag;
+- (BOOL)webAuthenticationEnabled;
+
+- (void)setIntersectionObserverEnabled:(BOOL)flag;
+- (BOOL)intersectionObserverEnabled;
 
 - (void)setIsSecureContextAttributeEnabled:(BOOL)flag;
 - (BOOL)isSecureContextAttributeEnabled;
 
+- (void)setServerTimingEnabled:(BOOL)flag;
+- (BOOL)serverTimingEnabled;
+
 @property (nonatomic) BOOL visualViewportEnabled;
+@property (nonatomic) BOOL visualViewportAPIEnabled;
+@property (nonatomic) BOOL CSSOMViewScrollingAPIEnabled;
 @property (nonatomic) BOOL largeImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL animatedImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
@@ -570,16 +592,27 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 @property (nonatomic) BOOL attachmentElementEnabled;
 @property (nonatomic) BOOL allowsInlineMediaPlaybackAfterFullscreen;
 @property (nonatomic) BOOL intersectionObserverEnabled;
+@property (nonatomic) BOOL menuItemElementEnabled;
 @property (nonatomic) BOOL displayContentsEnabled;
 @property (nonatomic) BOOL userTimingEnabled;
 @property (nonatomic) BOOL resourceTimingEnabled;
 @property (nonatomic) BOOL linkPreloadEnabled;
-@property (nonatomic) BOOL credentialManagementEnabled;
+@property (nonatomic) BOOL webAuthenticationEnabled;
 @property (nonatomic) BOOL mediaUserGestureInheritsFromDocument;
 @property (nonatomic) BOOL isSecureContextAttributeEnabled;
 @property (nonatomic) BOOL legacyEncryptedMediaAPIEnabled;
+@property (nonatomic) BOOL encryptedMediaAPIEnabled;
 @property (nonatomic) BOOL viewportFitEnabled;
 @property (nonatomic) BOOL constantPropertiesEnabled;
+@property (nonatomic) BOOL colorFilterEnabled;
+@property (nonatomic) BOOL punchOutWhiteBackgroundsInDarkMode;
+@property (nonatomic) BOOL inspectorAdditionsEnabled;
+@property (nonatomic) BOOL allowMediaContentTypesRequiringHardwareSupportAsFallback;
+@property (nonatomic) BOOL accessibilityObjectModelEnabled;
+@property (nonatomic) BOOL ariaReflectionEnabled;
+@property (nonatomic) BOOL mediaCapabilitiesEnabled;
+@property (nonatomic) BOOL allowCrossOriginSubresourcesToAskForCredentials;
+@property (nonatomic) BOOL sourceBufferChangeTypeEnabled;
 
 #if TARGET_OS_IPHONE
 @property (nonatomic) BOOL quickLookDocumentSavingEnabled;

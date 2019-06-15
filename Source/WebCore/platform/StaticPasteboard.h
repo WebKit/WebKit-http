@@ -27,46 +27,58 @@
 
 #include "Pasteboard.h"
 #include <wtf/HashMap.h>
+#include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
-typedef HashMap<String, String> TypeToStringMap;
-
 class StaticPasteboard final : public Pasteboard {
 public:
-    static std::unique_ptr<StaticPasteboard> create(TypeToStringMap&&);
+    StaticPasteboard();
 
-    StaticPasteboard(TypeToStringMap&&);
+    PasteboardCustomData takeCustomData();
+
+    bool isStatic() const final { return true; }
 
     bool hasData() final;
-    Vector<String> types() final;
+    Vector<String> typesSafeForBindings(const String&) final { return m_types; }
+    Vector<String> typesForLegacyUnsafeBindings() final { return m_types; }
+    String readOrigin() final { return { }; }
     String readString(const String& type) final;
+    String readStringInCustomData(const String& type) final;
 
-    void writeString(const String&, const String&) final { }
-    void clear() final { }
-    void clear(const String&) final { }
+    void writeString(const String& type, const String& data) final;
+    void writeStringInCustomData(const String& type, const String& data);
+    void clear() final;
+    void clear(const String& type) final;
 
     void read(PasteboardPlainText&) final { }
-    void read(PasteboardWebContentReader&) final { }
+    void read(PasteboardWebContentReader&, WebContentReadingPolicy) final { }
 
     void write(const PasteboardURL&) final { }
     void write(const PasteboardImage&) final { }
     void write(const PasteboardWebContent&) final { }
 
-    Vector<String> readFilenames() final { return { }; }
+    void writeCustomData(const PasteboardCustomData&) final { }
+
+    Pasteboard::FileContentState fileContentState() final { return FileContentState::NoFileOrImageData; }
     bool canSmartReplace() final { return false; }
 
     void writeMarkup(const String&) final { }
     void writePlainText(const String&, SmartReplaceOption) final { }
-    void writePasteboard(const Pasteboard&) final { }
 
 #if ENABLE(DRAG_SUPPORT)
     void setDragImage(DragImage, const IntPoint&) final { }
 #endif
 
 private:
-    TypeToStringMap m_typeToStringMap;
+    Vector<String> m_types;
+    HashMap<String, String> m_platformData;
+    HashMap<String, String> m_customData;
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StaticPasteboard)
+    static bool isType(const WebCore::Pasteboard& pasteboard) { return pasteboard.isStatic(); }
+SPECIALIZE_TYPE_TRAITS_END()

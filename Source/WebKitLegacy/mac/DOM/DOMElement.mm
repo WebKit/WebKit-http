@@ -37,9 +37,10 @@
 #import <WebCore/Element.h>
 #import <WebCore/HTMLCollection.h>
 #import <WebCore/HTMLNames.h>
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/NameNodeList.h>
 #import <WebCore/NodeList.h>
+#import <WebCore/ScrollIntoViewOptions.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/StyledElement.h>
 #import <WebCore/ThreadCheck.h>
@@ -226,14 +227,6 @@ DOMElement *kit(WebCore::Element* value)
     WebCore::JSMainThreadNullState state;
     unwrap(*self).setAttributeWithoutSynchronization(WebCore::HTMLNames::uiactionsAttr, newUiactions);
 }
-
-#if ENABLE(CSS_REGIONS)
-- (NSString *)webkitRegionOverset
-{
-    WebCore::JSMainThreadNullState state;
-    return unwrap(*self).webkitRegionOverset();
-}
-#endif
 
 - (DOMElement *)previousElementSibling
 {

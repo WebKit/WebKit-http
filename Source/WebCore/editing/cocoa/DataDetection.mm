@@ -30,8 +30,6 @@
 
 #import "Attr.h"
 #import "CSSStyleDeclaration.h"
-#import "DataDetectorsSPI.h"
-#import "DataDetectorsUISPI.h"
 #import "Editing.h"
 #import "ElementAncestorIterator.h"
 #import "ElementTraversal.h"
@@ -50,9 +48,19 @@
 #import "TextIterator.h"
 #import "VisiblePosition.h"
 #import "VisibleUnits.h"
+#import <pal/spi/ios/DataDetectorsUISPI.h>
+#import <pal/spi/mac/DataDetectorsSPI.h>
+#import <wtf/cf/TypeCastsCF.h>
 #import <wtf/text/StringBuilder.h>
 
 #import "DataDetectorsCoreSoftLink.h"
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+template <>
+struct WTF::CFTypeTrait<DDResultRef> {
+    static inline CFTypeID typeID(void) { return DDResultGetCFTypeID(); }
+};
+#endif
 
 namespace WebCore {
 
@@ -78,7 +86,11 @@ static RetainPtr<DDActionContext> detectItemAtPositionWithRange(VisiblePosition 
     RefPtr<Range> mainResultRange;
     CFIndex resultCount = CFArrayGetCount(results.get());
     for (CFIndex i = 0; i < resultCount; i++) {
-        DDResultRef result = (DDResultRef)CFArrayGetValueAtIndex(results.get(), i);
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+        DDResultRef result = checked_cf_cast<DDResultRef>(CFArrayGetValueAtIndex(results.get(), i));
+#else
+        DDResultRef result = static_cast<DDResultRef>(const_cast<CF_BRIDGED_TYPE(id) void*>(CFArrayGetValueAtIndex(results.get(), i)));
+#endif
         CFRange resultRangeInContext = DDResultGetRange(result);
         if (hitLocation >= resultRangeInContext.location && (hitLocation - resultRangeInContext.location) < resultRangeInContext.length) {
             mainResult = result;
@@ -91,7 +103,7 @@ static RetainPtr<DDActionContext> detectItemAtPositionWithRange(VisiblePosition 
         return nullptr;
 
     RetainPtr<DDActionContext> actionContext = adoptNS([allocDDActionContextInstance() init]);
-    [actionContext setAllResults:@[ (id)mainResult ]];
+    [actionContext setAllResults:@[ (__bridge id)mainResult ]];
     [actionContext setMainResult:mainResult];
 
     Vector<FloatQuad> quads;
@@ -152,12 +164,18 @@ RetainPtr<DDActionContext> DataDetection::detectItemAroundHitTestResult(const Hi
 #endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
+
+bool DataDetection::canBePresentedByDataDetectors(const URL& url)
+{
+    return [softLink_DataDetectorsCore_DDURLTapAndHoldSchemes() containsObject:(NSString *)url.protocol().toStringWithoutCopying().convertToASCIILowercase()];
+}
+
 bool DataDetection::isDataDetectorLink(Element& element)
 {
     if (!is<HTMLAnchorElement>(element))
         return false;
 
-    return [softLink_DataDetectorsCore_DDURLTapAndHoldSchemes() containsObject:(NSString *)downcast<HTMLAnchorElement>(element).href().protocol().toStringWithoutCopying().convertToASCIILowercase()];
+    return canBePresentedByDataDetectors(downcast<HTMLAnchorElement>(element).href());
 }
 
 bool DataDetection::requiresExtendedContext(Element& element)
@@ -184,8 +202,7 @@ bool DataDetection::shouldCancelDefaultAction(Element& element)
     NSArray *results = element.document().frame()->dataDetectionResults();
     if (!results)
         return false;
-    Vector<String> resultIndices;
-    resultAttribute.string().split('/', resultIndices);
+    Vector<String> resultIndices = resultAttribute.string().split('/');
     DDResultRef result = [[results objectAtIndex:resultIndices[0].toInt()] coreResult];
     // Handle the case of a signature block, where we need to check the correct subresult.
     for (size_t i = 1; i < resultIndices.size(); i++) {
@@ -231,7 +248,7 @@ static NSString *constructURLStringForResult(DDResultRef currentResult, NSString
 
 static void removeResultLinksFromAnchor(Element& element)
 {
-    // Perform a depth-first search for anchor nodes, which have the DDURLScheme attribute set to true,
+    // Perform a depth-first search for anchor nodes, which have the data detectors attribute set to true,
     // take their children and insert them before the anchor, and then remove the anchor.
 
     // Note that this is not using ElementChildIterator because we potentially prepend children as we iterate over them.

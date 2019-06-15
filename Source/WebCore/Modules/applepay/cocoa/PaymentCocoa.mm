@@ -29,9 +29,9 @@
 #if ENABLE(APPLE_PAY)
 
 #import "ApplePayPayment.h"
-#import "PassKitSPI.h"
 #import "PaymentContact.h"
 #import "PaymentMethod.h"
+#import <pal/spi/cocoa/PassKitSPI.h>
 
 namespace WebCore {
 
@@ -51,7 +51,7 @@ static ApplePayPayment::Token convert(PKPaymentToken *paymentToken)
     return result;
 }
 
-static ApplePayPayment convert(PKPayment *payment)
+static ApplePayPayment convert(unsigned version, PKPayment *payment)
 {
     ASSERT(payment);
 
@@ -60,16 +60,16 @@ static ApplePayPayment convert(PKPayment *payment)
     result.token = convert(payment.token);
 
     if (payment.billingContact)
-        result.billingContact = PaymentContact(payment.billingContact).toApplePayPaymentContact();
+        result.billingContact = PaymentContact(payment.billingContact).toApplePayPaymentContact(version);
     if (payment.shippingContact)
-        result.shippingContact = PaymentContact(payment.shippingContact).toApplePayPaymentContact();
+        result.shippingContact = PaymentContact(payment.shippingContact).toApplePayPaymentContact(version);
 
     return result;
 }
 
-ApplePayPayment Payment::toApplePayPayment() const
+ApplePayPayment Payment::toApplePayPayment(unsigned version) const
 {
-    return convert(m_pkPayment.get());
+    return convert(version, m_pkPayment.get());
 }
 
 }

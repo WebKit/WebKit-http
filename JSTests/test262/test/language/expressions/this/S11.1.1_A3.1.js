@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Being in function code, "this" and eval("this"), called as a functions,
     return the global object
 es5id: 11.1.1_A3.1
@@ -11,13 +11,13 @@ flags: [noStrict]
 ---*/
 
 //CHECK#1
-function MyFunction() {return this}
-if (MyFunction() !== this) {
-  $ERROR('#1: function MyFunction() {return this} MyFunction() === this. Actual: ' + (MyFunction()));
+function ReturnThis() {return this}
+if (ReturnThis() !== this) {
+  $ERROR('#1: function ReturnThis() {return this} ReturnThis() === this. Actual: ' + (ReturnThis()));
 }
 
 //CHECK#2
-function MyFunction() {return eval("this")}
-if (MyFunction() !== this) {
-  $ERROR('#2: function MyFunction() {return eval("this")} MyFunction() === this. Actual: ' + (MyFunction()));
+function ReturnEvalThis() {return eval("this")}
+if (ReturnEvalThis() !== this) {
+  $ERROR('#2: function ReturnEvalThis() {return eval("this")} ReturnEvalThis() === this. Actual: ' + (ReturnEvalThis()));
 }

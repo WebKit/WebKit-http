@@ -37,6 +37,7 @@ class HTMLSlotElement;
 class SlotAssignment;
 
 class ShadowRoot final : public DocumentFragment, public TreeScope {
+    WTF_MAKE_ISO_ALLOCATED(ShadowRoot);
 public:
     static Ref<ShadowRoot> create(Document& document, ShadowRootMode type)
     {
@@ -66,13 +67,18 @@ public:
     Element* activeElement() const;
 
     ShadowRootMode mode() const { return m_type; }
+    bool shouldFireSlotchangeEvent() const { return m_type != ShadowRootMode::UserAgent && !m_hasBegunDeletingDetachedChildren; }
 
     void removeAllEventListeners() override;
 
     HTMLSlotElement* findAssignedSlot(const Node&);
 
+    void renameSlotElement(HTMLSlotElement&, const AtomicString& oldName, const AtomicString& newName);
     void addSlotElementByName(const AtomicString&, HTMLSlotElement&);
-    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&);
+    void removeSlotElementByName(const AtomicString&, HTMLSlotElement&, ContainerNode& oldParentOfRemovedTree);
+    void slotFallbackDidChange(HTMLSlotElement&);
+    void resolveSlotsBeforeNodeInsertionOrRemoval();
+    void willRemoveAllChildren(ContainerNode&);
 
     void didRemoveAllChildrenOfShadowHost();
     void didChangeDefaultSlot();
@@ -80,6 +86,9 @@ public:
     void hostChildElementDidChangeSlotAttribute(Element&, const AtomicString& oldValue, const AtomicString& newValue);
 
     const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
+
+    void moveShadowRootToNewParentScope(TreeScope&, Document&);
+    void moveShadowRootToNewDocument(Document&);
 
 protected:
     ShadowRoot(Document&, ShadowRootMode);
@@ -94,17 +103,16 @@ private:
 
     Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
-    Node::InsertionNotificationRequest insertedInto(ContainerNode& insertionPoint) override;
-    void removedFrom(ContainerNode& insertionPoint) override;
-    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
+    Node::InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void removedFromAncestor(RemovalType, ContainerNode& insertionPoint) override;
 
     bool m_resetStyleInheritance { false };
+    bool m_hasBegunDeletingDetachedChildren { false };
     ShadowRootMode m_type { ShadowRootMode::UserAgent };
 
     Element* m_host { nullptr };
 
     std::unique_ptr<Style::Scope> m_styleScope;
-
     std::unique_ptr<SlotAssignment> m_slotAssignment;
 };
 

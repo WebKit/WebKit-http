@@ -8,15 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_FEC_TEST_HELPER_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_FEC_TEST_HELPER_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_FEC_TEST_HELPER_H_
+#define MODULES_RTP_RTCP_SOURCE_FEC_TEST_HELPER_H_
 
 #include <memory>
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/base/random.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/modules/rtp_rtcp/source/forward_error_correction.h"
+#include "modules/include/module_common_types.h"
+#include "modules/rtp_rtcp/source/forward_error_correction.h"
+#include "rtc_base/random.h"
 
 namespace webrtc {
 namespace test {
@@ -36,11 +35,8 @@ class MediaPacketGenerator {
   MediaPacketGenerator(uint32_t min_packet_size,
                        uint32_t max_packet_size,
                        uint32_t ssrc,
-                       Random* random)
-      : min_packet_size_(min_packet_size),
-        max_packet_size_(max_packet_size),
-        ssrc_(ssrc),
-        random_(random) {}
+                       Random* random);
+  ~MediaPacketGenerator();
 
   // Construct the media packets, up to |num_media_packets| packets.
   ForwardErrorCorrection::PacketList ConstructMediaPackets(
@@ -49,7 +45,7 @@ class MediaPacketGenerator {
   ForwardErrorCorrection::PacketList ConstructMediaPackets(
       int num_media_packets);
 
-  uint16_t GetFecSeqNum();
+  uint16_t GetNextSeqNum();
 
  private:
   uint32_t min_packet_size_;
@@ -58,7 +54,7 @@ class MediaPacketGenerator {
   Random* random_;
 
   ForwardErrorCorrection::PacketList media_packets_;
-  uint16_t fec_seq_num_;
+  uint16_t next_seq_num_;
 };
 
 // This class generates media packets with a certain structure of the payload.
@@ -131,4 +127,4 @@ class UlpfecPacketGenerator : public AugmentedPacketGenerator {
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_FEC_TEST_HELPER_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_FEC_TEST_HELPER_H_

@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.slice
 description: >
   Throws if returned @@species is not a constructor, null or undefined.
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
@@ -26,7 +26,7 @@ info: >
   8. Throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

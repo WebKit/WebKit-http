@@ -28,8 +28,9 @@
 
 namespace WebCore {
 
-template<> DictionaryImplName convertDictionary<DictionaryImplName>(JSC::ExecState&, JSC::JSValue);
+template<> WEBCORE_EXPORT DictionaryImplName convertDictionary<DictionaryImplName>(JSC::ExecState&, JSC::JSValue);
 
+String convertEnumerationToString(TestStandaloneDictionary::EnumInStandaloneDictionaryFile);
 template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, TestStandaloneDictionary::EnumInStandaloneDictionaryFile);
 
 template<> std::optional<TestStandaloneDictionary::EnumInStandaloneDictionaryFile> parseEnumeration<TestStandaloneDictionary::EnumInStandaloneDictionaryFile>(JSC::ExecState&, JSC::JSValue);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,13 +26,15 @@
 #import "config.h"
 #import "WebsiteDataStore.h"
 
+#import "CookieStorageUtilsCF.h"
 #import "StorageManager.h"
 #import "WebResourceLoadStatisticsStore.h"
 #import "WebsiteDataStoreParameters.h"
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/SearchPopupMenuCocoa.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/NeverDestroyed.h>
+#import <wtf/ProcessPrivilege.h>
 
 #if PLATFORM(IOS)
 #import <UIKit/UIApplication.h>
@@ -51,30 +53,37 @@ static Vector<WebsiteDataStore*>& dataStoresWithStorageManagers()
 
 WebsiteDataStoreParameters WebsiteDataStore::parameters()
 {
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
+
     resolveDirectoriesIfNecessary();
 
     WebsiteDataStoreParameters parameters;
-    parameters.sessionID = m_sessionID;
+    parameters.networkSessionParameters = {
+        m_sessionID,
+        m_boundInterfaceIdentifier,
+        m_allowsCellularAccess,
+        m_proxyConfiguration,
+        m_configuration.sourceApplicationBundleIdentifier,
+        m_configuration.sourceApplicationSecondaryIdentifier,
+    };
 
     auto cookieFile = resolvedCookieStorageFile();
 
-#if PLATFORM(COCOA)
     if (m_uiProcessCookieStorageIdentifier.isEmpty()) {
         auto utf8File = cookieFile.utf8();
         auto url = adoptCF(CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault, (const UInt8 *)utf8File.data(), (CFIndex)utf8File.length(), true));
         m_cfCookieStorage = adoptCF(CFHTTPCookieStorageCreateFromFile(kCFAllocatorDefault, url.get(), nullptr));
-        auto cfData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, m_cfCookieStorage.get()));
-
-        m_uiProcessCookieStorageIdentifier.append(CFDataGetBytePtr(cfData.get()), CFDataGetLength(cfData.get()));
+        m_uiProcessCookieStorageIdentifier = identifyingDataFromCookieStorage(m_cfCookieStorage.get());
     }
 
     parameters.uiProcessCookieStorageIdentifier = m_uiProcessCookieStorageIdentifier;
-#endif
+    parameters.networkSessionParameters.sourceApplicationBundleIdentifier = m_configuration.sourceApplicationBundleIdentifier;
+    parameters.networkSessionParameters.sourceApplicationSecondaryIdentifier = m_configuration.sourceApplicationSecondaryIdentifier;
 
-    copyToVector(m_pendingCookies, parameters.pendingCookies);
+    parameters.pendingCookies = copyToVector(m_pendingCookies);
 
     if (!cookieFile.isEmpty())
-        SandboxExtension::createHandleForReadWriteDirectory(WebCore::directoryName(cookieFile), parameters.cookieStoragePathExtensionHandle);
+        SandboxExtension::createHandleForReadWriteDirectory(WebCore::FileSystem::directoryName(cookieFile), parameters.cookieStoragePathExtensionHandle);
 
     return parameters;
 }
@@ -125,7 +134,7 @@ void WebsiteDataStore::platformDestroy()
     }
 }
 
-void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point oldestTimeToRemove)
+void WebsiteDataStore::platformRemoveRecentSearches(WallTime oldestTimeToRemove)
 {
     WebCore::removeRecentlyModifiedRecentSearches(oldestTimeToRemove);
 }

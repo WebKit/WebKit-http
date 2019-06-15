@@ -29,7 +29,6 @@
 #include "ApplicationCacheHost.h"
 #include "Document.h"
 #include "DocumentLoader.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 
@@ -85,7 +84,7 @@ ExceptionOr<void> DOMApplicationCache::update()
 {
     auto* host = applicationCacheHost();
     if (!host || !host->update())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     return { };
 }
 
@@ -93,7 +92,7 @@ ExceptionOr<void> DOMApplicationCache::swapCache()
 {
     auto* host = applicationCacheHost();
     if (!host || !host->swapCache())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     return { };
 }
 

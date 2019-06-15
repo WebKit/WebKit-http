@@ -4,11 +4,32 @@
     "workerSupported": true,
     "types": [
         {
+            "id": "ChannelSource",
+            "type": "string",
+            "enum": ["xml", "javascript", "network", "console-api", "storage", "appcache", "rendering", "css", "security", "content-blocker", "media", "webrtc", "other"],
+            "description": "Channels for different types of log messages."
+        },
+        {
+            "id": "ChannelLevel",
+            "type": "string",
+            "enum": ["off", "basic", "verbose"],
+            "description": "Level of logging."
+        },
+        {
+            "id": "Channel",
+            "description": "Logging channel.",
+            "type": "object",
+            "properties": [
+                { "name": "source", "$ref": "ChannelSource" },
+                { "name": "level", "$ref": "ChannelLevel" }
+            ]
+        },
+        {
             "id": "ConsoleMessage",
             "type": "object",
             "description": "Console message.",
             "properties": [
-                { "name": "source", "type": "string", "enum": ["xml", "javascript", "network", "console-api", "storage", "appcache", "rendering", "css", "security", "content-blocker", "other"], "description": "Message source." },
+                { "name": "source", "$ref": "ChannelSource"},
                 { "name": "level", "type": "string", "enum": ["log", "info", "warning", "error", "debug"], "description": "Message severity." },
                 { "name": "text", "type": "string", "description": "Message text." },
                 { "name": "type", "type": "string", "optional": true, "enum": ["log", "dir", "dirxml", "table", "trace", "clear", "startGroup", "startGroupCollapsed", "endGroup", "assert", "timing", "profile", "profileEnd"], "description": "Console message type." },
@@ -59,19 +80,20 @@
             "description": "Clears console messages collected in the browser."
         },
         {
-            "name": "setMonitoringXHREnabled",
-            "description": "Toggles monitoring of XMLHttpRequest. If <code>true</code>, console will receive messages upon each XHR issued.",
-            "parameters": [
-                { "name": "enabled", "type": "boolean", "description": "Monitoring enabled state." }
+            "name": "getLoggingChannels",
+            "description": "List of the different message sources that are non-default logging channels.",
+            "returns": [
+                { "name": "channels", "type": "array", "items": { "$ref": "Channel"}, "description": "Logging channels." }
             ]
-        },
-        {
-            "name": "addInspectedNode",
-            "description": "Enables console to refer to the node with given id via $0 (see Command Line API for more details).",
+         },
+         {
+            "name": "setLoggingChannelLevel",
+            "description": "Modify the level of a channel.",
             "parameters": [
-                { "name": "nodeId", "$ref": "DOM.NodeId", "description": "DOM node id to be accessible by means of $0 command line API." }
+                { "name": "source", "$ref": "ChannelSource", "description": "Logging channel to modify." },
+                { "name": "level", "$ref": "ChannelLevel", "description": "New level." }
             ]
-        }
+         }
     ],
     "events": [
         {

@@ -30,11 +30,11 @@
 
 namespace JSC {
 
-class ProxyObject : public JSNonFinalObject {
+class ProxyObject final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
-    const static unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | TypeOfShouldCallGetCallData | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | OverridesGetPropertyNames | ProhibitsPropertyCaching;
+    const static unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetCallData | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | OverridesGetPropertyNames | ProhibitsPropertyCaching;
 
     static ProxyObject* create(ExecState* exec, JSGlobalObject* globalObject, JSValue target, JSValue handler)
     {

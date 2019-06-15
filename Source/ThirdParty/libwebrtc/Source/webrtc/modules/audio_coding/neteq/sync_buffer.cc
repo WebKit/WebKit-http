@@ -10,8 +10,8 @@
 
 #include <algorithm>  // Access to min.
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/audio_coding/neteq/sync_buffer.h"
+#include "modules/audio_coding/neteq/sync_buffer.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
@@ -27,7 +27,7 @@ void SyncBuffer::PushBack(const AudioMultiVector& append_this) {
     next_index_ -= samples_added;
   } else {
     // This means that we are pushing out future data that was never used.
-//    assert(false);
+    //    assert(false);
     // TODO(hlundin): This assert must be disabled to support 60 ms frames.
     // This should not happen even for 60 ms frames, but it does. Investigate
     // why.
@@ -74,10 +74,9 @@ void SyncBuffer::GetNextAudioInterleaved(size_t requested_len,
                                          AudioFrame* output) {
   RTC_DCHECK(output);
   const size_t samples_to_read = std::min(FutureLength(), requested_len);
-  output->Reset();
-  const size_t tot_samples_read =
-      ReadInterleavedFromIndex(next_index_, samples_to_read,
-                               output->mutable_data());
+  output->ResetWithoutMuting();
+  const size_t tot_samples_read = ReadInterleavedFromIndex(
+      next_index_, samples_to_read, output->mutable_data());
   const size_t samples_read_per_channel = tot_samples_read / Channels();
   next_index_ += samples_read_per_channel;
   output->num_channels_ = Channels();

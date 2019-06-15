@@ -30,9 +30,12 @@
 #include "RenderScrollbar.h"
 #include "RenderScrollbarTheme.h"
 #include "RenderView.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderScrollbarPart);
 
 RenderScrollbarPart::RenderScrollbarPart(Document& document, RenderStyle&& style, RenderScrollbar* scrollbar, ScrollbarPart part)
     : RenderBlock(document, WTFMove(style), 0)
@@ -41,9 +44,7 @@ RenderScrollbarPart::RenderScrollbarPart(Document& document, RenderStyle&& style
 {
 }
 
-RenderScrollbarPart::~RenderScrollbarPart()
-{
-}
+RenderScrollbarPart::~RenderScrollbarPart() = default;
 
 void RenderScrollbarPart::layout()
 {
@@ -137,7 +138,7 @@ void RenderScrollbarPart::styleDidChange(StyleDifference diff, const RenderStyle
     clearPositionedState();
     setFloating(false);
     setHasOverflowClip(false);
-    if (oldStyle && m_scrollbar && m_part != NoPart && diff >= StyleDifferenceRepaint)
+    if (oldStyle && m_scrollbar && m_part != NoPart && diff >= StyleDifference::Repaint)
         m_scrollbar->theme().invalidatePart(*m_scrollbar, m_part);
 }
 
@@ -175,15 +176,15 @@ void RenderScrollbarPart::paintIntoRect(GraphicsContext& graphicsContext, const 
     }
     
     // Now do the paint.
-    PaintInfo paintInfo(graphicsContext, snappedIntRect(rect), PaintPhaseBlockBackground, PaintBehaviorNormal);
+    PaintInfo paintInfo(graphicsContext, snappedIntRect(rect), PaintPhase::BlockBackground, PaintBehavior::Normal);
     paint(paintInfo, paintOffset);
-    paintInfo.phase = PaintPhaseChildBlockBackgrounds;
+    paintInfo.phase = PaintPhase::ChildBlockBackgrounds;
     paint(paintInfo, paintOffset);
-    paintInfo.phase = PaintPhaseFloat;
+    paintInfo.phase = PaintPhase::Float;
     paint(paintInfo, paintOffset);
-    paintInfo.phase = PaintPhaseForeground;
+    paintInfo.phase = PaintPhase::Foreground;
     paint(paintInfo, paintOffset);
-    paintInfo.phase = PaintPhaseOutline;
+    paintInfo.phase = PaintPhase::Outline;
     paint(paintInfo, paintOffset);
 
     if (needsTransparencyLayer) {

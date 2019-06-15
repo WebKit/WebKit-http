@@ -39,7 +39,7 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include <wtf/CurrentTime.h>
+#include "SharedBuffer.h"
 #include <wtf/DateMath.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MD5.h>
@@ -49,9 +49,9 @@ namespace WebCore {
 CurlCacheEntry::CurlCacheEntry(const String& url, ResourceHandle* job, const String& cacheDir)
     : m_headerFilename(cacheDir)
     , m_contentFilename(cacheDir)
-    , m_contentFile(invalidPlatformFileHandle)
+    , m_contentFile(FileSystem::invalidPlatformFileHandle)
     , m_entrySize(0)
-    , m_expireDate(-1)
+    , m_expireDate(WallTime::fromRawSeconds(-1))
     , m_headerParsed(false)
     , m_isLoading(false)
     , m_job(job)
@@ -78,7 +78,7 @@ bool CurlCacheEntry::isLoading() const
 // Cache manager should invalidate the entry on false
 bool CurlCacheEntry::isCached()
 {
-    if (!fileExists(m_contentFilename) || !fileExists(m_headerFilename))
+    if (!FileSystem::fileExists(m_contentFilename) || !FileSystem::fileExists(m_headerFilename))
         return false;
 
     if (!m_headerParsed) {
@@ -86,7 +86,7 @@ bool CurlCacheEntry::isCached()
             return false;
     }
 
-    if (m_expireDate < currentTimeMS()) {
+    if (m_expireDate < WallTime::now()) {
         m_headerParsed = false;
         return false;
     }
@@ -103,7 +103,7 @@ bool CurlCacheEntry::saveCachedData(const char* data, size_t size)
         return false;
 
     // Append
-    writeToFile(m_contentFile, data, size);
+    FileSystem::writeToFile(m_contentFile, data, size);
 
     return true;
 }
@@ -117,15 +117,15 @@ bool CurlCacheEntry::readCachedData(ResourceHandle* job)
         return false;
 
     if (buffer.size())
-        job->getInternal()->client()->didReceiveData(job, buffer.data(), buffer.size(), 0);
+        job->getInternal()->client()->didReceiveBuffer(job, SharedBuffer::create(buffer.data(), buffer.size()), buffer.size());
 
     return true;
 }
 
 bool CurlCacheEntry::saveResponseHeaders(const ResourceResponse& response)
 {
-    PlatformFileHandle headerFile = openFile(m_headerFilename, OpenForWrite);
-    if (!isHandleValid(headerFile)) {
+    FileSystem::PlatformFileHandle headerFile = FileSystem::openFile(m_headerFilename, FileSystem::FileOpenMode::Write);
+    if (!FileSystem::isHandleValid(headerFile)) {
         LOG(Network, "Cache Error: Could not open %s for write\n", m_headerFilename.latin1().data());
         return false;
     }
@@ -139,12 +139,12 @@ bool CurlCacheEntry::saveResponseHeaders(const ResourceResponse& response)
         headerField.append(it->value);
         headerField.append("\n");
         CString headerFieldLatin1 = headerField.latin1();
-        writeToFile(headerFile, headerFieldLatin1.data(), headerFieldLatin1.length());
+        FileSystem::writeToFile(headerFile, headerFieldLatin1.data(), headerFieldLatin1.length());
         m_cachedResponse.setHTTPHeaderField(it->key, it->value);
         ++it;
     }
 
-    closeFile(headerFile);
+    FileSystem::closeFile(headerFile);
     return true;
 }
 
@@ -155,8 +155,7 @@ bool CurlCacheEntry::loadResponseHeaders()
         return false;
 
     String headerContent = String(buffer.data(), buffer.size());
-    Vector<String> headerFields;
-    headerContent.split('\n', headerFields);
+    Vector<String> headerFields = headerContent.split('\n');
 
     Vector<String>::const_iterator it = headerFields.begin();
     Vector<String>::const_iterator end = headerFields.end();
@@ -226,16 +225,16 @@ void CurlCacheEntry::generateBaseFilename(const CString& url)
 bool CurlCacheEntry::loadFileToBuffer(const String& filepath, Vector<char>& buffer)
 {
     // Open the file
-    PlatformFileHandle inputFile = openFile(filepath, OpenForRead);
-    if (!isHandleValid(inputFile)) {
+    FileSystem::PlatformFileHandle inputFile = FileSystem::openFile(filepath, FileSystem::FileOpenMode::Read);
+    if (!FileSystem::isHandleValid(inputFile)) {
         LOG(Network, "Cache Error: Could not open %s for read\n", filepath.latin1().data());
         return false;
     }
 
     long long filesize = -1;
-    if (!getFileSize(filepath, filesize)) {
+    if (!FileSystem::getFileSize(filepath, filesize)) {
         LOG(Network, "Cache Error: Could not get file size of %s\n", filepath.latin1().data());
-        closeFile(inputFile);
+        FileSystem::closeFile(inputFile);
         return false;
     }
 
@@ -248,41 +247,38 @@ bool CurlCacheEntry::loadFileToBuffer(const String& filepath, Vector<char>& buff
         if (filesize - bufferPosition < bufferReadSize)
             bufferReadSize = filesize - bufferPosition;
 
-        bytesRead = readFromFile(inputFile, buffer.data() + bufferPosition, bufferReadSize);
+        bytesRead = FileSystem::readFromFile(inputFile, buffer.data() + bufferPosition, bufferReadSize);
         if (bytesRead != bufferReadSize) {
             LOG(Network, "Cache Error: Could not read from %s\n", filepath.latin1().data());
-            closeFile(inputFile);
+            FileSystem::closeFile(inputFile);
             return false;
         }
 
         bufferPosition += bufferReadSize;
     }
-    closeFile(inputFile);
+    FileSystem::closeFile(inputFile);
     return true;
 }
 
 void CurlCacheEntry::invalidate()
 {
     closeContentFile();
-    deleteFile(m_headerFilename);
-    deleteFile(m_contentFilename);
+    FileSystem::deleteFile(m_headerFilename);
+    FileSystem::deleteFile(m_contentFilename);
     LOG(Network, "Cache: invalidated %s\n", m_basename.latin1().data());
 }
 
 bool CurlCacheEntry::parseResponseHeaders(const ResourceResponse& response)
 {
-    using namespace std::chrono;
-
     if (response.cacheControlContainsNoCache() || response.cacheControlContainsNoStore() || !response.hasCacheValidatorFields())
         return false;
 
-    double fileTime;
-    time_t fileModificationDate;
+    WallTime fileTime;
 
-    if (getFileModificationTime(m_headerFilename, fileModificationDate))
-        fileTime = difftime(fileModificationDate, 0) * 1000.0;
+    if (auto fileTimeFromFile = FileSystem::getFileModificationTime(m_headerFilename))
+        fileTime = fileTimeFromFile.value();
     else
-        fileTime = currentTimeMS(); // GMT
+        fileTime = WallTime::now(); // GMT
 
     auto maxAge = response.cacheControlMaxAge();
     auto lastModificationDate = response.lastModified();
@@ -291,24 +287,19 @@ bool CurlCacheEntry::parseResponseHeaders(const ResourceResponse& response)
 
     if (maxAge && !response.cacheControlContainsMustRevalidate()) {
         // When both the cache entry and the response contain max-age, the lesser one takes priority
-        auto maxAgeMS = duration_cast<milliseconds>(maxAge.value()).count();
-        double expires = fileTime + maxAgeMS;
-        if (m_expireDate == -1 || m_expireDate > expires)
+        WallTime expires = fileTime + *maxAge;
+        if (m_expireDate == WallTime::fromRawSeconds(-1) || m_expireDate > expires)
             m_expireDate = expires;
     } else if (responseDate && expirationDate) {
-        auto expirationDateMS = duration_cast<milliseconds>(expirationDate.value().time_since_epoch()).count();
-        auto responseDateMS = duration_cast<milliseconds>(responseDate.value().time_since_epoch()).count();
-        if (expirationDateMS >= responseDateMS)
-            m_expireDate = fileTime + (expirationDateMS - responseDateMS);
+        if (*expirationDate >= *responseDate)
+            m_expireDate = fileTime + (*expirationDate - *responseDate);
     }
     // If there is no lifetime information
-    if (m_expireDate == -1) {
-        if (lastModificationDate) {
-            auto lastModificationDateMS = duration_cast<milliseconds>(lastModificationDate.value().time_since_epoch()).count();
-            m_expireDate = fileTime + (fileTime - lastModificationDateMS) * 0.1;
-        }
+    if (m_expireDate == WallTime::fromRawSeconds(-1)) {
+        if (lastModificationDate)
+            m_expireDate = fileTime + (fileTime - *lastModificationDate) * 0.1;
         else
-            m_expireDate = 0;
+            m_expireDate = WallTime::fromRawSeconds(0);
     }
 
     String etag = response.httpHeaderField(HTTPHeaderName::ETag);
@@ -341,11 +332,11 @@ size_t CurlCacheEntry::entrySize()
         long long headerFileSize;
         long long contentFileSize;
 
-        if (!getFileSize(m_headerFilename, headerFileSize)) {
+        if (!FileSystem::getFileSize(m_headerFilename, headerFileSize)) {
             LOG(Network, "Cache Error: Could not get file size of %s\n", m_headerFilename.latin1().data());
             return m_entrySize;
         }
-        if (!getFileSize(m_contentFilename, contentFileSize)) {
+        if (!FileSystem::getFileSize(m_contentFilename, contentFileSize)) {
             LOG(Network, "Cache Error: Could not get file size of %s\n", m_contentFilename.latin1().data());
             return m_entrySize;
         }
@@ -359,12 +350,12 @@ size_t CurlCacheEntry::entrySize()
 
 bool CurlCacheEntry::openContentFile()
 {
-    if (isHandleValid(m_contentFile))
+    if (FileSystem::isHandleValid(m_contentFile))
         return true;
     
-    m_contentFile = openFile(m_contentFilename, OpenForWrite);
+    m_contentFile = FileSystem::openFile(m_contentFilename, FileSystem::FileOpenMode::Write);
 
-    if (isHandleValid(m_contentFile))
+    if (FileSystem::isHandleValid(m_contentFile))
         return true;
     
     LOG(Network, "Cache Error: Could not open %s for write\n", m_contentFilename.latin1().data());
@@ -373,11 +364,11 @@ bool CurlCacheEntry::openContentFile()
 
 bool CurlCacheEntry::closeContentFile()
 {
-    if (!isHandleValid(m_contentFile))
+    if (!FileSystem::isHandleValid(m_contentFile))
         return true;
 
-    closeFile(m_contentFile);
-    m_contentFile = invalidPlatformFileHandle;
+    FileSystem::closeFile(m_contentFile);
+    m_contentFile = FileSystem::invalidPlatformFileHandle;
 
     return true;
 }

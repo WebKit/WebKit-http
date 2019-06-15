@@ -5,7 +5,7 @@
 es6id: 25.4.4.3.1
 description: >
   Each Promise.race element is called with the same resolve function.
-info: >
+info: |
   Runtime Semantics: PerformPromiseRace ( iteratorRecord, promiseCapability, C )
 
   ...
@@ -13,14 +13,17 @@ info: >
   ...
 ---*/
 
-function resolveFunction() { }
+function resolveFunction() {}
 
 function Constructor(executor) {
   executor(resolveFunction, $ERROR);
 }
-Constructor.resolve = function(v) { return v; };
+Constructor.resolve = function(v) {
+  return v;
+};
 
-var callCount1 = 0, callCount2 = 0;
+var callCount1 = 0,
+  callCount2 = 0;
 
 var p1 = {
   then: function(onFulfilled, onRejected) {

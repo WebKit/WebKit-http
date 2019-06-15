@@ -5,7 +5,7 @@
 es6id: B.2.3.4
 description: >
   String.prototype.blink.name is "blink".
-info: >
+info: |
   String.prototype.blink ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.blink.name, "blink");
-
-verifyNotEnumerable(String.prototype.blink, "name");
-verifyNotWritable(String.prototype.blink, "name");
-verifyConfigurable(String.prototype.blink, "name");
+verifyProperty(String.prototype.blink, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "blink"
+});

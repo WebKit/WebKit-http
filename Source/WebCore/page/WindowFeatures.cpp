@@ -114,6 +114,17 @@ void processFeaturesString(StringView features, FeatureMode mode, const WTF::Fun
     }
 }
 
+OptionSet<DisabledAdaptations> parseDisabledAdaptations(const String& disabledAdaptationsString)
+{
+    OptionSet<DisabledAdaptations> disabledAdaptations;
+    for (auto& name : disabledAdaptationsString.split(',')) {
+        auto normalizedName = name.stripWhiteSpace().convertToASCIILowercase();
+        if (normalizedName == watchAdaptationName())
+            disabledAdaptations.add(DisabledAdaptations::Watch);
+    }
+    return disabledAdaptations;
+}
+
 static void setWindowFeature(WindowFeatures& features, StringView key, StringView value)
 {
     // Listing a key with no value is shorthand for key=yes
@@ -235,10 +246,7 @@ static DialogFeaturesMap parseDialogFeaturesMap(const String& string)
 
     DialogFeaturesMap features;
 
-    Vector<String> vector;
-    string.split(';', vector);
-
-    for (auto& featureString : vector) {
+    for (auto& featureString : string.split(';')) {
         size_t separatorPosition = featureString.find('=');
         size_t colonPosition = featureString.find(':');
         if (separatorPosition != notFound && colonPosition != notFound)

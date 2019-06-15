@@ -46,6 +46,17 @@ button > picture {
     -webkit-mask-repeat: no-repeat;
     transition: transform 150ms;
     will-change: transform;
+    /* Work around webkit.org/b/174565 by making the shrinking button's icon non-interactive */
+    pointer-events: none;
+}
+
+button:focus {
+    outline: none;
+}
+
+button:focus > picture {
+    background-color: -webkit-focus-ring-color !important;
+    mix-blend-mode: normal !important;
 }
 
 button.skip-back > picture,

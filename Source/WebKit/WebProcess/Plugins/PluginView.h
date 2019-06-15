@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2012, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginView_h
-#define PluginView_h
+#pragma once
 
 #include "LayerTreeContext.h"
 #include "NPRuntimeObjectMap.h"
@@ -51,10 +50,13 @@ OBJC_CLASS NSDictionary;
 OBJC_CLASS PDFSelection;
 #endif
 
+namespace WTF {
+class MachSendRight;
+}
+
 namespace WebCore {
 class Frame;
 class HTMLPlugInElement;
-class MachSendRight;
 class MouseEvent;
 }
 
@@ -70,14 +72,14 @@ public:
 
     WebCore::Frame* frame() const;
 
-    bool isBeingDestroyed() const { return m_isBeingDestroyed; }
+    bool isBeingDestroyed() const { return !m_plugin || m_plugin->isBeingDestroyed(); }
 
     void manualLoadDidReceiveResponse(const WebCore::ResourceResponse&);
     void manualLoadDidReceiveData(const char* bytes, int length);
     void manualLoadDidFinishLoading();
     void manualLoadDidFail(const WebCore::ResourceError&);
 
-    void activityStateDidChange(WebCore::ActivityState::Flags changed);
+    void activityStateDidChange(OptionSet<WebCore::ActivityState::Flag> changed);
     void setLayerHostingMode(LayerHostingMode);
 
 #if PLATFORM(COCOA)
@@ -167,7 +169,7 @@ private:
     void beginSnapshottingRunningPlugin() override;
     bool shouldAllowNavigationFromDrags() const override;
     bool shouldNotAddLayer() const override;
-    void willDetatchRenderer() override;
+    void willDetachRenderer() override;
 
     // WebCore::Widget
     void setFrameRect(const WebCore::IntRect&) override;
@@ -176,7 +178,7 @@ private:
     void setFocus(bool) override;
     void frameRectsChanged() override;
     void setParent(WebCore::ScrollView*) override;
-    void handleEvent(WebCore::Event*) override;
+    void handleEvent(WebCore::Event&) override;
     void notifyWidget(WebCore::WidgetNotification) override;
     void show() override;
     void hide() override;
@@ -211,7 +213,7 @@ private:
 #if PLATFORM(COCOA)
     void pluginFocusOrWindowFocusChanged(bool pluginHasFocusAndWindowHasFocus) override;
     void setComplexTextInputState(PluginComplexTextInputState) override;
-    const WebCore::MachSendRight& compositingRenderServerPort() override;
+    const WTF::MachSendRight& compositingRenderServerPort() override;
 #endif
     float contentsScaleFactor() override;
     String proxiesForURL(const String&) override;
@@ -224,7 +226,7 @@ private:
     bool artificialPluginInitializationDelayEnabled() const override;
     void protectPluginFromDestruction() override;
     void unprotectPluginFromDestruction() override;
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     uint64_t createPluginContainer() override;
     void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID) override;
     void windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID) override;
@@ -238,7 +240,7 @@ private:
     void didFinishLoad(WebFrame*) override;
     void didFailLoad(WebFrame*, bool wasCancelled) override;
 
-    std::unique_ptr<WebEvent> createWebEvent(WebCore::MouseEvent*) const;
+    std::unique_ptr<WebEvent> createWebEvent(WebCore::MouseEvent&) const;
 
     RefPtr<WebCore::HTMLPlugInElement> m_pluginElement;
     RefPtr<Plugin> m_plugin;
@@ -248,7 +250,6 @@ private:
     bool m_isInitialized { false };
     bool m_isWaitingForSynchronousInitialization { false };
     bool m_isWaitingUntilMediaCanStart { false };
-    bool m_isBeingDestroyed { false };
     bool m_pluginProcessHasCrashed { false };
 
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
@@ -295,5 +296,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // PluginView_h

@@ -32,10 +32,8 @@
 #import <WebCore/IOSurface.h>
 
 #if PLATFORM(IOS)
-#import <WebCore/QuartzCoreSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 #endif
-
-using namespace WebCore;
 
 #if PLATFORM(IOS)
 static const size_t maximumSnapshotCacheSize = 50 * (1024 * 1024);
@@ -44,6 +42,7 @@ static const size_t maximumSnapshotCacheSize = 400 * (1024 * 1024);
 #endif
 
 namespace WebKit {
+using namespace WebCore;
 
 ViewSnapshotStore::ViewSnapshotStore()
 {
@@ -60,7 +59,7 @@ ViewSnapshotStore& ViewSnapshotStore::singleton()
     return store;
 }
 
-#if !USE(IOSURFACE)
+#if !HAVE(IOSURFACE) && HAVE(CORE_ANIMATION_RENDER_SERVER)
 CAContext *ViewSnapshotStore::snapshottingContext()
 {
     static CAContext *context;
@@ -131,7 +130,7 @@ void ViewSnapshotStore::discardSnapshotImages()
         m_snapshotsWithImages.first()->clearImage();
 }
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 Ref<ViewSnapshot> ViewSnapshot::create(std::unique_ptr<WebCore::IOSurface> surface)
 {
     return adoptRef(*new ViewSnapshot(WTFMove(surface)));
@@ -143,7 +142,7 @@ Ref<ViewSnapshot> ViewSnapshot::create(uint32_t slotID, IntSize size, size_t ima
 }
 #endif
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 ViewSnapshot::ViewSnapshot(std::unique_ptr<WebCore::IOSurface> surface)
     : m_surface(WTFMove(surface))
 #else
@@ -162,7 +161,7 @@ ViewSnapshot::~ViewSnapshot()
     clearImage();
 }
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 void ViewSnapshot::setSurface(std::unique_ptr<WebCore::IOSurface> surface)
 {
     ASSERT(!m_surface);
@@ -178,7 +177,7 @@ void ViewSnapshot::setSurface(std::unique_ptr<WebCore::IOSurface> surface)
 
 bool ViewSnapshot::hasImage() const
 {
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
     return !!m_surface;
 #else
     return m_slotID;
@@ -192,16 +191,18 @@ void ViewSnapshot::clearImage()
 
     ViewSnapshotStore::singleton().willRemoveImageFromSnapshot(*this);
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
     m_surface = nullptr;
 #else
+#if HAVE(CORE_ANIMATION_RENDER_SERVER)
     [ViewSnapshotStore::snapshottingContext() deleteSlot:m_slotID];
+#endif
     m_slotID = 0;
     m_imageSizeInBytes = 0;
 #endif
 }
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 WebCore::IOSurface::SurfaceState ViewSnapshot::setVolatile(bool becomeVolatile)
 {
     if (ViewSnapshotStore::singleton().disableSnapshotVolatilityForTesting())
@@ -216,7 +217,7 @@ WebCore::IOSurface::SurfaceState ViewSnapshot::setVolatile(bool becomeVolatile)
 
 id ViewSnapshot::asLayerContents()
 {
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
     if (!m_surface)
         return nullptr;
 
@@ -233,7 +234,7 @@ id ViewSnapshot::asLayerContents()
 
 RetainPtr<CGImageRef> ViewSnapshot::asImageForTesting()
 {
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
     if (!m_surface)
         return nullptr;
 

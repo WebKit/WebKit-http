@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.reverse
 description: Get "length" uses internal ArrayLength
-info: >
+info: |
   22.2.3.22 %TypedArray%.prototype.reverse ( )
 
   %TypedArray%.prototype.reverse is a distinct function that implements the same
@@ -17,6 +17,7 @@ info: >
   2. Let len be ? ToLength(? Get(O, "length")).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var getCalls = 0;

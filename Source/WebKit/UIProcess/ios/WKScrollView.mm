@@ -28,15 +28,15 @@
 
 #if PLATFORM(IOS)
 
+#import "UIKitSPI.h"
+#import "VersionChecks.h"
 #import "WKWebViewInternal.h"
-#import "WeakObjCPtr.h"
-#import <WebCore/CoreGraphicsSPI.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <wtf/WeakObjCPtr.h>
 
-using namespace WebKit;
-
-@interface UIScrollView (UIScrollViewInternalHack)
-- (CGFloat)_rubberBandOffsetForOffset:(CGFloat)newOffset maxOffset:(CGFloat)maxOffset minOffset:(CGFloat)minOffset range:(CGFloat)range outside:(BOOL *)outside;
-@end
+#if PLATFORM(WATCHOS)
+#import <PepperUICore/UIScrollView+PUICAdditionsPrivate.h>
+#endif
 
 @interface WKScrollViewDelegateForwarder : NSObject <UIScrollViewDelegate>
 
@@ -75,12 +75,23 @@ using namespace WebKit;
     return [super respondsToSelector:aSelector] || [_internalDelegate respondsToSelector:aSelector] || [_externalDelegate.get() respondsToSelector:aSelector];
 }
 
+static BOOL shouldForwardScrollViewDelegateMethodToExternalDelegate(SEL selector)
+{
+    // We cannot forward viewForZoomingInScrollView: to the external delegate, because WebKit
+    // owns the content of the scroll view, and depends on viewForZoomingInScrollView being the
+    // content view. Any other view returned by the external delegate will break our behavior.
+    if (sel_isEqual(selector, @selector(viewForZoomingInScrollView:)))
+        return NO;
+
+    return YES;
+}
+
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     auto externalDelegate = _externalDelegate.get();
     SEL aSelector = [anInvocation selector];
     BOOL internalDelegateWillRespond = [_internalDelegate respondsToSelector:aSelector];
-    BOOL externalDelegateWillRespond = [externalDelegate respondsToSelector:aSelector];
+    BOOL externalDelegateWillRespond = shouldForwardScrollViewDelegateMethodToExternalDelegate(aSelector) && [externalDelegate respondsToSelector:aSelector];
 
     if (internalDelegateWillRespond && externalDelegateWillRespond)
         [_internalDelegate _willInvokeUIScrollViewDelegateCallback];
@@ -100,7 +111,7 @@ using namespace WebKit;
 - (id)forwardingTargetForSelector:(SEL)aSelector
 {
     BOOL internalDelegateWillRespond = [_internalDelegate respondsToSelector:aSelector];
-    BOOL externalDelegateWillRespond = [_externalDelegate.get() respondsToSelector:aSelector];
+    BOOL externalDelegateWillRespond = shouldForwardScrollViewDelegateMethodToExternalDelegate(aSelector) && [_externalDelegate.get() respondsToSelector:aSelector];
 
     if (internalDelegateWillRespond && !externalDelegateWillRespond)
         return _internalDelegate;
@@ -118,6 +129,7 @@ using namespace WebKit;
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
     BOOL _contentInsetAdjustmentBehaviorWasExternallyOverridden;
 #endif
+    CGFloat _keyboardBottomInsetAdjustment;
 }
 
 - (id)initWithFrame:(CGRect)frame
@@ -129,11 +141,16 @@ using namespace WebKit;
 
     self.alwaysBounceVertical = YES;
     self.directionalLockEnabled = YES;
+    [self _setIndicatorInsetAdjustmentBehavior:UIScrollViewIndicatorInsetAdjustmentAlways];
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
     _contentInsetAdjustmentBehaviorWasExternallyOverridden = (self.contentInsetAdjustmentBehavior != UIScrollViewContentInsetAdjustmentAutomatic);
 #endif
     
+#if PLATFORM(WATCHOS)
+    [self _configureDigitalCrownScrolling];
+#endif
+
     return self;
 }
 
@@ -310,6 +327,61 @@ static inline bool valuesAreWithinOnePixel(CGFloat a, CGFloat b)
     if (!CGSizeEqualToSize(rubberbandAmount, CGSizeZero))
         [self _restoreContentOffsetWithRubberbandAmount:rubberbandAmount];
 }
+
+- (void)_adjustForAutomaticKeyboardInfo:(NSDictionary *)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment
+{
+    [super _adjustForAutomaticKeyboardInfo:info animated:animated lastAdjustment:lastAdjustment];
+
+    _keyboardBottomInsetAdjustment = [[UIPeripheralHost sharedInstance] getVerticalOverlapForView:self usingKeyboardInfo:info];
+}
+
+- (UIEdgeInsets)_systemContentInset
+{
+    UIEdgeInsets systemContentInset = [super _systemContentInset];
+
+    // Internal clients who use setObscuredInsets include the keyboard height in their
+    // manually overridden insets, so we don't need to re-add it here.
+    if (_internalDelegate._haveSetObscuredInsets)
+        return systemContentInset;
+
+    // Match the inverse of the condition that UIScrollView uses to decide whether
+    // to include keyboard insets in the systemContentInset. We always want
+    // keyboard insets applied, even when web content has chosen to disable automatic
+    // safe area inset adjustment.
+    if (linkedOnOrAfter(WebKit::SDKVersion::FirstWhereUIScrollViewDoesNotApplyKeyboardInsetsUnconditionally) && self.contentInsetAdjustmentBehavior == UIScrollViewContentInsetAdjustmentNever)
+        systemContentInset.bottom += _keyboardBottomInsetAdjustment;
+
+    return systemContentInset;
+}
+
+#if PLATFORM(WATCHOS)
+
+- (void)addGestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+{
+    [super addGestureRecognizer:gestureRecognizer];
+
+    if (gestureRecognizer == self.pinchGestureRecognizer)
+        gestureRecognizer.allowedTouchTypes = @[];
+}
+
+- (void)_configureDigitalCrownScrolling
+{
+    self.showsVerticalScrollIndicator = NO;
+    self.crownInputScrollDirection = PUICCrownInputScrollDirectionVertical;
+}
+
+- (CGPoint)_puic_contentOffsetForCrownInputSequencerOffset:(double)sequencerOffset
+{
+    CGPoint targetOffset = [super _puic_contentOffsetForCrownInputSequencerOffset:sequencerOffset];
+    auto scrollDirection = self.puic_crownInputScrollDirection;
+    if (scrollDirection == PUICCrownInputScrollDirectionVertical)
+        targetOffset.x = self.contentOffset.x;
+    else if (scrollDirection == PUICCrownInputScrollDirectionHorizontal)
+        targetOffset.y = self.contentOffset.y;
+    return targetOffset;
+}
+
+#endif
 
 @end
 

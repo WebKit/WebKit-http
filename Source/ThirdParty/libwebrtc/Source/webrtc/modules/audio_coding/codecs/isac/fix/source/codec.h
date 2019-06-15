@@ -16,10 +16,10 @@
  *
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_ISAC_FIX_SOURCE_CODEC_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_ISAC_FIX_SOURCE_CODEC_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_ISAC_FIX_SOURCE_CODEC_H_
+#define MODULES_AUDIO_CODING_CODECS_ISAC_FIX_SOURCE_CODEC_H_
 
-#include "structs.h"
+#include "modules/audio_coding/codecs/isac/fix/source/structs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,7 +38,7 @@ int WebRtcIsacfix_DecodeImpl(int16_t* signal_out16,
 
 void WebRtcIsacfix_DecodePlcImpl(int16_t* decoded,
                                  IsacFixDecoderInstance* ISACdec_obj,
-                                 size_t* current_framesample );
+                                 size_t* current_framesample);
 
 int WebRtcIsacfix_EncodeImpl(int16_t* in,
                              IsacFixEncoderInstance* ISACenc_obj,
@@ -64,10 +64,9 @@ void WebRtcIsacfix_InitPitchAnalysis(PitchAnalysisStruct* State);
 
 void WebRtcIsacfix_InitPlc(PLCstr* State);
 
-
 /* transform functions */
 
-void WebRtcIsacfix_InitTransform();
+void WebRtcIsacfix_InitTransform(void);
 
 typedef void (*Time2Spec)(int16_t* inre1Q9,
                           int16_t* inre2Q9,
@@ -225,4 +224,4 @@ extern FilterMaLoopFix WebRtcIsacfix_FilterMaLoopFix;
 }  // extern "C"
 #endif
 
-#endif /* WEBRTC_MODULES_AUDIO_CODING_CODECS_ISAC_FIX_SOURCE_CODEC_H_ */
+#endif /* MODULES_AUDIO_CODING_CODECS_ISAC_FIX_SOURCE_CODEC_H_ */

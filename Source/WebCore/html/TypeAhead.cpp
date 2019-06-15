@@ -31,29 +31,26 @@
 #include "KeyboardEvent.h"
 #include <wtf/unicode/CharacterNames.h>
 
-using namespace WTF::Unicode;
 
 namespace WebCore {
+using namespace WTF::Unicode;
 
 TypeAhead::TypeAhead(TypeAheadDataSource* dataSource)
     : m_dataSource(dataSource)
-    , m_lastTypeTime(0)
     , m_repeatingChar(0)
 {
 }
 
-static const DOMTimeStamp typeAheadTimeout = 1000;
+static const Seconds typeAheadTimeout { 1_s };
 
 static String stripLeadingWhiteSpace(const String& string)
 {
     unsigned length = string.length();
-
     unsigned i;
     for (i = 0; i < length; ++i) {
-        if (string[i] != noBreakSpace && (string[i] <= 0x7F ? !isASCIISpace(string[i]) : (u_charDirection(string[i]) != U_WHITE_SPACE_NEUTRAL)))
+        if (string[i] != noBreakSpace && !isSpaceOrNewline(string[i]))
             break;
     }
-
     return string.substring(i, length - i);
 }
 
@@ -63,7 +60,7 @@ int TypeAhead::handleEvent(KeyboardEvent* event, MatchModeFlags matchMode)
         return -1;
 
     int optionCount = m_dataSource->optionCount();
-    DOMTimeStamp delta = event->timeStamp() - m_lastTypeTime;
+    Seconds delta = event->timeStamp() - m_lastTypeTime;
     m_lastTypeTime = event->timeStamp();
 
     UChar c = event->charCode();
@@ -96,10 +93,6 @@ int TypeAhead::handleEvent(KeyboardEvent* event, MatchModeFlags matchMode)
         int index = (selected < 0 ? 0 : selected) + searchStartOffset;
         index %= optionCount;
 
-        // Compute a case-folded copy of the prefix string before beginning the search for
-        // a matching element. This code uses foldCase to work around the fact that
-        // String::startWith does not fold non-ASCII characters. This code can be changed
-        // to use startWith once that is fixed.
         String prefixWithCaseFolded(prefix.foldCase());
         for (int i = 0; i < optionCount; ++i, index = (index + 1) % optionCount) {
             // Fold the option string and check if its prefix is equal to the folded prefix.

@@ -29,6 +29,7 @@ class RenderLayer;
 
 class RenderSVGResourceContainer : public RenderSVGHiddenContainer,
                                    public RenderSVGResource {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGResourceContainer);
 public:
     virtual ~RenderSVGResourceContainer();
 
@@ -70,10 +71,10 @@ private:
     void registerResource();
 
     AtomicString m_id;
-    bool m_registered : 1;
-    bool m_isInvalidating : 1;
     HashSet<RenderElement*> m_clients;
     HashSet<RenderLayer*> m_clientLayers;
+    bool m_registered { false };
+    bool m_isInvalidating { false };
 };
 
 inline RenderSVGResourceContainer* getRenderSVGResourceContainerById(Document& document, const AtomicString& id)

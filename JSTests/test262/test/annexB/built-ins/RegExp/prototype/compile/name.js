@@ -5,7 +5,7 @@
 es6id: B.2.5.1
 description: >
   RegExp.prototype.compile.name is "compile".
-info: >
+info: |
   RegExp.prototype.compile (pattern, flags )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(RegExp.prototype.compile.name, "compile");
-
-verifyNotEnumerable(RegExp.prototype.compile, "name");
-verifyNotWritable(RegExp.prototype.compile, "name");
-verifyConfigurable(RegExp.prototype.compile, "name");
+verifyProperty(RegExp.prototype.compile, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "compile"
+});

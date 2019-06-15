@@ -31,10 +31,9 @@
 #include "EventNames.h"
 #include "PlatformSpeechSynthesisVoice.h"
 #include "PlatformSpeechSynthesizer.h"
-#include "ScriptController.h"
 #include "SpeechSynthesisEvent.h"
 #include "SpeechSynthesisUtterance.h"
-#include <wtf/CurrentTime.h>
+#include "UserGestureIndicator.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -104,7 +103,7 @@ bool SpeechSynthesis::paused() const
 void SpeechSynthesis::startSpeakingImmediately(SpeechSynthesisUtterance& utterance)
 {
     ASSERT(!m_currentSpeechUtterance);
-    utterance.setStartTime(monotonicallyIncreasingTime());
+    utterance.setStartTime(MonotonicTime::now());
     m_currentSpeechUtterance = &utterance;
     m_isPaused = false;
 
@@ -123,7 +122,7 @@ void SpeechSynthesis::speak(SpeechSynthesisUtterance& utterance)
 {
     // Like Audio, we should require that the user interact to start a speech synthesis session.
 #if PLATFORM(IOS)
-    if (ScriptController::processingUserGesture())
+    if (UserGestureIndicator::processingUserGesture())
         removeBehaviorRestriction(RequireUserGestureForSpeechStartRestriction);
     else if (userGestureRequiredForSpeechStart())
         return;
@@ -164,7 +163,7 @@ void SpeechSynthesis::resume()
 
 void SpeechSynthesis::fireEvent(const AtomicString& type, SpeechSynthesisUtterance& utterance, unsigned long charIndex, const String& name)
 {
-    utterance.dispatchEvent(SpeechSynthesisEvent::create(type, charIndex, (monotonicallyIncreasingTime() - utterance.startTime()), name));
+    utterance.dispatchEvent(SpeechSynthesisEvent::create(type, charIndex, (MonotonicTime::now() - utterance.startTime()).seconds(), name));
 }
 
 void SpeechSynthesis::handleSpeakingCompleted(SpeechSynthesisUtterance& utterance, bool errorOccurred)

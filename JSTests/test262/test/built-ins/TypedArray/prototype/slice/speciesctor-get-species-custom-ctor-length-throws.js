@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.slice
 description: >
   Throws a TypeError if new typedArray's length < count
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
@@ -24,7 +24,7 @@ info: >
     argumentList[0], throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

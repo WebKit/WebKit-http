@@ -39,7 +39,6 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/TriState.h>
-#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -114,7 +113,7 @@ public:
     bool textDirection(WritingDirection&) const;
     bool isEmpty() const;
     void setStyle(RefPtr<MutableStyleProperties>&&);
-    void overrideWithStyle(const StyleProperties*);
+    void overrideWithStyle(const StyleProperties&);
     void overrideTypingStyleAt(const EditingStyle&, const Position&);
     void clear();
     Ref<EditingStyle> copy() const;
@@ -128,25 +127,23 @@ public:
     enum ShouldIgnoreTextOnlyProperties { IgnoreTextOnlyProperties, DoNotIgnoreTextOnlyProperties };
     TriState triStateOfStyle(EditingStyle*) const;
     TriState triStateOfStyle(const VisibleSelection&) const;
-    bool conflictsWithInlineStyleOfElement(StyledElement* element) const { return conflictsWithInlineStyleOfElement(element, 0, 0); }
-    bool conflictsWithInlineStyleOfElement(StyledElement* element, RefPtr<MutableStyleProperties>& newInlineStyle,
-        EditingStyle* extractedStyle) const
+    bool conflictsWithInlineStyleOfElement(StyledElement& element) const { return conflictsWithInlineStyleOfElement(element, nullptr, nullptr); }
+    bool conflictsWithInlineStyleOfElement(StyledElement& element, RefPtr<MutableStyleProperties>& newInlineStyle, EditingStyle* extractedStyle) const
     {
         return conflictsWithInlineStyleOfElement(element, &newInlineStyle, extractedStyle);
     }
-    bool conflictsWithImplicitStyleOfElement(HTMLElement*, EditingStyle* extractedStyle = nullptr, ShouldExtractMatchingStyle = DoNotExtractMatchingStyle) const;
-    bool conflictsWithImplicitStyleOfAttributes(HTMLElement*) const;
-    bool extractConflictingImplicitStyleOfAttributes(HTMLElement*, ShouldPreserveWritingDirection, EditingStyle* extractedStyle,
-            Vector<QualifiedName>& conflictingAttributes, ShouldExtractMatchingStyle) const;
-    bool styleIsPresentInComputedStyleOfNode(Node*) const;
+    bool conflictsWithImplicitStyleOfElement(HTMLElement&, EditingStyle* extractedStyle = nullptr, ShouldExtractMatchingStyle = DoNotExtractMatchingStyle) const;
+    bool conflictsWithImplicitStyleOfAttributes(HTMLElement&) const;
+    bool extractConflictingImplicitStyleOfAttributes(HTMLElement&, ShouldPreserveWritingDirection, EditingStyle* extractedStyle, Vector<QualifiedName>& conflictingAttributes, ShouldExtractMatchingStyle) const;
+    bool styleIsPresentInComputedStyleOfNode(Node&) const;
 
-    static bool elementIsStyledSpanOrHTMLEquivalent(const HTMLElement*);
+    static bool elementIsStyledSpanOrHTMLEquivalent(const HTMLElement&);
 
     void prepareToApplyAt(const Position&, ShouldPreserveWritingDirection = DoNotPreserveWritingDirection);
     void mergeTypingStyle(Document&);
     enum CSSPropertyOverrideMode { OverrideValues, DoNotOverrideValues };
-    void mergeInlineStyleOfElement(StyledElement*, CSSPropertyOverrideMode, PropertiesToInclude = AllProperties);
-    static Ref<EditingStyle> wrappingStyleForSerialization(Node* context, bool shouldAnnotate);
+    void mergeInlineStyleOfElement(StyledElement&, CSSPropertyOverrideMode, PropertiesToInclude = AllProperties);
+    static Ref<EditingStyle> wrappingStyleForSerialization(Node& context, bool shouldAnnotate);
     void mergeStyleFromRules(StyledElement&);
     void mergeStyleFromRulesForSerialization(StyledElement&);
     void removeStyleFromRulesAndContext(StyledElement&, Node* context);
@@ -154,7 +151,7 @@ public:
     void forceInline();
     bool convertPositionStyle();
     bool isFloating();
-    int legacyFontSize(Document*) const;
+    int legacyFontSize(Document&) const;
 
     float fontSizeDelta() const { return m_fontSizeDelta; }
     bool hasFontSizeDelta() const { return m_fontSizeDelta != NoFontDelta; }
@@ -165,8 +162,11 @@ public:
     void setStrikeThroughChange(TextDecorationChange change) { m_strikeThroughChange = static_cast<unsigned>(change); }
     TextDecorationChange strikeThroughChange() const { return static_cast<TextDecorationChange>(m_strikeThroughChange); }
 
+    WEBCORE_EXPORT bool hasStyle(CSSPropertyID, const String& value);
     WEBCORE_EXPORT static RefPtr<EditingStyle> styleAtSelectionStart(const VisibleSelection&, bool shouldUseBackgroundColorInEffect = false);
     static WritingDirection textDirectionForSelection(const VisibleSelection&, EditingStyle* typingStyle, bool& hasNestedOrMultipleEmbeddings);
+
+    Ref<EditingStyle> inverseTransformColorIfNeeded(Element&);
 
 private:
     EditingStyle();
@@ -181,7 +181,7 @@ private:
     void setProperty(CSSPropertyID, const String& value, bool important = false);
     void extractFontSizeDelta();
     template<typename T> TriState triStateOfStyle(T& styleToCompare, ShouldIgnoreTextOnlyProperties) const;
-    bool conflictsWithInlineStyleOfElement(StyledElement*, RefPtr<MutableStyleProperties>* newInlineStyle, EditingStyle* extractedStyle) const;
+    bool conflictsWithInlineStyleOfElement(StyledElement&, RefPtr<MutableStyleProperties>* newInlineStyle, EditingStyle* extractedStyle) const;
     void mergeInlineAndImplicitStyleOfElement(StyledElement&, CSSPropertyOverrideMode, PropertiesToInclude);
     void mergeStyle(const StyleProperties*, CSSPropertyOverrideMode);
 
@@ -222,7 +222,7 @@ public:
         return !(*this == other);
     }
 private:
-    void extractTextStyles(Document*, MutableStyleProperties&, bool shouldUseFixedFontDefaultSize);
+    void extractTextStyles(Document&, MutableStyleProperties&, bool shouldUseFixedFontDefaultSize);
 
     RefPtr<MutableStyleProperties> m_cssStyle;
     bool m_applyBold = false;

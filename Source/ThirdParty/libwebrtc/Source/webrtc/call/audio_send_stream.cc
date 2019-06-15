@@ -8,9 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/call/audio_send_stream.h"
-
-#include <string>
+#include "call/audio_send_stream.h"
+#include "rtc_base/stringencode.h"
+#include "rtc_base/strings/audio_format_to_string.h"
+#include "rtc_base/strings/string_builder.h"
 
 namespace webrtc {
 
@@ -23,10 +24,10 @@ AudioSendStream::Config::Config(Transport* send_transport)
 AudioSendStream::Config::~Config() = default;
 
 std::string AudioSendStream::Config::ToString() const {
-  std::stringstream ss;
+  char buf[1024];
+  rtc::SimpleStringBuilder ss(buf);
   ss << "{rtp: " << rtp.ToString();
   ss << ", send_transport: " << (send_transport ? "(Transport)" : "null");
-  ss << ", voe_channel_id: " << voe_channel_id;
   ss << ", min_bitrate_bps: " << min_bitrate_bps;
   ss << ", max_bitrate_bps: " << max_bitrate_bps;
   ss << ", send_codec_spec: "
@@ -40,7 +41,8 @@ AudioSendStream::Config::Rtp::Rtp() = default;
 AudioSendStream::Config::Rtp::~Rtp() = default;
 
 std::string AudioSendStream::Config::Rtp::ToString() const {
-  std::stringstream ss;
+  char buf[1024];
+  rtc::SimpleStringBuilder ss(buf);
   ss << "{ssrc: " << ssrc;
   ss << ", extensions: [";
   for (size_t i = 0; i < extensions.size(); ++i) {
@@ -63,13 +65,14 @@ AudioSendStream::Config::SendCodecSpec::SendCodecSpec(
 AudioSendStream::Config::SendCodecSpec::~SendCodecSpec() = default;
 
 std::string AudioSendStream::Config::SendCodecSpec::ToString() const {
-  std::stringstream ss;
+  char buf[1024];
+  rtc::SimpleStringBuilder ss(buf);
   ss << "{nack_enabled: " << (nack_enabled ? "true" : "false");
   ss << ", transport_cc_enabled: " << (transport_cc_enabled ? "true" : "false");
   ss << ", cng_payload_type: "
-     << (cng_payload_type ? std::to_string(*cng_payload_type) : "<unset>");
+     << (cng_payload_type ? rtc::ToString(*cng_payload_type) : "<unset>");
   ss << ", payload_type: " << payload_type;
-  ss << ", format: " << format;
+  ss << ", format: " << rtc::ToString(format);
   ss << '}';
   return ss.str();
 }

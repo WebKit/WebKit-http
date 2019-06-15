@@ -62,6 +62,13 @@ public:
 
     float y() const { return m_y; }
     void setY(float y) { m_y = y; }
+    
+    FloatPoint xy() const { return { m_x, m_y }; }
+    void setXY(FloatPoint p)
+    {
+        m_x = p.x();
+        m_y = p.y();
+    }
 
     float z() const { return m_z; }
     void setZ(float z) { m_z = z; }
@@ -182,7 +189,7 @@ inline float FloatPoint3D::distanceTo(const FloatPoint3D& a) const
     return (*this - a).length();
 }
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const FloatPoint3D&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FloatPoint3D&);
 
 } // namespace WebCore
 

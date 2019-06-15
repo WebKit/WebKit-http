@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The abtract operation ToPropertyDescriptor  is used to package the
     into a property desc. Step 10 of ToPropertyDescriptor throws a TypeError
     if the property desc ends up having a mix of accessor and data property elements.
@@ -12,12 +12,17 @@ description: >
     'writable' present(8.10.5 step 9.a)
 ---*/
 
-    var o = {};
-    
-    // dummy getter
-    var getter = function () { return 1; }
-    var desc = { get: getter, writable: false };
+var o = {};
+
+// dummy getter
+var getter = function() {
+  return 1;
+}
+var desc = {
+  get: getter,
+  writable: false
+};
 assert.throws(TypeError, function() {
-      Object.defineProperty(o, "foo", desc);
+  Object.defineProperty(o, "foo", desc);
 });
 assert.sameValue(o.hasOwnProperty("foo"), false, 'o.hasOwnProperty("foo")');

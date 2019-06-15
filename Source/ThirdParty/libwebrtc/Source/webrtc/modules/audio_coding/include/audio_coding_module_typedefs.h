@@ -8,13 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_INCLUDE_AUDIO_CODING_MODULE_TYPEDEFS_H_
-#define WEBRTC_MODULES_AUDIO_CODING_INCLUDE_AUDIO_CODING_MODULE_TYPEDEFS_H_
+#ifndef MODULES_AUDIO_CODING_INCLUDE_AUDIO_CODING_MODULE_TYPEDEFS_H_
+#define MODULES_AUDIO_CODING_INCLUDE_AUDIO_CODING_MODULE_TYPEDEFS_H_
 
 #include <map>
-
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/typedefs.h"
 
 namespace webrtc {
 
@@ -42,10 +39,10 @@ enum ACMVADMode {
 // kAudio             : optimized for non-voice signals like music.
 //
 enum OpusApplicationMode {
- kVoip = 0,
- kAudio = 1,
+  kVoip = 0,
+  kAudio = 1,
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_INCLUDE_AUDIO_CODING_MODULE_TYPEDEFS_H_
+#endif  // MODULES_AUDIO_CODING_INCLUDE_AUDIO_CODING_MODULE_TYPEDEFS_H_

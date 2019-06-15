@@ -28,13 +28,14 @@
 
 #if PLATFORM(MAC)
 
-#import "CoreGraphicsSPI.h"
 #import "GeometryUtilities.h"
 #import "GraphicsContext.h"
 #import "PathUtilities.h"
-#import "QuartzCoreSPI.h"
 #import "TextIndicator.h"
 #import "WebActionDisablingCALayerDelegate.h"
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/NSColorSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 
 const CFTimeInterval bounceAnimationDuration = 0.12;
 const CFTimeInterval bounceWithCrossfadeAnimationDuration = 0.3;
@@ -168,7 +169,11 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
 
     RetainPtr<NSMutableArray> bounceLayers = adoptNS([[NSMutableArray alloc] init]);
 
-    RetainPtr<CGColorRef> highlightColor = [NSColor colorWithDeviceRed:1 green:1 blue:0 alpha:1].CGColor;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    RetainPtr<CGColorRef> highlightColor = [NSColor findHighlightColor].CGColor;
+#else
+    RetainPtr<CGColorRef> highlightColor = [NSColor colorWithDeviceRed:1 green:0.8 blue:0 alpha:1].CGColor;
+#endif
     RetainPtr<CGColorRef> rimShadowColor = [NSColor colorWithDeviceWhite:0 alpha:0.35].CGColor;
     RetainPtr<CGColorRef> dropShadowColor = [NSColor colorWithDeviceWhite:0 alpha:0.2].CGColor;
 
@@ -183,7 +188,7 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
 
         Path translatedPath;
         AffineTransform transform;
-        transform.translate(-pathBoundingRect.x(), -pathBoundingRect.y());
+        transform.translate(-pathBoundingRect.location());
         translatedPath.addPath(path, transform);
 
         FloatRect offsetTextRect = pathBoundingRect;
@@ -228,7 +233,7 @@ static bool indicatorWantsManualAnimation(const TextIndicator& indicator)
         [textLayer setBorderColor:borderColor.get()];
         [textLayer setBorderWidth:borderWidth];
         [textLayer setDelegate:[WebActionDisablingCALayerDelegate shared]];
-        [textLayer setContents:(id)contentsImage.get()];
+        [textLayer setContents:(__bridge id)contentsImage.get()];
 
         RetainPtr<CAShapeLayer> maskLayer = adoptNS([[CAShapeLayer alloc] init]);
         [maskLayer setPath:translatedPath.platformPath()];
@@ -266,7 +271,7 @@ static RetainPtr<CABasicAnimation> createContentCrossfadeAnimation(CFTimeInterva
 {
     RetainPtr<CABasicAnimation> crossfadeAnimation = [CABasicAnimation animationWithKeyPath:@"contents"];
     RetainPtr<CGImageRef> contentsImage = textIndicator.contentImage()->nativeImage();
-    [crossfadeAnimation setToValue:(id)contentsImage.get()];
+    [crossfadeAnimation setToValue:(__bridge id)contentsImage.get()];
     [crossfadeAnimation setFillMode:kCAFillModeForwards];
     [crossfadeAnimation setRemovedOnCompletion:NO];
     [crossfadeAnimation setDuration:duration];

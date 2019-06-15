@@ -25,18 +25,37 @@
 
 #pragma once
 
+#if PLATFORM(COCOA)
+#include <WebCore/LibWebRTCProviderCocoa.h>
+#elif PLATFORM(GTK) || PLATFORM(WPE)
+#include <WebCore/LibWebRTCProviderGlib.h>
+#else
 #include <WebCore/LibWebRTCProvider.h>
-
+#endif
 
 namespace WebKit {
 
 #if USE(LIBWEBRTC)
-class LibWebRTCProvider final : public WebCore::LibWebRTCProvider {
+
+#if PLATFORM(COCOA)
+using LibWebRTCProviderBase = WebCore::LibWebRTCProviderCocoa;
+#elif PLATFORM(GTK) || PLATFORM(WPE)
+using LibWebRTCProviderBase = WebCore::LibWebRTCProviderGlib;
+#else
+using LibWebRTCProviderBase = WebCore::LibWebRTCProvider;
+#endif
+
+class LibWebRTCProvider final : public LibWebRTCProviderBase {
 public:
     LibWebRTCProvider() { m_useNetworkThreadWithSocketServer = false; }
 
 private:
     rtc::scoped_refptr<webrtc::PeerConnectionInterface> createPeerConnection(webrtc::PeerConnectionObserver&, webrtc::PeerConnectionInterface::RTCConfiguration&&) final;
+
+    void unregisterMDNSNames(uint64_t documentIdentifier) final;
+    void registerMDNSName(PAL::SessionID, uint64_t documentIdentifier, const String& ipAddress, CompletionHandler<void(MDNSNameOrError&&)>&&) final;
+    void resolveMDNSName(PAL::SessionID, const String& name, CompletionHandler<void(IPAddressOrError&&)>&&) final;
+    void disableNonLocalhostConnections() final;
 };
 #else
 using LibWebRTCProvider = WebCore::LibWebRTCProvider;

@@ -35,6 +35,7 @@
 #include "MediaProducer.h"
 #include "PlatformMediaSession.h"
 #include "VisibilityChangeClient.h"
+#include <JavaScriptCore/Float32Array.h>
 #include <atomic>
 #include <wtf/HashSet.h>
 #include <wtf/MainThread.h>
@@ -70,6 +71,7 @@ class OscillatorNode;
 class PannerNode;
 class PeriodicWave;
 class ScriptProcessorNode;
+class URL;
 class WaveShaperNode;
 
 // AudioContext is the cornerstone of the web audio API and all AudioNodes are created from it.
@@ -84,11 +86,11 @@ public:
 
     bool isInitialized() const;
     
-    bool isOfflineContext() { return m_isOfflineContext; }
+    bool isOfflineContext() const { return m_isOfflineContext; }
 
     Document* document() const; // ASSERTs if document no longer exists.
 
-    const Document* hostingDocument() const override;
+    Document* hostingDocument() const final;
 
     AudioDestinationNode* destination() { return m_destinationNode.get(); }
     size_t currentSampleFrame() const { return m_destinationNode->currentSampleFrame(); }
@@ -116,6 +118,8 @@ public:
 
     enum class State { Suspended, Running, Interrupted, Closed };
     State state() const;
+
+    bool wouldTaintOrigin(const URL&) const;
 
     // The AudioNode create methods are called on the main thread (from JavaScript).
     Ref<AudioBufferSourceNode> createBufferSource();
@@ -177,8 +181,8 @@ public:
     // Thread Safety and Graph Locking:
     //
     
-    void setAudioThread(ThreadIdentifier thread) { m_audioThread = thread; } // FIXME: check either not initialized or the same
-    ThreadIdentifier audioThread() const { return m_audioThread; }
+    void setAudioThread(Thread& thread) { m_audioThread = &thread; } // FIXME: check either not initialized or the same
+    Thread* audioThread() const { return m_audioThread; }
     bool isAudioThread() const;
 
     // Returns true only after the audio thread has been started and then shutdown.
@@ -275,8 +279,8 @@ private:
     bool willBeginPlayback();
     bool willPausePlayback();
 
-    bool userGestureRequiredForAudioStart() const { return m_restrictions & RequireUserGestureForAudioStartRestriction; }
-    bool pageConsentRequiredForAudioStart() const { return m_restrictions & RequirePageConsentForAudioStartRestriction; }
+    bool userGestureRequiredForAudioStart() const { return !isOfflineContext() && m_restrictions & RequireUserGestureForAudioStartRestriction; }
+    bool pageConsentRequiredForAudioStart() const { return !isOfflineContext() && m_restrictions & RequirePageConsentForAudioStartRestriction; }
 
     void setState(State);
 
@@ -380,8 +384,10 @@ private:
 
     // Graph locking.
     Lock m_contextGraphMutex;
-    volatile ThreadIdentifier m_audioThread { 0 };
-    volatile ThreadIdentifier m_graphOwnerThread; // if the lock is held then this is the thread which owns it, otherwise == UndefinedThreadIdentifier
+    // FIXME: Using volatile seems incorrect.
+    // https://bugs.webkit.org/show_bug.cgi?id=180332
+    Thread* volatile m_audioThread { nullptr };
+    Thread* volatile m_graphOwnerThread { nullptr }; // if the lock is held then this is the thread which owns it, otherwise == nullptr.
 
     AsyncAudioDecoder m_audioDecoder;
 

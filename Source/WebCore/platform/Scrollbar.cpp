@@ -81,7 +81,6 @@ Scrollbar::Scrollbar(ScrollableArea& scrollableArea, ScrollbarOrientation orient
     , m_suppressInvalidation(false)
     , m_isAlphaLocked(false)
     , m_isCustomScrollbar(isCustomScrollbar)
-    , m_weakPtrFactory(this)
 {
     theme().registerScrollbar(*this);
 
@@ -163,7 +162,7 @@ void Scrollbar::updateThumbProportion()
 
 void Scrollbar::paint(GraphicsContext& context, const IntRect& damageRect, Widget::SecurityOriginPaintPolicy)
 {
-    if (context.updatingControlTints() && theme().supportsControlTints()) {
+    if (context.invalidatingControlTints() && theme().supportsControlTints()) {
         invalidate();
         return;
     }

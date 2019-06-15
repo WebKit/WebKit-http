@@ -34,16 +34,15 @@
 #include "WebProcess.h"
 #include <WebCore/ColorChooserClient.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 WebColorChooser::WebColorChooser(WebPage* page, ColorChooserClient* client, const Color& initialColor)
     : m_colorChooserClient(client)
     , m_page(page)
 {
     m_page->setActiveColorChooser(this);
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::ShowColorPicker(initialColor, client->elementRectRelativeToRootView()), m_page->pageID());
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::ShowColorPicker(initialColor, client->elementRectRelativeToRootView(), client->suggestedColors()), m_page->pageID());
 }
 
 WebColorChooser::~WebColorChooser()
@@ -75,7 +74,7 @@ void WebColorChooser::reattachColorChooser(const Color& color)
     m_page->setActiveColorChooser(this);
 
     ASSERT(m_colorChooserClient);
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::ShowColorPicker(color, m_colorChooserClient->elementRectRelativeToRootView()), m_page->pageID());
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPageProxy::ShowColorPicker(color, m_colorChooserClient->elementRectRelativeToRootView(), m_colorChooserClient->suggestedColors()), m_page->pageID());
 }
 
 void WebColorChooser::setSelectedColor(const Color& color)

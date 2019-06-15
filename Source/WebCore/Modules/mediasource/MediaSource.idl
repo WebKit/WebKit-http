@@ -52,9 +52,9 @@ enum ReadyState {
     // Subset of sourceBuffers that provide data for the selected/enabled tracks.
     readonly attribute SourceBufferList activeSourceBuffers;
 
-    [SetterMayThrowException] attribute unrestricted double duration;
+    attribute unrestricted double duration;
 
-    [MayThrowException] SourceBuffer addSourceBuffer(DOMString type);
+    [NewObject, MayThrowException] SourceBuffer addSourceBuffer(DOMString type);
     [MayThrowException] void removeSourceBuffer(SourceBuffer buffer);
 
     readonly attribute ReadyState readyState;

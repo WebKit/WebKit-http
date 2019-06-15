@@ -45,9 +45,8 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/SharedBuffer.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static uint64_t generatePluginInstanceID()
 {
@@ -196,7 +195,9 @@ void PluginProxy::destroy()
     if (!m_connection)
         return;
 
-    m_connection->connection()->sendSync(Messages::WebProcessConnection::DestroyPlugin(m_pluginInstanceID, m_waitingOnAsynchronousInitialization), Messages::WebProcessConnection::DestroyPlugin::Reply(), 0);
+    // Although this message is sent synchronously, the Plugin process replies immediately (before performing any tasks) so this is only waiting for
+    // confirmation that the Plugin process received the DestroyPlugin message.
+    m_connection->connection()->sendSync(Messages::WebProcessConnection::DestroyPlugin(m_pluginInstanceID, m_waitingOnAsynchronousInitialization), Messages::WebProcessConnection::DestroyPlugin::Reply(), 0, 1_s, IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
     m_connection->removePluginProxy(this);
 }
 
@@ -232,7 +233,7 @@ bool PluginProxy::supportsSnapshotting() const
         return false;
 
     bool isSupported = false;
-    if (m_connection && !m_connection->connection()->sendSync(Messages::PluginControllerProxy::SupportsSnapshotting(), Messages::PluginControllerProxy::SupportsSnapshotting::Reply(isSupported), m_pluginInstanceID))
+    if (m_connection && !m_connection->connection()->sendSync(Messages::PluginControllerProxy::SupportsSnapshotting(), Messages::PluginControllerProxy::SupportsSnapshotting::Reply(isSupported), m_pluginInstanceID, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
         return false;
 
     return isSupported;
@@ -270,7 +271,7 @@ void PluginProxy::geometryDidChange()
 
     if (updateBackingStore()) {
         // Create a new plug-in backing store.
-        m_pluginBackingStore = ShareableBitmap::createShareable(m_backingStore->size(), ShareableBitmap::SupportsAlpha);
+        m_pluginBackingStore = ShareableBitmap::createShareable(m_backingStore->size(), { });
         if (!m_pluginBackingStore)
             return;
 
@@ -613,7 +614,7 @@ bool PluginProxy::updateBackingStore()
         m_backingStore = nullptr; // Give malloc a chance to recycle our backing store.
     }
 
-    m_backingStore = ShareableBitmap::create(backingStoreSize, ShareableBitmap::SupportsAlpha);
+    m_backingStore = ShareableBitmap::create(backingStoreSize, { });
     return !!m_backingStore;
 }
 
@@ -695,7 +696,7 @@ void PluginProxy::setStatusbarText(const String& statusbarText)
     controller()->setStatusbarText(statusbarText);
 }
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
 void PluginProxy::createPluginContainer(uint64_t& windowID)
 {
     windowID = controller()->createPluginContainer();

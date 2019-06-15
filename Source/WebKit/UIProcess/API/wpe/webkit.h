@@ -27,6 +27,7 @@
 
 #define __WEBKIT_H_INSIDE__
 
+#include <wpe/WebKitApplicationInfo.h>
 #include <wpe/WebKitAuthenticationRequest.h>
 #include <wpe/WebKitAutomationSession.h>
 #include <wpe/WebKitBackForwardList.h>
@@ -71,6 +72,7 @@
 #include <wpe/WebKitWebContext.h>
 #include <wpe/WebKitWebResource.h>
 #include <wpe/WebKitWebView.h>
+#include <wpe/WebKitWebViewBackend.h>
 #include <wpe/WebKitWebViewSessionState.h>
 #include <wpe/WebKitWebsiteData.h>
 #include <wpe/WebKitWebsiteDataManager.h>

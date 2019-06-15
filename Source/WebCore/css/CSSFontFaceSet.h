@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@ class FontFaceSet;
 
 class CSSFontFaceSetClient {
 public:
-    virtual ~CSSFontFaceSetClient() { }
+    virtual ~CSSFontFaceSetClient() = default;
     virtual void faceFinished(CSSFontFace&, CSSFontFace::Status) { };
     virtual void fontModified() { };
     virtual void startedLoading() { };
@@ -46,9 +46,9 @@ public:
 
 class CSSFontFaceSet final : public RefCounted<CSSFontFaceSet>, public CSSFontFace::Client {
 public:
-    static Ref<CSSFontFaceSet> create()
+    static Ref<CSSFontFaceSet> create(CSSFontSelector* owningFontSelector = nullptr)
     {
-        return adoptRef(*new CSSFontFaceSet());
+        return adoptRef(*new CSSFontFaceSet(owningFontSelector));
     }
     ~CSSFontFaceSet();
 
@@ -73,14 +73,16 @@ public:
     enum class Status { Loading, Loaded };
     Status status() const { return m_status; }
 
-    ExceptionOr<Vector<std::reference_wrapper<CSSFontFace>>> matchingFaces(const String& font, const String& text);
+    bool hasActiveFontFaces() { return status() == Status::Loading; }
+
+    ExceptionOr<Vector<std::reference_wrapper<CSSFontFace>>> matchingFacesExcludingPreinstalledFonts(const String& font, const String& text);
 
     // CSSFontFace::Client needs to be able to be held in a RefPtr.
     void ref() final { RefCounted::ref(); }
     void deref() final { RefCounted::deref(); }
 
 private:
-    CSSFontFaceSet();
+    CSSFontFaceSet(CSSFontSelector*);
 
     void removeFromFacesLookupTable(const CSSFontFace&, const CSSValueList& familiesToSearchFor);
     void addToFacesLookupTable(CSSFontFace&);
@@ -95,16 +97,30 @@ private:
 
     static String familyNameFromPrimitive(const CSSPrimitiveValue&);
 
+    using FontSelectionKey = std::optional<FontSelectionRequest>;
+    struct FontSelectionKeyHash {
+        static unsigned hash(const FontSelectionKey& key) { return computeHash(key); }
+        static bool equal(const FontSelectionKey& a, const FontSelectionKey& b) { return a == b; }
+        static const bool safeToCompareToEmptyOrDeleted = true;
+    };
+    struct FontSelectionKeyHashTraits : SimpleClassHashTraits<FontSelectionKey> {
+        static const bool emptyValueIsZero = false;
+        static FontSelectionKey emptyValue() { return FontSelectionRequest { }; }
+        static void constructDeletedValue(FontSelectionKey& slot) { slot = std::nullopt; }
+        static bool isDeletedValue(const FontSelectionKey& value) { return !value; }
+    };
+    using FontSelectionHashMap = HashMap<FontSelectionKey, RefPtr<CSSSegmentedFontFace>, FontSelectionKeyHash, FontSelectionKeyHashTraits>;
+
     // m_faces should hold all the same fonts as the ones inside inside m_facesLookupTable.
     Vector<Ref<CSSFontFace>> m_faces; // We should investigate moving m_faces to FontFaceSet and making it reference FontFaces. This may clean up the font loading design.
     HashMap<String, Vector<Ref<CSSFontFace>>, ASCIICaseInsensitiveHash> m_facesLookupTable;
     HashMap<String, Vector<Ref<CSSFontFace>>, ASCIICaseInsensitiveHash> m_locallyInstalledFacesLookupTable;
-    typedef HashMap<FontSelectionRequestKey, RefPtr<CSSSegmentedFontFace>, FontSelectionRequestKeyHash, WTF::SimpleClassHashTraits<FontSelectionRequestKey>> FontSelectionHashMap;
     HashMap<String, FontSelectionHashMap, ASCIICaseInsensitiveHash> m_cache;
     HashMap<StyleRuleFontFace*, CSSFontFace*> m_constituentCSSConnections;
     size_t m_facesPartitionIndex { 0 }; // All entries in m_faces before this index are CSS-connected.
     Status m_status { Status::Loaded };
     HashSet<CSSFontFaceSetClient*> m_clients;
+    CSSFontSelector* m_owningFontSelector;
     unsigned m_activeCount { 0 };
 };
 

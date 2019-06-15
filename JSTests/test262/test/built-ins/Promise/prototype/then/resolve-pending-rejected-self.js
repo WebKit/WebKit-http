@@ -3,7 +3,7 @@
 /*---
 description: Resolving with a reference to the promise itself from a pending promise that is later rejected
 es6id: 25.4.5.3
-info: >
+info: |
     [...]
     7. Return PerformPromiseThen(promise, onFulfilled, onRejected,
        resultCapability).
@@ -25,27 +25,29 @@ flags: [async]
 ---*/
 
 var reject;
-var p1 = new Promise(function(_, _reject) { reject = _reject; });
+var p1 = new Promise(function(_, _reject) {
+  reject = _reject;
+});
 var p2;
 
 p2 = p1.then(function() {}, function() {
-    return p2;
-  });
+  return p2;
+});
 
 p2.then(function() {
-    $DONE('The promise should not be fulfilled.');
-  }, function(reason) {
-    if (!reason) {
-      $DONE('The promise should be rejected with a value.');
-      return;
-    }
+  $DONE('The promise should not be fulfilled.');
+}, function(reason) {
+  if (!reason) {
+    $DONE('The promise should be rejected with a value.');
+    return;
+  }
 
-    if (reason.constructor !== TypeError) {
-      $DONE('The promise should be rejected with a TypeError instance.');
-      return;
-    }
+  if (reason.constructor !== TypeError) {
+    $DONE('The promise should be rejected with a TypeError instance.');
+    return;
+  }
 
-    $DONE();
-  });
+  $DONE();
+});
 
 reject();

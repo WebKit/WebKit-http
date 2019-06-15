@@ -76,7 +76,7 @@ static bool newFloatShrinksLine(const FloatingObject& newFloat, const RenderBloc
 
     // initial-letter float always shrinks the first line.
     const auto& style = newFloat.renderer().style();
-    if (isFirstLine && style.styleType() == FIRST_LETTER && !style.initialLetter().isEmpty())
+    if (isFirstLine && style.styleType() == PseudoId::FirstLetter && !style.initialLetter().isEmpty())
         return true;
     return false;
 }
@@ -237,10 +237,10 @@ IndentTextOrNot requiresIndent(bool isFirstLine, bool isAfterHardLineBreak, cons
     if (isFirstLine)
         shouldIndentText = IndentText;
 #if ENABLE(CSS3_TEXT)
-    else if (isAfterHardLineBreak && style.textIndentLine() == TextIndentEachLine)
+    else if (isAfterHardLineBreak && style.textIndentLine() == TextIndentLine::EachLine)
         shouldIndentText = IndentText;
 
-    if (style.textIndentType() == TextIndentHanging)
+    if (style.textIndentType() == TextIndentType::Hanging)
         shouldIndentText = shouldIndentText == IndentText ? DoNotIndentText : IndentText;
 #else
     UNUSED_PARAM(isAfterHardLineBreak);

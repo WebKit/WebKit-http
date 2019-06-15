@@ -15,22 +15,24 @@
  *
  */
 
-#include "webrtc/modules/audio_coding/codecs/isac/main/include/isac.h"
+#include "modules/audio_coding/codecs/isac/main/include/isac.h"
 
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/bandwidth_estimator.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/codec.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/crc.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/entropy_coding.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/lpc_shape_swb16_tables.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/os_specific_inline.h"
-#include "webrtc/modules/audio_coding/codecs/isac/main/source/structs.h"
+#include "rtc_base/checks.h"
+#include "common_audio/signal_processing/include/signal_processing_library.h"
+#include "modules/audio_coding/codecs/isac/main/source/bandwidth_estimator.h"
+#include "modules/audio_coding/codecs/isac/main/source/codec.h"
+#include "modules/audio_coding/codecs/isac/main/source/crc.h"
+#include "modules/audio_coding/codecs/isac/main/source/entropy_coding.h"
+#include "modules/audio_coding/codecs/isac/main/source/lpc_shape_swb16_tables.h"
+#include "modules/audio_coding/codecs/isac/main/source/os_specific_inline.h"
+#include "modules/audio_coding/codecs/isac/main/source/structs.h"
+#include "modules/audio_coding/codecs/isac/main/source/isac_vad.h"
+#include "rtc_base/system/arch.h"
 
 #define BIT_MASK_DEC_INIT 0x0001
 #define BIT_MASK_ENC_INIT 0x0002
@@ -1266,8 +1268,10 @@ static int Decode(ISACStruct* ISAC_main_inst,
 
         /* It might be less due to garbage. */
         if ((numDecodedBytesUB != lenNextStream) &&
-            (numDecodedBytesUB != (lenNextStream -
-                encoded[numDecodedBytesLB + 1 + numDecodedBytesUB]))) {
+            (numDecodedBytesLB + 1 + numDecodedBytesUB >= lenEncodedBytes ||
+             numDecodedBytesUB !=
+                 (lenNextStream -
+                  encoded[numDecodedBytesLB + 1 + numDecodedBytesUB]))) {
           instISAC->errorCode = ISAC_LENGTH_MISMATCH;
           return -1;
         }

@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-dataview.prototype.setfloat64
 es6id: 24.2.4.14
 description: >
   DataView.prototype.setFloat64.name is "setFloat64".
-info: >
+info: |
   DataView.prototype.setFloat64 ( byteOffset, value [ , littleEndian ] )
 
   17 ECMAScript Standard Built-in Objects:

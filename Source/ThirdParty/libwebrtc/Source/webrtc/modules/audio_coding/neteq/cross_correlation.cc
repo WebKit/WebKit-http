@@ -8,12 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/neteq/cross_correlation.h"
+#include "modules/audio_coding/neteq/cross_correlation.h"
 
 #include <cstdlib>
 #include <limits>
 
-#include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
+#include "common_audio/signal_processing/include/signal_processing_library.h"
 
 namespace webrtc {
 
@@ -48,8 +48,9 @@ int CrossCorrelationWithAutoShift(const int16_t* sequence_1,
   // There are some corner cases that 2) is not satisfied, e.g.,
   // max_1 = 17, max_2 = 30848, sequence_1_length = 4095, in such case,
   // optimal scaling is 0, while the following calculation results in 1.
-  const int32_t factor = (max_1 * max_2) / (std::numeric_limits<int32_t>::max()
-      / static_cast<int32_t>(sequence_1_length));
+  const int32_t factor =
+      (max_1 * max_2) / (std::numeric_limits<int32_t>::max() /
+                         static_cast<int32_t>(sequence_1_length));
   const int scaling = factor == 0 ? 0 : 31 - WebRtcSpl_NormW32(factor);
 
   WebRtcSpl_CrossCorrelation(cross_correlation, sequence_1, sequence_2,

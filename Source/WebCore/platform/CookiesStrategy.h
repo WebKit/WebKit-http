@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,33 +23,48 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CookiesStrategy_h
-#define CookiesStrategy_h
+#pragma once
 
-#include "SessionID.h"
-#include <wtf/Vector.h>
+#include <pal/SessionID.h>
+#include <wtf/EnumTraits.h>
+#include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class URL;
 class NetworkStorageSession;
+class URL;
+
 struct Cookie;
+struct SameSiteInfo;
+
+enum class IncludeSecureCookies { No, Yes };
 
 class CookiesStrategy {
 public:
-    virtual String cookiesForDOM(const NetworkStorageSession&, const URL& firstParty, const URL&) = 0;
-    virtual void setCookiesFromDOM(const NetworkStorageSession&, const URL& firstParty, const URL&, const String& cookieString) = 0;
-    virtual bool cookiesEnabled(const NetworkStorageSession&, const URL& firstParty, const URL&) = 0;
-    virtual String cookieRequestHeaderFieldValue(const NetworkStorageSession&, const URL& firstParty, const URL&) = 0;
-    virtual String cookieRequestHeaderFieldValue(SessionID, const URL& firstParty, const URL&) = 0;
-    virtual bool getRawCookies(const NetworkStorageSession&, const URL& firstParty, const URL&, Vector<Cookie>&) = 0;
+    virtual std::pair<String, bool> cookiesForDOM(const NetworkStorageSession&, const URL& firstParty, const SameSiteInfo&, const URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies) = 0;
+    virtual void setCookiesFromDOM(const NetworkStorageSession&, const URL& firstParty, const SameSiteInfo&, const URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String& cookieString) = 0;
+    virtual bool cookiesEnabled(const NetworkStorageSession&) = 0;
+    virtual std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession&, const URL& firstParty, const SameSiteInfo&, const URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies) = 0;
+    virtual std::pair<String, bool> cookieRequestHeaderFieldValue(PAL::SessionID, const URL& firstParty, const SameSiteInfo&, const URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies) = 0;
+    virtual bool getRawCookies(const NetworkStorageSession&, const URL& firstParty, const SameSiteInfo&, const URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<Cookie>&) = 0;
     virtual void deleteCookie(const NetworkStorageSession&, const URL&, const String& cookieName) = 0;
 
 protected:
-    virtual ~CookiesStrategy() { }
+    virtual ~CookiesStrategy() = default;
 };
 
 } // namespace WebCore
 
-#endif // CookiesStrategy_h
+namespace WTF {
+
+template<> struct EnumTraits<WebCore::IncludeSecureCookies> {
+    using values = EnumValues<
+        WebCore::IncludeSecureCookies,
+        WebCore::IncludeSecureCookies::No,
+        WebCore::IncludeSecureCookies::Yes
+    >;
+};
+
+} // namespace WTF
+

@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.3.4
+esid: sec-weakmap.prototype.has
 description: >
   WeakMap.prototype.has property descriptor
-info: >
+info: |
   WeakMap.prototype.has ( value )
 
   17 ECMAScript Standard Built-in Objects

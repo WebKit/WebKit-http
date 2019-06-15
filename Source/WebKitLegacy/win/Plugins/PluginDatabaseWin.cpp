@@ -25,12 +25,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
 #include "PluginDatabase.h"
 
-#include "Frame.h"
-#include "URL.h"
 #include "PluginPackage.h"
+#include <WebCore/Frame.h>
+#include <WebCore/URL.h>
 #include <wtf/WindowsExtras.h>
 #include <wtf/text/win/WCharStringExtras.h>
 
@@ -69,6 +68,7 @@ static inline void addPluginPathsFromRegistry(HKEY rootKey, HashSet<String>& pat
     RegCloseKey(key);
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 void PluginDatabase::getPluginPathsInDirectories(HashSet<String>& paths) const
 {
     // FIXME: This should be a case insensitive set.
@@ -80,9 +80,8 @@ void PluginDatabase::getPluginPathsInDirectories(HashSet<String>& paths) const
     String oldWMPPluginPath;
     String newWMPPluginPath;
 
-    Vector<String>::const_iterator end = m_pluginDirectories.end();
-    for (Vector<String>::const_iterator it = m_pluginDirectories.begin(); it != end; ++it) {
-        String pattern = *it + "\\*";
+    for (auto& directory : m_pluginDirectories) {
+        String pattern = directory + "\\*";
 
         hFind = FindFirstFileW(stringToNullTerminatedWChar(pattern).data(), &findFileData);
 
@@ -94,11 +93,11 @@ void PluginDatabase::getPluginPathsInDirectories(HashSet<String>& paths) const
                 continue;
 
             String filename = wcharToString(findFileData.cFileName, wcslen(findFileData.cFileName));
-            if ((!filename.startsWith("np", false) || !filename.endsWith("dll", false)) &&
-                (!equalLettersIgnoringASCIICase(filename, "plugin.dll") || !it->endsWith("Shockwave 10", false)))
+            if (!(startsWithLettersIgnoringASCIICase(filename, "np") && filename.endsWithIgnoringASCIICase("dll"))
+                && !(equalLettersIgnoringASCIICase(filename, "plugin.dll") && directory.endsWithIgnoringASCIICase("shockwave 10")))
                 continue;
 
-            String fullPath = *it + "\\" + filename;
+            String fullPath = directory + "\\" + filename;
             if (!uniqueFilenames.add(fullPath).isNewEntry)
                 continue;
 
@@ -122,6 +121,7 @@ void PluginDatabase::getPluginPathsInDirectories(HashSet<String>& paths) const
     if (!oldWMPPluginPath.isEmpty() && !newWMPPluginPath.isEmpty())
         paths.remove(oldWMPPluginPath);
 }
+#endif
 
 static inline Vector<int> parseVersionString(const String& versionString)
 {
@@ -358,6 +358,7 @@ static inline void addMacromediaPluginDirectories(Vector<String>& directories)
     directories.append(nullTerminatedWCharToString(macromediaDirectoryStr));
 }
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
 #if PLATFORM(QT)
 static inline void addQtWebKitPluginPath(Vector<String>& directories)
 {
@@ -396,5 +397,6 @@ bool PluginDatabase::isPreferredPluginDirectory(const String& directory)
 
     return false;
 }
+#endif
 
 }

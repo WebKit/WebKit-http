@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(CONTEXT_MENUS)
-
 #include "config.h"
 #include "WebContextMenuListenerProxy.h"
+
+#if ENABLE(CONTEXT_MENUS)
 
 #include "APIArray.h"
 #include "WKAPICast.h"
@@ -34,9 +34,8 @@
 #include "WebContextMenuItem.h"
 #include "WebContextMenuItemData.h"
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 WebContextMenuListenerProxy::WebContextMenuListenerProxy(WebContextMenuProxy* contextMenuMac)
     : m_contextMenuMac(contextMenuMac)
@@ -47,24 +46,12 @@ WebContextMenuListenerProxy::~WebContextMenuListenerProxy()
 {
 }
 
-void WebContextMenuListenerProxy::useContextMenuItems(WKArrayRef items)
+void WebContextMenuListenerProxy::useContextMenuItems(Vector<Ref<WebContextMenuItem>>&& items)
 {
     if (!m_contextMenuMac)
         return;
 
-    RefPtr<API::Array> array = toImpl(items);
-    Vector<WebContextMenuItemData> dataItems;
-
-    size_t newSize = array ? array->size() : 0;
-    for (size_t i = 0; i < newSize; ++i) {
-        WebContextMenuItem* item = array->at<WebContextMenuItem>(i);
-        if (!item)
-            continue;
-
-        dataItems.append(item->data());
-    }
-
-    m_contextMenuMac->showContextMenuWithItems(dataItems);
+    m_contextMenuMac->showContextMenuWithItems(WTFMove(items));
 }
 
 void WebContextMenuListenerProxy::invalidate()

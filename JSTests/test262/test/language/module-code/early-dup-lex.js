@@ -7,8 +7,12 @@ description: >
     contains any duplicate entries.
 flags: [module]
 features: [let, const]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 let x;
 const x;

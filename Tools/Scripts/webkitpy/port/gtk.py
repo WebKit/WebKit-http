@@ -116,31 +116,44 @@ class GtkPort(Port):
 
     def setup_environ_for_server(self, server_name=None):
         environment = super(GtkPort, self).setup_environ_for_server(server_name)
+        environment['G_DEBUG'] = 'fatal-criticals'
         environment['GSETTINGS_BACKEND'] = 'memory'
         environment['LIBOVERLAY_SCROLLBAR'] = '0'
         environment['TEST_RUNNER_INJECTED_BUNDLE_FILENAME'] = self._build_path('lib', 'libTestRunnerInjectedBundle.so')
         environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('lib', 'plugins')
-        environment['OWR_USE_TEST_SOURCES'] = '1'
         self._copy_value_from_environ_if_set(environment, 'WEBKIT_OUTPUTDIR')
+        self._copy_value_from_environ_if_set(environment, 'WEBKIT_TOP_LEVEL')
+        self._copy_value_from_environ_if_set(environment, 'USE_PLAYBIN3')
+        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG')
+        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_DUMP_DOT_DIR')
+        self._copy_value_from_environ_if_set(environment, 'GST_DEBUG_FILE')
 
         # Configure the software libgl renderer if jhbuild ready and we test inside a virtualized window system
-        if self._driver_class() in [XvfbDriver, WestonDriver] and self._should_use_jhbuild():
-            llvmpipe_libgl_path = self.host.executive.run_command(self._jhbuild_wrapper + ['printenv', 'LLVMPIPE_LIBGL_PATH'],
-                                                                  error_handler=self.host.executive.ignore_error).strip()
+        if self._driver_class() in [XvfbDriver, WestonDriver] and (self._should_use_jhbuild() or self._is_flatpak()):
+            if self._should_use_jhbuild():
+                llvmpipe_libgl_path = self.host.executive.run_command(self._jhbuild_wrapper + ['printenv', 'LLVMPIPE_LIBGL_PATH'],
+                                                                    ignore_errors=True).strip()
+            else:  # in flatpak
+                llvmpipe_libgl_path = "/app/softGL/lib"
+
             dri_libgl_path = os.path.join(llvmpipe_libgl_path, "dri")
             if os.path.exists(os.path.join(llvmpipe_libgl_path, "libGL.so")) and os.path.exists(os.path.join(dri_libgl_path, "swrast_dri.so")):
-                    # Force the Gallium llvmpipe software rasterizer
-                    environment['LIBGL_ALWAYS_SOFTWARE'] = "1"
-                    environment['LIBGL_DRIVERS_PATH'] = dri_libgl_path
-                    environment['LD_LIBRARY_PATH'] = llvmpipe_libgl_path
-                    if os.environ.get('LD_LIBRARY_PATH'):
-                            environment['LD_LIBRARY_PATH'] += ':%s' % os.environ.get('LD_LIBRARY_PATH')
+                # Make sure va-api support gets disabled because it's incompatible with Mesa's softGL driver.
+                environment['LIBVA_DRIVER_NAME'] = "null"
+                # Force the Gallium llvmpipe software rasterizer
+                environment['LIBGL_ALWAYS_SOFTWARE'] = "1"
+                environment['LIBGL_DRIVERS_PATH'] = dri_libgl_path
+                environment['LD_LIBRARY_PATH'] = llvmpipe_libgl_path
+                if os.environ.get('LD_LIBRARY_PATH'):
+                    environment['LD_LIBRARY_PATH'] += ':%s' % os.environ.get('LD_LIBRARY_PATH')
             else:
-                    _log.warning("Can't find Gallium llvmpipe driver. Try to run update-webkitgtk-libs")
+                _log.warning("Can't find Gallium llvmpipe driver. Try to run update-webkitgtk-libs or update-webkitgtk-flatpak")
         if self.get_option("leaks"):
-            #  Turn off GLib memory optimisations https://wiki.gnome.org/Valgrind.
+            # Turn off GLib memory optimisations https://wiki.gnome.org/Valgrind.
             environment['G_SLICE'] = 'always-malloc'
-            environment['G_DEBUG'] = 'gc-friendly'
+            environment['G_DEBUG'] += ',gc-friendly'
+            # Turn off bmalloc when running under Valgrind, see https://bugs.webkit.org/show_bug.cgi?id=177745
+            environment['Malloc'] = '1'
             xmlfilename = "".join(("drt-%p-", uuid.uuid1().hex, "-leaks.xml"))
             xmlfile = os.path.join(self.results_directory(), xmlfilename)
             suppressionsfile = self.path_from_webkit_base('Tools', 'Scripts', 'valgrind', 'suppressions.txt')
@@ -165,7 +178,7 @@ class GtkPort(Port):
     def _generate_all_test_configurations(self):
         configurations = []
         for build_type in self.ALL_BUILD_TYPES:
-            configurations.append(TestConfiguration(version=self._version, architecture='x86', build_type=build_type))
+            configurations.append(TestConfiguration(version=self.version_name(), architecture='x86', build_type=build_type))
         return configurations
 
     def _path_to_driver(self):
@@ -215,12 +228,12 @@ class GtkPort(Port):
     def show_results_html_file(self, results_filename):
         self._run_script("run-minibrowser", [path.abspath_to_uri(self.host.platform, results_filename)])
 
-    def check_sys_deps(self, needs_http):
-        return super(GtkPort, self).check_sys_deps(needs_http) and self._driver_class().check_driver(self)
+    def check_sys_deps(self):
+        return super(GtkPort, self).check_sys_deps() and self._driver_class().check_driver(self)
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than, target_host=None):
-        name = "WebKitWebProcess" if name == "WebProcess" else name
-        return GDBCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
+        return GDBCrashLogGenerator(self._executive, name, pid, newer_than,
+            self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
 
     def test_expectations_file_position(self):
         # GTK port baseline search path is gtk -> wk2 -> generic (as gtk-wk2 and gtk baselines are merged), so port test expectations file is at third to last position.

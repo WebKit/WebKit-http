@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_video/include/incoming_video_stream.h"
+#include "common_video/include/incoming_video_stream.h"
 
 #include <memory>
 
-#include "webrtc/base/timeutils.h"
-#include "webrtc/base/trace_event.h"
-#include "webrtc/common_video/video_render_frames.h"
-#include "webrtc/system_wrappers/include/event_wrapper.h"
+#include "common_video/video_render_frames.h"
+#include "rtc_base/timeutils.h"
+#include "rtc_base/trace_event.h"
 
 namespace webrtc {
 namespace {
@@ -37,7 +36,7 @@ class IncomingVideoStream::NewFrameTask : public rtc::QueuedTask {
 
  private:
   bool Run() override {
-    RTC_DCHECK(rtc::TaskQueue::IsCurrent(kIncomingQueueName));
+    RTC_DCHECK(stream_->incoming_render_queue_.IsCurrent());
     if (stream_->render_buffers_.AddFrame(std::move(frame_)) == 1)
       stream_->Dequeue();
     return true;
@@ -70,7 +69,7 @@ void IncomingVideoStream::OnFrame(const VideoFrame& video_frame) {
 void IncomingVideoStream::Dequeue() {
   TRACE_EVENT0("webrtc", "IncomingVideoStream::Dequeue");
   RTC_DCHECK(incoming_render_queue_.IsCurrent());
-  rtc::Optional<VideoFrame> frame_to_render = render_buffers_.FrameToRender();
+  absl::optional<VideoFrame> frame_to_render = render_buffers_.FrameToRender();
   if (frame_to_render)
     callback_->OnFrame(*frame_to_render);
 

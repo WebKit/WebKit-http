@@ -20,10 +20,10 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../jhbuild") )
 import jhbuildrc_common
-jhbuildrc_common.init(globals(), "gtk") 
+jhbuildrc_common.init(globals(), "gtk")
 
-__gtk_tools_directory = os.path.abspath(os.path.dirname(__file__))
-sys.path = [__gtk_tools_directory] + sys.path
+__top_level_directory = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, os.path.join(__top_level_directory, 'Tools', 'glib'))
 import common
 
 # LLVM requires that builddir != srcdir, and it's not possible to do that in jhbuild only
@@ -42,3 +42,5 @@ if 'run' not in sys.argv:
     os.environ['CXXFLAGS'] = '-Wno-error -O2 -g1'
     # For building gstreamer plugins on the Mac.
     os.environ['OBJCFLAGS'] = '-Wno-error -O2 -g1'
+
+conditions.add('gtk')

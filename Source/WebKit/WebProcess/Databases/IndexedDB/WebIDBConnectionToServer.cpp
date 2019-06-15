@@ -29,17 +29,16 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "DataReference.h"
-#include "DatabaseToWebProcessConnectionMessages.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
+#include "StorageToWebProcessConnectionMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebIDBConnectionToClientMessages.h"
 #include "WebIDBResult.h"
 #include "WebProcess.h"
-#include "WebToDatabaseProcessConnection.h"
+#include "WebToStorageProcessConnection.h"
 #include <WebCore/IDBConnectionToServer.h>
 #include <WebCore/IDBCursorInfo.h>
-#include <WebCore/IDBDatabaseException.h>
 #include <WebCore/IDBError.h>
 #include <WebCore/IDBIndexInfo.h>
 #include <WebCore/IDBIterateCursorData.h>
@@ -52,33 +51,34 @@
 #include <WebCore/IDBTransactionInfo.h>
 #include <WebCore/IDBValue.h>
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
-Ref<WebIDBConnectionToServer> WebIDBConnectionToServer::create(SessionID sessionID)
+Ref<WebIDBConnectionToServer> WebIDBConnectionToServer::create(PAL::SessionID sessionID)
 {
     return adoptRef(*new WebIDBConnectionToServer(sessionID));
 }
 
-WebIDBConnectionToServer::WebIDBConnectionToServer(SessionID sessionID)
+WebIDBConnectionToServer::WebIDBConnectionToServer(PAL::SessionID sessionID)
     : m_sessionID(sessionID)
 {
     relaxAdoptionRequirement();
 
-    m_isOpenInServer = sendSync(Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer(sessionID), Messages::DatabaseToWebProcessConnection::EstablishIDBConnectionToServer::Reply(m_identifier));
+    m_isOpenInServer = sendSync(Messages::StorageToWebProcessConnection::EstablishIDBConnectionToServer(sessionID), Messages::StorageToWebProcessConnection::EstablishIDBConnectionToServer::Reply(m_identifier));
+
+    // FIXME: This creates a reference cycle, so neither this object nor the IDBConnectionToServer will ever be deallocated.
     m_connectionToServer = IDBClient::IDBConnectionToServer::create(*this);
 }
 
 WebIDBConnectionToServer::~WebIDBConnectionToServer()
 {
     if (m_isOpenInServer)
-        send(Messages::DatabaseToWebProcessConnection::RemoveIDBConnectionToServer(m_identifier));
+        send(Messages::StorageToWebProcessConnection::RemoveIDBConnectionToServer(m_identifier));
 }
 
 IPC::Connection* WebIDBConnectionToServer::messageSenderConnection()
 {
-    return &WebProcess::singleton().webToDatabaseProcessConnection()->connection();
+    return &WebProcess::singleton().ensureWebToStorageProcessConnection(m_sessionID).connection();
 }
 
 IDBClient::IDBConnectionToServer& WebIDBConnectionToServer::coreConnectionToServer()
@@ -296,7 +296,7 @@ static void preregisterSandboxExtensionsIfNecessary(const WebIDBResult& result)
 #endif
 
     if (!filePaths.isEmpty())
-        WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreregisterSandboxExtensionsForOptionallyFileBackedBlob(filePaths, result.handles()), 0);
 }
 
 void WebIDBConnectionToServer::didGetRecord(const WebIDBResult& result)
@@ -361,7 +361,7 @@ void WebIDBConnectionToServer::didGetAllDatabaseNames(uint64_t callbackID, const
 
 void WebIDBConnectionToServer::connectionToServerLost()
 {
-    m_connectionToServer->connectionToServerLost({ WebCore::IDBDatabaseException::UnknownError, ASCIILiteral("An internal error was encountered in the Indexed Database server") });
+    m_connectionToServer->connectionToServerLost(IDBError { WebCore::UnknownError, "An internal error was encountered in the Indexed Database server"_s });
 }
 
 } // namespace WebKit

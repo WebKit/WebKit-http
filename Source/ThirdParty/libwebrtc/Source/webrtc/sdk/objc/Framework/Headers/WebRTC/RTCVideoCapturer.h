@@ -20,9 +20,10 @@ RTC_EXPORT
 @end
 
 RTC_EXPORT
+__attribute__((objc_runtime_name("WK_RTCVideoCapturer")))
 @interface RTCVideoCapturer : NSObject
 
-@property(nonatomic, readonly, weak) id<RTCVideoCapturerDelegate> delegate;
+@property(nonatomic, weak) id<RTCVideoCapturerDelegate> delegate;
 
 - (instancetype)initWithDelegate:(id<RTCVideoCapturerDelegate>)delegate;
 

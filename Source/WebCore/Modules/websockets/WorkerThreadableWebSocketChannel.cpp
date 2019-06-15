@@ -29,9 +29,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(WEB_SOCKETS)
-
 #include "WorkerThreadableWebSocketChannel.h"
 
 #include "Blob.h"
@@ -45,7 +42,7 @@
 #include "WorkerLoaderProxy.h"
 #include "WorkerRunLoop.h"
 #include "WorkerThread.h"
-#include <runtime/ArrayBuffer.h>
+#include <JavaScriptCore/ArrayBuffer.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/WTFString.h>
 
@@ -587,5 +584,3 @@ void WorkerThreadableWebSocketChannel::Bridge::waitForMethodCompletion()
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

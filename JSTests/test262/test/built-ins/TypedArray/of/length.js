@@ -5,7 +5,7 @@
 esid: sec-%typedarray%-of
 description: >
   %TypedArray%.of.length is 0.
-info: >
+info: |
   %TypedArray%.of ( ...items )
 
   17 ECMAScript Standard Built-in Objects:
@@ -21,6 +21,7 @@ info: >
   has the attributes { [[Writable]]: false, [[Enumerable]]: false,
   [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.of.length, 0);

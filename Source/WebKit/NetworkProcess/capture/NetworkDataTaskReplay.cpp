@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -46,7 +46,7 @@ namespace NetworkCapture {
 static const char* const webKitRelayDomain = "WebKitReplay";
 
 NetworkDataTaskReplay::NetworkDataTaskReplay(NetworkSession& session, NetworkDataTaskClient& client, const NetworkLoadParameters& parameters, Resource* resource)
-    : NetworkDataTask(session, client, parameters.request, parameters.allowStoredCredentials, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect)
+    : NetworkDataTask(session, client, parameters.request, parameters.storedCredentialsPolicy, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect, parameters.isMainFrameNavigation)
     , m_currentRequest(m_firstRequest)
     , m_resource(resource)
 {
@@ -249,13 +249,16 @@ void NetworkDataTaskReplay::didReceiveResponse(WebCore::ResourceResponse&& respo
         }
 
         switch (policyAction) {
-        case WebCore::PolicyAction::PolicyUse:
+        case WebCore::PolicyAction::Use:
             enqueueEventHandler();
             break;
-        case WebCore::PolicyAction::PolicyIgnore:
+        case WebCore::PolicyAction::Suspend:
+            LOG_ERROR("PolicyAction::Suspend encountered - Treating as PolicyAction::Ignore for now");
+            FALLTHROUGH;
+        case WebCore::PolicyAction::Ignore:
             complete();
             break;
-        case WebCore::PolicyAction::PolicyDownload:
+        case WebCore::PolicyAction::Download:
             DEBUG_LOG_ERROR("WebCore::PolicyAction::PolicyDownload");
             break;
         }
@@ -284,5 +287,7 @@ void NetworkDataTaskReplay::didFinish(const WebCore::ResourceError& error)
 
 } // namespace NetworkCapture
 } // namespace WebKit
+
+#undef DEBUG_CLASS
 
 #endif // ENABLE(NETWORK_CAPTURE)

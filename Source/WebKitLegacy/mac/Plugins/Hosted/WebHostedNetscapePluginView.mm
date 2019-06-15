@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@
 #import "WebUIDelegate.h"
 
 #import <CoreFoundation/CoreFoundation.h>
+#import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/BridgeJSC.h>
 #import <WebCore/Frame.h>
 #import <WebCore/FrameLoaderTypes.h>
@@ -45,9 +46,9 @@
 #import <WebCore/HTMLPlugInElement.h>
 #import <WebCore/RenderEmbeddedObject.h>
 #import <WebCore/ResourceError.h>
-#import <WebCore/WebCoreObjCExtras.h>
+#import <WebCore/WebCoreCALayerExtras.h>
 #import <WebCore/runtime_root.h>
-#import <runtime/InitializeThreading.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/ObjcRuntimeExtras.h>
@@ -55,6 +56,38 @@
 
 using namespace WebCore;
 using namespace WebKit;
+
+namespace WebKit {
+    
+class SoftwareCARenderer {
+public:
+    explicit SoftwareCARenderer(uint32_t contextID)
+        : m_context { [CAContext localContext] }
+        , m_renderContext { CARenderCGNew(0) }
+    {
+        [m_context setLayer:[CALayer _web_renderLayerWithContextID:contextID]];
+    }
+
+    ~SoftwareCARenderer()
+    {
+        CARenderCGDestroy(m_renderContext);
+    }
+
+    void render(CGContextRef context, CGRect rect)
+    {
+        CARenderUpdate* update = CARenderUpdateBegin(nullptr, 0, CACurrentMediaTime(), nullptr, 0, &rect);
+        CARenderUpdateAddContext(update, [m_context renderContext]);
+        CARenderUpdateAddRect(update, &rect);
+        CARenderCGRender(m_renderContext, update, context);
+        CARenderUpdateFinish(update);
+    }
+
+private:
+    RetainPtr<CAContext> m_context;
+    CARenderCGContext* m_renderContext;
+};
+
+}
 
 extern "C" {
 #include "WebKitPluginClientServer.h"
@@ -76,7 +109,7 @@ extern "C" {
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
 #endif
-    WKSendUserChangeNotifications();
+    sendUserChangeNotifications();
 }
 
 - (id)initWithFrame:(NSRect)frame
@@ -135,7 +168,7 @@ extern "C" {
         return NO;
 
     if (_proxy->rendererType() == UseSoftwareRenderer)
-        _softwareRenderer = WKSoftwareCARendererCreate(_proxy->renderContextID());
+        _softwareRenderer = std::make_unique<SoftwareCARenderer>(_proxy->renderContextID());
     else
         [self createPluginLayer];
     
@@ -150,13 +183,13 @@ extern "C" {
     BOOL acceleratedCompositingEnabled = false;
     acceleratedCompositingEnabled = [[[self webView] preferences] acceleratedCompositingEnabled];
 
-    _pluginLayer = WKMakeRenderLayer(_proxy->renderContextID());
+    _pluginLayer = [CALayer _web_renderLayerWithContextID:_proxy->renderContextID()];
 
     if (acceleratedCompositingEnabled && _proxy->rendererType() == UseAcceleratedCompositing) {
         // FIXME: This code can be shared between WebHostedNetscapePluginView and WebNetscapePluginView.
         // Since this layer isn't going to be inserted into a view, we need to create another layer and flip its geometry
         // in order to get the coordinate system right.
-        RetainPtr<CALayer> realPluginLayer = adoptNS(_pluginLayer.leakRef());
+        RetainPtr<CALayer> realPluginLayer = WTFMove(_pluginLayer);
 
         _pluginLayer = adoptNS([[CALayer alloc] init]);
         _pluginLayer.get().bounds = realPluginLayer.get().bounds;
@@ -274,11 +307,7 @@ extern "C" {
 - (void)destroyPlugin
 {
     if (_proxy) {
-        if (_softwareRenderer) {
-            WKSoftwareCARendererDestroy(_softwareRenderer);
-            _softwareRenderer = 0;
-        }
-        
+        _softwareRenderer = nullptr;
         _proxy->destroy();
         _proxy = nullptr;
     }
@@ -448,15 +477,18 @@ extern "C" {
     }
 
     if (_proxy) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (_softwareRenderer) {
             if ([NSGraphicsContext currentContextDrawingToScreen]) {
-                WKSoftwareCARendererRender(_softwareRenderer, (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort], NSRectToCGRect(rect));
+                _softwareRenderer->render((CGContextRef)[[NSGraphicsContext currentContext] graphicsPort], NSRectToCGRect(rect));
                 _proxy->didDraw();
             } else
                 _proxy->print(reinterpret_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]), [self bounds].size.width, [self bounds].size.height);
         } else if (_snapshotting && [self supportsSnapshotting]) {
             _proxy->snapshot(reinterpret_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]), [self bounds].size.width, [self bounds].size.height);
         }
+#pragma clang diagnostic pop
 
         return;
     }

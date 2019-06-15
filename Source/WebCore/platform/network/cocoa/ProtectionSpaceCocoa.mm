@@ -26,21 +26,9 @@
 #import "config.h"
 #import "ProtectionSpaceCocoa.h"
 
-#if USE(CFURLCONNECTION)
-@interface NSURLProtectionSpace (WebDetails)
-- (CFURLProtectionSpaceRef) _CFURLProtectionSpace;
-- (id)_initWithCFURLProtectionSpace:(CFURLProtectionSpaceRef)cfProtSpace;
-@end
-#endif
+#import <pal/spi/cf/CFNetworkSPI.h>
 
 namespace WebCore {
-
-#if USE(CFURLCONNECTION)
-ProtectionSpace::ProtectionSpace(CFURLProtectionSpaceRef space)
-    : ProtectionSpace(adoptNS([[NSURLProtectionSpace alloc] _initWithCFURLProtectionSpace:space]).get())
-{
-}
-#endif
 
 static ProtectionSpaceServerType type(NSURLProtectionSpace *space)
 {
@@ -94,6 +82,8 @@ static ProtectionSpaceAuthenticationScheme scheme(NSURLProtectionSpace *space)
     if ([method isEqualToString:NSURLAuthenticationMethodServerTrust])
         return ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested;
 #endif
+    if ([method isEqualToString:NSURLAuthenticationMethodOAuth])
+        return ProtectionSpaceAuthenticationSchemeOAuth;
 
     ASSERT_NOT_REACHED();
     return ProtectionSpaceAuthenticationSchemeUnknown;
@@ -104,13 +94,6 @@ ProtectionSpace::ProtectionSpace(NSURLProtectionSpace *space)
 {
     m_nsSpace = space;
 }
-
-#if USE(CFURLCONNECTION)
-CFURLProtectionSpaceRef ProtectionSpace::cfSpace() const
-{
-    return [nsSpace() _CFURLProtectionSpace];
-}
-#endif
 
 NSURLProtectionSpace *ProtectionSpace::nsSpace() const
 {
@@ -176,6 +159,9 @@ NSURLProtectionSpace *ProtectionSpace::nsSpace() const
         method = NSURLAuthenticationMethodClientCertificate;
         break;
 #endif
+    case ProtectionSpaceAuthenticationSchemeOAuth:
+        method = NSURLAuthenticationMethodOAuth;
+        break;
     default:
         ASSERT_NOT_REACHED();
     }

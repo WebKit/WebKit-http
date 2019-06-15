@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-array-offset
 description: >
   Throw a RangeError exception if targetOffset < 0
-info: >
+info: |
   22.2.3.23.1 %TypedArray%.prototype.set (array [ , offset ] )
 
   1. Assert: array is any ECMAScript language value other than an Object with a
@@ -15,6 +15,7 @@ info: >
   7. If targetOffset < 0, throw a RangeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

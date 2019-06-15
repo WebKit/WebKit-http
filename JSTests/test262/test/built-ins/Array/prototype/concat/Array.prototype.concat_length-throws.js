@@ -4,14 +4,18 @@
 
 
 /*---
+esid: sec-array.prototype.concat
 es6id: 22.1.3.1_3
 description: Array.prototype.concat length throws
+features: [Symbol.isConcatSpreadable]
 ---*/
 function MyError() {}
 var obj = {};
 obj[Symbol.isConcatSpreadable] = true;
 Object.defineProperty(obj, "length", {
-  get: function() { throw new MyError(); }
+  get: function() {
+    throw new MyError();
+  }
 });
 
 assert.throws(MyError, function() {

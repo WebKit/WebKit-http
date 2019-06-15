@@ -5,7 +5,7 @@ es6id: 9.5.6
 description: >
     Throw a TypeError exception if Desc and target property descriptor are not
     compatible and trap result is true.
-info: >
+info: |
     [[DefineOwnProperty]] (P, Desc)
 
     ...
@@ -17,19 +17,19 @@ info: >
 
 var target = {};
 var p = new Proxy(target, {
-    defineProperty: function(t, prop, desc) {
-        return true;
-    }
+  defineProperty: function(t, prop, desc) {
+    return true;
+  }
 });
 
 Object.defineProperty(target, "foo", {
-    value: 1,
-    configurable: false
+  value: 1,
+  configurable: false
 });
 
 assert.throws(TypeError, function() {
-    Object.defineProperty(p, "foo", {
-        value: 1,
-        configurable: true
-    });
+  Object.defineProperty(p, "foo", {
+    value: 1,
+    configurable: true
+  });
 });

@@ -8,40 +8,39 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CODING_ENCODED_FRAME_H_
-#define WEBRTC_MODULES_VIDEO_CODING_ENCODED_FRAME_H_
+#ifndef MODULES_VIDEO_CODING_ENCODED_FRAME_H_
+#define MODULES_VIDEO_CODING_ENCODED_FRAME_H_
 
 #include <vector>
 
-#include "webrtc/common_types.h"
-#include "webrtc/common_video/include/video_frame.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/modules/video_coding/include/video_codec_interface.h"
-#include "webrtc/modules/video_coding/include/video_coding_defines.h"
+#include "common_types.h"  // NOLINT(build/include)
+#include "common_video/include/video_frame.h"
+#include "modules/include/module_common_types.h"
+#include "modules/video_coding/include/video_codec_interface.h"
+#include "modules/video_coding/include/video_coding_defines.h"
 
 namespace webrtc {
 
 class VCMEncodedFrame : protected EncodedImage {
  public:
   VCMEncodedFrame();
-  explicit VCMEncodedFrame(const webrtc::EncodedImage& rhs);
-  VCMEncodedFrame(const VCMEncodedFrame& rhs);
+  VCMEncodedFrame(const VCMEncodedFrame&) = delete;
 
   ~VCMEncodedFrame();
   /**
-  *   Delete VideoFrame and resets members to zero
-  */
+   *   Delete VideoFrame and resets members to zero
+   */
   void Free();
   /**
-  *   Set render time in milliseconds
-  */
+   *   Set render time in milliseconds
+   */
   void SetRenderTime(const int64_t renderTimeMs) {
     _renderTimeMs = renderTimeMs;
   }
 
   /**
-  *   Set the encoded frame size
-  */
+   *   Set the encoded frame size
+   */
   void SetEncodedSize(uint32_t width, uint32_t height) {
     _encodedWidth = width;
     _encodedHeight = height;
@@ -52,34 +51,34 @@ class VCMEncodedFrame : protected EncodedImage {
   }
 
   /**
-  *   Get the encoded image
-  */
+   *   Get the encoded image
+   */
   const webrtc::EncodedImage& EncodedImage() const {
     return static_cast<const webrtc::EncodedImage&>(*this);
   }
   /**
-  *   Get pointer to frame buffer
-  */
+   *   Get pointer to frame buffer
+   */
   const uint8_t* Buffer() const { return _buffer; }
   /**
-  *   Get frame length
-  */
+   *   Get frame length
+   */
   size_t Length() const { return _length; }
   /**
-  *   Get frame timestamp (90kHz)
-  */
+   *   Get frame timestamp (90kHz)
+   */
   uint32_t TimeStamp() const { return _timeStamp; }
   /**
-  *   Get render time in milliseconds
-  */
+   *   Get render time in milliseconds
+   */
   int64_t RenderTimeMs() const { return _renderTimeMs; }
   /**
-  *   Get frame type
-  */
+   *   Get frame type
+   */
   webrtc::FrameType FrameType() const { return _frameType; }
   /**
-  *   Get frame rotation
-  */
+   *   Get frame rotation
+   */
   VideoRotation rotation() const { return rotation_; }
   /**
    *  Get video content type
@@ -94,30 +93,30 @@ class VCMEncodedFrame : protected EncodedImage {
    */
   bool Complete() const { return _completeFrame; }
   /**
-  *   True if there's a frame missing before this frame
-  */
+   *   True if there's a frame missing before this frame
+   */
   bool MissingFrame() const { return _missingFrame; }
   /**
-  *   Payload type of the encoded payload
-  */
+   *   Payload type of the encoded payload
+   */
   uint8_t PayloadType() const { return _payloadType; }
   /**
-  *   Get codec specific info.
-  *   The returned pointer is only valid as long as the VCMEncodedFrame
-  *   is valid. Also, VCMEncodedFrame owns the pointer and will delete
-  *   the object.
-  */
+   *   Get codec specific info.
+   *   The returned pointer is only valid as long as the VCMEncodedFrame
+   *   is valid. Also, VCMEncodedFrame owns the pointer and will delete
+   *   the object.
+   */
   const CodecSpecificInfo* CodecSpecific() const { return &_codecSpecificInfo; }
 
  protected:
   /**
-  * Verifies that current allocated buffer size is larger than or equal to the
-  * input size.
-  * If the current buffer size is smaller, a new allocation is made and the old
-  * buffer data
-  * is copied to the new buffer.
-  * Buffer size is updated to minimumSize.
-  */
+   * Verifies that current allocated buffer size is larger than or equal to the
+   * input size.
+   * If the current buffer size is smaller, a new allocation is made and the old
+   * buffer data
+   * is copied to the new buffer.
+   * Buffer size is updated to minimumSize.
+   */
   void VerifyAndAllocate(size_t minimumSize);
 
   void Reset();
@@ -138,4 +137,4 @@ class VCMEncodedFrame : protected EncodedImage {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_VIDEO_CODING_ENCODED_FRAME_H_
+#endif  // MODULES_VIDEO_CODING_ENCODED_FRAME_H_

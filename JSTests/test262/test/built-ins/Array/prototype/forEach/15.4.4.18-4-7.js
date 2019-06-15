@@ -2,13 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-4-7
 description: >
     Array.prototype.forEach throws TypeError if callbackfn is Object
     without Call internal method
 ---*/
 
-  var arr = new Array(10);
+var arr = new Array(10);
 assert.throws(TypeError, function() {
-    arr.forEach(new Object());
+  arr.forEach(new Object());
 });

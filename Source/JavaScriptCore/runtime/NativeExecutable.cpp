@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2013, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,7 +40,7 @@ namespace JSC {
 
 const ClassInfo NativeExecutable::s_info = { "NativeExecutable", &ExecutableBase::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(NativeExecutable) };
 
-NativeExecutable* NativeExecutable::create(VM& vm, Ref<JITCode>&& callThunk, NativeFunction function, Ref<JITCode>&& constructThunk, NativeFunction constructor, Intrinsic intrinsic, const DOMJIT::Signature* signature, const String& name)
+NativeExecutable* NativeExecutable::create(VM& vm, Ref<JITCode>&& callThunk, TaggedNativeFunction function, Ref<JITCode>&& constructThunk, TaggedNativeFunction constructor, Intrinsic intrinsic, const DOMJIT::Signature* signature, const String& name)
 {
     NativeExecutable* executable;
     executable = new (NotNull, allocateCell<NativeExecutable>(vm.heap)) NativeExecutable(vm, function, constructor, intrinsic, signature);
@@ -66,9 +66,14 @@ void NativeExecutable::finishCreation(VM& vm, Ref<JITCode>&& callThunk, Ref<JITC
     m_jitCodeForCallWithArityCheck = m_jitCodeForCall->addressForCall(MustCheckArity);
     m_jitCodeForConstructWithArityCheck = m_jitCodeForConstruct->addressForCall(MustCheckArity);
     m_name = name;
+
+    assertIsTaggedWith(m_jitCodeForCall->addressForCall(ArityCheckNotRequired).executableAddress(), JSEntryPtrTag);
+    assertIsTaggedWith(m_jitCodeForConstruct->addressForCall(ArityCheckNotRequired).executableAddress(), JSEntryPtrTag);
+    assertIsTaggedWith(m_jitCodeForCallWithArityCheck.executableAddress(), JSEntryPtrTag);
+    assertIsTaggedWith(m_jitCodeForConstructWithArityCheck.executableAddress(), JSEntryPtrTag);
 }
 
-NativeExecutable::NativeExecutable(VM& vm, NativeFunction function, NativeFunction constructor, Intrinsic intrinsic, const DOMJIT::Signature* signature)
+NativeExecutable::NativeExecutable(VM& vm, TaggedNativeFunction function, TaggedNativeFunction constructor, Intrinsic intrinsic, const DOMJIT::Signature* signature)
     : ExecutableBase(vm, vm.nativeExecutableStructure.get(), NUM_PARAMETERS_IS_HOST, intrinsic)
     , m_function(function)
     , m_constructor(constructor)
@@ -79,10 +84,10 @@ NativeExecutable::NativeExecutable(VM& vm, NativeFunction function, NativeFuncti
 CodeBlockHash NativeExecutable::hashFor(CodeSpecializationKind kind) const
 {
     if (kind == CodeForCall)
-        return CodeBlockHash(static_cast<unsigned>(bitwise_cast<size_t>(m_function)));
-    
+        return CodeBlockHash(m_function.bits());
+
     RELEASE_ASSERT(kind == CodeForConstruct);
-    return CodeBlockHash(static_cast<unsigned>(bitwise_cast<size_t>(m_constructor)));
+    return CodeBlockHash(m_constructor.bits());
 }
 
 } // namespace JSC

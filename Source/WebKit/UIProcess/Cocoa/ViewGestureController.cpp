@@ -30,15 +30,15 @@
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 #import "ViewGestureControllerMessages.h"
 #import "WebBackForwardList.h"
+#import "WebFullScreenManagerProxy.h"
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 #import <wtf/MathExtras.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringBuilder.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static const Seconds swipeSnapshotRemovalWatchdogAfterFirstVisuallyNonEmptyLayoutDuration { 3_s };
 static const Seconds swipeSnapshotRemovalActiveLoadMonitoringInterval { 250_ms };
@@ -107,19 +107,26 @@ void ViewGestureController::didEndGesture()
     
 void ViewGestureController::setAlternateBackForwardListSourcePage(WebPageProxy* page)
 {
-    if (page)
-        m_alternateBackForwardListSourcePage = page->createWeakPtr();
-    else
-        m_alternateBackForwardListSourcePage.clear();
+    m_alternateBackForwardListSourcePage = makeWeakPtr(page);
 }
     
 bool ViewGestureController::canSwipeInDirection(SwipeDirection direction) const
 {
+#if ENABLE(FULLSCREEN_API)
+    if (m_webPageProxy.fullScreenManager() && m_webPageProxy.fullScreenManager()->isFullScreen())
+        return false;
+#endif
     RefPtr<WebPageProxy> alternateBackForwardListSourcePage = m_alternateBackForwardListSourcePage.get();
     auto& backForwardList = alternateBackForwardListSourcePage ? alternateBackForwardListSourcePage->backForwardList() : m_webPageProxy.backForwardList();
     if (direction == SwipeDirection::Back)
         return !!backForwardList.backItem();
     return !!backForwardList.forwardItem();
+}
+
+void ViewGestureController::didStartProvisionalLoadForMainFrame()
+{
+    if (auto provisionalOrSameDocumentLoadCallback = WTFMove(m_provisionalOrSameDocumentLoadCallback))
+        provisionalOrSameDocumentLoadCallback();
 }
 
 
@@ -150,6 +157,12 @@ void ViewGestureController::didRestoreScrollPosition()
 
 void ViewGestureController::didReachMainFrameLoadTerminalState()
 {
+    if (m_provisionalOrSameDocumentLoadCallback) {
+        m_provisionalOrSameDocumentLoadCallback = nullptr;
+        removeSwipeSnapshot();
+        return;
+    }
+
     if (!m_snapshotRemovalTracker.eventOccurred(SnapshotRemovalTracker::MainFrameLoad))
         return;
 
@@ -174,6 +187,10 @@ void ViewGestureController::didReachMainFrameLoadTerminalState()
 
 void ViewGestureController::didSameDocumentNavigationForMainFrame(SameDocumentNavigationType type)
 {
+
+    if (auto provisionalOrSameDocumentLoadCallback = WTFMove(m_provisionalOrSameDocumentLoadCallback))
+        provisionalOrSameDocumentLoadCallback();
+
     bool cancelledOutstandingEvent = false;
 
     // Same-document navigations don't have a main frame load or first visually non-empty layout.
@@ -235,17 +252,16 @@ String ViewGestureController::SnapshotRemovalTracker::eventsDescription(Events e
 void ViewGestureController::SnapshotRemovalTracker::log(const String& log) const
 {
 #if !LOG_DISABLED
-    auto now = std::chrono::steady_clock::now();
-    double millisecondsSinceStart = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(now - m_startTime).count();
+    auto sinceStart = MonotonicTime::now() - m_startTime;
 #endif
-    LOG(ViewGestures, "Swipe Snapshot Removal (%0.2f ms) - %s", millisecondsSinceStart, log.utf8().data());
+    LOG(ViewGestures, "Swipe Snapshot Removal (%0.2f ms) - %s", sinceStart.milliseconds(), log.utf8().data());
 }
 
 void ViewGestureController::SnapshotRemovalTracker::start(Events desiredEvents, WTF::Function<void()>&& removalCallback)
 {
     m_outstandingEvents = desiredEvents;
     m_removalCallback = WTFMove(removalCallback);
-    m_startTime = std::chrono::steady_clock::now();
+    m_startTime = MonotonicTime::now();
 
     log("start");
 
@@ -268,9 +284,6 @@ bool ViewGestureController::SnapshotRemovalTracker::stopWaitingForEvent(Events e
     if (!(m_outstandingEvents & event))
         return false;
 
-#if LOG_DISABLED
-    UNUSED_PARAM(logReason);
-#endif
     log(logReason + eventsDescription(event));
 
     m_outstandingEvents &= ~event;

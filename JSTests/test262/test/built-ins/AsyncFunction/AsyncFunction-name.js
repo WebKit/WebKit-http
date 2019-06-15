@@ -3,13 +3,13 @@
 
 /*---
 author: Brian Terlson <brian.terlson@microsoft.com>
-esid: pending
+esid: sec-async-function-constructor-properties
 description: >
   %AsyncFunction% has a name of "AsyncFunction".
 includes: [propertyHelper.js]
 ---*/
 
-var AsyncFunction = async function foo() { }.constructor;
+var AsyncFunction = async function foo() {}.constructor;
 assert.sameValue(AsyncFunction.name, "AsyncFunction");
 verifyNotWritable(AsyncFunction, "name");
 verifyNotEnumerable(AsyncFunction, "name");

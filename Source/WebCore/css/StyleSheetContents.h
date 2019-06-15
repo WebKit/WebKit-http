@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include "CachePolicy.h"
 #include "URL.h"
 #include <wtf/Function.h>
@@ -43,7 +43,7 @@ class StyleRuleBase;
 class StyleRuleImport;
 class StyleRuleNamespace;
 
-class StyleSheetContents final : public RefCounted<StyleSheetContents> {
+class StyleSheetContents final : public RefCounted<StyleSheetContents>, public CanMakeWeakPtr<StyleSheetContents> {
 public:
     static Ref<StyleSheetContents> create(const CSSParserContext& context = CSSParserContext(HTMLStandardMode))
     {
@@ -86,6 +86,7 @@ public:
     bool loadCompleted() const { return m_loadCompleted; }
 
     URL completeURL(const String& url) const;
+    bool traverseRules(const WTF::Function<bool (const StyleRuleBase&)>& handler) const;
     bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
     void setIsUserStyleSheet(bool b) { m_isUserStyleSheet = b; }
@@ -143,8 +144,6 @@ public:
 
     void shrinkToFit();
 
-    WeakPtr<StyleSheetContents> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
 private:
     WEBCORE_EXPORT StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext&);
     StyleSheetContents(const StyleSheetContents&);
@@ -174,8 +173,6 @@ private:
     CSSParserContext m_parserContext;
 
     Vector<CSSStyleSheet*> m_clients;
-    
-    WeakPtrFactory<StyleSheetContents> m_weakPtrFactory { this };
 };
 
 } // namespace WebCore

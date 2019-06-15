@@ -7,9 +7,11 @@ description: >
     and before a nested `try..catch` statement, `throw` should interrupt
     control flow as if a `throw` statement had appeared at that location in the
     function body.
+features: [generators]
 ---*/
 
 var unreachable = 0;
+
 function* g() {
   try {
     yield 1;
@@ -42,7 +44,9 @@ assert.sameValue(
   'statement following `yield` not executed (following `throw`)'
 );
 
-assert.throws(Test262Error, function() { iter.next(); });
+assert.throws(Test262Error, function() {
+  iter.next();
+});
 
 result = iter.next();
 assert.sameValue(

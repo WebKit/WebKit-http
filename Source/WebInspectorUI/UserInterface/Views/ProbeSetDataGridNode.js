@@ -24,11 +24,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ProbeSetDataGridNode = class ProbeSetDataGridNode extends WebInspector.DataGridNode
+WI.ProbeSetDataGridNode = class ProbeSetDataGridNode extends WI.DataGridNode
 {
     constructor(dataGrid)
     {
-        console.assert(dataGrid instanceof WebInspector.ProbeSetDataGrid, "Invalid ProbeSetDataGrid argument:", dataGrid);
+        console.assert(dataGrid instanceof WI.ProbeSetDataGrid, "Invalid ProbeSetDataGrid argument:", dataGrid);
 
         super();
         this.dataGrid = dataGrid; // This is set to null in DataGridNode's constructor.
@@ -53,16 +53,18 @@ WebInspector.ProbeSetDataGridNode = class ProbeSetDataGridNode extends WebInspec
 
     set frame(value)
     {
-        console.assert(value instanceof WebInspector.ProbeSetDataFrame, "Invalid ProbeSetDataFrame argument: ", value);
+        console.assert(value instanceof WI.ProbeSetDataFrame, "Invalid ProbeSetDataFrame argument: ", value);
         this._frame = value;
+
 
         var data = {};
         for (var probe of this.dataGrid.probeSet.probes) {
+            let columnIdentifier = WI.ProbeSetDataGrid.columnIdentifierForProbe(probe);
             var sample = this.frame[probe.id];
             if (!sample || !sample.object)
-                data[probe.id] = WebInspector.ProbeSetDataFrame.MissingValue;
+                data[columnIdentifier] = WI.ProbeSetDataFrame.MissingValue;
             else
-                data[probe.id] = sample.object;
+                data[columnIdentifier] = sample.object;
         }
         this._data = data;
     }
@@ -75,13 +77,13 @@ WebInspector.ProbeSetDataGridNode = class ProbeSetDataGridNode extends WebInspec
     createCellContent(columnIdentifier, cell)
     {
         var sample = this.data[columnIdentifier];
-        if (sample === WebInspector.ProbeSetDataFrame.MissingValue) {
+        if (sample === WI.ProbeSetDataFrame.MissingValue) {
             cell.classList.add("unknown-value");
             return sample;
         }
 
-        if (sample instanceof WebInspector.RemoteObject)
-            return WebInspector.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject(sample, null);
+        if (sample instanceof WI.RemoteObject)
+            return WI.FormattedValue.createObjectTreeOrFormattedValueForRemoteObject(sample, null);
 
         return sample;
     }

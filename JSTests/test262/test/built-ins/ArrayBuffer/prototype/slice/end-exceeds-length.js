@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer.prototype.slice
 es6id: 24.1.4.3
 description: >
   Large `end` index is clamped to [[ArrayBufferByteLength]].
-info: >
+info: |
   ArrayBuffer.prototype.slice ( start, end )
 
   ...
@@ -15,14 +16,17 @@ info: >
 
 var arrayBuffer = new ArrayBuffer(8);
 
-var start = 1, end = 12;
+var start = 1,
+  end = 12;
 var result = arrayBuffer.slice(start, end);
 assert.sameValue(result.byteLength, 7, "slice(1, 12)");
 
-var start = 2, end = 0x100000000;
+var start = 2,
+  end = 0x100000000;
 var result = arrayBuffer.slice(start, end);
 assert.sameValue(result.byteLength, 6, "slice(2, 0x100000000)");
 
-var start = 3, end = +Infinity;
+var start = 3,
+  end = +Infinity;
 var result = arrayBuffer.slice(start, end);
 assert.sameValue(result.byteLength, 5, "slice(3, Infinity)");

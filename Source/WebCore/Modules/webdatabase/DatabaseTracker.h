@@ -36,6 +36,7 @@
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/StringHash.h>
 
 namespace WebCore {
@@ -69,7 +70,7 @@ public:
     ExceptionOr<void> retryCanEstablishDatabase(DatabaseContext&, const String& name, unsigned estimatedSize);
 
     void setDatabaseDetails(const SecurityOriginData&, const String& name, const String& displayName, unsigned estimatedSize);
-    String fullPathForDatabase(const SecurityOriginData&, const String& name, bool createIfDoesNotExist);
+    WEBCORE_EXPORT String fullPathForDatabase(const SecurityOriginData&, const String& name, bool createIfDoesNotExist);
 
     void addOpenDatabase(Database&);
     void removeOpenDatabase(Database&);
@@ -89,7 +90,7 @@ public:
     RefPtr<OriginLock> originLockFor(const SecurityOriginData&);
 
     WEBCORE_EXPORT void deleteAllDatabasesImmediately();
-    WEBCORE_EXPORT void deleteDatabasesModifiedSince(std::chrono::system_clock::time_point);
+    WEBCORE_EXPORT void deleteDatabasesModifiedSince(WallTime);
     WEBCORE_EXPORT bool deleteOrigin(const SecurityOriginData&);
     WEBCORE_EXPORT bool deleteDatabase(const SecurityOriginData&, const String& name);
 

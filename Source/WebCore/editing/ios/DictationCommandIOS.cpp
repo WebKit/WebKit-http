@@ -26,6 +26,8 @@
 #include "config.h"
 #include "DictationCommandIOS.h"
 
+#if PLATFORM(IOS)
+
 #include "Document.h"
 #include "DocumentMarkerController.h"
 #include "Element.h"
@@ -38,7 +40,7 @@
 namespace WebCore {
 
 DictationCommandIOS::DictationCommandIOS(Document& document, Vector<Vector<String>>&& dictationPhrases, RetainPtr<id> metadata)
-    : CompositeEditCommand(document, EditActionDictation)
+    : CompositeEditCommand(document, EditAction::Dictation)
     , m_dictationPhrases(WTFMove(dictationPhrases))
     , m_metadata(WTFMove(metadata))
 {
@@ -76,3 +78,5 @@ void DictationCommandIOS::doApply()
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(IOS)

@@ -4,6 +4,8 @@
 /*---
 info: The eval property has the attribute DontEnum
 es5id: 15.1.2.1_A4.5
+es6id: 18.2.1
+esid: sec-eval-x
 description: Checking use propertyIsEnumerable, for-in
 ---*/
 
@@ -14,10 +16,10 @@ if (this.propertyIsEnumerable('eval') !== false) {
 
 //CHECK#2
 var result = true;
-for (var p in this){
+for (var p in this) {
   if (p === "eval") {
     result = false;
-  }  
+  }
 }
 
 if (result !== true) {

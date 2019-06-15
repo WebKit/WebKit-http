@@ -36,28 +36,27 @@
 
 #if USE(LIBEPOXY)
 #include <epoxy/gl.h>
-#elif USE(OPENGL_ES_2)
+#elif USE(OPENGL_ES)
 #include <GLES2/gl2.h>
 #else
 #include <GL/gl.h>
 #endif
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, ThreadedDisplayRefreshMonitor::Client& displayRefreshMonitorClient, PlatformDisplayID displayID, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
 {
-    return adoptRef(*new ThreadedCompositor(client, webPage, viewportSize, scaleFactor, doFrameSync, paintFlags));
+    return adoptRef(*new ThreadedCompositor(client, displayRefreshMonitorClient, displayID, viewportSize, scaleFactor, doFrameSync, paintFlags));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+ThreadedCompositor::ThreadedCompositor(Client& client, ThreadedDisplayRefreshMonitor::Client& displayRefreshMonitorClient, PlatformDisplayID displayID, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
     : m_client(client)
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-    , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(*this))
+    , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(displayID, displayRefreshMonitorClient))
 #endif
 {
     {
@@ -68,17 +67,13 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
         m_attributes.needsResize = !viewportSize.isEmpty();
     }
 
-    m_clientRendersNextFrame.store(false);
-    m_coordinateUpdateCompletionWithClient.store(false);
-
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
         m_scene = adoptRef(new CoordinatedGraphicsScene(this));
         m_nativeSurfaceHandle = m_client.nativeSurfaceHandleForCompositing();
-        if (m_nativeSurfaceHandle) {
+
+        m_scene->setActive(!!m_nativeSurfaceHandle);
+        if (m_nativeSurfaceHandle)
             createGLContext();
-            m_scene->setActive(true);
-        } else
-            m_scene->setActive(false);
     });
 }
 
@@ -96,10 +91,11 @@ void ThreadedCompositor::createGLContext()
     if (!m_context)
         return;
 
-    if (m_doFrameSync == ShouldDoFrameSync::No) {
-        if (m_context->makeContextCurrent())
-            m_context->swapInterval(0);
-    }
+    if (!m_context->makeContextCurrent())
+        return;
+
+    if (m_doFrameSync == ShouldDoFrameSync::No)
+        m_context->swapInterval(0);
 }
 
 void ThreadedCompositor::invalidate()
@@ -110,6 +106,8 @@ void ThreadedCompositor::invalidate()
     m_displayRefreshMonitor->invalidate();
 #endif
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        if (!m_context || !m_context->makeContextCurrent())
+            return;
         m_scene->purgeGLResources();
         m_context = nullptr;
         m_client.didDestroyGLContext();
@@ -125,13 +123,12 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
         // A new native handle can't be set without destroying the previous one first if any.
         ASSERT(!!handle ^ !!m_nativeSurfaceHandle);
         m_nativeSurfaceHandle = handle;
-        if (m_nativeSurfaceHandle) {
+
+        m_scene->setActive(!!m_nativeSurfaceHandle);
+        if (m_nativeSurfaceHandle)
             createGLContext();
-            m_scene->setActive(true);
-        } else {
-            m_scene->setActive(false);
+        else
             m_context = nullptr;
-        }
     });
 }
 
@@ -164,18 +161,6 @@ void ThreadedCompositor::setDrawsBackground(bool drawsBackground)
     LockHolder locker(m_attributes.lock);
     m_attributes.drawsBackground = drawsBackground;
     m_compositingRunLoop->scheduleUpdate();
-}
-
-void ThreadedCompositor::renderNextFrame()
-{
-    ASSERT(RunLoop::isMain());
-    m_client.renderNextFrame();
-}
-
-void ThreadedCompositor::commitScrollOffset(uint32_t layerID, const IntSize& offset)
-{
-    ASSERT(RunLoop::isMain());
-    m_client.commitScrollOffset(layerID, offset);
 }
 
 void ThreadedCompositor::updateViewport()
@@ -211,6 +196,8 @@ void ThreadedCompositor::renderLayerTree()
     float scaleFactor;
     bool drawsBackground;
     bool needsResize;
+    Vector<WebCore::CoordinatedGraphicsState> states;
+
     {
         LockHolder locker(m_attributes.lock);
         viewportSize = m_attributes.viewportSize;
@@ -218,6 +205,34 @@ void ThreadedCompositor::renderLayerTree()
         scaleFactor = m_attributes.scaleFactor;
         drawsBackground = m_attributes.drawsBackground;
         needsResize = m_attributes.needsResize;
+
+        states = WTFMove(m_attributes.states);
+
+        if (!states.isEmpty()) {
+            // Client has to be notified upon finishing this scene update.
+            m_attributes.clientRendersNextFrame = true;
+
+            // Coordinate scene update completion with the client in case of changed or updated platform layers.
+            // But do not change coordinateUpdateCompletionWithClient while in force repaint because that
+            // demands immediate scene update completion regardless of platform layers.
+            // FIXME: Check whether we still need all this coordinateUpdateCompletionWithClient logic.
+            // https://bugs.webkit.org/show_bug.cgi?id=188839
+            // Relatedly, we should only ever operate with a single Nicosia::Scene object, not with a Vector
+            // of CoordinatedGraphicsState instances (which at this time will all contain RefPtr to the same
+            // Nicosia::State object anyway).
+            if (!m_inForceRepaint) {
+                bool coordinateUpdate = false;
+                for (auto& state : states) {
+                    state.nicosia.scene->accessState(
+                        [&coordinateUpdate](Nicosia::Scene::State& state)
+                        {
+                            coordinateUpdate |= state.platformLayerUpdated;
+                            state.platformLayerUpdated = false;
+                        });
+                }
+                m_attributes.coordinateUpdateCompletionWithClient = coordinateUpdate;
+            }
+        }
 
         // Reset the needsResize attribute to false.
         m_attributes.needsResize = false;
@@ -235,8 +250,9 @@ void ThreadedCompositor::renderLayerTree()
         glClear(GL_COLOR_BUFFER_BIT);
     }
 
+    m_scene->applyStateChanges(states);
     m_scene->paintToCurrentGLContext(viewportTransform, 1, FloatRect { FloatPoint { }, viewportSize },
-        Color::transparent, !drawsBackground, scrollPosition, m_paintFlags);
+        Color::transparent, !drawsBackground, m_paintFlags);
 
     m_context->swapBuffers();
 
@@ -246,42 +262,49 @@ void ThreadedCompositor::renderLayerTree()
 
 void ThreadedCompositor::sceneUpdateFinished()
 {
-    bool shouldDispatchDisplayRefreshCallback = m_clientRendersNextFrame.load()
-        || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
-    bool shouldCoordinateUpdateCompletionWithClient = m_coordinateUpdateCompletionWithClient.load();
+    // The composition has finished. Now we have to determine how to manage
+    // the scene update completion.
 
+    // The DisplayRefreshMonitor will be used to dispatch a callback on the client thread if:
+    //  - clientRendersNextFrame is true (i.e. client has to be notified about the finished update), or
+    //  - a DisplayRefreshMonitor callback was requested from the Web engine
+    bool shouldDispatchDisplayRefreshCallback { false };
+
+    // If coordinateUpdateCompletionWithClient is true, the scene update completion has to be
+    // delayed until the DisplayRefreshMonitor callback.
+    bool shouldCoordinateUpdateCompletionWithClient { false };
+
+    {
+        LockHolder locker(m_attributes.lock);
+        shouldDispatchDisplayRefreshCallback = m_attributes.clientRendersNextFrame
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+            || m_displayRefreshMonitor->requiresDisplayRefreshCallback();
+#else
+            ;
+#endif
+        shouldCoordinateUpdateCompletionWithClient = m_attributes.coordinateUpdateCompletionWithClient;
+    }
+
+    LockHolder stateLocker(m_compositingRunLoop->stateLock());
+
+#if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
+    // Schedule the DisplayRefreshMonitor callback, if necessary.
     if (shouldDispatchDisplayRefreshCallback)
         m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
+#endif
+
+    // Mark the scene update as completed if no coordination is required and if not in a forced repaint.
     if (!shouldCoordinateUpdateCompletionWithClient && !m_inForceRepaint)
-        m_compositingRunLoop->updateCompleted();
+        m_compositingRunLoop->updateCompleted(stateLocker);
+
+    // Independent of the scene update, the composition itself is now completed.
+    m_compositingRunLoop->compositionCompleted(stateLocker);
 }
 
 void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
 {
-    ASSERT(RunLoop::isMain());
-    m_scene->appendUpdate([this, scene = makeRef(*m_scene), state] {
-        scene->commitSceneState(state);
-
-        m_clientRendersNextFrame.store(true);
-        // Do not change m_coordinateUpdateCompletionWithClient while in force repaint.
-        if (m_inForceRepaint)
-            return;
-        bool coordinateUpdate = std::any_of(state.layersToUpdate.begin(), state.layersToUpdate.end(),
-            [](const std::pair<CoordinatedLayerID, CoordinatedGraphicsLayerState>& it) {
-                return it.second.platformLayerChanged || it.second.platformLayerUpdated;
-            });
-        m_coordinateUpdateCompletionWithClient.store(coordinateUpdate);
-    });
-
-    m_compositingRunLoop->scheduleUpdate();
-}
-
-void ThreadedCompositor::releaseUpdateAtlases(Vector<uint32_t>&& atlasesToRemove)
-{
-    ASSERT(RunLoop::isMain());
-    m_scene->appendUpdate([scene = makeRef(*m_scene), atlasesToRemove = WTFMove(atlasesToRemove)] {
-        scene->releaseUpdateAtlases(atlasesToRemove);
-    });
+    LockHolder locker(m_attributes.lock);
+    m_attributes.states.append(state);
     m_compositingRunLoop->scheduleUpdate();
 }
 
@@ -291,23 +314,22 @@ RefPtr<WebCore::DisplayRefreshMonitor> ThreadedCompositor::displayRefreshMonitor
     return m_displayRefreshMonitor.copyRef();
 }
 
-void ThreadedCompositor::renderNextFrameIfNeeded()
+void ThreadedCompositor::handleDisplayRefreshMonitorUpdate()
 {
-    if (m_clientRendersNextFrame.compareExchangeStrong(true, false))
-        m_scene->renderNextFrame();
-}
+    // Retrieve coordinateUpdateCompletionWithClient.
+    bool coordinateUpdateCompletionWithClient { false };
+    {
+        LockHolder locker(m_attributes.lock);
+        coordinateUpdateCompletionWithClient = std::exchange(m_attributes.coordinateUpdateCompletionWithClient, false);
+    }
 
-void ThreadedCompositor::completeCoordinatedUpdateIfNeeded()
-{
-    if (m_coordinateUpdateCompletionWithClient.compareExchangeStrong(true, false))
-        m_compositingRunLoop->updateCompleted();
-}
+    LockHolder stateLocker(m_compositingRunLoop->stateLock());
 
-void ThreadedCompositor::coordinateUpdateCompletionWithClient()
-{
-    m_coordinateUpdateCompletionWithClient.store(true);
-    if (!m_compositingRunLoop->isActive())
-        m_compositingRunLoop->scheduleUpdate();
+    // If required, mark the current scene update as completed. CompositingRunLoop will take care of
+    // scheduling a new update in case an update was marked as pending due to previous layer flushes
+    // or DisplayRefreshMonitor notifications.
+    if (coordinateUpdateCompletionWithClient)
+        m_compositingRunLoop->updateCompleted(stateLocker);
 }
 #endif
 

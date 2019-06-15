@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,15 +43,15 @@ static void setFunctionEntrypoint(VM& vm, CodeBlock* codeBlock)
     CodeSpecializationKind kind = codeBlock->specializationKind();
     
 #if ENABLE(JIT)
-    if (vm.canUseJIT()) {
+    if (VM::canUseJIT()) {
         if (kind == CodeForCall) {
             codeBlock->setJITCode(
-                adoptRef(*new DirectJITCode(vm.getCTIStub(functionForCallEntryThunkGenerator), vm.getCTIStub(functionForCallArityCheckThunkGenerator).code(), JITCode::InterpreterThunk)));
+                adoptRef(*new DirectJITCode(vm.getCTIStub(functionForCallEntryThunkGenerator).retagged<JSEntryPtrTag>(), vm.getCTIStub(functionForCallArityCheckThunkGenerator).retaggedCode<JSEntryPtrTag>(), JITCode::InterpreterThunk)));
             return;
         }
         ASSERT(kind == CodeForConstruct);
         codeBlock->setJITCode(
-            adoptRef(*new DirectJITCode(vm.getCTIStub(functionForConstructEntryThunkGenerator), vm.getCTIStub(functionForConstructArityCheckThunkGenerator).code(), JITCode::InterpreterThunk)));
+            adoptRef(*new DirectJITCode(vm.getCTIStub(functionForConstructEntryThunkGenerator).retagged<JSEntryPtrTag>(), vm.getCTIStub(functionForConstructArityCheckThunkGenerator).retaggedCode<JSEntryPtrTag>(), JITCode::InterpreterThunk)));
         return;
     }
 #endif // ENABLE(JIT)
@@ -59,57 +59,63 @@ static void setFunctionEntrypoint(VM& vm, CodeBlock* codeBlock)
     UNUSED_PARAM(vm);
     if (kind == CodeForCall) {
         codeBlock->setJITCode(
-            adoptRef(*new DirectJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_function_for_call_prologue), MacroAssemblerCodePtr::createLLIntCodePtr(llint_function_for_call_arity_check), JITCode::InterpreterThunk)));
+            adoptRef(*new DirectJITCode(getCodeRef<JSEntryPtrTag>(llint_function_for_call_prologue), getCodePtr<JSEntryPtrTag>(llint_function_for_call_arity_check), JITCode::InterpreterThunk)));
         return;
     }
     ASSERT(kind == CodeForConstruct);
     codeBlock->setJITCode(
-        adoptRef(*new DirectJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_function_for_construct_prologue), MacroAssemblerCodePtr::createLLIntCodePtr(llint_function_for_construct_arity_check), JITCode::InterpreterThunk)));
+        adoptRef(*new DirectJITCode(getCodeRef<JSEntryPtrTag>(llint_function_for_construct_prologue), getCodePtr<JSEntryPtrTag>(llint_function_for_construct_arity_check), JITCode::InterpreterThunk)));
 }
 
 static void setEvalEntrypoint(VM& vm, CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
-    if (vm.canUseJIT()) {
+    if (VM::canUseJIT()) {
+        MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = vm.getCTIStub(evalEntryThunkGenerator).retagged<JSEntryPtrTag>();
         codeBlock->setJITCode(
-            adoptRef(*new DirectJITCode(vm.getCTIStub(evalEntryThunkGenerator), MacroAssemblerCodePtr(), JITCode::InterpreterThunk)));
+            adoptRef(*new DirectJITCode(codeRef, codeRef.code(), JITCode::InterpreterThunk)));
         return;
     }
 #endif // ENABLE(JIT)
 
     UNUSED_PARAM(vm);
+    MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = getCodeRef<JSEntryPtrTag>(llint_eval_prologue);
     codeBlock->setJITCode(
-        adoptRef(*new DirectJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_eval_prologue), MacroAssemblerCodePtr(), JITCode::InterpreterThunk)));
+        adoptRef(*new DirectJITCode(codeRef, codeRef.code(), JITCode::InterpreterThunk)));
 }
 
 static void setProgramEntrypoint(VM& vm, CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
-    if (vm.canUseJIT()) {
+    if (VM::canUseJIT()) {
+        MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = vm.getCTIStub(programEntryThunkGenerator).retagged<JSEntryPtrTag>();
         codeBlock->setJITCode(
-            adoptRef(*new DirectJITCode(vm.getCTIStub(programEntryThunkGenerator), MacroAssemblerCodePtr(), JITCode::InterpreterThunk)));
+            adoptRef(*new DirectJITCode(codeRef, codeRef.code(), JITCode::InterpreterThunk)));
         return;
     }
 #endif // ENABLE(JIT)
 
     UNUSED_PARAM(vm);
+    MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = getCodeRef<JSEntryPtrTag>(llint_program_prologue);
     codeBlock->setJITCode(
-        adoptRef(*new DirectJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_program_prologue), MacroAssemblerCodePtr(), JITCode::InterpreterThunk)));
+        adoptRef(*new DirectJITCode(codeRef, codeRef.code(), JITCode::InterpreterThunk)));
 }
 
 static void setModuleProgramEntrypoint(VM& vm, CodeBlock* codeBlock)
 {
 #if ENABLE(JIT)
-    if (vm.canUseJIT()) {
+    if (VM::canUseJIT()) {
+        MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = vm.getCTIStub(moduleProgramEntryThunkGenerator).retagged<JSEntryPtrTag>();
         codeBlock->setJITCode(
-            adoptRef(*new DirectJITCode(vm.getCTIStub(moduleProgramEntryThunkGenerator), MacroAssemblerCodePtr(), JITCode::InterpreterThunk)));
+            adoptRef(*new DirectJITCode(codeRef, codeRef.code(), JITCode::InterpreterThunk)));
         return;
     }
 #endif // ENABLE(JIT)
 
     UNUSED_PARAM(vm);
+    MacroAssemblerCodeRef<JSEntryPtrTag> codeRef = getCodeRef<JSEntryPtrTag>(llint_module_program_prologue).retagged<JSEntryPtrTag>();
     codeBlock->setJITCode(
-        adoptRef(*new DirectJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_module_program_prologue), MacroAssemblerCodePtr(), JITCode::InterpreterThunk)));
+        adoptRef(*new DirectJITCode(codeRef, codeRef.code(), JITCode::InterpreterThunk)));
 }
 
 void setEntrypoint(VM& vm, CodeBlock* codeBlock)
@@ -134,9 +140,9 @@ void setEntrypoint(VM& vm, CodeBlock* codeBlock)
 
 unsigned frameRegisterCountFor(CodeBlock* codeBlock)
 {
-    ASSERT(static_cast<unsigned>(codeBlock->m_numCalleeLocals) == WTF::roundUpToMultipleOf(stackAlignmentRegisters(), static_cast<unsigned>(codeBlock->m_numCalleeLocals)));
+    ASSERT(static_cast<unsigned>(codeBlock->numCalleeLocals()) == WTF::roundUpToMultipleOf(stackAlignmentRegisters(), static_cast<unsigned>(codeBlock->numCalleeLocals())));
 
-    return roundLocalRegisterCountForFramePointerOffset(codeBlock->m_numCalleeLocals + maxFrameExtentForSlowPathCallInRegisters);
+    return roundLocalRegisterCountForFramePointerOffset(codeBlock->numCalleeLocals() + maxFrameExtentForSlowPathCallInRegisters);
 }
 
 } } // namespace JSC::LLInt

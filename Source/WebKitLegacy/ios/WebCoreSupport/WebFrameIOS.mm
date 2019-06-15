@@ -220,7 +220,7 @@ using namespace WebCore;
         SelectionRect &coreRect = rects[i];
         WebSelectionRect *webRect = [WebSelectionRect selectionRect];
         webRect.rect = static_cast<CGRect>(coreRect.rect());
-        webRect.writingDirection = coreRect.direction() == LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
+        webRect.writingDirection = coreRect.direction() == TextDirection::LTR ? WKWritingDirectionLeftToRight : WKWritingDirectionRightToLeft;
         webRect.isLineBreak = coreRect.isLineBreak();
         webRect.isFirstOnLine = coreRect.isFirstOnLine();
         webRect.isLastOnLine = coreRect.isLastOnLine();
@@ -643,7 +643,7 @@ using namespace WebCore;
             break;
     }
     FrameSelection& frameSelection = _private->coreFrame->selection();
-    frameSelection.setSelection(frameSelection.selection(), wcGranularity);
+    frameSelection.setSelection(frameSelection.selection(), { }, { }, { }, wcGranularity);
 }
 
 static inline bool isAlphaNumericCharacter(UChar32 c)
@@ -823,12 +823,6 @@ static VisiblePosition SimpleSmartExtendEnd(const VisiblePosition& start, const 
 {
     Frame *frame = [self coreFrame];
     return frame->view()->renderedCharactersExceed(threshold);
-}
-
-- (CGImageRef)imageForNode:(DOMNode *)node allowDownsampling:(BOOL)allowDownsampling drawContentBehindTransparentNodes:(BOOL)drawContentBehindTransparentNodes
-{
-    // FIXME: implement: <rdar://problem/15808709>
-    return nullptr;
 }
 
 // Iterates backward through the document and returns the point at which untouched dictation results end.

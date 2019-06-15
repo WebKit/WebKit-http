@@ -32,6 +32,7 @@
 #import "APIContentRuleListStore.h"
 #import "WKErrorInternal.h"
 #import <wtf/BlockPtr.h>
+#import <wtf/CompletionHandler.h>
 
 static WKErrorCode toWKErrorCode(const std::error_code& error)
 {
@@ -62,39 +63,18 @@ static WKErrorCode toWKErrorCode(const std::error_code& error)
 + (instancetype)defaultStore
 {
     const bool legacyFilename = false;
-    return WebKit::wrapper(API::ContentRuleListStore::defaultStore(legacyFilename));
+    return wrapper(API::ContentRuleListStore::defaultStore(legacyFilename));
 }
 
 + (instancetype)storeWithURL:(NSURL *)url
 {
     const bool legacyFilename = false;
-    Ref<API::ContentRuleListStore> store = API::ContentRuleListStore::storeWithPath(url.absoluteURL.fileSystemRepresentation, legacyFilename);
-    return WebKit::wrapper(store.leakRef());
+    return wrapper(API::ContentRuleListStore::storeWithPath(url.absoluteURL.fileSystemRepresentation, legacyFilename));
 }
 
 - (void)compileContentRuleListForIdentifier:(NSString *)identifier encodedContentRuleList:(NSString *)encodedContentRuleList completionHandler:(void (^)(WKContentRuleList *, NSError *))completionHandler
 {
-    [self _compileContentRuleListForIdentifier:identifier encodedContentRuleList:encodedContentRuleList completionHandler:completionHandler releasesArgument:NO];
-}
-
-- (void)_compileContentRuleListForIdentifier:(NSString *)identifier encodedContentRuleList:(NSString *)encodedContentRuleList completionHandler:(void (^)(WKContentRuleList *, NSError *))completionHandler releasesArgument:(BOOL)releasesArgument
-{
-    String json(encodedContentRuleList);
-    if (releasesArgument) {
-        [encodedContentRuleList release];
-        encodedContentRuleList = nil;
-    }
-
-    _contentRuleListStore->compileContentRuleList(identifier, WTFMove(json), [completionHandler = makeBlockPtr(completionHandler)](RefPtr<API::ContentRuleList> contentRuleList, std::error_code error) {
-        if (error) {
-            auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Rule list compilation failed: %s", error.message().c_str()]};
-
-            // error.value() could have a specific compiler error that is not equal to WKErrorContentRuleListStoreCompileFailed.
-            // We want to use error.message, but here we want to only pass on CompileFailed with userInfo from the std::error_code.
-            return completionHandler(nil, [NSError errorWithDomain:WKErrorDomain code:WKErrorContentRuleListStoreCompileFailed userInfo:userInfo]);
-        }
-        completionHandler(WebKit::wrapper(*contentRuleList.get()), nil);
-    });
+    [self _compileContentRuleListForIdentifier:identifier encodedContentRuleList:[encodedContentRuleList retain] completionHandler:completionHandler];
 }
 
 - (void)lookUpContentRuleListForIdentifier:(NSString *)identifier completionHandler:(void (^)(WKContentRuleList *, NSError *))completionHandler
@@ -107,7 +87,7 @@ static WKErrorCode toWKErrorCode(const std::error_code& error)
             return completionHandler(nil, [NSError errorWithDomain:WKErrorDomain code:wkError userInfo:userInfo]);
         }
 
-        completionHandler(WebKit::wrapper(*contentRuleList.get()), nil);
+        completionHandler(wrapper(*contentRuleList), nil);
     });
 }
 
@@ -170,23 +150,34 @@ static WKErrorCode toWKErrorCode(const std::error_code& error)
 }
 
 // NS_RELEASES_ARGUMENT to keep peak memory usage low.
-
-- (void)_compileContentRuleListForIdentifier:(NSString *)identifier encodedContentRuleList:(NSString *)encodedContentRuleList completionHandler:(void (^)(WKContentRuleList *, NSError *))completionHandler
+- (void)_compileContentRuleListForIdentifier:(NSString *)identifier encodedContentRuleList:(NSString *) NS_RELEASES_ARGUMENT encodedContentRuleList completionHandler:(void (^)(WKContentRuleList *, NSError *))completionHandler
 {
-    [self _compileContentRuleListForIdentifier:identifier encodedContentRuleList:encodedContentRuleList completionHandler:completionHandler releasesArgument:YES];
+    String json(encodedContentRuleList);
+    [encodedContentRuleList release];
+    encodedContentRuleList = nil;
+
+    _contentRuleListStore->compileContentRuleList(identifier, WTFMove(json), [completionHandler = makeBlockPtr(completionHandler)](RefPtr<API::ContentRuleList> contentRuleList, std::error_code error) {
+        if (error) {
+            auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Rule list compilation failed: %s", error.message().c_str()]};
+
+            // error.value() could have a specific compiler error that is not equal to WKErrorContentRuleListStoreCompileFailed.
+            // We want to use error.message, but here we want to only pass on CompileFailed with userInfo from the std::error_code.
+            return completionHandler(nil, [NSError errorWithDomain:WKErrorDomain code:WKErrorContentRuleListStoreCompileFailed userInfo:userInfo]);
+        }
+        completionHandler(wrapper(*contentRuleList), nil);
+    });
 }
 
 + (instancetype)defaultStoreWithLegacyFilename
 {
     const bool legacyFilename = true;
-    return WebKit::wrapper(API::ContentRuleListStore::defaultStore(legacyFilename));
+    return wrapper(API::ContentRuleListStore::defaultStore(legacyFilename));
 }
 
 + (instancetype)storeWithURLAndLegacyFilename:(NSURL *)url
 {
     const bool legacyFilename = true;
-    Ref<API::ContentRuleListStore> store = API::ContentRuleListStore::storeWithPath(url.absoluteURL.fileSystemRepresentation, legacyFilename);
-    return WebKit::wrapper(store.leakRef());
+    return wrapper(API::ContentRuleListStore::storeWithPath(url.absoluteURL.fileSystemRepresentation, legacyFilename));
 }
 
 @end

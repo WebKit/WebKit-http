@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the propertyIsEnumerable method is called with argument V, the following steps are taken:
     i) Let O be this object
     ii) Call ToString(V)
@@ -20,7 +20,9 @@ if (typeof Object.prototype.propertyIsEnumerable !== "function") {
   $ERROR('#1: propertyIsEnumerable method is defined');
 }
 
-var obj = {the_property:true};
+var obj = {
+  the_property: true
+};
 
 //CHECK#2
 if (typeof obj.propertyIsEnumerable !== "function") {
@@ -33,11 +35,11 @@ if (!(obj.propertyIsEnumerable("the_property"))) {
 }
 
 //CHECK#4
-var accum="";
-for(var prop in obj) {
-  accum+=prop;
+var accum = "";
+for (var prop in obj) {
+  accum += prop;
 }
-if (accum.indexOf("the_property")!==0) {
+if (accum.indexOf("the_property") !== 0) {
   $ERROR('#4: enumerating works properly');
 }
 //

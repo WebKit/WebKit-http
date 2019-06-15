@@ -29,8 +29,14 @@
 #include "DataReference.h"
 #include "LibWebRTCNetwork.h"
 #include "NetworkConnectionToWebProcessMessages.h"
+#include "WebCacheStorageConnection.h"
+#include "WebCacheStorageConnectionMessages.h"
+#include "WebCacheStorageProvider.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebLoaderStrategy.h"
+#include "WebMDNSRegisterMessages.h"
+#include "WebPage.h"
+#include "WebPageMessages.h"
 #include "WebProcess.h"
 #include "WebRTCMonitor.h"
 #include "WebRTCMonitorMessages.h"
@@ -41,12 +47,11 @@
 #include "WebSocketStreamMessages.h"
 #include <WebCore/CachedResource.h>
 #include <WebCore/MemoryCache.h>
-#include <WebCore/SessionID.h>
 #include <WebCore/SharedBuffer.h>
-
-using namespace WebCore;
+#include <pal/SessionID.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 NetworkProcessConnection::NetworkProcessConnection(IPC::Connection::Identifier connectionIdentifier)
     : m_connection(IPC::Connection::createClientConnection(connectionIdentifier, *this))
@@ -56,6 +61,7 @@ NetworkProcessConnection::NetworkProcessConnection(IPC::Connection::Identifier c
 
 NetworkProcessConnection::~NetworkProcessConnection()
 {
+    m_connection->invalidate();
 }
 
 void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
@@ -68,6 +74,11 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
     if (decoder.messageReceiverName() == Messages::WebSocketStream::messageReceiverName()) {
         if (auto* stream = WebSocketStream::streamWithIdentifier(decoder.destinationID()))
             stream->didReceiveMessage(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::WebPage::messageReceiverName()) {
+        if (auto* webPage = WebProcess::singleton().webPage(decoder.destinationID()))
+            webPage->didReceiveWebPageMessage(connection, decoder);
         return;
     }
 
@@ -85,6 +96,16 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
         return;
     }
 #endif
+#if ENABLE(WEB_RTC)
+    if (decoder.messageReceiverName() == Messages::WebMDNSRegister::messageReceiverName()) {
+        WebProcess::singleton().libWebRTCNetwork().mdnsRegister().didReceiveMessage(connection, decoder);
+        return;
+    }
+#endif
+    if (decoder.messageReceiverName() == Messages::WebCacheStorageConnection::messageReceiverName()) {
+        WebProcess::singleton().cacheStorageProvider().process(connection, decoder);
+        return;
+    }
 
     didReceiveNetworkProcessConnectionMessage(connection, decoder);
 }
@@ -118,7 +139,7 @@ void NetworkProcessConnection::writeBlobsToTemporaryFiles(const Vector<String>& 
 
     m_writeBlobToFileCompletionHandlers.set(requestIdentifier, WTFMove(completionHandler));
 
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::WriteBlobsToTemporaryFiles(blobURLs, requestIdentifier), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::WriteBlobsToTemporaryFiles(blobURLs, requestIdentifier), 0);
 }
 
 void NetworkProcessConnection::didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames)
@@ -128,8 +149,23 @@ void NetworkProcessConnection::didWriteBlobsToTemporaryFiles(uint64_t requestIde
         handler(filenames);
 }
 
+void NetworkProcessConnection::didFinishPingLoad(uint64_t pingLoadIdentifier, ResourceError&& error, ResourceResponse&& response)
+{
+    WebProcess::singleton().webLoaderStrategy().didFinishPingLoad(pingLoadIdentifier, WTFMove(error), WTFMove(response));
+}
+
+void NetworkProcessConnection::didFinishPreconnection(uint64_t preconnectionIdentifier, ResourceError&& error)
+{
+    WebProcess::singleton().webLoaderStrategy().didFinishPreconnection(preconnectionIdentifier, WTFMove(error));
+}
+
+void NetworkProcessConnection::setOnLineState(bool isOnLine)
+{
+    WebProcess::singleton().webLoaderStrategy().setOnLineState(isOnLine);
+}
+
 #if ENABLE(SHAREABLE_RESOURCE)
-void NetworkProcessConnection::didCacheResource(const ResourceRequest& request, const ShareableResource::Handle& handle, SessionID sessionID)
+void NetworkProcessConnection::didCacheResource(const ResourceRequest& request, const ShareableResource::Handle& handle, PAL::SessionID sessionID)
 {
     CachedResource* resource = MemoryCache::singleton().resourceForRequest(request, sessionID);
     if (!resource)

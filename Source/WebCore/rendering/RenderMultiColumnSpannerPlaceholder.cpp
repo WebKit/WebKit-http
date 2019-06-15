@@ -30,23 +30,26 @@
 #include "config.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
 
-#include "RenderMultiColumnFlowThread.h"
+#include "RenderMultiColumnFlow.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-RenderMultiColumnSpannerPlaceholder* RenderMultiColumnSpannerPlaceholder::createAnonymous(RenderMultiColumnFlowThread* flowThread, RenderBox& spanner, const RenderStyle* parentStyle)
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMultiColumnSpannerPlaceholder);
+
+RenderPtr<RenderMultiColumnSpannerPlaceholder> RenderMultiColumnSpannerPlaceholder::createAnonymous(RenderMultiColumnFlow& fragmentedFlow, RenderBox& spanner, const RenderStyle& parentStyle)
 {
-    auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(*parentStyle, BLOCK);
-    newStyle.setClear(CBOTH); // We don't want floats in the row preceding the spanner to continue on the other side.
-    auto placeholder = new RenderMultiColumnSpannerPlaceholder(flowThread, spanner, WTFMove(newStyle));
+    auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(parentStyle, DisplayType::Block);
+    newStyle.setClear(Clear::Both); // We don't want floats in the row preceding the spanner to continue on the other side.
+    auto placeholder = createRenderer<RenderMultiColumnSpannerPlaceholder>(fragmentedFlow, spanner, WTFMove(newStyle));
     placeholder->initializeStyle();
     return placeholder;
 }
 
-RenderMultiColumnSpannerPlaceholder::RenderMultiColumnSpannerPlaceholder(RenderMultiColumnFlowThread* flowThread, RenderBox& spanner, RenderStyle&& style)
-    : RenderBox(flowThread->document(), WTFMove(style), RenderBoxModelObjectFlag)
-    , m_spanner(&spanner)
-    , m_flowThread(flowThread)
+RenderMultiColumnSpannerPlaceholder::RenderMultiColumnSpannerPlaceholder(RenderMultiColumnFlow& fragmentedFlow, RenderBox& spanner, RenderStyle&& style)
+    : RenderBox(fragmentedFlow.document(), WTFMove(style), RenderBoxModelObjectFlag)
+    , m_spanner(makeWeakPtr(spanner))
+    , m_fragmentedFlow(makeWeakPtr(fragmentedFlow))
 {
 }
 

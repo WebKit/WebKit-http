@@ -10,25 +10,26 @@
 
 package org.appspot.apprtc;
 
+import javax.annotation.Nullable;
 import android.util.Log;
-
-import org.webrtc.ThreadUtils;
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.nio.charset.Charset;
 import java.util.concurrent.ExecutorService;
+import org.webrtc.ThreadUtils;
 
 /**
  * Replacement for WebSocketChannelClient for direct communication between two IP addresses. Handles
  * the signaling between the two clients using a TCP connection.
- *
- * <p>All public methods should be called from a looper executor thread
+ * <p>
+ * All public methods should be called from a looper executor thread
  * passed in a constructor, otherwise exception will be thrown.
  * All events are dispatched on the same thread.
  */
@@ -56,8 +57,8 @@ public class TCPChannelClient {
    * that IP. If not, instead connects to the IP.
    *
    * @param eventListener Listener that will receive events from the client.
-   * @param ip IP address to listen on or connect to.
-   * @param port Port to listen on or connect to.
+   * @param ip            IP address to listen on or connect to.
+   * @param port          Port to listen on or connect to.
    */
   public TCPChannelClient(
       ExecutorService executor, TCPChannelEvents eventListener, String ip, int port) {
@@ -123,7 +124,9 @@ public class TCPChannelClient {
   private abstract class TCPSocket extends Thread {
     // Lock for editing out and rawSocket
     protected final Object rawSocketLock;
+    @Nullable
     private PrintWriter out;
+    @Nullable
     private Socket rawSocket;
 
     /**
@@ -131,7 +134,9 @@ public class TCPChannelClient {
      *
      * @return Socket connection, null if connection failed.
      */
+    @Nullable
     public abstract Socket connect();
+
     /** Returns true if sockets is a server rawSocket. */
     public abstract boolean isServer();
 
@@ -165,8 +170,10 @@ public class TCPChannelClient {
         }
 
         try {
-          out = new PrintWriter(rawSocket.getOutputStream(), true);
-          in = new BufferedReader(new InputStreamReader(rawSocket.getInputStream()));
+          out = new PrintWriter(
+              new OutputStreamWriter(rawSocket.getOutputStream(), Charset.forName("UTF-8")), true);
+          in = new BufferedReader(
+              new InputStreamReader(rawSocket.getInputStream(), Charset.forName("UTF-8")));
         } catch (IOException e) {
           reportError("Failed to open IO on rawSocket: " + e.getMessage());
           return;
@@ -218,9 +225,7 @@ public class TCPChannelClient {
       disconnect();
     }
 
-    /**
-     * Closes the rawSocket if it is still open. Also fires the onTCPClose event.
-     */
+    /** Closes the rawSocket if it is still open. Also fires the onTCPClose event. */
     public void disconnect() {
       try {
         synchronized (rawSocketLock) {
@@ -262,6 +267,7 @@ public class TCPChannelClient {
 
   private class TCPSocketServer extends TCPSocket {
     // Server socket is also guarded by rawSocketLock.
+    @Nullable
     private ServerSocket serverSocket;
 
     final private InetAddress address;
@@ -273,6 +279,7 @@ public class TCPChannelClient {
     }
 
     /** Opens a listening socket and waits for a connection. */
+    @Nullable
     @Override
     public Socket connect() {
       Log.d(TAG, "Listening on [" + address.getHostAddress() + "]:" + Integer.toString(port));
@@ -334,6 +341,7 @@ public class TCPChannelClient {
     }
 
     /** Connects to the peer. */
+    @Nullable
     @Override
     public Socket connect() {
       Log.d(TAG, "Connecting to [" + address.getHostAddress() + "]:" + Integer.toString(port));

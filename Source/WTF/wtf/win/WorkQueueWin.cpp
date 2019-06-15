@@ -1,27 +1,28 @@
 /*
-* Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
-*
-* Redistribution and use in source and binary forms, with or without
-* modification, are permitted provided that the following conditions
-* are met:
-* 1. Redistributions of source code must retain the above copyright
-*    notice, this list of conditions and the following disclaimer.
-* 2. Redistributions in binary form must reproduce the above copyright
-*    notice, this list of conditions and the following disclaimer in the
-*    documentation and/or other materials provided with the distribution.
-*
-* THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
-* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
-* THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-* PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
-* BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-* CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-* SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-* INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-* CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-* ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-* THE POSSIBILITY OF SUCH DAMAGE.
-*/
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 #include "config.h"
 #include "WorkQueue.h"
@@ -37,10 +38,11 @@ DWORD WorkQueue::workThreadCallback(void* context)
 
     WorkQueue* queue = static_cast<WorkQueue*>(context);
 
-    if (!queue->tryRegisterAsWorkThread())
-        return 0;
+    if (queue->tryRegisterAsWorkThread())
+        queue->performWorkOnRegisteredWorkThread();
 
-    queue->performWorkOnRegisteredWorkThread();
+    queue->deref();
+
     return 0;
 }
 
@@ -56,10 +58,8 @@ void WorkQueue::performWorkOnRegisteredWorkThread()
 
         // Allow more work to be scheduled while we're not using the queue directly.
         m_functionQueueLock.unlock();
-        for (auto& function : functionQueue) {
+        for (auto& function : functionQueue)
             function();
-            deref();
-        }
         m_functionQueueLock.lock();
     }
 
@@ -100,8 +100,7 @@ void WorkQueue::platformInvalidate()
 
 void WorkQueue::dispatch(Function<void()>&& function)
 {
-    MutexLocker locker(m_functionQueueLock);
-    ref();
+    auto locker = holdLock(m_functionQueueLock);
     m_functionQueue.append(WTFMove(function));
 
     // Spawn a work thread to perform the work we just added. As an optimization, we avoid
@@ -110,24 +109,22 @@ void WorkQueue::dispatch(Function<void()>&& function)
     // hasn't registered itself yet, m_isWorkThreadRegistered will be false and we'll end up
     // spawning a second work thread here. But work thread registration process will ensure that
     // only one thread actually ends up performing work.)
-    if (!m_isWorkThreadRegistered)
+    if (!m_isWorkThreadRegistered) {
+        ref();
         ::QueueUserWorkItem(workThreadCallback, this, WT_EXECUTEDEFAULT);
+    }
 }
 
 struct TimerContext : public ThreadSafeRefCounted<TimerContext> {
-    static RefPtr<TimerContext> create() { return adoptRef(new TimerContext); }
+    static Ref<TimerContext> create() { return adoptRef(*new TimerContext); }
 
-    WorkQueue* queue;
+    Lock timerLock;
+    WorkQueue* queue { nullptr };
+    HANDLE timer { nullptr };
     Function<void()> function;
-    Mutex timerMutex;
-    HANDLE timer;
 
 private:
-    TimerContext()
-        : queue(nullptr)
-        , timer(0)
-    {
-    }
+    TimerContext() = default;
 };
 
 void WorkQueue::timerCallback(void* context, BOOLEAN timerOrWaitFired)
@@ -140,7 +137,7 @@ void WorkQueue::timerCallback(void* context, BOOLEAN timerOrWaitFired)
 
     timerContext->queue->dispatch(WTFMove(timerContext->function));
 
-    MutexLocker lock(timerContext->timerMutex);
+    auto locker = holdLock(timerContext->timerLock);
     ASSERT(timerContext->timer);
     ASSERT(timerContext->queue->m_timerQueue);
     if (!::DeleteTimerQueueTimer(timerContext->queue->m_timerQueue, timerContext->timer, 0)) {
@@ -154,7 +151,7 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
     ASSERT(m_timerQueue);
     ref();
 
-    RefPtr<TimerContext> context = TimerContext::create();
+    Ref<TimerContext> context = TimerContext::create();
     context->queue = this;
     context->function = WTFMove(function);
 
@@ -162,7 +159,7 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
         // The timer callback could fire before ::CreateTimerQueueTimer even returns, so we protect
         // context->timer with a mutex to ensure the timer callback doesn't access it before the
         // timer handle has been stored in it.
-        MutexLocker lock(context->timerMutex);
+        auto locker = holdLock(context->timerLock);
 
         int64_t milliseconds = duration.milliseconds();
 
@@ -180,7 +177,7 @@ void WorkQueue::dispatchAfter(Seconds duration, Function<void()>&& function)
 
         // Since our timer callback is quick, we can execute in the timer thread itself and avoid
         // an extra thread switch over to a worker thread.
-        if (!::CreateTimerQueueTimer(&context->timer, m_timerQueue, timerCallback, context.get(), clampTo<DWORD>(milliseconds), 0, WT_EXECUTEINTIMERTHREAD)) {
+        if (!::CreateTimerQueueTimer(&context->timer, m_timerQueue, timerCallback, context.ptr(), clampTo<DWORD>(milliseconds), 0, WT_EXECUTEINTIMERTHREAD)) {
             ASSERT_WITH_MESSAGE(false, "::CreateTimerQueueTimer failed with error %lu", ::GetLastError());
             return;
         }

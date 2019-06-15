@@ -4,7 +4,7 @@
 es6id: 21.1.3.6
 description: >
   Returns based on coerced values of endPosition.
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   ...
@@ -19,6 +19,7 @@ info: >
   is the same as the full element sequence of searchStr, return true.
   17. Otherwise, return false.
   ...
+features: [String.prototype.endsWith]
 ---*/
 
 var str = 'The future is cool!';

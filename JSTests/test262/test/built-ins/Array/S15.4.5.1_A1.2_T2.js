@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     For every integer k that is less than the value of
     the length property of A but not less than ToUint32(length),
     if A itself has a property (not an inherited property) named ToString(k),
@@ -13,13 +13,13 @@ description: Checking an inherited property
 
 //CHECK#1
 Array.prototype[2] = -1;
-var x = [0,1,2];
-if (x[2] !== 2) {  
-  $ERROR('#1: Array.prototype[2] = -1; x = [0,1,3]; x[2] === 2. Actual: ' + (x[2]));    
+var x = [0, 1, 2];
+if (x[2] !== 2) {
+  $ERROR('#1: Array.prototype[2] = -1; x = [0,1,3]; x[2] === 2. Actual: ' + (x[2]));
 }
 
 //CHECK#2
 x.length = 2;
-if (x[2] !== -1) {  
-  $ERROR('#2: Array.prototype[2] = -1; x = [0,1,3]; x.length = 2; x[2] === -1. Actual: ' + (x[2]));    
+if (x[2] !== -1) {
+  $ERROR('#2: Array.prototype[2] = -1; x = [0,1,3]; x.length = 2; x[2] === -1. Actual: ' + (x[2]));
 }

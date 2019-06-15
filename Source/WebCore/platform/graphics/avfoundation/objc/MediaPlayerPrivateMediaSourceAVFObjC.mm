@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,7 @@
 
 #import "AVAssetTrackUtilities.h"
 #import "AVFoundationMIMETypeCache.h"
-#import "AVFoundationSPI.h"
+#import "CDMInstance.h"
 #import "CDMSessionAVStreamSession.h"
 #import "CDMSessionMediaSourceAVFObjC.h"
 #import "FileSystem.h"
@@ -38,37 +38,41 @@
 #import "Logging.h"
 #import "MediaSourcePrivateAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
-#import "MediaTimeAVFoundation.h"
 #import "PixelBufferConformerCV.h"
-#import "PlatformClockCM.h"
 #import "TextTrackRepresentation.h"
 #import "TextureCacheCV.h"
+#import "VideoFullscreenLayerManagerObjC.h"
 #import "VideoTextureCopierCV.h"
 #import "WebCoreDecompressionSession.h"
-#import "WebCoreSystemInterface.h"
 #import <AVFoundation/AVAsset.h>
 #import <AVFoundation/AVTime.h>
 #import <QuartzCore/CALayer.h>
 #import <objc_runtime.h>
+#import <pal/avfoundation/MediaTimeAVFoundation.h>
+#import <pal/spi/mac/AVFoundationSPI.h>
 #import <wtf/Deque.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-#import "VideoFullscreenLayerManager.h"
-#endif
-
 #pragma mark - Soft Linking
 
-#import "CoreMediaSoftLink.h"
+#import <pal/cf/CoreMediaSoftLink.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVAsset)
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVURLAsset)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVSampleBufferAudioRenderer)
+#pragma clang diagnostic pop
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVSampleBufferDisplayLayer)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVSampleBufferRenderSynchronizer)
+#pragma clang diagnostic pop
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVStreamDataParser)
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVStreamSession);
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVVideoPerformanceMetrics)
@@ -101,13 +105,14 @@ SOFT_LINK_CONSTANT(AVFoundation, AVAudioTimePitchAlgorithmVarispeed, NSString*)
 @end
 
 namespace WebCore {
+using namespace PAL;
 
 #pragma mark -
 #pragma mark MediaPlayerPrivateMediaSourceAVFObjC
 
 static void CMTimebaseEffectiveRateChangedCallback(CMNotificationCenterRef, const void *listener, CFStringRef, const void *, CFTypeRef)
 {
-    MediaPlayerPrivateMediaSourceAVFObjC* player = (MediaPlayerPrivateMediaSourceAVFObjC*)listener;
+    MediaPlayerPrivateMediaSourceAVFObjC* player = (MediaPlayerPrivateMediaSourceAVFObjC*)const_cast<void*>(listener);
     callOnMainThread([weakThis = player->createWeakPtr()] {
         if (!weakThis)
             return;
@@ -117,8 +122,6 @@ static void CMTimebaseEffectiveRateChangedCallback(CMNotificationCenterRef, cons
 
 MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(MediaPlayer* player)
     : m_player(player)
-    , m_weakPtrFactory(this)
-    , m_sizeChangeObserverWeakPtrFactory(this)
     , m_synchronizer(adoptNS([allocAVSampleBufferRenderSynchronizerInstance() init]))
     , m_seekTimer(*this, &MediaPlayerPrivateMediaSourceAVFObjC::seekInternal)
     , m_session(nullptr)
@@ -128,9 +131,7 @@ MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(Media
     , m_playing(0)
     , m_seeking(false)
     , m_loadingProgressed(false)
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-    , m_videoFullscreenLayerManager(VideoFullscreenLayerManager::create())
-#endif
+    , m_videoFullscreenLayerManager(std::make_unique<VideoFullscreenLayerManagerObjC>())
 {
     CMTimebaseRef timebase = [m_synchronizer timebase];
     CMNotificationCenterRef nc = CMNotificationCenterGetDefaultLocalCenter();
@@ -139,7 +140,7 @@ MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(Media
     // addPeriodicTimeObserverForInterval: throws an exception if you pass a non-numeric CMTime, so just use
     // an arbitrarily large time value of once an hour:
     __block auto weakThis = createWeakPtr();
-    m_timeJumpedObserver = [m_synchronizer addPeriodicTimeObserverForInterval:toCMTime(MediaTime::createWithDouble(3600)) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
+    m_timeJumpedObserver = [m_synchronizer addPeriodicTimeObserverForInterval:PAL::toCMTime(MediaTime::createWithDouble(3600)) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
 #if LOG_DISABLED
         UNUSED_PARAM(time);
 #endif
@@ -148,7 +149,7 @@ MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(Media
             return;
 
         if (m_seeking && !m_pendingSeek) {
-            LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::m_timeJumpedObserver(%p) - time(%s)", weakThis.get(), toString(toMediaTime(time)).utf8().data());
+            LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::m_timeJumpedObserver(%p) - time(%s)", weakThis.get(), toString(PAL::toMediaTime(time)).utf8().data());
             m_seeking = false;
 
             if (shouldBePlaying())
@@ -190,7 +191,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::registerMediaEngine(MediaEngineRegist
 
     registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateMediaSourceAVFObjC>(player); },
         getSupportedTypes, supportsType, 0, 0, 0, 0);
-    AVFoundationMIMETypeCache::singleton().loadTypes();
+    ASSERT(AVFoundationMIMETypeCache::singleton().isAvailable());
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::isAvailable()
@@ -218,7 +219,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(con
         return MediaPlayer::IsNotSupported;
 #endif
 
-    if (parameters.type.isEmpty() || !AVFoundationMIMETypeCache::singleton().types().contains(parameters.type.containerType()))
+    if (parameters.type.isEmpty() || !AVFoundationMIMETypeCache::singleton().canDecodeType(parameters.type.containerType()))
         return MediaPlayer::IsNotSupported;
 
     // The spec says:
@@ -274,21 +275,9 @@ void MediaPlayerPrivateMediaSourceAVFObjC::prepareToPlay()
 {
 }
 
-PlatformMedia MediaPlayerPrivateMediaSourceAVFObjC::platformMedia() const
-{
-    PlatformMedia pm;
-    pm.type = PlatformMedia::AVFoundationAssetType;
-    pm.media.avfAsset = m_asset.get();
-    return pm;
-}
-
 PlatformLayer* MediaPlayerPrivateMediaSourceAVFObjC::platformLayer() const
 {
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
     return m_videoFullscreenLayerManager->videoInlineLayer();
-#else
-    return m_sampleBufferDisplayLayer.get();
-#endif
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::play()
@@ -332,8 +321,8 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::paused() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setVolume(float volume)
 {
-    for (auto pair : m_sampleBufferAudioRendererMap)
-        [pair.key setVolume:volume];
+    for (auto key : m_sampleBufferAudioRendererMap.keys())
+        [(__bridge AVSampleBufferAudioRenderer *)key.get() setVolume:volume];
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::supportsScanning() const
@@ -343,8 +332,8 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::supportsScanning() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setMuted(bool muted)
 {
-    for (auto pair : m_sampleBufferAudioRendererMap)
-        [pair.key setMuted:muted];
+    for (auto key : m_sampleBufferAudioRendererMap.keys())
+        [(__bridge AVSampleBufferAudioRenderer *)key.get() setMuted:muted];
 }
 
 FloatSize MediaPlayerPrivateMediaSourceAVFObjC::naturalSize() const
@@ -380,7 +369,7 @@ MediaTime MediaPlayerPrivateMediaSourceAVFObjC::durationMediaTime() const
 
 MediaTime MediaPlayerPrivateMediaSourceAVFObjC::currentMediaTime() const
 {
-    MediaTime synchronizerTime = toMediaTime(CMTimebaseGetTime([m_synchronizer timebase]));
+    MediaTime synchronizerTime = PAL::toMediaTime(CMTimebaseGetTime([m_synchronizer timebase]));
     if (synchronizerTime < MediaTime::zeroTime())
         return MediaTime::zeroTime();
     if (synchronizerTime < m_lastSeekTime)
@@ -426,13 +415,16 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekInternal()
     else
         m_lastSeekTime = m_mediaSourcePrivate->fastSeekTimeForMediaTime(pendingSeek->targetTime, pendingSeek->positiveThreshold, pendingSeek->negativeThreshold);
 
-    LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(%p) - seekTime(%s)", this, toString(m_lastSeekTime).utf8().data());
+    if (m_lastSeekTime.hasDoubleValue())
+        m_lastSeekTime = MediaTime::createWithDouble(m_lastSeekTime.toDouble(), MediaTime::DefaultTimeScale);
 
-    MediaTime synchronizerTime = toMediaTime(CMTimebaseGetTime([m_synchronizer timebase]));
+    MediaTime synchronizerTime = PAL::toMediaTime(CMTimebaseGetTime([m_synchronizer timebase]));
+    LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(%p) - seekTime(%s), synchronizerTime(%s)", this, toString(m_lastSeekTime).utf8().data(), toString(synchronizerTime).utf8().data());
+
     bool doesNotRequireSeek = synchronizerTime == m_lastSeekTime;
 
     m_mediaSourcePrivate->willSeek();
-    [m_synchronizer setRate:0 time:toCMTime(m_lastSeekTime)];
+    [m_synchronizer setRate:0 time:PAL::toCMTime(m_lastSeekTime)];
     m_mediaSourcePrivate->seekToTime(m_lastSeekTime);
 
     // In cases where the destination seek time precisely matches the synchronizer's existing time
@@ -488,8 +480,8 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setRateDouble(double rate)
 void MediaPlayerPrivateMediaSourceAVFObjC::setPreservesPitch(bool preservesPitch)
 {
     NSString *algorithm = preservesPitch ? AVAudioTimePitchAlgorithmSpectral : AVAudioTimePitchAlgorithmVarispeed;
-    for (auto pair : m_sampleBufferAudioRendererMap)
-        [pair.key setAudioTimePitchAlgorithm:algorithm];
+    for (auto key : m_sampleBufferAudioRendererMap.keys())
+        [(__bridge AVSampleBufferAudioRenderer *)key.get() setAudioTimePitchAlgorithm:algorithm];
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivateMediaSourceAVFObjC::networkState() const
@@ -562,8 +554,8 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::updateLastImage()
     ASSERT(m_lastPixelBuffer);
 
     if (!m_rgbConformer) {
-        NSDictionary *attributes = @{ (NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA) };
-        m_rgbConformer = std::make_unique<PixelBufferConformerCV>((CFDictionaryRef)attributes);
+        auto attributes = @{ (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA) };
+        m_rgbConformer = std::make_unique<PixelBufferConformerCV>((__bridge CFDictionaryRef)attributes);
     }
 
     m_lastImage = m_rgbConformer->createImageFromPixelBuffer(m_lastPixelBuffer.get());
@@ -591,9 +583,6 @@ void MediaPlayerPrivateMediaSourceAVFObjC::paintCurrentFrameInContext(GraphicsCo
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
 {
-    if (flipY || premultiplyAlpha)
-        return false;
-
     // We have been asked to paint into a WebGL canvas, so take that as a signal to create
     // a decompression session, even if that means the native video can't also be displayed
     // in page.
@@ -607,14 +596,6 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::copyVideoTextureToPlatformTexture(Gra
     if (updateLastPixelBuffer()) {
         if (!m_lastPixelBuffer)
             return false;
-
-        if (!m_textureCache) {
-            m_textureCache = TextureCacheCV::create(*context);
-            if (!m_textureCache)
-                return false;
-        }
-
-        m_lastTexture = m_textureCache->textureFromImage(m_lastPixelBuffer.get(), outputTarget, level, internalFormat, format, type);
     }
 
     size_t width = CVPixelBufferGetWidth(m_lastPixelBuffer.get());
@@ -623,7 +604,7 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::copyVideoTextureToPlatformTexture(Gra
     if (!m_videoTextureCopier)
         m_videoTextureCopier = std::make_unique<VideoTextureCopierCV>(*context);
 
-    return m_videoTextureCopier->copyVideoTextureToPlatformTexture(m_lastTexture.get(), width, height, outputTexture, outputTarget, level, internalFormat, format, type, premultiplyAlpha, flipY);
+    return m_videoTextureCopier->copyImageToPlatformTexture(m_lastPixelBuffer.get(), width, height, outputTexture, outputTarget, level, internalFormat, format, type, premultiplyAlpha, flipY);
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::hasAvailableVideoFrame() const
@@ -638,7 +619,7 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::supportsAcceleratedRendering() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::acceleratedRenderingStateChanged()
 {
-    if (!m_hasBeenAskedToPaintGL && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player)) {
+    if (!m_hasBeenAskedToPaintGL) {
         destroyDecompressionSession();
         ensureLayer();
     } else {
@@ -679,24 +660,27 @@ size_t MediaPlayerPrivateMediaSourceAVFObjC::extraMemoryCost() const
     return 0;
 }
 
-unsigned long MediaPlayerPrivateMediaSourceAVFObjC::totalVideoFrames()
+std::optional<VideoPlaybackQualityMetrics> MediaPlayerPrivateMediaSourceAVFObjC::videoPlaybackQualityMetrics()
 {
-    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] totalNumberOfVideoFrames];
-}
+    if (m_decompressionSession) {
+        return VideoPlaybackQualityMetrics {
+            m_decompressionSession->totalVideoFrames(),
+            m_decompressionSession->droppedVideoFrames(),
+            m_decompressionSession->corruptedVideoFrames(),
+            m_decompressionSession->totalFrameDelay().toDouble()
+        };
+    }
 
-unsigned long MediaPlayerPrivateMediaSourceAVFObjC::droppedVideoFrames()
-{
-    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] numberOfDroppedVideoFrames];
-}
+    auto metrics = [m_sampleBufferDisplayLayer videoPerformanceMetrics];
+    if (!metrics)
+        return std::nullopt;
 
-unsigned long MediaPlayerPrivateMediaSourceAVFObjC::corruptedVideoFrames()
-{
-    return [[m_sampleBufferDisplayLayer videoPerformanceMetrics] numberOfCorruptedVideoFrames];
-}
-
-MediaTime MediaPlayerPrivateMediaSourceAVFObjC::totalFrameDelay()
-{
-    return MediaTime::createWithDouble([[m_sampleBufferDisplayLayer videoPerformanceMetrics] totalFrameDelay]);
+    return VideoPlaybackQualityMetrics {
+        static_cast<unsigned>([metrics totalNumberOfVideoFrames]),
+        static_cast<unsigned>([metrics numberOfDroppedVideoFrames]),
+        static_cast<unsigned>([metrics numberOfCorruptedVideoFrames]),
+        [metrics totalFrameDelay]
+    };
 }
 
 #pragma mark -
@@ -715,9 +699,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::ensureLayer()
     [m_synchronizer addRenderer:m_sampleBufferDisplayLayer.get()];
     if (m_mediaSourcePrivate)
         m_mediaSourcePrivate->setVideoLayer(m_sampleBufferDisplayLayer.get());
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_videoFullscreenLayerManager->setVideoLayer(m_sampleBufferDisplayLayer.get(), snappedIntRect(m_player->client().mediaPlayerContentBoxRect()).size());
-#endif
     m_player->client().mediaPlayerRenderingModeChanged(m_player);
 }
 
@@ -733,9 +715,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::destroyLayer()
 
     if (m_mediaSourcePrivate)
         m_mediaSourcePrivate->setVideoLayer(nullptr);
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     m_videoFullscreenLayerManager->didDestroyVideoLayer();
-#endif
     m_sampleBufferDisplayLayer = nullptr;
     setHasAvailableVideoFrame(false);
     m_player->client().mediaPlayerRenderingModeChanged(m_player);
@@ -746,7 +726,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::ensureDecompressionSession()
     if (m_decompressionSession)
         return;
 
-    m_decompressionSession = WebCoreDecompressionSession::create();
+    m_decompressionSession = WebCoreDecompressionSession::createOpenGL();
     m_decompressionSession->setTimebase([m_synchronizer timebase]);
 
     if (m_mediaSourcePrivate)
@@ -793,9 +773,13 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setHasAvailableVideoFrame(bool flag)
     }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
 void MediaPlayerPrivateMediaSourceAVFObjC::setHasAvailableAudioSample(AVSampleBufferAudioRenderer* renderer, bool flag)
+#pragma clang diagnostic pop
 {
-    auto iter = m_sampleBufferAudioRendererMap.find(renderer);
+    auto iter = m_sampleBufferAudioRendererMap.find((__bridge CFTypeRef)renderer);
     if (iter == m_sampleBufferAudioRendererMap.end())
         return;
 
@@ -847,7 +831,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::durationChanged()
 
     MediaTime duration = m_mediaSourcePrivate->duration();
     auto weakThis = createWeakPtr();
-    NSArray* times = @[[NSValue valueWithCMTime:toCMTime(duration)]];
+    NSArray* times = @[[NSValue valueWithCMTime:PAL::toCMTime(duration)]];
 
     LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::durationChanged(%p) - duration = %s", this, toString(duration).utf8().data());
 
@@ -861,7 +845,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::durationChanged()
         weakThis->pauseInternal();
         if (now < duration) {
             LOG(MediaSource, "   ERROR: boundary time observer called before duration!", weakThis.get());
-            [weakThis->m_synchronizer setRate:0 time:toCMTime(duration)];
+            [weakThis->m_synchronizer setRate:0 time:PAL::toCMTime(duration)];
         }
         weakThis->m_player->timeChanged();
 
@@ -878,8 +862,8 @@ void MediaPlayerPrivateMediaSourceAVFObjC::effectiveRateChanged()
 
 void MediaPlayerPrivateMediaSourceAVFObjC::sizeWillChangeAtTime(const MediaTime& time, const FloatSize& size)
 {
-    auto weakThis = m_sizeChangeObserverWeakPtrFactory.createWeakPtr();
-    NSArray* times = @[[NSValue valueWithCMTime:toCMTime(time)]];
+    auto weakThis = m_sizeChangeObserverWeakPtrFactory.createWeakPtr(*this);
+    NSArray* times = @[[NSValue valueWithCMTime:PAL::toCMTime(time)]];
     RetainPtr<id> observer = [m_synchronizer addBoundaryTimeObserverForTimes:times queue:dispatch_get_main_queue() usingBlock:[this, weakThis, size] {
         if (!weakThis)
             return;
@@ -926,18 +910,18 @@ AVStreamSession* MediaPlayerPrivateMediaSourceAVFObjC::streamSession()
         if (storageDirectory.isEmpty())
             return nil;
 
-        if (!fileExists(storageDirectory)) {
-            if (!makeAllDirectories(storageDirectory))
+        if (!FileSystem::fileExists(storageDirectory)) {
+            if (!FileSystem::makeAllDirectories(storageDirectory))
                 return nil;
         }
 
-        String storagePath = pathByAppendingComponent(storageDirectory, "SecureStop.plist");
+        String storagePath = FileSystem::pathByAppendingComponent(storageDirectory, "SecureStop.plist");
         m_streamSession = adoptNS([allocAVStreamSessionInstance() initWithStorageDirectoryAtURL:[NSURL fileURLWithPath:storagePath]]);
     }
     return m_streamSession.get();
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession(CDMSession* session)
+void MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession(LegacyCDMSession* session)
 {
     if (session == m_session)
         return;
@@ -954,11 +938,54 @@ void MediaPlayerPrivateMediaSourceAVFObjC::keyNeeded(Uint8Array* initData)
 {
     m_player->keyNeeded(initData);
 }
+
+void MediaPlayerPrivateMediaSourceAVFObjC::outputObscuredDueToInsufficientExternalProtectionChanged(bool obscured)
+{
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (m_cdmInstance)
+        m_cdmInstance->setHDCPStatus(obscured ? CDMInstance::HDCPStatus::OutputRestricted : CDMInstance::HDCPStatus::Valid);
+#else
+    UNUSED_PARAM(obscured);
+#endif
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateMediaSourceAVFObjC::cdmInstanceAttached(CDMInstance& instance)
+{
+    ASSERT(!m_cdmInstance);
+    m_cdmInstance = &instance;
+    for (auto& sourceBuffer : m_mediaSourcePrivate->sourceBuffers())
+        sourceBuffer->setCDMInstance(&instance);
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::cdmInstanceDetached(CDMInstance& instance)
+{
+    ASSERT_UNUSED(instance, m_cdmInstance && m_cdmInstance == &instance);
+    for (auto& sourceBuffer : m_mediaSourcePrivate->sourceBuffers())
+        sourceBuffer->setCDMInstance(nullptr);
+
+    m_cdmInstance = nullptr;
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::attemptToDecryptWithInstance(CDMInstance&)
+{
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
+{
+    m_player->initializationDataEncountered(initDataType, WTFMove(initData));
+}
 #endif
 
 const Vector<ContentType>& MediaPlayerPrivateMediaSourceAVFObjC::mediaContentTypesRequiringHardwareSupport() const
 {
     return m_player->mediaContentTypesRequiringHardwareSupport();
+}
+
+bool MediaPlayerPrivateMediaSourceAVFObjC::shouldCheckHardwareSupport() const
+{
+    return m_player->shouldCheckHardwareSupport();
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setReadyState(MediaPlayer::ReadyState readyState)
@@ -990,12 +1017,14 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setNetworkState(MediaPlayer::NetworkS
     m_player->networkStateChanged();
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
 void MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer(AVSampleBufferAudioRenderer* audioRenderer)
+#pragma clang diagnostic pop
 {
-    if (m_sampleBufferAudioRendererMap.contains(audioRenderer))
+    if (!m_sampleBufferAudioRendererMap.add((__bridge CFTypeRef)audioRenderer, AudioRendererProperties()).isNewEntry)
         return;
-
-    m_sampleBufferAudioRendererMap.add(audioRenderer, AudioRendererProperties());
 
     [audioRenderer setMuted:m_player->muted()];
     [audioRenderer setVolume:m_player->volume()];
@@ -1005,9 +1034,13 @@ void MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer(AVSampleBufferAudioR
     m_player->client().mediaPlayerRenderingModeChanged(m_player);
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
 void MediaPlayerPrivateMediaSourceAVFObjC::removeAudioRenderer(AVSampleBufferAudioRenderer* audioRenderer)
+#pragma clang diagnostic pop
 {
-    auto iter = m_sampleBufferAudioRendererMap.find(audioRenderer);
+    auto iter = m_sampleBufferAudioRendererMap.find((__bridge CFTypeRef)audioRenderer);
     if (iter == m_sampleBufferAudioRendererMap.end())
         return;
 
@@ -1026,75 +1059,31 @@ void MediaPlayerPrivateMediaSourceAVFObjC::characteristicsChanged()
     m_player->characteristicChanged();
 }
 
-#if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 void MediaPlayerPrivateMediaSourceAVFObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
 {
-    if (m_videoFullscreenLayerManager->videoFullscreenLayer() == videoFullscreenLayer) {
-        completionHandler();
-        return;
-    }
-    
-    m_videoFullscreenLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, WTFMove(completionHandler));
-    
-    if (m_videoFullscreenLayerManager->videoFullscreenLayer() && m_textTrackRepresentationLayer) {
-        syncTextTrackBounds();
-        [m_videoFullscreenLayerManager->videoFullscreenLayer() addSublayer:m_textTrackRepresentationLayer.get()];
-    }
+    updateLastImage();
+    m_videoFullscreenLayerManager->setVideoFullscreenLayer(videoFullscreenLayer, WTFMove(completionHandler), m_lastImage);
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setVideoFullscreenFrame(FloatRect frame)
 {
     m_videoFullscreenLayerManager->setVideoFullscreenFrame(frame);
-    syncTextTrackBounds();
 }
-#endif
-    
+
 bool MediaPlayerPrivateMediaSourceAVFObjC::requiresTextTrackRepresentation() const
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    if (m_videoFullscreenLayerManager->videoFullscreenLayer())
-        return true;
-#endif
-    return false;
+    return m_videoFullscreenLayerManager->videoFullscreenLayer();
 }
     
 void MediaPlayerPrivateMediaSourceAVFObjC::syncTextTrackBounds()
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    if (!m_videoFullscreenLayerManager->videoFullscreenLayer() || !m_textTrackRepresentationLayer)
-        return;
-    
-    auto videoFullscreenFrame = m_videoFullscreenLayerManager->videoFullscreenFrame();
-    auto videoRect = [m_sampleBufferDisplayLayer bounds];
-    auto textFrame = m_sampleBufferDisplayLayer ? videoRect : CGRectMake(0, 0, videoFullscreenFrame.width(), videoFullscreenFrame.height());
-    [m_textTrackRepresentationLayer setFrame:textFrame];
-#endif
+    m_videoFullscreenLayerManager->syncTextTrackBounds();
 }
     
 void MediaPlayerPrivateMediaSourceAVFObjC::setTextTrackRepresentation(TextTrackRepresentation* representation)
 {
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    PlatformLayer* representationLayer = representation ? representation->platformLayer() : nil;
-    if (representationLayer == m_textTrackRepresentationLayer) {
-        syncTextTrackBounds();
-        return;
-    }
-    
-    if (m_textTrackRepresentationLayer)
-        [m_textTrackRepresentationLayer removeFromSuperlayer];
-    
-    m_textTrackRepresentationLayer = representationLayer;
-    
-    if (m_videoFullscreenLayerManager->videoFullscreenLayer() && m_textTrackRepresentationLayer) {
-        syncTextTrackBounds();
-        [m_videoFullscreenLayerManager->videoFullscreenLayer() addSublayer:m_textTrackRepresentationLayer.get()];
-    }
-    
-#else
-    UNUSED_PARAM(representation);
-#endif
+    m_videoFullscreenLayerManager->setTextTrackRepresentation(representation);
 }
-    
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 void MediaPlayerPrivateMediaSourceAVFObjC::setWirelessPlaybackTarget(Ref<MediaPlaybackTarget>&& target)

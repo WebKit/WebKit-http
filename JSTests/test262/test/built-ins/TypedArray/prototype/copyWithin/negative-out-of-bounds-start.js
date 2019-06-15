@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.copywithin
-es6id: 22.2.3.5
 description: >
   Set values with out of bounds negative start argument.
-info: >
+info: |
   22.2.3.5 %TypedArray%.prototype.copyWithin (target, start [ , end ] )
 
   %TypedArray%.prototype.copyWithin is a distinct function that implements the
@@ -24,6 +23,7 @@ info: >
   from be min(relativeStart, len).
   ...
 includes: [compareArray.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -37,10 +37,26 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(0, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5]).copyWithin(0, -Infinity) -> [1, 2, 3, 4, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3, 4]).copyWithin(2, -10),
       [0, 1, 0, 1, 2]
     ),
     '[0, 1, 2, 3, 4]).copyWithin(2, -2) -> [0, 1, 0, 1, 2]'
+  );
+
+  assert(
+    compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(2, -Infinity),
+      [1, 2, 1, 2, 3]
+    ),
+    '[1, 2, 3, 4, 5]).copyWithin(2, -Infinity) -> [1, 2, 1, 2, 3]'
   );
 
   assert(
@@ -53,9 +69,25 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(10, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5]).copyWithin(10, -Infinity) -> [1, 2, 3, 4, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3]).copyWithin(-9, -10),
       [0, 1, 2, 3]
     ),
     '[0, 1, 2, 3].copyWithin(-9, -10) -> [0, 1, 2, 3]'
+  );
+
+  assert(
+    compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(-9, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(-9, -Infinity) -> [1, 2, 3, 4, 5]'
   );
 });

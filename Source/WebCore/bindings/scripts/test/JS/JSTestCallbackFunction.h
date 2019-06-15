@@ -20,7 +20,6 @@
 
 #pragma once
 
-#include "ActiveDOMCallback.h"
 #include "IDLTypes.h"
 #include "JSCallbackData.h"
 #include "TestCallbackFunction.h"
@@ -28,7 +27,7 @@
 
 namespace WebCore {
 
-class JSTestCallbackFunction final : public TestCallbackFunction, public ActiveDOMCallback {
+class JSTestCallbackFunction final : public TestCallbackFunction {
 public:
     static Ref<JSTestCallbackFunction> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
@@ -41,7 +40,7 @@ public:
     JSCallbackDataStrong* callbackData() { return m_data; }
 
     // Functions
-    virtual CallbackResult<typename IDLDOMString::ImplementationType> handleEvent(typename IDLLong::ParameterType argument) override;
+    CallbackResult<typename IDLDOMString::ImplementationType> handleEvent(typename IDLLong::ParameterType argument) override;
 
 private:
     JSTestCallbackFunction(JSC::JSObject*, JSDOMGlobalObject*);

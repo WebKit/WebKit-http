@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_TEST_TESTVADDTX_H_
-#define WEBRTC_MODULES_AUDIO_CODING_TEST_TESTVADDTX_H_
+#ifndef MODULES_AUDIO_CODING_TEST_TESTVADDTX_H_
+#define MODULES_AUDIO_CODING_TEST_TESTVADDTX_H_
 
 #include <memory>
 
-#include "webrtc/common_types.h"
-#include "webrtc/modules/audio_coding/include/audio_coding_module.h"
-#include "webrtc/modules/audio_coding/include/audio_coding_module_typedefs.h"
-#include "webrtc/modules/audio_coding/test/ACMTest.h"
-#include "webrtc/modules/audio_coding/test/Channel.h"
+#include "common_types.h"  // NOLINT(build/include)
+#include "modules/audio_coding/include/audio_coding_module.h"
+#include "modules/audio_coding/include/audio_coding_module_typedefs.h"
+#include "modules/audio_coding/test/ACMTest.h"
+#include "modules/audio_coding/test/Channel.h"
 
 namespace webrtc {
 
@@ -28,6 +28,7 @@ class ActivityMonitor : public ACMVADCallback {
   void PrintStatistics();
   void ResetStatistics();
   void GetStatistics(uint32_t* stats);
+
  private:
   // 0 - kEmptyFrame
   // 1 - kAudioFrameSpeech
@@ -36,7 +37,6 @@ class ActivityMonitor : public ACMVADCallback {
   // 4 - kVideoFrameDelta (not used by audio)
   uint32_t counter_[5];
 };
-
 
 // TestVadDtx is to verify that VAD/DTX perform as they should. It runs through
 // an audio file and check if the occurrence of various packet types follows
@@ -65,8 +65,12 @@ class TestVadDtx : public ACMTest {
   // 2 - kAudioFrameCN
   // 3 - kVideoFrameKey (not used by audio)
   // 4 - kVideoFrameDelta (not used by audio)
-  void Run(std::string in_filename, int frequency, int channels,
-           std::string out_filename, bool append, const int* expects);
+  void Run(std::string in_filename,
+           int frequency,
+           int channels,
+           std::string out_filename,
+           bool append,
+           const int* expects);
 
   std::unique_ptr<AudioCodingModule> acm_send_;
   std::unique_ptr<AudioCodingModule> acm_receive_;
@@ -100,4 +104,4 @@ class TestOpusDtx final : public TestVadDtx {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_TEST_TESTVADDTX_H_
+#endif  // MODULES_AUDIO_CODING_TEST_TESTVADDTX_H_

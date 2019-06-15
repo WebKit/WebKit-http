@@ -29,20 +29,25 @@
 #include "ShareableBitmap.h"
 
 #include <WebCore/BitmapImage.h>
+#include <WebCore/CairoOperations.h>
 #include <WebCore/CairoUtilities.h>
-#include <WebCore/GraphicsContext.h>
+#include <WebCore/GraphicsContextImplCairo.h>
 #include <WebCore/PlatformContextCairo.h>
 #include <WebCore/NotImplemented.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static const cairo_format_t cairoFormat = CAIRO_FORMAT_ARGB32;
 
-Checked<unsigned, RecordOverflow> ShareableBitmap::numBytesForSize(const WebCore::IntSize& size)
+Checked<unsigned, RecordOverflow> ShareableBitmap::calculateBytesPerRow(WebCore::IntSize size, const Configuration&)
 {
-    return Checked<unsigned, RecordOverflow>(cairo_format_stride_for_width(cairoFormat, size.width())) * size.height();
+    return cairo_format_stride_for_width(cairoFormat, size.width());
+}
+
+unsigned ShareableBitmap::calculateBytesPerPixel(const Configuration&)
+{
+    return 4;
 }
 
 static inline RefPtr<cairo_surface_t> createSurfaceFromData(void* data, const WebCore::IntSize& size)
@@ -55,7 +60,7 @@ std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
     RefPtr<cairo_surface_t> image = createCairoSurface();
     RefPtr<cairo_t> bitmapContext = adoptRef(cairo_create(image.get()));
-    return std::make_unique<GraphicsContext>(bitmapContext.get());
+    return std::make_unique<GraphicsContext>(GraphicsContextImplCairo::createFactory(bitmapContext.get()));
 }
 
 void ShareableBitmap::paint(GraphicsContext& context, const IntPoint& dstPoint, const IntRect& srcRect)
@@ -69,7 +74,10 @@ void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const I
     FloatRect destRect(dstPoint, srcRect.size());
     FloatRect srcRectScaled(srcRect);
     srcRectScaled.scale(scaleFactor);
-    context.platformContext()->drawSurfaceToContext(surface.get(), destRect, srcRectScaled, context);
+
+    ASSERT(context.hasPlatformContext());
+    auto& state = context.state();
+    Cairo::drawSurface(*context.platformContext(), surface.get(), destRect, srcRectScaled, state.imageInterpolationQuality, state.alpha, Cairo::ShadowState(state));
 }
 
 RefPtr<cairo_surface_t> ShareableBitmap::createCairoSurface()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,22 +28,14 @@
 
 #import "WebKitNSStringExtras.h"
 
-#import <WebCore/CoreGraphicsSPI.h>
+#import <WebCore/ColorMac.h>
 #import <WebCore/FontCascade.h>
 #import <WebCore/GraphicsContext.h>
+#import <WebCore/LoaderNSURLExtras.h>
 #import <WebCore/TextRun.h>
-#import <WebCore/WebCoreNSStringExtras.h>
-#import <WebKitLegacy/WebNSFileManagerExtras.h>
-#import <WebKitLegacy/WebNSObjectExtras.h>
-#import <unicode/uchar.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <sys/param.h>
-
-#if PLATFORM(IOS)
-#import <WebKitLegacy/DOM.h>
-#import <WebKitLegacy/WebFrame.h>
-#import <WebKitLegacy/WebFrameView.h>
-#import <WebKitLegacy/WebViewPrivate.h>
-#endif
+#import <unicode/uchar.h>
 
 NSString *WebKitLocalCacheDefaultsKey = @"WebKitLocalCache";
 NSString *WebKitResourceLoadStatisticsDirectoryDefaultsKey = @"WebKitResourceLoadStatisticsDirectory";
@@ -52,60 +44,52 @@ using namespace WebCore;
 
 @implementation NSString (WebKitExtras)
 
-#if !PLATFORM(IOS)
-static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
+#if PLATFORM(MAC)
+
+static bool canUseFastRenderer(const UniChar* buffer, unsigned length)
 {
-    unsigned i;
-    for (i = 0; i < length; i++) {
-        UCharDirection direction = u_charDirection(buffer[i]);
-        if (direction == U_RIGHT_TO_LEFT || direction > U_OTHER_NEUTRAL)
-            return NO;
+    for (unsigned i = 0; i < length; i++) {
+        if (buffer[i] > 0xFF) {
+            auto direction = u_charDirection(buffer[i]);
+            if (direction == U_RIGHT_TO_LEFT || (direction > U_OTHER_NEUTRAL && direction != U_DIR_NON_SPACING_MARK && direction != U_BOUNDARY_NEUTRAL))
+                return false;
+        }
     }
-    return YES;
+    return true;
 }
 
 - (void)_web_drawAtPoint:(NSPoint)point font:(NSFont *)font textColor:(NSColor *)textColor
-{
-    [self _web_drawAtPoint:point font:font textColor:textColor allowingFontSmoothing:YES];
-}
-
-- (void)_web_drawAtPoint:(NSPoint)point font:(NSFont *)font textColor:(NSColor *)textColor allowingFontSmoothing:(BOOL)fontSmoothingIsAllowed
 {
     if (!font)
         return;
 
     unsigned length = [self length];
     Vector<UniChar, 2048> buffer(length);
-
     [self getCharacters:buffer.data()];
 
     if (canUseFastRenderer(buffer.data(), length)) {
+        FontCascade webCoreFont(FontPlatformData((__bridge CTFontRef)font, [font pointSize]));
+        TextRun run(StringView(buffer.data(), length));
+
         // The following is a half-assed attempt to match AppKit's rounding rules for drawAtPoint.
-        // It's probably incorrect for high DPI.
-        // If you change this, be sure to test all the text drawn this way in Safari, including
+        // If you change it, be sure to test all the text drawn this way in Safari, including
         // the status bar, bookmarks bar, tab bar, and activity window.
         point.y = CGCeiling(point.y);
 
         NSGraphicsContext *nsContext = [NSGraphicsContext currentContext];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         CGContextRef cgContext = static_cast<CGContextRef>([nsContext graphicsPort]);
-        GraphicsContext graphicsContext(cgContext);    
+#pragma clang diagnostic pop
+        GraphicsContext graphicsContext { cgContext };
 
-        // Safari doesn't flip the NSGraphicsContext before calling WebKit, yet WebCore requires a flipped graphics context.
-        BOOL flipped = [nsContext isFlipped];
+        // WebCore requires a flipped graphics context.
+        bool flipped = [nsContext isFlipped];
         if (!flipped)
             CGContextScaleCTM(cgContext, 1, -1);
 
-        FontCascade webCoreFont(FontPlatformData(reinterpret_cast<CTFontRef>(font), [font pointSize]), fontSmoothingIsAllowed ? AutoSmoothing : Antialiased);
-        TextRun run(StringView(buffer.data(), length));
-
-        CGFloat red;
-        CGFloat green;
-        CGFloat blue;
-        CGFloat alpha;
-        [[textColor colorUsingColorSpaceName:NSDeviceRGBColorSpace] getRed:&red green:&green blue:&blue alpha:&alpha];
-        graphicsContext.setFillColor(Color(static_cast<float>(red * 255), static_cast<float>(green * 255.0f), static_cast<float>(blue * 255.0f), static_cast<float>(alpha * 255.0f)));
-
-        webCoreFont.drawText(graphicsContext, run, FloatPoint(point.x, (flipped ? point.y : (-1 * point.y))));
+        graphicsContext.setFillColor(colorFromNSColor(textColor));
+        webCoreFont.drawText(graphicsContext, run, FloatPoint(point.x, flipped ? point.y : -point.y));
 
         if (!flipped)
             CGContextScaleCTM(cgContext, 1, -1);
@@ -120,76 +104,54 @@ static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
     }
 }
 
-- (void)_web_drawDoubledAtPoint:(NSPoint)textPoint
-             withTopColor:(NSColor *)topColor
-              bottomColor:(NSColor *)bottomColor
-                     font:(NSFont *)font
-{
-    // turn off font smoothing so translucent text draws correctly (Radar 3118455)
-    [self _web_drawAtPoint:textPoint font:font textColor:bottomColor allowingFontSmoothing:NO];
-
-    textPoint.y += 1;
-    [self _web_drawAtPoint:textPoint font:font textColor:topColor allowingFontSmoothing:NO];
-}
-
 - (float)_web_widthWithFont:(NSFont *)font
 {
     unsigned length = [self length];
     Vector<UniChar, 2048> buffer(length);
-
     [self getCharacters:buffer.data()];
 
     if (canUseFastRenderer(buffer.data(), length)) {
-        FontCascade webCoreFont(FontPlatformData(reinterpret_cast<CTFontRef>(font), [font pointSize]));
+        FontCascade webCoreFont(FontPlatformData((__bridge CTFontRef)font, [font pointSize]));
         TextRun run(StringView(buffer.data(), length));
         return webCoreFont.width(run);
     }
 
     return [self sizeWithAttributes:[NSDictionary dictionaryWithObjectsAndKeys:font, NSFontAttributeName, nil]].width;
 }
-#endif // !PLATFORM(IOS)
+
+#endif // PLATFORM(MAC)
 
 - (NSString *)_web_stringByAbbreviatingWithTildeInPath
 {
+    // Handles home directories that have symlinks in their paths as well as what stringByAbbreviatingWithTildeInPath handles.
+    // This works around Radar bug 2774250.
+
     NSString *resolvedHomeDirectory = [NSHomeDirectory() stringByResolvingSymlinksInPath];
     NSString *path;
-    
+
     if ([self hasPrefix:resolvedHomeDirectory]) {
         NSString *relativePath = [self substringFromIndex:[resolvedHomeDirectory length]];
         path = [NSHomeDirectory() stringByAppendingPathComponent:relativePath];
     } else {
         path = self;
     }
-        
-    return [path stringByAbbreviatingWithTildeInPath];
-}
 
-- (NSString *)_web_stringByStrippingReturnCharacters
-{
-    NSMutableString *newString = [[self mutableCopy] autorelease];
-    [newString replaceOccurrencesOfString:@"\r" withString:@"" options:NSLiteralSearch range:NSMakeRange(0, [newString length])];
-    [newString replaceOccurrencesOfString:@"\n" withString:@"" options:NSLiteralSearch range:NSMakeRange(0, [newString length])];
-    return newString;
+    return [path stringByAbbreviatingWithTildeInPath];
 }
 
 - (BOOL)_webkit_isCaseInsensitiveEqualToString:(NSString *)string
 {
-    return stringIsCaseInsensitiveEqualToString(self, string);
+    return [self compare:string options:(NSCaseInsensitiveSearch | NSLiteralSearch)] == NSOrderedSame;
 }
 
 -(BOOL)_webkit_hasCaseInsensitivePrefix:(NSString *)prefix
 {
-    return hasCaseInsensitivePrefix(self, prefix);
+    return [self rangeOfString:prefix options:(NSCaseInsensitiveSearch | NSAnchoredSearch)].location != NSNotFound;
 }
 
 -(BOOL)_webkit_hasCaseInsensitiveSuffix:(NSString *)suffix
 {
-    return hasCaseInsensitiveSuffix(self, suffix);
-}
-
--(BOOL)_webkit_hasCaseInsensitiveSubstring:(NSString *)substring
-{
-    return hasCaseInsensitiveSubstring(self, substring);
+    return [self rangeOfString:suffix options:(NSCaseInsensitiveSearch | NSBackwardsSearch | NSAnchoredSearch)].location != NSNotFound;
 }
 
 -(NSString *)_webkit_filenameByFixingIllegalCharacters
@@ -200,135 +162,37 @@ static BOOL canUseFastRenderer(const UniChar *buffer, unsigned length)
 -(NSString *)_webkit_stringByTrimmingWhitespace
 {
     NSMutableString *trimmed = [[self mutableCopy] autorelease];
-    CFStringTrimWhitespace((CFMutableStringRef)trimmed);
+    CFStringTrimWhitespace((__bridge CFMutableStringRef)trimmed);
     return trimmed;
 }
 
-- (NSString *)_webkit_stringByCollapsingNonPrintingCharacters
-{
-    NSMutableString *result = [NSMutableString string];
-    static NSCharacterSet *charactersToTurnIntoSpaces = nil;
-    static NSCharacterSet *charactersToNotTurnIntoSpaces = nil;
-    
-    if (charactersToTurnIntoSpaces == nil) {
-        NSMutableCharacterSet *set = [[NSMutableCharacterSet alloc] init];
-        [set addCharactersInRange:NSMakeRange(0x00, 0x21)];
-        [set addCharactersInRange:NSMakeRange(0x7F, 0x01)];
-        charactersToTurnIntoSpaces = [set copy];
-        [set release];
-        charactersToNotTurnIntoSpaces = [[charactersToTurnIntoSpaces invertedSet] retain];
-    }
-    
-    unsigned length = [self length];
-    unsigned position = 0;
-    while (position != length) {
-        NSRange nonSpace = [self rangeOfCharacterFromSet:charactersToNotTurnIntoSpaces
-            options:0 range:NSMakeRange(position, length - position)];
-        if (nonSpace.location == NSNotFound) {
-            break;
-        }
-
-        NSRange space = [self rangeOfCharacterFromSet:charactersToTurnIntoSpaces
-            options:0 range:NSMakeRange(nonSpace.location, length - nonSpace.location)];
-        if (space.location == NSNotFound) {
-            space.location = length;
-        }
-
-        if (space.location > nonSpace.location) {
-            if (position != 0) {
-                [result appendString:@" "];
-            }
-            [result appendString:[self substringWithRange:
-                NSMakeRange(nonSpace.location, space.location - nonSpace.location)]];
-        }
-
-        position = space.location;
-    }
-    
-    return result;
-}
-
-- (NSString *)_webkit_stringByCollapsingWhitespaceCharacters
-{
-    NSMutableString *result = [[NSMutableString alloc] initWithCapacity:[self length]];
-    NSCharacterSet *spaces = [NSCharacterSet whitespaceAndNewlineCharacterSet];
-    static NSCharacterSet *notSpaces = nil;
-
-    if (notSpaces == nil)
-        notSpaces = [[spaces invertedSet] retain];
-
-    unsigned length = [self length];
-    unsigned position = 0;
-    while (position != length) {
-        NSRange nonSpace = [self rangeOfCharacterFromSet:notSpaces options:0 range:NSMakeRange(position, length - position)];
-        if (nonSpace.location == NSNotFound)
-            break;
-
-        NSRange space = [self rangeOfCharacterFromSet:spaces options:0 range:NSMakeRange(nonSpace.location, length - nonSpace.location)];
-        if (space.location == NSNotFound)
-            space.location = length;
-
-        if (space.location > nonSpace.location) {
-            if (position != 0)
-                [result appendString:@" "];
-            [result appendString:[self substringWithRange:NSMakeRange(nonSpace.location, space.location - nonSpace.location)]];
-        }
-
-        position = space.location;
-    }
-
-    return [result autorelease];
-}
-
 #if PLATFORM(MAC)
+
 // FIXME: This is here only for binary compatibility with Safari 8 and earlier.
+// Remove it once we don't have to support that any more.
 -(NSString *)_webkit_fixedCarbonPOSIXPath
 {
     return self;
 }
-#endif
 
-#if PLATFORM(IOS)
-+ (NSString *)_web_stringWithData:(NSData *)data textEncodingName:(NSString *)textEncodingName
-{
-    return [WebFrame stringWithData:data textEncodingName:textEncodingName];
-}
 #endif
 
 + (NSString *)_webkit_localCacheDirectoryWithBundleIdentifier:(NSString*)bundleIdentifier
 {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSString *cacheDir = [defaults objectForKey:WebKitLocalCacheDefaultsKey];
+    NSString *cacheDirectory = [[NSUserDefaults standardUserDefaults] objectForKey:WebKitLocalCacheDefaultsKey];
 
-    if (!cacheDir || ![cacheDir isKindOfClass:[NSString class]]) {
+    if (!cacheDirectory || ![cacheDirectory isKindOfClass:[NSString class]]) {
 #if PLATFORM(IOS)
-        cacheDir = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches"];
-#else
-        char cacheDirectory[MAXPATHLEN];
-        size_t cacheDirectoryLen = confstr(_CS_DARWIN_USER_CACHE_DIR, cacheDirectory, MAXPATHLEN);
-    
-        if (cacheDirectoryLen)
-            cacheDir = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:cacheDirectory length:cacheDirectoryLen - 1];
+        cacheDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Caches"];
+#endif
+#if PLATFORM(MAC)
+        char buffer[MAXPATHLEN];
+        if (size_t length = confstr(_CS_DARWIN_USER_CACHE_DIR, buffer, MAXPATHLEN))
+            cacheDirectory = [[NSFileManager defaultManager] stringWithFileSystemRepresentation:buffer length:length - 1];
 #endif
     }
 
-    return [cacheDir stringByAppendingPathComponent:bundleIdentifier];
-}
-
-+ (NSString *)_webkit_localStorageDirectoryWithBundleIdentifier:(NSString*)bundleIdentifier
-{
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    NSString *storageDirectory = [defaults objectForKey:WebKitResourceLoadStatisticsDirectoryDefaultsKey];
-
-    if (!storageDirectory || ![storageDirectory isKindOfClass:[NSString class]]) {
-        NSError *error;
-        NSString *storageDirectory = [[[NSFileManager defaultManager] URLForDirectory:NSApplicationSupportDirectory inDomain:NSUserDomainMask appropriateForURL:nil create:YES error:&error] path];
-        
-        if (!storageDirectory || ![storageDirectory isKindOfClass:[NSString class]])
-            storageDirectory = [NSHomeDirectory() stringByAppendingPathComponent:@"Library/Application Support"];
-    }
-
-    return [storageDirectory stringByAppendingPathComponent:bundleIdentifier];
+    return [cacheDirectory stringByAppendingPathComponent:bundleIdentifier];
 }
 
 @end

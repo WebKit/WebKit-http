@@ -30,7 +30,6 @@
 #include <wtf/win/GDIObject.h>
 
 #if USE(CG)
-#include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
 
@@ -54,7 +53,7 @@ FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription&
 
     ASSERT(m_fontReference);
 
-    LOGFONT& logFont = *static_cast<LOGFONT*>(malloc(sizeof(LOGFONT)));
+    LOGFONT logFont { };
     memcpy(logFont.lfFaceName, m_name.charactersWithNullTermination().data(), sizeof(logFont.lfFaceName[0]) * std::min<size_t>(static_cast<size_t>(LF_FACESIZE), 1 + m_name.length()));
 
     logFont.lfHeight = -size;
@@ -97,7 +96,7 @@ static String createUniqueFontName()
     return fontName;
 }
 
-std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer)
+std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer, const String&)
 {
     String fontName = createUniqueFontName();
     HANDLE fontReference;

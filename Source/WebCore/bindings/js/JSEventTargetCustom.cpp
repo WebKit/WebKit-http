@@ -31,49 +31,31 @@
 #include "EventTargetHeaders.h"
 #include "EventTargetInterfaces.h"
 #include "JSDOMWindow.h"
-#include "JSDOMWindowProxy.h"
 #include "JSEventListener.h"
+#include "JSWindowProxy.h"
 #include "JSWorkerGlobalScope.h"
+#include "OffscreenCanvas.h"
 #include "WorkerGlobalScope.h"
 
-using namespace JSC;
-
 namespace WebCore {
-
-#define TRY_TO_WRAP_WITH_INTERFACE(interfaceName) \
-    case interfaceName##EventTargetInterfaceType: \
-        return toJS(exec, globalObject, static_cast<interfaceName&>(target));
-
-JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, EventTarget& target)
-{
-    switch (target.eventTargetInterface()) {
-    DOM_EVENT_TARGET_INTERFACES_FOR_EACH(TRY_TO_WRAP_WITH_INTERFACE)
-    }
-
-    ASSERT_NOT_REACHED();
-    return jsNull();
-}
-
-#undef TRY_TO_WRAP_WITH_INTERFACE
-
-#define TRY_TO_UNWRAP_WITH_INTERFACE(interfaceName) \
-    if (value.inherits(vm, JS##interfaceName::info()))                      \
-        return &jsCast<JS##interfaceName*>(asObject(value))->wrapped();
+using namespace JSC;
 
 EventTarget* JSEventTarget::toWrapped(VM& vm, JSValue value)
 {
-    TRY_TO_UNWRAP_WITH_INTERFACE(DOMWindowProxy)
-    TRY_TO_UNWRAP_WITH_INTERFACE(DOMWindow)
-    TRY_TO_UNWRAP_WITH_INTERFACE(WorkerGlobalScope)
-    TRY_TO_UNWRAP_WITH_INTERFACE(EventTarget)
+    if (value.inherits<JSWindowProxy>(vm))
+        return &jsCast<JSWindowProxy*>(asObject(value))->wrapped();
+    if (value.inherits<JSDOMWindow>(vm))
+        return &jsCast<JSDOMWindow*>(asObject(value))->wrapped();
+    if (value.inherits<JSWorkerGlobalScope>(vm))
+        return &jsCast<JSWorkerGlobalScope*>(asObject(value))->wrapped();
+    if (value.inherits<JSEventTarget>(vm))
+        return &jsCast<JSEventTarget*>(asObject(value))->wrapped();
     return nullptr;
 }
 
-#undef TRY_TO_UNWRAP_WITH_INTERFACE
-
 std::unique_ptr<JSEventTargetWrapper> jsEventTargetCast(VM& vm, JSValue thisValue)
 {
-    if (auto* target = jsDynamicDowncast<JSEventTarget*>(vm, thisValue))
+    if (auto* target = jsDynamicCast<JSEventTarget*>(vm, thisValue))
         return std::make_unique<JSEventTargetWrapper>(target->wrapped(), *target);
     if (auto* window = toJSDOMWindow(vm, thisValue))
         return std::make_unique<JSEventTargetWrapper>(window->wrapped(), *window);

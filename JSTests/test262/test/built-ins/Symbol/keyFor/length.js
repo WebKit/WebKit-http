@@ -5,7 +5,7 @@
 es6id: 19.4.2.5
 description: >
   Symbol.keyFor.length is 1.
-info: >
+info: |
   Symbol.keyFor ( sym )
 
   17 ECMAScript Standard Built-in Objects:
@@ -20,6 +20,7 @@ info: >
     object has the attributes { [[Writable]]: false, [[Enumerable]]: false,
     [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol]
 ---*/
 
 assert.sameValue(Symbol.keyFor.length, 1);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@
 class JSAPIWrapperObjectHandleOwner : public JSC::WeakHandleOwner {
 public:
     void finalize(JSC::Handle<JSC::Unknown>, void*) override;
-    bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&) override;
+    bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&, const char**) override;
 };
 
 static JSAPIWrapperObjectHandleOwner* jsAPIWrapperObjectHandleOwner()
@@ -56,7 +56,7 @@ void JSAPIWrapperObjectHandleOwner::finalize(JSC::Handle<JSC::Unknown> handle, v
     JSC::WeakSet::deallocate(JSC::WeakImpl::asWeakImpl(handle.slot()));
 }
 
-bool JSAPIWrapperObjectHandleOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, JSC::SlotVisitor& visitor)
+bool JSAPIWrapperObjectHandleOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, JSC::SlotVisitor& visitor, const char**)
 {
     JSC::JSAPIWrapperObject* wrapperObject = JSC::jsCast<JSC::JSAPIWrapperObject*>(handle.get().asCell());
     // We use the JSGlobalObject when processing weak handles to prevent the situation where using
@@ -80,7 +80,6 @@ Structure* JSCallbackObject<JSAPIWrapperObject>::createStructure(VM& vm, JSGloba
 
 JSAPIWrapperObject::JSAPIWrapperObject(VM& vm, Structure* structure)
     : Base(vm, structure)
-    , m_wrappedObject(0)
 {
 }
 

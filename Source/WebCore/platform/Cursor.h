@@ -79,7 +79,7 @@ using PlatformCursor = GRefPtr<GdkCursor>;
 #elif PLATFORM(QT) && !defined(QT_NO_CURSOR)
 // Do not need to be shared but need to be created dynamically via ensurePlatformCursor.
 using PlatformCursor = QCursor*;
-#elif PLATFORM(WPE)
+#else
 using PlatformCursor = void*;
 #endif
 

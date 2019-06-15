@@ -8,16 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_audio/fir_filter_sse.h"
+#include "common_audio/fir_filter_sse.h"
 
 #include <stdint.h>
 #include <string.h>
 #include <xmmintrin.h>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/system_wrappers/include/aligned_malloc.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/memory/aligned_malloc.h"
 
 namespace webrtc {
+
+FIRFilterSSE2::~FIRFilterSSE2() {}
 
 FIRFilterSSE2::FIRFilterSSE2(const float* coefficients,
                              size_t coefficients_length,
@@ -38,8 +40,7 @@ FIRFilterSSE2::FIRFilterSSE2(const float* coefficients,
   for (size_t i = 0; i < coefficients_length; ++i) {
     coefficients_[i + padding] = coefficients[coefficients_length - i - 1];
   }
-  memset(state_.get(),
-         0,
+  memset(state_.get(), 0,
          (max_input_length + state_length_) * sizeof(state_[0]));
 }
 

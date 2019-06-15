@@ -2,7 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-date.prototype.getday
+info: |
     The Date.prototype.getDay property "length" has { ReadOnly, DontDelete,
     DontEnum } attributes
 es5id: 15.9.5.16_A3_T1

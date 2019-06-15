@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="11521.1" systemVersion="16B2648a" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="13771" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none">
     <dependencies>
-        <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="11521.1"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="13771"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
@@ -396,12 +395,14 @@
                                             </connections>
                                         </menuItem>
                                         <menuItem isSeparatorItem="YES" id="dKY-wH-ZAW"/>
-                                        <menuItem title="Bigger" tag="3" keyEquivalent="+" id="V0U-mA-5AK">
+                                        <menuItem title="Bigger" tag="3" id="V0U-mA-5AK">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
                                             <connections>
                                                 <action selector="modifyFont:" target="420" id="hmF-PZ-vVH"/>
                                             </connections>
                                         </menuItem>
-                                        <menuItem title="Smaller" tag="4" keyEquivalent="-" id="hWP-7f-ZV3">
+                                        <menuItem title="Smaller" tag="4" id="hWP-7f-ZV3">
+                                            <modifierMask key="keyEquivalentModifierMask"/>
                                             <connections>
                                                 <action selector="modifyFont:" target="420" id="pnr-Yn-h6p"/>
                                             </connections>
@@ -734,6 +735,18 @@
                                     </items>
                                 </menu>
                             </menuItem>
+                            <menuItem title="Always Show Horizontal Scroller" id="vTs-1N-5Cb">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="toggleAlwaysShowsHorizontalScroller:" target="-1" id="WAH-WK-kRY"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Always Show Vertical Scroller" id="dad-Bl-adD">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="toggleAlwaysShowsVerticalScroller:" target="-1" id="zGl-OI-HH6"/>
+                                </connections>
+                            </menuItem>
                             <menuItem isSeparatorItem="YES" id="581"/>
                             <menuItem title="Reload Page" keyEquivalent="r" id="579">
                                 <connections>
@@ -846,6 +859,12 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="uef-kb-r9n"/>
+                            <menuItem title="Show Web Inspector" keyEquivalent="i" id="xso-9z-R4u">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="showHideWebInspector:" target="-1" id="Cmx-g7-EPb"/>
+                                </connections>
+                            </menuItem>
                             <menuItem title="Show Extensions Manager" keyEquivalent="m" id="2f0-pH-KRx">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>

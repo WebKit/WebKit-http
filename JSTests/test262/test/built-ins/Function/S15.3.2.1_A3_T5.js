@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Function constructor is called with arguments p, body the following steps are taken:
     i) Let Result(i) be the first argument
     ii) Let P be ToString(Result(i))
@@ -22,9 +22,9 @@ var body = "return \"A\";";
 
 //CHECK#1
 try {
-  var f = new Function(void 0,body);
+  var f = new Function(void 0, body);
 } catch (e) {
-  $ERROR('#1: test failed with error '+e);
+  $ERROR('#1: test failed with error ' + e);
 }
 
 //CHECK#2
@@ -33,6 +33,6 @@ if (f.constructor !== Function) {
 }
 
 //CHECK#3
-if (f()!=='\u0041') {
+if (f() !== '\u0041') {
   $ERROR('#3: When the Function constructor is called with one argument then body be that argument the following steps are taken...');
 }

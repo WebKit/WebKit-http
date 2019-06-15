@@ -1,16 +1,16 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.2
+esid: sec-get-%typedarray%.prototype.bytelength
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.2 get %TypedArray%.prototype.byteLength
 
   1. Let O be the this value.
   2. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

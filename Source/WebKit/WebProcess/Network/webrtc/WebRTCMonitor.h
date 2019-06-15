@@ -29,7 +29,7 @@
 
 #include "RTCNetwork.h"
 #include <WebCore/LibWebRTCProvider.h>
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace IPC {
 class Connection;
@@ -51,6 +51,8 @@ private:
 
     void StartUpdating() final;
     void StopUpdating() final;
+
+    static void sendOnMainThread(Function<void(IPC::Connection&)>&&);
 
     unsigned m_clientCount { 0 };
     bool m_receivedNetworkList { false };

@@ -32,9 +32,8 @@
 #include <utility>
 #include <wtf/Vector.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 NetscapePluginStream::NetscapePluginStream(Ref<NetscapePlugin>&& plugin, uint64_t streamID, const String& requestURLString, bool sendNotification, void* notificationData)
     : m_plugin(WTFMove(plugin))
@@ -45,7 +44,7 @@ NetscapePluginStream::NetscapePluginStream(Ref<NetscapePlugin>&& plugin, uint64_
     , m_npStream()
     , m_transferMode(NP_NORMAL)
     , m_offset(0)
-    , m_fileHandle(invalidPlatformFileHandle)
+    , m_fileHandle(FileSystem::invalidPlatformFileHandle)
     , m_isStarted(false)
 #if !ASSERT_DISABLED
     , m_urlNotifyHasBeenCalled(false)
@@ -59,7 +58,7 @@ NetscapePluginStream::~NetscapePluginStream()
 {
     ASSERT(!m_isStarted);
     ASSERT(!m_sendNotification || m_urlNotifyHasBeenCalled);
-    ASSERT(m_fileHandle == invalidPlatformFileHandle);
+    ASSERT(m_fileHandle == FileSystem::invalidPlatformFileHandle);
 }
 
 void NetscapePluginStream::willSendRequest(const URL& requestURL, const URL& redirectResponseURL, int redirectResponseStatus)
@@ -263,12 +262,12 @@ void NetscapePluginStream::deliverDataToPlugin()
 
 void NetscapePluginStream::deliverDataToFile(const char* bytes, int length)
 {
-    if (m_fileHandle == invalidPlatformFileHandle && m_filePath.isNull()) {
+    if (m_fileHandle == FileSystem::invalidPlatformFileHandle && m_filePath.isNull()) {
         // Create a temporary file.
-        m_filePath = openTemporaryFile("WebKitPluginStream", m_fileHandle);
+        m_filePath = FileSystem::openTemporaryFile("WebKitPluginStream", m_fileHandle);
 
         // We failed to open the file, stop the stream.
-        if (m_fileHandle == invalidPlatformFileHandle) {
+        if (m_fileHandle == FileSystem::invalidPlatformFileHandle) {
             stop(NPRES_NETWORK_ERR);
             return;
         }
@@ -277,10 +276,10 @@ void NetscapePluginStream::deliverDataToFile(const char* bytes, int length)
     if (!length)
         return;
 
-    int byteCount = writeToFile(m_fileHandle, bytes, length);
+    int byteCount = FileSystem::writeToFile(m_fileHandle, bytes, length);
     if (byteCount != length) {
         // This happens only rarely, when we are out of disk space or have a disk I/O error.
-        closeFile(m_fileHandle);
+        FileSystem::closeFile(m_fileHandle);
 
         stop(NPRES_NETWORK_ERR);
     }
@@ -314,23 +313,23 @@ void NetscapePluginStream::stop(NPReason reason)
         if (reason == NPRES_DONE) {
             // Ensure that the file is created.
             deliverDataToFile(0, 0);
-            if (m_fileHandle != invalidPlatformFileHandle)
-                closeFile(m_fileHandle);
+            if (m_fileHandle != FileSystem::invalidPlatformFileHandle)
+                FileSystem::closeFile(m_fileHandle);
             
             ASSERT(!m_filePath.isNull());
             
             m_plugin->NPP_StreamAsFile(&m_npStream, m_filePath.utf8().data());
         } else {
             // Just close the file.
-            if (m_fileHandle != invalidPlatformFileHandle)
-                closeFile(m_fileHandle);
+            if (m_fileHandle != FileSystem::invalidPlatformFileHandle)
+                FileSystem::closeFile(m_fileHandle);
         }
 
         // Delete the file after calling NPP_StreamAsFile(), instead of in the destructor.  It should be OK
         // to delete the file here -- NPP_StreamAsFile() is always called immediately before NPP_DestroyStream()
         // (the stream destruction function), so there can be no expectation that a plugin will read the stream
         // file asynchronously after NPP_StreamAsFile() is called.
-        deleteFile(m_filePath);
+        FileSystem::deleteFile(m_filePath);
         m_filePath = String();
 
         // NPP_StreamAsFile could call NPN_DestroyStream and destroy the stream.

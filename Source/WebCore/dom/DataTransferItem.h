@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,30 +31,48 @@
 
 #pragma once
 
-#if ENABLE(DATA_TRANSFER_ITEMS)
-
+#include "DataTransfer.h"
+#include "ScriptWrappable.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/WeakPtr.h>
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-class Blob;
+class DOMFileSystem;
+class DataTransferListItem;
+class File;
+class FileSystemEntry;
+class ScriptExecutionContext;
 class StringCallback;
 
 class DataTransferItem : public RefCounted<DataTransferItem> {
 public:
-    virtual ~DataTransferItem() { }
+    static Ref<DataTransferItem> create(WeakPtr<DataTransferItemList>&&, const String&);
+    static Ref<DataTransferItem> create(WeakPtr<DataTransferItemList>&&, const String&, Ref<File>&&);
 
-    static const char kindString[];
-    static const char kindFile[];
+    ~DataTransferItem();
 
-    virtual String kind() const = 0;
-    virtual String type() const = 0;
+    RefPtr<File> file() { return m_file; }
+    void clearListAndPutIntoDisabledMode();
 
-    virtual void getAsString(RefPtr<StringCallback>&&) const = 0;
-    virtual RefPtr<Blob> getAsFile() const = 0;
+    bool isFile() const { return m_file; }
+    String kind() const;
+    String type() const;
+    void getAsString(Document&, RefPtr<StringCallback>&&) const;
+    RefPtr<File> getAsFile() const;
+    RefPtr<FileSystemEntry> getAsEntry(ScriptExecutionContext&) const;
+
+private:
+    DataTransferItem(WeakPtr<DataTransferItemList>&&, const String&);
+    DataTransferItem(WeakPtr<DataTransferItemList>&&, const String&, Ref<File>&&);
+
+    bool isInDisabledMode() const { return !m_list; }
+
+    WeakPtr<DataTransferItemList> m_list;
+    const String m_type;
+    RefPtr<File> m_file;
 };
 
-} // namespace WebCore
-
-#endif // ENABLE(DATA_TRANSFER_ITEMS)
+}

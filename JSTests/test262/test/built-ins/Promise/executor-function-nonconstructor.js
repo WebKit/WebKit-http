@@ -4,7 +4,7 @@
 /*---
 es6id: 25.4.1.5.1
 description: GetCapabilitiesExecutor functions are not constructors
-info: >
+info: |
   17 ECMAScript Standard Built-in Objects:
     Built-in function objects that are not identified as constructors do not
     implement the [[Construct]] internal method unless otherwise specified
@@ -12,11 +12,14 @@ info: >
 ---*/
 
 var executorFunction;
+
 function NotPromise(executor) {
   executorFunction = executor;
-  executor(function(){}, function(){});
+  executor(function() {}, function() {});
 }
 Promise.resolve.call(NotPromise);
 
 assert.sameValue(Object.prototype.hasOwnProperty.call(executorFunction, "prototype"), false);
-assert.throws(TypeError, function() { new executorFunction(); });
+assert.throws(TypeError, function() {
+  new executorFunction();
+});

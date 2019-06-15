@@ -31,7 +31,7 @@ class SVGListPropertyTearOff;
 
 class SVGTransformList;
 
-class SVGTransformListValues final : public Vector<SVGTransformValue, 1> {
+class SVGTransformListValues final : public Vector<SVGTransformValue, 0, CrashOnOverflow, 2> {
 public:
     Ref<SVGTransform> createSVGTransformFromMatrix(SVGMatrix&) const;
     Ref<SVGTransform> consolidate();
@@ -44,6 +44,13 @@ public:
 
 template<> struct SVGPropertyTraits<SVGTransformListValues> {
     static SVGTransformListValues initialValue() { return { }; }
+    static SVGTransformListValues fromString(const String& string)
+    {
+        SVGTransformListValues values;
+        values.parse(string);
+        return values;
+    }
+    static std::optional<SVGTransformListValues> parse(const QualifiedName&, const String&) { ASSERT_NOT_REACHED(); return initialValue(); }
     static String toString(const SVGTransformListValues& list) { return list.valueAsString(); }
 
     using ListItemType = SVGTransformValue;

@@ -39,6 +39,7 @@ dictionary FontFaceDescriptors {
     DOMString unicodeRange = "U+0-10FFFF";
     DOMString variant = "normal";
     DOMString featureSettings = "normal";
+    DOMString display = "auto";
 };
 
 [
@@ -46,16 +47,17 @@ dictionary FontFaceDescriptors {
     ConstructorMayThrowException,
     Constructor(DOMString family, (DOMString or BinaryData) source, optional FontFaceDescriptors descriptors)
 ] interface FontFace {
-    [SetterMayThrowException] attribute DOMString family;
-    [SetterMayThrowException] attribute DOMString style;
-    [SetterMayThrowException] attribute DOMString weight;
-    [SetterMayThrowException] attribute DOMString stretch;
-    [SetterMayThrowException] attribute DOMString unicodeRange;
-    [SetterMayThrowException] attribute DOMString variant;
-    [SetterMayThrowException] attribute DOMString featureSettings;
+    attribute DOMString family;
+    attribute DOMString style;
+    attribute DOMString weight;
+    attribute DOMString stretch;
+    attribute DOMString unicodeRange;
+    attribute DOMString variant;
+    attribute DOMString featureSettings;
+    attribute DOMString display;
 
     readonly attribute FontFaceLoadStatus status;
 
-    [Custom, ReturnsOwnPromise] Promise<FontFace> load();
-    [CachedAttribute, CustomGetter] readonly attribute Promise<FontFace> loaded;
+    [ReturnsOwnPromise, PromiseProxy] Promise<FontFace> load();
+    readonly attribute Promise<FontFace> loaded;
 };

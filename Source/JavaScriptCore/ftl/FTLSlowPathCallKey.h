@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "MacroAssemblerCodeRef.h"
 #include "RegisterSet.h"
 
 namespace JSC { namespace FTL {
@@ -44,27 +45,26 @@ namespace JSC { namespace FTL {
 class SlowPathCallKey {
 public:
     SlowPathCallKey()
-        : m_callTarget(0)
-        , m_offset(0)
+        : m_offset(0)
     {
     }
     
     SlowPathCallKey(
-        const RegisterSet& set, void* callTarget, const RegisterSet& argumentRegisters,
+        const RegisterSet& set, FunctionPtr<CFunctionPtrTag> callTarget, const RegisterSet& argumentRegisters,
         ptrdiff_t offset)
         : m_usedRegisters(set)
-        , m_callTarget(callTarget)
+        , m_callTarget(callTarget.retagged<OperationPtrTag>())
         , m_argumentRegisters(argumentRegisters)
         , m_offset(offset)
     {
     }
     
     const RegisterSet& usedRegisters() const { return m_usedRegisters; }
-    void* callTarget() const { return m_callTarget; }
+    FunctionPtr<OperationPtrTag> callTarget() const { return m_callTarget; }
     const RegisterSet& argumentRegisters() const { return m_argumentRegisters; }
     ptrdiff_t offset() const { return m_offset; }
     
-    SlowPathCallKey withCallTarget(void* callTarget)
+    SlowPathCallKey withCallTarget(FunctionPtr<CFunctionPtrTag> callTarget)
     {
         return SlowPathCallKey(usedRegisters(), callTarget, argumentRegisters(), offset());
     }
@@ -76,14 +76,12 @@ public:
     
     SlowPathCallKey(EmptyValueTag)
         : m_usedRegisters(RegisterSet::EmptyValue)
-        , m_callTarget(0)
         , m_offset(0)
     {
     }
     
     SlowPathCallKey(DeletedValueTag)
         : m_usedRegisters(RegisterSet::DeletedValue)
-        , m_callTarget(0)
         , m_offset(0)
     {
     }
@@ -99,12 +97,12 @@ public:
     }
     unsigned hash() const
     {
-        return m_usedRegisters.hash() + PtrHash<void*>::hash(m_callTarget) + m_offset;
+        return m_usedRegisters.hash() + PtrHash<void*>::hash(m_callTarget.executableAddress()) + m_offset;
     }
 
 private:
     RegisterSet m_usedRegisters;
-    void* m_callTarget;
+    FunctionPtr<OperationPtrTag> m_callTarget;
     RegisterSet m_argumentRegisters;
     ptrdiff_t m_offset;
 };

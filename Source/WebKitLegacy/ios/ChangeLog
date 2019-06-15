@@ -1,3 +1,261 @@
+2018-08-29  Olivia Barnett  <obarnett@apple.com>
+
+        Implement the Web Share API
+        https://bugs.webkit.org/show_bug.cgi?id=171100
+        <rdar://problem/31751734>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::showShareSheet):
+        Empty declaration of showShareSheet.
+
+2018-08-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Pass in IsComposed flag to Event constructors
+        https://bugs.webkit.org/show_bug.cgi?id=188720
+        <rdar://problem/43580387>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder simulateClickOnLinkToURL:]): A trusted click event is composed regardless
+        of whether it's simulated or not.
+
+2018-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace booleans for modifier keys in UIEventWithKeyState with OptionSet<Modifier>
+        https://bugs.webkit.org/show_bug.cgi?id=188777
+
+        Reviewed by Simon Fraser.
+
+        Create MouseEvent::create with IsSimulated set to Yes; correspoding to the last argument
+        being "true" before the code change.
+
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder simulateClickOnLinkToURL:]):
+
+2018-08-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace canBubble and cancelable booleans in Event by enum classes
+        https://bugs.webkit.org/show_bug.cgi?id=188692
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder simulateClickOnLinkToURL:]):
+
+2018-08-13  Alex Christensen  <achristensen@webkit.org>
+
+        Use a 1-byte enum class for TextDirection
+        https://bugs.webkit.org/show_bug.cgi?id=188350
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame selectionRectsForCoreRange:]):
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (-[WebVisiblePosition textDirection]):
+        (-[WebVisiblePosition directionIsDownstream:]):
+        * WebView/WebPDFViewIOS.mm:
+        (-[WebPDFView _checkPDFTitle]):
+
+2018-07-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=187315
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebGeolocationCoreLocationProvider.mm:
+        (-[WebGeolocationCoreLocationProvider requestGeolocationAuthorization]):
+
+2018-05-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Google search results are excessively zoomed in
+        https://bugs.webkit.org/show_bug.cgi?id=185347
+        <rdar://problem/39999778>
+
+        Reviewed by Tim Horton.
+
+        Adds a WebKitLegacy method stub for disabled adaptation plumbing.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::dispatchDisabledAdaptationsDidChange const):
+
+2018-05-02  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] Provide audio route information when invoking AirPlay picker
+        https://bugs.webkit.org/show_bug.cgi?id=185199
+        <rdar://problem/39853103>
+
+        Reviewed by Jer Noble.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::showPlaybackTargetPicker): Pass route sharing policy and routing context UID.
+
+2018-04-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove StaticLock
+        https://bugs.webkit.org/show_bug.cgi?id=184332
+
+        Reviewed by Mark Lam.
+
+        * WebCoreSupport/WebFixedPositionContent.mm:
+
+2018-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        Make it possible to override the screen size
+        https://bugs.webkit.org/show_bug.cgi?id=184111
+        <rdar://problem/38972181>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebChromeClientIOS.h:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::overrideScreenSize const):
+
+2018-03-25  Tim Horton  <timothy_horton@apple.com>
+
+        Disable geolocation prompt in minimal simulator mode
+        https://bugs.webkit.org/show_bug.cgi?id=183991
+        <rdar://problem/38845774>
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebGeolocationCoreLocationProvider.mm:
+        (-[WebGeolocationCoreLocationProvider requestGeolocationAuthorization]):
+        * Misc/WebGeolocationProviderIOS.mm:
+        (-[WebGeolocationProviderIOS registerWebView:]):
+        (-[WebGeolocationProviderIOS initializeGeolocationForWebView:listener:]):
+        Also clean up some unnecessary nested #ifs.
+
+2018-02-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove WebCore/ForwardingHeaders directory
+        https://bugs.webkit.org/show_bug.cgi?id=182347
+
+        Reviewed by Keith Miller.
+
+        * Misc/WebUIKitSupport.mm:
+
+2017-12-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use StaticLock instead of NeverDestroyed<Lock>
+        https://bugs.webkit.org/show_bug.cgi?id=180507
+
+        Reviewed by Saam Barati.
+
+        * WebCoreSupport/WebFixedPositionContent.mm:
+        (-[WebFixedPositionContent scrollOrZoomChanged:]):
+        (-[WebFixedPositionContent overflowScrollPositionForLayer:changedTo:]):
+        (-[WebFixedPositionContent setViewportConstrainedLayers:stickyContainerMap:]):
+        (-[WebFixedPositionContent hasFixedOrStickyPositionLayers]):
+        (WebFixedPositionContentDataLock): Deleted.
+
+2017-11-11  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix a FIXMEs in WebFrameIOS
+        https://bugs.webkit.org/show_bug.cgi?id=179510
+
+        Reviewed by Darin Adler.
+
+        Removed a function that does nothing and is not needed or used anywhere, linked to a radar that is in verify.
+        This is just some easy cleanup I found while investigating other things.
+
+        * WebCoreSupport/WebFrameIOS.h:
+        * WebCoreSupport/WebFrameIOS.mm:
+        (-[WebFrame imageForNode:allowDownsampling:drawContentBehindTransparentNodes:]): Deleted.
+
+2017-10-11  Sam Weinig  <sam@webkit.org>
+
+        Remove out-parameter variants of copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178155
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebGeolocationProviderIOS.mm:
+        (-[WebGeolocationProviderIOS _handlePendingInitialPosition:]):
+        (-[WebGeolocationProviderIOS positionChanged:]):
+        (-[WebGeolocationProviderIOS errorOccurred:]):
+        (-[WebGeolocationProviderIOS resetGeolocation]):
+
+            Replace out-parameter based copyToVector, with one that returns a Vector.
+
+2017-10-11  Chris Dumez  <cdumez@apple.com>
+
+        Modernize Geolocation code
+        https://bugs.webkit.org/show_bug.cgi?id=178148
+
+        Reviewed by Ryosuke Niwa.
+
+        * Misc/WebGeolocationCoreLocationProvider.h:
+        * Misc/WebGeolocationCoreLocationProvider.mm:
+        (-[WebGeolocationCoreLocationProvider sendLocation:]):
+        * Misc/WebGeolocationProviderIOS.mm:
+        (-[_WebCoreLocationUpdateThreadingProxy positionChanged:]):
+
+2017-10-04  Alex Christensen  <achristensen@webkit.org>
+
+        Remove WebCoreSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=177916
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebUIKitSupport.mm:
+
+2017-10-04  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unnecessary includes of WebKitSystemInterface on Cocoa platforms
+        https://bugs.webkit.org/show_bug.cgi?id=177912
+
+        Reviewed by Saam Barati.
+
+        * Misc/WebUIKitSupport.mm:
+        * WebCoreSupport/WebChromeClientIOS.mm:
+
+2017-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Use high resolution timestamp for event time
+        https://bugs.webkit.org/show_bug.cgi?id=154246
+        <rdar://problem/34333304>
+
+        Reviewed by Ryosuke Niwa.
+
+        Use WallTime / MonotonicTime instead of double type for clarity.
+
+        * WebView/WebPDFViewPlaceholder.mm:
+        (-[WebPDFViewPlaceholder simulateClickOnLinkToURL:]):
+
+2017-08-09  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/cocoa and spi/cg directories into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175175
+
+        Reviewed by Myles C. Maxfield.
+
+        * Misc/WebNSStringExtrasIOS.m:
+        * WebCoreSupport/WebFixedPositionContent.mm:
+
+2017-07-17  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Use OptionSet to represent marker types
+        https://bugs.webkit.org/show_bug.cgi?id=174594
+
+        Reviewed by Darin Adler.
+
+        Remove class DocumentMarker::MarkerTypes that duplicates most of functionality of OptionSet
+        and use OptionSet directly to represent a set of marker types.
+
+        No functionality changed. So, no new tests.
+
+        * WebCoreSupport/WebVisiblePosition.mm:
+        (-[WebVisiblePosition enclosingRangeWithDictationPhraseAlternatives:]): Update code as needed.
+        (-[WebVisiblePosition enclosingRangeWithCorrectionIndicator]): Ditto.
+
 2017-07-12  Daniel Bates  <dabates@apple.com>
 
         Rename NavigationInitiatedByMainFrame to InitiatedByMainFrame

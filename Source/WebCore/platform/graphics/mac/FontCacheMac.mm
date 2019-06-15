@@ -30,17 +30,15 @@
 #import "config.h"
 #import "FontCache.h"
 
-#import "CoreGraphicsSPI.h"
-#import "CoreTextSPI.h"
 #import "Font.h"
 #import "FontCascade.h"
 #import "FontPlatformData.h"
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/CoreTextSPI.h>
 
 #if PLATFORM(MAC)
-#import "NSFontSPI.h"
-#import "WebCoreNSStringExtras.h"
-#import "WebCoreSystemInterface.h"
 #import <AppKit/AppKit.h>
+#import <pal/spi/mac/NSFontSPI.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
@@ -75,7 +73,7 @@ static CGFloat toNSFontWeight(FontSelectionValue fontWeight)
     return NSFontWeightBlack;
 }
 
-RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest request, float size)
+RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest request, float size, AllowUserInstalledFonts allowUserInstalledFonts)
 {
     // FIXME: See comment in FontCascadeDescription::effectiveFamilyAt() in FontDescriptionCocoa.cpp
     if (equalLettersIgnoringASCIICase(family, "-webkit-system-font") || equalLettersIgnoringASCIICase(family, "-apple-system") || equalLettersIgnoringASCIICase(family, "-apple-system-font") || equalLettersIgnoringASCIICase(family, "system-ui")) {
@@ -87,7 +85,7 @@ RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& famil
             if (auto italicizedFont = adoptCF(CTFontCreateCopyWithSymbolicTraits(result.get(), size, nullptr, desiredTraits, desiredTraits)))
                 result = italicizedFont;
         }
-        return result;
+        return createFontForInstalledFonts(result.get(), allowUserInstalledFonts);
     }
 
     if (equalLettersIgnoringASCIICase(family, "-apple-system-monospaced-numbers")) {
@@ -100,24 +98,28 @@ RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& famil
         RetainPtr<CFDictionaryRef> featureIdentifier = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, featureKeys, featureValues, WTF_ARRAY_LENGTH(featureKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
         CFTypeRef featureIdentifiers[] = { featureIdentifier.get() };
         RetainPtr<CFArrayRef> featureArray = adoptCF(CFArrayCreate(kCFAllocatorDefault, featureIdentifiers, 1, &kCFTypeArrayCallBacks));
-        CFTypeRef attributesKeys[] = { kCTFontFeatureSettingsAttribute };
-        CFTypeRef attributesValues[] = { featureArray.get() };
-        RetainPtr<CFDictionaryRef> attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, attributesKeys, attributesValues, WTF_ARRAY_LENGTH(attributesKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-
+        auto attributes = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        CFDictionaryAddValue(attributes.get(), kCTFontFeatureSettingsAttribute, featureArray.get());
+        addAttributesForInstalledFonts(attributes.get(), allowUserInstalledFonts);
         RetainPtr<CTFontRef> result = toCTFont([NSFont systemFontOfSize:size]);
-        return adoptCF(CTFontCreateCopyWithAttributes(result.get(), size, nullptr, adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get())).get()));
+        auto modification = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
+        return adoptCF(CTFontCreateCopyWithAttributes(result.get(), size, nullptr, modification.get()));
     }
 
-    if (equalLettersIgnoringASCIICase(family, "-apple-menu"))
-        return toCTFont([NSFont menuFontOfSize:size]);
+    if (equalLettersIgnoringASCIICase(family, "-apple-menu")) {
+        RetainPtr<CTFontRef> result = toCTFont([NSFont menuFontOfSize:size]);
+        return createFontForInstalledFonts(result.get(), allowUserInstalledFonts);
+    }
 
-    if (equalLettersIgnoringASCIICase(family, "-apple-status-bar"))
-        return toCTFont([NSFont labelFontOfSize:size]);
+    if (equalLettersIgnoringASCIICase(family, "-apple-status-bar")) {
+        RetainPtr<CTFontRef> result = toCTFont([NSFont labelFontOfSize:size]);
+        return createFontForInstalledFonts(result.get(), allowUserInstalledFonts);
+    }
 
     if (equalLettersIgnoringASCIICase(family, "lastresort")) {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-        static NeverDestroyed<RetainPtr<CTFontDescriptorRef>> lastResort = adoptCF(CTFontDescriptorCreateLastResort());
-        return adoptCF(CTFontCreateWithFontDescriptor(lastResort.get().get(), size, nullptr));
+        static const CTFontDescriptorRef lastResort = CTFontDescriptorCreateLastResort();
+        return adoptCF(CTFontCreateWithFontDescriptor(lastResort, size, nullptr));
 #else
         // LastResort is special, so it's important to look this exact string up, and not some case-folded version.
         // We handle this here so any caching and case folding we do in our general text codepath is bypassed.
@@ -126,20 +128,6 @@ RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& famil
     }
 
     return nullptr;
-}
-
-Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
-{
-    // FIXME: Would be even better to somehow get the user's default font here.  For now we'll pick
-    // the default that the user would get without changing any prefs.
-    if (RefPtr<Font> font = fontForFamily(fontDescription, AtomicString("Times", AtomicString::ConstructFromLiteral)))
-        return *font;
-
-    // The Times fallback will almost always work, but in the highly unusual case where
-    // the user doesn't have it, we fall back on Lucida Grande because that's
-    // guaranteed to be there, according to Nathan Taylor. This is good enough
-    // to avoid a crash at least.
-    return *fontForFamily(fontDescription, AtomicString("Lucida Grande", AtomicString::ConstructFromLiteral), nullptr, nullptr, { }, false);
 }
 
 #endif // PLATFORM(MAC)

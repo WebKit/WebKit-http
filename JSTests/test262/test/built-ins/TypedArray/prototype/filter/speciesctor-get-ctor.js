@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.filter
 description: get constructor on SpeciesConstructor
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -23,6 +23,7 @@ info: >
   3. If C is undefined, return defaultConstructor.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

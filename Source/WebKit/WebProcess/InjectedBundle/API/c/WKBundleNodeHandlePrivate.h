@@ -38,7 +38,8 @@ extern "C" {
 enum {
     kWKAutoFillButtonTypeNone,
     kWKAutoFillButtonTypeCredentials,
-    kWKAutoFillButtonTypeContacts
+    kWKAutoFillButtonTypeContacts,
+    kWKAutoFillButtonTypeStrongPassword,
 };
 typedef uint8_t WKAutoFillButtonType;
 
@@ -64,6 +65,10 @@ WK_EXPORT bool WKBundleNodeHandleGetHTMLInputElementAutoFilled(WKBundleNodeHandl
 WK_EXPORT void WKBundleNodeHandleSetHTMLInputElementAutoFilled(WKBundleNodeHandleRef htmlInputElementHandle, bool filled);
 WK_EXPORT bool WKBundleNodeHandleGetHTMLInputElementAutoFillButtonEnabled(WKBundleNodeHandleRef htmlInputElementHandle);
 WK_EXPORT void WKBundleNodeHandleSetHTMLInputElementAutoFillButtonEnabledWithButtonType(WKBundleNodeHandleRef htmlInputElementHandle, WKAutoFillButtonType autoFillButtonType);
+WK_EXPORT WKAutoFillButtonType WKBundleNodeHandleGetHTMLInputElementAutoFillButtonType(WKBundleNodeHandleRef htmlInputElementHandle);
+WK_EXPORT WKAutoFillButtonType WKBundleNodeHandleGetHTMLInputElementLastAutoFillButtonType(WKBundleNodeHandleRef htmlInputElementHandle);
+WK_EXPORT bool WKBundleNodeHandleGetHTMLInputElementAutoFillAvailable(WKBundleNodeHandleRef htmlInputElementHandle);
+WK_EXPORT void WKBundleNodeHandleSetHTMLInputElementAutoFillAvailable(WKBundleNodeHandleRef htmlInputElementHandle, bool autoFillAvailable);
 WK_EXPORT WKRect WKBundleNodeHandleGetHTMLInputElementAutoFillButtonBounds(WKBundleNodeHandleRef htmlInputElementHandle);
 WK_EXPORT bool WKBundleNodeHandleGetHTMLInputElementLastChangeWasUserEdit(WKBundleNodeHandleRef htmlInputElementHandle);
 

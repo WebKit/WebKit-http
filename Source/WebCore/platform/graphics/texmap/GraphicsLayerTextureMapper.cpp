@@ -24,7 +24,6 @@
 #include "GraphicsLayerFactory.h"
 #include "ImageBuffer.h"
 #include "TextureMapperAnimation.h"
-#include <wtf/CurrentTime.h>
 
 #if !USE(COORDINATED_GRAPHICS) || PLATFORM(QT)
 
@@ -43,11 +42,8 @@ GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(Type layerType, GraphicsL
     , m_compositedNativeImagePtr(0)
     , m_changeMask(NoChanges)
     , m_needsDisplay(false)
-    , m_fixedToViewport(false)
     , m_debugBorderWidth(0)
     , m_contentsLayer(0)
-    , m_animationStartTime(0)
-    , m_isScrollable(false)
 {
 }
 
@@ -306,7 +302,7 @@ void GraphicsLayerTextureMapper::setContentsToImage(Image* image)
         m_compositedImage = nullptr;
     }
 
-    setContentsToPlatformLayer(m_compositedImage.get(), ContentsLayerForImage);
+    setContentsToPlatformLayer(m_compositedImage.get(), ContentsLayerPurpose::Image);
     notifyChange(ContentChange);
     GraphicsLayer::setContentsToImage(image);
 }
@@ -343,32 +339,14 @@ void GraphicsLayerTextureMapper::setShowRepaintCounter(bool show)
         return;
 
     GraphicsLayer::setShowRepaintCounter(show);
-    notifyChange(DebugVisualsChange);
-}
-
-void GraphicsLayerTextureMapper::didCommitScrollOffset(const IntSize& offset)
-{
-    if (offset.isZero())
-        return;
-
-    m_committedScrollOffset = offset;
-    notifyChange(CommittedScrollOffsetChange);
-}
-
-void GraphicsLayerTextureMapper::setIsScrollable(bool isScrollable)
-{
-    if (m_isScrollable == isScrollable)
-        return;
-
-    m_isScrollable = isScrollable;
-    notifyChange(IsScrollableChange);
+    notifyChange(RepaintCountChange);
 }
 
 void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
 {
     prepareBackingStoreIfNeeded();
     commitLayerChanges();
-    m_layer.syncAnimations();
+    m_layer.syncAnimations(MonotonicTime::now());
 }
 
 void GraphicsLayerTextureMapper::prepareBackingStoreIfNeeded()
@@ -468,13 +446,13 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
         m_layer.setFilters(filters());
 
     if (m_changeMask & BackingStoreChange)
-        m_layer.setBackingStore(m_backingStore.copyRef());
+        m_layer.setBackingStore(m_backingStore.get());
 
     if (m_changeMask & DebugVisualsChange)
-        m_layer.setDebugVisuals(isShowingDebugBorder(), debugBorderColor(), debugBorderWidth(), isShowingRepaintCounter());
+        m_layer.setDebugVisuals(isShowingDebugBorder(), debugBorderColor(), debugBorderWidth());
 
     if (m_changeMask & RepaintCountChange)
-        m_layer.setRepaintCount(repaintCount());
+        m_layer.setRepaintCounter(isShowingRepaintCounter(), repaintCount());
 
     if (m_changeMask & ContentChange)
         m_layer.setContentsLayer(platformLayer());
@@ -484,15 +462,6 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
 
     if (m_changeMask & AnimationStarted)
         client().notifyAnimationStarted(this, "", m_animationStartTime);
-
-    if (m_changeMask & FixedToViewporChange)
-        m_layer.setFixedToViewport(fixedToViewport());
-
-    if (m_changeMask & IsScrollableChange)
-        m_layer.setIsScrollable(isScrollable());
-
-    if (m_changeMask & CommittedScrollOffsetChange)
-        m_layer.didCommitScrollOffset(m_committedScrollOffset);
 
     m_changeMask = NoChanges;
 }
@@ -545,14 +514,10 @@ void GraphicsLayerTextureMapper::updateBackingStoreIfNeeded()
     if (dirtyRect.isEmpty())
         return;
 
-#if PLATFORM(QT) && !defined(QT_NO_DYNAMIC_CAST)
-    ASSERT(dynamic_cast<TextureMapperTiledBackingStore*>(m_backingStore.get()));
-#endif
-    TextureMapperTiledBackingStore* backingStore = static_cast<TextureMapperTiledBackingStore*>(m_backingStore.get());
-    backingStore->updateContentsScale(pageScaleFactor() * deviceScaleFactor());
+    m_backingStore->updateContentsScale(pageScaleFactor() * deviceScaleFactor());
 
     dirtyRect.scale(pageScaleFactor() * deviceScaleFactor());
-    backingStore->updateContents(*textureMapper, this, m_size, dirtyRect, BitmapTexture::UpdateCanModifyOriginalImageData);
+    m_backingStore->updateContents(*textureMapper, this, m_size, dirtyRect);
 
     m_needsDisplay = false;
     m_needsDisplayRect = IntRect();
@@ -599,28 +564,21 @@ bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList
     if (valueList.property() == AnimatedPropertyTransform)
         listsMatch = validateTransformOperations(valueList, hasBigRotation) >= 0;
 
-    const double currentTime = monotonicallyIncreasingTime();
-    m_animations.add(TextureMapperAnimation(keyframesName, valueList, boxSize, *anim, listsMatch, currentTime - timeOffset, 0, TextureMapperAnimation::AnimationState::Playing));
+    const MonotonicTime currentTime = MonotonicTime::now();
+    m_animations.add(TextureMapperAnimation(keyframesName, valueList, boxSize, *anim, listsMatch, currentTime - Seconds(timeOffset), 0_s, TextureMapperAnimation::AnimationState::Playing));
     // m_animationStartTime is the time of the first real frame of animation, now or delayed by a negative offset.
-    if (timeOffset > 0)
+    if (Seconds(timeOffset) > 0_s)
         m_animationStartTime = currentTime;
     else
-        m_animationStartTime = currentTime - timeOffset;
+        m_animationStartTime = currentTime - Seconds(timeOffset);
     notifyChange(AnimationChange);
     notifyChange(AnimationStarted);
     return true;
 }
 
-void GraphicsLayerTextureMapper::setAnimations(const TextureMapperAnimations& animations)
-{
-    m_animations = animations;
-    notifyChange(AnimationChange);
-}
-
-
 void GraphicsLayerTextureMapper::pauseAnimation(const String& animationName, double timeOffset)
 {
-    m_animations.pause(animationName, timeOffset);
+    m_animations.pause(animationName, Seconds(timeOffset));
 }
 
 void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
@@ -649,21 +607,6 @@ bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
     }
 
     return canCompositeFilters;
-}
-
-void GraphicsLayerTextureMapper::setFixedToViewport(bool fixed)
-{
-    if (m_fixedToViewport == fixed)
-        return;
-
-    m_fixedToViewport = fixed;
-    notifyChange(FixedToViewporChange);
-}
-
-void GraphicsLayerTextureMapper::setRepaintCount(int repaintCount)
-{
-    m_repaintCount = repaintCount;
-    notifyChange(RepaintCountChange);
 }
 
 }

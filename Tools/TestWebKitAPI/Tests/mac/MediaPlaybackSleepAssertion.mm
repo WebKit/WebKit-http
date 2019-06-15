@@ -29,7 +29,7 @@
 
 #import "PlatformUtilities.h"
 #import "WebCoreTestSupport.h"
-#import <HIToolbox/CarbonEvents.h>
+#import <Carbon/Carbon.h>
 #import <IOKit/pwr_mgt/IOPMLib.h>
 #import <JavaScriptCore/JSContext.h>
 #import <WebCore/Settings.h>
@@ -141,7 +141,7 @@ static bool hasAssertionType(CFStringRef type)
     return false;
 }
 
-TEST(WebKit1, MediaPlaybackSleepAssertion)
+TEST(WebKitLegacy, MediaPlaybackSleepAssertion)
 {
     didFinishLoad = false;
     didBeginPlaying = false;

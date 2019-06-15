@@ -42,13 +42,13 @@
 #import "WebNSViewExtras.h"
 #import "WebPluginController.h"
 #import "WebTypesInternal.h"
+#import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/Image.h>
-#import <WebCore/URL.h>
 #import <WebCore/PageCache.h>
 #import <WebCore/ThreadCheck.h>
+#import <WebCore/URL.h>
 #import <WebCore/WebCoreObjCExtras.h>
-#import <runtime/InitializeThreading.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
@@ -199,7 +199,10 @@ void WKNotifyHistoryItemChanged(HistoryItem*)
 #if !PLATFORM(IOS)
 - (NSImage *)icon
 {
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return [[WebIconDatabase sharedIconDatabase] iconForURL:[self URLString] withSize:WebIconSmallSize];
+#pragma GCC diagnostic pop
 }
 #endif
 

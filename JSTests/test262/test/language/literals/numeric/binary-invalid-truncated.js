@@ -4,7 +4,7 @@
 /*---
 es6id: 11.8.3
 description: Binary-integer-literal-like sequence without any digits
-info: >
+info: |
     BinaryIntegerLiteral ::
       0b BinaryDigits
       0B BinaryDigits
@@ -13,7 +13,11 @@ info: >
       BinaryDigits BinaryDigit
     BinaryDigit :: one of
       0 1
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 0b;

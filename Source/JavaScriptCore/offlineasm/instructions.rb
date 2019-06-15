@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -249,7 +249,10 @@ MACRO_INSTRUCTIONS =
      "bnz",
      "leai",
      "leap",
-     "memfence"
+     "memfence",
+     "tagReturnAddress",
+     "untagReturnAddress",
+     "removeCodePtrTag"
     ]
 
 X86_INSTRUCTIONS =
@@ -267,7 +270,8 @@ ARM_INSTRUCTIONS =
 ARM64_INSTRUCTIONS =
     [
      "pcrtoaddr",   # Address from PC relative offset - adr instruction
-     "nopFixCortexA53Err835769" # nop on Cortex-A53 (nothing otherwise)
+     "nopFixCortexA53Err835769", # nop on Cortex-A53 (nothing otherwise)
+     "globaladdr"
     ]
 
 RISC_INSTRUCTIONS =

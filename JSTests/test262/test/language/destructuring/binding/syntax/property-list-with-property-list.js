@@ -5,7 +5,7 @@
 es6id: 13.3.3
 description: >
   The ObjectBindingPattern with deep binding property lists
-info: >
+info: |
   Destructuring Binding Patterns - Syntax
 
   ObjectBindingPattern[Yield] :
@@ -17,6 +17,7 @@ info: >
     BindingProperty[?Yield]
     BindingPropertyList[?Yield] , BindingProperty[?Yield]
 
+features: [destructuring-binding]
 ---*/
 
 function fn1({a: {p: q}, b: {r}, c: {s = 0}, d: {}}) {}

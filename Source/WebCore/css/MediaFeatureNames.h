@@ -20,12 +20,13 @@
 
 #pragma once
 
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/AtomicString.h>
 
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-#define CSS_MEDIAQUERY_VIEW_MODE(macro) macro(viewMode, "-webkit-view-mode")
+#if ENABLE(APPLICATION_MANIFEST)
+#define CSS_MEDIAQUERY_DISPLAY_MODE(macro) macro(displayMode, "display-mode")
 #else
-#define CSS_MEDIAQUERY_VIEW_MODE(macro)
+#define CSS_MEDIAQUERY_DISPLAY_MODE(macro)
 #endif
 
 #define CSS_MEDIAQUERY_NAMES_FOR_EACH_MEDIAFEATURE(macro) \
@@ -69,6 +70,7 @@
     macro(monochrome, "monochrome") \
     macro(orientation, "orientation") \
     macro(pointer, "pointer") \
+    macro(prefersDarkInterface, "prefers-dark-interface") \
     macro(prefersReducedMotion, "prefers-reduced-motion") \
     macro(resolution, "resolution") \
     macro(transform2d, "-webkit-transform-2d") \
@@ -76,18 +78,16 @@
     macro(transition, "-webkit-transition") \
     macro(videoPlayableInline, "-webkit-video-playable-inline") \
     macro(width, "width") \
-    CSS_MEDIAQUERY_VIEW_MODE(macro)
+    CSS_MEDIAQUERY_DISPLAY_MODE(macro) \
 
 // end of macro
 
 namespace WebCore {
 namespace MediaFeatureNames {
 
-#ifndef CSS_MEDIAQUERY_NAMES_HIDE_GLOBALS
-#define CSS_MEDIAQUERY_NAMES_DECLARE(name, string) extern const AtomicString name;
+#define CSS_MEDIAQUERY_NAMES_DECLARE(name, string) extern LazyNeverDestroyed<const AtomicString> name;
     CSS_MEDIAQUERY_NAMES_FOR_EACH_MEDIAFEATURE(CSS_MEDIAQUERY_NAMES_DECLARE)
 #undef CSS_MEDIAQUERY_NAMES_DECLARE
-#endif
 
     void init();
 

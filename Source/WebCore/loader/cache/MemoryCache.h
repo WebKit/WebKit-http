@@ -26,8 +26,8 @@
 
 #include "NativeImage.h"
 #include "SecurityOriginHash.h"
-#include "SessionID.h"
 #include "Timer.h"
+#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/HashMap.h>
@@ -92,7 +92,7 @@ public:
 
     WEBCORE_EXPORT static MemoryCache& singleton();
 
-    WEBCORE_EXPORT CachedResource* resourceForRequest(const ResourceRequest&, SessionID);
+    WEBCORE_EXPORT CachedResource* resourceForRequest(const ResourceRequest&, PAL::SessionID);
 
     bool add(CachedResource&);
     void remove(CachedResource&);
@@ -104,7 +104,7 @@ public:
     void revalidationFailed(CachedResource& revalidatingResource);
 
     void forEachResource(const WTF::Function<void(CachedResource&)>&);
-    void forEachSessionResource(SessionID, const WTF::Function<void(CachedResource&)>&);
+    void forEachSessionResource(PAL::SessionID, const WTF::Function<void(CachedResource&)>&);
     WEBCORE_EXPORT void destroyDecodedDataForAllImages();
 
     // Sets the cache's memory capacities, in bytes. These will hold only approximately,
@@ -120,7 +120,7 @@ public:
     bool disabled() const { return m_disabled; }
 
     WEBCORE_EXPORT void evictResources();
-    WEBCORE_EXPORT void evictResources(SessionID);
+    WEBCORE_EXPORT void evictResources(PAL::SessionID);
 
     void prune();
     void pruneSoon();
@@ -153,9 +153,9 @@ public:
 
     typedef HashSet<RefPtr<SecurityOrigin>> SecurityOriginSet;
     WEBCORE_EXPORT void removeResourcesWithOrigin(SecurityOrigin&);
-    WEBCORE_EXPORT void removeResourcesWithOrigins(SessionID, const HashSet<RefPtr<SecurityOrigin>>&);
+    WEBCORE_EXPORT void removeResourcesWithOrigins(PAL::SessionID, const HashSet<RefPtr<SecurityOrigin>>&);
     WEBCORE_EXPORT void getOriginsWithCache(SecurityOriginSet& origins);
-    WEBCORE_EXPORT HashSet<RefPtr<SecurityOrigin>> originsWithCache(SessionID) const;
+    WEBCORE_EXPORT HashSet<RefPtr<SecurityOrigin>> originsWithCache(PAL::SessionID) const;
 
     WEBCORE_EXPORT bool addImageToCache(NativeImagePtr&&, const URL&, const String& domainForCachePartition);
     WEBCORE_EXPORT void removeImageFromCache(const URL&, const String& domainForCachePartition);
@@ -176,10 +176,9 @@ private:
     ~MemoryCache(); // Not implemented to make sure nobody accidentally calls delete -- WebCore does not delete singletons.
 
     LRUList& lruListFor(CachedResource&);
-#ifndef NDEBUG
+
     void dumpStats();
     void dumpLRULists(bool includeLive) const;
-#endif
 
     unsigned liveCapacity() const;
     unsigned deadCapacity() const;
@@ -187,19 +186,19 @@ private:
 
     CachedResource* resourceForRequestImpl(const ResourceRequest&, CachedResourceMap&);
 
-    CachedResourceMap& ensureSessionResourceMap(SessionID);
-    CachedResourceMap* sessionResourceMap(SessionID) const;
+    CachedResourceMap& ensureSessionResourceMap(PAL::SessionID);
+    CachedResourceMap* sessionResourceMap(PAL::SessionID) const;
 
-    bool m_disabled;  // Whether or not the cache is enabled.
-    bool m_inPruneResources;
+    bool m_disabled { false };
+    bool m_inPruneResources { false };
 
     unsigned m_capacity;
-    unsigned m_minDeadCapacity;
+    unsigned m_minDeadCapacity { 0 };
     unsigned m_maxDeadCapacity;
     Seconds m_deadDecodedDataDeletionInterval;
 
-    unsigned m_liveSize; // The number of bytes currently consumed by "live" resources in the cache.
-    unsigned m_deadSize; // The number of bytes currently consumed by "dead" resources in the cache.
+    unsigned m_liveSize { 0 }; // The number of bytes currently consumed by "live" resources in the cache.
+    unsigned m_deadSize { 0 }; // The number of bytes currently consumed by "dead" resources in the cache.
 
     // Size-adjusted and popularity-aware LRU list collection for cache objects.  This collection can hold
     // more resources than the cached resource map, since it can also hold "stale" multiple versions of objects that are
@@ -211,7 +210,7 @@ private:
     
     // A URL-based map of all resources that are in the cache (including the freshest version of objects that are currently being 
     // referenced by a Web page).
-    typedef HashMap<SessionID, std::unique_ptr<CachedResourceMap>> SessionCachedResourceMap;
+    typedef HashMap<PAL::SessionID, std::unique_ptr<CachedResourceMap>> SessionCachedResourceMap;
     SessionCachedResourceMap m_sessionResources;
 
     Timer m_pruneTimer;

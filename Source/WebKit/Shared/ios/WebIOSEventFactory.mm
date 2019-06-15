@@ -68,7 +68,7 @@ WebKit::WebKeyboardEvent WebIOSEventFactory::createWebKeyboardEvent(::WebEvent *
     double timestamp = event.timestamp;
 
     if (windowsVirtualKeyCode == '\r') {
-        text = ASCIILiteral("\r");
+        text = "\r"_s;
         unmodifiedText = text;
     }
 
@@ -76,16 +76,35 @@ WebKit::WebKeyboardEvent WebIOSEventFactory::createWebKeyboardEvent(::WebEvent *
 
     // Turn 0x7F into 8, because backspace needs to always be 8.
     if (text == "\x7F")
-        text = ASCIILiteral("\x8");
+        text = "\x8"_s;
     if (unmodifiedText == "\x7F")
-        unmodifiedText = ASCIILiteral("\x8");
+        unmodifiedText = "\x8"_s;
     // Always use 9 for tab.
     if (windowsVirtualKeyCode == 9) {
-        text = ASCIILiteral("\x9");
+        text = "\x9"_s;
         unmodifiedText = text;
     }
 
-    return WebKit::WebKeyboardEvent(type, text, unmodifiedText, key, code, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
+    return WebKit::WebKeyboardEvent(type, text, unmodifiedText, key, code, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, autoRepeat, isKeypad, isSystemKey, modifiers, WallTime::fromRawSeconds(timestamp));
+}
+
+WebKit::WebMouseEvent WebIOSEventFactory::createWebMouseEvent(::WebEvent *event)
+{
+    // This currently only supports synthetic mouse moved events with no button pressed.
+    ASSERT_ARG(event, event.type == WebEventMouseMoved);
+
+    auto type = WebKit::WebEvent::MouseMove;
+    auto button = WebKit::WebMouseEvent::NoButton;
+    unsigned short buttons = 0;
+    auto position = WebCore::IntPoint(event.locationInWindow);
+    float deltaX = 0;
+    float deltaY = 0;
+    float deltaZ = 0;
+    int clickCount = 0;
+    auto modifiers = static_cast<WebKit::WebEvent::Modifiers>(0);
+    double timestamp = event.timestamp;
+
+    return WebKit::WebMouseEvent(type, button, buttons, position, position, deltaX, deltaY, deltaZ, clickCount, modifiers, WallTime::fromRawSeconds(timestamp));
 }
 
 #endif // PLATFORM(IOS)

@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: Sort values to numeric ascending order
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   When the TypedArray SortCompare abstract operation is called with two
@@ -14,6 +14,7 @@ info: >
   NOTE: Because NaN always compares greater than any other value, NaN property
   values always sort to the end of the result when comparefn is not provided.
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

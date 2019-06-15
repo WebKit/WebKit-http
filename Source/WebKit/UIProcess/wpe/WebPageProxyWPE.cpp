@@ -29,6 +29,7 @@
 #include "PageClientImpl.h"
 #include "WebsiteDataStore.h"
 #include <WebCore/NotImplemented.h>
+#include <WebCore/UserAgent.h>
 
 namespace WebKit {
 
@@ -37,14 +38,14 @@ void WebPageProxy::platformInitialize()
     notImplemented();
 }
 
-JSGlobalContextRef WebPageProxy::javascriptGlobalContext()
+struct wpe_view_backend* WebPageProxy::viewBackend()
 {
-    return m_pageClient.javascriptGlobalContext();
+    return static_cast<PageClientImpl&>(m_pageClient).viewBackend();
 }
 
-String WebPageProxy::standardUserAgent(const String&)
+String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
-    return "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1";
+    return WebCore::standardUserAgent(applicationNameForUserAgent);
 }
 
 void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)
@@ -57,7 +58,7 @@ void WebPageProxy::loadRecentSearches(const String&, Vector<WebCore::RecentSearc
     notImplemented();
 }
 
-void WebsiteDataStore::platformRemoveRecentSearches(std::chrono::system_clock::time_point)
+void WebsiteDataStore::platformRemoveRecentSearches(WallTime)
 {
     notImplemented();
 }

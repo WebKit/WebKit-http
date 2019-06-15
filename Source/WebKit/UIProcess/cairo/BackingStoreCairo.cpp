@@ -32,7 +32,8 @@
 #include "WebPageProxy.h"
 #include <WebCore/BackingStoreBackendCairoImpl.h>
 #include <WebCore/CairoUtilities.h>
-#include <WebCore/GraphicsContext.h>
+#include <WebCore/GraphicsContextImplCairo.h>
+#include <WebCore/PlatformContextCairo.h>
 #include <WebCore/RefPtrCairo.h>
 #include <cairo.h>
 
@@ -46,9 +47,8 @@
 #include <gdk/gdkx.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 std::unique_ptr<BackingStoreBackendCairo> BackingStore::createBackend()
 {
@@ -63,18 +63,7 @@ std::unique_ptr<BackingStoreBackendCairo> BackingStore::createBackend()
     }
 #endif
 
-    IntSize scaledSize = m_size;
-    scaledSize.scale(m_deviceScaleFactor);
-
-#if PLATFORM(GTK)
-    RefPtr<cairo_surface_t> surface = adoptRef(gdk_window_create_similar_surface(gtk_widget_get_window(m_webPageProxy.viewWidget()),
-        CAIRO_CONTENT_COLOR_ALPHA, scaledSize.width(), scaledSize.height()));
-#else
-    RefPtr<cairo_surface_t> surface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, scaledSize.width(), scaledSize.height()));
-#endif
-
-    cairoSurfaceSetDeviceScale(surface.get(), m_deviceScaleFactor, m_deviceScaleFactor);
-    return std::make_unique<BackingStoreBackendCairoImpl>(surface.get(), m_size);
+    return std::make_unique<BackingStoreBackendCairoImpl>(m_size, m_deviceScaleFactor);
 }
 
 void BackingStore::paint(cairo_t* context, const IntRect& rect)
@@ -98,8 +87,8 @@ void BackingStore::incorporateUpdate(ShareableBitmap* bitmap, const UpdateInfo& 
 
     // Paint all update rects.
     IntPoint updateRectLocation = updateInfo.updateRectBounds.location();
-    RefPtr<cairo_t> context = adoptRef(cairo_create(m_backend->surface()));
-    GraphicsContext graphicsContext(context.get());
+    RefPtr<cairo_t> cairoContext = adoptRef(cairo_create(m_backend->surface()));
+    GraphicsContext graphicsContext(GraphicsContextImplCairo::createFactory(cairoContext.get()));
     for (const auto& updateRect : updateInfo.updateRects) {
         IntRect srcRect = updateRect;
         srcRect.move(-updateRectLocation.x(), -updateRectLocation.y());

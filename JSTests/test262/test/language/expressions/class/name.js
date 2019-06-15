@@ -1,10 +1,10 @@
-// Copyright (C) Copyright 2015 the V8 project authors. All rights reserved.
+// Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
 es6id: 14.5.16
 description: Assignment of function `name` attribute
-info: >
+info: |
     ClassExpression : class BindingIdentifieropt ClassTail
 
     5. If className is not undefined, then

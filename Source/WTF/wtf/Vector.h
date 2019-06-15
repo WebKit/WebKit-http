@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2005, 2006, 2007, 2008, 2014 Apple Inc. All rights reserved.
+ *  Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -28,7 +28,9 @@
 #include <utility>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/FastMalloc.h>
+#include <wtf/Forward.h>
 #include <wtf/MallocPtr.h>
+#include <wtf/MathExtras.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/NotFound.h>
 #include <wtf/StdLibExtras.h>
@@ -63,28 +65,43 @@ struct VectorDestructor<true, T>
 template <bool needsInitialization, bool canInitializeWithMemset, typename T>
 struct VectorInitializer;
 
-template<bool ignore, typename T>
-struct VectorInitializer<false, ignore, T>
+template<bool canInitializeWithMemset, typename T>
+struct VectorInitializer<false, canInitializeWithMemset, T>
 {
-    static void initialize(T*, T*) {}
+    static void initializeIfNonPOD(T*, T*) { }
+
+    static void initialize(T* begin, T* end)
+    {
+        VectorInitializer<true, canInitializeWithMemset, T>::initialize(begin, end);
+    }
 };
 
 template<typename T>
 struct VectorInitializer<true, false, T>
 {
-    static void initialize(T* begin, T* end) 
+    static void initializeIfNonPOD(T* begin, T* end)
     {
         for (T* cur = begin; cur != end; ++cur)
-            new (NotNull, cur) T;
+            new (NotNull, cur) T();
+    }
+
+    static void initialize(T* begin, T* end)
+    {
+        initializeIfNonPOD(begin, end);
     }
 };
 
 template<typename T>
 struct VectorInitializer<true, true, T>
 {
-    static void initialize(T* begin, T* end) 
+    static void initializeIfNonPOD(T* begin, T* end)
     {
-        memset(begin, 0, reinterpret_cast<char*>(end) - reinterpret_cast<char*>(begin));
+        memset(static_cast<void*>(begin), 0, reinterpret_cast<char*>(end) - reinterpret_cast<char*>(begin));
+    }
+
+    static void initialize(T* begin, T* end)
+    {
+        initializeIfNonPOD(begin, end);
     }
 };
 
@@ -124,11 +141,11 @@ struct VectorMover<true, T>
 {
     static void move(const T* src, const T* srcEnd, T* dst) 
     {
-        memcpy(dst, src, reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
+        memcpy(static_cast<void*>(dst), static_cast<void*>(const_cast<T*>(src)), reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
     }
     static void moveOverlapping(const T* src, const T* srcEnd, T* dst) 
     {
-        memmove(dst, src, reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
+        memmove(static_cast<void*>(dst), static_cast<void*>(const_cast<T*>(src)), reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
     }
 };
 
@@ -154,7 +171,7 @@ struct VectorCopier<true, T>
 {
     static void uninitializedCopy(const T* src, const T* srcEnd, T* dst)
     {
-        memcpy(dst, src, reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
+        memcpy(static_cast<void*>(dst), static_cast<void*>(const_cast<T*>(src)), reinterpret_cast<const char*>(srcEnd) - reinterpret_cast<const char*>(src));
     }
     template<typename U>
     static void uninitializedCopy(const T* src, const T* srcEnd, U* dst)
@@ -221,6 +238,11 @@ struct VectorTypeOperations
     static void destruct(T* begin, T* end)
     {
         VectorDestructor<!std::is_trivially_destructible<T>::value, T>::destruct(begin, end);
+    }
+
+    static void initializeIfNonPOD(T* begin, T* end)
+    {
+        VectorInitializer<VectorTraits<T>::needsInitialization, VectorTraits<T>::canInitializeWithMemset, T>::initializeIfNonPOD(begin, end);
     }
 
     static void initialize(T* begin, T* end)
@@ -506,7 +528,15 @@ public:
     void* endOfBuffer()
     {
         ASSERT(buffer());
+
+#if COMPILER(GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Winvalid-offsetof"
+#endif
         static_assert((offsetof(VectorBuffer, m_inlineBuffer) + sizeof(m_inlineBuffer)) % 8 == 0, "Inline buffer end needs to be on 8 byte boundary for ASan annotations to work.");
+#if COMPILER(GCC)
+#pragma GCC diagnostic pop
+#endif
 
         if (buffer() == inlineBuffer())
             return reinterpret_cast<char*>(m_inlineBuffer) + sizeof(m_inlineBuffer);
@@ -576,7 +606,8 @@ struct UnsafeVectorOverflow {
     }
 };
 
-template<typename T, size_t inlineCapacity = 0, typename OverflowHandler = CrashOnOverflow, size_t minCapacity = 16>
+// Template default values are in Forward.h.
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
 class Vector : private VectorBuffer<T, inlineCapacity> {
     WTF_MAKE_FAST_ALLOCATED;
 private:
@@ -602,7 +633,7 @@ public:
         asanSetInitialBufferSizeTo(size);
 
         if (begin())
-            TypeOperations::initialize(begin(), end());
+            TypeOperations::initializeIfNonPOD(begin(), end());
     }
 
     Vector(size_t size, const T& val)
@@ -622,6 +653,20 @@ public:
 
         for (const auto& element : initializerList)
             uncheckedAppend(element);
+    }
+
+    template<typename... Items>
+    static Vector from(Items&&... items)
+    {
+        Vector result;
+        auto size = sizeof...(items);
+
+        result.reserveInitialCapacity(size);
+        result.asanSetInitialBufferSizeTo(size);
+        result.m_size = size;
+
+        result.uncheckedInitialize<0>(std::forward<Items>(items)...);
+        return result;
     }
 
     ~Vector()
@@ -721,7 +766,9 @@ public:
 
     void clear() { shrinkCapacity(0); }
 
-    void append(ValueType&& value) { append<ValueType>(std::forward<ValueType>(value)); }
+    template<typename U = T> Vector<U> isolatedCopy() const;
+
+    ALWAYS_INLINE void append(ValueType&& value) { append<ValueType>(std::forward<ValueType>(value)); }
     template<typename U> void append(U&&);
     template<typename... Args> void constructAndAppend(Args&&...);
     template<typename... Args> bool tryConstructAndAppend(Args&&...);
@@ -791,6 +838,20 @@ private:
     template<typename U> void appendSlowCase(U&&);
     template<typename... Args> void constructAndAppendSlowCase(Args&&...);
     template<typename... Args> bool tryConstructAndAppendSlowCase(Args&&...);
+
+    template<size_t position, typename U, typename... Items>
+    void uncheckedInitialize(U&& item, Items&&... items)
+    {
+        uncheckedInitialize<position>(std::forward<U>(item));
+        uncheckedInitialize<position + 1>(std::forward<Items>(items)...);
+    }
+    template<size_t position, typename U>
+    void uncheckedInitialize(U&& value)
+    {
+        ASSERT(position < size());
+        ASSERT(position < capacity());
+        new (NotNull, begin() + position) T(std::forward<U>(value));
+    }
 
     void asanSetInitialBufferSizeTo(size_t);
     void asanSetBufferSizeToFullCapacity(size_t);
@@ -981,7 +1042,7 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::expandCapacity(siz
 }
 
 template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
-T* Vector<T, inlineCapacity, OverflowHandler, minCapacity>::expandCapacity(size_t newMinCapacity, T* ptr)
+NEVER_INLINE T* Vector<T, inlineCapacity, OverflowHandler, minCapacity>::expandCapacity(size_t newMinCapacity, T* ptr)
 {
     if (ptr < begin() || ptr >= end()) {
         expandCapacity(newMinCapacity);
@@ -1012,7 +1073,8 @@ const T* Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryExpandCapac
     return begin() + index;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
 inline U* Vector<T, inlineCapacity, OverflowHandler, minCapacity>::expandCapacity(size_t newMinCapacity, U* ptr)
 {
     expandCapacity(newMinCapacity);
@@ -1030,7 +1092,7 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::resize(size
             expandCapacity(size);
         asanBufferSizeWillChangeTo(size);
         if (begin())
-            TypeOperations::initialize(end(), begin() + size);
+            TypeOperations::initializeIfNonPOD(end(), begin() + size);
     }
     
     m_size = size;
@@ -1060,7 +1122,7 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::grow(size_t size)
         expandCapacity(size);
     asanBufferSizeWillChangeTo(size);
     if (begin())
-        TypeOperations::initialize(end(), begin() + size);
+        TypeOperations::initializeIfNonPOD(end(), begin() + size);
     m_size = size;
 }
 
@@ -1190,8 +1252,9 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::shrinkCapacity(siz
     asanSetInitialBufferSizeTo(size());
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
-void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::append(const U* data, size_t dataSize)
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
+ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::append(const U* data, size_t dataSize)
 {
     size_t newSize = m_size + dataSize;
     if (newSize > capacity()) {
@@ -1206,8 +1269,9 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::append(const U* da
     m_size = newSize;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
-bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryAppend(const U* data, size_t dataSize)
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
+ALWAYS_INLINE bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryAppend(const U* data, size_t dataSize)
 {
     size_t newSize = m_size + dataSize;
     if (newSize > capacity()) {
@@ -1225,7 +1289,8 @@ bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryAppend(const U*
     return true;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
 ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::append(U&& value)
 {
     if (size() != capacity()) {
@@ -1238,7 +1303,8 @@ ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appe
     appendSlowCase(std::forward<U>(value));
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename... Args>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename... Args>
 ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::constructAndAppend(Args&&... args)
 {
     if (size() != capacity()) {
@@ -1251,7 +1317,8 @@ ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::cons
     constructAndAppendSlowCase(std::forward<Args>(args)...);
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename... Args>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename... Args>
 ALWAYS_INLINE bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryConstructAndAppend(Args&&... args)
 {
     if (size() != capacity()) {
@@ -1264,7 +1331,8 @@ ALWAYS_INLINE bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryC
     return tryConstructAndAppendSlowCase(std::forward<Args>(args)...);
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
 void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appendSlowCase(U&& value)
 {
     ASSERT(size() == capacity());
@@ -1278,7 +1346,8 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appendSlowCase(U&&
     ++m_size;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename... Args>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename... Args>
 void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::constructAndAppendSlowCase(Args&&... args)
 {
     ASSERT(size() == capacity());
@@ -1291,7 +1360,8 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::constructAndAppend
     ++m_size;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename... Args>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename... Args>
 bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryConstructAndAppendSlowCase(Args&&... args)
 {
     ASSERT(size() == capacity());
@@ -1309,25 +1379,27 @@ bool Vector<T, inlineCapacity, OverflowHandler, minCapacity>::tryConstructAndApp
 // This version of append saves a branch in the case where you know that the
 // vector's capacity is large enough for the append to succeed.
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
 ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::uncheckedAppend(U&& value)
 {
     ASSERT(size() < capacity());
 
     asanBufferSizeWillChangeTo(m_size + 1);
 
-    auto ptr = std::addressof(value);
-    new (NotNull, end()) T(std::forward<U>(*ptr));
+    new (NotNull, end()) T(std::forward<U>(value));
     ++m_size;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U, size_t otherCapacity>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U, size_t otherCapacity>
 inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::appendVector(const Vector<U, otherCapacity>& val)
 {
     append(val.begin(), val.size());
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
 void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insert(size_t position, const U* data, size_t dataSize)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(position <= size());
@@ -1345,7 +1417,8 @@ void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insert(size_t posi
     m_size = newSize;
 }
  
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
 inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insert(size_t position, U&& value)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(position <= size());
@@ -1364,7 +1437,8 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insert(size
     ++m_size;
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename U, size_t c>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U, size_t c>
 inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::insertVector(size_t position, const Vector<U, c>& val)
 {
     insert(position, val.begin(), val.size());
@@ -1459,7 +1533,8 @@ inline void Vector<T, inlineCapacity, OverflowHandler, minCapacity>::reverse()
         std::swap(at(i), at(m_size - 1 - i));
 }
 
-template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity> template<typename MapFunction, typename R>
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename MapFunction, typename R>
 inline Vector<R> Vector<T, inlineCapacity, OverflowHandler, minCapacity>::map(MapFunction mapFunction) const
 {
     Vector<R> result;
@@ -1531,12 +1606,23 @@ template<typename T> struct ValueCheck<Vector<T>> {
 };
 #endif
 
+template<typename T, size_t inlineCapacity, typename OverflowHandler, size_t minCapacity>
+template<typename U>
+inline Vector<U> Vector<T, inlineCapacity, OverflowHandler, minCapacity>::isolatedCopy() const
+{
+    Vector<U> copy;
+    copy.reserveInitialCapacity(size());
+    for (const auto& element : *this)
+        copy.uncheckedAppend(element.isolatedCopy());
+    return copy;
+}
+    
 template<typename VectorType, typename Func>
 size_t removeRepeatedElements(VectorType& vector, const Func& func)
 {
     auto end = std::unique(vector.begin(), vector.end(), func);
     size_t newSize = end - vector.begin();
-    vector.resize(newSize);
+    vector.shrink(newSize);
     return newSize;
 }
 
@@ -1546,10 +1632,86 @@ size_t removeRepeatedElements(Vector<T, inlineCapacity, OverflowHandler, minCapa
     return removeRepeatedElements(vector, [] (T& a, T& b) { return a == b; });
 }
 
+template<typename SourceType>
+struct CollectionInspector {
+    using RealSourceType = typename std::remove_reference<SourceType>::type;
+    using IteratorType = decltype(std::begin(std::declval<RealSourceType>()));
+    using SourceItemType = typename std::iterator_traits<IteratorType>::value_type;
+};
+
+template<typename MapFunction, typename SourceType, typename Enable = void>
+struct Mapper {
+    using SourceItemType = typename CollectionInspector<SourceType>::SourceItemType;
+    using DestinationItemType = typename std::result_of<MapFunction(SourceItemType&)>::type;
+
+    static Vector<DestinationItemType> map(SourceType source, const MapFunction& mapFunction)
+    {
+        Vector<DestinationItemType> result;
+        // FIXME: Use std::size when available on all compilers.
+        result.reserveInitialCapacity(source.size());
+        for (auto& item : source)
+            result.uncheckedAppend(mapFunction(item));
+        return result;
+    }
+};
+
+template<typename MapFunction, typename SourceType>
+struct Mapper<MapFunction, SourceType, typename std::enable_if<std::is_rvalue_reference<SourceType&&>::value>::type> {
+    using SourceItemType = typename CollectionInspector<SourceType>::SourceItemType;
+    using DestinationItemType = typename std::result_of<MapFunction(SourceItemType&&)>::type;
+
+    static Vector<DestinationItemType> map(SourceType&& source, const MapFunction& mapFunction)
+    {
+        Vector<DestinationItemType> result;
+        // FIXME: Use std::size when available on all compilers.
+        result.reserveInitialCapacity(source.size());
+        for (auto& item : source)
+            result.uncheckedAppend(mapFunction(WTFMove(item)));
+        return result;
+    }
+};
+
+template<typename MapFunction, typename SourceType>
+Vector<typename Mapper<MapFunction, SourceType>::DestinationItemType> map(SourceType&& source, MapFunction&& mapFunction)
+{
+    return Mapper<MapFunction, SourceType>::map(std::forward<SourceType>(source), std::forward<MapFunction>(mapFunction));
+}
+
+template<typename DestinationVector, typename Collection>
+inline auto copyToVectorSpecialization(const Collection& collection) -> DestinationVector
+{
+    DestinationVector result;
+    // FIXME: Use std::size when available on all compilers.
+    result.reserveInitialCapacity(collection.size());
+    for (auto& item : collection)
+        result.uncheckedAppend(item);
+    return result;
+}
+
+template<typename DestinationItemType, typename Collection>
+inline auto copyToVectorOf(const Collection& collection) -> Vector<DestinationItemType>
+{
+    return WTF::map(collection, [] (const auto& v) -> DestinationItemType { return v; });
+}
+
+template<typename Collection>
+struct CopyToVectorResult {
+    using Type = typename std::remove_cv<typename CollectionInspector<Collection>::SourceItemType>::type;
+};
+
+template<typename Collection>
+inline auto copyToVector(const Collection& collection) -> Vector<typename CopyToVectorResult<Collection>::Type>
+{
+    return copyToVectorOf<typename CopyToVectorResult<Collection>::Type>(collection);
+}
+
 } // namespace WTF
 
-using WTF::Vector;
 using WTF::UnsafeVectorOverflow;
+using WTF::Vector;
+using WTF::copyToVector;
+using WTF::copyToVectorOf;
+using WTF::copyToVectorSpecialization;
 using WTF::removeRepeatedElements;
 
 #endif // WTF_Vector_h

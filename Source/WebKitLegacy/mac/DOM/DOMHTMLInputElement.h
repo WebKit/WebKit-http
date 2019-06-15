@@ -24,14 +24,21 @@
  */
 
 #import <WebKitLegacy/DOMHTMLElement.h>
+#if TARGET_OS_IPHONE
+#import <UIKit/UITextInputTraits.h>
+#endif
 
 @class DOMFileList;
 @class DOMHTMLFormElement;
 @class NSString;
 @class NSURL;
 
-WEBKIT_CLASS_AVAILABLE_MAC(10_4)
+WEBKIT_CLASS_DEPRECATED_MAC(10_4, 10_14)
+#if TARGET_OS_IPHONE
+@interface DOMHTMLInputElement : DOMHTMLElement<UITextInputTraits>
+#else
 @interface DOMHTMLInputElement : DOMHTMLElement
+#endif
 @property (copy) NSString *accept;
 @property (copy) NSString *alt;
 @property BOOL autofocus WEBKIT_AVAILABLE_MAC(10_6);

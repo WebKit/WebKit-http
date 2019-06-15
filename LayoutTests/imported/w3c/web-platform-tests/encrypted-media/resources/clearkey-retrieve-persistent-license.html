@@ -5,7 +5,7 @@
     <title>Encrypted Media Extensions: persistent-license, retrieve and playback, ClearKey</title>
     <link rel="help" href="https://w3c.github.io/encrypted-media/">
 
-    <!--  Helper scripts for Encrypted Media Extensions tests   -->
+    <!-- Helper scripts for Encrypted Media Extensions tests  -->
     <script src=/encrypted-media/util/utils.js></script>
     <script src=/encrypted-media/util/fetch.js></script>
     <script src=/encrypted-media/util/utf8.js></script>
@@ -35,7 +35,7 @@
         config.video = document.getElementById('videoelement');
 
         function onComplete() {
-            window.opener.postMessage(assertions, '*');
+            window.opener.postMessage({ testResult: assertions }, '*');
         }
 
         function onFailure(error) {
@@ -54,9 +54,10 @@
         .then(function(access) {
             return access.createMediaKeys();
         }).then(function(mediaKeys) {
-            config.video.setMediaKeys(mediaKeys);
+            return config.video.setMediaKeys(mediaKeys);
+        }).then(function() {
             config.video.addEventListener('timeupdate', onTimeupdate, true);
-            _mediaKeySession = mediaKeys.createSession( 'persistent-license' );
+            _mediaKeySession = config.video.mediaKeys.createSession( 'persistent-license' );
             _mediaKeySession.closed.then(onComplete);
             return _mediaKeySession.load(event.data.sessionId);
         }).then(function( success ) {

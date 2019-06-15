@@ -32,12 +32,14 @@
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
 #include "JSModuleNamespaceObject.h"
+#include "JSToWasm.h"
 #include "JSWebAssemblyHelpers.h"
 #include "JSWebAssemblyInstance.h"
 #include "JSWebAssemblyLinkError.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyModule.h"
 #include "WasmPlan.h"
+#include "WasmToJS.h"
 #include "WasmWorklist.h"
 #include "WebAssemblyFunction.h"
 #include "WebAssemblyInstancePrototype.h"
@@ -64,21 +66,21 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
     // If moduleObject is not a WebAssembly.Module instance, a TypeError is thrown.
     JSWebAssemblyModule* module = jsDynamicCast<JSWebAssemblyModule*>(vm, exec->argument(0));
     if (!module)
-        return JSValue::encode(throwException(exec, scope, createTypeError(exec, ASCIILiteral("first argument to WebAssembly.Instance must be a WebAssembly.Module"), defaultSourceAppender, runtimeTypeForValue(exec->argument(0)))));
+        return JSValue::encode(throwException(exec, scope, createTypeError(exec, "first argument to WebAssembly.Instance must be a WebAssembly.Module"_s, defaultSourceAppender, runtimeTypeForValue(vm, exec->argument(0)))));
 
     // If the importObject parameter is not undefined and Type(importObject) is not Object, a TypeError is thrown.
     JSValue importArgument = exec->argument(1);
     JSObject* importObject = importArgument.getObject();
     if (!importArgument.isUndefined() && !importObject)
-        return JSValue::encode(throwException(exec, scope, createTypeError(exec, ASCIILiteral("second argument to WebAssembly.Instance must be undefined or an Object"), defaultSourceAppender, runtimeTypeForValue(importArgument))));
+        return JSValue::encode(throwException(exec, scope, createTypeError(exec, "second argument to WebAssembly.Instance must be undefined or an Object"_s, defaultSourceAppender, runtimeTypeForValue(vm, importArgument))));
     
     Structure* instanceStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyInstanceStructure());
     RETURN_IF_EXCEPTION(scope, { });
 
-    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, module, importObject, instanceStructure);
+    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, JSWebAssemblyInstance::createPrivateModuleKey(), module, importObject, instanceStructure, Ref<Wasm::Module>(module->module()), Wasm::CreationMode::FromJS);
     RETURN_IF_EXCEPTION(scope, { });
 
-    instance->finalizeCreation(vm, exec, module->module().compileSync(instance->memoryMode()));
+    instance->finalizeCreation(vm, exec, module->module().compileSync(&vm.wasmContext, instance->memoryMode(), &Wasm::createJSToWasmWrapper, &Wasm::wasmToJSException), importObject, Wasm::CreationMode::FromJS);
     RETURN_IF_EXCEPTION(scope, { });
     return JSValue::encode(instance);
 }
@@ -99,31 +101,19 @@ WebAssemblyInstanceConstructor* WebAssemblyInstanceConstructor::create(VM& vm, S
 
 Structure* WebAssemblyInstanceConstructor::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
-    return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
 }
 
 void WebAssemblyInstanceConstructor::finishCreation(VM& vm, WebAssemblyInstancePrototype* prototype)
 {
-    Base::finishCreation(vm, ASCIILiteral("Instance"));
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum | DontDelete);
+    Base::finishCreation(vm, "Instance"_s);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum | PropertyAttribute::DontDelete);
 }
 
 WebAssemblyInstanceConstructor::WebAssemblyInstanceConstructor(VM& vm, Structure* structure)
-    : Base(vm, structure)
+    : Base(vm, structure, callJSWebAssemblyInstance, constructJSWebAssemblyInstance)
 {
-}
-
-ConstructType WebAssemblyInstanceConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructJSWebAssemblyInstance;
-    return ConstructType::Host;
-}
-
-CallType WebAssemblyInstanceConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callJSWebAssemblyInstance;
-    return CallType::Host;
 }
 
 } // namespace JSC

@@ -37,13 +37,13 @@ InspectorBackendClass = class InspectorBackendClass
         this._agents = {};
 
         this._customTracer = null;
-        this._defaultTracer = new WebInspector.LoggingProtocolTracer;
+        this._defaultTracer = new WI.LoggingProtocolTracer;
         this._activeTracers = [this._defaultTracer];
 
         this._workerSupportedDomains = [];
 
-        WebInspector.settings.autoLogProtocolMessages.addEventListener(WebInspector.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
-        WebInspector.settings.autoLogTimeStats.addEventListener(WebInspector.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
+        WI.settings.autoLogProtocolMessages.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
+        WI.settings.autoLogTimeStats.addEventListener(WI.Setting.Event.Changed, this._startOrStopAutomaticTracing, this);
         this._startOrStopAutomaticTracing();
 
         this.currentDispatchState = {
@@ -59,23 +59,23 @@ InspectorBackendClass = class InspectorBackendClass
 
     // It's still possible to set this flag on InspectorBackend to just
     // dump protocol traffic as it happens. For more complex uses of
-    // protocol data, install a subclass of WebInspector.ProtocolTracer.
+    // protocol data, install a subclass of WI.ProtocolTracer.
     set dumpInspectorProtocolMessages(value)
     {
         // Implicitly cause automatic logging to start if it's allowed.
-        WebInspector.settings.autoLogProtocolMessages.value = value;
+        WI.settings.autoLogProtocolMessages.value = value;
 
         this._defaultTracer.dumpMessagesToConsole = value;
     }
 
     get dumpInspectorProtocolMessages()
     {
-        return WebInspector.settings.autoLogProtocolMessages.value;
+        return WI.settings.autoLogProtocolMessages.value;
     }
 
     set dumpInspectorTimeStats(value)
     {
-        WebInspector.settings.autoLogTimeStats.value = value;
+        WI.settings.autoLogTimeStats.value = value;
 
         if (!this.dumpInspectorProtocolMessages)
             this.dumpInspectorProtocolMessages = true;
@@ -85,12 +85,12 @@ InspectorBackendClass = class InspectorBackendClass
 
     get dumpInspectorTimeStats()
     {
-        return WebInspector.settings.autoLogTimeStats.value;
+        return WI.settings.autoLogTimeStats.value;
     }
 
     set customTracer(tracer)
     {
-        console.assert(!tracer || tracer instanceof WebInspector.ProtocolTracer, tracer);
+        console.assert(!tracer || tracer instanceof WI.ProtocolTracer, tracer);
         console.assert(!tracer || tracer !== this._defaultTracer, tracer);
 
         // Bail early if no state change is to be made.
@@ -158,10 +158,10 @@ InspectorBackendClass = class InspectorBackendClass
         InspectorBackend.mainConnection.runAfterPendingDispatches(script);
     }
 
-    activateDomain(domainName, activationDebuggableType)
+    activateDomain(domainName, activationDebuggableTypes)
     {
-        if (!activationDebuggableType || InspectorFrontendHost.debuggableType() === activationDebuggableType) {
-            var agent = this._agents[domainName];
+        if (!activationDebuggableTypes || activationDebuggableTypes.includes(InspectorFrontendHost.debuggableType())) {
+            let agent = this._agents[domainName];
             agent.activate();
             return agent;
         }
@@ -285,8 +285,13 @@ InspectorBackend.Agent = class InspectorBackendAgent
 
     dispatchEvent(eventName, eventArguments)
     {
+        if (!this._dispatcher) {
+            console.error(`No domain dispatcher registered for domain '${this._domainName}', for event '${this._domainName}.${eventName}'`);
+            return false;
+        }
+
         if (!(eventName in this._dispatcher)) {
-            console.error("Protocol Error: Attempted to dispatch an unimplemented method '" + this._domainName + "." + eventName + "'");
+            console.error(`Protocol Error: Attempted to dispatch an unimplemented method '${this._domainName}.${eventName}'`);
             return false;
         }
 

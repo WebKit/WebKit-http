@@ -8,25 +8,59 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "gflags/gflags.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/system_wrappers/include/metrics_default.h"
-#include "webrtc/test/field_trial.h"
-#include "webrtc/test/gmock.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/testsupport/fileutils.h"
-#include "webrtc/test/testsupport/trace_to_stderr.h"
+#include "rtc_base/flags.h"
+#include "rtc_base/logging.h"
+#include "system_wrappers/include/field_trial_default.h"
+#include "system_wrappers/include/metrics_default.h"
+#include "test/field_trial.h"
+#include "test/gmock.h"
+#include "test/gtest.h"
+#include "test/testsupport/fileutils.h"
+#include "test/testsupport/perf_test.h"
 
 #if defined(WEBRTC_IOS)
-#include "webrtc/test/ios/test_support.h"
+#include "test/ios/test_support.h"
+
+DEFINE_string(NSTreatUnknownArgumentsAsOpen,
+              "",
+              "Intentionally ignored flag intended for iOS simulator.");
+DEFINE_string(ApplePersistenceIgnoreState,
+              "",
+              "Intentionally ignored flag intended for iOS simulator.");
+DEFINE_bool(
+    save_chartjson_result,
+    false,
+    "Store the perf results in Documents/perf_result.json in the format "
+    "described by "
+    "https://github.com/catapult-project/catapult/blob/master/dashboard/docs/"
+    "data-format.md.");
+
+#else
+
+DEFINE_string(isolated_script_test_output,
+              "",
+              "Intentionally ignored flag intended for Chromium.");
+
+DEFINE_string(
+    isolated_script_test_perf_output,
+    "",
+    "Path where the perf results should be stored in the JSON format described "
+    "by "
+    "https://github.com/catapult-project/catapult/blob/master/dashboard/docs/"
+    "data-format.md.");
+
 #endif
 
 DEFINE_bool(logs, false, "print logs to stderr");
 
-DEFINE_string(force_fieldtrials, "",
+DEFINE_string(
+    force_fieldtrials,
+    "",
     "Field trials control experimental feature code which can be forced. "
     "E.g. running with --force_fieldtrials=WebRTC-FooFeature/Enable/"
     " will assign the group Enable to field trial WebRTC-FooFeature.");
+
+DEFINE_bool(help, false, "Print this message.");
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleMock(&argc, argv);
@@ -36,23 +70,39 @@ int main(int argc, char* argv[]) {
   if (rtc::LogMessage::GetLogToDebug() > rtc::LS_INFO)
     rtc::LogMessage::LogToDebug(rtc::LS_INFO);
 
-  // AllowCommandLineParsing allows us to ignore flags passed on to us by
-  // Chromium build bots without having to explicitly disable them.
-  google::AllowCommandLineReparsing();
-  google::ParseCommandLineFlags(&argc, &argv, false);
+  if (rtc::FlagList::SetFlagsFromCommandLine(&argc, argv, false)) {
+    return 1;
+  }
+  if (FLAG_help) {
+    rtc::FlagList::Print(nullptr, false);
+    return 0;
+  }
 
   webrtc::test::SetExecutablePath(argv[0]);
-  webrtc::test::InitFieldTrialsFromString(FLAGS_force_fieldtrials);
+  webrtc::test::ValidateFieldTrialsStringOrDie(FLAG_force_fieldtrials);
+  // InitFieldTrialsFromString stores the char*, so the char array must outlive
+  // the application.
+  webrtc::field_trial::InitFieldTrialsFromString(FLAG_force_fieldtrials);
   webrtc::metrics::Enable();
 
-  rtc::LogMessage::SetLogToStderr(FLAGS_logs);
-  std::unique_ptr<webrtc::test::TraceToStderr> trace_to_stderr;
-  if (FLAGS_logs)
-      trace_to_stderr.reset(new webrtc::test::TraceToStderr);
-#if defined(WEBRTC_IOS)
-  rtc::test::InitTestSuite(RUN_ALL_TESTS, argc, argv);
-  rtc::test::RunTestsFromIOSApp();
-#endif
+  rtc::LogMessage::SetLogToStderr(FLAG_logs);
 
-  return RUN_ALL_TESTS();
+#if defined(WEBRTC_IOS)
+
+  rtc::test::InitTestSuite(RUN_ALL_TESTS, argc, argv,
+                           FLAG_save_chartjson_result);
+  rtc::test::RunTestsFromIOSApp();
+
+#else
+
+  int exit_code = RUN_ALL_TESTS();
+
+  std::string chartjson_result_file = FLAG_isolated_script_test_perf_output;
+  if (!chartjson_result_file.empty()) {
+    webrtc::test::WritePerfResults(chartjson_result_file);
+  }
+
+  return exit_code;
+
+#endif
 }

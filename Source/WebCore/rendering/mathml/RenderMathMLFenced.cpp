@@ -34,18 +34,21 @@
 #include "RenderInline.h"
 #include "RenderMathMLFencedOperator.h"
 #include "RenderText.h"
+#include "RenderTreeBuilder.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
 using namespace MathMLNames;
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMathMLFenced);
+
 static const char* gOpeningBraceChar = "(";
 static const char* gClosingBraceChar = ")";
 
 RenderMathMLFenced::RenderMathMLFenced(MathMLRowElement& element, RenderStyle&& style)
     : RenderMathMLRow(element, WTFMove(style))
-    , m_closeFenceRenderer(nullptr)
 {
 }
 
@@ -64,7 +67,7 @@ void RenderMathMLFenced::updateFromElement()
     auto& separators = fenced.attributeWithoutSynchronization(MathMLNames::separatorsAttr);
     if (!separators.isNull()) {
         StringBuilder characters;
-        for (unsigned int i = 0; i < separators.length(); i++) {
+        for (unsigned i = 0; i < separators.length(); i++) {
             if (!isSpaceOrNewline(separators[i]))
                 characters.append(separators[i]);
         }
@@ -74,79 +77,11 @@ void RenderMathMLFenced::updateFromElement()
         m_separators = StringImpl::create(",");
     }
 
-    if (!firstChild())
-        makeFences();
-    else {
+    if (firstChild()) {
         // FIXME: The mfenced element fails to update dynamically when its open, close and separators attributes are changed (https://bugs.webkit.org/show_bug.cgi?id=57696).
         if (is<RenderMathMLFencedOperator>(*firstChild()))
             downcast<RenderMathMLFencedOperator>(*firstChild()).updateOperatorContent(m_open);
         m_closeFenceRenderer->updateOperatorContent(m_close);
-    }
-}
-
-RenderPtr<RenderMathMLFencedOperator> RenderMathMLFenced::createMathMLOperator(const String& operatorString, MathMLOperatorDictionary::Form form, MathMLOperatorDictionary::Flag flag)
-{
-    RenderPtr<RenderMathMLFencedOperator> newOperator = createRenderer<RenderMathMLFencedOperator>(document(), RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK), operatorString, form, flag);
-    newOperator->initializeStyle();
-    return newOperator;
-}
-
-void RenderMathMLFenced::makeFences()
-{
-    RenderPtr<RenderMathMLFencedOperator> openFence = createMathMLOperator(m_open, MathMLOperatorDictionary::Prefix, MathMLOperatorDictionary::Fence);
-    RenderMathMLRow::addChild(openFence.leakPtr(), firstChild());
-
-    RenderPtr<RenderMathMLFencedOperator> closeFence = createMathMLOperator(m_close, MathMLOperatorDictionary::Postfix, MathMLOperatorDictionary::Fence);
-    m_closeFenceRenderer = closeFence.get();
-    RenderMathMLRow::addChild(closeFence.leakPtr());
-}
-
-void RenderMathMLFenced::addChild(RenderObject* child, RenderObject* beforeChild)
-{
-    // make the fences if the render object is empty
-    if (!firstChild())
-        updateFromElement();
-
-    // FIXME: Adding or removing a child should possibly cause all later separators to shift places if they're different, as later child positions change by +1 or -1. This should also handle surrogate pairs. See https://bugs.webkit.org/show_bug.cgi?id=125938.
-
-    RenderPtr<RenderMathMLFencedOperator> separatorRenderer;
-    if (m_separators.get()) {
-        unsigned int count = 0;
-        for (Node* position = child->node(); position; position = position->previousSibling()) {
-            if (position->isElementNode())
-                count++;
-        }
-        if (!beforeChild) {
-            // We're adding at the end (before the closing fence), so a new separator would go before the new child, not after it.
-            --count;
-        }
-        // |count| is now the number of element children that will be before our new separator, i.e. it's the 1-based index of the separator.
-
-        if (count > 0) {
-            UChar separator;
-
-            // Use the last separator if we've run out of specified separators.
-            if (count > m_separators.get()->length())
-                separator = (*m_separators.get())[m_separators.get()->length() - 1];
-            else
-                separator = (*m_separators.get())[count - 1];
-
-            StringBuilder builder;
-            builder.append(separator);
-            separatorRenderer = createMathMLOperator(builder.toString(), MathMLOperatorDictionary::Infix, MathMLOperatorDictionary::Separator);
-        }
-    }
-
-    if (beforeChild) {
-        // Adding |x| before an existing |y| e.g. in element (y) - first insert our new child |x|, then its separator, to get (x, y).
-        RenderMathMLRow::addChild(child, beforeChild);
-        if (separatorRenderer)
-            RenderMathMLRow::addChild(separatorRenderer.leakPtr(), beforeChild);
-    } else {
-        // Adding |y| at the end of an existing element e.g. (x) - insert the separator first before the closing fence, then |y|, to get (x, y).
-        if (separatorRenderer)
-            RenderMathMLRow::addChild(separatorRenderer.leakPtr(), m_closeFenceRenderer);
-        RenderMathMLRow::addChild(child, m_closeFenceRenderer);
     }
 }
 

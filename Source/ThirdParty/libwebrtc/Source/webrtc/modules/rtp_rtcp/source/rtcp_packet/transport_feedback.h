@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TRANSPORT_FEEDBACK_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TRANSPORT_FEEDBACK_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TRANSPORT_FEEDBACK_H_
+#define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TRANSPORT_FEEDBACK_H_
 
 #include <memory>
 #include <vector>
 
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/rtpfb.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/rtpfb.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -45,6 +45,9 @@ class TransportFeedback : public Rtpfb {
   static constexpr size_t kMaxReportedPackets = 0xffff;
 
   TransportFeedback();
+  TransportFeedback(const TransportFeedback&);
+  TransportFeedback(TransportFeedback&&);
+
   ~TransportFeedback() override;
 
   void SetBase(uint16_t base_sequence,     // Seq# of first packet in this msg.
@@ -74,14 +77,59 @@ class TransportFeedback : public Rtpfb {
   bool Create(uint8_t* packet,
               size_t* position,
               size_t max_length,
-              PacketReadyCallback* callback) const override;
+              PacketReadyCallback callback) const override;
 
  private:
   // Size in bytes of a delta time in rtcp packet.
   // Valid values are 0 (packet wasn't received), 1 or 2.
   using DeltaSize = uint8_t;
   // Keeps DeltaSizes that can be encoded into single chunk if it is last chunk.
-  class LastChunk;
+  class LastChunk {
+   public:
+    using DeltaSize = TransportFeedback::DeltaSize;
+
+    LastChunk();
+
+    bool Empty() const;
+    void Clear();
+    // Return if delta sizes still can be encoded into single chunk with added
+    // |delta_size|.
+    bool CanAdd(DeltaSize delta_size) const;
+    // Add |delta_size|, assumes |CanAdd(delta_size)|,
+    void Add(DeltaSize delta_size);
+
+    // Encode chunk as large as possible removing encoded delta sizes.
+    // Assume CanAdd() == false for some valid delta_size.
+    uint16_t Emit();
+    // Encode all stored delta_sizes into single chunk, pad with 0s if needed.
+    uint16_t EncodeLast() const;
+
+    // Decode up to |max_size| delta sizes from |chunk|.
+    void Decode(uint16_t chunk, size_t max_size);
+    // Appends content of the Lastchunk to |deltas|.
+    void AppendTo(std::vector<DeltaSize>* deltas) const;
+
+   private:
+    static constexpr size_t kMaxRunLengthCapacity = 0x1fff;
+    static constexpr size_t kMaxOneBitCapacity = 14;
+    static constexpr size_t kMaxTwoBitCapacity = 7;
+    static constexpr size_t kMaxVectorCapacity = kMaxOneBitCapacity;
+    static constexpr DeltaSize kLarge = 2;
+
+    uint16_t EncodeOneBit() const;
+    void DecodeOneBit(uint16_t chunk, size_t max_size);
+
+    uint16_t EncodeTwoBit(size_t size) const;
+    void DecodeTwoBit(uint16_t chunk, size_t max_size);
+
+    uint16_t EncodeRunLength() const;
+    void DecodeRunLength(uint16_t chunk, size_t max_size);
+
+    DeltaSize delta_sizes_[kMaxVectorCapacity];
+    size_t size_;
+    bool all_same_;
+    bool has_large_delta_;
+  };
 
   // Reset packet to consistent empty state.
   void Clear();
@@ -97,10 +145,10 @@ class TransportFeedback : public Rtpfb {
   std::vector<ReceivedPacket> packets_;
   // All but last encoded packet chunks.
   std::vector<uint16_t> encoded_chunks_;
-  const std::unique_ptr<LastChunk> last_chunk_;
+  LastChunk last_chunk_;
   size_t size_bytes_;
 };
 
 }  // namespace rtcp
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TRANSPORT_FEEDBACK_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TRANSPORT_FEEDBACK_H_

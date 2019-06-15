@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2008, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,6 +24,7 @@
 #include "config.h"
 #include "StyledElement.h"
 
+#include "AttributeChangeInvalidation.h"
 #include "CSSImageValue.h"
 #include "CSSParser.h"
 #include "CSSStyleSheet.h"
@@ -39,8 +40,11 @@
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include <wtf/HashFunctions.h>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(StyledElement);
 
 COMPILE_ASSERT(sizeof(StyledElement) == sizeof(Element), styledelement_should_remain_same_size_as_element);
 
@@ -152,6 +156,16 @@ void StyledElement::invalidateStyleAttribute()
 
     elementData()->setStyleAttributeIsDirty(true);
     invalidateStyle();
+
+    // In the rare case of selectors like "[style] ~ div" we need to synchronize immediately to invalidate.
+    if (styleResolver().ruleSets().hasComplexSelectorsForStyleAttribute()) {
+        if (auto* inlineStyle = this->inlineStyle()) {
+            elementData()->setStyleAttributeIsDirty(false);
+            auto newValue = inlineStyle->asText();
+            Style::AttributeChangeInvalidation styleInvalidation(*this, styleAttr, attributeWithoutSynchronization(styleAttr), newValue);
+            setSynchronizedLazyAttribute(styleAttr, newValue);
+        }
+    }
 }
 
 void StyledElement::inlineStyleChanged()

@@ -26,17 +26,11 @@
 #include "config.h"
 #include "MonotonicTime.h"
 
-#include "CurrentTime.h"
 #include "PrintStream.h"
 #include "TimeWithDynamicClockType.h"
 #include "WallTime.h"
 
 namespace WTF {
-
-MonotonicTime MonotonicTime::now()
-{
-    return fromRawSeconds(monotonicallyIncreasingTime());
-}
 
 WallTime MonotonicTime::approximateWallTime() const
 {

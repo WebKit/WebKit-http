@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ namespace JSC { namespace DFG {
 
 void CommonData::notifyCompilingStructureTransition(Plan& plan, CodeBlock* codeBlock, Node* node)
 {
-    plan.transitions.addLazily(
+    plan.transitions().addLazily(
         codeBlock,
         node->origin.semantic.codeOriginOwner(),
         node->transition()->previous.get(),
@@ -87,9 +87,10 @@ void CommonData::shrinkToFit()
     codeOrigins.shrinkToFit();
     weakReferences.shrinkToFit();
     transitions.shrinkToFit();
+    catchEntrypoints.shrinkToFit();
 }
 
-static StaticLock pcCodeBlockMapLock;
+static Lock pcCodeBlockMapLock;
 inline HashMap<void*, CodeBlock*>& pcCodeBlockMap(AbstractLocker&)
 {
     static NeverDestroyed<HashMap<void*, CodeBlock*>> pcCodeBlockMap;
@@ -176,7 +177,7 @@ void CommonData::validateReferences(const TrackedReferences& trackedReferences)
 {
     if (InlineCallFrameSet* set = inlineCallFrames.get()) {
         for (InlineCallFrame* inlineCallFrame : *set) {
-            for (ValueRecovery& recovery : inlineCallFrame->arguments) {
+            for (ValueRecovery& recovery : inlineCallFrame->argumentsWithFixup) {
                 if (recovery.isConstant())
                     trackedReferences.check(recovery.constant());
             }
@@ -191,6 +192,17 @@ void CommonData::validateReferences(const TrackedReferences& trackedReferences)
     
     for (AdaptiveStructureWatchpoint* watchpoint : adaptiveStructureWatchpoints)
         watchpoint->key().validateReferences(trackedReferences);
+}
+
+void CommonData::finalizeCatchEntrypoints()
+{
+    std::sort(catchEntrypoints.begin(), catchEntrypoints.end(),
+        [] (const CatchEntrypointData& a, const CatchEntrypointData& b) { return a.bytecodeIndex < b.bytecodeIndex; });
+
+#if !ASSERT_DISABLED
+    for (unsigned i = 0; i + 1 < catchEntrypoints.size(); ++i)
+        ASSERT(catchEntrypoints[i].bytecodeIndex <= catchEntrypoints[i + 1].bytecodeIndex);
+#endif
 }
 
 } } // namespace JSC::DFG

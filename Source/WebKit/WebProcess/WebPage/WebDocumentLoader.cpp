@@ -28,9 +28,8 @@
 
 #include "WebFrame.h"
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 WebDocumentLoader::WebDocumentLoader(const ResourceRequest& request, const SubstituteData& substituteData)
     : DocumentLoader(request, substituteData)
@@ -51,7 +50,7 @@ void WebDocumentLoader::detachFromFrame()
 void WebDocumentLoader::setNavigationID(uint64_t navigationID)
 {
     ASSERT(navigationID);
-    ASSERT(!m_navigationID);
+    ASSERT(!m_navigationID || m_navigationID == navigationID);
 
     m_navigationID = navigationID;
 }

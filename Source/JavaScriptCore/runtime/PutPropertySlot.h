@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,7 +49,6 @@ public:
         , m_isInitialization(isInitialization)
         , m_context(context)
         , m_cacheability(CachingAllowed)
-        , m_putFunction(nullptr)
     {
     }
 
@@ -67,14 +66,14 @@ public:
         m_offset = offset;
     }
 
-    void setCustomValue(JSObject* base, PutValueFunc function)
+    void setCustomValue(JSObject* base, FunctionPtr<OperationPtrTag> function)
     {
         m_type = CustomValue;
         m_base = base;
         m_putFunction = function;
     }
 
-    void setCustomAccessor(JSObject* base, PutValueFunc function)
+    void setCustomAccessor(JSObject* base, FunctionPtr<OperationPtrTag> function)
     {
         m_type = CustomAccessor;
         m_base = base;
@@ -98,7 +97,7 @@ public:
         m_isStrictMode = value;
     }
 
-    PutValueFunc customSetter() const
+    FunctionPtr<OperationPtrTag> customSetter() const
     {
         ASSERT(isCacheableCustom());
         return m_putFunction;
@@ -138,7 +137,7 @@ private:
     bool m_isInitialization;
     uint8_t m_context;
     CacheabilityType m_cacheability;
-    PutValueFunc m_putFunction;
+    FunctionPtr<OperationPtrTag> m_putFunction;
 };
 
 } // namespace JSC

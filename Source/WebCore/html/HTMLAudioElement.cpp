@@ -30,8 +30,11 @@
 #include "HTMLAudioElement.h"
 
 #include "HTMLNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLAudioElement);
 
 using namespace HTMLNames;
 
@@ -44,6 +47,7 @@ inline HTMLAudioElement::HTMLAudioElement(const QualifiedName& tagName, Document
 Ref<HTMLAudioElement> HTMLAudioElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
 {
     auto element = adoptRef(*new HTMLAudioElement(tagName, document, createdByParser));
+    element->finishInitialization();
     element->suspendIfNeeded();
     return element;
 }

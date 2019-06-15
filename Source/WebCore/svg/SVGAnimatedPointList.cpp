@@ -34,14 +34,12 @@ SVGAnimatedPointListAnimator::SVGAnimatedPointListAnimator(SVGAnimationElement* 
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedPointListAnimator::constructFromString(const String& string)
 {
-    auto animatedType = SVGAnimatedType::createPointList(std::make_unique<SVGPointListValues>());
-    pointsListFromSVGData(animatedType->pointList(), string);
-    return animatedType;
+    return SVGAnimatedType::create(SVGPropertyTraits<SVGPointListValues>::fromString(string));
 }
 
 std::unique_ptr<SVGAnimatedType> SVGAnimatedPointListAnimator::startAnimValAnimation(const SVGElementAnimatedPropertyList& animatedTypes)
 {
-    return SVGAnimatedType::createPointList(constructFromBaseValue<SVGAnimatedPointList>(animatedTypes));
+    return constructFromBaseValue<SVGAnimatedPointList>(animatedTypes);
 }
 
 void SVGAnimatedPointListAnimator::stopAnimValAnimation(const SVGElementAnimatedPropertyList& animatedTypes)
@@ -51,7 +49,7 @@ void SVGAnimatedPointListAnimator::stopAnimValAnimation(const SVGElementAnimated
 
 void SVGAnimatedPointListAnimator::resetAnimValToBaseVal(const SVGElementAnimatedPropertyList& animatedTypes, SVGAnimatedType& type)
 {
-    resetFromBaseValue<SVGAnimatedPointList>(animatedTypes, type, &SVGAnimatedType::pointList);
+    resetFromBaseValue<SVGAnimatedPointList>(animatedTypes, type);
 }
 
 void SVGAnimatedPointListAnimator::animValWillChange(const SVGElementAnimatedPropertyList& animatedTypes)
@@ -69,8 +67,8 @@ void SVGAnimatedPointListAnimator::addAnimatedTypes(SVGAnimatedType* from, SVGAn
     ASSERT(from->type() == AnimatedPoints);
     ASSERT(from->type() == to->type());
 
-    const auto& fromPointList = from->pointList();
-    auto& toPointList = to->pointList();
+    const auto& fromPointList = from->as<SVGPointListValues>();
+    auto& toPointList = to->as<SVGPointListValues>();
 
     unsigned fromPointListSize = fromPointList.size();
     if (!fromPointListSize || fromPointListSize != toPointList.size())
@@ -84,10 +82,10 @@ void SVGAnimatedPointListAnimator::calculateAnimatedValue(float percentage, unsi
 {
     ASSERT(m_animationElement);
 
-    const auto& fromPointList = m_animationElement->animationMode() == ToAnimation ? animated->pointList() : from->pointList();
-    const auto& toPointList = to->pointList();
-    const auto& toAtEndOfDurationPointList = toAtEndOfDuration->pointList();
-    auto& animatedPointList = animated->pointList();
+    const auto& fromPointList = (m_animationElement->animationMode() == ToAnimation ? animated : from)->as<SVGPointListValues>();
+    const auto& toPointList = to->as<SVGPointListValues>();
+    const auto& toAtEndOfDurationPointList = toAtEndOfDuration->as<SVGPointListValues>();
+    auto& animatedPointList = animated->as<SVGPointListValues>();
     if (!m_animationElement->adjustFromToListValues<SVGPointListValues>(fromPointList, toPointList, animatedPointList, percentage))
         return;
 

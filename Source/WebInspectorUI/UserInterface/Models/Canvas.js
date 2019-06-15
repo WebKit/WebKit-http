@@ -23,25 +23,31 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Canvas = class Canvas extends WebInspector.Object
+WI.Canvas = class Canvas extends WI.Object
 {
-    constructor(identifier, contextType, frame, {domNode, cssCanvasName, contextAttributes, memoryCost} = {})
+    constructor(identifier, contextType, {domNode, cssCanvasName, contextAttributes, memoryCost, backtrace} = {})
     {
         super();
 
         console.assert(identifier);
         console.assert(contextType);
-        console.assert(frame instanceof WebInspector.Frame);
 
         this._identifier = identifier;
         this._contextType = contextType;
-        this._frame = frame;
         this._domNode = domNode || null;
         this._cssCanvasName = cssCanvasName || "";
         this._contextAttributes = contextAttributes || {};
+        this._extensions = new Set;
         this._memoryCost = memoryCost || NaN;
+        this._backtrace = backtrace || [];
 
         this._cssCanvasClientNodes = null;
+        this._shaderProgramCollection = new WI.ShaderProgramCollection;
+        this._recordingCollection = new WI.RecordingCollection;
+
+        this._nextShaderProgramDisplayNumber = 1;
+
+        this._requestNodePromise = null;
     }
 
     // Static
@@ -51,41 +57,46 @@ WebInspector.Canvas = class Canvas extends WebInspector.Object
         let contextType = null;
         switch (payload.contextType) {
         case CanvasAgent.ContextType.Canvas2D:
-            contextType = WebInspector.Canvas.ContextType.Canvas2D;
+            contextType = WI.Canvas.ContextType.Canvas2D;
+            break;
+        case CanvasAgent.ContextType.BitmapRenderer:
+            contextType = WI.Canvas.ContextType.BitmapRenderer;
             break;
         case CanvasAgent.ContextType.WebGL:
-            contextType = WebInspector.Canvas.ContextType.WebGL;
+            contextType = WI.Canvas.ContextType.WebGL;
             break;
         case CanvasAgent.ContextType.WebGL2:
-            contextType = WebInspector.Canvas.ContextType.WebGL2;
+            contextType = WI.Canvas.ContextType.WebGL2;
             break;
         case CanvasAgent.ContextType.WebGPU:
-            contextType = WebInspector.Canvas.ContextType.WebGPU;
+            contextType = WI.Canvas.ContextType.WebGPU;
             break;
         default:
             console.error("Invalid canvas context type", payload.contextType);
         }
 
-        let frame = WebInspector.frameResourceManager.frameForIdentifier(payload.frameId);
-        return new WebInspector.Canvas(payload.canvasId, contextType, frame, {
-            domNode: payload.nodeId ? WebInspector.domTreeManager.nodeForId(payload.nodeId) : null,
+        return new WI.Canvas(payload.canvasId, contextType, {
+            domNode: payload.nodeId ? WI.domTreeManager.nodeForId(payload.nodeId) : null,
             cssCanvasName: payload.cssCanvasName,
             contextAttributes: payload.contextAttributes,
             memoryCost: payload.memoryCost,
+            backtrace: Array.isArray(payload.backtrace) ? payload.backtrace.map((item) => WI.CallFrame.fromPayload(WI.mainTarget, item)) : [],
         });
     }
 
     static displayNameForContextType(contextType)
     {
         switch (contextType) {
-        case WebInspector.Canvas.ContextType.Canvas2D:
-            return WebInspector.UIString("2D");
-        case WebInspector.Canvas.ContextType.WebGL:
-            return WebInspector.unlocalizedString("WebGL");
-        case WebInspector.Canvas.ContextType.WebGL2:
-            return WebInspector.unlocalizedString("WebGL2");
-        case WebInspector.Canvas.ContextType.WebGPU:
-            return WebInspector.unlocalizedString("WebGPU");
+        case WI.Canvas.ContextType.Canvas2D:
+            return WI.UIString("2D");
+        case WI.Canvas.ContextType.BitmapRenderer:
+            return WI.unlocalizedString("Bitmap Renderer");
+        case WI.Canvas.ContextType.WebGL:
+            return WI.unlocalizedString("WebGL");
+        case WI.Canvas.ContextType.WebGL2:
+            return WI.unlocalizedString("WebGL2");
+        case WI.Canvas.ContextType.WebGPU:
+            return WI.unlocalizedString("WebGPU");
         default:
             console.error("Invalid canvas context type", contextType);
         }
@@ -93,16 +104,24 @@ WebInspector.Canvas = class Canvas extends WebInspector.Object
 
     static resetUniqueDisplayNameNumbers()
     {
-        WebInspector.Canvas._nextUniqueDisplayNameNumber = 1;
+        WI.Canvas._nextUniqueDisplayNameNumber = 1;
     }
 
     // Public
 
     get identifier() { return this._identifier; }
     get contextType() { return this._contextType; }
-    get frame() { return this._frame; }
     get cssCanvasName() { return this._cssCanvasName; }
     get contextAttributes() { return this._contextAttributes; }
+    get extensions() { return this._extensions; }
+    get backtrace() { return this._backtrace; }
+    get shaderProgramCollection() { return this._shaderProgramCollection; }
+    get recordingCollection() { return this._recordingCollection; }
+
+    get isRecording()
+    {
+        return WI.canvasManager.recordingCanvas === this;
+    }
 
     get memoryCost()
     {
@@ -116,55 +135,48 @@ WebInspector.Canvas = class Canvas extends WebInspector.Object
 
         this._memoryCost = memoryCost;
 
-        this.dispatchEventToListeners(WebInspector.Canvas.Event.MemoryChanged);
+        this.dispatchEventToListeners(WI.Canvas.Event.MemoryChanged);
     }
 
     get displayName()
     {
         if (this._cssCanvasName)
-            return WebInspector.UIString("CSS canvas “%s”").format(this._cssCanvasName);
+            return WI.UIString("CSS canvas “%s”").format(this._cssCanvasName);
 
         if (this._domNode) {
             let idSelector = this._domNode.escapedIdSelector;
             if (idSelector)
-                return WebInspector.UIString("Canvas %s").format(idSelector);
+                return WI.UIString("Canvas %s").format(idSelector);
         }
 
         if (!this._uniqueDisplayNameNumber)
             this._uniqueDisplayNameNumber = this.constructor._nextUniqueDisplayNameNumber++;
-        return WebInspector.UIString("Canvas %d").format(this._uniqueDisplayNameNumber);
+        return WI.UIString("Canvas %d").format(this._uniqueDisplayNameNumber);
     }
 
-    requestNode(callback)
+    requestNode()
     {
-        if (this._domNode) {
-            callback(this._domNode);
-            return;
+        if (!this._requestNodePromise) {
+            this._requestNodePromise = new Promise((resolve, reject) => {
+                WI.domTreeManager.ensureDocument();
+
+                CanvasAgent.requestNode(this._identifier).then((result) => {
+                    this._domNode = WI.domTreeManager.nodeForId(result.nodeId);
+                    if (!this._domNode) {
+                        reject(`No DOM node for identifier: ${result.nodeId}.`);
+                        return;
+                    }
+                    resolve(this._domNode);
+                }).catch(reject);
+            });
         }
 
-        WebInspector.domTreeManager.ensureDocument();
-
-        CanvasAgent.requestNode(this._identifier, (error, nodeId) => {
-            if (error) {
-                callback(null);
-                return;
-            }
-
-            this._domNode = WebInspector.domTreeManager.nodeForId(nodeId);
-            callback(this._domNode);
-        });
+        return this._requestNodePromise;
     }
 
-    requestContent(callback)
+    requestContent()
     {
-        CanvasAgent.requestContent(this._identifier, (error, content) => {
-            if (error) {
-                callback(null);
-                return;
-            }
-
-            callback(content);
-        });
+        return CanvasAgent.requestContent(this._identifier).then((result) => result.content).catch((error) => console.error(error));
     }
 
     requestCSSCanvasClientNodes(callback)
@@ -179,7 +191,7 @@ WebInspector.Canvas = class Canvas extends WebInspector.Object
             return;
         }
 
-        WebInspector.domTreeManager.ensureDocument();
+        WI.domTreeManager.ensureDocument();
 
         CanvasAgent.requestCSSCanvasClientNodes(this._identifier, (error, clientNodeIds) => {
             if (error) {
@@ -188,51 +200,116 @@ WebInspector.Canvas = class Canvas extends WebInspector.Object
             }
 
             clientNodeIds = Array.isArray(clientNodeIds) ? clientNodeIds : [];
-            this._cssCanvasClientNodes = clientNodeIds.map((clientNodeId) => WebInspector.domTreeManager.nodeForId(clientNodeId));
-
+            this._cssCanvasClientNodes = clientNodeIds.map((clientNodeId) => WI.domTreeManager.nodeForId(clientNodeId));
             callback(this._cssCanvasClientNodes);
+        });
+    }
+
+    requestSize()
+    {
+        function calculateSize(domNode) {
+            function getAttributeValue(name) {
+                let value = Number(domNode.getAttribute(name));
+                if (!Number.isInteger(value) || value < 0)
+                    return NaN;
+                return value;
+            }
+
+            return {
+                width: getAttributeValue("width"),
+                height: getAttributeValue("height")
+            };
+        }
+
+        function getPropertyValue(remoteObject, name) {
+            return new Promise((resolve, reject) => {
+                remoteObject.getProperty(name, (error, result) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    resolve(result);
+                });
+            });
+        }
+
+        return this.requestNode().then((domNode) => {
+            let size = calculateSize(domNode);
+            if (!isNaN(size.width) && !isNaN(size.height))
+                return size;
+
+            // Since the "width" and "height" properties of canvas elements are more than just
+            // attributes, we need to invoke the getter for each to get the actual value.
+            //  - https://html.spec.whatwg.org/multipage/canvas.html#attr-canvas-width
+            //  - https://html.spec.whatwg.org/multipage/canvas.html#attr-canvas-height
+            let remoteObject = null;
+            return WI.RemoteObject.resolveNode(domNode).then((object) => {
+                remoteObject = object;
+                return Promise.all([getPropertyValue(object, "width"), getPropertyValue(object, "height")]);
+            }).then((values) => {
+                let width = values[0].value;
+                let height = values[1].value;
+                values[0].release();
+                values[1].release();
+                remoteObject.release();
+                return {width, height};
+            });
         });
     }
 
     saveIdentityToCookie(cookie)
     {
-        cookie[WebInspector.Canvas.FrameURLCookieKey] = this._frame.url.hash;
-
         if (this._cssCanvasName)
-            cookie[WebInspector.Canvas.CSSCanvasNameCookieKey] = this._cssCanvasName;
+            cookie[WI.Canvas.CSSCanvasNameCookieKey] = this._cssCanvasName;
         else if (this._domNode)
-            cookie[WebInspector.Canvas.NodePathCookieKey] = this._domNode.path;
+            cookie[WI.Canvas.NodePathCookieKey] = this._domNode.path;
 
+    }
+
+    enableExtension(extension)
+    {
+        // Called from WI.CanvasManager.
+
+        this._extensions.add(extension);
+
+        this.dispatchEventToListeners(WI.Canvas.Event.ExtensionEnabled, {extension});
     }
 
     cssCanvasClientNodesChanged()
     {
-        // Called from WebInspector.CanvasManager.
+        // Called from WI.CanvasManager.
 
         if (!this._cssCanvasName)
             return;
 
         this._cssCanvasClientNodes = null;
 
-        this.dispatchEventToListeners(WebInspector.Canvas.Event.CSSCanvasClientNodesChanged);
+        this.dispatchEventToListeners(WI.Canvas.Event.CSSCanvasClientNodesChanged);
+    }
+
+    nextShaderProgramDisplayNumber()
+    {
+        // Called from WI.ShaderProgram.
+
+        return this._nextShaderProgramDisplayNumber++;
     }
 };
 
-WebInspector.Canvas._nextUniqueDisplayNameNumber = 1;
+WI.Canvas._nextUniqueDisplayNameNumber = 1;
 
-WebInspector.Canvas.FrameURLCookieKey = "canvas-frame-url";
-WebInspector.Canvas.CSSCanvasNameCookieKey = "canvas-css-canvas-name";
+WI.Canvas.FrameURLCookieKey = "canvas-frame-url";
+WI.Canvas.CSSCanvasNameCookieKey = "canvas-css-canvas-name";
 
-WebInspector.Canvas.ContextType = {
+WI.Canvas.ContextType = {
     Canvas2D: "canvas-2d",
+    BitmapRenderer: "bitmaprenderer",
     WebGL: "webgl",
     WebGL2: "webgl2",
     WebGPU: "webgpu",
 };
 
-WebInspector.Canvas.ResourceSidebarType = "resource-type-canvas";
-
-WebInspector.Canvas.Event = {
+WI.Canvas.Event = {
     MemoryChanged: "canvas-memory-changed",
+    ExtensionEnabled: "canvas-extension-enabled",
     CSSCanvasClientNodesChanged: "canvas-css-canvas-client-nodes-changed",
 };

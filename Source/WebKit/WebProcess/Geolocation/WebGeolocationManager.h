@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGeolocationManager_h
-#define WebGeolocationManager_h
+#pragma once
 
 #include "MessageReceiver.h"
 #include "WebGeolocationPosition.h"
@@ -36,6 +35,7 @@
 
 namespace WebCore {
 class Geolocation;
+class GeolocationPosition;
 }
 
 namespace WebKit {
@@ -46,15 +46,15 @@ class WebPage;
 class WebGeolocationManager : public WebProcessSupplement, public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebGeolocationManager);
 public:
-    explicit WebGeolocationManager(WebProcess*);
+    explicit WebGeolocationManager(WebProcess&);
 
     static const char* supplementName();
 
-    void registerWebPage(WebPage*);
-    void unregisterWebPage(WebPage*);
-    void setEnableHighAccuracyForPage(WebPage*, bool);
+    void registerWebPage(WebPage&);
+    void unregisterWebPage(WebPage&);
+    void setEnableHighAccuracyForPage(WebPage&, bool);
 
-    void requestPermission(WebCore::Geolocation*);
+    void requestPermission(WebCore::Geolocation&);
 
 private:
     // IPC::MessageReceiver
@@ -63,17 +63,15 @@ private:
     bool isUpdating() const { return !m_pageSet.isEmpty(); }
     bool isHighAccuracyEnabled() const { return !m_highAccuracyPageSet.isEmpty(); }
 
-    void didChangePosition(const WebGeolocationPosition::Data&);
+    void didChangePosition(const WebCore::GeolocationPosition&);
     void didFailToDeterminePosition(const String& errorMessage);
 #if PLATFORM(IOS)
     void resetPermissions();
 #endif // PLATFORM(IOS)
 
-    WebProcess* m_process;
+    WebProcess& m_process;
     HashSet<WebPage*> m_pageSet;
     HashSet<WebPage*> m_highAccuracyPageSet;
 };
 
 } // namespace WebKit
-
-#endif // WebGeolocationManager_h

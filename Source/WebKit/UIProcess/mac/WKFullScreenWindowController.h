@@ -31,10 +31,10 @@
 namespace WebKit { 
 class LayerTreeContext;
 class WebPageProxy;
+class WKFullScreenWindowControllerVideoFullscreenModelClient;
 }
 
 namespace WebCore {
-class SleepDisabler;
 class IntRect;
 }
 
@@ -55,10 +55,12 @@ typedef enum FullScreenState : NSInteger FullScreenState;
     RetainPtr<NSTimer> _watchdogTimer;
     RetainPtr<NSArray> _savedConstraints;
 
+    bool _requestedExitFullScreen;
     FullScreenState _fullScreenState;
 
     double _savedScale;
     RefPtr<WebKit::VoidCallback> _repaintCallback;
+    std::unique_ptr<WebKit::WKFullScreenWindowControllerVideoFullscreenModelClient> _videoFullscreenClient;
     float _savedTopContentInset;
 }
 
@@ -76,8 +78,11 @@ typedef enum FullScreenState : NSInteger FullScreenState;
 - (void)exitFullScreen;
 - (void)requestExitFullScreen;
 - (void)close;
-- (void)beganEnterFullScreenWithInitialFrame:(const WebCore::IntRect&)initialFrame finalFrame:(const WebCore::IntRect&)finalFrame;
-- (void)beganExitFullScreenWithInitialFrame:(const WebCore::IntRect&)initialFrame finalFrame:(const WebCore::IntRect&)finalFrame;
+- (void)beganEnterFullScreenWithInitialFrame:(NSRect)initialFrame finalFrame:(NSRect)finalFrame;
+- (void)beganExitFullScreenWithInitialFrame:(NSRect)initialFrame finalFrame:(NSRect)finalFrame;
+
+- (void)videoControlsManagerDidChange;
+- (void)didEnterPictureInPicture;
 
 @end
 

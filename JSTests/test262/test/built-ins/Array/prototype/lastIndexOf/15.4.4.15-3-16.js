@@ -2,13 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-3-16
 description: >
     Array.prototype.lastIndexOf - value of 'length' is a string which
     is able to be converted into hex number
 ---*/
 
-        var obj = { 2573: 2573, 2574: 0x000A0E, length: "0x000A0E" };
+var obj = {
+  2573: 2573,
+  2574: 0x000A0E,
+  length: "0x000A0E"
+};
 
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, 2573), 2573, 'Array.prototype.lastIndexOf.call(obj, 2573)');
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, 0x000A0E), -1, 'Array.prototype.lastIndexOf.call(obj, 0x000A0E)');

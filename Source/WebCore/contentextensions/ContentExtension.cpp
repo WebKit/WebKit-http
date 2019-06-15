@@ -36,12 +36,12 @@
 namespace WebCore {
 namespace ContentExtensions {
 
-RefPtr<ContentExtension> ContentExtension::create(const String& identifier, Ref<CompiledContentExtension>&& compiledExtension)
+Ref<ContentExtension> ContentExtension::create(const String& identifier, Ref<CompiledContentExtension>&& compiledExtension, ShouldCompileCSS shouldCompileCSS)
 {
-    return adoptRef(*new ContentExtension(identifier, WTFMove(compiledExtension)));
+    return adoptRef(*new ContentExtension(identifier, WTFMove(compiledExtension), shouldCompileCSS));
 }
 
-ContentExtension::ContentExtension(const String& identifier, Ref<CompiledContentExtension>&& compiledExtension)
+ContentExtension::ContentExtension(const String& identifier, Ref<CompiledContentExtension>&& compiledExtension, ShouldCompileCSS shouldCompileCSS)
     : m_identifier(identifier)
     , m_compiledExtension(WTFMove(compiledExtension))
 {
@@ -55,8 +55,9 @@ ContentExtension::ContentExtension(const String& identifier, Ref<CompiledContent
         ASSERT((action & ~IfConditionFlag) == static_cast<uint32_t>(action));
         m_universalActionsWithConditions.append(action);
     }
-    
-    compileGlobalDisplayNoneStyleSheet();
+
+    if (shouldCompileCSS == ShouldCompileCSS::Yes)
+        compileGlobalDisplayNoneStyleSheet();
     m_universalActionsWithoutConditions.shrinkToFit();
     m_universalActionsWithConditions.shrinkToFit();
 }
@@ -121,7 +122,7 @@ void ContentExtension::populateConditionCacheIfNeeded(const URL& topURL)
     if (m_cachedTopURL != topURL) {
         DFABytecodeInterpreter interpreter(m_compiledExtension->topURLFiltersBytecode(), m_compiledExtension->topURLFiltersBytecodeLength());
         const uint16_t allLoadTypesAndResourceTypes = LoadTypeMask | ResourceTypeMask;
-        String string = m_compiledExtension->conditionsApplyOnlyToDomain() ? topURL.host() : topURL.string();
+        String string = m_compiledExtension->conditionsApplyOnlyToDomain() ? topURL.host().toString() : topURL.string();
         auto topURLActions = interpreter.interpret(string.utf8(), allLoadTypesAndResourceTypes);
         
         m_cachedTopURLActions.clear();

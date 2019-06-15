@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
 #
@@ -40,13 +40,11 @@ use FindBin;
 use lib $FindBin::Bin;
 use webkitdirs;
 
-sub copyMissingHeadersToIPhoneOSSDKIfNeeded();
+sub copyMissingHeadersFromSDKToSDKIfNeeded($$);
 sub copyMissingXSLTHeadersToSDKIfNeeded($);
 sub createLegacyXcodeSpecificationFilesForSDKIfNeeded($);
 sub mergeXcodeSpecificationWithSpecificationAndId($$$);
 sub readXcodeSpecificationById($$);
-sub sdkDirectory($);
-sub sdkPlatformDirectory($);
 sub updateXcode7SpecificationFile($);
 sub updateXcodeSpecificationFilesForSDKIfNeeded($);
 sub xcodeSDKSpecificationsPath($);
@@ -68,14 +66,16 @@ for my $sdk (qw(iphoneos iphonesimulator)) {
     copyMissingXSLTHeadersToSDKIfNeeded($sdk);
 }
 
-copyMissingHeadersToIPhoneOSSDKIfNeeded();
+copyMissingHeadersFromSDKToSDKIfNeeded("macosx", "iphonesimulator");
+copyMissingHeadersFromSDKToSDKIfNeeded("iphonesimulator", "iphoneos");
 
 exit 0;
 
-sub copyMissingHeadersToIPhoneOSSDKIfNeeded()
+sub copyMissingHeadersFromSDKToSDKIfNeeded($$)
 {
     my @missingHeaders = qw(
         /usr/include/crt_externs.h
+        /usr/include/launch.h
         /usr/include/MacErrors.h
         /usr/include/mach/mach_types.defs
         /usr/include/mach/machine/machine_types.defs
@@ -88,17 +88,19 @@ sub copyMissingHeadersToIPhoneOSSDKIfNeeded()
         /usr/include/sqlite3_private.h
     );
 
-    my $iphoneosSDKDirectory = sdkDirectory("iphoneos");
-    my $iphonesimulatorSDKDirectory = sdkDirectory("iphonesimulator");
+    my ($sourceSDK, $destinationSDK) = @_;
+    my $sourceDirectory = sdkDirectory($sourceSDK);
+    my $destinationDirectory = sdkDirectory($destinationSDK);
 
     for my $header (@missingHeaders) {
-        my $iphoneosSDKPath = File::Spec->canonpath(File::Spec->catfile($iphoneosSDKDirectory, $header));
-        next if (-f $iphoneosSDKPath);
+        my $sourcePath = File::Spec->canonpath(File::Spec->catfile($sourceDirectory, $header));
+        my $destinationPath = File::Spec->canonpath(File::Spec->catfile($destinationDirectory, $header));
+        next if (-f $destinationPath);
+        next if (!-f $sourcePath);
 
-        my $iphonesimulatorSDKPath = File::Spec->canonpath(File::Spec->catfile($iphonesimulatorSDKDirectory, $header));
-        system("/usr/bin/ditto", $iphonesimulatorSDKPath, $iphoneosSDKPath);
-        die "Could not copy $iphonesimulatorSDKPath to $iphoneosSDKPath: $!" if exitStatus($?);
-        print "Successfully copied $iphonesimulatorSDKPath to $iphoneosSDKPath.\n";
+        system("/usr/bin/ditto", $sourcePath, $destinationPath);
+        die "Could not copy $sourcePath to $destinationPath: $!" if exitStatus($?);
+        print "Successfully copied $sourcePath to $destinationPath.\n";
     }
 }
 
@@ -207,22 +209,6 @@ sub createLegacyXcodeSpecificationFilesForSDKIfNeeded($)
         mergeXcodeSpecificationWithSpecificationAndId($productTypesForWebKitDevelopmentPath, $productTypesForMacOSXPath, COMMAND_LINE_PRODUCT_TYPE);
         print "Successfully created '$productTypesForWebKitDevelopmentPath'.\n";
     }
-}
-
-sub sdkDirectory($)
-{
-    my ($sdkName) = @_;
-    chomp(my $sdkDirectory = `xcrun --sdk '$sdkName' --show-sdk-path`);
-    die "Failed to get SDK path from xcrun: $!" if exitStatus($?);
-    return $sdkDirectory;
-}
-
-sub sdkPlatformDirectory($)
-{
-    my ($sdkName) = @_;
-    chomp(my $sdkPlatformDirectory = `xcrun --sdk '$sdkName' --show-sdk-platform-path`);
-    die "Failed to get SDK platform path from xcrun: $!" if exitStatus($?);
-    return $sdkPlatformDirectory;
 }
 
 sub writeXcodeSpecification($$)

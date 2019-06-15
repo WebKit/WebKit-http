@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "setUTCSeconds" has { DontEnum } attributes
+esid: sec-date.prototype.setutcseconds
 es5id: 15.9.5.31_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.setUTCSeconds;
-if(x === 1)
+if (x === 1)
   Date.prototype.setUTCSeconds = 2;
 else
   Date.prototype.setUTCSeconds = 1;

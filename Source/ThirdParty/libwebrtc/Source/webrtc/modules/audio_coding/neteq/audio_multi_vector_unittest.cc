@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/neteq/audio_multi_vector.h"
+#include "modules/audio_coding/neteq/audio_multi_vector.h"
 
 #include <assert.h>
 #include <stdlib.h>
 
 #include <string>
 
-#include "webrtc/test/gtest.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/numerics/safe_conversions.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -36,9 +36,7 @@ class AudioMultiVectorTest : public ::testing::TestWithParam<size_t> {
     array_interleaved_ = new int16_t[num_channels_ * array_length()];
   }
 
-  ~AudioMultiVectorTest() {
-    delete [] array_interleaved_;
-  }
+  ~AudioMultiVectorTest() { delete[] array_interleaved_; }
 
   virtual void SetUp() {
     // Populate test arrays.
@@ -51,15 +49,13 @@ class AudioMultiVectorTest : public ::testing::TestWithParam<size_t> {
     // And so on.
     for (size_t i = 0; i < array_length(); ++i) {
       for (size_t j = 1; j <= num_channels_; ++j) {
-        *ptr = j * 100 + i;
+        *ptr = rtc::checked_cast<int16_t>(j * 100 + i);
         ++ptr;
       }
     }
   }
 
-  size_t array_length() const {
-    return sizeof(array_) / sizeof(array_[0]);
-  }
+  size_t array_length() const { return sizeof(array_) / sizeof(array_[0]); }
 
   const size_t num_channels_;
   size_t interleaved_length_;
@@ -167,8 +163,9 @@ TEST_P(AudioMultiVectorTest, PushBackFromIndex) {
   ASSERT_EQ(2u, vec2.Size());
   for (size_t channel = 0; channel < num_channels_; ++channel) {
     for (size_t i = 0; i < 2; ++i) {
-      EXPECT_EQ(array_interleaved_[channel + num_channels_ *
-                  (array_length() - 2 + i)], vec2[channel][i]);
+      EXPECT_EQ(array_interleaved_[channel +
+                                   num_channels_ * (array_length() - 2 + i)],
+                vec2[channel][i]);
     }
   }
 }
@@ -205,7 +202,7 @@ TEST_P(AudioMultiVectorTest, ReadInterleaved) {
   EXPECT_EQ(0,
             memcmp(array_interleaved_, output, read_samples * sizeof(int16_t)));
 
-  delete [] output;
+  delete[] output;
 }
 
 // Test the PopFront method.

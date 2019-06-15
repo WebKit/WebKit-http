@@ -35,6 +35,10 @@
 #include "NotImplemented.h"
 #include <windows.h>
 
+#if USE(CG)
+#include "GraphicsContextCG.h"
+#endif
+
 namespace WebCore {
 
 // Returns info for the default monitor if widget is NULL
@@ -99,6 +103,13 @@ FloatRect screenAvailableRect(Widget* widget)
     MONITORINFOEX monitorInfo = monitorInfoForWidget(widget);
     return monitorInfo.rcWork;
 }
+
+#if USE(CG)
+CGColorSpaceRef screenColorSpace(Widget*)
+{
+    return sRGBColorSpaceRef();
+}
+#endif
 
 bool screenSupportsExtendedColor(Widget*)
 {

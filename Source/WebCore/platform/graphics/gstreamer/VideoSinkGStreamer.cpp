@@ -30,8 +30,7 @@
 #include "VideoSinkGStreamer.h"
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
-#include "GRefPtrGStreamer.h"
-#include "GStreamerUtilities.h"
+#include "GStreamerCommon.h"
 #include "IntSize.h"
 #include <glib.h>
 #include <gst/gst.h>
@@ -135,7 +134,7 @@ struct _WebKitVideoSinkPrivate {
 
     VideoRenderRequestScheduler scheduler;
     GstVideoInfo info;
-    GstCaps* currentCaps;
+    GstCaps* currentCaps { nullptr };
 };
 
 #define webkit_video_sink_parent_class parent_class

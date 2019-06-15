@@ -2,7 +2,6 @@
 
 import logging
 import os
-import re
 import subprocess
 import time
 
@@ -32,7 +31,7 @@ class OSXSafariDriver(OSXBrowserDriver):
             safari_app_in_build_path = os.path.join(browser_build_path, 'Safari.app/Contents/MacOS/Safari')
             if os.path.exists(safari_app_in_build_path):
                 args = [safari_app_in_build_path]
-                env = {'DYLD_FRAMEWORK_PATH': browser_build_path, 'DYLD_LIBRARY_PATH': browser_build_path, '__XPC_DYLD_LIBRARY_PATH': browser_build_path}
+                env = {'DYLD_FRAMEWORK_PATH': browser_build_path, 'DYLD_LIBRARY_PATH': browser_build_path, '__XPC_DYLD_FRAMEWORK_PATH': browser_build_path, '__XPC_DYLD_LIBRARY_PATH': browser_build_path}
             else:
                 _log.info('Could not find Safari.app at %s, using the system Safari instead' % safari_app_in_build_path)
 
@@ -44,6 +43,13 @@ class OSXSafariDriver(OSXBrowserDriver):
         # command may use the system safari.
         time.sleep(3)
         subprocess.Popen(['open', '-a', args[0], url])
+
+    def launch_driver(self, url, options, browser_build_path):
+        import webkitpy.thirdparty.autoinstalled.selenium
+        from selenium import webdriver
+        driver = webdriver.Safari(quiet=False)
+        self._launch_webdriver(url=url, driver=driver)
+        return driver
 
     def close_browsers(self):
         super(OSXSafariDriver, self).close_browsers()

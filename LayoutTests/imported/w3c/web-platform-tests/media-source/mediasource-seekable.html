@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!--  Copyright © 2016 Chromium authors and World Wide Web Consortium, (Massachusetts Institute of Technology, ERCIM, Keio University, Beihang).  -->
+<!-- Copyright © 2016 Chromium authors and World Wide Web Consortium, (Massachusetts Institute of Technology, ERCIM, Keio University, Beihang). -->
 <meta charset="utf-8">
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
@@ -33,9 +33,12 @@
     {
         var initSegment = MediaSourceUtil.extractSegmentData(mediaData, segmentInfo.init);
         test.expectEvent(mediaElement, 'durationchange', 'mediaElement got duration after initsegment');
+        test.expectEvent(sourceBuffer, 'update');
+        test.expectEvent(sourceBuffer, 'updateend');
         sourceBuffer.appendBuffer(initSegment);
         test.waitForExpectedEvents(function()
         {
+            assert_false(sourceBuffer.updating, "updating attribute is false");
             test.expectEvent(mediaElement, 'durationchange', 'mediaElement got infinity duration');
             mediaSource.duration = Infinity;
             test.waitForExpectedEvents(function()

@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer.prototype.slice
 es6id: 24.1.4.3
 description: >
   Throws TypeError if `constructor` property is not an object.
-info: >
+info: |
   ArrayBuffer.prototype.slice ( start, end )
 
   ...
@@ -20,11 +21,14 @@ info: >
     4. If C is undefined, return defaultConstructor.
     5. If Type(C) is not Object, throw a TypeError exception.
     ...
+features: [Symbol]
 ---*/
 
 var arrayBuffer = new ArrayBuffer(8);
 
-function callSlice() { arrayBuffer.slice(); }
+function callSlice() {
+  arrayBuffer.slice();
+}
 
 arrayBuffer.constructor = null;
 assert.throws(TypeError, callSlice, "`constructor` value is null");

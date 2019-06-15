@@ -32,20 +32,23 @@
 #include "Internals.h"
 #include "JSDocument.h"
 #include "JSInternals.h"
+#include "JSServiceWorkerInternals.h"
+#include "JSWorkerGlobalScope.h"
 #include "LogInitialization.h"
 #include "MockGamepadProvider.h"
 #include "Page.h"
+#include "SWContextManager.h"
+#include "ServiceWorkerGlobalScope.h"
 #include "URLParser.h"
 #include "WheelEventTestTrigger.h"
 #include <JavaScriptCore/APICast.h>
+#include <JavaScriptCore/CallFrame.h>
+#include <JavaScriptCore/IdentifierInlines.h>
 #include <JavaScriptCore/JSValueRef.h>
-#include <interpreter/CallFrame.h>
-#include <runtime/IdentifierInlines.h>
-
-using namespace JSC;
-using namespace WebCore;
 
 namespace WebCoreTestSupport {
+using namespace JSC;
+using namespace WebCore;
 
 void injectInternalsObject(JSContextRef context)
 {
@@ -53,8 +56,11 @@ void injectInternalsObject(JSContextRef context)
     JSLockHolder lock(exec);
     JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
     ScriptExecutionContext* scriptContext = globalObject->scriptExecutionContext();
-    if (is<Document>(*scriptContext))
-        globalObject->putDirect(exec->vm(), Identifier::fromString(exec, Internals::internalsId), toJS(exec, globalObject, Internals::create(downcast<Document>(*scriptContext))));
+    if (is<Document>(*scriptContext)) {
+        VM& vm = exec->vm();
+        globalObject->putDirect(vm, Identifier::fromString(&vm, Internals::internalsId), toJS(exec, globalObject, Internals::create(downcast<Document>(*scriptContext))));
+        globalObject->exposeDollarVM(vm);
+    }
 }
 
 void resetInternalsObject(JSContextRef context)
@@ -177,6 +183,25 @@ void setMockGamepadButtonValue(unsigned gamepadIndex, unsigned buttonIndex, doub
     UNUSED_PARAM(gamepadIndex);
     UNUSED_PARAM(buttonIndex);
     UNUSED_PARAM(buttonValue);
+#endif
+}
+
+void setupNewlyCreatedServiceWorker(uint64_t serviceWorkerIdentifier)
+{
+#if ENABLE(SERVICE_WORKER)
+    auto identifier = makeObjectIdentifier<ServiceWorkerIdentifierType>(serviceWorkerIdentifier);
+    SWContextManager::singleton().postTaskToServiceWorker(identifier, [identifier] (ServiceWorkerGlobalScope& globalScope) {
+        auto* script = globalScope.script();
+        if (!script)
+            return;
+
+        auto& state = *globalScope.execState();
+        JSLockHolder locker(state.vm());
+        auto* contextWrapper = script->workerGlobalScopeWrapper();
+        contextWrapper->putDirect(state.vm(), Identifier::fromString(&state, Internals::internalsId), toJS(&state, contextWrapper, ServiceWorkerInternals::create(identifier)));
+    });
+#else
+    UNUSED_PARAM(serviceWorkerIdentifier);
 #endif
 }
 

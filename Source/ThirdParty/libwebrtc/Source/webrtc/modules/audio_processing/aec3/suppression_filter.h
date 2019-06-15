@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_SUPPRESSION_FILTER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_SUPPRESSION_FILTER_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_SUPPRESSION_FILTER_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_SUPPRESSION_FILTER_H_
 
 #include <array>
 #include <vector>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
+#include "modules/audio_processing/aec3/aec3_common.h"
+#include "modules/audio_processing/aec3/aec3_fft.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -28,17 +28,17 @@ class SuppressionFilter {
                  const FftData& comfort_noise_high_bands,
                  const std::array<float, kFftLengthBy2Plus1>& suppression_gain,
                  float high_bands_gain,
+                 const FftData& E_lowest_band,
                  std::vector<std::vector<float>>* e);
 
  private:
   const int sample_rate_hz_;
   const OouraFft ooura_fft_;
   const Aec3Fft fft_;
-  std::array<float, kFftLengthBy2> e_input_old_;
   std::vector<std::array<float, kFftLengthBy2>> e_output_old_;
   RTC_DISALLOW_COPY_AND_ASSIGN(SuppressionFilter);
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_SUPPRESSION_FILTER_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_SUPPRESSION_FILTER_H_

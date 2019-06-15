@@ -28,48 +28,35 @@
 
 #if ENABLE(WEBGPU)
 
-#include "GPURenderPassDepthAttachmentDescriptor.h"
-#include "GPUTexture.h"
-#include "WebGPURenderingContext.h"
 #include "WebGPUTexture.h"
 
 namespace WebCore {
 
-Ref<WebGPURenderPassDepthAttachmentDescriptor> WebGPURenderPassDepthAttachmentDescriptor::create(WebGPURenderingContext* context, GPURenderPassDepthAttachmentDescriptor* descriptor)
+Ref<WebGPURenderPassDepthAttachmentDescriptor> WebGPURenderPassDepthAttachmentDescriptor::create(GPURenderPassDepthAttachmentDescriptor&& descriptor)
 {
-    return adoptRef(*new WebGPURenderPassDepthAttachmentDescriptor(context, descriptor));
+    return adoptRef(*new WebGPURenderPassDepthAttachmentDescriptor(WTFMove(descriptor)));
 }
 
-WebGPURenderPassDepthAttachmentDescriptor::WebGPURenderPassDepthAttachmentDescriptor(WebGPURenderingContext* context, GPURenderPassDepthAttachmentDescriptor* descriptor)
-    : WebGPURenderPassAttachmentDescriptor(context, descriptor)
+WebGPURenderPassDepthAttachmentDescriptor::WebGPURenderPassDepthAttachmentDescriptor(GPURenderPassDepthAttachmentDescriptor&& descriptor)
+    : m_descriptor { WTFMove(descriptor) }
 {
 }
 
-WebGPURenderPassDepthAttachmentDescriptor::~WebGPURenderPassDepthAttachmentDescriptor()
-{
-}
+WebGPURenderPassDepthAttachmentDescriptor::~WebGPURenderPassDepthAttachmentDescriptor() = default;
 
 double WebGPURenderPassDepthAttachmentDescriptor::clearDepth() const
 {
-    GPURenderPassDepthAttachmentDescriptor* descriptor = renderPassDepthAttachmentDescriptor();
-    if (!descriptor)
-        return 0;
-
-    return descriptor->clearDepth();
+    return m_descriptor.clearDepth();
 }
 
 void WebGPURenderPassDepthAttachmentDescriptor::setClearDepth(double newClearDepth)
 {
-    GPURenderPassDepthAttachmentDescriptor* descriptor = renderPassDepthAttachmentDescriptor();
-    if (!descriptor)
-        return;
-    
-    descriptor->setClearDepth(newClearDepth);
+    m_descriptor.setClearDepth(newClearDepth);
 }
 
-GPURenderPassDepthAttachmentDescriptor* WebGPURenderPassDepthAttachmentDescriptor::renderPassDepthAttachmentDescriptor() const
+const GPURenderPassAttachmentDescriptor& WebGPURenderPassDepthAttachmentDescriptor::descriptor() const
 {
-    return static_cast<GPURenderPassDepthAttachmentDescriptor*>(renderPassAttachmentDescriptor());
+    return m_descriptor;
 }
 
 } // namespace WebCore

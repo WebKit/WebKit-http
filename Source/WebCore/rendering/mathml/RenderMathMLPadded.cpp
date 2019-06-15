@@ -29,8 +29,11 @@
 #if ENABLE(MATHML)
 
 #include <cmath>
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMathMLPadded);
 
 RenderMathMLPadded::RenderMathMLPadded(MathMLPaddedElement& element, RenderStyle&& style)
     : RenderMathMLRow(element, WTFMove(style))
@@ -87,11 +90,10 @@ void RenderMathMLPadded::layoutBlock(bool relayoutChildren, LayoutUnit)
         return;
 
     // We first layout our children as a normal <mrow> element.
-    LayoutUnit contentAscent, contentDescent, contentWidth;
-    contentAscent = contentDescent = 0;
-    RenderMathMLRow::computeLineVerticalStretch(contentAscent, contentDescent);
-    RenderMathMLRow::layoutRowItems(contentAscent, contentDescent);
-    contentWidth = logicalWidth();
+    LayoutUnit contentWidth, contentAscent, contentDescent;
+    stretchVerticalOperatorsAndLayoutChildren();
+    getContentBoundingBox(contentWidth, contentAscent, contentDescent);
+    layoutRowItems(contentWidth, contentAscent);
 
     // We parse the mpadded attributes using the content metrics as the default value.
     LayoutUnit width = mpaddedWidth(contentWidth);
@@ -106,6 +108,8 @@ void RenderMathMLPadded::layoutBlock(bool relayoutChildren, LayoutUnit)
     // Set the final metrics.
     setLogicalWidth(width);
     setLogicalHeight(ascent + descent);
+
+    layoutPositionedObjects(relayoutChildren);
 
     clearNeedsLayout();
 }

@@ -22,14 +22,13 @@
 #include "config.h"
 #include "JSDOMConvertDate.h"
 
-#include <heap/HeapInlines.h>
-#include <runtime/DateInstance.h>
-#include <runtime/JSCJSValueInlines.h>
-#include <runtime/JSGlobalObject.h>
-
-using namespace JSC;
+#include <JavaScriptCore/DateInstance.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/JSCJSValueInlines.h>
+#include <JavaScriptCore/JSGlobalObject.h>
 
 namespace WebCore {
+using namespace JSC;
 
 // FIXME: This should get passed a global object rather than getting it out of the ExecState.
 JSValue jsDate(ExecState& state, double value)
@@ -41,7 +40,7 @@ double valueToDate(ExecState& state, JSValue value)
 {
     if (value.isNumber())
         return value.asNumber();
-    if (!value.inherits(state.vm(), DateInstance::info()))
+    if (!value.inherits<DateInstance>(state.vm()))
         return std::numeric_limits<double>::quiet_NaN();
     return static_cast<DateInstance*>(value.toObject(&state))->internalNumber();
 }

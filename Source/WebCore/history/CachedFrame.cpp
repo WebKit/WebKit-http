@@ -32,13 +32,15 @@
 #include "DOMWindow.h"
 #include "Document.h"
 #include "DocumentLoader.h"
+#include "DocumentTimeline.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PageCache.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "ScriptController.h"
 #include "SerializedScriptValue.h"
@@ -96,9 +98,7 @@ void CachedFrameBase::restore()
     if (m_document->svgExtensions())
         m_document->accessSVGExtensions().unpauseAnimations();
 
-    frame.animation().resumeAnimationsForDocument(m_document.get());
-
-    m_document->resume(ActiveDOMObject::PageCache);
+    m_document->resume(ReasonForSuspension::PageCache);
 
     // It is necessary to update any platform script objects after restoring the
     // cached page.
@@ -148,7 +148,7 @@ CachedFrame::CachedFrame(Frame& frame)
         m_childFrames.append(std::make_unique<CachedFrame>(*child));
 
     // Active DOM objects must be suspended before we cache the frame script data.
-    m_document->suspend(ActiveDOMObject::PageCache);
+    m_document->suspend(ReasonForSuspension::PageCache);
 
     m_cachedFrameScriptData = std::make_unique<ScriptCachedFrameData>(frame);
 

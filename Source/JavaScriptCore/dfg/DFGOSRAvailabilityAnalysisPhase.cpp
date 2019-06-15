@@ -57,12 +57,9 @@ public:
         
         BasicBlock* root = m_graph.block(0);
         root->ssa->availabilityAtHead.m_locals.fill(Availability::unavailable());
-        for (unsigned argument = m_graph.m_argumentFormats.size(); argument--;) {
-            FlushedAt flushedAt = FlushedAt(
-                m_graph.m_argumentFormats[argument],
-                virtualRegisterForArgument(argument));
-            root->ssa->availabilityAtHead.m_locals.argument(argument) = Availability(flushedAt);
-        }
+
+        for (unsigned argument = 0; argument < m_graph.block(0)->valuesAtHead.numberOfArguments(); ++argument)
+            root->ssa->availabilityAtHead.m_locals.argument(argument) = Availability::unavailable();
 
         // This could be made more efficient by processing blocks in reverse postorder.
         
@@ -86,10 +83,14 @@ public:
                 
                 block->ssa->availabilityAtTail = calculator.m_availability;
                 changed = true;
-                
+
                 for (unsigned successorIndex = block->numSuccessors(); successorIndex--;) {
                     BasicBlock* successor = block->successor(successorIndex);
                     successor->ssa->availabilityAtHead.merge(calculator.m_availability);
+                }
+
+                for (unsigned successorIndex = block->numSuccessors(); successorIndex--;) {
+                    BasicBlock* successor = block->successor(successorIndex);
                     successor->ssa->availabilityAtHead.pruneByLiveness(
                         m_graph, successor->at(0)->origin.forExit);
                 }
@@ -199,6 +200,16 @@ void LocalOSRAvailabilityCalculator::executeNode(Node* node)
         m_availability.m_locals.operand(node->unlinkedLocal()).setNodeUnavailable();
         break;
     }
+
+    case InitializeEntrypointArguments: {
+        unsigned entrypointIndex = node->entrypointIndex();
+        const Vector<FlushFormat>& argumentFormats = m_graph.m_argumentFormats[entrypointIndex];
+        for (unsigned argument = argumentFormats.size(); argument--; ) {
+            FlushedAt flushedAt = FlushedAt(argumentFormats[argument], virtualRegisterForArgument(argument));
+            m_availability.m_locals.argument(argument) = Availability(flushedAt);
+        }
+        break;
+    }
         
     case LoadVarargs:
     case ForwardVarargs: {
@@ -240,7 +251,7 @@ void LocalOSRAvailabilityCalculator::executeNode(Node* node)
             m_availability.m_heap.set(PromotedHeapLocation(ArgumentsCalleePLoc, node), callee);
         }
         
-        for (unsigned i = numberOfArgumentsToSkip; i < inlineCallFrame->arguments.size() - 1; ++i) {
+        for (unsigned i = numberOfArgumentsToSkip; i < inlineCallFrame->argumentCountIncludingThis - 1; ++i) {
             Availability argument = m_availability.m_locals.operand(
                 inlineCallFrame->stackOffset + CallFrame::argumentOffset(i));
             
@@ -265,6 +276,10 @@ void LocalOSRAvailabilityCalculator::executeNode(Node* node)
             Node* child = m_graph.varArgChild(node, i).node();
             m_availability.m_heap.set(PromotedHeapLocation(NewArrayWithSpreadArgumentPLoc, node, i), Availability(child));
         }
+        break;
+
+    case PhantomNewArrayBuffer:
+        m_availability.m_heap.set(PromotedHeapLocation(NewArrayBufferPLoc, node), Availability(node->child1().node()));
         break;
         
     default:

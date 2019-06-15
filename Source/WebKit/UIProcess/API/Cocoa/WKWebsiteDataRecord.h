@@ -31,6 +31,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/*! @constant WKWebsiteDataTypeFetchCache On-disk Fetch caches. */
+WK_EXTERN NSString * const WKWebsiteDataTypeFetchCache WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
+
 /*! @constant WKWebsiteDataTypeDiskCache On-disk caches. */
 WK_EXTERN NSString * const WKWebsiteDataTypeDiskCache WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
@@ -54,6 +57,9 @@ WK_EXTERN NSString * const WKWebsiteDataTypeWebSQLDatabases WK_API_AVAILABLE(mac
 
 /*! @constant WKWebsiteDataTypeIndexedDBDatabases IndexedDB databases. */
 WK_EXTERN NSString * const WKWebsiteDataTypeIndexedDBDatabases WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+
+/*! @constant WKWebsiteDataTypeServiceWorkerRegistrations Service worker registrations. */
+WK_EXTERN NSString * const WKWebsiteDataTypeServiceWorkerRegistrations WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 
 /*! A WKWebsiteDataRecord represents website data, grouped by domain name using the public suffix list. */
 WK_CLASS_AVAILABLE(macosx(10.11), ios(9.0))

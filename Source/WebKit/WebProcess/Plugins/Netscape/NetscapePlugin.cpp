@@ -33,22 +33,21 @@
 #include "NetscapePluginStream.h"
 #include "PluginController.h"
 #include "ShareableBitmap.h"
+#include <JavaScriptCore/JSObject.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HTTPHeaderMap.h>
 #include <WebCore/IntRect.h>
-#include <WebCore/URL.h>
 #include <WebCore/SharedBuffer.h>
-#include <runtime/JSObject.h>
+#include <WebCore/URL.h>
 #include <utility>
 #include <wtf/text/CString.h>
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
 #include "NetscapePluginUnix.h"
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 // The plug-in that we're currently calling NPP_New for.
 static NetscapePlugin* currentNPPNewPlugin;
@@ -546,7 +545,7 @@ void NetscapePlugin::callSetWindowInvisible()
 
 bool NetscapePlugin::shouldLoadSrcURL()
 {
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     // Flash crashes when NPP_GetValue is called for NPPVpluginCancelSrcStream in windowed mode.
     if (m_isWindowed && m_pluginModule->pluginQuirks().contains(PluginQuirks::DoNotCancelSrcStreamInWindowedMode))
         return true;
@@ -568,11 +567,8 @@ NetscapePluginStream* NetscapePlugin::streamFromID(uint64_t streamID)
 
 void NetscapePlugin::stopAllStreams()
 {
-    Vector<RefPtr<NetscapePluginStream>> streams;
-    copyValuesToVector(m_streams, streams);
-
-    for (size_t i = 0; i < streams.size(); ++i)
-        streams[i]->stop(NPRES_USER_BREAK);
+    for (auto& stream : copyToVector(m_streams.values()))
+        stream->stop(NPRES_USER_BREAK);
 }
 
 bool NetscapePlugin::allowPopups() const
@@ -604,8 +600,7 @@ static bool isTransparentSilverlightBackgroundValue(const String& lowercaseBackg
             return true;
         }
     } else if (lowercaseBackgroundValue.startsWith("sc#")) {
-        Vector<String> components;
-        lowercaseBackgroundValue.substring(3).split(',', components);
+        Vector<String> components = lowercaseBackgroundValue.substring(3).split(',');
 
         // An ScRGB value with alpha transparency, in the form sc#A,R,G,B.
         if (components.size() == 4) {
@@ -644,7 +639,7 @@ bool NetscapePlugin::initialize(const Parameters& parameters)
         paramValues.append(parameters.values[i].utf8());
     }
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     if (equalLettersIgnoringASCIICase(parameters.mimeType, "application/x-shockwave-flash")) {
         size_t wmodeIndex = parameters.names.find("wmode");
         if (wmodeIndex != notFound) {
@@ -656,11 +651,13 @@ bool NetscapePlugin::initialize(const Parameters& parameters)
             paramNames.append("wmode");
             paramValues.append("opaque");
         }
-    } else if (equalLettersIgnoringASCIICase(parameters.mimeType, "application/x-webkit-test-netscape")) {
+    }
+#endif
+
+    if (equalLettersIgnoringASCIICase(parameters.mimeType, "application/x-webkit-test-netscape")) {
         paramNames.append("windowedPlugin");
         paramValues.append("false");
     }
-#endif
 
     // The strings that these pointers point to are kept alive by paramNames and paramValues.
     Vector<const char*> names;
@@ -723,7 +720,7 @@ void NetscapePlugin::destroy()
     // Stop all streams.
     stopAllStreams();
 
-#if !PLUGIN_ARCHITECTURE(MAC) && !PLUGIN_ARCHITECTURE(X11)
+#if !PLUGIN_ARCHITECTURE(MAC) && !PLUGIN_ARCHITECTURE(UNIX)
     m_npWindow.window = 0;
     callSetWindow();
 #endif
@@ -754,7 +751,7 @@ RefPtr<ShareableBitmap> NetscapePlugin::snapshot()
     IntSize backingStoreSize = m_pluginSize;
     backingStoreSize.scale(contentsScaleFactor());
 
-    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(backingStoreSize, ShareableBitmap::SupportsAlpha);
+    RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(backingStoreSize, { });
     auto context = bitmap->createGraphicsContext();
 
     // FIXME: We should really call applyDeviceScaleFactor instead of scale, but that ends up calling into WKSI
@@ -795,7 +792,7 @@ void NetscapePlugin::geometryDidChange(const IntSize& pluginSize, const IntRect&
     m_clipRect = clipRect;
     m_pluginToRootViewTransform = pluginToRootViewTransform;
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLUGIN_ARCHITECTURE(UNIX)
     IntPoint frameRectLocationInWindowCoordinates = m_pluginToRootViewTransform.mapPoint(IntPoint());
     m_frameRectInWindowCoordinates = IntRect(frameRectLocationInWindowCoordinates, m_pluginSize);
 #endif

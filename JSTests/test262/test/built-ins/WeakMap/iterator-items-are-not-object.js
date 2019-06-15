@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.1.1
+esid: sec-weakmap-iterable
 description: >
   Throws a TypeError if iterable itens are not Objects.
-info: >
+info: |
   WeakMap ( [ iterable ] )
 
   ...
@@ -44,5 +45,7 @@ assert.throws(TypeError, function() {
 });
 
 assert.throws(TypeError, function() {
-  new WeakMap([['a', 1], 2]);
+  new WeakMap([
+    ['a', 1], 2
+  ]);
 });

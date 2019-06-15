@@ -26,7 +26,7 @@
 #pragma once
 
 #include <wtf/DoublyLinkedList.h>
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace JSC {
 
@@ -63,6 +63,8 @@ template <typename T> class GCSegmentedArrayIterator;
 
 template <typename T>
 class GCSegmentedArray {
+    WTF_MAKE_FAST_ALLOCATED;
+    WTF_MAKE_NONCOPYABLE(GCSegmentedArray);
     friend class GCSegmentedArrayIterator<T>;
     friend class GCSegmentedArrayIterator<const T>;
 public:

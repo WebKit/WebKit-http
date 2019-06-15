@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.1.1
+esid: sec-weakmap-iterable
 description: >
   Returns the new WeakMap adding the objects from the iterable parameter.
-info: >
+info: |
   WeakMap ( [ iterable ] )
 
   ...
@@ -26,7 +27,10 @@ WeakMap.prototype.set = function(key, value) {
   });
   return set.call(this, key, value);
 };
-var map = new WeakMap([[first, 42], [second, 43]]);
+var map = new WeakMap([
+  [first, 42],
+  [second, 43]
+]);
 
 assert.sameValue(results.length, 2, 'Called WeakMap#set for each object');
 assert.sameValue(results[0].key, first, 'Adds object in order - first key');

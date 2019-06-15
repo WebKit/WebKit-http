@@ -27,12 +27,14 @@
 
 #include "Timer.h"
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 namespace WTF {
 class Lock;
 class WorkQueue;
+class WallTime;
 }
 
 namespace WebCore {
@@ -42,6 +44,7 @@ class Frame;
 class Page;
 class ResourceRequest;
 class ResourceResponse;
+class ScriptExecutionContext;
 class URL;
 
 struct ResourceLoadStatistics;
@@ -51,31 +54,48 @@ class ResourceLoadObserver {
 public:
     WEBCORE_EXPORT static ResourceLoadObserver& shared();
 
-    WEBCORE_EXPORT void setShouldThrottleObserverNotifications(bool);
-    
-    void logFrameNavigation(const Frame&, const Frame& topFrame, const ResourceRequest& newRequest);
     void logSubresourceLoading(const Frame*, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
-    void logWebSocketLoading(const Frame*, const URL&);
+    void logWebSocketLoading(const URL& targetURL, const URL& mainFrameURL, bool usesEphemeralSession);
     void logUserInteractionWithReducedTimeResolution(const Document&);
+    void logWindowCreation(const URL& popupUrl, uint64_t openerPageID, Document& openerDocument);
 
     WEBCORE_EXPORT String statisticsForOrigin(const String&);
 
     WEBCORE_EXPORT void setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&&);
+    WEBCORE_EXPORT void setRequestStorageAccessUnderOpenerCallback(WTF::Function<void(const String&, uint64_t, const String&, bool)>&&);
+
+    WEBCORE_EXPORT void notifyObserver();
+    WEBCORE_EXPORT void clearState();
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    bool shouldLogUserInteraction() const { return m_shouldLogUserInteraction; }
+    void setShouldLogUserInteraction(bool shouldLogUserInteraction) { m_shouldLogUserInteraction = shouldLogUserInteraction; }
+#endif
 
 private:
     ResourceLoadObserver();
 
-    bool shouldLog(Page*) const;
+    bool shouldLog(bool usesEphemeralSession) const;
     ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
 
     void scheduleNotificationIfNeeded();
-    void notificationTimerFired();
     Vector<ResourceLoadStatistics> takeStatistics();
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    void requestStorageAccessUnderOpener(const String& domainInNeedOfStorageAccess, uint64_t openerPageID, Document& openerDocument, bool isTriggeredByUserGesture);
+#endif
+
     HashMap<String, ResourceLoadStatistics> m_resourceStatisticsMap;
+    HashMap<String, WTF::WallTime> m_lastReportedUserInteractionMap;
     WTF::Function<void (Vector<ResourceLoadStatistics>&&)> m_notificationCallback;
+    WTF::Function<void(const String&, uint64_t, const String&, bool)> m_requestStorageAccessUnderOpenerCallback;
     Timer m_notificationTimer;
-    bool m_shouldThrottleNotifications { true };
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    uint64_t m_loggingCounter { 0 };
+    bool m_shouldLogUserInteraction { false };
+#endif
+
+    URL nonNullOwnerURL(const Document&) const;
 };
     
 } // namespace WebCore

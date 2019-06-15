@@ -20,11 +20,10 @@
 #include "WebKitDOMDeprecated.h"
 
 #include "ConvertToUTF8String.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
 #include <WebCore/Element.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include <WebCore/HTMLCollection.h>
 #include "WebKitDOMDocumentPrivate.h"
 #include "WebKitDOMElementPrivate.h"
@@ -38,6 +37,8 @@
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 gchar* webkit_dom_html_element_get_inner_html(WebKitDOMHTMLElement* self)
 {
@@ -238,8 +239,8 @@ void webkit_dom_node_set_prefix(WebKitDOMNode* self, const gchar* value, GError*
     WTF::String convertedValue = WTF::String::fromUTF8(value);
     auto result = item->setPrefix(convertedValue);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -320,3 +321,10 @@ void webkit_dom_html_base_font_element_set_size(WebKitDOMHTMLBaseFontElement*, g
 {
     g_warning("%s: HTMLBaseFont has been removed from DOM spec, this function does nothing.", __func__);
 }
+
+gchar* webkit_dom_element_get_webkit_region_overset(WebKitDOMElement*)
+{
+    g_warning("%s: CSS Regions support has been removed, this function does nothing.", __func__);
+    return nullptr;
+}
+G_GNUC_END_IGNORE_DEPRECATIONS;

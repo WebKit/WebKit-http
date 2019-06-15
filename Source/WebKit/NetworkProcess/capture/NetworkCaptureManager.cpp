@@ -30,20 +30,22 @@
 
 #include "NetworkCaptureLogging.h"
 #include "NetworkCaptureResource.h"
-#include "WebCore/ResourceRequest.h"
-#include "WebCore/URL.h"
-#include <wtf/MD5.h>
-#include <wtf/text/Base64.h>
-#include <wtf/text/StringBuilder.h>
-
+#include <WebCore/ResourceRequest.h>
+#include <WebCore/URL.h>
 #include <algorithm>
 #include <iterator>
 #include <limits>
+#include <wtf/MD5.h>
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/Base64.h>
+#include <wtf/text/StringBuilder.h>
 
 #define DEBUG_CLASS Manager
 
 namespace WebKit {
 namespace NetworkCapture {
+
+using namespace WebCore::FileSystem;
 
 static const char* kDirNameRecordReplay = "WebKitPerf/record_replay";
 static const char* kDirNameResources = "resources";
@@ -73,15 +75,15 @@ void Manager::initialize(const String& recordReplayMode, const String& recordRep
         m_recordReplayMode = Disabled;
     }
 
-    m_recordReplayCacheLocation = WebCore::pathByAppendingComponent(recordReplayCacheLocation, kDirNameRecordReplay);
+    m_recordReplayCacheLocation = pathByAppendingComponent(recordReplayCacheLocation, kDirNameRecordReplay);
     DEBUG_LOG("Cache location = " STRING_SPECIFIER, DEBUG_STR(m_recordReplayCacheLocation));
 
     if (isRecording()) {
-        m_recordFileHandle = WebCore::FileHandle(reportRecordPath(), WebCore::OpenForWrite);
+        m_recordFileHandle = WebCore::FileHandle(reportRecordPath(), FileOpenMode::Write);
     } else if (isReplaying()) {
-        m_recordFileHandle = WebCore::FileHandle(reportRecordPath(), WebCore::OpenForRead);
-        m_loadFileHandle = WebCore::FileHandle(reportLoadPath(), WebCore::OpenForWrite);
-        m_replayFileHandle = WebCore::FileHandle(reportReplayPath(), WebCore::OpenForWrite);
+        m_recordFileHandle = WebCore::FileHandle(reportRecordPath(), FileOpenMode::Read);
+        m_loadFileHandle = WebCore::FileHandle(reportLoadPath(), FileOpenMode::Write);
+        m_replayFileHandle = WebCore::FileHandle(reportReplayPath(), FileOpenMode::Write);
         loadResources();
     }
 }
@@ -101,7 +103,7 @@ Resource* Manager::findMatch(const WebCore::ResourceRequest& request)
     if (!bestMatch)
         bestMatch = findBestFuzzyMatch(request);
 
-#if ENABLE(WTF_CAPTURE_INTERNAL_DEBUGGING)
+#if CAPTURE_INTERNAL_DEBUGGING
     if (!bestMatch)
         DEBUG_LOG("Could not find match for: " STRING_SPECIFIER, DEBUG_STR(request.url().string()));
     else if (request.url() == bestMatch->url())
@@ -214,9 +216,8 @@ int Manager::fuzzyMatchURLs(const WebCore::URL& requestURL, const WebCore::URLPa
     const auto& requestPath = requestURL.path();
     const auto& resourcePath = resourceURL.path();
 
-    Vector<String> requestPathComponents, resourcePathComponents;
-    requestPath.split('/', requestPathComponents);
-    resourcePath.split('/', resourcePathComponents);
+    Vector<String> requestPathComponents = requestPath.split('/');
+    Vector<String> resourcePathComponents = resourcePath.split('/');
 
     auto updatedIterators = std::mismatch(
         std::begin(requestPathComponents), std::end(requestPathComponents),
@@ -287,7 +288,7 @@ int Manager::fuzzyMatchURLs(const WebCore::URL& requestURL, const WebCore::URLPa
 
     for (; requestParameter != std::end(requestParameters) && resourceParameter != std::end(resourceParameters); ++requestParameter, ++resourceParameter) {
         if (requestParameter->key == resourceParameter->key) {
-#if ENABLE(WTF_CAPTURE_INTERNAL_DEBUGGING)
+#if CAPTURE_INTERNAL_DEBUGGING
             if (requestParameter->value == resourceParameter->value)
                 DEBUG_LOG("Matching parameter names and values: \"" STRING_SPECIFIER "\" = \"" STRING_SPECIFIER "\"", DEBUG_STR(requestParameter->first), DEBUG_STR(requestParameter->second));
             else
@@ -307,7 +308,7 @@ int Manager::fuzzyMatchURLs(const WebCore::URL& requestURL, const WebCore::URLPa
                 DEBUG_LOG("Skipping past %d non-matching parameter names", static_cast<int>(std::distance(scanningIter, scanner)));
                 score += kParameterMissingScore * std::distance(scanningIter, scanner);
                 DEBUG_LOG("Score = %d", score);
-#if ENABLE(WTF_CAPTURE_INTERNAL_DEBUGGING)
+#if CAPTURE_INTERNAL_DEBUGGING
                 if (fixedIter->second == scanner->second)
                     DEBUG_LOG("Matching parameter names and values: \"" STRING_SPECIFIER "\" = \"" STRING_SPECIFIER "\"", DEBUG_STR(fixedIter->first), DEBUG_STR(fixedIter->second));
                 else
@@ -365,17 +366,17 @@ void Manager::loadResources()
 
 String Manager::reportLoadPath()
 {
-    return WebCore::pathByAppendingComponent(m_recordReplayCacheLocation, kFileNameReportLoad);
+    return pathByAppendingComponent(m_recordReplayCacheLocation, kFileNameReportLoad);
 }
 
 String Manager::reportRecordPath()
 {
-    return WebCore::pathByAppendingComponent(m_recordReplayCacheLocation, kFileNameReportRecord);
+    return pathByAppendingComponent(m_recordReplayCacheLocation, kFileNameReportRecord);
 }
 
 String Manager::reportReplayPath()
 {
-    return WebCore::pathByAppendingComponent(m_recordReplayCacheLocation, kFileNameReportReplay);
+    return pathByAppendingComponent(m_recordReplayCacheLocation, kFileNameReportReplay);
 }
 
 String Manager::requestToPath(const WebCore::ResourceRequest& request)
@@ -411,9 +412,9 @@ String Manager::hashToPath(const String& hash)
     fileName.append(hashTail);
     fileName.appendLiteral(".data");
 
-    auto path = WebCore::pathByAppendingComponent(m_recordReplayCacheLocation, kDirNameResources);
-    path = WebCore::pathByAppendingComponent(path, hashHead);
-    path = WebCore::pathByAppendingComponent(path, fileName.toString());
+    auto path = pathByAppendingComponent(m_recordReplayCacheLocation, kDirNameResources);
+    path = pathByAppendingComponent(path, hashHead);
+    path = pathByAppendingComponent(path, fileName.toString());
 
     return path;
 }
@@ -452,7 +453,7 @@ void Manager::logPlayedBackResource(const WebCore::ResourceRequest& request, boo
     m_replayFileHandle.printf("%s %s\n", wasCacheMiss ? "miss" : "hit ", DEBUG_STR(url.string()));
 }
 
-WebCore::FileHandle Manager::openCacheFile(const String& filePath, WebCore::FileOpenMode mode)
+WebCore::FileHandle Manager::openCacheFile(const String& filePath, FileOpenMode mode)
 {
     // If we can trivially open the file, then do that and return the new file
     // handle.
@@ -464,9 +465,9 @@ WebCore::FileHandle Manager::openCacheFile(const String& filePath, WebCore::File
     // If we're opening the file for writing (including appending), then try
     // again after making sure all intermediate directories have been created.
 
-    if (mode != WebCore::OpenForRead) {
-        const auto& parentDir = WebCore::directoryName(filePath);
-        if (!WebCore::makeAllDirectories(parentDir)) {
+    if (mode != FileOpenMode::Read) {
+        const auto& parentDir = directoryName(filePath);
+        if (!makeAllDirectories(parentDir)) {
             DEBUG_LOG_ERROR("Error %d trying to create intermediate directories: " STRING_SPECIFIER, errno, DEBUG_STR(parentDir));
             return fileHandle;
         }
@@ -479,7 +480,7 @@ WebCore::FileHandle Manager::openCacheFile(const String& filePath, WebCore::File
     // Could not open the file. Log the error and leave, returning the invalid
     // file handle.
 
-    if (mode == WebCore::OpenForRead)
+    if (mode == FileOpenMode::Read)
         DEBUG_LOG_ERROR("Error %d trying to open " STRING_SPECIFIER " for reading", errno, DEBUG_STR(filePath));
     else
         DEBUG_LOG_ERROR("Error %d trying to open " STRING_SPECIFIER " for writing", errno, DEBUG_STR(filePath));
@@ -490,7 +491,7 @@ WebCore::FileHandle Manager::openCacheFile(const String& filePath, WebCore::File
 std::optional<Vector<Vector<String>>> Manager::readFile(const String& filePath)
 {
     bool success = false;
-    WebCore::MappedFileData file(filePath, success);
+    MappedFileData file(filePath, success);
     if (!success)
         return std::nullopt;
 
@@ -580,5 +581,7 @@ bool Manager::getWord(uint8_t const *& p, uint8_t const * const end, String& wor
 
 } // namespace NetworkCapture
 } // namespace WebKit
+
+#undef DEBUG_CLASS
 
 #endif // ENABLE(NETWORK_CAPTURE)

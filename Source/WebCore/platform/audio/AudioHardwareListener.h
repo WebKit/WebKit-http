@@ -26,7 +26,6 @@
 #ifndef AudioHardwareListener_h
 #define AudioHardwareListener_h
 
-#include "PlatformExportMacros.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
@@ -42,14 +41,14 @@ class AudioHardwareListener : public RefCounted<AudioHardwareListener> {
 public:
     class Client {
     public:
-        virtual ~Client() { }
+        virtual ~Client() = default;
         virtual void audioHardwareDidBecomeActive() = 0;
         virtual void audioHardwareDidBecomeInactive() = 0;
         virtual void audioOutputDeviceChanged() = 0;
     };
 
     WEBCORE_EXPORT static Ref<AudioHardwareListener> create(Client&);
-    virtual ~AudioHardwareListener() { }
+    virtual ~AudioHardwareListener() = default;
     
     AudioHardwareActivityType hardwareActivity() const { return m_activity; }
     bool outputDeviceSupportsLowPowerMode() const { return m_outputDeviceSupportsLowPowerMode; }

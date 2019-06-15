@@ -32,19 +32,19 @@
 #include "SVGRenderingContext.h"
 #include "SVGResourcesCache.h"
 #include "TransformState.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGForeignObject);
+
 RenderSVGForeignObject::RenderSVGForeignObject(SVGForeignObjectElement& element, RenderStyle&& style)
     : RenderSVGBlock(element, WTFMove(style))
-    , m_needsTransformUpdate(true)
 {
 }
 
-RenderSVGForeignObject::~RenderSVGForeignObject()
-{
-}
+RenderSVGForeignObject::~RenderSVGForeignObject() = default;
 
 SVGForeignObjectElement& RenderSVGForeignObject::foreignObjectElement() const
 {
@@ -56,7 +56,7 @@ void RenderSVGForeignObject::paint(PaintInfo& paintInfo, const LayoutPoint&)
     if (paintInfo.context().paintingDisabled())
         return;
 
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection)
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection)
         return;
 
     PaintInfo childPaintInfo(paintInfo);
@@ -67,29 +67,29 @@ void RenderSVGForeignObject::paint(PaintInfo& paintInfo, const LayoutPoint&)
         childPaintInfo.context().clip(m_viewport);
 
     SVGRenderingContext renderingContext;
-    if (paintInfo.phase == PaintPhaseForeground) {
+    if (paintInfo.phase == PaintPhase::Foreground) {
         renderingContext.prepareToRenderSVGContent(*this, childPaintInfo);
         if (!renderingContext.isRenderingPrepared())
             return;
     }
 
     LayoutPoint childPoint = IntPoint();
-    if (paintInfo.phase == PaintPhaseSelection) {
+    if (paintInfo.phase == PaintPhase::Selection) {
         RenderBlock::paint(childPaintInfo, childPoint);
         return;
     }
 
     // Paint all phases of FO elements atomically, as though the FO element established its
     // own stacking context.
-    childPaintInfo.phase = PaintPhaseBlockBackground;
+    childPaintInfo.phase = PaintPhase::BlockBackground;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseChildBlockBackgrounds;
+    childPaintInfo.phase = PaintPhase::ChildBlockBackgrounds;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseFloat;
+    childPaintInfo.phase = PaintPhase::Float;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseForeground;
+    childPaintInfo.phase = PaintPhase::Foreground;
     RenderBlock::paint(childPaintInfo, childPoint);
-    childPaintInfo.phase = PaintPhaseOutline;
+    childPaintInfo.phase = PaintPhase::Outline;
     RenderBlock::paint(childPaintInfo, childPoint);
 }
 
@@ -111,7 +111,7 @@ LayoutRect RenderSVGForeignObject::computeRectForRepaint(const LayoutRect& repai
 const AffineTransform& RenderSVGForeignObject::localToParentTransform() const
 {
     m_localToParentTransform = localTransform();
-    m_localToParentTransform.translate(m_viewport.x(), m_viewport.y());
+    m_localToParentTransform.translate(m_viewport.location());
     return m_localToParentTransform;
 }
 
@@ -134,7 +134,7 @@ void RenderSVGForeignObject::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
-    ASSERT(!view().layoutStateEnabled()); // RenderSVGRoot disables layoutState for the SVG rendering tree.
+    ASSERT(!view().frameView().layoutContext().isPaintOffsetCacheEnabled()); // RenderSVGRoot disables paint offset cache for the SVG rendering tree.
 
     LayoutRepainter repainter(*this, SVGRenderSupport::checkForSVGRepaintDuringLayout(*this));
 

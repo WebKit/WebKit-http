@@ -1,5 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
-   "http://www.w3.org/TR/html4/loose.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd"><!-- webkit-test-runner [ enableWebAnimationsCSSIntegration=true ] -->
 
 <html lang="en">
 <head>
@@ -63,14 +62,11 @@
 
         style.sheet.removeRule(box3Index);
 
-        runAnimationTest(expectedValues);
-
-        if (window.testRunner) {
-            if (internals.pauseAnimationAtTimeOnElement("anim3", 0.1, box3))
-                result += "FAIL - box3 animation was running<br>";
-            else
-                result += "PASS - box3 animation was not running<br>";
-        }
+        runAnimationTest(expectedValues, () => {
+            setTimeout(() => {
+                document.getElementById("result").appendChild(document.createTextNode(`${!box3.getAnimations().length ? "PASS" : "FAIL"} - Animation is not running on box3.`));
+            })
+        });
     }
     
     window.addEventListener('DOMContentLoaded', addKeyframes, false);

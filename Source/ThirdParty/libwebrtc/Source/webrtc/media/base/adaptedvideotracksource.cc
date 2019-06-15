@@ -8,9 +8,9 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/media/base/adaptedvideotracksource.h"
+#include "media/base/adaptedvideotracksource.h"
 
-#include "webrtc/api/video/i420_buffer.h"
+#include "api/video/i420_buffer.h"
 
 namespace rtc {
 
@@ -22,6 +22,7 @@ AdaptedVideoTrackSource::AdaptedVideoTrackSource(int required_alignment)
     : video_adapter_(required_alignment) {
   thread_checker_.DetachFromThread();
 }
+AdaptedVideoTrackSource::~AdaptedVideoTrackSource() = default;
 
 bool AdaptedVideoTrackSource::GetStats(Stats* stats) {
   rtc::CritScope lock(&stats_crit_);
@@ -95,7 +96,7 @@ bool AdaptedVideoTrackSource::AdaptFrame(int width,
                                          int* crop_y) {
   {
     rtc::CritScope lock(&stats_crit_);
-    stats_ = rtc::Optional<Stats>({width, height});
+    stats_ = Stats{width, height};
   }
 
   if (!broadcaster_.frame_wanted()) {
@@ -103,8 +104,9 @@ bool AdaptedVideoTrackSource::AdaptFrame(int width,
   }
 
   if (!video_adapter_.AdaptFrameResolution(
-          width, height, time_us * rtc::kNumNanosecsPerMicrosec,
-          crop_width, crop_height, out_width, out_height)) {
+          width, height, time_us * rtc::kNumNanosecsPerMicrosec, crop_width,
+          crop_height, out_width, out_height)) {
+    broadcaster_.OnDiscardedFrame();
     // VideoAdapter dropped the frame.
     return false;
   }

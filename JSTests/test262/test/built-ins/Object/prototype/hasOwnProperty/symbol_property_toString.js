@@ -3,13 +3,14 @@
 
 /*---
 description: Object.prototype.hasOwnProperty with symbol and toString conversion
-info: >
+info: |
   19.1.3.2 Object.prototype.hasOwnProperty ( V )
 
   1. Let P be ToPropertyKey(V).
   2. ReturnIfAbrupt(P).
   ...
 es6id: 19.1.3.2
+features: [Symbol]
 ---*/
 
 var obj = {};

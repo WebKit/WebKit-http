@@ -8,24 +8,31 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_CASCADED_BIQUAD_FILTER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_CASCADED_BIQUAD_FILTER_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_CASCADED_BIQUAD_FILTER_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_CASCADED_BIQUAD_FILTER_H_
 
+#include <complex>
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/constructormagic.h"
+#include "api/array_view.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
-// Applies a number of identical biquads in a cascaded manner. The filter
-// implementation is direct form 1.
+// Applies a number of biquads in a cascaded manner. The filter implementation
+// is direct form 1.
 class CascadedBiQuadFilter {
  public:
-  struct BiQuadState {
-    BiQuadState() : x(), y() {}
-    float x[2];
-    float y[2];
+  struct BiQuadParam {
+    BiQuadParam(std::complex<float> zero,
+                std::complex<float> pole,
+                float gain,
+                bool mirror_zero_along_i_axis = false);
+    BiQuadParam(const BiQuadParam&);
+    std::complex<float> zero;
+    std::complex<float> pole;
+    float gain;
+    bool mirror_zero_along_i_axis;
   };
 
   struct BiQuadCoefficients {
@@ -33,9 +40,20 @@ class CascadedBiQuadFilter {
     float a[2];
   };
 
+  struct BiQuad {
+    BiQuad(const BiQuadCoefficients& coefficients)
+        : coefficients(coefficients), x(), y() {}
+    BiQuad(const CascadedBiQuadFilter::BiQuadParam& param);
+    BiQuadCoefficients coefficients;
+    float x[2];
+    float y[2];
+  };
+
   CascadedBiQuadFilter(
       const CascadedBiQuadFilter::BiQuadCoefficients& coefficients,
       size_t num_biquads);
+  CascadedBiQuadFilter(
+      const std::vector<CascadedBiQuadFilter::BiQuadParam>& biquad_params);
   ~CascadedBiQuadFilter();
   // Applies the biquads on the values in x in order to form the output in y.
   void Process(rtc::ArrayView<const float> x, rtc::ArrayView<float> y);
@@ -45,14 +63,13 @@ class CascadedBiQuadFilter {
  private:
   void ApplyBiQuad(rtc::ArrayView<const float> x,
                    rtc::ArrayView<float> y,
-                   CascadedBiQuadFilter::BiQuadState* biquad_state);
+                   CascadedBiQuadFilter::BiQuad* biquad);
 
-  std::vector<BiQuadState> biquad_states_;
-  const BiQuadCoefficients coefficients_;
+  std::vector<BiQuad> biquads_;
 
   RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(CascadedBiQuadFilter);
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_CASCADED_BIQUAD_FILTER_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_CASCADED_BIQUAD_FILTER_H_

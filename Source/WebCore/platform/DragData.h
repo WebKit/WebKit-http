@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,19 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DragData_h
-#define DragData_h
+#pragma once
 
 #include "Color.h"
 #include "DragActions.h"
 #include "IntPoint.h"
-
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
-#include <wtf/text/WTFString.h>
 
 #ifdef __OBJC__ 
 #import <Foundation/Foundation.h>
@@ -52,13 +50,12 @@ QT_END_NAMESPACE
 typedef const QMimeData* DragDataRef;
 #elif PLATFORM(WIN)
 typedef struct IDataObject* DragDataRef;
-#include <wtf/text/WTFString.h>
 #elif PLATFORM(GTK)
 namespace WebCore {
 class SelectionData;
 }
 typedef WebCore::SelectionData* DragDataRef;
-#elif PLATFORM(IOS) || PLATFORM(WPE)
+#else
 typedef void* DragDataRef;
 #endif
 
@@ -81,7 +78,7 @@ typedef HashMap<unsigned, Vector<String>> DragDataMap;
 class DragData {
 public:
     enum FilenameConversionPolicy { DoNotConvertFilenames, ConvertFilenames };
-    enum class DraggingPurpose { ForEditing, ForFileUpload };
+    enum class DraggingPurpose { ForEditing, ForFileUpload, ForColorControl };
 
     // clientPosition is taken to be the position of the drag event within the target window, with (0,0) at the top left
     WEBCORE_EXPORT DragData(DragDataRef, const IntPoint& clientPosition, const IntPoint& globalPosition, DragOperation, DragApplicationFlags = DragApplicationNone, DragDestinationAction actions = DragDestinationActionAny);
@@ -105,7 +102,7 @@ public:
     bool containsCompatibleContent(DraggingPurpose = DraggingPurpose::ForEditing) const;
     String asURL(FilenameConversionPolicy = ConvertFilenames, String* title = nullptr) const;
     String asPlainText() const;
-    void asFilenames(Vector<String>&) const;
+    Vector<String> asFilenames() const;
     Color asColor() const;
     bool canSmartReplace() const;
     bool containsColor() const;
@@ -157,5 +154,3 @@ private:
 };
     
 }
-
-#endif // !DragData_h

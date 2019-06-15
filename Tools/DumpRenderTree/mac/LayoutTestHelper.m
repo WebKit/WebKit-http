@@ -41,6 +41,16 @@
 #import <stdio.h>
 #import <stdlib.h>
 
+#if USE(APPLE_INTERNAL_SDK)
+
+#include <ColorSync/ColorSyncPriv.h>
+
+#else
+
+CFUUIDRef CGDisplayCreateUUIDFromDisplayID(uint32_t displayID);
+
+#endif
+
 // This is a simple helper app that changes the color profile of the main display
 // to GenericRGB and back when done. This program is managed by the layout
 // test script, so it can do the job for multiple DumpRenderTree while they are
@@ -85,7 +95,7 @@ static NSURL *colorProfileURLForDisplay(NSString *displayUUIDString)
         return nil;
     }
 
-    NSURL *url = (NSURL *)CFAutorelease(CFRetain(profileURL));
+    NSURL *url = CFBridgingRelease(CFRetain(profileURL));
     CFRelease(deviceInfo);
     return url;
 }
@@ -137,7 +147,7 @@ static void saveDisplayColorProfiles(NSArray *displayUUIDStrings)
 static void setDisplayColorProfile(NSString *displayUUIDString, NSURL *colorProfileURL)
 {
     NSDictionary *profileInfo = @{
-        (NSString *)kColorSyncDeviceDefaultProfileID : colorProfileURL
+        (__bridge NSString *)kColorSyncDeviceDefaultProfileID : colorProfileURL
     };
 
     CFUUIDRef uuid = CFUUIDCreateFromString(kCFAllocatorDefault, (CFStringRef)displayUUIDString);

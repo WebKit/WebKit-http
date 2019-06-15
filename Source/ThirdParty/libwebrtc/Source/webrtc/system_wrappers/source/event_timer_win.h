@@ -8,33 +8,33 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_SYSTEM_WRAPPERS_SOURCE_EVENT_WIN_H_
-#define WEBRTC_SYSTEM_WRAPPERS_SOURCE_EVENT_WIN_H_
+#ifndef SYSTEM_WRAPPERS_SOURCE_EVENT_WIN_H_
+#define SYSTEM_WRAPPERS_SOURCE_EVENT_WIN_H_
+
+#include <stdint.h>
 
 #include <windows.h>
 
-#include "webrtc/system_wrappers/include/event_wrapper.h"
-
-#include "webrtc/typedefs.h"
+#include "system_wrappers/include/event_wrapper.h"
 
 namespace webrtc {
 
 class EventTimerWin : public EventTimerWrapper {
  public:
   EventTimerWin();
-  virtual ~EventTimerWin();
+  ~EventTimerWin() override;
 
-  virtual EventTypeWrapper Wait(unsigned long max_time);
-  virtual bool Set();
+  EventTypeWrapper Wait(unsigned long max_time) override;
+  bool Set() override;
 
-  virtual bool StartTimer(bool periodic, unsigned long time);
-  virtual bool StopTimer();
+  bool StartTimer(bool periodic, unsigned long time) override;
+  bool StopTimer() override;
 
  private:
-  HANDLE  event_;
+  HANDLE event_;
   uint32_t timerID_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_SYSTEM_WRAPPERS_SOURCE_EVENT_WIN_H_
+#endif  // SYSTEM_WRAPPERS_SOURCE_EVENT_WIN_H_

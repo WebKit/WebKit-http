@@ -3,7 +3,7 @@
 /*---
 es6id: 19.1.2.1
 description: Invoked with a source whose own property descriptor cannot be retrieved
-info: >
+info: |
     [...]
     5. For each element nextSource of sources, in ascending index order,
        [...]
@@ -13,7 +13,9 @@ info: >
 features: [Proxy]
 ---*/
 
-var source = new Proxy({ attr: null }, {
+var source = new Proxy({
+  attr: null
+}, {
   getOwnPropertyDescriptor: function() {
     throw new Test262Error();
   }

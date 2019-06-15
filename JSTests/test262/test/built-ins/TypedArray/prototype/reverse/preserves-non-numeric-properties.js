@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.reverse
 description: Preserves non numeric properties
-info: >
+info: |
   22.2.3.22 %TypedArray%.prototype.reverse ( )
 
   %TypedArray%.prototype.reverse is a distinct function that implements the same
@@ -16,7 +16,7 @@ info: >
   ...
   6. Return O.
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol("1");

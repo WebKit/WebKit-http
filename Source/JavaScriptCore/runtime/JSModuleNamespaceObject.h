@@ -37,11 +37,12 @@ public:
 
     static JSModuleNamespaceObject* create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, AbstractModuleRecord* moduleRecord, Vector<std::pair<Identifier, AbstractModuleRecord::Resolution>>&& resolutions)
     {
+        VM& vm = exec->vm();
         JSModuleNamespaceObject* object =
             new (
                 NotNull,
-                allocateCell<JSModuleNamespaceObject>(exec->vm().heap, JSModuleNamespaceObject::allocationSize(resolutions.size())))
-            JSModuleNamespaceObject(exec->vm(), structure);
+                allocateCell<JSModuleNamespaceObject>(vm.heap, JSModuleNamespaceObject::allocationSize(resolutions.size())))
+            JSModuleNamespaceObject(vm, structure);
         object->finishCreation(exec, globalObject, moduleRecord, WTFMove(resolutions));
         return object;
     }
@@ -103,12 +104,5 @@ private:
     Vector<Identifier> m_names;
     WriteBarrier<AbstractModuleRecord> m_moduleRecord;
 };
-
-inline bool isJSModuleNamespaceObject(JSCell* cell)
-{
-    return cell->classInfo(*cell->vm()) == JSModuleNamespaceObject::info();
-}
-
-inline bool isJSModuleNamespaceObject(JSValue v) { return v.isCell() && isJSModuleNamespaceObject(v.asCell()); }
 
 } // namespace JSC

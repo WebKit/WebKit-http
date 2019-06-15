@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/vad/pitch_internal.h"
+#include "modules/audio_processing/vad/pitch_internal.h"
 
 #include <math.h>
 
-#include "webrtc/test/gtest.h"
+#include "test/gtest.h"
 
 TEST(PitchInternalTest, test) {
   const int kSamplingRateHz = 8000;
@@ -26,12 +26,12 @@ TEST(PitchInternalTest, test) {
   double lags[] = {90, 111, 122, 50};
 
   // Expected outputs
-  double expected_log_pitch_gain[] = {
-      -0.541212549898316, -1.45672279045507, -0.80471895621705};
+  double expected_log_pitch_gain[] = {-0.541212549898316, -1.45672279045507,
+                                      -0.80471895621705};
   double expected_log_old_gain = log(gains[kNumInputParameters - 1]);
 
-  double expected_pitch_lag_hz[] = {
-      92.3076923076923, 70.9010339734121, 93.0232558139535};
+  double expected_pitch_lag_hz[] = {92.3076923076923, 70.9010339734121,
+                                    93.0232558139535};
   double expected_old_lag = lags[kNumInputParameters - 1];
 
   double log_pitch_gain[kNumOutputParameters];

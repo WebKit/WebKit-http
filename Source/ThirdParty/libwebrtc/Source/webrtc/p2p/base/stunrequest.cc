@@ -8,16 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/p2p/base/stunrequest.h"
+#include "p2p/base/stunrequest.h"
 
 #include <algorithm>
 #include <memory>
+#include <vector>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/helpers.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/ptr_util.h"
-#include "webrtc/base/stringencode.h"
+#include "absl/memory/memory.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/helpers.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/stringencode.h"
 
 namespace cricket {
 
@@ -40,13 +41,11 @@ const int STUN_MAX_RETRANSMISSIONS = 8;  // Total sends: 9
 // work well.
 const int STUN_MAX_RTO = 8000;  // milliseconds, or 5 doublings
 
-StunRequestManager::StunRequestManager(rtc::Thread* thread)
-    : thread_(thread) {
-}
+StunRequestManager::StunRequestManager(rtc::Thread* thread) : thread_(thread) {}
 
 StunRequestManager::~StunRequestManager() {
   while (requests_.begin() != requests_.end()) {
-    StunRequest *request = requests_.begin()->second;
+    StunRequest* request = requests_.begin()->second;
     requests_.erase(requests_.begin());
     delete request;
   }
@@ -125,9 +124,9 @@ bool StunRequestManager::CheckResponse(StunMessage* msg) {
   } else if (msg->type() == GetStunErrorResponseType(request->type())) {
     request->OnErrorResponse(msg);
   } else {
-    LOG(LERROR) << "Received response with wrong type: " << msg->type()
-                << " (expecting "
-                << GetStunSuccessResponseType(request->type()) << ")";
+    RTC_LOG(LERROR) << "Received response with wrong type: " << msg->type()
+                    << " (expecting "
+                    << GetStunSuccessResponseType(request->type()) << ")";
     return false;
   }
 
@@ -157,7 +156,8 @@ bool StunRequestManager::CheckResponse(const char* data, size_t size) {
   rtc::ByteBufferReader buf(data, size);
   std::unique_ptr<StunMessage> response(iter->second->msg_->CreateNew());
   if (!response->Read(&buf)) {
-    LOG(LS_WARNING) << "Failed to read STUN response " << rtc::hex_encode(id);
+    RTC_LOG(LS_WARNING) << "Failed to read STUN response "
+                        << rtc::hex_encode(id);
     return false;
   }
 
@@ -165,17 +165,17 @@ bool StunRequestManager::CheckResponse(const char* data, size_t size) {
 }
 
 StunRequest::StunRequest()
-    : count_(0), timeout_(false), manager_(0),
-      msg_(new StunMessage()), tstamp_(0) {
-  msg_->SetTransactionID(
-      rtc::CreateRandomString(kStunTransactionIdLength));
+    : count_(0),
+      timeout_(false),
+      manager_(0),
+      msg_(new StunMessage()),
+      tstamp_(0) {
+  msg_->SetTransactionID(rtc::CreateRandomString(kStunTransactionIdLength));
 }
 
 StunRequest::StunRequest(StunMessage* request)
-    : count_(0), timeout_(false), manager_(0),
-      msg_(request), tstamp_(0) {
-  msg_->SetTransactionID(
-      rtc::CreateRandomString(kStunTransactionIdLength));
+    : count_(0), timeout_(false), manager_(0), msg_(request), tstamp_(0) {
+  msg_->SetTransactionID(rtc::CreateRandomString(kStunTransactionIdLength));
 }
 
 StunRequest::~StunRequest() {
@@ -190,8 +190,8 @@ StunRequest::~StunRequest() {
 void StunRequest::Construct() {
   if (msg_->type() == 0) {
     if (!origin_.empty()) {
-      msg_->AddAttribute(
-          rtc::MakeUnique<StunByteStringAttribute>(STUN_ATTR_ORIGIN, origin_));
+      msg_->AddAttribute(absl::make_unique<StunByteStringAttribute>(
+          STUN_ATTR_ORIGIN, origin_));
     }
     Prepare(msg_);
     RTC_DCHECK(msg_->type() != 0);
@@ -207,10 +207,13 @@ const StunMessage* StunRequest::msg() const {
   return msg_;
 }
 
+StunMessage* StunRequest::mutable_msg() {
+  return msg_;
+}
+
 int StunRequest::Elapsed() const {
   return static_cast<int>(rtc::TimeMillis() - tstamp_);
 }
-
 
 void StunRequest::set_manager(StunRequestManager* manager) {
   RTC_DCHECK(!manager_);
@@ -244,8 +247,8 @@ void StunRequest::OnSent() {
   if (retransmissions >= STUN_MAX_RETRANSMISSIONS) {
     timeout_ = true;
   }
-  LOG(LS_VERBOSE) << "Sent STUN request " << count_
-                  << "; resend delay = " << resend_delay();
+  RTC_LOG(LS_VERBOSE) << "Sent STUN request " << count_
+                      << "; resend delay = " << resend_delay();
 }
 
 int StunRequest::resend_delay() {

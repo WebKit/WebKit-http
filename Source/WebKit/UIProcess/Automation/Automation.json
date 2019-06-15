@@ -27,6 +27,16 @@
             ]
         },
         {
+            "id": "CoordinateSystem",
+            "type": "string",
+            "description": "The coordinate system in which rects, points, and sizes are to be interpreted.",
+            "enum": [
+                "Page",
+                "LayoutViewport",
+                "VisualViewport"
+            ]
+        },
+        {
             "id": "BrowsingContextHandle",
             "type": "string",
             "description": "An opaque identifier for a browsing context."
@@ -57,7 +67,23 @@
                 "NoJavaScriptDialog",
                 "NotImplemented",
                 "MissingParameter",
-                "InvalidParameter"
+                "InvalidParameter",
+                "InvalidSelector",
+                "ElementNotInteractable",
+                "ElementNotSelectable",
+                "ScreenshotError",
+                "UnexpectedAlertOpen",
+                "TargetOutOfBounds"
+            ]
+        },
+        {
+            "id": "PageLoadStrategy",
+            "type": "string",
+            "description": "Enumerates different page load strategies.",
+            "enum": [
+                "None",
+                "Eager",
+                "Normal"
             ]
         },
         {
@@ -203,6 +229,74 @@
                 { "name": "secure", "type": "boolean", "description": "True if cookie is secure." },
                 { "name": "session", "type": "boolean", "description": "True in case of session cookie." }
             ]
+        },
+        {
+            "id": "SessionPermission",
+            "type": "string",
+            "description": "Enumerates different permissions that must be obtained in order to use privileged APIs.",
+            "enum": [
+                "GetUserMedia"
+            ]
+        },
+        {
+            "id": "SessionPermissionData",
+            "type": "object",
+            "properties": [
+                { "name": "permission", "$ref": "SessionPermission" },
+                { "name": "value", "type": "boolean" }
+            ]
+        },
+        {
+            "id": "InputSourceType",
+            "type": "string",
+            "description": "The type of an input source. This determines which state properties are applicable to the input source. The 'Null' input source type has no properties, only a duration. This can extend the effective wait for a tick.",
+            "enum": [
+                "Null",
+                "Mouse",
+                "Keyboard",
+                "Touch"
+            ]
+        },
+        {
+            "id": "InputSource",
+            "type": "object",
+            "properties": [
+                { "name": "sourceId", "type": "string", "description": "A unique identifier for this input source." },
+                { "name": "sourceType", "$ref": "InputSourceType", "description": "The type of this input source. This affects what input source state fields are valid for this input source." }
+            ]
+        },
+        {
+            "id": "InteractionStep",
+            "description": "A set of input source states to which all applicable input sources must transition before further steps may be processed. If an input source does not have a corresponding state in a step, its state assumed to be 'released' for that step.",
+            "type": "object",
+            "properties": [
+                { "name": "states", "type": "array", "items": { "$ref": "InputSourceState" }, "optional": true, "description": "A list of new input states for input sources that must transition during this step. Source state transitions that cannot be performed concurrently (i.e., touch gestures) are performed sequentially in the order they are listed." }
+            ]
+        },
+        {
+            "id": "MouseMoveOrigin",
+            "type": "string",
+            "description": "Enumerates different origin types that can be used in mouse move interactions.",
+            "enum": [
+                "Viewport",
+                "Pointer",
+                "Element"
+            ]
+        },
+        {
+            "id": "InputSourceState",
+            "type": "object",
+            "description": "A new state for a specific input source. All state-related fields are optional and must be applicable to the InputSource referenced by 'sourceId'. If no state-related fields are specified, the state is assumed to remain the same as in the previous step (i.e., 'sustained').",
+            "properties": [
+                { "name": "sourceId", "type": "string", "description": "The input source whose state is described by this object." },
+                { "name": "pressedCharKey", "type": "string", "optional": true, "description": "For 'keyboard' input sources, specifies a character key that has 'pressed' state. Unmentioned character keys are assumed to have a 'released' state." },
+                { "name": "pressedVirtualKeys", "type": "array", "items": { "$ref": "VirtualKey" }, "optional": true, "description": "For 'keyboard' input sources, specifies virtual keys that have a 'pressed' state. Unmentioned virtual keys are assumed to have a 'released' state." },
+                { "name": "pressedButton", "$ref": "MouseButton", "optional": true, "description": "For 'mouse' input sources, specifies which mouse button has a 'pressed' state. Unmentioned mouse buttons are assumed to have a 'released' state." },
+                { "name": "origin", "$ref": "MouseMoveOrigin", "optional": true, "description": "For 'mouse' input sources, specifies the origin type of a mouse move transition. Defaults to 'Viewport' if omitted."},
+                { "name": "nodeHandle", "$ref": "NodeHandle", "optional": true, "description": "The handle of the element to use as origin when origin type is 'Element'."},
+                { "name": "location", "$ref": "Point", "optional": true, "description": "For 'mouse' or 'touch' input sources, specifies a location in view coordinates to which the input source should transition. Transitioning to this state may interpolate intemediate input source states to better simulate real user movements and gestures." },
+                { "name": "duration", "type": "integer", "optional": true, "description": "The minimum number of milliseconds that must elapse while the relevant input source transitions to this state." }
+            ]
         }
     ],
     "commands": [
@@ -211,7 +305,8 @@
             "description": "Fetches information about all open browsing contexts (windows and tabs) in the automation session.",
             "returns": [
                 { "name": "contexts", "type": "array", "items": { "$ref": "BrowsingContext" }, "description": "All known browsing contexts available to the session." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "getBrowsingContext",
@@ -221,14 +316,19 @@
             ],
             "returns": [
                 { "name": "context", "$ref": "BrowsingContext", "description": "The browsing context available to the session." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "createBrowsingContext",
             "description": "Opens a new browsing context in the automation session and makes it the active browsing context for user interaction. This command creates a browsing context in a new window rather than adding a tab to an existing window.",
+            "parameters": [
+                { "name": "preferNewTab", "type": "boolean", "optional": true, "description": "Create the new browsing context as a tab in an existing Automation window, if possible."}
+            ],
             "returns": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "An opaque handle for the newly created browsing context." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "closeBrowsingContext",
@@ -243,30 +343,43 @@
             "parameters": [
                 { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be made focused." },
                 { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame that should be focused. Defaults to the main frame if omitted." }
-            ]
+            ],
+            "async": true
         },
         {
-            "name": "resizeWindowOfBrowsingContext",
-            "description": "Resizes the window of the specified browsing context to the specified size.",
+            "name": "setWindowFrameOfBrowsingContext",
+            "description": "Moves and/or resizes the window of the specified top-level browsing context to the specified position and size. Both position and size may be omitted. This command implicitly exits fullscreen and restores the window (if previously hidden), then optionally sets the window frame.",
             "parameters": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to be resized." },
-                { "name": "size", "$ref": "Size", "description": "The new size for the browsing context's window." }
-            ]
+                { "name": "origin", "$ref": "Point", "optional": true, "description": "The new origin for the browsing context's window. The position is interpreted in screen coordinate space, relative to the upper left corner of the screen." },
+                { "name": "size", "$ref": "Size", "optional": true, "description": "The new size for the browsing context's window. The size is interpreted in screen pixels." }
+            ],
+            "async": true
         },
         {
-            "name": "moveWindowOfBrowsingContext",
-            "description": "Moves the window of the specified browsing context to the specified position.",
+            "name": "maximizeWindowOfBrowsingContext",
+            "description": "Causes the window of the specified browsing context to be maximized. This command implicitly exits fullscreen mode.",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to be moved." },
-                { "name": "origin", "$ref": "Point", "description": "The new origin for the browsing context's window. The position is interpreted in screen coordinate space, relative to the upper left corner of the screen." }
-            ]
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context whose window should be maximized." }
+            ],
+            "async": true
+        },
+        {
+            "name": "hideWindowOfBrowsingContext",
+            "description": "Causes the window of the specified browsing context to be hidden/minimized/iconified. This command implicitly exits fullscreen mode.",
+            "parameters": [
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context whose window should be hidden." }
+            ],
+            "async": true
         },
         {
             "name": "navigateBrowsingContext",
             "description": "Navigates a browsing context to a specified URL.",
             "parameters": [
                 { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be navigated." },
-                { "name": "url", "type": "string", "description": "The URL to load in the browsing context." }
+                { "name": "url", "type": "string", "description": "The URL to load in the browsing context." },
+                { "name": "pageLoadStrategy", "$ref": "PageLoadStrategy", "optional": true, "description": "The page load strategy to use when determining when navigation is complete." },
+                { "name": "pageLoadTimeout", "type": "integer", "optional": true, "description": "The timeout in milliseconds that the navigation is expected to be completed in, otherwise a <code>Timeout</code> error is returned." }
             ],
             "async": true
         },
@@ -274,7 +387,9 @@
             "name": "goBackInBrowsingContext",
             "description": "Navigates a browsing context to go back one page in history.",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be navigated." }
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be navigated." },
+                { "name": "pageLoadStrategy", "$ref": "PageLoadStrategy", "optional": true, "description": "The page load strategy to use when determining when navigation is complete." },
+                { "name": "pageLoadTimeout", "type": "integer", "optional": true, "description": "The timeout in milliseconds that the navigation is expected to be completed in, otherwise a <code>Timeout</code> error is returned." }
             ],
             "async": true
         },
@@ -282,7 +397,9 @@
             "name": "goForwardInBrowsingContext",
             "description": "Navigates a browsing context to got forward one page in history.",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be navigated." }
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be navigated." },
+                { "name": "pageLoadStrategy", "$ref": "PageLoadStrategy", "optional": true, "description": "The page load strategy to use when determining when navigation is complete." },
+                { "name": "pageLoadTimeout", "type": "integer", "optional": true, "description": "The timeout in milliseconds that the navigation is expected to be completed in, otherwise a <code>Timeout</code> error is returned." }
             ],
             "async": true
         },
@@ -290,7 +407,20 @@
             "name": "reloadBrowsingContext",
             "description": "Reloads the current page in a browsing context.",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be reloaded." }
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context that should be reloaded." },
+                { "name": "pageLoadStrategy", "$ref": "PageLoadStrategy", "optional": true, "description": "The page load strategy to use when determining when navigation is complete." },
+                { "name": "pageLoadTimeout", "type": "integer", "optional": true, "description": "The timeout in milliseconds that the navigation is expected to be completed in, otherwise a <code>Timeout</code> error is returned." }
+            ],
+            "async": true
+        },
+        {
+            "name": "waitForNavigationToComplete",
+            "description": "Wait for pending navigation to complete.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context in which wait for pending navigation to complete." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame in which wait for pending navigation to complete. The main frame is used if this parameter empty string or excluded." },
+                { "name": "pageLoadStrategy", "$ref": "PageLoadStrategy", "optional": true, "description": "The page load strategy to use when determining when navigation is complete." },
+                { "name": "pageLoadTimeout", "type": "integer", "optional": true, "description": "The timeout in milliseconds that the navigation is expected to be completed in, otherwise a <code>Timeout</code> error is returned." }
             ],
             "async": true
         },
@@ -332,7 +462,8 @@
             ],
             "returns": [
                 { "name": "position", "$ref": "Point", "description": "The updated position of the mouse cursor, specified in viewport coordinates." }
-            ]
+            ],
+            "async": true
         },
         {
             "name": "performKeyboardInteractions",
@@ -344,10 +475,34 @@
             "async": true
         },
         {
-            "name": "takeScreenshot",
-            "description": "Take a screenshot of the current page in a browsing context.",
+            "name": "performInteractionSequence",
+            "description": "Perform multiple simulated interactions over time using a list of input sources and a list of steps, where each step specifies a state for each input source at the time that step is performed.",
             "parameters": [
-                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to take a screenshot of." }
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The browsing context to be interacted with." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame in which to search for the elements in case of an 'Element' type MouseMoveOrigin. The main frame is used if this parameter empty string or excluded." },
+                { "name": "inputSources", "type": "array", "items": { "$ref": "InputSource" }, "description": "All input sources that are used to perform this interaction sequence." },
+                { "name": "steps", "type": "array", "items": { "$ref": "InteractionStep" }, "description": "A list of steps that are executed in order." }
+            ],
+            "async": true
+        },
+        {
+            "name": "cancelInteractionSequence",
+            "description": "Cancel an active interaction sequence that is currently in progress.",
+            "parameters": [
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The browsing context to be interacted with." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame passed to performInteractionSequence. The main frame is used if this parameter empty string or excluded." }
+            ],
+            "async": true
+        },
+        {
+            "name": "takeScreenshot",
+            "description": "Take a screenshot of the current page or given element in a browsing context.",
+            "parameters": [
+                { "name": "handle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context to take a screenshot of." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "optional": true, "description": "The handle for the frame that contains the element. The main frame is used if this parameter is empty string or excluded." },
+                { "name": "nodeHandle", "$ref": "NodeHandle", "optional": true, "description": "The handle of the element to take a screenshot of. The browsing context document element is used if this parameter is excluded." },
+                { "name": "scrollIntoViewIfNeeded", "type": "boolean", "optional": true, "description": "If the element should be scrolled into view before taking the screenshot." },
+                { "name": "clipToViewport", "type": "boolean", "optional": true, "description": "Whether a screenshot of the entire page should be clipped to the visual viewport. A value of 'false' preserves behavior for legacy protocol screenshots." }
             ],
             "returns": [
                 { "name": "data", "type": "string", "description": "Base64-encoded image data (PNG)." }
@@ -389,10 +544,22 @@
                 { "name": "frameHandle", "$ref": "FrameHandle", "description": "The handle for the frame that contains the element." },
                 { "name": "nodeHandle", "$ref": "NodeHandle", "description": "The handle of the element to use." },
                 { "name": "scrollIntoViewIfNeeded", "optional": true, "type": "boolean", "description": "If the element should be scrolled into view before computing its layout." },
-                { "name": "useViewportCoordinates", "optional": true, "type": "boolean", "description": "If the result coordinates should be represented as viewport coordinates or not. Defaults to false, which means coordinates should be represented as page coordinates." }
+                { "name": "coordinateSystem", "$ref": "CoordinateSystem", "description": "The coordinate system to use for rect and point results." }
             ],
             "returns": [
-                { "name": "rect", "$ref": "Rect", "description": "The layout rect for the requested element. Specified in page or viewport coordinates based on the useViewportCoordinates parameter." }
+                { "name": "rect", "$ref": "Rect", "description": "The layout rect for the requested element. Values are converted to the requested coordinate system." },
+                { "name": "inViewCenterPoint", "optional": true, "$ref": "Point", "description": "The in-view center point for the requested element. Values are converted to the requested coordinate system." },
+                { "name": "isObscured", "type": "boolean", "description": "If the in-view center point of the requested element is obscured by another element." }
+            ],
+            "async": true
+        },
+        {
+            "name": "selectOptionElement",
+            "description": "Selects the given option element. In case of container with multiple options enabled, the element selectedness is toggled.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." },
+                { "name": "frameHandle", "$ref": "FrameHandle", "description": "The handle for the frame that contains the element." },
+                { "name": "nodeHandle", "$ref": "NodeHandle", "description": "The handle of the element to use." }
             ],
             "async": true
         },
@@ -439,6 +606,14 @@
             ]
         },
         {
+            "name": "setFilesToSelectForFileUpload",
+            "description": "Sets the files to be selected when a file input type element becomes active in a browsing context.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." },
+                { "name": "filenames", "type": "array", "items": { "$ref": "string" }, "description": "Absolute paths to the files that should be selected." }
+            ]
+        },
+        {
             "name": "getAllCookies",
             "description": "Returns all cookies visible to the specified browsing context.",
             "parameters": [
@@ -472,6 +647,37 @@
             "description": "Delete all cookies that are visible to the specified browsing context.",
             "parameters": [
                 { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." }
+            ]
+        },
+        {
+            "name": "getSessionPermissions",
+            "description": "Returns the state of all session permissions, which control whether privileged Web APIs can be used. Permissions are applied to all browsing contexts associated with the automation session.",
+            "returns": [
+                { "name": "permissions", "type": "array", "items": { "$ref": "SessionPermissionData" }, "description": "Array of available session permissions and their values." }
+            ]
+        },
+        {
+            "name": "setSessionPermissions",
+            "description": "Attempts to set the state of session permissions, which control whether privileged Web APIs can be used. Permissions that are not understood are ignored. Permissions are applied to all browsing contexts associated with the automation session.",
+            "parameters": [
+                { "name": "permissions", "type": "array", "items": { "$ref": "SessionPermissionData" }, "description": "Array of session permissions to set, if they are available." }
+            ]
+        }
+    ],
+    "events": [
+        {
+            "name": "fileChooserDismissed",
+            "description": "Fired when a file chooser for a file input element is dismissed by selecting files or cancelling.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle", "description": "The handle for the browsing context." },
+                { "name": "selectionCancelled", "type": "boolean", "description": "If true, the chooser was dismissed because file selection was cancelled." }
+            ]
+        },
+        {
+            "name": "browsingContextCleared",
+            "description": "Fired when the specified browsing context has navigated or closed. Existing element references from the browsing context are no longer valid.",
+            "parameters": [
+                { "name": "browsingContextHandle", "$ref": "BrowsingContextHandle" }
             ]
         }
     ]

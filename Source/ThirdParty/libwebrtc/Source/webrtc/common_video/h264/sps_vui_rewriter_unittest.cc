@@ -10,14 +10,12 @@
 
 #include <vector>
 
-#include "webrtc/base/bitbuffer.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/base/fileutils.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/pathutils.h"
-#include "webrtc/common_video/h264/h264_common.h"
-#include "webrtc/common_video/h264/sps_vui_rewriter.h"
-#include "webrtc/test/gtest.h"
+#include "common_video/h264/h264_common.h"
+#include "common_video/h264/sps_vui_rewriter.h"
+#include "rtc_base/bitbuffer.h"
+#include "rtc_base/buffer.h"
+#include "rtc_base/logging.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -161,7 +159,7 @@ void TestSps(SpsMode mode, SpsVuiRewriter::ParseResult expected_parse_result) {
   index.payload_start_offset += H264::kNaluTypeSize;
   index.payload_size -= H264::kNaluTypeSize;
 
-  rtc::Optional<SpsParser::SpsState> sps;
+  absl::optional<SpsParser::SpsState> sps;
   rtc::Buffer out_buffer;
   SpsVuiRewriter::ParseResult result =
       SpsVuiRewriter::ParseAndRewriteSps(&buffer[index.payload_start_offset],

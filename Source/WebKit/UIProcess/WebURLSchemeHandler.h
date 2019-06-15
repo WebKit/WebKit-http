@@ -27,8 +27,13 @@
 
 #include "WebURLSchemeTask.h"
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+
+namespace IPC {
+class DataReference;
+}
 
 namespace WebCore {
 class ResourceRequest;
@@ -38,6 +43,8 @@ namespace WebKit {
 
 class WebPageProxy;
 
+using SyncLoadCompletionHandler = CompletionHandler<void(const WebCore::ResourceResponse&, const WebCore::ResourceError&, const IPC::DataReference&)>;
+
 class WebURLSchemeHandler : public RefCounted<WebURLSchemeHandler> {
     WTF_MAKE_NONCOPYABLE(WebURLSchemeHandler);
 public:
@@ -45,8 +52,10 @@ public:
 
     uint64_t identifier() const { return m_identifier; }
 
-    void startTask(WebPageProxy&, uint64_t taskIdentifier, const WebCore::ResourceRequest&);
+    void startTask(WebPageProxy&, uint64_t taskIdentifier, WebCore::ResourceRequest&&, SyncLoadCompletionHandler&&);
     void stopTask(WebPageProxy&, uint64_t taskIdentifier);
+    void stopAllTasksForPage(WebPageProxy&);
+    void taskCompleted(WebURLSchemeTask&);
 
 protected:
     WebURLSchemeHandler();
@@ -54,10 +63,16 @@ protected:
 private:
     virtual void platformStartTask(WebPageProxy&, WebURLSchemeTask&) = 0;
     virtual void platformStopTask(WebPageProxy&, WebURLSchemeTask&) = 0;
+    virtual void platformTaskCompleted(WebURLSchemeTask&) = 0;
+
+    void removeTaskFromPageMap(uint64_t pageID, uint64_t taskID);
 
     uint64_t m_identifier;
 
     HashMap<uint64_t, Ref<WebURLSchemeTask>> m_tasks;
+    HashMap<uint64_t, HashSet<uint64_t>> m_tasksByPageIdentifier;
+    
+    SyncLoadCompletionHandler m_syncLoadCompletionHandler;
 
 }; // class WebURLSchemeHandler
 

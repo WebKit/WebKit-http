@@ -8,33 +8,31 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_VIDEOTRACKSOURCE_H_
-#define WEBRTC_PC_VIDEOTRACKSOURCE_H_
+#ifndef PC_VIDEOTRACKSOURCE_H_
+#define PC_VIDEOTRACKSOURCE_H_
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/notifier.h"
-#include "webrtc/base/thread_checker.h"
-#include "webrtc/media/base/mediachannel.h"
-#include "webrtc/media/base/videosinkinterface.h"
+#include "api/mediastreaminterface.h"
+#include "api/notifier.h"
+#include "api/video/video_sink_interface.h"
+#include "media/base/mediachannel.h"
+#include "rtc_base/thread_checker.h"
 
-// VideoTrackSource implements VideoTrackSourceInterface.
 namespace webrtc {
 
+// VideoTrackSource is a convenience base class for implementations of
+// VideoTrackSourceInterface.
 class VideoTrackSource : public Notifier<VideoTrackSourceInterface> {
  public:
-  VideoTrackSource(rtc::VideoSourceInterface<VideoFrame>* source, bool remote);
+  explicit VideoTrackSource(bool remote);
   void SetState(SourceState new_state);
-  // OnSourceDestroyed clears this instance pointer to |source_|. It is useful
-  // when the underlying rtc::VideoSourceInterface is destroyed before the
-  // reference counted VideoTrackSource.
-  void OnSourceDestroyed();
 
   SourceState state() const override { return state_; }
   bool remote() const override { return remote_; }
 
   bool is_screencast() const override { return false; }
-  rtc::Optional<bool> needs_denoising() const override {
-    return rtc::Optional<bool>(); }
+  absl::optional<bool> needs_denoising() const override {
+    return absl::nullopt;
+  }
 
   bool GetStats(Stats* stats) override { return false; }
 
@@ -42,14 +40,15 @@ class VideoTrackSource : public Notifier<VideoTrackSourceInterface> {
                        const rtc::VideoSinkWants& wants) override;
   void RemoveSink(rtc::VideoSinkInterface<VideoFrame>* sink) override;
 
+ protected:
+  virtual rtc::VideoSourceInterface<VideoFrame>* source() = 0;
+
  private:
   rtc::ThreadChecker worker_thread_checker_;
-  rtc::VideoSourceInterface<VideoFrame>* source_;
-  cricket::VideoOptions options_;
   SourceState state_;
   const bool remote_;
 };
 
 }  // namespace webrtc
 
-#endif  //  WEBRTC_PC_VIDEOTRACKSOURCE_H_
+#endif  //  PC_VIDEOTRACKSOURCE_H_

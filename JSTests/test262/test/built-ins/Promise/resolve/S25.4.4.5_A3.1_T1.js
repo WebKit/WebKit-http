@@ -2,34 +2,34 @@
 // See LICENSE for details.
 
 /*---
-info: >
+info: |
    Promise.resolve
 es6id: S25.4.4.5_A3.1_T1
 author: Sam Mikes
 description: Promise.resolve delegates to foreign thenable
-includes: [PromiseHelper.js]
+includes: [promiseHelper.js]
 flags: [async]
 ---*/
 
 var sequence = [];
 
 var thenable = {
-    then: function(onResolve, onReject) {
-        sequence.push(3);
-        checkSequence(sequence, "thenable.then called");
+  then: function(onResolve, onReject) {
+    sequence.push(3);
+    checkSequence(sequence, "thenable.then called");
 
-        assert.sameValue(this, thenable);
+    assert.sameValue(this, thenable);
 
-        onResolve('resolved');
+    onResolve('resolved');
 
-        sequence.push(4);
-        checkSequence(sequence, "after resolved");
+    sequence.push(4);
+    checkSequence(sequence, "after resolved");
 
-        throw new Error('interrupt flow');
+    throw new Error('interrupt flow');
 
-        sequence.push(4);
-        checkSequence(sequence, "duplicate sequence point not pushed");
-    }
+    sequence.push(4);
+    checkSequence(sequence, "duplicate sequence point not pushed");
+  }
 };
 
 sequence.push(1);
@@ -40,10 +40,10 @@ var p1 = Promise.resolve(thenable);
 sequence.push(2);
 checkSequence(sequence, "thenable.then queued but not yet called");
 
-p1.then(function (q) {
-    sequence.push(5);
-    checkSequence(sequence, "all done");
+p1.then(function(q) {
+  sequence.push(5);
+  checkSequence(sequence, "all done");
 
-    assert.sameValue(q, 'resolved');
+  assert.sameValue(q, 'resolved');
 
 }).then($DONE, $DONE);

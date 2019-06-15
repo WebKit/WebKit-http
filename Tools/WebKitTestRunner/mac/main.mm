@@ -42,6 +42,9 @@ static void setDefaultsToConsistentValuesForTesting()
         @"com.apple.swipescrolldirection": @1,
         @"com.apple.trackpad.forceClick": @1,
         @"WebKitLinkedOnOrAfterEverything": @YES,
+        @"NSScrollAnimationEnabled": @NO,
+        @"NSOverlayScrollersEnabled": @NO,
+        @"AppleShowScrollBars": @"Always",
     };
 
     [[NSUserDefaults standardUserDefaults] setValuesForKeysWithDictionary:dict];
@@ -50,22 +53,19 @@ static void setDefaultsToConsistentValuesForTesting()
 static void disableAppNapInUIProcess()
 {
     NSActivityOptions options = (NSActivityUserInitiatedAllowingIdleSystemSleep | NSActivityLatencyCritical) & ~(NSActivitySuddenTerminationDisabled | NSActivityAutomaticTerminationDisabled);
-    static id assertion = [[[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"WebKitTestRunner should not be subject to process suppression"] retain];
+    static id assertion = [[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"WebKitTestRunner should not be subject to process suppression"];
     ASSERT_UNUSED(assertion, assertion);
 }
 
 
 int main(int argc, const char* argv[])
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    [NSApplication sharedApplication];
-    setDefaultsToConsistentValuesForTesting();
-    disableAppNapInUIProcess(); // For secondary processes, app nap is disabled using WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled().
-
-    {
+    @autoreleasepool {
+        [NSApplication sharedApplication];
+        setDefaultsToConsistentValuesForTesting();
+        disableAppNapInUIProcess(); // For secondary processes, app nap is disabled using WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled().
         WTR::TestController controller(argc, argv);
     }
-    [pool drain];
     return 0;
 }
 

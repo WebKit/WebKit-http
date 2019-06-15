@@ -72,7 +72,7 @@ typedef Function<void(const IDBError&, const IDBGetResult&)> GetResultCallback;
 typedef Function<void(const IDBError&, const IDBGetAllResult&)> GetAllResultsCallback;
 typedef Function<void(const IDBError&, uint64_t)> CountCallback;
 
-class UniqueIDBDatabase {
+class UniqueIDBDatabase : public CanMakeWeakPtr<UniqueIDBDatabase> {
 public:
     UniqueIDBDatabase(IDBServer&, const IDBDatabaseIdentifier&);
     UniqueIDBDatabase(UniqueIDBDatabase&) = delete;
@@ -266,6 +266,7 @@ private:
     CrossThreadQueue<CrossThreadTask> m_databaseReplyQueue;
 
     bool m_hardClosedForUserDelete { false };
+    bool m_owningPointerReleaseScheduled { false };
     std::unique_ptr<UniqueIDBDatabase> m_owningPointerForClose;
 
     HashSet<IDBResourceIdentifier> m_cursorPrefetches;

@@ -5,7 +5,7 @@
 es6id: B.2.3.4
 description: >
   String.prototype.blink.length is 0.
-info: >
+info: |
   String.prototype.blink ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.blink.length, 0);
-
-verifyNotEnumerable(String.prototype.blink, "length");
-verifyNotWritable(String.prototype.blink, "length");
-verifyConfigurable(String.prototype.blink, "length");
+verifyProperty(String.prototype.blink, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

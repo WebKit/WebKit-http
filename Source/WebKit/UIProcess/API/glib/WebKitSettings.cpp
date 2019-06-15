@@ -35,7 +35,10 @@
 #include "WebKitSettingsPrivate.h"
 #include "WebPageProxy.h"
 #include "WebPreferences.h"
+#include <WebCore/PlatformScreen.h>
+#include <WebCore/TextEncodingRegistry.h>
 #include <WebCore/UserAgent.h>
+#include <cmath>
 #include <glib/gi18n-lib.h>
 #include <wtf/glib/WTFGType.h>
 #include <wtf/text/CString.h>
@@ -76,6 +79,7 @@ struct _WebKitSettingsPrivate {
     CString userAgent;
     bool allowModalDialogs { false };
     bool zoomTextOnly { false };
+    double screenDpi { 96 };
 };
 
 /**
@@ -123,7 +127,9 @@ enum {
     PROP_DEFAULT_MONOSPACE_FONT_SIZE,
     PROP_MINIMUM_FONT_SIZE,
     PROP_DEFAULT_CHARSET,
+#if PLATFORM(GTK)
     PROP_ENABLE_PRIVATE_BROWSING,
+#endif
     PROP_ENABLE_DEVELOPER_EXTRAS,
     PROP_ENABLE_RESIZABLE_TEXT_AREAS,
     PROP_ENABLE_TABS_TO_LINKS,
@@ -148,6 +154,8 @@ enum {
     PROP_ENABLE_MEDIA_STREAM,
     PROP_ENABLE_SPATIAL_NAVIGATION,
     PROP_ENABLE_MEDIASOURCE,
+    PROP_ENABLE_ENCRYPTED_MEDIA,
+    PROP_ENABLE_MEDIA_CAPABILITIES,
     PROP_ALLOW_FILE_ACCESS_FROM_FILE_URLS,
     PROP_ALLOW_UNIVERSAL_ACCESS_FROM_FILE_URLS,
 #if PLATFORM(GTK)
@@ -155,12 +163,36 @@ enum {
 #endif
 };
 
+static void webKitSettingsDispose(GObject* object)
+{
+    WebCore::setScreenDPIObserverHandler(nullptr, object);
+    G_OBJECT_CLASS(webkit_settings_parent_class)->dispose(object);
+}
+
 static void webKitSettingsConstructed(GObject* object)
 {
     G_OBJECT_CLASS(webkit_settings_parent_class)->constructed(object);
 
-    WebPreferences* prefs = WEBKIT_SETTINGS(object)->priv->preferences.get();
+    WebKitSettings* settings = WEBKIT_SETTINGS(object);
+    WebPreferences* prefs = settings->priv->preferences.get();
     prefs->setShouldRespectImageOrientation(true);
+
+    settings->priv->screenDpi = WebCore::screenDPI();
+    WebCore::setScreenDPIObserverHandler([settings]() {
+        auto newScreenDpi = WebCore::screenDPI();
+        if (newScreenDpi == settings->priv->screenDpi)
+            return;
+
+        auto scalingFactor = newScreenDpi / settings->priv->screenDpi;
+        auto fontSize = settings->priv->preferences->defaultFontSize();
+        auto monospaceFontSize = settings->priv->preferences->defaultFixedFontSize();
+        settings->priv->screenDpi = newScreenDpi;
+
+        g_object_freeze_notify(G_OBJECT(settings));
+        webkit_settings_set_default_font_size(settings, std::round(fontSize * scalingFactor));
+        webkit_settings_set_default_monospace_font_size(settings, std::round(monospaceFontSize * scalingFactor));
+        g_object_thaw_notify(G_OBJECT(settings));
+    }, object);
 }
 
 static void webKitSettingsSetProperty(GObject* object, guint propId, const GValue* value, GParamSpec* paramSpec)
@@ -237,11 +269,13 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
     case PROP_DEFAULT_CHARSET:
         webkit_settings_set_default_charset(settings, g_value_get_string(value));
         break;
+#if PLATFORM(GTK)
     case PROP_ENABLE_PRIVATE_BROWSING:
         G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
         webkit_settings_set_enable_private_browsing(settings, g_value_get_boolean(value));
         G_GNUC_END_IGNORE_DEPRECATIONS;
         break;
+#endif
     case PROP_ENABLE_DEVELOPER_EXTRAS:
         webkit_settings_set_enable_developer_extras(settings, g_value_get_boolean(value));
         break;
@@ -319,6 +353,12 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
         break;
     case PROP_ENABLE_MEDIASOURCE:
         webkit_settings_set_enable_mediasource(settings, g_value_get_boolean(value));
+        break;
+    case PROP_ENABLE_ENCRYPTED_MEDIA:
+        webkit_settings_set_enable_encrypted_media(settings, g_value_get_boolean(value));
+        break;
+    case PROP_ENABLE_MEDIA_CAPABILITIES:
+        webkit_settings_set_enable_media_capabilities(settings, g_value_get_boolean(value));
         break;
     case PROP_ALLOW_FILE_ACCESS_FROM_FILE_URLS:
         webkit_settings_set_allow_file_access_from_file_urls(settings, g_value_get_boolean(value));
@@ -411,11 +451,13 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
     case PROP_DEFAULT_CHARSET:
         g_value_set_string(value, webkit_settings_get_default_charset(settings));
         break;
+#if PLATFORM(GTK)
     case PROP_ENABLE_PRIVATE_BROWSING:
         G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
         g_value_set_boolean(value, webkit_settings_get_enable_private_browsing(settings));
         G_GNUC_END_IGNORE_DEPRECATIONS;
         break;
+#endif
     case PROP_ENABLE_DEVELOPER_EXTRAS:
         g_value_set_boolean(value, webkit_settings_get_enable_developer_extras(settings));
         break;
@@ -488,6 +530,12 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
     case PROP_ENABLE_MEDIASOURCE:
         g_value_set_boolean(value, webkit_settings_get_enable_mediasource(settings));
         break;
+    case PROP_ENABLE_ENCRYPTED_MEDIA:
+        g_value_set_boolean(value, webkit_settings_get_enable_encrypted_media(settings));
+        break;
+    case PROP_ENABLE_MEDIA_CAPABILITIES:
+        g_value_set_boolean(value, webkit_settings_get_enable_media_capabilities(settings));
+        break;
     case PROP_ALLOW_FILE_ACCESS_FROM_FILE_URLS:
         g_value_set_boolean(value, webkit_settings_get_allow_file_access_from_file_urls(settings));
         break;
@@ -509,6 +557,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
 {
     GObjectClass* gObjectClass = G_OBJECT_CLASS(klass);
     gObjectClass->constructed = webKitSettingsConstructed;
+    gObjectClass->dispose = webKitSettingsDispose;
     gObjectClass->set_property = webKitSettingsSetProperty;
     gObjectClass->get_property = webKitSettingsGetProperty;
 
@@ -818,7 +867,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
     /**
      * WebKitSettings:minimum-font-size:
      *
-     * The minimum font size in points used to display text. This setting
+     * The minimum font size in pixels used to display text. This setting
      * controls the absolute smallest size. Values other than 0 can
      * potentially break page layouts.
      */
@@ -843,13 +892,14 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                         "iso-8859-1",
                                                         readWriteConstructParamFlags));
 
+#if PLATFORM(GTK)
     /**
      * WebKitSettings:enable-private-browsing:
      *
      * Determines whether or not private browsing is enabled. Private browsing
      * will disable history, cache and form auto-fill for any pages visited.
      *
-     * Deprecated: 2.16. Use #WebKitWebView:is-ephemeral or #WebKitWebContext:is-ephemeral instead.
+     * Deprecated: 2.16. Use #WebKitWebView:is-ephemeral or #WebKitWebsiteDataManager:is-ephemeral instead.
      */
     g_object_class_install_property(gObjectClass,
                                     PROP_ENABLE_PRIVATE_BROWSING,
@@ -858,6 +908,7 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
                                                          _("Whether to enable private browsing"),
                                                          FALSE,
                                                          readWriteConstructParamFlags));
+#endif
 
     /**
      * WebKitSettings:enable-developer-extras:
@@ -1254,6 +1305,49 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
             FALSE,
             readWriteConstructParamFlags));
 
+
+   /**
+     * WebKitSettings:enable-encrypted-media:
+     *
+     * Enable or disable support for Encrypted Media API on pages.
+     * EncryptedMedia is an experimental JavaScript API for playing encrypted media in HTML.
+     * This property will only work as intended if the EncryptedMedia feature is enabled at build time
+     * with the ENABLE_ENCRYPTED_MEDIA flag.
+     *
+     * See https://www.w3.org/TR/encrypted-media/
+     *
+     * Since: 2.20
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ENABLE_ENCRYPTED_MEDIA,
+        g_param_spec_boolean("enable-encrypted-media",
+            _("Enable EncryptedMedia"),
+            _("Whether EncryptedMedia should be enabled."),
+            FALSE,
+            readWriteConstructParamFlags));
+
+    /**
+     * WebKitSettings:enable-media-capabilities:
+     *
+     * Enable or disable support for MediaCapabilities on pages. This
+     * specification intends to provide APIs to allow websites to make an optimal
+     * decision when picking media content for the user. The APIs will expose
+     * information about the decoding and encoding capabilities for a given format
+     * but also output capabilities to find the best match based on the device’s
+     * display.
+     *
+     * See also https://wicg.github.io/media-capabilities/
+     *
+     * Since: 2.22
+     */
+    g_object_class_install_property(gObjectClass,
+        PROP_ENABLE_MEDIA_CAPABILITIES,
+        g_param_spec_boolean("enable-media-capabilities",
+            _("Enable MediaCapabilities"),
+            _("Whether MediaCapabilities should be enabled."),
+            FALSE,
+            readWriteConstructParamFlags));
+
     /**
      * WebKitSettings:allow-file-access-from-file-urls:
      *
@@ -1620,7 +1714,7 @@ gboolean webkit_settings_get_enable_frame_flattening(WebKitSettings* settings)
     g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
 
     // FIXME: Expose more frame flattening values.
-    return settings->priv->preferences->frameFlattening() != WebCore::FrameFlatteningDisabled;
+    return settings->priv->preferences->frameFlattening() != static_cast<uint32_t>(WebCore::FrameFlattening::Disabled);
 }
 
 /**
@@ -1635,12 +1729,12 @@ void webkit_settings_set_enable_frame_flattening(WebKitSettings* settings, gbool
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
 
     WebKitSettingsPrivate* priv = settings->priv;
-    bool currentValue = priv->preferences->frameFlattening() != WebCore::FrameFlatteningDisabled;
+    bool currentValue = priv->preferences->frameFlattening() != static_cast<uint32_t>(WebCore::FrameFlattening::Disabled);
     if (currentValue == enabled)
         return;
 
     // FIXME: Expose more frame flattening values.
-    priv->preferences->setFrameFlattening(enabled ? WebCore::FrameFlatteningFullyEnabled : WebCore::FrameFlatteningDisabled);
+    priv->preferences->setFrameFlattening(enabled ? static_cast<uint32_t>(WebCore::FrameFlattening::FullyEnabled) : static_cast<uint32_t>(WebCore::FrameFlattening::Disabled));
     g_object_notify(G_OBJECT(settings), "enable-frame-flattening");
 }
 
@@ -2049,7 +2143,7 @@ void webkit_settings_set_pictograph_font_family(WebKitSettings* settings, const 
  *
  * Gets the #WebKitSettings:default-font-size property.
  *
- * Returns: The default font size.
+ * Returns: The default font size, in pixels.
  */
 guint32 webkit_settings_get_default_font_size(WebKitSettings* settings)
 {
@@ -2084,7 +2178,7 @@ void webkit_settings_set_default_font_size(WebKitSettings* settings, guint32 fon
  *
  * Gets the #WebKitSettings:default-monospace-font-size property.
  *
- * Returns: Default monospace font size.
+ * Returns: Default monospace font size, in pixels.
  */
 guint32 webkit_settings_get_default_monospace_font_size(WebKitSettings* settings)
 {
@@ -2119,7 +2213,7 @@ void webkit_settings_set_default_monospace_font_size(WebKitSettings* settings, g
  *
  * Gets the #WebKitSettings:minimum-font-size property.
  *
- * Returns: Minimum font size.
+ * Returns: Minimum font size, in pixels.
  */
 guint32 webkit_settings_get_minimum_font_size(WebKitSettings* settings)
 {
@@ -2131,7 +2225,7 @@ guint32 webkit_settings_get_minimum_font_size(WebKitSettings* settings)
 /**
  * webkit_settings_set_minimum_font_size:
  * @settings: a #WebKitSettings
- * @font_size: minimum font size to be set in points
+ * @font_size: minimum font size to be set in pixels
  *
  * Set the #WebKitSettings:minimum-font-size property.
  */
@@ -2185,6 +2279,7 @@ void webkit_settings_set_default_charset(WebKitSettings* settings, const gchar* 
     g_object_notify(G_OBJECT(settings), "default-charset");
 }
 
+#if PLATFORM(GTK)
 /**
  * webkit_settings_get_enable_private_browsing:
  * @settings: a #WebKitSettings
@@ -2223,6 +2318,7 @@ void webkit_settings_set_enable_private_browsing(WebKitSettings* settings, gbool
     priv->preferences->setPrivateBrowsingEnabled(enabled);
     g_object_notify(G_OBJECT(settings), "enable-private-browsing");
 }
+#endif
 
 /**
  * webkit_settings_get_enable_developer_extras:
@@ -2850,7 +2946,6 @@ void webkit_settings_set_user_agent(WebKitSettings* settings, const char* userAg
 {
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
 
-#if PLATFORM(GTK)
     WebKitSettingsPrivate* priv = settings->priv;
     CString newUserAgent = (!userAgent || !strlen(userAgent)) ? WebCore::standardUserAgent("").utf8() : userAgent;
     if (newUserAgent == priv->userAgent)
@@ -2858,9 +2953,6 @@ void webkit_settings_set_user_agent(WebKitSettings* settings, const char* userAg
 
     priv->userAgent = newUserAgent;
     g_object_notify(G_OBJECT(settings), "user-agent");
-#elif PLATFORM(WPE)
-    // FIXME: WPE should implement WebCore::standardUserAgent.
-#endif
 }
 
 /**
@@ -2877,12 +2969,8 @@ void webkit_settings_set_user_agent_with_application_details(WebKitSettings* set
 {
     g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
 
-#if PLATFORM(GTK)
     CString newUserAgent = WebCore::standardUserAgent(String::fromUTF8(applicationName), String::fromUTF8(applicationVersion)).utf8();
     webkit_settings_set_user_agent(settings, newUserAgent.data());
-#elif PLATFORM(WPE)
-    // FIXME: WPE should implement WebCore::standardUserAgent.
-#endif
 }
 
 /**
@@ -3120,6 +3208,86 @@ void webkit_settings_set_enable_mediasource(WebKitSettings* settings, gboolean e
 }
 
 /**
+ * webkit_settings_get_enable_encrypted_media:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-encrypted-media property.
+ *
+ * Returns: %TRUE if EncryptedMedia support is enabled or %FALSE otherwise.
+ *
+ * Since: 2.20
+ */
+gboolean webkit_settings_get_enable_encrypted_media(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->encryptedMediaAPIEnabled();
+}
+
+
+/**
+ * webkit_settings_set_enable_encrypted_media:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-encrypted-media property.
+ *
+ * Since: 2.20
+ */
+void webkit_settings_set_enable_encrypted_media(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->encryptedMediaAPIEnabled();
+    if (currentValue == enabled)
+        return;
+
+    priv->preferences->setEncryptedMediaAPIEnabled(enabled);
+    g_object_notify(G_OBJECT(settings), "enable-encrypted-media");
+}
+
+/**
+ * webkit_settings_get_enable_media_capabilities:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-media-capabilities property.
+ *
+ * Returns: %TRUE if MediaCapabilities support is enabled or %FALSE otherwise.
+ *
+ * Since: 2.22
+ */
+gboolean webkit_settings_get_enable_media_capabilities(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->mediaCapabilitiesEnabled();
+}
+
+
+/**
+ * webkit_settings_set_enable_media_capabilities:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-media-capabilities property.
+ *
+ * Since: 2.22
+ */
+void webkit_settings_set_enable_media_capabilities(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->mediaCapabilitiesEnabled();
+    if (currentValue == enabled)
+        return;
+
+    priv->preferences->setMediaCapabilitiesEnabled(enabled);
+    g_object_notify(G_OBJECT(settings), "enable-media-capabilities");
+}
+
+/**
  * webkit_settings_get_allow_file_access_from_file_urls:
  * @settings: a #WebKitSettings
  *
@@ -3276,5 +3444,41 @@ void webkit_settings_set_hardware_acceleration_policy(WebKitSettings* settings, 
 
     if (changed)
         g_object_notify(G_OBJECT(settings), "hardware-acceleration-policy");
+}
+
+/**
+ * webkit_settings_font_size_to_points:
+ * @pixels: the font size in pixels to convert to points
+ *
+ * Convert @pixels to the equivalent value in points, based on the current
+ * screen DPI. Applications can use this function to convert font size values
+ * in pixels to font size values in points when getting the font size properties
+ * of #WebKitSettings.
+ *
+ * Returns: the equivalent font size in points.
+ *
+ * Since: 2.20
+ */
+guint32 webkit_settings_font_size_to_points(guint32 pixels)
+{
+    return std::round(pixels * 72 / WebCore::screenDPI());
+}
+
+/**
+ * webkit_settings_font_size_to_pixels:
+ * @points: the font size in points to convert to pixels
+ *
+ * Convert @points to the equivalent value in pixels, based on the current
+ * screen DPI. Applications can use this function to convert font size values
+ * in points to font size values in pixels when setting the font size properties
+ * of #WebKitSettings.
+ *
+ * Returns: the equivalent font size in pixels.
+ *
+ * Since: 2.20
+ */
+guint32 webkit_settings_font_size_to_pixels(guint32 points)
+{
+    return std::round(points * WebCore::screenDPI() / 72);
 }
 #endif // PLATFORM(GTK)

@@ -8,12 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_AUDIO_SMOOTHING_FILTER_H_
-#define WEBRTC_COMMON_AUDIO_SMOOTHING_FILTER_H_
+#ifndef COMMON_AUDIO_SMOOTHING_FILTER_H_
+#define COMMON_AUDIO_SMOOTHING_FILTER_H_
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/system_wrappers/include/clock.h"
+#include "absl/types/optional.h"
+#include "rtc_base/constructormagic.h"
+#include "system_wrappers/include/clock.h"
 
 namespace webrtc {
 
@@ -21,7 +21,7 @@ class SmoothingFilter {
  public:
   virtual ~SmoothingFilter() = default;
   virtual void AddSample(float sample) = 0;
-  virtual rtc::Optional<float> GetAverage() = 0;
+  virtual absl::optional<float> GetAverage() = 0;
   virtual bool SetTimeConstantMs(int time_constant_ms) = 0;
 };
 
@@ -44,7 +44,7 @@ class SmoothingFilterImpl final : public SmoothingFilter {
   ~SmoothingFilterImpl() override;
 
   void AddSample(float sample) override;
-  rtc::Optional<float> GetAverage() override;
+  absl::optional<float> GetAverage() override;
   bool SetTimeConstantMs(int time_constant_ms) override;
 
   // Methods used for unittests.
@@ -58,7 +58,7 @@ class SmoothingFilterImpl final : public SmoothingFilter {
   const float init_factor_;
   const float init_const_;
 
-  rtc::Optional<int64_t> init_end_time_ms_;
+  absl::optional<int64_t> init_end_time_ms_;
   float last_sample_;
   float alpha_;
   float state_;
@@ -69,4 +69,4 @@ class SmoothingFilterImpl final : public SmoothingFilter {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_AUDIO_SMOOTHING_FILTER_H_
+#endif  // COMMON_AUDIO_SMOOTHING_FILTER_H_

@@ -42,23 +42,7 @@ public:
         static ptrdiff_t offsetOfImpl() { return OBJECT_OFFSETOF(Entry, impl); }
         static ptrdiff_t offsetOfResult() { return OBJECT_OFFSETOF(Entry, result); }
 
-        Entry() = default;
-
-        Entry(RefPtr<UniquedStringImpl>&& impl, StructureID structureID, bool result)
-            : impl(WTFMove(impl))
-            , structureID(structureID)
-            , result(result)
-        { }
-
-        Entry& operator=(Entry&& other)
-        {
-            impl = WTFMove(other.impl);
-            structureID = other.structureID;
-            result = other.result;
-            return *this;
-        }
-
-        RefPtr<UniquedStringImpl> impl { };
+        RefPtr<UniquedStringImpl> impl;
         StructureID structureID { 0 };
         bool result { false };
     };

@@ -23,23 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "config.h"
+#include "config.h"
 
-#import "PlatformUtilities.h"
-#import "Test.h"
-#import "WTFStringUtilities.h"
-#import <WebCore/FileMonitor.h>
-#import <WebCore/FileSystem.h>
-#import <WebCore/ScopeGuard.h>
-#import <wtf/MainThread.h>
-#import <wtf/RunLoop.h>
-#import <wtf/StringExtras.h>
-#import <wtf/WorkQueue.h>
-#import <wtf/text/StringBuffer.h>
+#include "PlatformUtilities.h"
+#include "Test.h"
+#include "WTFStringUtilities.h"
+#include <WebCore/FileMonitor.h>
+#include <WebCore/FileSystem.h>
+#include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
+#include <wtf/Scope.h>
+#include <wtf/StringExtras.h>
+#include <wtf/WorkQueue.h>
+#include <wtf/text/StringBuffer.h>
 
-// Note: Currently, only a Cocoa implementation exists. This could probably be supported under GTK using g_file_monitor_file
 // Note: Disabling iOS since 'system' is not available on that platform.
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(GTK) || PLATFORM(WPE)
 
 using namespace WebCore;
 
@@ -56,19 +55,19 @@ public:
         RunLoop::initializeMainRunLoop();
         
         // create temp file
-        PlatformFileHandle handle;
-        m_tempFilePath = openTemporaryFile("tempTestFile", handle);
-        ASSERT_NE(handle, invalidPlatformFileHandle);
+        FileSystem::PlatformFileHandle handle;
+        m_tempFilePath = FileSystem::openTemporaryFile("tempTestFile", handle);
+        ASSERT_NE(handle, FileSystem::invalidPlatformFileHandle);
         
-        int rc = writeToFile(handle, FileMonitorTestData.utf8().data(), FileMonitorTestData.length());
+        int rc = FileSystem::writeToFile(handle, FileMonitorTestData.utf8().data(), FileMonitorTestData.length());
         ASSERT_NE(rc, -1);
         
-        closeFile(handle);
+        FileSystem::closeFile(handle);
     }
     
     void TearDown() override
     {
-        deleteFile(m_tempFilePath);
+        FileSystem::deleteFile(m_tempFilePath);
     }
     
     const String& tempFilePath() { return m_tempFilePath; }
@@ -115,19 +114,19 @@ static String readContentsOfFile(const String& path)
 {
     constexpr int bufferSize = 1024;
 
-    auto source = openFile(path, OpenForRead);
-    if (!isHandleValid(source))
+    auto source = FileSystem::openFile(path, FileSystem::FileOpenMode::Read);
+    if (!FileSystem::isHandleValid(source))
         return emptyString();
 
     StringBuffer<LChar> buffer(bufferSize);
 
-    ScopeGuard fileCloser([source]() {
-        PlatformFileHandle handle = source;
-        closeFile(handle);
+    auto fileCloser = WTF::makeScopeExit([source]() {
+        FileSystem::PlatformFileHandle handle = source;
+        FileSystem::closeFile(handle);
     });
 
     // Since we control the test files, we know we only need one read
-    int readBytes = readFromFile(source, reinterpret_cast<char*>(buffer.characters()), bufferSize);
+    int readBytes = FileSystem::readFromFile(source, reinterpret_cast<char*>(buffer.characters()), bufferSize);
     if (readBytes < 0)
         return emptyString();
 
@@ -143,13 +142,13 @@ static String readContentsOfFile(const String& path)
 
 TEST_F(FileMonitorTest, DetectChange)
 {
-    EXPECT_TRUE(fileExists(tempFilePath()));
+    EXPECT_TRUE(FileSystem::fileExists(tempFilePath()));
 
     RunLoop::initializeMainRunLoop();
 
     auto testQueue = WorkQueue::create("Test Work Queue");
 
-    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
+    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         switch (type) {
         case FileMonitor::FileChangeType::Modification:
@@ -185,13 +184,13 @@ TEST_F(FileMonitorTest, DetectChange)
 
 TEST_F(FileMonitorTest, DetectMultipleChanges)
 {
-    EXPECT_TRUE(fileExists(tempFilePath()));
+    EXPECT_TRUE(FileSystem::fileExists(tempFilePath()));
 
     RunLoop::initializeMainRunLoop();
 
     auto testQueue = WorkQueue::create("Test Work Queue");
 
-    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
+    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         switch (type) {
         case FileMonitor::FileChangeType::Modification:
@@ -245,13 +244,13 @@ TEST_F(FileMonitorTest, DetectMultipleChanges)
 
 TEST_F(FileMonitorTest, DetectDeletion)
 {
-    EXPECT_TRUE(fileExists(tempFilePath()));
+    EXPECT_TRUE(FileSystem::fileExists(tempFilePath()));
 
     RunLoop::initializeMainRunLoop();
 
     auto testQueue = WorkQueue::create("Test Work Queue");
 
-    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
+    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         switch (type) {
         case FileMonitor::FileChangeType::Modification:
@@ -284,13 +283,13 @@ TEST_F(FileMonitorTest, DetectDeletion)
 
 TEST_F(FileMonitorTest, DetectChangeAndThenDelete)
 {
-    EXPECT_TRUE(fileExists(tempFilePath()));
+    EXPECT_TRUE(FileSystem::fileExists(tempFilePath()));
 
     RunLoop::initializeMainRunLoop();
 
     auto testQueue = WorkQueue::create("Test Work Queue");
 
-    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
+    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         switch (type) {
             case FileMonitor::FileChangeType::Modification:
@@ -341,13 +340,13 @@ TEST_F(FileMonitorTest, DetectChangeAndThenDelete)
 
 TEST_F(FileMonitorTest, DetectDeleteButNotSubsequentChange)
 {
-    EXPECT_TRUE(fileExists(tempFilePath()));
+    EXPECT_TRUE(FileSystem::fileExists(tempFilePath()));
 
     RunLoop::initializeMainRunLoop();
 
     auto testQueue = WorkQueue::create("Test Work Queue");
 
-    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [this] (FileMonitor::FileChangeType type) {
+    auto monitor = std::make_unique<FileMonitor>(tempFilePath(), testQueue.copyRef(), [] (FileMonitor::FileChangeType type) {
         ASSERT(!RunLoop::isMain());
         switch (type) {
             case FileMonitor::FileChangeType::Modification:
@@ -378,12 +377,12 @@ TEST_F(FileMonitorTest, DetectDeleteButNotSubsequentChange)
     resetTestState();
 
     testQueue->dispatch([this] () mutable {
-        EXPECT_FALSE(fileExists(tempFilePath()));
+        EXPECT_FALSE(FileSystem::fileExists(tempFilePath()));
 
-        auto handle = openFile(tempFilePath(), OpenForWrite);
-        ASSERT_NE(handle, invalidPlatformFileHandle);
+        auto handle = FileSystem::openFile(tempFilePath(), FileSystem::FileOpenMode::Write);
+        ASSERT_NE(handle, FileSystem::invalidPlatformFileHandle);
 
-        int rc = writeToFile(handle, FileMonitorTestData.utf8().data(), FileMonitorTestData.length());
+        int rc = FileSystem::writeToFile(handle, FileMonitorTestData.utf8().data(), FileMonitorTestData.length());
         ASSERT_NE(rc, -1);
 
         auto firstCommand = createCommand(tempFilePath(), FileMonitorRevisedData);

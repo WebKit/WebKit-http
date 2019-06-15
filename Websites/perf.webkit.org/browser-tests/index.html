@@ -15,7 +15,10 @@ mocha.setup('bdd');
 </head>
 <body>
 <div id="mocha"></div>
+<script src="async-task-tests.js"></script>
 <script src="component-base-tests.js"></script>
+<script src="page-tests.js"></script>
+<script src="page-router-tests.js"></script>
 <script src="close-button-tests.js"></script>
 <script src="editable-text-tests.js"></script>
 <script src="time-series-chart-tests.js"></script>
@@ -24,6 +27,8 @@ mocha.setup('bdd');
 <script src="chart-revision-range-tests.js"></script>
 <script src="commit-log-viewer-tests.js"></script>
 <script src="test-group-form-tests.js"></script>
+<script src="markup-page-tests.js"></script>
+<script src="test-group-result-page-tests.js"></script>
 <script>
 
 afterEach(() => {
@@ -206,6 +211,7 @@ const ChartTest = {
     importChartScripts(context)
     {
         return context.importScripts([
+            'async-task.js',
             '../shared/statistics.js',
             'lazily-evaluated-function.js',
             'instrumentation.js',
@@ -220,11 +226,12 @@ const ChartTest = {
             'models/metric.js',
             'models/commit-set.js',
             'models/commit-log.js',
+            '../shared/common-component-base.js',
             'components/base.js',
             'components/time-series-chart.js',
             'components/interactive-time-series-chart.js'],
-            'ComponentBase', 'TimeSeriesChart', 'InteractiveTimeSeriesChart',
-            'Platform', 'Metric', 'Test', 'Repository', 'MeasurementSet', 'MockRemoteAPI').then(() => {
+            'CommonComponentBase', 'ComponentBase', 'TimeSeriesChart', 'InteractiveTimeSeriesChart',
+            'Platform', 'Metric', 'Test', 'Repository', 'MeasurementSet', 'MockRemoteAPI', 'AsyncTask').then(() => {
                 return context.symbols.TimeSeriesChart;
             })
     },
@@ -265,37 +272,37 @@ const ChartTest = {
             "current": [
                 [
                     1000, 100, 1, 100, 100 * 100, false,
-                    [ [2000, 1, "4000", posixTime('2016-01-05T17:35:00Z')], [3000, 2, "15B42", 0] ],
+                    [ [2000, 1, "4000", posixTime('2016-01-05T17:35:00Z')], [3000, 2, "15B42", 0, 0] ],
                     posixTime('2016-01-05T17:35:00Z'), 5000, posixTime('2016-01-05T19:23:00Z'), "10", 7
                 ],
                 [
                     1001, 131, 1, 131, 131 * 131, true,
-                    [ [2001, 1, "4001", posixTime('2016-01-05T18:43:01Z')], [3000, 2, "15B42", 0] ],
+                    [ [2001, 1, "4001", posixTime('2016-01-05T18:43:01Z')], [3000, 2, "15B42", 0, 0] ],
                     posixTime('2016-01-05T18:43:01Z'), 5001, posixTime('2016-01-05T20:58:01Z'), "11", 7
                 ],
                 [
                     1002, 122, 1, 122, 122 * 122, false,
-                    [ [2002, 1, "4002", posixTime('2016-01-05T20:01:02Z')], [3000, 2, "15B42", 0] ],
+                    [ [2002, 1, "4002", posixTime('2016-01-05T20:01:02Z')], [3000, 2, "15B42", 0, 0] ],
                     posixTime('2016-01-05T20:01:02Z'), 5002, posixTime('2016-01-05T22:37:02Z'), "12", 7
                 ],
                 [
                     1003, 113, 1, 113, 113 * 113, false,
-                    [ [2003, 1, "4003", posixTime('2016-01-05T23:19:03Z')], [3000, 2, "15B42", 0] ],
+                    [ [2003, 1, "4003", posixTime('2016-01-05T23:19:03Z')], [3000, 2, "15B42", 0, 0] ],
                     posixTime('2016-01-05T23:19:03Z'), 5003, posixTime('2016-01-06T23:19:03Z'), "13", 7
                 ],
                 [
                     1004, 124, 1, 124, 124 * 124, false,
-                    [ [2004, 1, "4004", posixTime('2016-01-06T01:52:04Z')], [3001, 2, "15C50", 0] ],
+                    [ [2004, 1, "4004", posixTime('2016-01-06T01:52:04Z')], [3001, 2, "15C50", 0, 0] ],
                     posixTime('2016-01-06T01:52:04Z'), 5004, posixTime('2016-01-06T02:42:04Z'), "14", 7
                 ],
                 [
                     1005, 115, 1, 115, 115 * 115, true,
-                    [ [2005, 1, "4005", posixTime('2016-01-06T03:22:05Z')], [3001, 2, "15C50", 0] ],
+                    [ [2005, 1, "4005", posixTime('2016-01-06T03:22:05Z')], [3001, 2, "15C50", 0, 0] ],
                     posixTime('2016-01-06T03:22:05Z'), 5005, posixTime('2016-01-06T06:01:05Z'), "15", 7
                 ],
                 [
                     1006, 116, 1, 116, 116 * 116, false,
-                    [ [2006, 1, "4006", posixTime('2016-01-06T05:59:06Z')], [3001, 2, "15C50", 0] ],
+                    [ [2006, 1, "4006", posixTime('2016-01-06T05:59:06Z')], [3001, 2, "15C50", 0, 0] ],
                     posixTime('2016-01-06T05:59:06Z'), 5006, posixTime('2016-01-06T08:34:06Z'), "16", 7
                 ]
             ],
@@ -359,7 +366,7 @@ const ChartTest = {
 
     respondWithSampleCluster(request, options)
     {
-        expect(request.url).to.be('../data/measurement-set-1-1.json');
+        expect(request.url).to.be('/data/measurement-set-1-1.json');
         expect(request.method).to.be('GET');
         request.resolve(this.makeSampleCluster(options));
     },

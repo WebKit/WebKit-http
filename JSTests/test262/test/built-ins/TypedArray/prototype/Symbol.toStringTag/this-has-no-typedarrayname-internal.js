@@ -4,7 +4,7 @@
 esid: sec-get-%typedarray%.prototype-@@tostringtag
 description: >
   Return undefined when `this` does not have a [[TypedArrayName]] internal slot
-info: >
+info: |
   22.2.3.32 get %TypedArray%.prototype [ @@toStringTag ]
 
   1. Let O be the this value.
@@ -12,7 +12,7 @@ info: >
   3. If O does not have a [[TypedArrayName]] internal slot, return undefined.
   ...
 includes: [testTypedArray.js]
-features: [Symbol.toStringTag, DataView]
+features: [Symbol.toStringTag, DataView, TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

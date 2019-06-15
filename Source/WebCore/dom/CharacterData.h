@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,6 +27,7 @@
 namespace WebCore {
 
 class CharacterData : public Node {
+    WTF_MAKE_ISO_ALLOCATED(CharacterData);
 public:
     const String& data() const { return m_data; }
     static ptrdiff_t dataMemoryOffset() { return OBJECT_OFFSETOF(CharacterData, m_data); }
@@ -38,8 +39,6 @@ public:
     WEBCORE_EXPORT ExceptionOr<void> insertData(unsigned offset, const String&);
     WEBCORE_EXPORT ExceptionOr<void> deleteData(unsigned offset, unsigned count);
     WEBCORE_EXPORT ExceptionOr<void> replaceData(unsigned offset, unsigned count, const String&);
-
-    bool containsOnlyWhitespace() const;
 
     // Like appendData, but optimized for the parser (e.g., no mutation events).
     // Returns how much could be added before length limit was met.

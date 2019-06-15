@@ -28,9 +28,11 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "DOMWindow.h"
 #include "DocumentLoader.h"
 #include "EventListener.h"
 #include "EventNames.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
@@ -41,14 +43,16 @@
 #include "HTMLNames.h"
 #include "LocalizedStrings.h"
 #include "MIMETypeRegistry.h"
-#include "MainFrame.h"
 #include "MouseEvent.h"
 #include "Page.h"
 #include "RawDataDocumentParser.h"
 #include "RenderElement.h"
 #include "Settings.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(ImageDocument);
 
 using namespace HTMLNames;
 
@@ -65,7 +69,7 @@ private:
     }
 
     bool operator==(const EventListener&) const override;
-    void handleEvent(ScriptExecutionContext*, Event*) override;
+    void handleEvent(ScriptExecutionContext&, Event&) override;
 
     ImageDocument& m_document;
 };
@@ -91,6 +95,7 @@ private:
 };
 
 class ImageDocumentElement final : public HTMLImageElement {
+    WTF_MAKE_ISO_ALLOCATED_INLINE(ImageDocumentElement);
 public:
     static Ref<ImageDocumentElement> create(ImageDocument&);
 
@@ -135,7 +140,7 @@ void ImageDocument::updateDuringParsing()
         createDocumentStructure();
 
     if (RefPtr<SharedBuffer> buffer = loader()->mainResourceData())
-        m_imageElement->cachedImage()->addDataBuffer(*buffer);
+        m_imageElement->cachedImage()->updateBuffer(*buffer);
 
     imageUpdated();
 }
@@ -163,7 +168,7 @@ void ImageDocument::finishedParsing()
             // back on the hostname if there is no path.
             String name = decodeURLEscapeSequences(url().lastPathComponent());
             if (name.isEmpty())
-                name = url().host();
+                name = url().host().toString();
             setTitle(imageTitle(name, size));
         }
 
@@ -239,10 +244,10 @@ void ImageDocument::createDocumentStructure()
     if (m_shouldShrinkImage) {
 #if PLATFORM(IOS)
         // Set the viewport to be in device pixels (rather than the default of 980).
-        processViewport(ASCIILiteral("width=device-width"), ViewportArguments::ImageDocument);
+        processViewport("width=device-width"_s, ViewportArguments::ImageDocument);
 #else
         auto listener = ImageEventListener::create(*this);
-        if (DOMWindow* window = this->domWindow())
+        if (RefPtr<DOMWindow> window = this->domWindow())
             window->addEventListener("resize", listener.copyRef(), false);
         imageElement->addEventListener("click", WTFMove(listener), false);
 #endif
@@ -284,7 +289,7 @@ float ImageDocument::scale()
     if (!m_imageElement)
         return 1;
 
-    FrameView* view = this->view();
+    RefPtr<FrameView> view = this->view();
     if (!view)
         return 1;
 
@@ -333,7 +338,7 @@ bool ImageDocument::imageFitsInWindow()
     if (!m_imageElement)
         return true;
 
-    FrameView* view = this->view();
+    RefPtr<FrameView> view = this->view();
     if (!view)
         return true;
 
@@ -401,12 +406,12 @@ void ImageDocument::imageClicked(int x, int y)
     }
 }
 
-void ImageEventListener::handleEvent(ScriptExecutionContext*, Event* event)
+void ImageEventListener::handleEvent(ScriptExecutionContext&, Event& event)
 {
-    if (event->type() == eventNames().resizeEvent)
+    if (event.type() == eventNames().resizeEvent)
         m_document.windowSizeChanged();
-    else if (event->type() == eventNames().clickEvent && is<MouseEvent>(*event)) {
-        MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+    else if (event.type() == eventNames().clickEvent && is<MouseEvent>(event)) {
+        MouseEvent& mouseEvent = downcast<MouseEvent>(event);
         m_document.imageClicked(mouseEvent.offsetX(), mouseEvent.offsetY());
     }
 }

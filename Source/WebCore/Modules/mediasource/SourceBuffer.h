@@ -79,6 +79,7 @@ public:
     ExceptionOr<void> abort();
     ExceptionOr<void> remove(double start, double end);
     ExceptionOr<void> remove(const MediaTime&, const MediaTime&);
+    ExceptionOr<void> changeType(const String&);
 
     const TimeRanges& bufferedInternal() const { ASSERT(m_buffered); return *m_buffered; }
 
@@ -115,12 +116,16 @@ public:
 
     bool hasPendingActivity() const final;
 
+    void trySignalAllSamplesEnqueued();
+
 private:
     SourceBuffer(Ref<SourceBufferPrivate>&&, MediaSource*);
 
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
     void stop() final;
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -180,6 +185,8 @@ private:
 
     void rangeRemoval(const MediaTime&, const MediaTime&);
 
+    void trySignalAllSamplesInTrackEnqueued(const AtomicString&);
+
     friend class Internals;
     WEBCORE_EXPORT Vector<String> bufferedSamplesForTrackID(const AtomicString&);
     WEBCORE_EXPORT Vector<String> enqueuedSamplesForTrackID(const AtomicString&);
@@ -214,7 +221,7 @@ private:
     enum AppendStateType { WaitingForSegment, ParsingInitSegment, ParsingMediaSegment };
     AppendStateType m_appendState;
 
-    double m_timeOfBufferingMonitor;
+    MonotonicTime m_timeOfBufferingMonitor;
     double m_bufferedSinceLastMonitor { 0 };
     double m_averageBufferRate { 0 };
 
@@ -229,6 +236,7 @@ private:
     bool m_active { false };
     bool m_bufferFull { false };
     bool m_shouldGenerateTimestamps { false };
+    bool m_pendingInitializationSegmentForChangeType { false };
 };
 
 } // namespace WebCore

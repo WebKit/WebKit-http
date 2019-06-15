@@ -25,9 +25,12 @@
 #include "RenderView.h"
 #include "SVGRenderingContext.h"
 #include "SVGResourcesCache.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGResourceContainer);
 
 static inline SVGDocumentExtensions& svgExtensionsFromElement(SVGElement& element)
 {
@@ -37,14 +40,10 @@ static inline SVGDocumentExtensions& svgExtensionsFromElement(SVGElement& elemen
 RenderSVGResourceContainer::RenderSVGResourceContainer(SVGElement& element, RenderStyle&& style)
     : RenderSVGHiddenContainer(element, WTFMove(style))
     , m_id(element.getIdAttribute())
-    , m_registered(false)
-    , m_isInvalidating(false)
 {
 }
 
-RenderSVGResourceContainer::~RenderSVGResourceContainer()
-{
-}
+RenderSVGResourceContainer::~RenderSVGResourceContainer() = default;
 
 void RenderSVGResourceContainer::layout()
 {
@@ -188,7 +187,7 @@ void RenderSVGResourceContainer::registerResource()
         auto* renderer = client->renderer();
         if (!renderer)
             continue;
-        SVGResourcesCache::clientStyleChanged(*renderer, StyleDifferenceLayout, renderer->style());
+        SVGResourcesCache::clientStyleChanged(*renderer, StyleDifference::Layout, renderer->style());
         renderer->setNeedsLayout();
     }
 }

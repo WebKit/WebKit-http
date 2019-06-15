@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,14 +26,20 @@
 #pragma once
 
 #include <wtf/Noncopyable.h>
+#include <wtf/Optional.h>
 #include <wtf/RefPtr.h>
 #include <wtf/UniqueRef.h>
+
+#if ENABLE(APPLICATION_MANIFEST)
+#include "ApplicationManifest.h"
+#endif
 
 namespace WebCore {
 
 class AlternativeTextClient;
 class ApplicationCacheStorage;
 class BackForwardClient;
+class CacheStorageProvider;
 class ChromeClient;
 class ContextMenuClient;
 class DatabaseProvider;
@@ -58,7 +64,7 @@ class WebGLStateTracker;
 class PageConfiguration {
     WTF_MAKE_NONCOPYABLE(PageConfiguration); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, Ref<SocketProvider>&&, UniqueRef<LibWebRTCProvider>&&);
+    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, Ref<SocketProvider>&&, UniqueRef<LibWebRTCProvider>&&, Ref<CacheStorageProvider>&&);
     WEBCORE_EXPORT ~PageConfiguration();
 
     AlternativeTextClient* alternativeTextClient { nullptr };
@@ -74,6 +80,10 @@ public:
     PaymentCoordinatorClient* paymentCoordinatorClient { nullptr };
 #endif
 
+#if ENABLE(APPLICATION_MANIFEST)
+    std::optional<ApplicationManifest> applicationManifest;
+#endif
+
     UniqueRef<LibWebRTCProvider> libWebRTCProvider;
 
     PlugInClient* plugInClient { nullptr };
@@ -87,6 +97,7 @@ public:
 
     RefPtr<ApplicationCacheStorage> applicationCacheStorage;
     RefPtr<DatabaseProvider> databaseProvider;
+    Ref<CacheStorageProvider> cacheStorageProvider;
     RefPtr<PluginInfoProvider> pluginInfoProvider;
     RefPtr<StorageNamespaceProvider> storageNamespaceProvider;
     RefPtr<UserContentProvider> userContentProvider;

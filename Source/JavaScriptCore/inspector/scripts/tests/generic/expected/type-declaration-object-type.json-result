@@ -33,6 +33,7 @@
 InspectorBackend.registerEnum("Database.MouseButton", {None: "None", Left: "Left", Middle: "Middle", Right: "Right"});
 InspectorBackend.registerEnum("Database.OptionalParameterBundleDirectionality", {LTR: "LTR", RTL: "RTL"});
 InspectorBackend.registerEnum("Database.ParameterBundleDirectionality", {LTR: "LTR", RTL: "RTL"});
+InspectorBackend.activateDomain("Database");
 ### End File: InspectorBackendCommands.js
 
 ### Begin File: TestAlternateBackendDispatchers.h
@@ -71,8 +72,8 @@ InspectorBackend.registerEnum("Database.ParameterBundleDirectionality", {LTR: "L
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 
 #include "TestProtocolTypes.h"
-#include <inspector/InspectorFrontendRouter.h>
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 
 namespace Inspector {
 
@@ -126,7 +127,7 @@ private:
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -172,8 +173,8 @@ typedef String ErrorString;
 #include "config.h"
 #include "TestBackendDispatchers.h"
 
-#include <inspector/InspectorFrontendRouter.h>
-#include <inspector/InspectorValues.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+#include <wtf/JSONValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
@@ -223,7 +224,7 @@ namespace Inspector {
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorValues.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -267,7 +268,7 @@ class FrontendRouter;
 #include "config.h"
 #include "TestFrontendDispatchers.h"
 
-#include "InspectorFrontendRouter.h"
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <wtf/text/CString.h>
 
 namespace Inspector {
@@ -309,7 +310,7 @@ namespace Inspector {
 
 #pragma once
 
-#include <inspector/InspectorProtocolTypes.h>
+#include <JavaScriptCore/InspectorProtocolTypes.h>
 #include <wtf/Assertions.h>
 
 namespace Inspector {
@@ -336,7 +337,7 @@ class ParameterBundle;
 
 // Typedefs.
 namespace Database {
-typedef Inspector::Protocol::Array<Inspector::Protocol::Database::Error> ErrorList;
+typedef JSON::ArrayOf<Inspector::Protocol::Database::Error> ErrorList;
 } // Database
 // End of typedefs.
 
@@ -353,7 +354,7 @@ template<typename T> String getEnumConstantValue(T enumValue)
 
 namespace Database {
 /* Database error. */
-class Error : public Inspector::InspectorObjectBase {
+class Error : public JSON::ObjectBase {
 public:
     enum {
         NoFieldsSet = 0,
@@ -365,14 +366,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*Error*/InspectorObject>&& object)
+        Builder(Ref</*Error*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -383,23 +384,23 @@ public:
         Builder<STATE | MessageSet>& setMessage(const String& value)
         {
             COMPILE_ASSERT(!(STATE & MessageSet), property_message_already_set);
-            m_result->setString(ASCIILiteral("message"), value);
+            m_result->setString("message"_s, value);
             return castState<MessageSet>();
         }
 
         Builder<STATE | CodeSet>& setCode(int value)
         {
             COMPILE_ASSERT(!(STATE & CodeSet), property_code_already_set);
-            m_result->setInteger(ASCIILiteral("code"), value);
+            m_result->setInteger("code"_s, value);
             return castState<CodeSet>();
         }
 
         Ref<Error> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(Error) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(Error) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<Error>*>(&result));
         }
     };
@@ -413,7 +414,7 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 };
 
@@ -424,7 +425,7 @@ enum class MouseButton {
     Middle = 2,
     Right = 3,
 }; // enum class MouseButton
-class OptionalParameterBundle : public Inspector::InspectorObjectBase {
+class OptionalParameterBundle : public JSON::ObjectBase {
 public:
     // Named after property name 'directionality' while generating OptionalParameterBundle.
     enum class Directionality {
@@ -439,14 +440,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*OptionalParameterBundle*/InspectorObject>&& object)
+        Builder(Ref</*OptionalParameterBundle*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -457,9 +458,9 @@ public:
         Ref<OptionalParameterBundle> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(OptionalParameterBundle) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(OptionalParameterBundle) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<OptionalParameterBundle>*>(&result));
         }
     };
@@ -471,56 +472,56 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 
-    void setColumnNames(RefPtr<Inspector::Protocol::Array<String>> value)
+    void setColumnNames(RefPtr<JSON::ArrayOf<String>> value)
     {
-        InspectorObjectBase::setArray(ASCIILiteral("columnNames"), WTFMove(value));
+        JSON::ObjectBase::setArray("columnNames"_s, WTFMove(value));
     }
 
-    void setButtons(RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Database::MouseButton>> value)
+    void setButtons(RefPtr<JSON::ArrayOf<Inspector::Protocol::Database::MouseButton>> value)
     {
-        InspectorObjectBase::setArray(ASCIILiteral("buttons"), WTFMove(value));
+        JSON::ObjectBase::setArray("buttons"_s, WTFMove(value));
     }
 
     void setDirectionality(Directionality value)
     {
-        InspectorObjectBase::setString(ASCIILiteral("directionality"), Inspector::Protocol::TestHelpers::getEnumConstantValue(value));
+        JSON::ObjectBase::setString("directionality"_s, Inspector::Protocol::TestHelpers::getEnumConstantValue(value));
     }
 
     void setNotes(const String& value)
     {
-        InspectorObjectBase::setString(ASCIILiteral("notes"), value);
+        JSON::ObjectBase::setString("notes"_s, value);
     }
 
     void setTimestamp(double value)
     {
-        InspectorObjectBase::setDouble(ASCIILiteral("timestamp"), value);
+        JSON::ObjectBase::setDouble("timestamp"_s, value);
     }
 
-    void setValues(RefPtr<Inspector::InspectorObject> value)
+    void setValues(RefPtr<JSON::Object> value)
     {
-        InspectorObjectBase::setObject(ASCIILiteral("values"), WTFMove(value));
+        JSON::ObjectBase::setObject("values"_s, WTFMove(value));
     }
 
-    void setPayload(RefPtr<Inspector::InspectorValue> value)
+    void setPayload(RefPtr<JSON::Value> value)
     {
-        InspectorObjectBase::setValue(ASCIILiteral("payload"), WTFMove(value));
+        JSON::ObjectBase::setValue("payload"_s, WTFMove(value));
     }
 
     void setError(RefPtr<Inspector::Protocol::Database::Error> value)
     {
-        InspectorObjectBase::setObject(ASCIILiteral("error"), WTFMove(value));
+        JSON::ObjectBase::setObject("error"_s, WTFMove(value));
     }
 
     void setErrorList(RefPtr<Inspector::Protocol::Database::ErrorList> value)
     {
-        InspectorObjectBase::setArray(ASCIILiteral("errorList"), WTFMove(value));
+        JSON::ObjectBase::setArray("errorList"_s, WTFMove(value));
     }
 };
 
-class ParameterBundle : public Inspector::InspectorObjectBase {
+class ParameterBundle : public JSON::ObjectBase {
 public:
     // Named after property name 'directionality' while generating ParameterBundle.
     enum class Directionality {
@@ -544,14 +545,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*ParameterBundle*/InspectorObject>&& object)
+        Builder(Ref</*ParameterBundle*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -559,75 +560,75 @@ public:
         friend class ParameterBundle;
     public:
 
-        Builder<STATE | ColumnNamesSet>& setColumnNames(RefPtr<Inspector::Protocol::Array<String>> value)
+        Builder<STATE | ColumnNamesSet>& setColumnNames(RefPtr<JSON::ArrayOf<String>> value)
         {
             COMPILE_ASSERT(!(STATE & ColumnNamesSet), property_columnNames_already_set);
-            m_result->setArray(ASCIILiteral("columnNames"), value);
+            m_result->setArray("columnNames"_s, value);
             return castState<ColumnNamesSet>();
         }
 
-        Builder<STATE | ButtonsSet>& setButtons(RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Database::MouseButton>> value)
+        Builder<STATE | ButtonsSet>& setButtons(RefPtr<JSON::ArrayOf<Inspector::Protocol::Database::MouseButton>> value)
         {
             COMPILE_ASSERT(!(STATE & ButtonsSet), property_buttons_already_set);
-            m_result->setArray(ASCIILiteral("buttons"), value);
+            m_result->setArray("buttons"_s, value);
             return castState<ButtonsSet>();
         }
 
         Builder<STATE | DirectionalitySet>& setDirectionality(Directionality value)
         {
             COMPILE_ASSERT(!(STATE & DirectionalitySet), property_directionality_already_set);
-            m_result->setString(ASCIILiteral("directionality"), Inspector::Protocol::TestHelpers::getEnumConstantValue(value));
+            m_result->setString("directionality"_s, Inspector::Protocol::TestHelpers::getEnumConstantValue(value));
             return castState<DirectionalitySet>();
         }
 
         Builder<STATE | NotesSet>& setNotes(const String& value)
         {
             COMPILE_ASSERT(!(STATE & NotesSet), property_notes_already_set);
-            m_result->setString(ASCIILiteral("notes"), value);
+            m_result->setString("notes"_s, value);
             return castState<NotesSet>();
         }
 
         Builder<STATE | TimestampSet>& setTimestamp(double value)
         {
             COMPILE_ASSERT(!(STATE & TimestampSet), property_timestamp_already_set);
-            m_result->setDouble(ASCIILiteral("timestamp"), value);
+            m_result->setDouble("timestamp"_s, value);
             return castState<TimestampSet>();
         }
 
-        Builder<STATE | ValuesSet>& setValues(RefPtr<Inspector::InspectorObject> value)
+        Builder<STATE | ValuesSet>& setValues(RefPtr<JSON::Object> value)
         {
             COMPILE_ASSERT(!(STATE & ValuesSet), property_values_already_set);
-            m_result->setObject(ASCIILiteral("values"), value);
+            m_result->setObject("values"_s, value);
             return castState<ValuesSet>();
         }
 
-        Builder<STATE | PayloadSet>& setPayload(RefPtr<Inspector::InspectorValue> value)
+        Builder<STATE | PayloadSet>& setPayload(RefPtr<JSON::Value> value)
         {
             COMPILE_ASSERT(!(STATE & PayloadSet), property_payload_already_set);
-            m_result->setValue(ASCIILiteral("payload"), value);
+            m_result->setValue("payload"_s, value);
             return castState<PayloadSet>();
         }
 
         Builder<STATE | ErrorSet>& setError(RefPtr<Inspector::Protocol::Database::Error> value)
         {
             COMPILE_ASSERT(!(STATE & ErrorSet), property_error_already_set);
-            m_result->setObject(ASCIILiteral("error"), value);
+            m_result->setObject("error"_s, value);
             return castState<ErrorSet>();
         }
 
         Builder<STATE | ErrorListSet>& setErrorList(RefPtr<Inspector::Protocol::Database::ErrorList> value)
         {
             COMPILE_ASSERT(!(STATE & ErrorListSet), property_errorList_already_set);
-            m_result->setArray(ASCIILiteral("errorList"), value);
+            m_result->setArray("errorList"_s, value);
             return castState<ErrorListSet>();
         }
 
         Ref<ParameterBundle> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(ParameterBundle) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(ParameterBundle) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<ParameterBundle>*>(&result));
         }
     };
@@ -648,12 +649,12 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 };
 
 /* Conflicted names may cause generated getters/setters to clash with built-in InspectorObject methods. */
-class ObjectWithPropertyNameConflicts : public Inspector::InspectorObjectBase {
+class ObjectWithPropertyNameConflicts : public JSON::ObjectBase {
 public:
     enum {
         NoFieldsSet = 0,
@@ -668,14 +669,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*ObjectWithPropertyNameConflicts*/InspectorObject>&& object)
+        Builder(Ref</*ObjectWithPropertyNameConflicts*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -686,44 +687,44 @@ public:
         Builder<STATE | IntegerSet>& setInteger(const String& value)
         {
             COMPILE_ASSERT(!(STATE & IntegerSet), property_integer_already_set);
-            m_result->setString(ASCIILiteral("integer"), value);
+            m_result->setString("integer"_s, value);
             return castState<IntegerSet>();
         }
 
         Builder<STATE | ArraySet>& setArray(const String& value)
         {
             COMPILE_ASSERT(!(STATE & ArraySet), property_array_already_set);
-            m_result->setString(ASCIILiteral("array"), value);
+            m_result->setString("array"_s, value);
             return castState<ArraySet>();
         }
 
         Builder<STATE | StringSet>& setString(const String& value)
         {
             COMPILE_ASSERT(!(STATE & StringSet), property_string_already_set);
-            m_result->setString(ASCIILiteral("string"), value);
+            m_result->setString("string"_s, value);
             return castState<StringSet>();
         }
 
         Builder<STATE | ValueSet>& setValue(const String& value)
         {
             COMPILE_ASSERT(!(STATE & ValueSet), property_value_already_set);
-            m_result->setString(ASCIILiteral("value"), value);
+            m_result->setString("value"_s, value);
             return castState<ValueSet>();
         }
 
         Builder<STATE | ObjectSet>& setObject(const String& value)
         {
             COMPILE_ASSERT(!(STATE & ObjectSet), property_object_already_set);
-            m_result->setString(ASCIILiteral("object"), value);
+            m_result->setString("object"_s, value);
             return castState<ObjectSet>();
         }
 
         Ref<ObjectWithPropertyNameConflicts> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(ObjectWithPropertyNameConflicts) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(ObjectWithPropertyNameConflicts) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<ObjectWithPropertyNameConflicts>*>(&result));
         }
     };
@@ -740,14 +741,14 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 };
 
 } // Database
 
 namespace Test {
-class ParameterBundle : public Inspector::InspectorObjectBase {
+class ParameterBundle : public JSON::ObjectBase {
 public:
     // Named after property name 'directionality' while generating ParameterBundle.
     enum class Directionality {
@@ -770,14 +771,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*ParameterBundle*/InspectorObject>&& object)
+        Builder(Ref</*ParameterBundle*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -788,65 +789,65 @@ public:
         Builder<STATE | DirectionalitySet>& setDirectionality(Directionality value)
         {
             COMPILE_ASSERT(!(STATE & DirectionalitySet), property_directionality_already_set);
-            m_result->setString(ASCIILiteral("directionality"), Inspector::Protocol::TestHelpers::getEnumConstantValue(value));
+            m_result->setString("directionality"_s, Inspector::Protocol::TestHelpers::getEnumConstantValue(value));
             return castState<DirectionalitySet>();
         }
 
-        Builder<STATE | ButtonsSet>& setButtons(RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Database::MouseButton>> value)
+        Builder<STATE | ButtonsSet>& setButtons(RefPtr<JSON::ArrayOf<Inspector::Protocol::Database::MouseButton>> value)
         {
             COMPILE_ASSERT(!(STATE & ButtonsSet), property_buttons_already_set);
-            m_result->setArray(ASCIILiteral("buttons"), value);
+            m_result->setArray("buttons"_s, value);
             return castState<ButtonsSet>();
         }
 
-        Builder<STATE | ColumnNamesSet>& setColumnNames(RefPtr<Inspector::Protocol::Array<String>> value)
+        Builder<STATE | ColumnNamesSet>& setColumnNames(RefPtr<JSON::ArrayOf<String>> value)
         {
             COMPILE_ASSERT(!(STATE & ColumnNamesSet), property_columnNames_already_set);
-            m_result->setArray(ASCIILiteral("columnNames"), value);
+            m_result->setArray("columnNames"_s, value);
             return castState<ColumnNamesSet>();
         }
 
         Builder<STATE | NotesSet>& setNotes(const String& value)
         {
             COMPILE_ASSERT(!(STATE & NotesSet), property_notes_already_set);
-            m_result->setString(ASCIILiteral("notes"), value);
+            m_result->setString("notes"_s, value);
             return castState<NotesSet>();
         }
 
         Builder<STATE | TimestampSet>& setTimestamp(double value)
         {
             COMPILE_ASSERT(!(STATE & TimestampSet), property_timestamp_already_set);
-            m_result->setDouble(ASCIILiteral("timestamp"), value);
+            m_result->setDouble("timestamp"_s, value);
             return castState<TimestampSet>();
         }
 
-        Builder<STATE | ValuesSet>& setValues(RefPtr<Inspector::InspectorObject> value)
+        Builder<STATE | ValuesSet>& setValues(RefPtr<JSON::Object> value)
         {
             COMPILE_ASSERT(!(STATE & ValuesSet), property_values_already_set);
-            m_result->setObject(ASCIILiteral("values"), value);
+            m_result->setObject("values"_s, value);
             return castState<ValuesSet>();
         }
 
-        Builder<STATE | PayloadSet>& setPayload(RefPtr<Inspector::InspectorValue> value)
+        Builder<STATE | PayloadSet>& setPayload(RefPtr<JSON::Value> value)
         {
             COMPILE_ASSERT(!(STATE & PayloadSet), property_payload_already_set);
-            m_result->setValue(ASCIILiteral("payload"), value);
+            m_result->setValue("payload"_s, value);
             return castState<PayloadSet>();
         }
 
         Builder<STATE | ErrorSet>& setError(RefPtr<Inspector::Protocol::Database::Error> value)
         {
             COMPILE_ASSERT(!(STATE & ErrorSet), property_error_already_set);
-            m_result->setObject(ASCIILiteral("error"), value);
+            m_result->setObject("error"_s, value);
             return castState<ErrorSet>();
         }
 
         Ref<ParameterBundle> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(ParameterBundle) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(ParameterBundle) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<ParameterBundle>*>(&result));
         }
     };
@@ -866,7 +867,7 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 };
 
@@ -896,6 +897,18 @@ std::optional<Inspector::Protocol::Test::ParameterBundle::Directionality> parseE
 } // namespace Protocol
 
 } // namespace Inspector
+
+namespace WTF {
+
+template<typename T> struct DefaultHash;
+
+// Hash declarations in the 'Database' Domain
+template<>
+struct DefaultHash<Inspector::Protocol::Database::MouseButton> {
+    typedef IntHash<Inspector::Protocol::Database::MouseButton> Hash;
+};
+
+} // namespace WTF
 ### End File: TestProtocolObjects.h
 
 ### Begin File: TestProtocolObjects.cpp
@@ -1105,7 +1118,7 @@ namespace Inspector {
 
 #include "TestProtocolInternal.h"
 #include "TestProtocolTypeConversions.h"
-#include <JavaScriptCore/InspectorValues.h>
+#include <wtf/JSONValues.h>
 
 namespace Inspector {
 
@@ -1254,7 +1267,7 @@ using namespace Inspector;
 #import "TestProtocolInternal.h"
 
 #import "TestProtocolTypeConversions.h"
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -1338,7 +1351,7 @@ typedef NS_ENUM(NSInteger, TestProtocolTestParameterBundleDirectionality) {
 __attribute__((visibility ("default")))
 @interface TestProtocolDatabaseError : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithMessage:(NSString *)message code:(int)code;
 /* required */ @property (nonatomic, copy) NSString *message;
 /* required */ @property (nonatomic, assign) int code;
@@ -1347,7 +1360,7 @@ __attribute__((visibility ("default")))
 __attribute__((visibility ("default")))
 @interface TestProtocolDatabaseOptionalParameterBundle : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 /* optional */ @property (nonatomic, copy) NSArray/*<NSString>*/ *columnNames;
 /* optional */ @property (nonatomic, copy) NSArray/*<NSString>*/ *buttons;
 /* optional */ @property (nonatomic, assign) TestProtocolDatabaseOptionalParameterBundleDirectionality directionality;
@@ -1362,7 +1375,7 @@ __attribute__((visibility ("default")))
 __attribute__((visibility ("default")))
 @interface TestProtocolDatabaseParameterBundle : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithColumnNames:(NSArray/*<NSString>*/ *)columnNames buttons:(NSArray/*<NSString>*/ *)buttons directionality:(TestProtocolDatabaseParameterBundleDirectionality)directionality notes:(NSString *)notes timestamp:(double)timestamp values:(RWIProtocolJSONObject *)values payload:(RWIProtocolJSONObject *)payload error:(TestProtocolDatabaseError *)error errorList:(NSArray/*<TestProtocolDatabaseError>*/ *)errorList;
 /* required */ @property (nonatomic, copy) NSArray/*<NSString>*/ *columnNames;
 /* required */ @property (nonatomic, copy) NSArray/*<NSString>*/ *buttons;
@@ -1378,7 +1391,7 @@ __attribute__((visibility ("default")))
 __attribute__((visibility ("default")))
 @interface TestProtocolDatabaseObjectWithPropertyNameConflicts : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithInteger:(NSString *)integer array:(NSString *)array string:(NSString *)string value:(NSString *)value object:(NSString *)object;
 /* required */ @property (nonatomic, copy) NSString *integer;
 /* required */ @property (nonatomic, copy) NSString *array;
@@ -1390,13 +1403,13 @@ __attribute__((visibility ("default")))
 __attribute__((visibility ("default")))
 @interface TestProtocolDatabaseDummyObject : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 @end
 
 __attribute__((visibility ("default")))
 @interface TestProtocolTestParameterBundle : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithDirectionality:(TestProtocolTestParameterBundleDirectionality)directionality buttons:(NSArray/*<NSString>*/ *)buttons columnNames:(NSArray/*<NSString>*/ *)columnNames notes:(NSString *)notes timestamp:(double)timestamp values:(RWIProtocolJSONObject *)values payload:(RWIProtocolJSONObject *)payload error:(TestProtocolDatabaseError *)error;
 /* required */ @property (nonatomic, assign) TestProtocolTestParameterBundleDirectionality directionality;
 /* required */ @property (nonatomic, copy) NSArray/*<NSString>*/ *buttons;
@@ -1449,7 +1462,7 @@ __attribute__((visibility ("default")))
 #import "TestProtocol.h"
 #import "TestProtocolJSONObjectPrivate.h"
 #import <JavaScriptCore/AugmentableInspectorController.h>
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 
 
@@ -1499,13 +1512,13 @@ inline String toProtocolString(TestProtocolPlatform value)
 {
     switch(value) {
     case TestProtocolPlatformAll:
-        return ASCIILiteral("all");
+        return "all"_s;
     case TestProtocolPlatformGeneric:
-        return ASCIILiteral("generic");
+        return "generic"_s;
     case TestProtocolPlatformIOS:
-        return ASCIILiteral("ios");
+        return "ios"_s;
     case TestProtocolPlatformMacOS:
-        return ASCIILiteral("macos");
+        return "macos"_s;
     }
 }
 
@@ -1528,13 +1541,13 @@ inline String toProtocolString(TestProtocolDatabaseMouseButton value)
 {
     switch(value) {
     case TestProtocolDatabaseMouseButtonNone:
-        return ASCIILiteral("None");
+        return "None"_s;
     case TestProtocolDatabaseMouseButtonLeft:
-        return ASCIILiteral("Left");
+        return "Left"_s;
     case TestProtocolDatabaseMouseButtonMiddle:
-        return ASCIILiteral("Middle");
+        return "Middle"_s;
     case TestProtocolDatabaseMouseButtonRight:
-        return ASCIILiteral("Right");
+        return "Right"_s;
     }
 }
 
@@ -1556,9 +1569,9 @@ inline String toProtocolString(TestProtocolDatabaseOptionalParameterBundleDirect
 {
     switch(value) {
     case TestProtocolDatabaseOptionalParameterBundleDirectionalityLTR:
-        return ASCIILiteral("LTR");
+        return "LTR"_s;
     case TestProtocolDatabaseOptionalParameterBundleDirectionalityRTL:
-        return ASCIILiteral("RTL");
+        return "RTL"_s;
     }
 }
 
@@ -1576,9 +1589,9 @@ inline String toProtocolString(TestProtocolDatabaseParameterBundleDirectionality
 {
     switch(value) {
     case TestProtocolDatabaseParameterBundleDirectionalityLTR:
-        return ASCIILiteral("LTR");
+        return "LTR"_s;
     case TestProtocolDatabaseParameterBundleDirectionalityRTL:
-        return ASCIILiteral("RTL");
+        return "RTL"_s;
     }
 }
 
@@ -1597,9 +1610,9 @@ inline String toProtocolString(TestProtocolTestParameterBundleDirectionality val
 {
     switch(value) {
     case TestProtocolTestParameterBundleDirectionalityLTR:
-        return ASCIILiteral("LTR");
+        return "LTR"_s;
     case TestProtocolTestParameterBundleDirectionalityRTL:
-        return ASCIILiteral("RTL");
+        return "RTL"_s;
     }
 }
 
@@ -1768,8 +1781,8 @@ using namespace Inspector;
 
 #import "TestProtocolTypeConversions.h"
 #import <WebInspector/RWIProtocolJSONObjectPrivate.h>
-#import <JavaScriptCore/InspectorValues.h>
 #import <wtf/Assertions.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -1789,9 +1802,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -1861,9 +1874,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -1871,22 +1884,22 @@ using namespace Inspector;
 
 - (void)setColumnNames:(NSArray/*<NSString>*/ *)columnNames
 {
-    [super setInspectorArray:inspectorStringArray(columnNames) forKey:@"columnNames"];
+    [super setJSONArray:toJSONStringArray(columnNames) forKey:@"columnNames"];
 }
 
 - (NSArray/*<NSString>*/ *)columnNames
 {
-    return objcStringArray([super inspectorArrayForKey:@"columnNames"]);
+    return toObjCStringArray([super JSONArrayForKey:@"columnNames"]);
 }
 
 - (void)setButtons:(NSArray/*<NSString>*/ *)buttons
 {
-    [super setInspectorArray:inspectorStringArray(buttons) forKey:@"buttons"];
+    [super setJSONArray:toJSONStringArray(buttons) forKey:@"buttons"];
 }
 
 - (NSArray/*<NSString>*/ *)buttons
 {
-    return objcStringArray([super inspectorArrayForKey:@"buttons"]);
+    return toObjCStringArray([super JSONArrayForKey:@"buttons"]);
 }
 
 - (void)setDirectionality:(TestProtocolDatabaseOptionalParameterBundleDirectionality)directionality
@@ -1929,7 +1942,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"values"];
     if (!object)
         return nil;
-    return [[RWIProtocolJSONObject alloc] initWithInspectorObject:[[super objectForKey:@"values"] toInspectorObject].get()];
+    return [[RWIProtocolJSONObject alloc] initWithJSONObject:[[super objectForKey:@"values"] toJSONObject].get()];
 }
 
 - (void)setPayload:(RWIProtocolJSONObject *)payload
@@ -1942,7 +1955,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"payload"];
     if (!object)
         return nil;
-    return [[RWIProtocolJSONObject alloc] initWithInspectorObject:[[super objectForKey:@"payload"] toInspectorObject].get()];
+    return [[RWIProtocolJSONObject alloc] initWithJSONObject:[[super objectForKey:@"payload"] toJSONObject].get()];
 }
 
 - (void)setError:(TestProtocolDatabaseError *)error
@@ -1955,18 +1968,18 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"error"];
     if (!object)
         return nil;
-    return [[TestProtocolDatabaseError alloc] initWithInspectorObject:[[super objectForKey:@"error"] toInspectorObject].get()];
+    return [[TestProtocolDatabaseError alloc] initWithJSONObject:[[super objectForKey:@"error"] toJSONObject].get()];
 }
 
 - (void)setErrorList:(NSArray/*<TestProtocolDatabaseError>*/ *)errorList
 {
     THROW_EXCEPTION_FOR_BAD_TYPE_IN_ARRAY(errorList, [TestProtocolDatabaseError class]);
-    [super setInspectorArray:inspectorObjectArray(errorList) forKey:@"errorList"];
+    [super setJSONArray:toJSONObjectArray(errorList) forKey:@"errorList"];
 }
 
 - (NSArray/*<TestProtocolDatabaseError>*/ *)errorList
 {
-    return objcArray<TestProtocolDatabaseError>([super inspectorArrayForKey:@"errorList"]);
+    return toObjCArray<TestProtocolDatabaseError>([super JSONArrayForKey:@"errorList"]);
 }
 
 @end
@@ -2009,9 +2022,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -2046,22 +2059,22 @@ using namespace Inspector;
 
 - (void)setColumnNames:(NSArray/*<NSString>*/ *)columnNames
 {
-    [super setInspectorArray:inspectorStringArray(columnNames) forKey:@"columnNames"];
+    [super setJSONArray:toJSONStringArray(columnNames) forKey:@"columnNames"];
 }
 
 - (NSArray/*<NSString>*/ *)columnNames
 {
-    return objcStringArray([super inspectorArrayForKey:@"columnNames"]);
+    return toObjCStringArray([super JSONArrayForKey:@"columnNames"]);
 }
 
 - (void)setButtons:(NSArray/*<NSString>*/ *)buttons
 {
-    [super setInspectorArray:inspectorStringArray(buttons) forKey:@"buttons"];
+    [super setJSONArray:toJSONStringArray(buttons) forKey:@"buttons"];
 }
 
 - (NSArray/*<NSString>*/ *)buttons
 {
-    return objcStringArray([super inspectorArrayForKey:@"buttons"]);
+    return toObjCStringArray([super JSONArrayForKey:@"buttons"]);
 }
 
 - (void)setDirectionality:(TestProtocolDatabaseParameterBundleDirectionality)directionality
@@ -2104,7 +2117,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"values"];
     if (!object)
         return nil;
-    return [[RWIProtocolJSONObject alloc] initWithInspectorObject:[[super objectForKey:@"values"] toInspectorObject].get()];
+    return [[RWIProtocolJSONObject alloc] initWithJSONObject:[[super objectForKey:@"values"] toJSONObject].get()];
 }
 
 - (void)setPayload:(RWIProtocolJSONObject *)payload
@@ -2117,7 +2130,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"payload"];
     if (!object)
         return nil;
-    return [[RWIProtocolJSONObject alloc] initWithInspectorObject:[[super objectForKey:@"payload"] toInspectorObject].get()];
+    return [[RWIProtocolJSONObject alloc] initWithJSONObject:[[super objectForKey:@"payload"] toJSONObject].get()];
 }
 
 - (void)setError:(TestProtocolDatabaseError *)error
@@ -2130,18 +2143,18 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"error"];
     if (!object)
         return nil;
-    return [[TestProtocolDatabaseError alloc] initWithInspectorObject:[[super objectForKey:@"error"] toInspectorObject].get()];
+    return [[TestProtocolDatabaseError alloc] initWithJSONObject:[[super objectForKey:@"error"] toJSONObject].get()];
 }
 
 - (void)setErrorList:(NSArray/*<TestProtocolDatabaseError>*/ *)errorList
 {
     THROW_EXCEPTION_FOR_BAD_TYPE_IN_ARRAY(errorList, [TestProtocolDatabaseError class]);
-    [super setInspectorArray:inspectorObjectArray(errorList) forKey:@"errorList"];
+    [super setJSONArray:toJSONObjectArray(errorList) forKey:@"errorList"];
 }
 
 - (NSArray/*<TestProtocolDatabaseError>*/ *)errorList
 {
-    return objcArray<TestProtocolDatabaseError>([super inspectorArrayForKey:@"errorList"]);
+    return toObjCArray<TestProtocolDatabaseError>([super JSONArrayForKey:@"errorList"]);
 }
 
 @end
@@ -2170,9 +2183,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -2259,9 +2272,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -2305,9 +2318,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -2349,22 +2362,22 @@ using namespace Inspector;
 
 - (void)setButtons:(NSArray/*<NSString>*/ *)buttons
 {
-    [super setInspectorArray:inspectorStringArray(buttons) forKey:@"buttons"];
+    [super setJSONArray:toJSONStringArray(buttons) forKey:@"buttons"];
 }
 
 - (NSArray/*<NSString>*/ *)buttons
 {
-    return objcStringArray([super inspectorArrayForKey:@"buttons"]);
+    return toObjCStringArray([super JSONArrayForKey:@"buttons"]);
 }
 
 - (void)setColumnNames:(NSArray/*<NSString>*/ *)columnNames
 {
-    [super setInspectorArray:inspectorStringArray(columnNames) forKey:@"columnNames"];
+    [super setJSONArray:toJSONStringArray(columnNames) forKey:@"columnNames"];
 }
 
 - (NSArray/*<NSString>*/ *)columnNames
 {
-    return objcStringArray([super inspectorArrayForKey:@"columnNames"]);
+    return toObjCStringArray([super JSONArrayForKey:@"columnNames"]);
 }
 
 - (void)setNotes:(NSString *)notes
@@ -2397,7 +2410,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"values"];
     if (!object)
         return nil;
-    return [[RWIProtocolJSONObject alloc] initWithInspectorObject:[[super objectForKey:@"values"] toInspectorObject].get()];
+    return [[RWIProtocolJSONObject alloc] initWithJSONObject:[[super objectForKey:@"values"] toJSONObject].get()];
 }
 
 - (void)setPayload:(RWIProtocolJSONObject *)payload
@@ -2410,7 +2423,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"payload"];
     if (!object)
         return nil;
-    return [[RWIProtocolJSONObject alloc] initWithInspectorObject:[[super objectForKey:@"payload"] toInspectorObject].get()];
+    return [[RWIProtocolJSONObject alloc] initWithJSONObject:[[super objectForKey:@"payload"] toJSONObject].get()];
 }
 
 - (void)setError:(TestProtocolDatabaseError *)error
@@ -2423,7 +2436,7 @@ using namespace Inspector;
     RWIProtocolJSONObject *object = [super objectForKey:@"error"];
     if (!object)
         return nil;
-    return [[TestProtocolDatabaseError alloc] initWithInspectorObject:[[super objectForKey:@"error"] toInspectorObject].get()];
+    return [[TestProtocolDatabaseError alloc] initWithJSONObject:[[super objectForKey:@"error"] toJSONObject].get()];
 }
 
 @end

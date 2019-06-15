@@ -64,7 +64,7 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
 
         self._pid_file = self._filesystem.join(self._runtime_path, '%s.pid' % self._name)
 
-        if port_obj.host.platform.is_win():
+        if port_obj.host.platform.is_cygwin():
             # Convert to MSDOS file naming:
             precompiledBuildbot = re.compile('^/home/buildbot')
             precompiledDrive = re.compile('^/cygdrive/[cC]')
@@ -89,22 +89,23 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
 
         # FIXME: We shouldn't be calling a protected method of _port_obj!
         executable = self._port_obj._path_to_apache()
+        config_file_path = self._copy_apache_config_file(self.tests_dir, output_dir)
 
         start_cmd = [executable,
-            '-f', "\"%s\"" % self._get_apache_config_file_path(self.tests_dir, output_dir),
-            '-C', "\'DocumentRoot \"%s\"\'" % document_root,
-            '-c', "\'TypesConfig \"%s\"\'" % mime_types_path,
-            '-c', "\'PHPINIDir \"%s\"\'" % php_ini_dir,
-            '-c', "\'CustomLog \"%s\" common\'" % access_log,
-            '-c', "\'ErrorLog \"%s\"\'" % error_log,
-            '-c', "\'PidFile %s'" % self._pid_file,
+            '-f', config_file_path,
+            '-C', 'DocumentRoot "%s"' % document_root,
+            '-c', 'TypesConfig "%s"' % mime_types_path,
+            '-c', 'PHPINIDir "%s"' % php_ini_dir,
+            '-c', 'CustomLog "%s" common' % access_log,
+            '-c', 'ErrorLog "%s"' % error_log,
+            '-c', 'PidFile "%s"' % self._pid_file,
             '-k', "start"]
 
-        for alias in self.aliases():
-            start_cmd.extend(['-c', "\'Alias %s \"%s\"'" % (alias[0], alias[1])])
+        for (alias, path) in self.aliases():
+            start_cmd.extend(['-c', 'Alias %s "%s"' % (alias, path)])
 
         if not port_obj.host.platform.is_win():
-            start_cmd.extend(['-C', "\'User \"%s\"\'" % os.environ.get("USERNAME", os.environ.get("USER", ""))])
+            start_cmd.extend(['-C', 'User "%s"' % os.environ.get("USERNAME", os.environ.get("USER", ""))])
 
         enable_ipv6 = self._port_obj.http_server_supports_ipv6()
         # Perform part of the checks Apache's APR does when trying to listen to
@@ -124,37 +125,34 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
         for mapping in self._mappings:
             port = mapping['port']
 
-            start_cmd += ['-C', "\'Listen %s%d\'" % (bind_address, port)]
+            start_cmd += ['-C', 'Listen %s%d' % (bind_address, port)]
 
             # We listen to both IPv4 and IPv6 loop-back addresses, but ignore
             # requests to 8000 from random users on network.
             # See https://bugs.webkit.org/show_bug.cgi?id=37104
             if enable_ipv6:
-                start_cmd += ['-C', "\'Listen [::1]:%d\'" % port]
+                start_cmd += ['-C', 'Listen [::1]:%d' % port]
 
         if additional_dirs:
             for alias, path in additional_dirs.iteritems():
-                start_cmd += ['-c', "\'Alias %s \"%s\"\'" % (alias, path),
+                start_cmd += ['-c', 'Alias %s "%s"' % (alias, path),
                         # Disable CGI handler for additional dirs.
-                        '-c', "\'<Location %s>\'" % alias,
-                        '-c', "\'RemoveHandler .cgi .pl\'",
-                        '-c', "\'</Location>\'"]
+                        '-c', '<Location %s>' % alias,
+                        '-c', 'RemoveHandler .cgi .pl',
+                        '-c', '</Location>']
 
         stop_cmd = [executable,
-            '-f', "\"%s\"" % self._get_apache_config_file_path(self.tests_dir, output_dir),
-            '-c', "\'PidFile %s'" % self._pid_file,
+            '-f', config_file_path,
+            '-c', 'PidFile "%s"' % self._pid_file,
             '-k', "stop"]
 
-        start_cmd.extend(['-c', "\'SSLCertificateFile %s\'" % cert_file])
-        # Join the string here so that Cygwin/Windows and Mac/Linux
-        # can use the same code. Otherwise, we could remove the single
-        # quotes above and keep cmd as a sequence.
-        # FIXME: It's unclear if this is still needed.
-        self._start_cmd = " ".join(start_cmd)
-        self._stop_cmd = " ".join(stop_cmd)
+        start_cmd.extend(['-c', 'SSLCertificateFile "%s"' % cert_file])
 
-    def _get_apache_config_file_path(self, test_dir, output_dir):
-        """Returns the path to the apache config file to use.
+        self._start_cmd = start_cmd
+        self._stop_cmd = stop_cmd
+
+    def _copy_apache_config_file(self, test_dir, output_dir):
+        """Copy apache config file and returns the path to use.
         Args:
           test_dir: absolute path to the LayoutTests directory.
           output_dir: absolute path to the layout test results directory.
@@ -166,7 +164,7 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
         # FIXME: Why do we need to copy the config file since we're not modifying it?
         self._filesystem.write_text_file(httpd_config_copy, httpd_conf)
 
-        if self._port_obj.host.platform.is_win():
+        if self.platform.is_cygwin():
             # Convert to MSDOS file naming:
             precompiledDrive = re.compile('^/cygdrive/[cC]')
             httpd_config_copy = precompiledDrive.sub("C:", httpd_config_copy)
@@ -175,11 +173,15 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
 
         return httpd_config_copy
 
+    @property
+    def platform(self):
+        return self._port_obj.host.platform
+
     def _spawn_process(self):
         _log.debug('Starting %s server, cmd="%s"' % (self._name, str(self._start_cmd)))
         retval, err = self._run(self._start_cmd)
         if retval or len(err):
-            raise http_server_base.ServerError('Failed to start %s: %s' % (self._name, err))
+            raise self._server_error('Failed to start %s' % self._name, err, retval)
 
         # For some reason apache isn't guaranteed to have created the pid file before
         # the process exits, so we wait a little while longer.
@@ -191,39 +193,38 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
     def _stop_running_server(self):
         # If apache was forcefully killed, the pid file will not have been deleted, so check
         # that the process specified by the pid_file no longer exists before deleting the file.
-        if self._pid and not self._port_obj.host.platform.is_win() and not self._executive.check_running_pid(self._pid):
+        if self._pid and not self.platform.is_win() and not self._executive.check_running_pid(self._pid):
             self._filesystem.remove(self._pid_file)
             return
 
         retval, err = self._run(self._stop_cmd)
 
         # Windows httpd outputs shutdown status in stderr:
-        if self._port_obj.host.platform.is_win() and not retval and len(err):
+        if self.platform.is_win() and not retval and len(err):
             _log.debug('Shutdown: %s' % err)
             err = ""
 
         if retval or len(err):
-            raise http_server_base.ServerError('Failed to stop %s: %s' % (self._name, err))
+            raise self._server_error('Failed to stop %s' % self._name, err, retval)
 
         # For some reason apache isn't guaranteed to have actually stopped after
         # the stop command returns, so we wait a little while longer for the
         # pid file to be removed.
         if not self._wait_for_action(lambda: not self._filesystem.exists(self._pid_file)):
-            if self._port_obj.host.platform.is_win():
+            if self.platform.is_win():
                 self._remove_pid_file()
                 return
 
             raise http_server_base.ServerError('Failed to stop %s: pid file still exists' % self._name)
 
     def _run(self, cmd):
-        # Use shell=True because we join the arguments into a string for
-        # the sake of Window/Cygwin and it needs quoting that breaks
-        # shell=False.
-        # FIXME: We should not need to be joining shell arguments into strings.
-        # shell=True is a trail of tears.
-        # Note: Not thread safe: http://bugs.python.org/issue2320
-        process = self._executive.popen(cmd, shell=True, stderr=self._executive.PIPE)
+        process = self._executive.popen(cmd, stderr=self._executive.PIPE)
         process.wait()
         retval = process.returncode
         err = process.stderr.read()
         return (retval, err)
+
+    def _server_error(self, message, stderr_output, exit_code):
+        if self.platform.is_win() and exit_code == 720005 and not stderr_output:
+            stderr_output = 'Access is denied. Do you have administrator privilege?'
+        return http_server_base.ServerError('{}: {} (exit code={})'.format(message, stderr_output, exit_code))

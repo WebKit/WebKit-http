@@ -3,7 +3,7 @@
 
 /*---
 description: Initial state of the Symbol.iterator property
-info: >
+info: |
     The initial value of the @@iterator property is the same function object as
     the initial value of the Array.prototype.values property.
 
@@ -12,6 +12,7 @@ info: >
 includes: [propertyHelper.js]
 features: [Symbol.iterator]
 es6id: 22.1.3.30
+esid: sec-array.prototype-@@iterator
 ---*/
 
 assert.sameValue(Array.prototype[Symbol.iterator], Array.prototype.values);

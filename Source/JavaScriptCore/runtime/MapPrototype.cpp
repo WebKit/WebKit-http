@@ -32,7 +32,6 @@
 #include "IteratorOperations.h"
 #include "JSCInlines.h"
 #include "JSMap.h"
-#include "JSMapIterator.h"
 #include "Lookup.h"
 
 #include "MapPrototype.lut.h"
@@ -44,6 +43,8 @@ const ClassInfo MapPrototype::s_info = { "Map", &Base::s_info, &mapPrototypeTabl
 /* Source for MapPrototype.lut.h
 @begin mapPrototypeTable
   forEach   JSBuiltin  DontEnum|Function 0
+  values    JSBuiltin  DontEnum|Function 0
+  keys      JSBuiltin  DontEnum|Function 0
 @end
 */
 
@@ -52,9 +53,6 @@ static EncodedJSValue JSC_HOST_CALL mapProtoFuncDelete(ExecState*);
 static EncodedJSValue JSC_HOST_CALL mapProtoFuncGet(ExecState*);
 static EncodedJSValue JSC_HOST_CALL mapProtoFuncHas(ExecState*);
 static EncodedJSValue JSC_HOST_CALL mapProtoFuncSet(ExecState*);
-static EncodedJSValue JSC_HOST_CALL mapProtoFuncKeys(ExecState*);
-static EncodedJSValue JSC_HOST_CALL mapProtoFuncValues(ExecState*);
-static EncodedJSValue JSC_HOST_CALL mapProtoFuncEntries(ExecState*);
 
 static EncodedJSValue JSC_HOST_CALL mapProtoFuncSize(ExecState*);
     
@@ -62,25 +60,23 @@ void MapPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    vm.prototypeMap.addPrototype(this);
+    didBecomePrototype();
 
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->clear, mapProtoFuncClear, DontEnum, 0);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->deleteKeyword, mapProtoFuncDelete, DontEnum, 1);
-    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->get, mapProtoFuncGet, DontEnum, 1, JSMapGetIntrinsic);
-    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->has, mapProtoFuncHas, DontEnum, 1, JSMapHasIntrinsic);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->set, mapProtoFuncSet, DontEnum, 2);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().keysPublicName(), mapProtoFuncKeys, DontEnum, 0);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().valuesPublicName(), mapProtoFuncValues, DontEnum, 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->clear, mapProtoFuncClear, static_cast<unsigned>(PropertyAttribute::DontEnum), 0);
+    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->deleteKeyword, mapProtoFuncDelete, static_cast<unsigned>(PropertyAttribute::DontEnum), 1);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->get, mapProtoFuncGet, static_cast<unsigned>(PropertyAttribute::DontEnum), 1, JSMapGetIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->has, mapProtoFuncHas, static_cast<unsigned>(PropertyAttribute::DontEnum), 1, JSMapHasIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->set, mapProtoFuncSet, static_cast<unsigned>(PropertyAttribute::DontEnum), 2, JSMapSetIntrinsic);
 
-    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().getPrivateName(), mapProtoFuncGet, DontEnum, 1, JSMapGetIntrinsic);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().setPrivateName(), mapProtoFuncSet, DontEnum, 2);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().getPrivateName(), mapProtoFuncGet, static_cast<unsigned>(PropertyAttribute::DontEnum), 1, JSMapGetIntrinsic);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().setPrivateName(), mapProtoFuncSet, static_cast<unsigned>(PropertyAttribute::DontEnum), 2, JSMapSetIntrinsic);
 
-    JSFunction* entries = JSFunction::create(vm, globalObject, 0, vm.propertyNames->builtinNames().entriesPublicName().string(), mapProtoFuncEntries);
-    putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().entriesPublicName(), entries, DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, entries, DontEnum);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Map"), DontEnum | ReadOnly);
+    JSFunction* entries = JSFunction::create(vm, mapPrototypeEntriesCodeGenerator(vm), globalObject);
+    putDirectWithoutTransition(vm, vm.propertyNames->builtinNames().entriesPublicName(), entries, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->iteratorSymbol, entries, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Map"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
 
-    JSC_NATIVE_GETTER(vm.propertyNames->size, mapProtoFuncSize, DontEnum | Accessor);
+    JSC_NATIVE_GETTER(vm.propertyNames->size, mapProtoFuncSize, PropertyAttribute::DontEnum | PropertyAttribute::Accessor);
 }
 
 ALWAYS_INLINE static JSMap* getMap(CallFrame* callFrame, JSValue thisValue)
@@ -93,9 +89,10 @@ ALWAYS_INLINE static JSMap* getMap(CallFrame* callFrame, JSValue thisValue)
         return nullptr;
     }
 
-    if (LIKELY(thisValue.asCell()->type() == JSMapType))
-        return jsCast<JSMap*>(thisValue);
-    throwTypeError(callFrame, scope, ASCIILiteral("Map operation called on non-Map object"));
+    auto* map = jsDynamicCast<JSMap*>(vm, thisValue.asCell());
+    if (LIKELY(map))
+        return map;
+    throwTypeError(callFrame, scope, "Map operation called on non-Map object"_s);
     return nullptr;
 }
 
@@ -148,64 +145,6 @@ EncodedJSValue JSC_HOST_CALL mapProtoFuncSize(CallFrame* callFrame)
     if (!map)
         return JSValue::encode(jsUndefined());
     return JSValue::encode(jsNumber(map->size()));
-}
-
-EncodedJSValue JSC_HOST_CALL mapProtoFuncValues(CallFrame* callFrame)
-{
-    VM& vm = callFrame->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSMap* thisObj = jsDynamicCast<JSMap*>(vm, callFrame->thisValue());
-    if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot create a Map value iterator for a non-Map object.")));
-    return JSValue::encode(JSMapIterator::create(vm, callFrame->jsCallee()->globalObject()->mapIteratorStructure(), thisObj, IterateValue));
-}
-
-EncodedJSValue JSC_HOST_CALL mapProtoFuncEntries(CallFrame* callFrame)
-{
-    VM& vm = callFrame->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSMap* thisObj = jsDynamicCast<JSMap*>(vm, callFrame->thisValue());
-    if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot create a Map entry iterator for a non-Map object.")));
-    return JSValue::encode(JSMapIterator::create(vm, callFrame->jsCallee()->globalObject()->mapIteratorStructure(), thisObj, IterateKeyValue));
-}
-
-EncodedJSValue JSC_HOST_CALL mapProtoFuncKeys(CallFrame* callFrame)
-{
-    VM& vm = callFrame->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSMap* thisObj = jsDynamicCast<JSMap*>(vm, callFrame->thisValue());
-    if (!thisObj)
-        return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot create a Map key iterator for a non-Map object.")));
-    return JSValue::encode(JSMapIterator::create(vm, callFrame->jsCallee()->globalObject()->mapIteratorStructure(), thisObj, IterateKey));
-}
-
-EncodedJSValue JSC_HOST_CALL privateFuncMapIterator(ExecState* exec)
-{
-    ASSERT(jsDynamicCast<JSMap*>(exec->vm(), exec->uncheckedArgument(0)));
-    JSMap* map = jsCast<JSMap*>(exec->uncheckedArgument(0));
-    return JSValue::encode(JSMapIterator::create(exec->vm(), exec->jsCallee()->globalObject()->mapIteratorStructure(), map, IterateKeyValue));
-}
-
-EncodedJSValue JSC_HOST_CALL privateFuncMapIteratorNext(ExecState* exec)
-{
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-    ASSERT(jsDynamicCast<JSMapIterator*>(vm, exec->thisValue()));
-    JSMapIterator* iterator = jsCast<JSMapIterator*>(exec->thisValue());
-    JSValue key, value;
-    if (iterator->nextKeyValue(exec, key, value)) {
-        JSArray* resultArray = jsCast<JSArray*>(exec->uncheckedArgument(0));
-        resultArray->putDirectIndex(exec, 0, key);
-        RETURN_IF_EXCEPTION(scope, encodedJSValue());
-        scope.release();
-        resultArray->putDirectIndex(exec, 1, value);
-        return JSValue::encode(jsBoolean(false));
-    }
-    return JSValue::encode(jsBoolean(true));
 }
 
 }

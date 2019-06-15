@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -92,7 +92,7 @@ typedef NS_OPTIONS(NSUInteger, WKAudiovisualMediaTypes) {
  @helps Contains properties used to configure a @link WKWebView @/link.
  */
 WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
-@interface WKWebViewConfiguration : NSObject <NSCoding, NSCopying>
+@interface WKWebViewConfiguration : NSObject <NSSecureCoding, NSCopying>
 
 /*! @abstract The process pool from which to obtain the view's web content
  process.
@@ -188,19 +188,19 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
  An exception will be thrown if you try to register a URL scheme handler for a URL scheme that WebKit handles internally.
  You can use +[WKWebView handlesURLScheme:] to check the availability of a given URL scheme.
  */
-- (void)setURLSchemeHandler:(nullable id <WKURLSchemeHandler>)urlSchemeHandler forURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)setURLSchemeHandler:(nullable id <WKURLSchemeHandler>)urlSchemeHandler forURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 /* @abstract Returns the currently registered URL scheme handler object for the given URL scheme.
  @param scheme The URL scheme to lookup.
  */
-- (nullable id <WKURLSchemeHandler>)urlSchemeHandlerForURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (nullable id <WKURLSchemeHandler>)urlSchemeHandlerForURLScheme:(NSString *)urlScheme WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 @end
 
 @interface WKWebViewConfiguration (WKDeprecated)
 
 #if TARGET_OS_IPHONE
-@property (nonatomic) BOOL mediaPlaybackRequiresUserAction WK_API_DEPRECATED_WITH_REPLACEMENT("requiresUserActionForMediaPlayback", ios(8.0, 9.0));
+@property (nonatomic) BOOL mediaPlaybackRequiresUserAction WK_API_DEPRECATED_WITH_REPLACEMENT("mediaTypesRequiringUserActionForPlayback", ios(8.0, 9.0));
 @property (nonatomic) BOOL mediaPlaybackAllowsAirPlay WK_API_DEPRECATED_WITH_REPLACEMENT("allowsAirPlayForMediaPlayback", ios(8.0, 9.0));
 @property (nonatomic) BOOL requiresUserActionForMediaPlayback WK_API_DEPRECATED_WITH_REPLACEMENT("mediaTypesRequiringUserActionForPlayback", ios(9.0, 10.0));
 #endif

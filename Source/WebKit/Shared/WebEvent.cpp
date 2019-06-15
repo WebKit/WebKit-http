@@ -28,17 +28,17 @@
 
 #include "Decoder.h"
 #include "Encoder.h"
+#include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
 
 WebEvent::WebEvent()
     : m_type(static_cast<uint32_t>(NoType))
     , m_modifiers(0)
-    , m_timestamp(0)
 {
 }
 
-WebEvent::WebEvent(Type type, Modifiers modifiers, double timestamp)
+WebEvent::WebEvent(Type type, Modifiers modifiers, WallTime timestamp)
     : m_type(type)
     , m_modifiers(modifiers)
     , m_timestamp(timestamp)

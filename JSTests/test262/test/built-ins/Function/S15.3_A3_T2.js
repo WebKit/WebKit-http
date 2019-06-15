@@ -2,15 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Since when call is used for Function constructor themself new function instance creates
     and then first argument(thisArg) should be ignored
 es5id: 15.3_A3_T2
 description: First argument is string and null
 ---*/
 
-this.color="red";
-var name="mars";
+this.color = "red";
+var planet = "mars";
 
 var f = Function.call("blablastring", "return this.color;");
 
@@ -19,7 +19,7 @@ if (f() !== "red") {
   $ERROR('#1: ');
 }
 
-var g = Function.call(null, "return this.name;");
+var g = Function.call(null, "return this.planet;");
 
 //CHECK#2
 if (g() !== "mars") {

@@ -33,7 +33,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @class WKHTTPCookieStore;
 
-WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
+WK_API_AVAILABLE(macosx(10.13), ios(11.0))
 @protocol WKHTTPCookieStoreObserver <NSObject>
 @optional
 - (void)cookiesDidChangeInCookieStore:(WKHTTPCookieStore *)cookieStore;
@@ -42,7 +42,7 @@ WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
 /*!
  A WKHTTPCookieStore object allows managing the HTTP cookies associated with a particular WKWebsiteDataStore.
  */
-WK_CLASS_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
+WK_CLASS_AVAILABLE(macosx(10.13), ios(11.0))
 @interface WKHTTPCookieStore : NSObject
 
 - (instancetype)init NS_UNAVAILABLE;
@@ -56,12 +56,12 @@ WK_CLASS_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA))
  @param cookie The cookie to set.
  @param completionHandler A block to invoke once the cookie has been stored.
  */
-- (void)setCookie:(NSHTTPCookie *)cookie completionHandler:(nullable void (^)())completionHandler;
+- (void)setCookie:(NSHTTPCookie *)cookie completionHandler:(nullable void (^)(void))completionHandler;
 
 /*! @abstract Delete the specified cookie.
  @param completionHandler A block to invoke once the cookie has been deleted.
  */
-- (void)deleteCookie:(NSHTTPCookie *)cookie completionHandler:(nullable void (^)())completionHandler;
+- (void)deleteCookie:(NSHTTPCookie *)cookie completionHandler:(nullable void (^)(void))completionHandler;
 
 /*! @abstract Adds a WKHTTPCookieStoreObserver object with the cookie store.
  @param observer The observer object to add.

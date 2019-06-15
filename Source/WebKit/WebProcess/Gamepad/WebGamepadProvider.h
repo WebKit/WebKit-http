@@ -28,8 +28,9 @@
 #if ENABLE(GAMEPAD)
 
 #include <WebCore/GamepadProvider.h>
+#include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/NeverDestroyed.h>
+#include <wtf/Vector.h>
 
 namespace WebKit {
 

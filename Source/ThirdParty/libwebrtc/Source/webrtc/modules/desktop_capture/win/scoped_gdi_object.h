@@ -8,31 +8,26 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_DESKTOP_CAPTURE_WIN_SCOPED_GDI_HANDLE_H_
-#define WEBRTC_MODULES_DESKTOP_CAPTURE_WIN_SCOPED_GDI_HANDLE_H_
+#ifndef MODULES_DESKTOP_CAPTURE_WIN_SCOPED_GDI_HANDLE_H_
+#define MODULES_DESKTOP_CAPTURE_WIN_SCOPED_GDI_HANDLE_H_
 
 #include <windows.h>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 namespace win {
 
 // Scoper for GDI objects.
-template<class T, class Traits>
+template <class T, class Traits>
 class ScopedGDIObject {
  public:
   ScopedGDIObject() : handle_(NULL) {}
   explicit ScopedGDIObject(T object) : handle_(object) {}
 
-  ~ScopedGDIObject() {
-    Traits::Close(handle_);
-  }
+  ~ScopedGDIObject() { Traits::Close(handle_); }
 
-  T Get() {
-    return handle_;
-  }
+  T Get() { return handle_; }
 
   void Set(T object) {
     if (handle_ && object != handle_)
@@ -92,4 +87,4 @@ typedef ScopedGDIObject<HCURSOR, DestroyCursorTraits> ScopedCursor;
 }  // namespace win
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_DESKTOP_CAPTURE_WIN_SCOPED_GDI_HANDLE_H_
+#endif  // MODULES_DESKTOP_CAPTURE_WIN_SCOPED_GDI_HANDLE_H_

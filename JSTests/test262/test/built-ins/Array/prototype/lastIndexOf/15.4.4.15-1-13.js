@@ -2,13 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-1-13
 description: Array.prototype.lastIndexOf applied to the JSON object
 ---*/
 
-        var targetObj = {};
+var targetObj = {};
 
-            JSON[3] = targetObj;
-            JSON.length = 5;
+JSON[3] = targetObj;
+JSON.length = 5;
 
 assert.sameValue(Array.prototype.lastIndexOf.call(JSON, targetObj), 3, 'Array.prototype.lastIndexOf.call(JSON, targetObj)');

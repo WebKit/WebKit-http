@@ -12,12 +12,9 @@
 #import "ARDSettingsStore.h"
 #import "WebRTC/RTCCameraVideoCapturer.h"
 #import "WebRTC/RTCMediaConstraints.h"
+#import "WebRTC/RTCVideoCodecFactory.h"
 
 NS_ASSUME_NONNULL_BEGIN
-
-static NSArray<NSString *> *videoCodecsStaticValues() {
-  return @[ @"H264", @"VP8", @"VP9" ];
-}
 
 @interface ARDSettingsModel () {
   ARDSettingsStore *_settingsStore;
@@ -42,7 +39,11 @@ static NSArray<NSString *> *videoCodecsStaticValues() {
   NSArray<NSArray<NSNumber *> *> *sortedResolutions =
       [[resolutions allObjects] sortedArrayUsingComparator:^NSComparisonResult(
                                     NSArray<NSNumber *> *obj1, NSArray<NSNumber *> *obj2) {
-        return obj1.firstObject > obj2.firstObject;
+        NSComparisonResult cmp = [obj1.firstObject compare:obj2.firstObject];
+        if (cmp != NSOrderedSame) {
+          return cmp;
+        }
+        return [obj1.lastObject compare:obj2.lastObject];
       }];
 
   NSMutableArray<NSString *> *resolutionStrings = [[NSMutableArray<NSString *> alloc] init];
@@ -68,20 +69,22 @@ static NSArray<NSString *> *videoCodecsStaticValues() {
   return YES;
 }
 
-- (NSArray<NSString *> *)availableVideoCodecs {
-  return videoCodecsStaticValues();
+- (NSArray<RTCVideoCodecInfo *> *)availableVideoCodecs {
+  return [RTCDefaultVideoEncoderFactory supportedCodecs];
 }
 
-- (NSString *)currentVideoCodecSettingFromStore {
+- (RTCVideoCodecInfo *)currentVideoCodecSettingFromStore {
   [self registerStoreDefaults];
-  return [[self settingsStore] videoCodec];
+  NSData *codecData = [[self settingsStore] videoCodec];
+  return [NSKeyedUnarchiver unarchiveObjectWithData:codecData];
 }
 
-- (BOOL)storeVideoCodecSetting:(NSString *)videoCodec {
+- (BOOL)storeVideoCodecSetting:(RTCVideoCodecInfo *)videoCodec {
   if (![[self availableVideoCodecs] containsObject:videoCodec]) {
     return NO;
   }
-  [[self settingsStore] setVideoCodec:videoCodec];
+  NSData *codecData = [NSKeyedArchiver archivedDataWithRootObject:videoCodec];
+  [[self settingsStore] setVideoCodec:codecData];
   return YES;
 }
 
@@ -108,14 +111,6 @@ static NSArray<NSString *> *videoCodecsStaticValues() {
 
 - (void)storeCreateAecDumpSetting:(BOOL)createAecDump {
   [[self settingsStore] setCreateAecDump:createAecDump];
-}
-
-- (BOOL)currentUseLevelControllerSettingFromStore {
-  return [[self settingsStore] useLevelController];
-}
-
-- (void)storeUseLevelControllerSetting:(BOOL)useLevelController {
-  [[self settingsStore] setUseLevelController:useLevelController];
 }
 
 - (BOOL)currentUseManualAudioConfigSettingFromStore {
@@ -150,11 +145,11 @@ static NSArray<NSString *> *videoCodecsStaticValues() {
 #pragma mark -
 
 - (NSString *)defaultVideoResolutionSetting {
-  return [self availableVideoResolutions][0];
+  return [self availableVideoResolutions].firstObject;
 }
 
-- (NSString *)defaultVideoCodecSetting {
-  return videoCodecsStaticValues()[0];
+- (RTCVideoCodecInfo *)defaultVideoCodecSetting {
+  return [self availableVideoCodecs].firstObject;
 }
 
 - (int)videoResolutionComponentAtIndex:(int)index inString:(NSString *)resolution {
@@ -169,12 +164,12 @@ static NSArray<NSString *> *videoCodecsStaticValues() {
 }
 
 - (void)registerStoreDefaults {
+  NSData *codecData = [NSKeyedArchiver archivedDataWithRootObject:[self defaultVideoCodecSetting]];
   [ARDSettingsStore setDefaultsForVideoResolution:[self defaultVideoResolutionSetting]
-                                       videoCodec:[self defaultVideoCodecSetting]
+                                       videoCodec:codecData
                                           bitrate:nil
                                         audioOnly:NO
                                     createAecDump:NO
-                               useLevelController:NO
                              useManualAudioConfig:YES];
 }
 

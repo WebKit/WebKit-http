@@ -34,66 +34,56 @@
 #include "JSEventTargetCustom.h"
 #include "PlatformMouseEvent.h"
 #include "RuntimeApplicationChecks.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
 using namespace JSC;
 
-Ref<MouseEvent> MouseEvent::create(const AtomicString& type, const MouseEventInit& initializer, IsTrusted isTrusted)
+Ref<MouseEvent> MouseEvent::create(const AtomicString& type, const MouseEventInit& initializer)
 {
-    return adoptRef(*new MouseEvent(type, initializer, isTrusted));
+    return adoptRef(*new MouseEvent(type, initializer));
 }
 
-Ref<MouseEvent> MouseEvent::create(const AtomicString& eventType, DOMWindow* view, const PlatformMouseEvent& event, int detail, Node* relatedTarget)
+Ref<MouseEvent> MouseEvent::create(const AtomicString& eventType, RefPtr<WindowProxy>&& view, const PlatformMouseEvent& event, int detail, Node* relatedTarget)
 {
     bool isMouseEnterOrLeave = eventType == eventNames().mouseenterEvent || eventType == eventNames().mouseleaveEvent;
-    bool isCancelable = eventType != eventNames().mousemoveEvent && !isMouseEnterOrLeave;
-    bool canBubble = !isMouseEnterOrLeave;
+    auto isCancelable = eventType != eventNames().mousemoveEvent && !isMouseEnterOrLeave ? IsCancelable::Yes : IsCancelable::No;
+    auto canBubble = !isMouseEnterOrLeave ? CanBubble::Yes : CanBubble::No;
 
-    return MouseEvent::create(eventType, canBubble, isCancelable, event.timestamp(), view,
-        detail, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y(),
+    return MouseEvent::create(eventType, canBubble, isCancelable, IsComposed::Yes, event.timestamp().approximateMonotonicTime(), WTFMove(view), detail,
+        event.globalPosition(), event.position(),
 #if ENABLE(POINTER_LOCK)
-        event.movementDelta().x(), event.movementDelta().y(),
+        event.movementDelta(),
+#else
+        { },
 #endif
-        event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(), event.button(),
-        relatedTarget, event.force(), event.syntheticClickType());
+        event.modifiers(), event.button(), event.buttons(), relatedTarget, event.force(), event.syntheticClickType());
 }
 
-Ref<MouseEvent> MouseEvent::create(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow* view, int detail, int screenX, int screenY, int pageX, int pageY,
-#if ENABLE(POINTER_LOCK)
-    int movementX, int movementY,
-#endif
-    bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer* dataTransfer, bool isSimulated)
+Ref<MouseEvent> MouseEvent::create(const AtomicString& type, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed, MonotonicTime timestamp, RefPtr<WindowProxy>&& view, int detail,
+    const IntPoint& screenLocation, const IntPoint& windowLocation, const IntPoint& movementDelta, OptionSet<Modifier> modifiers, unsigned short button, unsigned short buttons,
+    EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer* dataTransfer, IsSimulated isSimulated, IsTrusted isTrusted)
 {
-    return adoptRef(*new MouseEvent(type, canBubble, cancelable, timestamp, view,
-        detail, { screenX, screenY }, { pageX, pageY },
-#if ENABLE(POINTER_LOCK)
-        { movementX, movementY },
-#endif
-        ctrlKey, altKey, shiftKey, metaKey, button, relatedTarget, force, syntheticClickType, dataTransfer, isSimulated));
+    return adoptRef(*new MouseEvent(type, canBubble, isCancelable, isComposed, timestamp, WTFMove(view), detail,
+        screenLocation, windowLocation, movementDelta, modifiers, button, buttons, relatedTarget, force, syntheticClickType, dataTransfer, isSimulated, isTrusted));
 }
 
-Ref<MouseEvent> MouseEvent::create(const AtomicString& eventType, bool canBubble, bool cancelable, DOMWindow* view, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, unsigned short syntheticClickType, EventTarget* relatedTarget)
+Ref<MouseEvent> MouseEvent::create(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed, RefPtr<WindowProxy>&& view, int detail,
+    int screenX, int screenY, int clientX, int clientY, OptionSet<Modifier> modifiers, unsigned short button, unsigned short buttons,
+    unsigned short syntheticClickType, EventTarget* relatedTarget)
 {
-    return adoptRef(*new MouseEvent(eventType, canBubble, cancelable, view, detail, { screenX, screenY }, { clientX, clientY }, ctrlKey, altKey, shiftKey, metaKey, button, syntheticClickType, relatedTarget));
+    return adoptRef(*new MouseEvent(eventType, canBubble, isCancelable, isComposed, WTFMove(view), detail, { screenX, screenY }, { clientX, clientY }, modifiers, button, buttons, syntheticClickType, relatedTarget));
 }
 
-MouseEvent::MouseEvent()
-{
-}
+MouseEvent::MouseEvent() = default;
 
-MouseEvent::MouseEvent(const AtomicString& eventType, bool canBubble, bool cancelable, double timestamp, DOMWindow* view, int detail, const IntPoint& screenLocation, const IntPoint& windowLocation,
-#if ENABLE(POINTER_LOCK)
-        const IntPoint& movementDelta,
-#endif
-        bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer* dataTransfer, bool isSimulated)
-    : MouseRelatedEvent(eventType, canBubble, cancelable, timestamp, view, detail, screenLocation, windowLocation,
-#if ENABLE(POINTER_LOCK)
-        movementDelta,
-#endif
-        ctrlKey, altKey, shiftKey, metaKey, isSimulated)
+MouseEvent::MouseEvent(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed,
+    MonotonicTime timestamp, RefPtr<WindowProxy>&& view, int detail,
+    const IntPoint& screenLocation, const IntPoint& windowLocation, const IntPoint& movementDelta, OptionSet<Modifier> modifiers, unsigned short button, unsigned short buttons,
+    EventTarget* relatedTarget, double force, unsigned short syntheticClickType, DataTransfer* dataTransfer, IsSimulated isSimulated, IsTrusted isTrusted)
+    : MouseRelatedEvent(eventType, canBubble, isCancelable, isComposed, timestamp, WTFMove(view), detail, screenLocation, windowLocation, movementDelta, modifiers, isSimulated, isTrusted)
     , m_button(button == (unsigned short)-1 ? 0 : button)
+    , m_buttons(buttons)
     , m_syntheticClickType(button == (unsigned short)-1 ? 0 : syntheticClickType)
     , m_buttonDown(button != (unsigned short)-1)
     , m_relatedTarget(relatedTarget)
@@ -102,13 +92,12 @@ MouseEvent::MouseEvent(const AtomicString& eventType, bool canBubble, bool cance
 {
 }
 
-MouseEvent::MouseEvent(const AtomicString& eventType, bool canBubble, bool cancelable, DOMWindow* view, int detail, const IntPoint& screenLocation, const IntPoint& clientLocation, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, unsigned short syntheticClickType, EventTarget* relatedTarget)
-    : MouseRelatedEvent(eventType, canBubble, cancelable, WTF::currentTime(), view, detail, screenLocation, { },
-#if ENABLE(POINTER_LOCK)
-        { },
-#endif
-        ctrlKey, altKey, shiftKey, metaKey, false)
+MouseEvent::MouseEvent(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed,
+    RefPtr<WindowProxy>&& view, int detail, const IntPoint& screenLocation, const IntPoint& clientLocation,
+    OptionSet<Modifier> modifiers, unsigned short button, unsigned short buttons, unsigned short syntheticClickType, EventTarget* relatedTarget)
+    : MouseRelatedEvent(eventType, canBubble, isCancelable, isComposed, MonotonicTime::now(), WTFMove(view), detail, screenLocation, { }, { }, modifiers, IsSimulated::No)
     , m_button(button == (unsigned short)-1 ? 0 : button)
+    , m_buttons(buttons)
     , m_syntheticClickType(button == (unsigned short)-1 ? 0 : syntheticClickType)
     , m_buttonDown(button != (unsigned short)-1)
     , m_relatedTarget(relatedTarget)
@@ -116,31 +105,28 @@ MouseEvent::MouseEvent(const AtomicString& eventType, bool canBubble, bool cance
     initCoordinates(clientLocation);
 }
 
-MouseEvent::MouseEvent(const AtomicString& eventType, const MouseEventInit& initializer, IsTrusted isTrusted)
-    : MouseRelatedEvent(eventType, initializer, isTrusted)
+MouseEvent::MouseEvent(const AtomicString& eventType, const MouseEventInit& initializer)
+    : MouseRelatedEvent(eventType, initializer)
     , m_button(initializer.button == (unsigned short)-1 ? 0 : initializer.button)
+    , m_buttons(initializer.buttons)
     , m_buttonDown(initializer.button != (unsigned short)-1)
     , m_relatedTarget(initializer.relatedTarget)
 {
     initCoordinates({ initializer.clientX, initializer.clientY });
 }
 
-MouseEvent::~MouseEvent()
-{
-}
+MouseEvent::~MouseEvent() = default;
 
-void MouseEvent::initMouseEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow* view, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget)
+void MouseEvent::initMouseEvent(const AtomicString& type, bool canBubble, bool cancelable, RefPtr<WindowProxy>&& view, int detail,
+    int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
-    initUIEvent(type, canBubble, cancelable, view, detail);
+    initUIEvent(type, canBubble, cancelable, WTFMove(view), detail);
 
     m_screenLocation = IntPoint(screenX, screenY);
-    m_ctrlKey = ctrlKey;
-    m_altKey = altKey;
-    m_shiftKey = shiftKey;
-    m_metaKey = metaKey;
+    setModifierKeys(ctrlKey, altKey, shiftKey, metaKey);
     m_button = button == (unsigned short)-1 ? 0 : button;
     m_syntheticClickType = 0;
     m_buttonDown = button != (unsigned short)-1;
@@ -148,13 +134,13 @@ void MouseEvent::initMouseEvent(const AtomicString& type, bool canBubble, bool c
 
     initCoordinates(IntPoint(clientX, clientY));
 
-    // FIXME: m_isSimulated is not set to false here.
-    // FIXME: m_dataTransfer is not set to 0 here.
+    setIsSimulated(false);
+    m_dataTransfer = nullptr;
 }
 
 // FIXME: We need this quirk because iAd Producer is calling this function with a relatedTarget that is not an EventTarget (rdar://problem/30640101).
 // We should remove this quirk when possible.
-void MouseEvent::initMouseEventQuirk(ExecState& state, ScriptExecutionContext& scriptExecutionContext, const AtomicString& type, bool canBubble, bool cancelable, DOMWindow* view, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, JSValue relatedTargetValue)
+void MouseEvent::initMouseEventQuirk(ExecState& state, ScriptExecutionContext& scriptExecutionContext, const AtomicString& type, bool canBubble, bool cancelable, RefPtr<WindowProxy>&& view, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, JSValue relatedTargetValue)
 {
     EventTarget* relatedTarget = nullptr;
 #if PLATFORM(MAC)
@@ -163,7 +149,7 @@ void MouseEvent::initMouseEventQuirk(ExecState& state, ScriptExecutionContext& s
         // jsEventTargetCast() does not throw and will silently convert bad input to nullptr.
         auto jsRelatedTarget = jsEventTargetCast(state.vm(), relatedTargetValue);
         if (!jsRelatedTarget && !relatedTargetValue.isUndefinedOrNull())
-            scriptExecutionContext.addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Calling initMouseEvent() with a relatedTarget that is not an EventTarget is deprecated."));
+            scriptExecutionContext.addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "Calling initMouseEvent() with a relatedTarget that is not an EventTarget is deprecated."_s);
         relatedTarget = jsRelatedTarget ? &jsRelatedTarget->wrapped() : nullptr;
     } else {
 #else
@@ -178,7 +164,7 @@ void MouseEvent::initMouseEventQuirk(ExecState& state, ScriptExecutionContext& s
 #if PLATFORM(MAC)
     }
 #endif
-    initMouseEvent(type, canBubble, cancelable, view, detail, screenX, screenY, clientX, clientY, ctrlKey, altKey, shiftKey, metaKey, button, relatedTarget);
+    initMouseEvent(type, canBubble, cancelable, WTFMove(view), detail, screenX, screenY, clientX, clientY, ctrlKey, altKey, shiftKey, metaKey, button, relatedTarget);
 }
 
 EventInterface MouseEvent::eventInterface() const
@@ -221,26 +207,26 @@ int MouseEvent::which() const
     return m_button + 1;
 }
 
-Node* MouseEvent::toElement() const
+RefPtr<Node> MouseEvent::toElement() const
 {
     // MSIE extension - "the object toward which the user is moving the mouse pointer"
-    if (type() == eventNames().mouseoutEvent || type() == eventNames().mouseleaveEvent) {
-        EventTarget* relatedTarget = this->relatedTarget();
-        return relatedTarget ? relatedTarget->toNode() : nullptr;
-    }
-
-    return target() ? target()->toNode() : nullptr;
+    EventTarget* target;
+    if (type() == eventNames().mouseoutEvent || type() == eventNames().mouseleaveEvent)
+        target = relatedTarget();
+    else
+        target = this->target();
+    return is<Node>(target) ? &downcast<Node>(*target) : nullptr;
 }
 
-Node* MouseEvent::fromElement() const
+RefPtr<Node> MouseEvent::fromElement() const
 {
     // MSIE extension - "object from which activation or the mouse pointer is exiting during the event" (huh?)
-    if (type() != eventNames().mouseoutEvent && type() != eventNames().mouseleaveEvent) {
-        EventTarget* relatedTarget = this->relatedTarget();
-        return relatedTarget ? relatedTarget->toNode() : nullptr;
-    }
-
-    return target() ? target()->toNode() : nullptr;
+    EventTarget* target;
+    if (type() == eventNames().mouseoutEvent || type() == eventNames().mouseleaveEvent)
+        target = this->target();
+    else
+        target = relatedTarget();
+    return is<Node>(target) ? &downcast<Node>(*target) : nullptr;
 }
 
 } // namespace WebCore

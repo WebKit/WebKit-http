@@ -1,4 +1,3 @@
-CONSOLE MESSAGE: line 1: Unhandled Promise Rejection: TypeError: Type error
 Test for Resources in a Worker.
 
 

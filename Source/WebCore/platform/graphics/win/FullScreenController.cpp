@@ -38,7 +38,7 @@
 #include "WebCoreInstanceHandle.h"
 #include <wtf/RefPtr.h>
 
-using namespace WebCore;
+namespace WebCore {
 
 static const int kFullScreenAnimationDuration = 500; // milliseconds 
 
@@ -53,7 +53,7 @@ public:
         , m_isExitingFullScreen(false)
     {
     }
-    virtual ~Private() { }
+    virtual ~Private() = default;
 
     virtual LRESULT fullscreenClientWndProc(HWND, UINT, WPARAM, LPARAM);
     
@@ -108,9 +108,7 @@ FullScreenController::FullScreenController(FullScreenControllerClient* client)
     ASSERT_ARG(client, client);
 }
 
-FullScreenController::~FullScreenController()
-{
-}
+FullScreenController::~FullScreenController() = default;
 
 bool FullScreenController::isFullScreen() const
 {
@@ -219,4 +217,7 @@ void FullScreenController::close()
     ::RedrawWindow(m_private->m_client->fullScreenClientWindow(), 0, 0, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ERASE | RDW_ALLCHILDREN);
     m_private->m_backgroundWindow = nullptr;
 }
+
+} // namespace WebCore
+
 #endif

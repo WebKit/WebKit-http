@@ -32,30 +32,28 @@
 namespace WebCore {
 
 GIFImageDecoder::GIFImageDecoder(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
-    : ImageDecoder(alphaOption, gammaAndColorProfileOption)
+    : ScalableImageDecoder(alphaOption, gammaAndColorProfileOption)
 {
 }
 
-GIFImageDecoder::~GIFImageDecoder()
-{
-}
+GIFImageDecoder::~GIFImageDecoder() = default;
 
 void GIFImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
 {
     if (failed())
         return;
 
-    ImageDecoder::setData(data, allDataReceived);
+    ScalableImageDecoder::setData(data, allDataReceived);
     if (m_reader)
         m_reader->setData(&data);
 }
 
 bool GIFImageDecoder::setSize(const IntSize& size)
 {
-    if (ImageDecoder::encodedDataStatus() >= EncodedDataStatus::SizeAvailable && this->size() == size)
+    if (ScalableImageDecoder::encodedDataStatus() >= EncodedDataStatus::SizeAvailable && this->size() == size)
         return true;
 
-    if (!ImageDecoder::setSize(size))
+    if (!ScalableImageDecoder::setSize(size))
         return false;
 
     prepareScaleDataIfNecessary();
@@ -97,25 +95,66 @@ RepetitionCount GIFImageDecoder::repetitionCount() const
     if (failed() || (m_reader && (!m_reader->imagesCount())))
         m_repetitionCount = RepetitionCountOnce;
     else if (m_reader && m_reader->loopCount() != cLoopCountNotSeen)
-        m_repetitionCount = m_reader->loopCount();
+        m_repetitionCount = m_reader->loopCount() > 0 ? m_reader->loopCount() + 1 : m_reader->loopCount();
     return m_repetitionCount;
 }
 
-ImageFrame* GIFImageDecoder::frameBufferAtIndex(size_t index)
+size_t GIFImageDecoder::findFirstRequiredFrameToDecode(size_t frameIndex)
+{
+    // The first frame doesn't depend on any other.
+    if (!frameIndex)
+        return 0;
+
+    for (size_t i = frameIndex; i > 0; --i) {
+        auto& frame = m_frameBufferCache[i - 1];
+
+        // Frames with disposal method RestoreToPrevious are useless, skip them.
+        if (frame.disposalMethod() == ScalableImageDecoderFrame::DisposalMethod::RestoreToPrevious)
+            continue;
+
+        // At this point the disposal method can be Unspecified, DoNotDispose or RestoreToBackground.
+        // In every case, if the frame is complete we can start decoding the next one.
+        if (frame.isComplete())
+            return i;
+
+        // If the disposal method of this frame is RestoreToBackground and it fills the whole area,
+        // the next frame's backing store is initialized to transparent, so we start decoding with it.
+        if (frame.disposalMethod() == ScalableImageDecoderFrame::DisposalMethod::RestoreToBackground) {
+            // We cannot use frame.backingStore()->frameRect() here, because it has been cleared
+            // when the frame was removed from the cache. We need to get the values from the
+            // reader context.
+            const auto* frameContext = m_reader->frameContext(i - 1);
+            ASSERT(frameContext);
+            IntRect frameRect(frameContext->xOffset, frameContext->yOffset, frameContext->width, frameContext->height);
+            // We would need to scale frameRect and check whether it fills the whole scaledSize(). But
+            // can check whether the original frameRect fills size() instead. If the frame fills the
+            // whole area then it can be decoded without dependencies.
+            if (frameRect.contains({ { }, size() }))
+                return i;
+        }
+    }
+
+    return 0;
+}
+
+ScalableImageDecoderFrame* GIFImageDecoder::frameBufferAtIndex(size_t index)
 {
     if (index >= frameCount())
         return 0;
 
-    ImageFrame& frame = m_frameBufferCache[index];
-    if (!frame.isComplete())
-        decode(index + 1, GIFFullQuery, isAllDataReceived());
+    auto& frame = m_frameBufferCache[index];
+    if (!frame.isComplete()) {
+        for (auto i = findFirstRequiredFrameToDecode(index); i <= index; i++)
+            decode(i + 1, GIFFullQuery, isAllDataReceived());
+    }
+
     return &frame;
 }
 
 bool GIFImageDecoder::setFailed()
 {
     m_reader = nullptr;
-    return ImageDecoder::setFailed();
+    return ScalableImageDecoder::setFailed();
 }
 
 void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
@@ -124,10 +163,6 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     // can be asked to clear more frames than we currently have.
     if (m_frameBufferCache.isEmpty())
         return; // Nothing to do.
-
-    // Lock the decodelock here, as we are going to destroy the GIFImageReader and doing so while
-    // there's an ongoing decode will cause a crash.
-    LockHolder locker(m_decodeLock);
 
     // The "-1" here is tricky.  It does not mean that |clearBeforeFrame| is the
     // last frame we wish to preserve, but rather that we never want to clear
@@ -138,7 +173,7 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     // always use ImageSource::clear(true, ...) to completely free the memory in
     // this case.
     clearBeforeFrame = std::min(clearBeforeFrame, m_frameBufferCache.size() - 1);
-    const Vector<ImageFrame>::iterator end(m_frameBufferCache.begin() + clearBeforeFrame);
+    const Vector<ScalableImageDecoderFrame>::iterator end(m_frameBufferCache.begin() + clearBeforeFrame);
 
     // We need to preserve frames such that:
     //   * We don't clear |end|
@@ -158,22 +193,18 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     //   * If the frame is partial, we're decoding it, so don't clear it; if it
     //     has a disposal method other than DisposalMethod::RestoreToPrevious, stop
     //     scanning, as we'll only need this frame when decoding the next one.
-    Vector<ImageFrame>::iterator i(end);
-    for (; (i != m_frameBufferCache.begin()) && (i->isInvalid() || (i->disposalMethod() == ImageFrame::DisposalMethod::RestoreToPrevious)); --i) {
+    Vector<ScalableImageDecoderFrame>::iterator i(end);
+    for (; (i != m_frameBufferCache.begin()) && (i->isInvalid() || (i->disposalMethod() == ScalableImageDecoderFrame::DisposalMethod::RestoreToPrevious)); --i) {
         if (i->isComplete() && (i != end))
             i->clear();
     }
 
     // Now |i| holds the last frame we need to preserve; clear prior frames.
-    for (Vector<ImageFrame>::iterator j(m_frameBufferCache.begin()); j != i; ++j) {
+    for (Vector<ScalableImageDecoderFrame>::iterator j(m_frameBufferCache.begin()); j != i; ++j) {
         ASSERT(!j->isPartial());
-        if (j->isInvalid())
+        if (!j->isInvalid())
             j->clear();
     }
-
-    // When some frames are cleared, the reader is out of sync, since the caller might ask for any frame not
-    // necessarily in the order expected by the reader. See https://bugs.webkit.org/show_bug.cgi?id=159089.
-    m_reader = nullptr;
 }
 
 bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned char>& rowBuffer, size_t width, size_t rowNumber, unsigned repeatCount, bool writeTransparentPixels)
@@ -206,11 +237,11 @@ bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned 
         return true;
 
     // Initialize the frame if necessary.
-    ImageFrame& buffer = m_frameBufferCache[frameIndex];
+    auto& buffer = m_frameBufferCache[frameIndex];
     if ((buffer.isInvalid() && !initFrameBuffer(frameIndex)) || !buffer.hasBackingStore())
         return false;
 
-    RGBA32* currentAddress = buffer.backingStore()->pixelAt(xBegin, yBegin);
+    auto* currentAddress = buffer.backingStore()->pixelAt(xBegin, yBegin);
     // Write one row's worth of data into the frame.  
     for (int x = xBegin; x < xEnd; ++x) {
         const unsigned char sourceValue = rowBuffer[(m_scaled ? m_scaledColumns[x] : x) - frameContext->xOffset];
@@ -239,16 +270,16 @@ bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned 
     return true;
 }
 
-bool GIFImageDecoder::frameComplete(unsigned frameIndex, unsigned frameDuration, ImageFrame::DisposalMethod disposalMethod)
+bool GIFImageDecoder::frameComplete(unsigned frameIndex, unsigned frameDuration, ScalableImageDecoderFrame::DisposalMethod disposalMethod)
 {
     // Initialize the frame if necessary.  Some GIFs insert do-nothing frames,
     // in which case we never reach haveDecodedRow() before getting here.
-    ImageFrame& buffer = m_frameBufferCache[frameIndex];
+    auto& buffer = m_frameBufferCache[frameIndex];
     if (buffer.isInvalid() && !initFrameBuffer(frameIndex))
         return false; // initFrameBuffer() has already called setFailed().
 
-    buffer.setDecodingStatus(ImageFrame::DecodingStatus::Complete);
-    buffer.setDuration(frameDuration);
+    buffer.setDecodingStatus(DecodingStatus::Complete);
+    buffer.setDuration(Seconds::fromMilliseconds(frameDuration));
     buffer.setDisposalMethod(disposalMethod);
 
     if (!m_currentBufferSawAlpha) {
@@ -267,8 +298,8 @@ bool GIFImageDecoder::frameComplete(unsigned frameIndex, unsigned frameDuration,
             // First skip over prior DisposalMethod::RestoreToPrevious frames (since they
             // don't affect the start state of this frame) the same way we do in
             // initFrameBuffer().
-            const ImageFrame* prevBuffer = &m_frameBufferCache[--frameIndex];
-            while (frameIndex && (prevBuffer->disposalMethod() == ImageFrame::DisposalMethod::RestoreToPrevious))
+            const auto* prevBuffer = &m_frameBufferCache[--frameIndex];
+            while (frameIndex && (prevBuffer->disposalMethod() == ScalableImageDecoderFrame::DisposalMethod::RestoreToPrevious))
                 prevBuffer = &m_frameBufferCache[--frameIndex];
 
             // Now, if we're at a DisposalMethod::Unspecified or DisposalMethod::DoNotDispose frame, then
@@ -280,7 +311,7 @@ bool GIFImageDecoder::frameComplete(unsigned frameIndex, unsigned frameDuration,
             // it had no alpha, and its rect is contained in the current frame's
             // rect, we know the current frame has no alpha.
             IntRect prevRect = prevBuffer->backingStore()->frameRect();
-            if ((prevBuffer->disposalMethod() == ImageFrame::DisposalMethod::RestoreToBackground) && !prevBuffer->hasAlpha() && rect.contains(prevRect))
+            if ((prevBuffer->disposalMethod() == ScalableImageDecoderFrame::DisposalMethod::RestoreToBackground) && !prevBuffer->hasAlpha() && rect.contains(prevRect))
                 buffer.setHasAlpha(false);
         }
     }
@@ -302,7 +333,6 @@ void GIFImageDecoder::decode(unsigned haltAtFrame, GIFQuery query, bool allDataR
     if (failed())
         return;
 
-    LockHolder locker(m_decodeLock);
     if (!m_reader) {
         m_reader = std::make_unique<GIFImageReader>(this);
         m_reader->setData(m_data.get());
@@ -340,7 +370,7 @@ bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
     // Initialize the frame rect in our buffer.
     const GIFFrameContext* frameContext = m_reader->frameContext();
     IntRect frameRect(frameContext->xOffset, frameContext->yOffset, frameContext->width, frameContext->height);
-    ImageFrame* const buffer = &m_frameBufferCache[frameIndex];
+    auto* const buffer = &m_frameBufferCache[frameIndex];
 
     if (!frameIndex) {
         // This is the first frame, so we're not relying on any previous data.
@@ -355,16 +385,16 @@ bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
         // the starting state of the previous frame, so skip over them.  (If the
         // first frame specifies this method, it will get treated like
         // DisposalMethod::RestoreToBackground below and reset to a completely empty image.)
-        const ImageFrame* prevBuffer = &m_frameBufferCache[--frameIndex];
-        ImageFrame::DisposalMethod prevMethod = prevBuffer->disposalMethod();
-        while (frameIndex && (prevMethod == ImageFrame::DisposalMethod::RestoreToPrevious)) {
+        const auto* prevBuffer = &m_frameBufferCache[--frameIndex];
+        auto prevMethod = prevBuffer->disposalMethod();
+        while (frameIndex && (prevMethod == ScalableImageDecoderFrame::DisposalMethod::RestoreToPrevious)) {
             prevBuffer = &m_frameBufferCache[--frameIndex];
             prevMethod = prevBuffer->disposalMethod();
         }
 
         ASSERT(prevBuffer->isComplete());
 
-        if ((prevMethod == ImageFrame::DisposalMethod::Unspecified) || (prevMethod == ImageFrame::DisposalMethod::DoNotDispose)) {
+        if ((prevMethod == ScalableImageDecoderFrame::DisposalMethod::Unspecified) || (prevMethod == ScalableImageDecoderFrame::DisposalMethod::DoNotDispose)) {
             // Preserve the last frame as the starting state for this frame.
             if (!prevBuffer->backingStore() || !buffer->initialize(*prevBuffer->backingStore()))
                 return setFailed();
@@ -401,7 +431,7 @@ bool GIFImageDecoder::initFrameBuffer(unsigned frameIndex)
     buffer->backingStore()->setFrameRect(IntRect(left, top, right - left, bottom - top));
 
     // Update our status to be partially complete.
-    buffer->setDecodingStatus(ImageFrame::DecodingStatus::Partial);
+    buffer->setDecodingStatus(DecodingStatus::Partial);
 
     // Reset the alpha pixel tracker for this frame.
     m_currentBufferSawAlpha = false;

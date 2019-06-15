@@ -30,6 +30,7 @@
 
 #include "AbstractCACFLayerTreeHost.h"
 #include "StructuredExceptionHandlerSuppressor.h"
+#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
@@ -37,7 +38,7 @@ namespace WebCore {
 
 LayerChangesFlusher& LayerChangesFlusher::singleton()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(LayerChangesFlusher, flusher, ());
+    static NeverDestroyed<LayerChangesFlusher> flusher;
     return flusher;
 }
 
@@ -85,8 +86,7 @@ LRESULT LayerChangesFlusher::hookFired(int code, WPARAM wParam, LPARAM lParam)
 
     // Calling out to the hosts can cause m_hostsWithChangesToFlush to be modified, so we copy it
     // into a Vector first.
-    Vector<AbstractCACFLayerTreeHost*> hosts;
-    copyToVector(m_hostsWithChangesToFlush, hosts);
+    auto hosts = copyToVector(m_hostsWithChangesToFlush);
     m_hostsWithChangesToFlush.clear();
 
     m_isCallingHosts = true;

@@ -1,4 +1,161 @@
 =================
+WebKitGTK+ 2.21.5
+=================
+
+What's new in WebKitGTK+ 2.21.5?
+
+  - Add API to evaluate code in a new object to JavaScriptCore GLib API.
+  - Add API to check for syntax errors in given code to JavaScriptCore GLib API.
+  - Update jsc_context_evaluate_with_source_uri() to receive also a starting line number.
+  - Add API to allow creating variadic functions to JavaScriptCore GLib API.
+  - Add --host option to WebDriver process.
+  - Handle acceptInsecureCertificates capability in WebDriver.
+  - Fix video freezes when GStreamerGL is not installed.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Ukrainian.
+
+=================
+WebKitGTK+ 2.21.4
+=================
+
+What's new in WebKitGTK+ 2.21.4?
+
+  - Switch to use a popup window with a tree view instead of a menu for option menu default implementation.
+  - Add API to run javascript from a WebKitWebView in an isolated world.
+  - Fix UI process crash in WebKitFaviconDatabase when pageURL is unset.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.21.3
+=================
+
+What's new in WebKitGTK+ 2.21.3?
+
+  - Ensure memory monitor properly notifies all child processes.
+  - Add maximize, minimize and fullscreen window commands to WebDriver.
+  - Fix a network process crash when trying to get cookies of about:blank page.
+  - Fix UI process crash when closing the window under Wayland.
+  - Disable Gigacage if mmap fails to allocate in Linux.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.21.2
+=================
+
+What's new in WebKitGTK+ 2.21.2?
+
+  - Remove resource load statistics API, it's not ready yet.
+  - Add initial implementation of WebDriver advance user insteraction commands.
+  - Add introspectable alternatives for functions using vargars to JavaScriptCore GLib API.
+  - Implement MouseEvent.buttons.
+  - Do TLS error checking on GTlsConnection::accept-certificate to finish the load earlier in case of errors.
+  - Fix downloads started by context menu failing in some websites due to missing user agent HTTP header.
+  - Avoid painting backing stores for zero-opacity layers.
+  - Fix the installation path of API documentation.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.21.1
+=================
+
+What's new in WebKitGTK+ 2.21.1?
+
+  - Add initial JavaScriptCore GLib API.
+  - Use JavaScriptCore GLib API in WebKit layer and deprecate most of the DOM bindings API as well as
+    methods using the JavaScriptCore C API.
+  - Switch to use complex text code path unconditionally.
+  - Properly close the connection to the Wayland nested compositor in the WebProcess.
+  - Implement support for Graphics ARIA roles.
+  - Add playbin3 support to GStreamer media backend.
+  - Fix a deadlock when destroying the media player in non accelerated compositing mode.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.19.6
+=================
+
+What's new in WebKitGTK+ 2.19.6?
+
+  - Fix crashes due to duplicated symbols in libjavascriptcoregtk and libwebkit2gtk.
+  - Fix parsing of timeout values in WebDriver.
+  - Implement get timeouts command in WebDriver.
+  - Fix deadlock in GStreamer video sink during shutdown when accelerated compositing is disabled.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.19.5
+=================
+
+What's new in WebKitGTK+ 2.19.5?
+
+  - This is a follow up release to export webkit_dom_dom_window_webkit_message_handlers_post_message() symbol that
+    was hidden in 2.19.4 by mistake.
+
+=================
+WebKitGTK+ 2.19.4
+=================
+
+What's new in WebKitGTK+ 2.19.4?
+
+  - Add web process API to detect when form is submitted via JavaScript.
+  - Add new API to replace webkit_form_submission_request_get_text_fields() that is now deprecated.
+  - Add WebKitWebView::web-process-terminated signal and deprecate web-process-crashed.
+  - Fix rendering issues when editing text areas.
+  - Use FastMalloc based GstAllocator for GStreamer.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Swedish.
+
+=================
+WebKitGTK+ 2.19.3
+=================
+
+What's new in WebKitGTK+ 2.19.3?
+
+  - Fix web process crash at startup in bmalloc.
+  - Fix several memory leaks in GStreamer media backend.
+  - WebKitWebDriver process no longer links to libjavascriptcoregtk.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.19.2
+=================
+
+What's new in WebKitGTK+ 2.19.2?
+
+  - Add new API to add, retrieve and delete cookies via WebKitCookieManager.
+  - Add functions to WebSettings to convert font sizes between points and pixels.
+  - Ensure cookie operations take effect when they happen before a web process has been spawned.
+  - Automatically adjust font size when GtkSettings:gtk-xft-dpi changes.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.19.1
+=================
+
+What's new in WebKitGTK+ 2.19.1?
+
+  - Add initial resource load statistics support.
+  - Add API to expose availability of certain editing commands in WebKitEditorState.
+  - Add API to query whether a WebKitNavigationAction is a redirect or not.
+  - Improve complex text rendering.
+  - Add support for the "system" CSS font family.
+  - Implement low power mode.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.17.5
+=================
+
+What's new in WebKitGTK+ 2.17.5?
+
+  - Add initial implementation of WebDriver.
+  - Enable GStreamerGL by default when building with GStreamer >= 1.10.
+  - Fix position of context menu in Wayland.
+  - Properly close cookies database at network process exit.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Ukrainian.
+
+=================
 WebKitGTK+ 2.17.4
 =================
 

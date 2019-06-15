@@ -10,16 +10,16 @@
 
 #import "WebRTC/RTCSSLAdapter.h"
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/ssladapter.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/ssladapter.h"
 
-BOOL RTCInitializeSSL() {
+BOOL RTCInitializeSSL(void) {
   BOOL initialized = rtc::InitializeSSL();
   RTC_DCHECK(initialized);
   return initialized;
 }
 
-BOOL RTCCleanupSSL() {
+BOOL RTCCleanupSSL(void) {
   BOOL cleanedUp = rtc::CleanupSSL();
   RTC_DCHECK(cleanedUp);
   return cleanedUp;

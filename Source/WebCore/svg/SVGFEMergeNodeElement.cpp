@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,21 +26,17 @@
 #include "SVGFilterElement.h"
 #include "SVGFilterPrimitiveStandardAttributes.h"
 #include "SVGNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_STRING(SVGFEMergeNodeElement, SVGNames::inAttr, In1, in1)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFEMergeNodeElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(in1)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFEMergeNodeElement);
 
 inline SVGFEMergeNodeElement::SVGFEMergeNodeElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
 {
     ASSERT(hasTagName(SVGNames::feMergeNodeTag));
-    registerAnimatedPropertiesForSVGFEMergeNodeElement();
+    registerAttributes();
 }
 
 Ref<SVGFEMergeNodeElement> SVGFEMergeNodeElement::create(const QualifiedName& tagName, Document& document)
@@ -47,10 +44,18 @@ Ref<SVGFEMergeNodeElement> SVGFEMergeNodeElement::create(const QualifiedName& ta
     return adoptRef(*new SVGFEMergeNodeElement(tagName, document));
 }
 
+void SVGFEMergeNodeElement::registerAttributes()
+{
+    auto& registry = attributeRegistry();
+    if (!registry.isEmpty())
+        return;
+    registry.registerAttribute<SVGNames::inAttr, &SVGFEMergeNodeElement::m_in1>();
+}
+
 void SVGFEMergeNodeElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::inAttr) {
-        setIn1BaseValue(value);
+        m_in1.setValue(value);
         return;
     }
 

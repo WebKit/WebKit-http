@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     String.prototype.split(separator, limit):
     i) can be transferred to other kinds of objects for use as a method.
     separator and limit can be any kinds of object since:
@@ -21,7 +21,7 @@ var __split = __instance.split(true, false);
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if (typeof __split !== "object") {
-  $ERROR('#1: __instance = new Object(true); __instance.split = String.prototype.split; __split = __instance.split(true, false); typeof __split === "object". Actual: '+typeof __split );
+  $ERROR('#1: __instance = new Object(true); __instance.split = String.prototype.split; __split = __instance.split(true, false); typeof __split === "object". Actual: ' + typeof __split);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -29,7 +29,7 @@ if (typeof __split !== "object") {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (__split.constructor !== Array) {
-  $ERROR('#2: __instance = new Object(true); __instance.split = String.prototype.split; __split = __instance.split(true, false); __split.constructor === Array. Actual: '+__split.constructor );
+  $ERROR('#2: __instance = new Object(true); __instance.split = String.prototype.split; __split = __instance.split(true, false); __split.constructor === Array. Actual: ' + __split.constructor);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -37,7 +37,7 @@ if (__split.constructor !== Array) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#3
 if (__split.length !== 0) {
-  $ERROR('#3: __instance = new Object(true); __instance.split = String.prototype.split; __split = __instance.split(true, false); __split.length === 0. Actual: '+__split.length );
+  $ERROR('#3: __instance = new Object(true); __instance.split = String.prototype.split; __split = __instance.split(true, false); __split.length === 0. Actual: ' + __split.length);
 }
 //
 //////////////////////////////////////////////////////////////////////////////

@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_MOCK_MOCK_EXTERNAL_DECODER_PCM16B_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_MOCK_MOCK_EXTERNAL_DECODER_PCM16B_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_MOCK_MOCK_EXTERNAL_DECODER_PCM16B_H_
+#define MODULES_AUDIO_CODING_NETEQ_MOCK_MOCK_EXTERNAL_DECODER_PCM16B_H_
 
-#include "webrtc/api/audio_codecs/audio_decoder.h"
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/audio_coding/codecs/pcm16b/pcm16b.h"
-#include "webrtc/test/gmock.h"
-#include "webrtc/typedefs.h"
+#include "api/audio_codecs/audio_decoder.h"
+#include "modules/audio_coding/codecs/pcm16b/pcm16b.h"
+#include "rtc_base/constructormagic.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 
@@ -75,17 +74,16 @@ class MockExternalPcm16B : public AudioDecoder {
                    int sample_rate_hz,
                    int16_t* decoded,
                    SpeechType* speech_type));
-  MOCK_CONST_METHOD0(HasDecodePlc,
-      bool());
-  MOCK_METHOD2(DecodePlc,
-      size_t(size_t num_frames, int16_t* decoded));
+  MOCK_CONST_METHOD0(HasDecodePlc, bool());
+  MOCK_METHOD2(DecodePlc, size_t(size_t num_frames, int16_t* decoded));
   MOCK_METHOD0(Reset, void());
   MOCK_METHOD5(IncomingPacket,
-      int(const uint8_t* payload, size_t payload_len,
-          uint16_t rtp_sequence_number, uint32_t rtp_timestamp,
-          uint32_t arrival_timestamp));
-  MOCK_METHOD0(ErrorCode,
-      int());
+               int(const uint8_t* payload,
+                   size_t payload_len,
+                   uint16_t rtp_sequence_number,
+                   uint32_t rtp_timestamp,
+                   uint32_t arrival_timestamp));
+  MOCK_METHOD0(ErrorCode, int());
 
   int SampleRateHz() const /* override */ { return real_.SampleRateHz(); }
   size_t Channels() const /* override */ { return real_.Channels(); }
@@ -95,4 +93,4 @@ class MockExternalPcm16B : public AudioDecoder {
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_MOCK_MOCK_EXTERNAL_DECODER_PCM16B_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_MOCK_MOCK_EXTERNAL_DECODER_PCM16B_H_

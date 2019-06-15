@@ -8,32 +8,42 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_REMOVER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_REMOVER_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_ECHO_REMOVER_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_ECHO_REMOVER_H_
 
 #include <vector>
 
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/audio_processing/aec3/echo_path_variability.h"
-#include "webrtc/modules/audio_processing/aec3/render_buffer.h"
+#include "absl/types/optional.h"
+#include "api/audio/echo_canceller3_config.h"
+#include "api/audio/echo_control.h"
+#include "modules/audio_processing/aec3/delay_estimate.h"
+#include "modules/audio_processing/aec3/echo_path_variability.h"
+#include "modules/audio_processing/aec3/render_buffer.h"
 
 namespace webrtc {
 
 // Class for removing the echo from the capture signal.
 class EchoRemover {
  public:
-  static EchoRemover* Create(int sample_rate_hz);
+  static EchoRemover* Create(const EchoCanceller3Config& config,
+                             int sample_rate_hz);
   virtual ~EchoRemover() = default;
+
+  // Get current metrics.
+  virtual void GetMetrics(EchoControl::Metrics* metrics) const = 0;
 
   // Removes the echo from a block of samples from the capture signal. The
   // supplied render signal is assumed to be pre-aligned with the capture
   // signal.
   virtual void ProcessCapture(
-      const rtc::Optional<size_t>& echo_path_delay_samples,
-      const EchoPathVariability& echo_path_variability,
+      EchoPathVariability echo_path_variability,
       bool capture_signal_saturation,
-      const RenderBuffer& render_buffer,
+      const absl::optional<DelayEstimate>& external_delay,
+      RenderBuffer* render_buffer,
       std::vector<std::vector<float>>* capture) = 0;
+
+  // Returns the internal delay estimate in blocks.
+  virtual absl::optional<int> Delay() const = 0;
 
   // Updates the status on whether echo leakage is detected in the output of the
   // echo remover.
@@ -42,4 +52,4 @@ class EchoRemover {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_REMOVER_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_ECHO_REMOVER_H_

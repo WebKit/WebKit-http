@@ -29,28 +29,11 @@
 
 #if USE(CAIRO)
 
-#include "Font.h"
-#include "GraphicsContext.h"
-#include "HarfBuzzShaper.h"
-#include "LayoutRect.h"
-#include "Logging.h"
-#include "NotImplemented.h"
-#include "PlatformContextCairo.h"
-#include <cairo.h>
+#include "FontCache.h"
+#include "SurrogatePairAwareTextIterator.h"
+#include <unicode/normlzr.h>
 
 namespace WebCore {
-
-float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, unsigned, unsigned, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot /* forTextEmphasis */) const
-{
-    HarfBuzzShaper shaper(this, run);
-    if (!shaper.shape(&glyphBuffer)) {
-        LOG_ERROR("Shaper couldn't shape glyphBuffer.");
-        return 0;
-    }
-
-    // FIXME: Mac returns an initial advance here.
-    return 0;
-}
 
 bool FontCascade::canReturnFallbackFontsForComplexText()
 {
@@ -62,34 +45,46 @@ bool FontCascade::canExpandAroundIdeographsInComplexText()
     return false;
 }
 
-float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>*, GlyphOverflow*) const
+const Font* FontCascade::fontForCombiningCharacterSequence(const UChar* characters, size_t length) const
 {
-    HarfBuzzShaper shaper(this, run);
-    if (shaper.shape())
-        return shaper.totalWidth();
-    LOG_ERROR("Shaper couldn't shape text run.");
-    return 0;
-}
+    UErrorCode error = U_ZERO_ERROR;
+    Vector<UChar, 4> normalizedCharacters(length);
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+    int32_t normalizedLength = unorm_normalize(characters, length, UNORM_NFC, UNORM_UNICODE_3_2, normalizedCharacters.data(), length, &error);
+#if COMPILER(GCC_OR_CLANG)
+#pragma GCC diagnostic pop
+#endif
+    if (U_FAILURE(error))
+        return nullptr;
 
-int FontCascade::offsetForPositionForComplexText(const TextRun& run, float x, bool) const
-{
-    HarfBuzzShaper shaper(this, run);
-    if (shaper.shape())
-        return shaper.offsetForPosition(x);
-    LOG_ERROR("Shaper couldn't shape text run.");
-    return 0;
-}
+    UChar32 character;
+    unsigned clusterLength = 0;
+    SurrogatePairAwareTextIterator iterator(normalizedCharacters.data(), 0, normalizedLength, normalizedLength);
+    if (!iterator.consume(character, clusterLength))
+        return nullptr;
 
-void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, unsigned from, unsigned to) const
-{
-    HarfBuzzShaper shaper(this, run);
-    if (shaper.shape()) {
-        // FIXME: This should mimic Mac port.
-        FloatRect rect = shaper.selectionRect(FloatPoint(selectionRect.location()), selectionRect.height().toInt(), from, to);
-        selectionRect = LayoutRect(rect);
-        return;
+    const Font* baseFont = glyphDataForCharacter(character, false, NormalVariant).font;
+    if (baseFont && (static_cast<int32_t>(clusterLength) == normalizedLength || baseFont->canRenderCombiningCharacterSequence(characters, length)))
+        return baseFont;
+
+    for (unsigned i = 0; !fallbackRangesAt(i).isNull(); ++i) {
+        const Font* fallbackFont = fallbackRangesAt(i).fontForCharacter(character);
+        if (!fallbackFont || fallbackFont == baseFont)
+            continue;
+
+        if (fallbackFont->canRenderCombiningCharacterSequence(characters, length))
+            return fallbackFont;
     }
-    LOG_ERROR("Shaper couldn't shape text run.");
+
+    if (auto systemFallback = FontCache::singleton().systemFallbackForCharacters(m_fontDescription, baseFont, false, characters, length)) {
+        if (systemFallback->canRenderCombiningCharacterSequence(characters, length))
+            return systemFallback.get();
+    }
+
+    return baseFont;
 }
 
 } // namespace WebCore

@@ -8,15 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/rtp_rtcp/test/testAPI/test_api.h"
+#include "modules/rtp_rtcp/test/testAPI/test_api.h"
 
 #include <algorithm>
 #include <memory>
+#include <string>
 #include <vector>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/rate_limiter.h"
-#include "webrtc/test/null_transport.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/rate_limiter.h"
+#include "test/null_transport.h"
 
 namespace webrtc {
 
@@ -48,9 +49,9 @@ bool LoopBackTransport::SendRtp(const uint8_t* data,
   if (!parser->Parse(data, len, &header)) {
     return false;
   }
-  PayloadUnion payload_specific;
-  if (!rtp_payload_registry_->GetPayloadSpecifics(header.payloadType,
-                                                  &payload_specific)) {
+  const auto pl =
+      rtp_payload_registry_->PayloadTypeToPayload(header.payloadType);
+  if (!pl) {
     return false;
   }
   const uint8_t* payload = data + header.headerLength;
@@ -58,13 +59,11 @@ bool LoopBackTransport::SendRtp(const uint8_t* data,
   const size_t payload_length = len - header.headerLength;
   receive_statistics_->IncomingPacket(header, len, false);
   return rtp_receiver_->IncomingRtpPacket(header, payload, payload_length,
-                                          payload_specific, true);
+                                          pl->typeSpecific);
 }
 
 bool LoopBackTransport::SendRtcp(const uint8_t* data, size_t len) {
-  if (rtp_rtcp_module_->IncomingRtcpPacket((const uint8_t*)data, len) < 0) {
-    return false;
-  }
+  rtp_rtcp_module_->IncomingRtcpPacket((const uint8_t*)data, len);
   return true;
 }
 
@@ -83,44 +82,34 @@ class RtpRtcpAPITest : public ::testing::Test {
  protected:
   RtpRtcpAPITest()
       : fake_clock_(123456), retransmission_rate_limiter_(&fake_clock_, 1000) {
-    test_csrcs_.push_back(1234);
-    test_csrcs_.push_back(2345);
-    test_ssrc_ = 3456;
-    test_timestamp_ = 4567;
-    test_sequence_number_ = 2345;
   }
-  ~RtpRtcpAPITest() {}
-
-  const uint32_t initial_ssrc = 8888;
+  ~RtpRtcpAPITest() override = default;
 
   void SetUp() override {
+    const uint32_t kInitialSsrc = 8888;
     RtpRtcp::Configuration configuration;
     configuration.audio = true;
     configuration.clock = &fake_clock_;
     configuration.outgoing_transport = &null_transport_;
     configuration.retransmission_rate_limiter = &retransmission_rate_limiter_;
     module_.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    module_->SetSSRC(initial_ssrc);
-    rtp_payload_registry_.reset(new RTPPayloadRegistry());
+    module_->SetSSRC(kInitialSsrc);
   }
 
-  std::unique_ptr<RTPPayloadRegistry> rtp_payload_registry_;
   std::unique_ptr<RtpRtcp> module_;
-  uint32_t test_ssrc_;
-  uint32_t test_timestamp_;
-  uint16_t test_sequence_number_;
-  std::vector<uint32_t> test_csrcs_;
   SimulatedClock fake_clock_;
   test::NullTransport null_transport_;
   RateLimiter retransmission_rate_limiter_;
 };
 
 TEST_F(RtpRtcpAPITest, Basic) {
-  module_->SetSequenceNumber(test_sequence_number_);
-  EXPECT_EQ(test_sequence_number_, module_->SequenceNumber());
+  const uint16_t kSequenceNumber = 2345;
+  module_->SetSequenceNumber(kSequenceNumber);
+  EXPECT_EQ(kSequenceNumber, module_->SequenceNumber());
 
-  module_->SetStartTimestamp(test_timestamp_);
-  EXPECT_EQ(test_timestamp_, module_->StartTimestamp());
+  const uint32_t kTimestamp = 4567;
+  module_->SetStartTimestamp(kTimestamp);
+  EXPECT_EQ(kTimestamp, module_->StartTimestamp());
 
   EXPECT_FALSE(module_->Sending());
   EXPECT_EQ(0, module_->SetSendingStatus(true));
@@ -133,8 +122,9 @@ TEST_F(RtpRtcpAPITest, PacketSize) {
 }
 
 TEST_F(RtpRtcpAPITest, SSRC) {
-  module_->SetSSRC(test_ssrc_);
-  EXPECT_EQ(test_ssrc_, module_->SSRC());
+  const uint32_t kSsrc = 3456;
+  module_->SetSSRC(kSsrc);
+  EXPECT_EQ(kSsrc, module_->SSRC());
 }
 
 TEST_F(RtpRtcpAPITest, RTCP) {
@@ -162,23 +152,54 @@ TEST_F(RtpRtcpAPITest, RtxSender) {
   EXPECT_EQ(kRtxRetransmitted, module_->RtxSendStatus());
 }
 
-TEST_F(RtpRtcpAPITest, RtxReceiver) {
-  const uint32_t kRtxSsrc = 1;
-  const int kRtxPayloadType = 119;
-  const int kPayloadType = 100;
-  EXPECT_FALSE(rtp_payload_registry_->RtxEnabled());
-  rtp_payload_registry_->SetRtxSsrc(kRtxSsrc);
-  rtp_payload_registry_->SetRtxPayloadType(kRtxPayloadType, kPayloadType);
-  EXPECT_TRUE(rtp_payload_registry_->RtxEnabled());
-  RTPHeader rtx_header;
-  rtx_header.ssrc = kRtxSsrc;
-  rtx_header.payloadType = kRtxPayloadType;
-  EXPECT_TRUE(rtp_payload_registry_->IsRtx(rtx_header));
-  rtx_header.ssrc = 0;
-  EXPECT_FALSE(rtp_payload_registry_->IsRtx(rtx_header));
-  rtx_header.ssrc = kRtxSsrc;
-  rtx_header.payloadType = 0;
-  EXPECT_TRUE(rtp_payload_registry_->IsRtx(rtx_header));
+TEST_F(RtpRtcpAPITest, LegalMidName) {
+  static const std::string kLegalMidNames[] = {
+      // clang-format off
+      "audio",
+      "audio0",
+      "audio_0",
+      // clang-format on
+  };
+  for (const auto& name : kLegalMidNames) {
+    EXPECT_TRUE(StreamId::IsLegalMidName(name))
+        << "Mid should be legal: " << name;
+  }
+
+  static const std::string kNonLegalMidNames[] = {
+      // clang-format off
+      "",
+      "(audio0)",
+      // clang-format on
+  };
+  for (const auto& name : kNonLegalMidNames) {
+    EXPECT_FALSE(StreamId::IsLegalMidName(name))
+        << "Mid should not be legal: " << name;
+  }
+}
+
+TEST_F(RtpRtcpAPITest, LegalRsidName) {
+  static const std::string kLegalRsidNames[] = {
+      // clang-format off
+      "audio",
+      "audio0",
+      // clang-format on
+  };
+  for (const auto& name : kLegalRsidNames) {
+    EXPECT_TRUE(StreamId::IsLegalRsidName(name))
+        << "Rsid should be legal: " << name;
+  }
+
+  static const std::string kNonLegalRsidNames[] = {
+      // clang-format off
+      "",
+      "audio_0",
+      "(audio0)",
+      // clang-format on
+  };
+  for (const auto& name : kNonLegalRsidNames) {
+    EXPECT_FALSE(StreamId::IsLegalRsidName(name))
+        << "Rsid should not be legal: " << name;
+  }
 }
 
 }  // namespace webrtc

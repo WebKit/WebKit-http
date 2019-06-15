@@ -34,12 +34,16 @@ namespace WebCore {
 class MathMLRowElement;
 
 class RenderMathMLMath final : public RenderMathMLRow {
+    WTF_MAKE_ISO_ALLOCATED(RenderMathMLMath);
 public:
     RenderMathMLMath(MathMLRowElement&, RenderStyle&&);
 
 private:
     bool isRenderMathMLMath() const final { return true; }
     const char* renderName() const final { return "RenderMathMLMath"; }
+
+    void centerChildren(LayoutUnit contentWidth);
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
 };
 
 }

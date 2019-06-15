@@ -31,10 +31,7 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmHmacParamsDeprecated.h"
 #include "CryptoKeyHMAC.h"
-#include "ExceptionCode.h"
-#include "ScriptExecutionContext.h"
 #include <pal/crypto/gcrypt/Handle.h>
 #include <wtf/CryptographicUtilities.h>
 
@@ -85,94 +82,29 @@ static std::optional<Vector<uint8_t>> calculateSignature(int algorithm, const Ve
     return WTFMove(signature);
 }
 
-static std::optional<Vector<uint8_t>> calculateSignature(int algorithm, const Vector<uint8_t>& key, const CryptoOperationData& data)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmHMAC::platformSign(const CryptoKeyHMAC& key, const Vector<uint8_t>& data)
 {
-    return calculateSignature(algorithm, key, data.first, data.second);
-}
-
-void CryptoAlgorithmHMAC::platformSign(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
-{
-    context.ref();
-    workQueue.dispatch([key = WTFMove(key), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& hmacKey = downcast<CryptoKeyHMAC>(key.get());
-        auto algorithm = getGCryptDigestAlgorithm(hmacKey.hashAlgorithmIdentifier());
-        if (algorithm != GCRY_MAC_NONE) {
-            auto result = calculateSignature(algorithm, hmacKey.key(), data.data(), data.size());
-            if (result) {
-                // We should only dereference callbacks after being back to the Document/Worker threads.
-                context.postTask([callback = WTFMove(callback), result = WTFMove(*result), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-                    callback(result);
-                    context.deref();
-                });
-                return;
-            }
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([exceptionCallback = WTFMove(exceptionCallback), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-            exceptionCallback(OperationError);
-            context.deref();
-        });
-    });
-}
-
-void CryptoAlgorithmHMAC::platformVerify(Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
-{
-    context.ref();
-    workQueue.dispatch([key = WTFMove(key), signature = WTFMove(signature), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& hmacKey = downcast<CryptoKeyHMAC>(key.get());
-        auto algorithm = getGCryptDigestAlgorithm(hmacKey.hashAlgorithmIdentifier());
-        if (algorithm != GCRY_MAC_NONE) {
-            auto expectedSignature = calculateSignature(algorithm, hmacKey.key(), data.data(), data.size());
-            if (expectedSignature) {
-                // Using a constant time comparison to prevent timing attacks.
-                bool result = signature.size() == expectedSignature->size() && !constantTimeMemcmp(expectedSignature->data(), signature.data(), expectedSignature->size());
-                // We should only dereference callbacks after being back to the Document/Worker threads.
-                context.postTask([callback = WTFMove(callback), result, exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-                    callback(result);
-                    context.deref();
-                });
-                return;
-            }
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([exceptionCallback = WTFMove(exceptionCallback), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-            exceptionCallback(OperationError);
-            context.deref();
-        });
-    });
-}
-
-ExceptionOr<void> CryptoAlgorithmHMAC::platformSign(const CryptoAlgorithmHmacParamsDeprecated& parameters, const CryptoKeyHMAC& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
-{
-    int algorithm = getGCryptDigestAlgorithm(parameters.hash);
+    auto algorithm = getGCryptDigestAlgorithm(key.hashAlgorithmIdentifier());
     if (algorithm == GCRY_MAC_NONE)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { OperationError };
 
-    auto signature = calculateSignature(algorithm, key.key(), data);
-    if (signature)
-        callback(*signature);
-    else
-        failureCallback();
-    return { };
+    auto result = calculateSignature(algorithm, key.key(), data.data(), data.size());
+    if (!result)
+        return Exception { OperationError };
+    return WTFMove(*result);
 }
 
-ExceptionOr<void> CryptoAlgorithmHMAC::platformVerify(const CryptoAlgorithmHmacParamsDeprecated& parameters, const CryptoKeyHMAC& key, const CryptoOperationData& expectedSignature, const CryptoOperationData& data, BoolCallback&& callback, VoidCallback&& failureCallback)
+ExceptionOr<bool> CryptoAlgorithmHMAC::platformVerify(const CryptoKeyHMAC& key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
-    int algorithm = getGCryptDigestAlgorithm(parameters.hash);
+    auto algorithm = getGCryptDigestAlgorithm(key.hashAlgorithmIdentifier());
     if (algorithm == GCRY_MAC_NONE)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { OperationError };
 
-    auto signature = calculateSignature(algorithm, key.key(), data);
-    if (!signature) {
-        failureCallback();
-        return { };
-    }
-
+    auto expectedSignature = calculateSignature(algorithm, key.key(), data.data(), data.size());
+    if (!expectedSignature)
+        return Exception { OperationError };
     // Using a constant time comparison to prevent timing attacks.
-    bool result = signature.value().size() == expectedSignature.second && !constantTimeMemcmp(signature.value().data(), expectedSignature.first, signature.value().size());
-
-    callback(result);
-    return { };
+    return signature.size() == expectedSignature->size() && !constantTimeMemcmp(expectedSignature->data(), signature.data(), expectedSignature->size());
 }
 
 }

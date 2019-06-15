@@ -30,7 +30,6 @@
 #include "IntSize.h"
 #include "NotImplemented.h"
 #include <wtf/MathExtras.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/text/TextBreakIterator.h>
 #include <wtf/unicode/CharacterNames.h>
 
@@ -86,7 +85,7 @@ static String truncatedStringForLookupMenuItem(const String& original)
     unsigned maxNumberOfGraphemeClustersInLookupMenuItem = 24;
 
     String trimmed = original.stripWhiteSpace();
-    unsigned numberOfCharacters = numCharactersInGraphemeClusters(trimmed, maxNumberOfGraphemeClustersInLookupMenuItem);
+    unsigned numberOfCharacters = numCodeUnitsInGraphemeClusters(trimmed, maxNumberOfGraphemeClustersInLookupMenuItem);
     return numberOfCharacters == trimmed.length() ? trimmed : makeString(trimmed.left(numberOfCharacters), horizontalEllipsis);
 }
 
@@ -626,6 +625,16 @@ String AXAutoFillContactsLabel()
     return WEB_UI_STRING("contact info auto fill", "Label for the auto fill contacts button inside a text field.");
 }
 
+String AXAutoFillStrongPasswordLabel()
+{
+    return WEB_UI_STRING("strong password auto fill", "Label for the strong password auto fill button inside a text field.");
+}
+
+String autoFillStrongPasswordLabel()
+{
+    return WEB_UI_STRING("Strong Password", "Label for strong password.");
+}
+
 String missingPluginText()
 {
     return WEB_UI_STRING("Missing Plug-in", "Label text to be used when a plugin is missing");
@@ -644,6 +653,11 @@ String blockedPluginByContentSecurityPolicyText()
 String insecurePluginVersionText()
 {
     return WEB_UI_STRING_KEY("Blocked Plug-in", "Blocked Plug-In (Insecure plug-in)", "Label text to be used when an insecure plug-in version was blocked from loading");
+}
+
+String unsupportedPluginText()
+{
+    return WEB_UI_STRING_KEY("Unsupported Plug-in", "Unsupported Plug-In", "Label text to be used when an unsupported plug-in was blocked from loading");
 }
 
 String multipleFileUploadText(unsigned numberOfFiles)
@@ -1015,6 +1029,58 @@ String webCryptoMasterKeyKeychainComment()
 
 #endif
 
+#if PLATFORM(WATCHOS)
 
+String numberPadOKButtonTitle()
+{
+    return WEB_UI_STRING_KEY("OK", "OK (OK button title in extra zoomed number pad)", "Title of the OK button for the number pad in zoomed form controls.");
+}
+
+String formControlDoneButtonTitle()
+{
+    return WEB_UI_STRING("Done", "Title of the Done button for zoomed form controls.");
+}
+
+String formControlCancelButtonTitle()
+{
+    return WEB_UI_STRING("Cancel", "Title of the Cancel button for zoomed form controls.");
+}
+
+String formControlHideButtonTitle()
+{
+    return WEB_UI_STRING("Hide", "Title of the Hide button for zoomed form controls.");
+}
+
+String formControlGoButtonTitle()
+{
+    return WEB_UI_STRING("Go", "Title of the Go button for zoomed form controls.");
+}
+
+String formControlSearchButtonTitle()
+{
+    return WEB_UI_STRING("Search", "Title of the Search button for zoomed form controls.");
+}
+
+String datePickerSetButtonTitle()
+{
+    return WEB_UI_STRING_KEY("Set", "Set (Button below date picker for extra zoom mode)", "Set button below date picker");
+}
+
+String datePickerDayLabelTitle()
+{
+    return WEB_UI_STRING_KEY("DAY", "DAY (Date picker for extra zoom mode)", "Day label in date picker");
+}
+
+String datePickerMonthLabelTitle()
+{
+    return WEB_UI_STRING_KEY("MONTH", "MONTH (Date picker for extra zoom mode)", "Month label in date picker");
+}
+
+String datePickerYearLabelTitle()
+{
+    return WEB_UI_STRING_KEY("YEAR", "YEAR (Date picker for extra zoom mode)", "Year label in date picker");
+}
+
+#endif
 
 } // namespace WebCore

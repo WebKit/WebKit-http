@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,29 +28,36 @@
 
 #include "DataReference.h"
 #include "WebSocketStreamMessages.h"
+#include <WebCore/CookieRequestHeaderFieldProxy.h>
 #include <WebCore/SocketStreamError.h>
 #include <WebCore/SocketStreamHandleImpl.h>
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
-Ref<NetworkSocketStream> NetworkSocketStream::create(WebCore::URL&& url, WebCore::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
+Ref<NetworkSocketStream> NetworkSocketStream::create(WebCore::URL&& url, PAL::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
 {
     return adoptRef(*new NetworkSocketStream(WTFMove(url), sessionID, credentialPartition, identifier, connection, WTFMove(auditData)));
 }
 
-NetworkSocketStream::NetworkSocketStream(URL&& url, SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
-    : m_impl(SocketStreamHandleImpl::create(url, *this, sessionID, credentialPartition, WTFMove(auditData)))
-    , m_identifier(identifier)
+NetworkSocketStream::NetworkSocketStream(URL&& url, PAL::SessionID sessionID, const String& credentialPartition, uint64_t identifier, IPC::Connection& connection, SourceApplicationAuditToken&& auditData)
+    : m_identifier(identifier)
     , m_connection(connection)
+    , m_impl(SocketStreamHandleImpl::create(url, *this, sessionID, credentialPartition, WTFMove(auditData)))
 {
 }
 
 void NetworkSocketStream::sendData(const IPC::DataReference& data, uint64_t identifier)
 {
-    m_impl->platformSend(reinterpret_cast<const char *>(data.data()), data.size(), [this, protectedThis = makeRef(*this), identifier] (bool success) {
+    m_impl->platformSend(data.data(), data.size(), [this, protectedThis = makeRef(*this), identifier] (bool success) {
         send(Messages::WebSocketStream::DidSendData(identifier, success));
+    });
+}
+
+void NetworkSocketStream::sendHandshake(const IPC::DataReference& data, const std::optional<CookieRequestHeaderFieldProxy>& headerFieldProxy, uint64_t identifier)
+{
+    m_impl->platformSendHandshake(data.data(), data.size(), headerFieldProxy, [this, protectedThis = makeRef(*this), identifier] (bool success, bool didAccessSecureCookies) {
+        send(Messages::WebSocketStream::DidSendHandshake(identifier, success, didAccessSecureCookies));
     });
 }
 

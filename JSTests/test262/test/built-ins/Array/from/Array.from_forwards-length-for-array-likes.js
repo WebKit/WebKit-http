@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 /*---
+esid: sec-array.from
 es6id: 22.1.2.1
 description: >
   If this is a constructor, and items doesn't have an @@iterator,
   returns a new instance of this
-info: >
+info: |
   22.1.2.1 Array.from ( items [ , mapfn [ , thisArg ] ] )
 
   4. Let usingIterator be GetMethod(items, @@iterator).
@@ -27,7 +28,9 @@ function MyCollection() {
   this.args = arguments;
 }
 
-result = Array.from.call(MyCollection, {length: 42});
+result = Array.from.call(MyCollection, {
+  length: 42
+});
 
 assert.sameValue(result.args.length, 1);
 assert.sameValue(result.args[0], 42);

@@ -2,7 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-date.prototype.valueof
+info: |
     Result of ToInteger(value) conversion is the result of computing
     sign(ToNumber(value)) * floor(abs(ToNumber(value)))
 es5id: 9.4_A3_T2

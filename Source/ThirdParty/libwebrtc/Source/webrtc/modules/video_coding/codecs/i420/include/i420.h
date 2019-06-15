@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CODING_CODECS_I420_INCLUDE_I420_H_
-#define WEBRTC_MODULES_VIDEO_CODING_CODECS_I420_INCLUDE_I420_H_
+#ifndef MODULES_VIDEO_CODING_CODECS_I420_INCLUDE_I420_H_
+#define MODULES_VIDEO_CODING_CODECS_I420_INCLUDE_I420_H_
 
 #include <vector>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/video_coding/include/video_codec_interface.h"
-#include "webrtc/typedefs.h"
+#include "modules/video_coding/include/video_codec_interface.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
@@ -108,7 +107,6 @@ class I420Decoder : public VideoDecoder {
   //                                 <0 - Error
   int Decode(const EncodedImage& inputImage,
              bool missingFrames,
-             const RTPFragmentationHeader* /*fragmentation*/,
              const CodecSpecificInfo* /*codecSpecificInfo*/,
              int64_t /*renderTimeMs*/) override;
 
@@ -131,12 +129,9 @@ class I420Decoder : public VideoDecoder {
                                       uint16_t* width,
                                       uint16_t* height);
 
-  int _width;
-  int _height;
-  bool _inited;
   DecodedImageCallback* _decodeCompleteCallback;
 };  // class I420Decoder
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_VIDEO_CODING_CODECS_I420_INCLUDE_I420_H_
+#endif  // MODULES_VIDEO_CODING_CODECS_I420_INCLUDE_I420_H_

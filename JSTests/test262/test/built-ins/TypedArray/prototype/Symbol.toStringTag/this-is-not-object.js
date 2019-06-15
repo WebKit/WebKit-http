@@ -3,14 +3,14 @@
 /*---
 esid: sec-get-%typedarray%.prototype-@@tostringtag
 description: Return undefined when `this` is not Object
-info: >
+info: |
   22.2.3.32 get %TypedArray%.prototype [ @@toStringTag ]
 
   1. Let O be the this value.
   2. If Type(O) is not Object, return undefined.
   ...
 includes: [testTypedArray.js]
-features: [Symbol, Symbol.toStringTag]
+features: [Symbol, Symbol.toStringTag, TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

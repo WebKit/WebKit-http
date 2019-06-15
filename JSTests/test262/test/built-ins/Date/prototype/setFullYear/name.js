@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.setfullyear
 es6id: 20.3.4.21
 description: >
   Date.prototype.setFullYear.name is "setFullYear".
-info: >
+info: |
   Date.prototype.setFullYear ( year [ , month [ , date ] ] )
 
   17 ECMAScript Standard Built-in Objects:

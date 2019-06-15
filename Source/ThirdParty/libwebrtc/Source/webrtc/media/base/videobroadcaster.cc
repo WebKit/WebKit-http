@@ -8,19 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/media/base/videobroadcaster.h"
+#include "media/base/videobroadcaster.h"
 
 #include <limits>
 
-#include "webrtc/api/video/i420_buffer.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
+#include "api/video/i420_buffer.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
 
 namespace rtc {
 
 VideoBroadcaster::VideoBroadcaster() {
   thread_checker_.DetachFromThread();
 }
+VideoBroadcaster::~VideoBroadcaster() = default;
 
 void VideoBroadcaster::AddOrUpdateSink(
     VideoSinkInterface<webrtc::VideoFrame>* sink,
@@ -60,16 +61,22 @@ void VideoBroadcaster::OnFrame(const webrtc::VideoFrame& frame) {
       // When rotation_applied is set to true, one or a few frames may get here
       // with rotation still pending. Protect sinks that don't expect any
       // pending rotation.
-      LOG(LS_VERBOSE) << "Discarding frame with unexpected rotation.";
+      RTC_LOG(LS_VERBOSE) << "Discarding frame with unexpected rotation.";
       continue;
     }
     if (sink_pair.wants.black_frames) {
-      sink_pair.sink->OnFrame(webrtc::VideoFrame(
-          GetBlackFrameBuffer(frame.width(), frame.height()), frame.rotation(),
-          frame.timestamp_us()));
+      sink_pair.sink->OnFrame(
+          webrtc::VideoFrame(GetBlackFrameBuffer(frame.width(), frame.height()),
+                             frame.rotation(), frame.timestamp_us()));
     } else {
       sink_pair.sink->OnFrame(frame);
     }
+  }
+}
+
+void VideoBroadcaster::OnDiscardedFrame() {
+  for (auto& sink_pair : sink_pairs()) {
+    sink_pair.sink->OnDiscardedFrame();
   }
 }
 

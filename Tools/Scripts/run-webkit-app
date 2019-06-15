@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Copyright (C) 2005 Apple Inc.  All rights reserved.
 #
@@ -29,6 +29,7 @@
 # Simplified "run" script for WebKit Open Source Project.
 
 use strict;
+use warnings;
 use FindBin;
 use lib $FindBin::Bin;
 use webkitdirs;
@@ -36,6 +37,7 @@ use webkitdirs;
 printHelpAndExitForRunAndDebugWebKitAppIfNeeded();
 
 setConfiguration();
+setUpGuardMallocIfNeeded();
 
 die "Did not specify an application to open (e.g. run-webkit-app AppName).\n" unless length($ARGV[0]) > 0;
 
@@ -46,4 +48,5 @@ my $appPath = shift(@ARGV);
 if (isIOSWebKit()) {
     exit exitStatus(runIOSWebKitApp($appPath));
 }
-exit exitStatus(runMacWebKitApp($appPath, USE_OPEN_COMMAND));
+my $isExecutable = -f $appPath && -x $appPath;
+exit exitStatus(runMacWebKitApp($appPath, $isExecutable ? DO_NOT_USE_OPEN_COMMAND : USE_OPEN_COMMAND));

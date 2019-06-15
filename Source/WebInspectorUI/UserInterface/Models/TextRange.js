@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TextRange = class TextRange extends WebInspector.Object
+WI.TextRange = class TextRange
 {
     constructor(startLineOrStartOffset, startColumnOrEndOffset, endLine, endColumn)
     {
-        super();
-
         if (arguments.length === 4) {
             console.assert(startLineOrStartOffset <= endLine);
             console.assert(startLineOrStartOffset !== endLine || startColumnOrEndOffset <= endColumn);
@@ -53,6 +51,14 @@ WebInspector.TextRange = class TextRange extends WebInspector.Object
         }
     }
 
+    // Static
+
+    static fromText(text)
+    {
+        let lines = text.split("\n");
+        return new WI.TextRange(0, 0, lines.length - 1, lines.lastValue.length);
+    }
+
     // Public
 
     get startLine() { return this._startLine; }
@@ -64,12 +70,12 @@ WebInspector.TextRange = class TextRange extends WebInspector.Object
 
     startPosition()
     {
-        return new WebInspector.SourceCodePosition(this._startLine, this._startColumn);
+        return new WI.SourceCodePosition(this._startLine, this._startColumn);
     }
 
     endPosition()
     {
-        return new WebInspector.SourceCodePosition(this._endLine, this._endColumn);
+        return new WI.SourceCodePosition(this._endLine, this._endColumn);
     }
 
     resolveOffsets(text)
@@ -109,5 +115,49 @@ WebInspector.TextRange = class TextRange extends WebInspector.Object
             return false;
 
         return true;
+    }
+
+    clone()
+    {
+        console.assert(!isNaN(this._startLine), "TextRange needs line/column data.");
+        return new WI.TextRange(this._startLine, this._startColumn, this._endLine, this._endColumn);
+    }
+
+    cloneAndModify(deltaStartLine, deltaStartColumn, deltaEndLine, deltaEndColumn)
+    {
+        console.assert(!isNaN(this._startLine), "TextRange needs line/column data.");
+
+        let startLine = this._startLine + deltaStartLine;
+        let startColumn = this._startColumn + deltaStartColumn;
+        let endLine = this._endLine + deltaEndLine;
+        let endColumn = this._endColumn + deltaEndColumn;
+        console.assert(startLine >= 0 && startColumn >= 0 && endLine >= 0 && endColumn >= 0, `Cannot have negative numbers in TextRange ${startLine}:${startColumn}...${endLine}:${endColumn}`);
+
+        return new WI.TextRange(startLine, startColumn, endLine, endColumn);
+    }
+
+    collapseToStart()
+    {
+        console.assert(!isNaN(this._startLine), "TextRange needs line/column data.");
+        return new WI.TextRange(this._startLine, this._startColumn, this._startLine, this._startColumn);
+    }
+
+    collapseToEnd()
+    {
+        console.assert(!isNaN(this._endLine), "TextRange needs line/column data.");
+        return new WI.TextRange(this._endLine, this._endColumn, this._endLine, this._endColumn);
+    }
+
+    relativeTo(line, column)
+    {
+        let deltaStartColumn = 0;
+        if (this._startLine === line)
+            deltaStartColumn = -column;
+
+        let deltaEndColumn = 0;
+        if (this._endLine === line)
+            deltaEndColumn = -column;
+
+        return this.cloneAndModify(-line, deltaStartColumn, -line, deltaEndColumn);
     }
 };

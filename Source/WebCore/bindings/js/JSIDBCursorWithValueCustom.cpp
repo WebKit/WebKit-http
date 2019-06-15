@@ -29,11 +29,10 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBCursorWithValue.h"
-#include <heap/HeapInlines.h>
-
-using namespace JSC;
+#include <JavaScriptCore/HeapInlines.h>
 
 namespace WebCore {
+using namespace JSC;
 
 void JSIDBCursorWithValue::visitAdditionalChildren(SlotVisitor& visitor)
 {

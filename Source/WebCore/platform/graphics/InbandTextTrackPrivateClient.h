@@ -29,6 +29,7 @@
 
 #include "Color.h"
 #include "TrackPrivateBase.h"
+#include <wtf/JSONValues.h>
 #include <wtf/MediaTime.h>
 
 #if ENABLE(DATACUE_VALUE)
@@ -93,6 +94,8 @@ public:
 
     bool doesExtendCueData(const GenericCueData&) const;
 
+    String toJSONString() const;
+
 private:
     GenericCueData() = default;
 
@@ -112,6 +115,82 @@ private:
     Color m_highlightColor;
     Status m_status { Uninitialized };
 };
+
+inline String GenericCueData::toJSONString() const
+{
+    auto object = JSON::Object::create();
+
+#if !LOG_DISABLED
+    object->setString("text"_s, m_content);
+#endif
+    object->setDouble("start"_s, m_startTime.toDouble());
+    object->setDouble("end"_s, m_endTime.toDouble());
+
+    const char* status;
+    switch (m_status) {
+    case GenericCueData::Uninitialized:
+        status = "Uninitialized";
+        break;
+    case GenericCueData::Partial:
+        status = "Partial";
+        break;
+    case GenericCueData::Complete:
+        status = "Complete";
+        break;
+    }
+    object->setString("status", status);
+
+    if (!m_id.isEmpty())
+        object->setString("id", m_id);
+
+    if (m_line > 0)
+        object->setDouble("line"_s, m_line);
+
+    if (m_size > 0)
+        object->setDouble("size"_s, m_size);
+
+    if (m_position > 0)
+        object->setDouble("position"_s, m_position);
+
+    if (m_align != None) {
+        const char* align;
+        switch (m_align) {
+        case GenericCueData::Start:
+            align = "Start";
+            break;
+        case GenericCueData::Middle:
+            align = "Middle";
+            break;
+        case GenericCueData::End:
+            align = "End";
+            break;
+        case GenericCueData::None:
+            align = "None";
+            break;
+        }
+        object->setString("align"_s, align);
+    }
+
+    if (m_foregroundColor.isValid())
+        object->setString("foregroundColor"_s, m_foregroundColor.serialized());
+
+    if (m_backgroundColor.isValid())
+        object->setString("backgroundColor"_s, m_backgroundColor.serialized());
+
+    if (m_highlightColor.isValid())
+        object->setString("highlightColor"_s, m_highlightColor.serialized());
+
+    if (m_baseFontSize)
+        object->setDouble("baseFontSize"_s, m_baseFontSize);
+
+    if (m_relativeFontSize)
+        object->setDouble("relativeFontSize"_s, m_relativeFontSize);
+
+    if (!m_fontName.isEmpty())
+        object->setString("font"_s, m_fontName);
+
+    return object->toJSONString();
+}
 
 inline bool GenericCueData::doesExtendCueData(const GenericCueData& other) const
 {
@@ -145,7 +224,7 @@ inline bool GenericCueData::doesExtendCueData(const GenericCueData& other) const
     
 class InbandTextTrackPrivateClient : public TrackPrivateBaseClient {
 public:
-    virtual ~InbandTextTrackPrivateClient() { }
+    virtual ~InbandTextTrackPrivateClient() = default;
 
     virtual void addDataCue(const MediaTime& start, const MediaTime& end, const void*, unsigned) = 0;
 
@@ -165,5 +244,20 @@ public:
 };
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WebCore::GenericCueData> {
+    static String toString(const WebCore::GenericCueData& cue)
+    {
+        return cue.toJSONString();
+    }
+};
+
+}
 
 #endif

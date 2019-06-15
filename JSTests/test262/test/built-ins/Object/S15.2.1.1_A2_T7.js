@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Object function is called with one argument value,
     and the value neither is null nor undefined, and is supplied, return ToObject(value)
 es5id: 15.2.1.1_A2_T7
@@ -29,6 +29,6 @@ if (typeof obj !== "object") {
 }
 
 //CHECK#4
-if ((obj != "")||(obj === "")) {
+if ((obj != "") || (obj === "")) {
   $ERROR('#4: Object("") returns ToObject("")');
 }

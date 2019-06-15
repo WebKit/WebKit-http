@@ -41,11 +41,14 @@
 #include "SVGSVGElement.h"
 #include "SVGURIReference.h"
 #include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGSMILElement);
 
 static SMILEventSender& smilBeginEventSender()
 {
@@ -91,7 +94,7 @@ private:
     {
     }
 
-    void handleEvent(ScriptExecutionContext*, Event*) final;
+    void handleEvent(ScriptExecutionContext&, Event&) final;
 
     SVGSMILElement* m_animation;
     SVGSMILElement::Condition* m_condition;
@@ -104,11 +107,11 @@ bool ConditionEventListener::operator==(const EventListener& listener) const
     return false;
 }
 
-void ConditionEventListener::handleEvent(ScriptExecutionContext*, Event* event) 
+void ConditionEventListener::handleEvent(ScriptExecutionContext&, Event&)
 {
     if (!m_animation)
         return;
-    m_animation->handleConditionEvent(event, m_condition);
+    m_animation->handleConditionEvent(m_condition);
 }
 
 SVGSMILElement::Condition::Condition(Type type, BeginOrEnd beginOrEnd, const String& baseID, const String& name, SMILTime offset, int repeats)
@@ -176,13 +179,13 @@ void SVGSMILElement::buildPendingResource()
     }
 
     String id;
-    Element* target;
+    RefPtr<Element> target;
     auto& href = getAttribute(XLinkNames::hrefAttr);
     if (href.isEmpty())
         target = parentElement();
     else
         target = SVGURIReference::targetElementFromIRIString(href.string(), document(), &id);
-    SVGElement* svgTarget = is<SVGElement>(target) ? downcast<SVGElement>(target) : nullptr;
+    SVGElement* svgTarget = is<SVGElement>(target) ? downcast<SVGElement>(target.get()) : nullptr;
 
     if (svgTarget && !svgTarget->isConnected())
         svgTarget = nullptr;
@@ -252,20 +255,20 @@ void SVGSMILElement::reset()
     resolveFirstInterval();
 }
 
-Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGSMILElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(rootParent);
-    if (!rootParent.isConnected())
-        return InsertionDone;
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (!insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::Done;
 
     // Verify we are not in <use> instance tree.
     ASSERT(!isInShadowTree());
 
     updateAttributeName();
 
-    SVGSVGElement* owner = ownerSVGElement();
+    auto owner = makeRefPtr(ownerSVGElement());
     if (!owner)
-        return InsertionDone;
+        return InsertedIntoAncestorResult::Done;
 
     m_timeContainer = &owner->timeContainer();
     m_timeContainer->setDocumentOrderIndexesDirty();
@@ -280,17 +283,17 @@ Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& r
     if (m_timeContainer)
         m_timeContainer->notifyIntervalsChanged();
 
-    return InsertionShouldCallFinishedInsertingSubtree;
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void SVGSMILElement::finishedInsertingSubtree()
+void SVGSMILElement::didFinishInsertingNode()
 {
     buildPendingResource();
 }
 
-void SVGSMILElement::removedFrom(ContainerNode& rootParent)
+void SVGSMILElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    if (rootParent.isConnected()) {
+    if (removalType.disconnectedFromDocument) {
         clearResourceReferences();
         disconnectConditions();
         setTargetElement(nullptr);
@@ -299,7 +302,7 @@ void SVGSMILElement::removedFrom(ContainerNode& rootParent)
         m_timeContainer = nullptr;
     }
 
-    SVGElement::removedFrom(rootParent);
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 bool SVGSMILElement::hasValidAttributeName()
@@ -443,9 +446,7 @@ void SVGSMILElement::parseBeginOrEnd(const String& parseString, BeginOrEnd begin
     HashSet<double> existing;
     for (auto& time : timeList)
         existing.add(time.time().value());
-    Vector<String> splitString;
-    parseString.split(';', splitString);
-    for (auto& string : splitString) {
+    for (auto& string : parseString.split(';')) {
         SMILTime value = parseClockValue(string);
         if (value.isUnresolved())
             parseCondition(string, beginOrEnd);
@@ -457,18 +458,18 @@ void SVGSMILElement::parseBeginOrEnd(const String& parseString, BeginOrEnd begin
 
 bool SVGSMILElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
-    if (supportedAttributes.get().isEmpty()) {
-        supportedAttributes.get().add(SVGNames::beginAttr);
-        supportedAttributes.get().add(SVGNames::endAttr);
-        supportedAttributes.get().add(SVGNames::durAttr);
-        supportedAttributes.get().add(SVGNames::repeatDurAttr);
-        supportedAttributes.get().add(SVGNames::repeatCountAttr);
-        supportedAttributes.get().add(SVGNames::minAttr);
-        supportedAttributes.get().add(SVGNames::maxAttr);
-        supportedAttributes.get().add(SVGNames::attributeNameAttr);
-        supportedAttributes.get().add(XLinkNames::hrefAttr);
-    }
+    static const auto supportedAttributes = makeNeverDestroyed(HashSet<QualifiedName> {
+        SVGNames::beginAttr,
+        SVGNames::endAttr,
+        SVGNames::durAttr,
+        SVGNames::repeatDurAttr,
+        SVGNames::repeatCountAttr,
+        SVGNames::minAttr,
+        SVGNames::maxAttr,
+        SVGNames::attributeNameAttr,
+        SVGNames::hrefAttr,
+        XLinkNames::hrefAttr,
+    });
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
 
@@ -519,7 +520,7 @@ void SVGSMILElement::svgAttributeChanged(const QualifiedName& attrName)
         m_cachedMax = invalidCachedTime;
     else if (attrName == SVGNames::attributeNameAttr)
         updateAttributeName();
-    else if (attrName.matches(XLinkNames::hrefAttr)) {
+    else if (attrName.matches(SVGNames::hrefAttr) || attrName.matches(XLinkNames::hrefAttr)) {
         InstanceInvalidationGuard guard(*this);
         buildPendingResource();
     } else if (isConnected()) {
@@ -545,7 +546,7 @@ void SVGSMILElement::connectConditions()
     for (auto& condition : m_conditions) {
         if (condition.m_type == Condition::EventBase) {
             ASSERT(!condition.m_syncbase);
-            Element* eventBase = eventBaseFor(condition);
+            auto eventBase = makeRefPtr(eventBaseFor(condition));
             if (!eventBase)
                 continue;
             ASSERT(!condition.m_eventListener);
@@ -580,7 +581,7 @@ void SVGSMILElement::disconnectConditions()
             // no guarantee that eventBaseFor() will be able to find our condition's
             // original eventBase. So, we also have to disconnect ourselves from
             // our condition event listener, in case it later fires.
-            Element* eventBase = eventBaseFor(condition);
+            auto eventBase = makeRefPtr(eventBaseFor(condition));
             if (eventBase)
                 eventBase->removeEventListener(condition.m_name, *condition.m_eventListener, false);
             condition.m_eventListener->disconnectAnimation();
@@ -1196,7 +1197,7 @@ void SVGSMILElement::removeTimeDependent(SVGSMILElement* animation)
     m_timeDependents.remove(animation);
 }
     
-void SVGSMILElement::handleConditionEvent(Event*, Condition* condition)
+void SVGSMILElement::handleConditionEvent(Condition* condition)
 {
     SMILTime elapsed = this->elapsed();
     if (condition->m_beginOrEnd == Begin)
@@ -1221,7 +1222,7 @@ void SVGSMILElement::dispatchPendingEvent(SMILEventSender* eventSender)
 {
     ASSERT(eventSender == &smilBeginEventSender() || eventSender == &smilEndEventSender());
     const AtomicString& eventType = eventSender->eventType();
-    dispatchEvent(Event::create(eventType, false, false));
+    dispatchEvent(Event::create(eventType, Event::CanBubble::No, Event::IsCancelable::No));
 }
 
 }

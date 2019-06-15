@@ -94,9 +94,7 @@ FFTFrame::FFTFrame(const FFTFrame& frame)
     memcpy(imagData(), frame.m_frame.imagp, nbytes);
 }
 
-FFTFrame::~FFTFrame()
-{
-}
+FFTFrame::~FFTFrame() = default;
 
 void FFTFrame::multiply(const FFTFrame& frame)
 {
@@ -129,7 +127,7 @@ void FFTFrame::multiply(const FFTFrame& frame)
 
 void FFTFrame::doFFT(const float* data)
 {
-    vDSP_ctoz((DSPComplex*)data, 2, &m_frame, 1, m_FFTSize / 2);
+    vDSP_ctoz(reinterpret_cast<const DSPComplex*>(data), 2, &m_frame, 1, m_FFTSize / 2);
     vDSP_fft_zrip(m_FFTSetup, &m_frame, 1, m_log2FFTSize, FFT_FORWARD);
 }
 
@@ -146,7 +144,7 @@ void FFTFrame::doInverseFFT(float* data)
 FFTSetup FFTFrame::fftSetupForSize(unsigned fftSize)
 {
     if (!fftSetups) {
-        fftSetups = (FFTSetup*)malloc(sizeof(FFTSetup) * kMaxFFTPow2Size);
+        fftSetups = (FFTSetup*)fastMalloc(sizeof(FFTSetup) * kMaxFFTPow2Size);
         memset(fftSetups, 0, sizeof(FFTSetup) * kMaxFFTPow2Size);
     }
 
@@ -172,7 +170,7 @@ void FFTFrame::cleanup()
             vDSP_destroy_fftsetup(fftSetups[i]);
     }
 
-    free(fftSetups);
+    fastFree(fftSetups);
     fftSetups = 0;
 }
 

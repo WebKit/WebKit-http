@@ -24,8 +24,7 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMDOMWindowPrivate.h"
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMKeyboardEventPrivate.h"
@@ -33,6 +32,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -57,14 +58,14 @@ WebKitDOMKeyboardEvent* wrapKeyboardEvent(WebCore::KeyboardEvent* coreObject)
 G_DEFINE_TYPE(WebKitDOMKeyboardEvent, webkit_dom_keyboard_event, WEBKIT_DOM_TYPE_UI_EVENT)
 
 enum {
-    PROP_0,
-    PROP_KEY_IDENTIFIER,
-    PROP_KEY_LOCATION,
-    PROP_CTRL_KEY,
-    PROP_SHIFT_KEY,
-    PROP_ALT_KEY,
-    PROP_META_KEY,
-    PROP_ALT_GRAPH_KEY,
+    DOM_KEYBOARD_EVENT_PROP_0,
+    DOM_KEYBOARD_EVENT_PROP_KEY_IDENTIFIER,
+    DOM_KEYBOARD_EVENT_PROP_KEY_LOCATION,
+    DOM_KEYBOARD_EVENT_PROP_CTRL_KEY,
+    DOM_KEYBOARD_EVENT_PROP_SHIFT_KEY,
+    DOM_KEYBOARD_EVENT_PROP_ALT_KEY,
+    DOM_KEYBOARD_EVENT_PROP_META_KEY,
+    DOM_KEYBOARD_EVENT_PROP_ALT_GRAPH_KEY,
 };
 
 static void webkit_dom_keyboard_event_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
@@ -72,25 +73,25 @@ static void webkit_dom_keyboard_event_get_property(GObject* object, guint proper
     WebKitDOMKeyboardEvent* self = WEBKIT_DOM_KEYBOARD_EVENT(object);
 
     switch (propertyId) {
-    case PROP_KEY_IDENTIFIER:
+    case DOM_KEYBOARD_EVENT_PROP_KEY_IDENTIFIER:
         g_value_take_string(value, webkit_dom_keyboard_event_get_key_identifier(self));
         break;
-    case PROP_KEY_LOCATION:
+    case DOM_KEYBOARD_EVENT_PROP_KEY_LOCATION:
         g_value_set_ulong(value, webkit_dom_keyboard_event_get_key_location(self));
         break;
-    case PROP_CTRL_KEY:
+    case DOM_KEYBOARD_EVENT_PROP_CTRL_KEY:
         g_value_set_boolean(value, webkit_dom_keyboard_event_get_ctrl_key(self));
         break;
-    case PROP_SHIFT_KEY:
+    case DOM_KEYBOARD_EVENT_PROP_SHIFT_KEY:
         g_value_set_boolean(value, webkit_dom_keyboard_event_get_shift_key(self));
         break;
-    case PROP_ALT_KEY:
+    case DOM_KEYBOARD_EVENT_PROP_ALT_KEY:
         g_value_set_boolean(value, webkit_dom_keyboard_event_get_alt_key(self));
         break;
-    case PROP_META_KEY:
+    case DOM_KEYBOARD_EVENT_PROP_META_KEY:
         g_value_set_boolean(value, webkit_dom_keyboard_event_get_meta_key(self));
         break;
-    case PROP_ALT_GRAPH_KEY:
+    case DOM_KEYBOARD_EVENT_PROP_ALT_GRAPH_KEY:
         g_value_set_boolean(value, webkit_dom_keyboard_event_get_alt_graph_key(self));
         break;
     default:
@@ -106,7 +107,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_KEY_IDENTIFIER,
+        DOM_KEYBOARD_EVENT_PROP_KEY_IDENTIFIER,
         g_param_spec_string(
             "key-identifier",
             "KeyboardEvent:key-identifier",
@@ -116,7 +117,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_KEY_LOCATION,
+        DOM_KEYBOARD_EVENT_PROP_KEY_LOCATION,
         g_param_spec_ulong(
             "key-location",
             "KeyboardEvent:key-location",
@@ -126,7 +127,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CTRL_KEY,
+        DOM_KEYBOARD_EVENT_PROP_CTRL_KEY,
         g_param_spec_boolean(
             "ctrl-key",
             "KeyboardEvent:ctrl-key",
@@ -136,7 +137,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SHIFT_KEY,
+        DOM_KEYBOARD_EVENT_PROP_SHIFT_KEY,
         g_param_spec_boolean(
             "shift-key",
             "KeyboardEvent:shift-key",
@@ -146,7 +147,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALT_KEY,
+        DOM_KEYBOARD_EVENT_PROP_ALT_KEY,
         g_param_spec_boolean(
             "alt-key",
             "KeyboardEvent:alt-key",
@@ -156,7 +157,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_META_KEY,
+        DOM_KEYBOARD_EVENT_PROP_META_KEY,
         g_param_spec_boolean(
             "meta-key",
             "KeyboardEvent:meta-key",
@@ -166,7 +167,7 @@ static void webkit_dom_keyboard_event_class_init(WebKitDOMKeyboardEventClass* re
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALT_GRAPH_KEY,
+        DOM_KEYBOARD_EVENT_PROP_ALT_GRAPH_KEY,
         g_param_spec_boolean(
             "alt-graph-key",
             "KeyboardEvent:alt-graph-key",
@@ -201,9 +202,8 @@ void webkit_dom_keyboard_event_init_keyboard_event(WebKitDOMKeyboardEvent* self,
     g_return_if_fail(keyIdentifier);
     WebCore::KeyboardEvent* item = WebKit::core(self);
     WTF::String convertedType = WTF::String::fromUTF8(type);
-    WebCore::DOMWindow* convertedView = WebKit::core(view);
     WTF::String convertedKeyIdentifier = WTF::String::fromUTF8(keyIdentifier);
-    item->initKeyboardEvent(convertedType, canBubble, cancelable, convertedView, convertedKeyIdentifier, location, ctrlKey, altKey, shiftKey, metaKey, altGraphKey);
+    item->initKeyboardEvent(convertedType, canBubble, cancelable, WebKit::toWindowProxy(view), convertedKeyIdentifier, location, ctrlKey, altKey, shiftKey, metaKey, altGraphKey);
 }
 
 gchar* webkit_dom_keyboard_event_get_key_identifier(WebKitDOMKeyboardEvent* self)
@@ -269,3 +269,4 @@ gboolean webkit_dom_keyboard_event_get_alt_graph_key(WebKitDOMKeyboardEvent* sel
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

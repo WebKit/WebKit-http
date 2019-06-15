@@ -28,8 +28,13 @@
 
 #import "CFURLExtras.h"
 #import "URLParser.h"
+#import "WebCoreNSURLExtras.h"
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/text/CString.h>
+
+@interface NSString (WebCoreNSURLExtras)
+- (BOOL)_web_looksLikeIPAddress;
+@end
 
 namespace WebCore {
 
@@ -42,38 +47,49 @@ URL::URL(NSURL *url)
 
     // FIXME: Why is it OK to ignore base URL here?
     CString urlBytes;
-    getURLBytes(reinterpret_cast<CFURLRef>(url), urlBytes);
+    getURLBytes((__bridge CFURLRef)url, urlBytes);
     URLParser parser(urlBytes.data());
     *this = parser.result();
 }
 
 URL::operator NSURL *() const
 {
-    // Creating a toll-free bridged CFURL, because a real NSURL would not preserve the original string.
+    // Creating a toll-free bridged CFURL because creation with NSURL methods would not preserve the original string.
     // We'll need fidelity when round-tripping via CFURLGetBytes().
-    return (NSURL *)createCFURL().autorelease();
+    return createCFURL().bridgingAutorelease();
 }
 
 RetainPtr<CFURLRef> URL::createCFURL() const
 {
     if (isNull())
-        return 0;
+        return nullptr;
 
     if (isEmpty()) {
         // We use the toll-free bridge between NSURL and CFURL to create a CFURLRef supporting both empty and null values.
-        return reinterpret_cast<CFURLRef>(adoptNS([[NSURL alloc] initWithString:@""]).get());
+        return (__bridge CFURLRef)adoptNS([[NSURL alloc] initWithString:@""]).get();
     }
+
+    RetainPtr<CFURLRef> cfURL;
 
     // Fast path if the input data is 8-bit to avoid copying into a temporary buffer.
     if (LIKELY(m_string.is8Bit()))
-        return createCFURLFromBuffer(reinterpret_cast<const char*>(m_string.characters8()), m_string.length());
+        cfURL = createCFURLFromBuffer(reinterpret_cast<const char*>(m_string.characters8()), m_string.length());
+    else {
+        // Slower path.
+        URLCharBuffer buffer;
+        copyToBuffer(buffer);
+        cfURL = createCFURLFromBuffer(buffer.data(), buffer.size());
+    }
 
-    // Slower path.
-    URLCharBuffer buffer;
-    copyToBuffer(buffer);
-    return createCFURLFromBuffer(buffer.data(), buffer.size());
+    if (protocolIsInHTTPFamily() && !isCFURLSameOrigin(cfURL.get(), *this))
+        return nullptr;
+
+    return cfURL;
 }
 
-
+bool URL::hostIsIPAddress(StringView host)
+{
+    return [host.createNSStringWithoutCopying().get() _web_looksLikeIPAddress];
+}
 
 }

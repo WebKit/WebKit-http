@@ -204,6 +204,7 @@ private:
             
         case MovHint:
         case Check:
+        case CheckVarargs:
             break;
             
         case BitAnd:
@@ -226,6 +227,31 @@ private:
             node->child2()->mergeFlags(NodeBytecodeUsesAsValue | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
             break;
         }
+
+        case StringSlice: {
+            node->child1()->mergeFlags(NodeBytecodeUsesAsValue);
+            node->child2()->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
+            if (node->child3())
+                node->child3()->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
+            break;
+        }
+
+        case ArraySlice: {
+            m_graph.varArgChild(node, 0)->mergeFlags(NodeBytecodeUsesAsValue);
+
+            if (node->numChildren() == 2)
+                m_graph.varArgChild(node, 1)->mergeFlags(NodeBytecodeUsesAsValue);
+            else if (node->numChildren() == 3) {
+                m_graph.varArgChild(node, 1)->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
+                m_graph.varArgChild(node, 2)->mergeFlags(NodeBytecodeUsesAsValue);
+            } else if (node->numChildren() == 4) {
+                m_graph.varArgChild(node, 1)->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
+                m_graph.varArgChild(node, 2)->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
+                m_graph.varArgChild(node, 3)->mergeFlags(NodeBytecodeUsesAsValue);
+            }
+            break;
+        }
+
             
         case UInt32ToNumber: {
             node->child1()->mergeFlags(flags);
@@ -330,17 +356,13 @@ private:
         }
             
         case GetByVal: {
-            node->child1()->mergeFlags(NodeBytecodeUsesAsValue);
-            node->child2()->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
+            m_graph.varArgChild(node, 0)->mergeFlags(NodeBytecodeUsesAsValue);
+            m_graph.varArgChild(node, 1)->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
             break;
         }
             
+        case NewTypedArray:
         case NewArrayWithSize: {
-            node->child1()->mergeFlags(NodeBytecodeUsesAsValue | NodeBytecodeUsesAsInt | NodeBytecodeUsesAsArrayIndex);
-            break;
-        }
-            
-        case NewTypedArray: {
             // Negative zero is not observable. NaN versus undefined are only observable
             // in that you would get a different exception message. So, like, whatever: we
             // claim here that NaN v. undefined is observable.
@@ -363,6 +385,19 @@ private:
         case ToPrimitive:
         case ToNumber: {
             node->child1()->mergeFlags(flags);
+            break;
+        }
+
+        case CompareLess:
+        case CompareLessEq:
+        case CompareGreater:
+        case CompareGreaterEq:
+        case CompareBelow:
+        case CompareBelowEq:
+        case CompareEq:
+        case CompareStrictEq: {
+            node->child1()->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther);
+            node->child2()->mergeFlags(NodeBytecodeUsesAsNumber | NodeBytecodeUsesAsOther);
             break;
         }
 

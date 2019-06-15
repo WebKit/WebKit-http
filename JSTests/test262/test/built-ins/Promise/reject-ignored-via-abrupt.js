@@ -3,7 +3,7 @@
 /*---
 description: Resolved promises ignore rejections through an abrupt completion
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     9. Let completion be Call(executor, undefined,
        «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»).
@@ -28,7 +28,7 @@ var p = new Promise(function(resolve) {
 });
 
 p.then(function() {
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});

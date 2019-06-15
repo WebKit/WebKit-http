@@ -29,9 +29,10 @@
 #import "config.h"
 #import "WebCoreURLResponseIOS.h"
 
+#if PLATFORM(IOS)
+
 #import "QuickLook.h"
 #import "UTIUtilities.h"
-#import "WebCoreSystemInterface.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 
 #import "QuickLookSoftLink.h"
@@ -57,7 +58,9 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
                 RetainPtr<CFStringRef> extension = adoptCF(CFURLCopyPathExtension(url));
                 if (extension) {
                     RetainPtr<CFStringRef> uti = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, extension.get(), nullptr));
-                    quickLookMIMEType = mimeTypeFromUTITree(uti.get());
+                    String MIMEType = MIMETypeFromUTITree(uti.get());
+                    if (!MIMEType.isEmpty())
+                        quickLookMIMEType = MIMEType.createCFString();
                 }
             }
         }
@@ -73,3 +76,5 @@ void adjustMIMETypeIfNecessary(CFURLResponseRef cfResponse, bool isMainResourceL
 }
 
 } // namespace WebCore
+
+#endif // PLATFORM(IOS)

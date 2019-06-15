@@ -29,12 +29,12 @@
 #if USE(CG)
 
 #include "Color.h"
-#include "CoreGraphicsSPI.h"
 #include "FloatRect.h"
 #include "GeometryUtilities.h"
 #include "GraphicsContextCG.h"
 #include "IntSize.h"
 #include "SubimageCacheWithTimer.h"
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 
 namespace WebCore {
 
@@ -86,7 +86,7 @@ void clearNativeImageSubimages(const NativeImagePtr& image)
 {
 #if CACHE_SUBIMAGES
     if (image)
-        subimageCache().clearImage(image.get());
+        SubimageCacheWithTimer::clearImage(image.get());
 #endif
 }
 

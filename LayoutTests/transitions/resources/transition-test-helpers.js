@@ -87,7 +87,10 @@ function parseClipPath(s)
     var pathMatch;
     if (pathMatch = s.match(/path\(((evenodd|nonzero), ?)?\'(.+)\'\)/))
         return extractPathValues(pathMatch[pathMatch.length - 1]);
-    
+
+    if (pathMatch = s.match(/path\(((evenodd|nonzero), ?)?\"(.+)\"\)/))
+        return extractPathValues(pathMatch[pathMatch.length - 1]);
+
     // FIXME: This only matches a subset of the shape syntax, and the polygon expects 4 points.
     var patterns = [
         /inset\(([\d.]+)\w+ ([\d.]+)\w+\)/,
@@ -210,6 +213,30 @@ function checkExpectedValue(expected, index)
                     break;
             }
         }
+    } else if (property == "background-position-x" || property == "background-position-y") {
+        computedValue = window.getComputedStyle(document.getElementById(elementId)).backgroundPosition;
+
+        const leftCharIndex = computedValue.indexOf("left");
+        const rightCharIndex = computedValue.indexOf("right");
+        const topCharIndex = computedValue.indexOf("top");
+        const bottomCharIndex = computedValue.indexOf("bottom");
+
+        let firstCharIndex, lastCharIndex;
+        if (property == "background-position-x") {
+            if (computedValue.startsWith("left"))
+                firstCharIndex = 4;
+            else if (computedValue.startsWith("right"))
+                firstCharIndex = 5;
+            lastCharIndex = Math.max(topCharIndex, bottomCharIndex);
+        } else {
+            if (topCharIndex > -1)
+                firstCharIndex = topCharIndex + 3;
+            else
+                firstCharIndex = bottomCharIndex + 6;
+            lastCharIndex = computedValue.length;
+        }
+
+        pass = computedValue.substring(firstCharIndex, lastCharIndex).trim() == expectedValue;
     } else if (property == "fill" || property == "stroke") {
         computedValue = window.getComputedStyle(document.getElementById(elementId)).getPropertyCSSValue(property).rgbColor;
         if (compareRGB([computedValue.red.cssText, computedValue.green.cssText, computedValue.blue.cssText], expectedValue, tolerance))
@@ -347,6 +374,31 @@ function checkExpectedValueCallback(expected, index)
     return function() { checkExpectedValue(expected, index); };
 }
 
+const prefix = "-webkit-";
+const propertiesRequiringPrefix = ["-webkit-text-stroke-color", "-webkit-text-fill-color"];
+
+function pauseTransitionAtTimeOnElement(transitionProperty, time, element)
+{
+    // If we haven't opted into CSS Animations and CSS Transitions as Web Animations, use the internal API.
+    if ('internals' in window && !internals.settings.webAnimationsCSSIntegrationEnabled())
+        return internals.pauseTransitionAtTimeOnElement(transitionProperty, time, element);
+
+    if (transitionProperty.startsWith(prefix) && !propertiesRequiringPrefix.includes(transitionProperty))
+        transitionProperty = transitionProperty.substr(prefix.length);
+
+    // Otherwise, use the Web Animations API.
+    const animations = element.getAnimations();
+    for (let animation of animations) {
+        if (animation instanceof CSSTransition && animation.transitionProperty == transitionProperty) {
+            animation.currentTime = time * 1000;
+            animation.pause();
+            return true;
+        }
+    }
+    console.log(`A transition for property ${transitionProperty} could not be found`);
+    return false;
+}
+
 function runTest(expected, usePauseAPI)
 {
     var maxTime = 0;
@@ -364,7 +416,7 @@ function runTest(expected, usePauseAPI)
         if (hasPauseTransitionAPI && usePauseAPI) {
             if (tryToPauseTransition) {
               var element = document.getElementById(elementId);
-              if (!internals.pauseTransitionAtTimeOnElement(property, time, element))
+              if (!pauseTransitionAtTimeOnElement(property, time, element))
                 window.console.log("Failed to pause '" + property + "' transition on element '" + elementId + "'");
             }
             checkExpectedValue(expected, i);
@@ -405,12 +457,10 @@ function startTest(expected, usePauseAPI, callback)
 }
 
 var result = "";
-var hasPauseTransitionAPI;
+var hasPauseTransitionAPI = true;
 
 function runTransitionTest(expected, callback, usePauseAPI, doPixelTest)
 {
-    hasPauseTransitionAPI = 'internals' in window;
-    
     if (window.testRunner) {
         if (!doPixelTest)
             testRunner.dumpAsText();

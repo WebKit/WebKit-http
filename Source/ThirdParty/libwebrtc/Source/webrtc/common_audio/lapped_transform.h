@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_AUDIO_LAPPED_TRANSFORM_H_
-#define WEBRTC_COMMON_AUDIO_LAPPED_TRANSFORM_H_
+#ifndef COMMON_AUDIO_LAPPED_TRANSFORM_H_
+#define COMMON_AUDIO_LAPPED_TRANSFORM_H_
 
 #include <complex>
 #include <memory>
 
-#include "webrtc/common_audio/blocker.h"
-#include "webrtc/common_audio/real_fourier.h"
-#include "webrtc/system_wrappers/include/aligned_array.h"
+#include "common_audio/blocker.h"
+#include "common_audio/real_fourier.h"
+#include "rtc_base/memory/aligned_array.h"
 
 namespace webrtc {
 
@@ -35,7 +35,8 @@ class LappedTransform {
     virtual ~Callback() {}
 
     virtual void ProcessAudioBlock(const std::complex<float>* const* in_block,
-                                   size_t num_in_channels, size_t frames,
+                                   size_t num_in_channels,
+                                   size_t frames,
                                    size_t num_out_channels,
                                    std::complex<float>* const* out_block) = 0;
   };
@@ -127,5 +128,4 @@ class LappedTransform {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_AUDIO_LAPPED_TRANSFORM_H_
-
+#endif  // COMMON_AUDIO_LAPPED_TRANSFORM_H_

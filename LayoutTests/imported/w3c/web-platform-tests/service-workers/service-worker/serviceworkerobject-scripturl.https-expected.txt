@@ -1,0 +1,5 @@
+
+PASS Verify the scriptURL property: relative 
+PASS Verify the scriptURL property: with-fragment 
+PASS Verify the scriptURL property: absolute 
+

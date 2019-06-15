@@ -7,11 +7,17 @@ import platform
 import os
 import sys
 
-from benchmark_runner import BenchmarkRunner
 from browser_driver.browser_driver_factory import BrowserDriverFactory
+from benchmark_runner import BenchmarkRunner
+from webdriver_benchmark_runner import WebDriverBenchmarkRunner
+from webserver_benchmark_runner import WebServerBenchmarkRunner
 
 
 _log = logging.getLogger(__name__)
+benchmark_runner_subclasses = {
+    WebDriverBenchmarkRunner.name: WebDriverBenchmarkRunner,
+    WebServerBenchmarkRunner.name: WebServerBenchmarkRunner,
+}
 
 
 def default_platform():
@@ -27,31 +33,46 @@ def default_browser():
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Automate the browser based performance benchmarks')
-    parser.add_argument('--output-file', dest='output', default=None)
-    parser.add_argument('--build-directory', dest='buildDir', help='Path to the browser executable. e.g. WebKitBuild/Release/')
-    parser.add_argument('--platform', dest='platform', default=default_platform(), choices=BrowserDriverFactory.available_platforms())
-    parser.add_argument('--browser', dest='browser', default=default_browser(), choices=BrowserDriverFactory.available_browsers())
-    parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--local-copy', dest='localCopy', help='Path to a local copy of the benchmark. e.g. PerformanceTests/SunSpider/')
-    parser.add_argument('--count', dest='countOverride', type=int, help='Number of times to run the benchmark. e.g. 5')
-    parser.add_argument('--device-id', dest='device_id', default=None)
-    parser.add_argument('--no-adjust-unit', dest='scale_unit', action='store_false')
+    parser = argparse.ArgumentParser(description='Run browser based performance benchmarks. To run a single benchmark in the recommended way, use run-benchmark --plan. To see the vailable benchmarks, use run-benchmark --list-plans.')
     mutual_group = parser.add_mutually_exclusive_group(required=True)
-    mutual_group.add_argument('--read-results-json', dest='json_file', help='Specify file you want to format')
-    mutual_group.add_argument('--plan', dest='plan', help='Benchmark plan to run. e.g. speedometer, jetstream')
-    mutual_group.add_argument('--allplans', action='store_true', help='Run all available benchmark plans sequentially')
+    mutual_group.add_argument('--plan', help='Run a specific benchmark plan (e.g. speedometer, jetstream).')
+    mutual_group.add_argument('--list-plans', action='store_true', help='List all available benchmark plans.')
+    mutual_group.add_argument('--allplans', action='store_true', help='Run all available benchmark plans in order.')
+    mutual_group.add_argument('--read-results-json', dest='json_file', help='Instead of running a benchmark, format the output saved in JSON_FILE.')
+    parser.add_argument('--output-file', default=None, help='Save detailed results to OUTPUT in JSON format. By default, results will not be saved.')
+    parser.add_argument('--build-directory', dest='build_dir', help='Path to the browser executable (e.g. WebKitBuild/Release/).')
+    parser.add_argument('--count', type=int, help='Number of times to run the benchmark (e.g. 5).')
+    parser.add_argument('--driver', default=WebServerBenchmarkRunner.name, choices=benchmark_runner_subclasses.keys(), help='Use the specified benchmark driver. Defaults to %s.' % WebServerBenchmarkRunner.name)
+    parser.add_argument('--browser', default=default_browser(), choices=BrowserDriverFactory.available_browsers(), help='Browser to run the nechmark in. Defaults to %s.' % default_browser())
+    parser.add_argument('--platform', default=default_platform(), choices=BrowserDriverFactory.available_platforms(), help='Platform that this script is running on. Defaults to %s.' % default_platform())
+    parser.add_argument('--local-copy', help='Path to a local copy of the benchmark (e.g. PerformanceTests/SunSpider/).')
+    parser.add_argument('--device-id', default=None, help='Undocumented option for mobile device testing.')
+    parser.add_argument('--debug', action='store_true', help='Enable debug logging.')
+    parser.add_argument('--no-adjust-unit', dest='scale_unit', action='store_false', help="Don't convert to scientific notation.")
+    parser.add_argument('--show-iteration-values', dest='show_iteration_values', action='store_true', help="Show the measured value for each iteration in addition to averages.")
 
     args = parser.parse_args()
 
     if args.debug:
         _log.setLevel(logging.DEBUG)
     _log.debug('Initializing program with following parameters')
-    _log.debug('\toutput file name\t: %s' % args.output)
-    _log.debug('\tbuild directory\t: %s' % args.buildDir)
+    _log.debug('\toutput file name\t: %s' % args.output_file)
+    _log.debug('\tbuild directory\t: %s' % args.build_dir)
     _log.debug('\tplan name\t: %s', args.plan)
 
     return args
+
+
+def run_benchmark_plan(args, plan):
+    benchmark_runner_class = benchmark_runner_subclasses[args.driver]
+    runner = benchmark_runner_class(plan, args.local_copy, args.count, args.build_dir, args.output_file, args.platform, args.browser, args.scale_unit, args.show_iteration_values, args.device_id)
+    runner.execute()
+
+
+def list_benchmark_plans():
+    print("Available benchmark plans: ")
+    for plan in BenchmarkRunner.available_plans():
+        print("\t%s" % plan)
 
 
 def start(args):
@@ -59,16 +80,15 @@ def start(args):
         results_json = json.load(open(args.json_file, 'r'))
         if 'debugOutput' in results_json:
             del results_json['debugOutput']
-        BenchmarkRunner.show_results(results_json, args.scale_unit)
+        BenchmarkRunner.show_results(results_json, args.scale_unit, args.show_iteration_values)
         return
     if args.allplans:
         failed = []
         skipped = []
-        plandir = os.path.join(os.path.dirname(__file__), 'data/plans')
-        planlist = [os.path.splitext(f)[0] for f in os.listdir(plandir) if f.endswith('.plan')]
-        skippedfile = os.path.join(plandir, 'Skipped')
+        planlist = BenchmarkRunner.available_plans()
+        skippedfile = os.path.join(BenchmarkRunner.plan_directory(), 'Skipped')
         if not planlist:
-            raise Exception('Cant find any .plan file in directory %s' % plandir)
+            raise Exception('Cant find any .plan file in directory %s' % BenchmarkRunner.plan_directory())
         if os.path.isfile(skippedfile):
             skipped = [line.strip() for line in open(skippedfile) if not line.startswith('#') and len(line) > 1]
         for plan in sorted(planlist):
@@ -77,8 +97,7 @@ def start(args):
                 continue
             _log.info('Starting benchmark plan: %s' % plan)
             try:
-                runner = BenchmarkRunner(plan, args.localCopy, args.countOverride, args.buildDir, args.output, args.platform, args.browser, args.scale_unit, args.device_id)
-                runner.execute()
+                run_benchmark_plan(args, plan)
                 _log.info('Finished benchmark plan: %s' % plan)
             except KeyboardInterrupt:
                 raise
@@ -88,8 +107,11 @@ def start(args):
         if failed:
             _log.error('The following benchmark plans have failed: %s' % failed)
         return len(failed)
-    runner = BenchmarkRunner(args.plan, args.localCopy, args.countOverride, args.buildDir, args.output, args.platform, args.browser, args.scale_unit, args.device_id)
-    runner.execute()
+    if args.list_plans:
+        list_benchmark_plans()
+        return
+
+    run_benchmark_plan(args, args.plan)
 
 
 def format_logger(logger):

@@ -1,3 +1,629 @@
+2018-09-05  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Update code style guidelines for using namespace inside a namespace definition
+        https://bugs.webkit.org/show_bug.cgi?id=189298
+
+        Reviewed by Ryosuke Niwa.
+
+        "using namespace" statements should be inside namespace definitions for
+        unified source builds.
+
+        * code-style.md(#using-position): 
+
+2018-08-31  Dean Jackson  <dino@apple.com>
+
+        Add support for USDZ to webkit.org for a sample file
+        https://bugs.webkit.org/show_bug.cgi?id=189217
+
+        Rubber-stamped by Anders Carlsson.
+
+        Use the accepted MIME-type for USDZ files, and provide a
+        simple example file.
+
+        * .htaccess: Serve USD with a MIME-type that we will accept.
+        * demos/ar/heart.usdz: Added.
+
+2018-07-24  Jon Davis  <jond@apple.com>
+
+        Disable some vestibular trigger animations when prefers-reduced-motion is active.
+        https://bugs.webkit.org/show_bug.cgi?id=186529
+
+        Reviewed by Dean Jackson.
+
+        * wp-content/themes/webkit/style.css:
+        (@media (prefers-reduced-motion)): Added to honor reduced motion settings.
+        (article,): Added to only use fade-in animation and prevent motion.
+
+2018-06-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [WPE] Some fixups on webkit.org page
+        https://bugs.webkit.org/show_bug.cgi?id=186844
+
+        Unreviewed as the content is not modified, only some minor fixups on the format.
+
+        * wpe.md: Remove title as it's already provided by the website CMS.
+        Avoid breaking lines at 80 chars as it's not rendered as expected.
+
+2018-06-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [WPE] Add page for webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=186844
+
+        Reviewed by Michael Catanzaro.
+
+        * wpe.md: Added.
+
+2018-06-14  Roy Reapor  <rreapor@apple.com>
+
+        Use new jQuery file layout
+        https://bugs.webkit.org/show_bug.cgi?id=186636
+
+        Reviewed by Aakash Jain.
+
+        * ajax/libs/jqueryui/jquery-ui-1.8.15.css: Removed.
+        * ajax/libs/jqueryui/jquery-ui-1.8.15.min.js: Removed.
+
+2018-06-14  Jon Davis  <jond@apple.com>
+
+        Minor layout fix for WebKit Feature Status Page
+        https://bugs.webkit.org/show_bug.cgi?id=186539
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/status.php: Added padding below the bottom paragraph.
+
+2018-06-14  Roy Reapor  <rreapor@apple.com>
+
+        jQuery UI image assets are missing on webkit.org website.
+        https://bugs.webkit.org/show_bug.cgi?id=185949
+
+        Reviewed by Aakash Jain.
+
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_flat_0_aaaaaa_40x100.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_flat_75_ffffff_40x100.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_glass_55_fbf9ee_1x400.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_glass_65_ffffff_1x400.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_glass_75_dadada_1x400.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_glass_75_e6e6e6_1x400.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_glass_95_fef1ec_1x400.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-bg_highlight-soft_75_cccccc_1x100.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-icons_222222_256x240.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-icons_2e83ff_256x240.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-icons_454545_256x240.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-icons_888888_256x240.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/images/ui-icons_cd0a0a_256x240.png: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery-ui.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.accordion.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.all.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.autocomplete.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.base.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.button.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.core.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.datepicker.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.dialog.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.progressbar.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.resizable.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.selectable.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.slider.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.tabs.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/themes/base/jquery.ui.theme.min.css: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery-ui.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.blind.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.bounce.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.clip.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.core.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.drop.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.explode.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.fade.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.fold.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.highlight.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.pulsate.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.scale.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.shake.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.slide.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.effects.transfer.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.accordion.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.autocomplete.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.button.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.core.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.datepicker.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.dialog.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.draggable.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.droppable.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.mouse.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.position.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.progressbar.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.resizable.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.selectable.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.slider.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.sortable.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.tabs.min.js: Added.
+        * ajax/libs/jqueryui/1.8.15/ui/jquery.ui.widget.min.js: Added.
+
+2018-06-05  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Only expose CSSAnimation and CSSTransition if the WebAnimationsCSSIntegration runtime flag is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=186305
+
+        Reviewed by Dean Jackson.
+
+        Add a test for the WebAnimationsCSSIntegration runtime flag.
+
+        * experimental-features.html:
+
+2018-06-01  Dean Jackson  <dino@apple.com>
+
+        Add a demo for passive touch listeners.
+
+        * demos/passive-touches/index.html: Added.
+
+2018-05-23  Roy Reapor  <rreapor@apple.com>
+
+        Remove Source Sans Pro from WebKit website
+        https://bugs.webkit.org/show_bug.cgi?id=185871
+
+        Reviewed by Aakash Jain.
+
+        * demos/spring/index.html:
+
+2018-05-22  Roy Reapor  <rreapor@apple.com>
+
+        Test infrastructure websites should use jQuery and jQuery UI hosted on webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=185788
+
+        Reviewed by Aakash Jain.
+
+        * ajax/libs/jquery/jquery-1.6.2.min.js: Added.
+        * ajax/libs/jqueryui: Added.
+        * ajax/libs/jqueryui/jquery-ui-1.8.15.css: Added.
+
+2018-05-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add some additional demo content to webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=185892
+
+        Reviewed by Tim Horton.
+
+        Adds three demo pages, and some placeholder assets.
+
+        * demos/extrazoom/article/constitution.jpg: Added.
+        * demos/extrazoom/article/index.html: Added.
+        * demos/extrazoom/login/index.html: Added.
+        * demos/extrazoom/login/webkit.svg: Added.
+        * demos/extrazoom/recipes/butterchicken.jpg: Added.
+        * demos/extrazoom/recipes/chowder.jpg: Added.
+        * demos/extrazoom/recipes/hummus.jpg: Added.
+        * demos/extrazoom/recipes/index.html: Added.
+        * demos/extrazoom/recipes/padthai.jpg: Added.
+        * demos/extrazoom/recipes/pizza.jpg: Added.
+        * demos/extrazoom/recipes/salmon.jpg: Added.
+        * demos/extrazoom/recipes/steak.jpg: Added.
+        * demos/extrazoom/recipes/tacos.jpg: Added.
+
+2018-04-26  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Update code style guidelines to mention braced initialization style.
+        https://bugs.webkit.org/show_bug.cgi?id=185053
+
+        Reviewed by Ryosuke Niwa.
+
+        * code-style.md:
+        Add a clause to the Spacing section about braced initialization.
+        (Also, fix an erroneous element ID on a neighboring line.)
+
+2018-04-04  Andy Estes  <aestes@apple.com>
+
+        Unreviewed. Correct the path to merchant-validation-config.php.
+
+        * demos/payment-request/merchant-validation.php:
+
+2018-04-04  Andy Estes  <aestes@apple.com>
+
+        Add Payment Request demo content.
+
+        Rubber-stamped by Zalan Bujtas.
+
+        * demos/payment-request/demo.js: Added.
+        (string_appeared_here.async.applePayButtonClicked):
+        * demos/payment-request/index.html: Added.
+        * demos/payment-request/merchant-validation.php: Added.
+        * demos/payment-request/squirrelfish.png: Added.
+        * demos/payment-request/style.css: Added.
+        (@supports (-webkit-appearance: -apple-pay-button)):
+        (.apple-pay-not-supported::before):
+        (.hidden):
+        (#black-buttons > .apple-pay-button):
+        (#white-buttons > .apple-pay-button):
+        (#demo):
+        (#description):
+
+2018-03-21  Jon Davis  <jond@apple.com>
+
+        Add support for an overridable byline in blog posts
+        https://bugs.webkit.org/show_bug.cgi?id=183799
+
+        Reviewed by Timothy Hatcher.
+
+        * wp-content/themes/webkit/functions.php:
+
+2018-02-20  Jon Davis  <jond@apple.com>
+
+        Add widescreen layout class for the Downloads page
+        https://bugs.webkit.org/show_bug.cgi?id=182948
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wp-content/themes/webkit/downloads.php: Added .widescreen for full-width layout.
+
+2018-02-13  Jon Davis  <jond@apple.com>
+
+        Added a redirect for /nightly to /downloads/.
+        https://bugs.webkit.org/show_bug.cgi?id=182743
+        <rdar://problem/35126697>
+
+        Reviewed by Lucas Forschler.
+
+        * .htaccess:
+
+2018-01-24  Aakash Jain  <aakash_jain@apple.com>
+
+        Update code style guidelines for Python
+        https://bugs.webkit.org/show_bug.cgi?id=179387
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * code-style.md:
+
+2017-12-11  Dean Jackson  <dino@apple.com>
+
+        Add a runtime feature flag for ImageBitmap and OffscreenCanvas
+        https://bugs.webkit.org/show_bug.cgi?id=180652
+        <rdar://problem/35969611>
+
+        Reviewed by Antoine Quint.
+
+        Simple test to validate if these interfaces are enabled.
+
+        * experimental-features.html:
+
+2017-11-28  Dean Jackson  <dino@apple.com>
+
+        Include gl-matrix directly since github doesn't serve the correct mime type
+        https://bugs.webkit.org/show_bug.cgi?id=180102
+        <rdar://problem/35301622>
+
+        Reviewed by Antoine Quint.
+
+        * demos/webgpu/cubes.html:
+        * demos/webgpu/gl-matrix-min.js: Added.
+        * demos/webgpu/simple.html:
+
+2017-11-13  Jon Davis  <jond@apple.com>
+
+        Update safe area CSS for webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=179615
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wp-content/themes/webkit/style.css:
+        (@media only screen and (max-height: 415px)):
+        (@supports(padding:max(0px))):
+
+2017-11-13  Jon Davis  <jond@apple.com>
+
+        Add a new landing page design and site-wide design detail updates for webkit.org
+        https://bugs.webkit.org/show_bug.cgi?id=179558
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wp-content/themes/webkit/404.php: Removed unnecessary prefixed CSS.
+        * wp-content/themes/webkit/444.php: Removed unnecessary prefixed CSS.
+        * wp-content/themes/webkit/css-status.php: Removed unnecessary prefixed CSS.
+        * wp-content/themes/webkit/footer.php: Added new page wrapper container.
+        * wp-content/themes/webkit/front-header.php: Redesigned landing hero.
+        * wp-content/themes/webkit/functions.php: Added support for configurable non-breaking words.
+        * wp-content/themes/webkit/header.php: Added viewport-fit, changed web font, changed logo title.
+        * wp-content/themes/webkit/images/chevron.svg: Added.
+        * wp-content/themes/webkit/images/circular.svg: Added.
+        * wp-content/themes/webkit/images/compass.svg: Added.
+        * wp-content/themes/webkit/images/download-white.svg: Added.
+        * wp-content/themes/webkit/images/template.svg: Added.
+        * wp-content/themes/webkit/loop.php: Updated "read more" link presentation.
+        * wp-content/themes/webkit/nightly-start.php: Adjusted header background colors.
+        * wp-content/themes/webkit/nightly-survey.php: Adjusted header background colors.
+        * wp-content/themes/webkit/nightly.php: Adjusted header background colors.
+        * wp-content/themes/webkit/page.php: Page clean up.
+        * wp-content/themes/webkit/single.php: Updated "read more" link presentation.
+        * wp-content/themes/webkit/status.php: Removed unnecessary prefixed CSS, improved page title.
+        * wp-content/themes/webkit/style.css: Redesigned.
+        (html):
+        (body):
+        (strong):
+        (em):
+        (code):
+        (main):
+        (h1,):
+        (input[type=text]):
+        (input[type=submit]):
+        (header):
+        (.home header):
+        (@supports ( -webkit-backdrop-filter: blur(10px) )):
+        (.sub-menu-layer):
+        (.nextrouter .link,):
+        (.pagination):
+        (.pagination::after):
+        (.pagination .page-numbers):
+        (.pagination .dots,):
+        (.pagination .next-button):
+        (.nextrouter):
+        (.nextrouter:hover):
+        (.nextrouter.previous):
+        (.nextrouter.previous:hover):
+        (.nextrouter .bodycopy):
+        (.nextrouter a):
+        (.nextrouter a:hover):
+        (.nextrouter-copy):
+        (.nextrouter .label):
+        (.nextrouter .title):
+        (.nextrouter .link):
+        (.nextrouter a:hover .link):
+        (footer):
+        (.tiles):
+        (.tile):
+        (.third-tile):
+        (.two-thirds-tile):
+        (.tile .background-image):
+        (.tile .background-image.has-featured-image):
+        (.tile .featured-image):
+        (.tile:not(.has-post-thumbnail) .background-image,):
+        (.tile h1):
+        (.tile h2):
+        (.tile .summary,):
+        (pre):
+        (article):
+        (article::after):
+        (article h1):
+        (article h2):
+        (article h3):
+        (article h4):
+        (article h5):
+        (article h6):
+        (article h2 + h3,):
+        (article figcaption):
+        (article figcaption::before):
+        (.table-of-contents):
+        (article .table-of-contents label):
+        (.table-of-contents ul):
+        (.table-of-contents ul li):
+        (.table-of-contents ul li > ul):
+        (.site-logo):
+        (footer nav):
+        (header nav li):
+        (header nav a,):
+        (header .menu-item-has-children .label-toggle::after):
+        (header .menu-item):
+        (@media only screen and (max-width: 1180px)):
+        (article .byline):
+        (@media only screen and (max-width: 920px)):
+        (.main-menu.label-toggle):
+        (header .menu):
+        (header nav a):
+        (header .menu-main-menu-container >  ul > li):
+        (header .sub-menu-layer):
+        (@media only screen and (max-width: 690px)):
+        (.third-tile,):
+        (@media only screen and (max-width: 600px)):
+        (.table-of-contents label:after):
+        (@media only screen and (max-width: 415px)):
+        (@media only screen and (max-height: 415px)):
+        (@supports(padding:max(0px))):
+        (header .menu .menu-item > .sub-menu):
+        (.sub-menu-layer .menu-item:first-child,):
+        (#template):
+        (#compass):
+        (.tile .featured-image,): Deleted.
+        (.site-logo .tagline): Deleted.
+        (.timeline): Deleted.
+        (.timeline:after): Deleted.
+        (.timeline *): Deleted.
+        (.timeline:before): Deleted.
+        (.timeline > li): Deleted.
+        (.timeline > li:before): Deleted.
+        (.timeline .content): Deleted.
+        (.timeline figure): Deleted.
+        (.timeline .time): Deleted.
+        (.timeline h2, .timeline h3): Deleted.
+        (.timeline .time::before): Deleted.
+        (.timeline img): Deleted.
+        (@media (min-width: 900px)): Deleted.
+        (.timeline > li.force-clear): Deleted.
+        (.timeline > li:nth-child(odd)): Deleted.
+        (.timeline > li:nth-child(even)): Deleted.
+        (.timeline > li:nth-child(2),): Deleted.
+        (.timeline li .time): Deleted.
+        (.timeline li:nth-child(odd) .time): Deleted.
+        (.timeline li:nth-child(even) .time): Deleted.
+        (.timeline li:nth-child(even) .time::before): Deleted.
+        (.timeline > li:nth-child(even):before): Deleted.
+        (@media (max-width: 900px)): Deleted.
+        (.timeline li .time::before): Deleted.
+        (.hero .logo,): Deleted.
+        (.home .hero): Deleted.
+        (.home.admin-bar .hero): Deleted.
+        (@media only screen and (max-width: 320px)): Deleted.
+        * wp-content/themes/webkit/widgets/post.php: Updated "read more" link presentation.
+
+2017-10-30  Tim Horton  <timothy_horton@apple.com>
+
+        Update safe area inset demo pages to use env()
+        https://bugs.webkit.org/show_bug.cgi?id=179041
+
+        Reviewed by Simon Fraser.
+
+        * demos/safe-area-insets/1-default.html:
+        * demos/safe-area-insets/2-viewport-fit.html:
+        * demos/safe-area-insets/3-safe-area-constants.html:
+        * demos/safe-area-insets/4-min-max.html:
+        * demos/safe-area-insets/safe-areas.html:
+        Update to use env() instead of constant(), but keep constant() around
+        for backwards-compatibility.
+
+        Adjust the colors on the safe areas test page to look a little less holiday-like.
+
+2017-10-16  Daniel Bates  <dabates@apple.com>
+
+        No nightlies listed on nightly.webkit.org when using shipping Safari on macOS Sierra and OS X El Capitan
+        https://bugs.webkit.org/show_bug.cgi?id=178372
+
+        Reviewed by Tim Horton.
+
+        The Build Archive page depends on the collections (e.g. HTMLCollection) being
+        iterable so as to support iteration using ES6 for-of loop. Such support postdates
+        the version of WebKit shipped in macOS Sierra and OS X El Capitan. We should
+        make <https://webkit.org/build-archives/> work for these OSes since we still publish
+        nightlies for them.
+
+        * wp-content/themes/webkit/build-archives.php: Use Array.prototype.slice() to
+        convert the HTMLCollection to an array that can be iterated using a ES6 for-of loop.
+
+2017-10-04  Megan Gardner  <megan_gardner@apple.com>
+
+        Update Webkit Style webpage to include Obj-C blocks
+        https://bugs.webkit.org/show_bug.cgi?id=177906
+
+        Reviewed by Tim Horton.
+
+        * code-style.md:
+
+2017-10-02  Jon Davis  <jond@apple.com>
+
+        Add a WebKit Build Archives page
+        https://bugs.webkit.org/show_bug.cgi?id=177654
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wp-content/themes/webkit/build-archives.php: Added.
+
+2017-09-22  Timothy Horton  <timothy_horton@apple.com>
+
+        Update some links in demos
+
+        * demos/safe-area-insets/1-default.html:
+        * demos/safe-area-insets/2-viewport-fit.html:
+        * demos/safe-area-insets/3-safe-area-constants.html:
+        * demos/safe-area-insets/4-min-max.html:
+
+2017-09-21  Tim Horton  <timothy_horton@apple.com>
+
+        Add some blog post resources
+        https://bugs.webkit.org/show_bug.cgi?id=177333
+
+        Reviewed by Sam Weinig.
+
+        * demos/safe-area-insets/1-default.html: Added.
+        * demos/safe-area-insets/2-viewport-fit.html: Added.
+        * demos/safe-area-insets/3-safe-area-constants.html: Added.
+        * demos/safe-area-insets/4-min-max.html: Added.
+        * demos/safe-area-insets/safe-areas.html: Added.
+        * demos/safe-area-insets/style.css: Added.
+
+2017-08-21  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Add Sony to domain affiliations on team page
+        https://bugs.webkit.org/show_bug.cgi?id=175806
+
+        Reviewed by Alex Christensen.
+
+        * wp-content/themes/webkit/team.php:
+
+2017-08-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Caging shouldn't have to use a patchpoint for adding
+        https://bugs.webkit.org/show_bug.cgi?id=175483
+
+        Reviewed by Mark Lam.
+
+        Write documentation for the new Opaque opcode.
+
+        * docs/b3/intermediate-representation.html:
+
+2017-08-07  Jon Davis  <jond@apple.com>
+
+        Fixed superscript rendering for blog posts
+        https://bugs.webkit.org/show_bug.cgi?id=175285
+
+        Reviewed by Filip Pizlo.
+
+        * wp-content/themes/webkit/style.css:
+        (sup): Added.
+
+2017-08-06  James Craig  <jcraig@apple.com>
+
+        Update prefers-reduced-motion demos to link back to blog post
+        https://bugs.webkit.org/show_bug.cgi?id=175251
+
+        Unreviewed, added some cross links to older demo files.
+
+        * blog-files/prefers-reduced-motion/axi.htm:
+        * blog-files/prefers-reduced-motion/prm.htm:
+
+2017-08-04  Jon Davis  <jond@apple.com>
+
+        Fixed loading feature status page queries and anchor link URLs
+        https://bugs.webkit.org/show_bug.cgi?id=175156
+
+        Reviewed by Simon Fraser.
+
+        * wp-content/themes/webkit/status.php:
+
+2017-07-26  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, minor adjustments to the previous demo.
+
+        * demos/frames/index.html: Added. Index page for the list of demos.
+        * demos/frames/sandboxing/index.html: Minor fixes.
+
+2017-07-26  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, add demos (frame sandboxing and scrolling) for a blog post.
+
+        * demos/frames/sandboxing/am-i-sandboxed.html: Added.
+        * demos/frames/sandboxing/framebusting-success.html: Added.
+        * demos/frames/sandboxing/framebusting-without-user-activation.html: Added.
+        * demos/frames/sandboxing/index.html: Added.
+        * demos/frames/scrollable-iframes.html: Added.
+        * demos/frames/scrollingElement.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add the final demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/pbkdf2.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add yet another demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/aes-gcm.html:
+        * demos/webcrypto/alice.png: Added.
+        * demos/webcrypto/bob.png: Added.
+        * demos/webcrypto/ecdh.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add another demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/aes-gcm.html: Added.
+        * demos/webcrypto/asynchronous-execution.html:
+        * demos/webcrypto/common.js: Added.
+
+2017-07-19  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add a demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/asynchronous-execution-worker.js: Added.
+        * demos/webcrypto/asynchronous-execution.html: Added.
+
 2017-06-30  Jon Lee  <jonlee@apple.com>
 
         Add a WebRTC example for a blog post
@@ -68,7 +694,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=172844
 
         Reviewed by Keith Miller.
-        
+
         Update documentation to say that the canonical way to do fully fenced loads and stores is
         AtomicXchgAdd(0, ptr) and AtomicXchg(value, ptr), respectively.
 
@@ -181,13 +807,13 @@
 2017-04-08  Simon Fraser  <simon.fraser@apple.com>
 
         Update the css-status page to handle changes in CSSProperties.json.
-        
+
         Change the page structure to allow the left sidebar to use sticky positioning.
-        
+
         "Done" -> "Supported".
-        
+
         Save the search in the URL.
-        
+
         Other formatting changes.
 
         * wp-content/themes/webkit/css-status.php:
@@ -204,7 +830,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=170359
 
         Reviewed by Brian Burg.
-        
+
         Added styles for "Supported" status.
 
         * wp-content/themes/webkit/status.php:
@@ -259,12 +885,12 @@
         https://bugs.webkit.org/show_bug.cgi?id=168749
 
         Reviewed by Lucas Forschler.
-        
-        Updates the Twitter widget tile implementation to prefer the Twitter API to populate tweets 
-        displayed through the widget. If the API fails for any reason, it falls back to using the 
+
+        Updates the Twitter widget tile implementation to prefer the Twitter API to populate tweets
+        displayed through the widget. If the API fails for any reason, it falls back to using the
         Tweet listener for updated tweets.
-        
-        The Twitter API provides the benefit of embedding media and being able to display the full 
+
+        The Twitter API provides the benefit of embedding media and being able to display the full
         URLs rather than Twitter-shortened URLs.
 
         * wp-content/plugins/tweet-listener.php:
@@ -281,7 +907,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=162349
 
         Reviewed by Keith Miller.
-        
+
         Document the new opcodes!
 
         * docs/b3/intermediate-representation.html:
@@ -308,9 +934,9 @@
         https://bugs.webkit.org/show_bug.cgi?id=168921
 
         Reviewed by Sam Weinig.
-        
+
         Add a page that shows the status of CSS properties and values, scraped from Source/WebCore/css/CSSProperties.json.
-        
+
         This is modeled after the feature status page. Properties can be filtered by status
         and the spec they belong to.
 
@@ -525,7 +1151,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=163317
 
         Reviewed by Daniel Bates.
-        
+
         Don't show bots.
 
         * wp-content/themes/webkit/team.php:
@@ -547,10 +1173,10 @@
         https://bugs.webkit.org/show_bug.cgi?id=163183
 
         Reviewed by Darin Adler.
-        
+
         Make contributors.json easier to maintain by eliminating the big groupings ("Committers", "Reviewers" etc)
         and moving that data to a "status" property on each contributor.
-        
+
         Fix script that generates webkit.org/team.
 
         * wp-content/themes/webkit/team.php:
@@ -561,7 +1187,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=162845
 
         Reviewed by Geoffrey Garen.
-        
+
         Added documentation for the Traps flag, and factored out the documentation of the Chill flag
         to a new flags section.
 
@@ -582,7 +1208,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=162692
 
         Reviewed by Keith Miller.
-        
+
         Updated the documentation to talk about Kind and the isChill bit, and to remove
         ChillDiv/ChillMod.
 
@@ -634,7 +1260,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=159391
 
         Reviewed by Saam Barati.
-        
+
         Update some statements about ControlValue (which doesn't exist anymore) and add a blurb
         about EntrySwitch.
 
@@ -682,7 +1308,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=151141
 
         Reviewed by Benjamin Poulain.
-        
+
         Update documentation to reflect Patchpoint's new powers.
 
         * docs/b3/intermediate-representation.html:
@@ -703,7 +1329,7 @@
 
         Reviewed by Timothy Hatcher.
 
-        Added better 404 handling, improved presentation of the 
+        Added better 404 handling, improved presentation of the
         start page and new Apache rewrites for the P1 bug list.
 
         * .htaccess:
@@ -716,7 +1342,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=159359
 
         Reviewed by Timothy Hatcher.
-        
+
         The Open Graph image tag should use the property attribute not
         the itemprop attribute.
 
@@ -901,15 +1527,15 @@
         https://bugs.webkit.org/show_bug.cgi?id=158311
 
         Reviewed by Michael Saboff.
-        
+
         I found typos and fixed them. Also, I clarified some things:
-        
+
         - Is B3 IR platform-agnostic? Sort of. I tried to describe when it is (Values usually behave
           the same way regardless of CPU) and when it isn't (it lets you speak of registers if that's
           what you want to do, for example).
-        
+
         - How does isValidForm really get used? You don't really need to create an Inst to use it.
-        
+
         - Some other incremental improvements to make the docs clearer.
 
         * docs/b3/assembly-intermediate-representation.html:
@@ -928,7 +1554,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=153668
 
         Reviewed by Mark Lam, Saam Barati, and Benjamin Poulain.
-        
+
         Write documentation for Air!
 
         * docs/b3/assembly-intermediate-representation.html:
@@ -1051,18 +1677,18 @@
         Fixed a property access error by removing the lamda function for updates
         https://bugs.webkit.org/show_bug.cgi?id=155989
 
-        * wp-content/plugins/sync-nightly-builds.php: 
+        * wp-content/plugins/sync-nightly-builds.php:
 
 2016-03-29  Jon Davis  <jond@apple.com>
 
         Fixed a context error for Nightly Build sync plugin, tightens layout styles for abovetitle
         https://bugs.webkit.org/show_bug.cgi?id=155989
 
-        Unreviewed fix for the Sync Nightly Builds plugin to work with the older 
+        Unreviewed fix for the Sync Nightly Builds plugin to work with the older
         PHP environment on the server. Quick style adjustments for abovetitle images.
 
-        * wp-content/plugins/sync-nightly-builds.php: 
-        * wp-content/themes/webkit/nightly-archives.php: 
+        * wp-content/plugins/sync-nightly-builds.php:
+        * wp-content/themes/webkit/nightly-archives.php:
         * wp-content/themes/webkit/style.css:
         (article .abovetitle):
 
@@ -2878,7 +3504,7 @@
 
 2014-06-26  Vivek Galatage  <vivek.vg@samsung.com>
 
-        Remove Qt instructions from http://www.webkit.org/building/tools.html 
+        Remove Qt instructions from http://www.webkit.org/building/tools.html
         https://bugs.webkit.org/show_bug.cgi?id=134384
 
         Reviewed by Tim Horton.
@@ -2901,7 +3527,7 @@
 
         Reviewed by Tim Horton.
 
-        * building/build.html: Remove reference to "Platform SDK" which we don't manuall 
+        * building/build.html: Remove reference to "Platform SDK" which we don't manuall
         install anymore (it's part of Visual Studio 2013).
         * building/tools.html: We no longer need QuickTime SDK, QuickTime Player, or
         the DirectX SDK.
@@ -2998,7 +3624,7 @@
 
         Reviewed by Timothy Hatcher.
 
-        Updated demo files with attr refresh to show off selected children changing. 
+        Updated demo files with attr refresh to show off selected children changing.
         Long term fix will be http://webkit.org/b/130883
 
         * blog-files/aria1.0/combobox_with_live_region_status.html:
@@ -3054,7 +3680,7 @@
         Replace "Apple Computer, Inc." with "Apple Inc." in copyright headers
         https://bugs.webkit.org/show_bug.cgi?id=130276
         <rdar://problem/16266927>
-        
+
         Reviewed by Simon Fraser.
 
         * blog/wp-content/textfield_screenshot.jpg:
@@ -3261,7 +3887,7 @@
 
         When the webkit.org/team.html page is accessed over https most browsers report
         Mixed Content error, which is caused by the fact that the contributos.json file
-        is accessed over a plain http connection and not https.     
+        is accessed over a plain http connection and not https.
 
         * team.html:
 
@@ -3948,7 +4574,7 @@
 
         Before you can use the Xcode 4.3.2 command line tools, you must either run
         sudo xcode-select -switch /Applications/Xcode.app or set the environment variable
-        DEVELOPER_DIR to point to the Xcode developer tools directory. 
+        DEVELOPER_DIR to point to the Xcode developer tools directory.
 
         * building/tools.html:
 
@@ -3991,7 +4617,7 @@
         Switch from HTTP to HTTPS for Xcode developer.apple.com hyperlinks
 
         The Debugging and Analyzing Your Code page cannot be viewed at <http://developer.apple.com/library/mac/#documentation/ToolsLanguages/Conceptual/Xcode4UserGuide/Debugging/Debugging.html#//apple_ref/doc/uid/TP40010215-CH3-SW1> (1) as this URL redirects to the Mac OS X Developer Library <https://developer.apple.com/library/mac/navigation/>.
-        Substituting https for http in (1) returns the expected page. 
+        Substituting https for http in (1) returns the expected page.
 
         * building/debug-mac-uiprocess.html:
         * building/debug.html:
@@ -4082,7 +4708,7 @@
         https://bugs.webkit.org/show_bug.cgi?id=76044
 
         Reviewed by Simon Hausmann.
-        
+
         There is no S60.
 
         * index.html:
@@ -4536,7 +5162,7 @@
         Reviewed by Geoffrey Garen.
 
         Bug 46927 - Sunspider 0.9 web site should prominently link to Sunspider 0.9.1
-        Notes: 
+        Notes:
             -Created a new sunspider "landing" page which lists current and previous versions of SunSpider.
             -Edited the .htaccess file to redirect the old pages to the new landing page.
             -This should keep our search engine page rankings effective.
@@ -4544,7 +5170,7 @@
             -This COULD potentially break the SunSpider benchmark.
             -Local testing with relative links seems to function as expected.
             -The .htaccess 301 redirects are UNTESTED.
-            
+
 
         * .htaccess:
         * perf/sunspider: Added.
@@ -4623,7 +5249,7 @@
 
         https://bugs.webkit.org/show_bug.cgi?id=43982
         This js file seems to be a popular script for detecting mobile WebKit but
-        it has a flaw that makes it fail on Android and BlackBerry.  
+        it has a flaw that makes it fail on Android and BlackBerry.
 
         The issue is that it looks for "Mobile/" but Android and BlackBerry
         use "Mobile" with no numbering after it.
@@ -4878,7 +5504,7 @@
         SVG hkern implementation incomplete
         https://bugs.webkit.org/show_bug.cgi?id=38407
 
-        We support hkern now. Mention this in the SVG status page. 
+        We support hkern now. Mention this in the SVG status page.
 
         * projects/svg/status.xml:
 
@@ -5219,7 +5845,7 @@
         Reviewed by Darin Adler.
 
         Removed outdated contact information from bug life cycle page.
-        
+
         https://bugs.webkit.org/show_bug.cgi?id=32494
 
         * quality/lifecycle.html:
@@ -5251,9 +5877,9 @@
         Reviewed by Darin Adler.
 
         Added the "using std::foo" rule to the coding style guidelines.
-        
+
         https://bugs.webkit.org/show_bug.cgi?id=32301
-        
+
         Added to the coding style guidelines the "using std::foo" rule
         checked by the check-webkit-style script.  Also clarified the
         "using" statement guidelines that apply to implementation files.
@@ -5265,11 +5891,11 @@
         Reviewed by Darin Adler.
 
         Refactored web site documentation so that advice to add
-        WebKitTools/Scripts to your shell path does not appear 
+        WebKitTools/Scripts to your shell path does not appear
         on multiple pages.
-        
+
         https://bugs.webkit.org/show_bug.cgi?id=32112
-        
+
         * building/build.html:
         * building/checkout.html:
         * building/run.html:
@@ -5354,7 +5980,7 @@
 
         Reviewed by Darin Adler.
 
-        Added to the WebKit Coding Style Guidelines not to use 
+        Added to the WebKit Coding Style Guidelines not to use
         "using namespace" statements in header files.
 
         * coding/coding-style.html:
@@ -6018,7 +6644,7 @@
 2009-05-27  Maciej Stachowiak  <mjs@apple.com>
 
         Not reviewed, demo content.
-        
+
         - Add doctype to Calendar demo.
 
         * demos/calendar/Calendar.html:
@@ -6026,7 +6652,7 @@
 2009-05-27  Maciej Stachowiak  <mjs@apple.com>
 
         Not reviewed, demo content.
-        
+
         - add Calendar demo.
 
         * demos/calendar: Added.
@@ -6069,7 +6695,7 @@
 2009-04-17  Simon Fraser  <simon.fraser@apple.com>
 
         Reviewed by Steve Falkenburg
-        
+
         Fix the link for setting the Platform SDK paths in the Windows instructions.
 
         * building/build.html:
@@ -6211,10 +6837,10 @@
 2008-11-17  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Sam Weinig and Antti Koivisto.
-        
-        Clarified the last coding style rule, which was a baffling in its 
+
+        Clarified the last coding style rule, which was a baffling in its
         initial form.
-        
+
         (Now let's see if our code ever starts following this rule!)
 
         * coding/coding-style.html:
@@ -6230,7 +6856,7 @@
 2008-11-11  Simon Fraser  <simon.fraser@apple.com>
 
         Update leaves animation sample.
-        
+
         * blog-files/leaves/index.html:
         * blog-files/leaves/leaves.css:
 
@@ -6309,7 +6935,7 @@
 2008-09-25  Maciej Stachowiak  <mjs@apple.com>
 
         Not reviewed.
-        
+
         - add some screenshots.
 
         * blog-files/acid3-screenshot.png: Added.
@@ -6518,7 +7144,7 @@
 2008-06-25  Maciej Stachowiak  <mjs@apple.com>
 
         Not reviewed, web site fix.
-        
+
         Remove blank lines in an attempt to fix feeds.
 
         * blog/wp-content/themes/webkit/index.php:
@@ -6543,7 +7169,7 @@
 2008-06-10  Maciej Stachowiak  <mjs@apple.com>
 
         Not reviewed.
-        
+
         - tweak newly added markup.
 
         * blog/wp-content/themes/webkit/header.php:
@@ -6553,7 +7179,7 @@
         Rubber stamped by Adele.
 
         - add short title and multisize icon
-        
+
         * blog/wp-content/themes/webkit/header.php:
         * images/surfin-safari.icns: Added.
 
@@ -6623,7 +7249,7 @@
         Reviewed by Jess.
 
         Add manifest MIME type.
-        
+
         * .htaccess:
 
 2008-05-14  Anders Carlsson  <andersca@apple.com>
@@ -6662,7 +7288,7 @@
 2008-05-12  Maciej Stachowiak  <mjs@apple.com>
 
         Not reviewed - new demo.
-        
+
         Added a demo of CSS Transforms and Transitions.
 
         * demos/transitions-and-transforms: Added.
@@ -6694,7 +7320,7 @@
 2008-04-21  Dean Jackson  <dino@apple.com>
 
         Updated CSS Visual Effects proposals.
-        
+
         CSS Animations
 
         * described simplified sandwich model (that animations have no effect
@@ -6723,7 +7349,7 @@
 
 2008-04-08  Dean Jackson  <dino@apple.com>
 
-        Add some updated proposals for CSS specifications, such as 
+        Add some updated proposals for CSS specifications, such as
         Transforms and Transitions which are already implemented in TOT.
 
         * specs/CSSVisualEffects: Added.
@@ -6735,7 +7361,7 @@
 
         Add some images that were missed in the WordPress 2.5 upgrade.
 
-        * blog/: 
+        * blog/:
 
 2008-03-31  Mark Rowe  <mrowe@apple.com>
 
@@ -6768,13 +7394,13 @@
 2008-03-23  Eric Seidel  <eric@webkit.org>
 
         Reviewed by Sam.
-        
+
         Make our SVG status document slightly less inaccurate.
 
         * projects/svg/status.xml:
 
 2008-03-21  Antti Koivisto  <antti@apple.com>
-        
+
         Add some images for a blog post.
 
         * blog-files/wsj-nopreload.png: Added.
@@ -6879,8 +7505,8 @@
 2008-02-02  David Smith  <catfish.man@gmail.com>
 
         Reviewed by Oliver.
-        
-        Update the selector benchmark/test now that WebKit supports :only-child and :last-child; 
+
+        Update the selector benchmark/test now that WebKit supports :only-child and :last-child;
         Unfortunately, the javascript libraries don't appear to implement :*-of-type correctly, so that one remains disabled for now.
 
         * perf/slickspeed/header.html: Typo fix, and updated the note to clarify that WebKit is no longer the only implementation causing us to leave some selectors disabled.
@@ -6902,7 +7528,7 @@
 2008-01-21  David Smith  <catfish.man@gmail.com>
 
         Reviewed by Darin Adler.
-        
+
         Added a modified version of the MooTools SlickSpeed Selector Test/Benchmark to show off querySelectorAll. MIT licensed.
 
         * perf/slickspeed: Added.
@@ -6928,7 +7554,7 @@
 2008-01-17  Steve Falkenburg  <sfalken@apple.com>
 
         Added Vista crash logging information.
-        
+
         Reviewed by Adam.
 
         * quality/crashlogs.html:
@@ -6998,7 +7624,7 @@
 2007-12-18  Antti Koivisto  <antti@apple.com>
 
         Reviewed by Darin and Steve.
-        
+
         Add instructions to install the QuickTime SDK for Windows.
 
         * building/tools.html:
@@ -7013,7 +7639,7 @@
 
         Correct link to Visual Studio Express 2005.
         Old link points to 2008.
-        
+
         Reviewed by Mark.
 
         * building/tools.html:
@@ -7021,7 +7647,7 @@
 2007-12-17  Maciej Stachowiak  <mjs@apple.com>
 
         Reviewed by Eric.
-        
+
         - work around IE layout bugs
 
         * perf/sunspider-0.9/sunspider.css:
@@ -7029,7 +7655,7 @@
 2007-12-17  Maciej Stachowiak  <mjs@apple.com>
 
         Reviewed by Mark.
-        
+
         - fix compare feature
 
         * perf/sunspider-0.9/sunspider-results.html:
@@ -7037,7 +7663,7 @@
 2007-12-17  Maciej Stachowiak  <mjs@apple.com>
 
         Rubber stamped by Mark.
-        
+
         - Add a copy of SunSpider 0.9 to the site
 
         * perf: Added.
@@ -7164,7 +7790,7 @@
 2007-11-30  Maciej Stachowiak  <mjs@apple.com>
 
         Reviewed by Bertrand.
-        
+
         New commit and review policy.
 
         * coding/commit-review-policy.html: Added.
@@ -7206,7 +7832,7 @@
 2007-11-09  Antti Koivisto  <antti@apple.com>
 
         Rubber stamped by bdash.
-        
+
         Add directory for blog resources (and one image).
 
         * blog-files: Added.
@@ -7363,9 +7989,9 @@
 2007-10-19  Anders Carlsson  <andersca@apple.com>
 
         Reviewed by Brady.
-        
+
         Make example actually work.
-        
+
         * misc/DatabaseExample.html:
 
 2007-10-19  Anders Carlsson  <andersca@apple.com>
@@ -7373,7 +7999,7 @@
         Reviewed by Adam.
 
         Update example.
-        
+
         * misc/DatabaseExample.html:
 
 2007-10-19  Brady Eidson  <beidson@apple.com>
@@ -7408,7 +8034,7 @@
 2007-09-23  Maciej Stachowiak  <mjs@apple.com>
 
         Reviewed by Mark Rowe.
-        
+
         - Limit custom list bullets to ordered lists only
 
         * css/blue.css:
@@ -7458,7 +8084,7 @@
 2007-07-25  Maciej Stachowiak  <mjs@apple.com>
 
         Rubber stamped by Adam.
-        
+
         Added WebKit Project Goals.
 
         * nav.inc: added a nav link.
@@ -7544,9 +8170,9 @@
         * building/tools.html:
 
 2007-06-12  Dave Hyatt  <hyatt@apple.com>
-  
+
         Add Windows checkout/build instructions to the website.
- 
+
         * building/build.html:
         * building/checkout.html:
         * building/debug.html:
@@ -7559,7 +8185,7 @@
 2007-06-10  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Beth Dakin.
-        
+
         Cleaned up formatting on the check out page.
 
         * building/checkout.html:
@@ -7800,7 +8426,7 @@
 2007-01-10  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Beth Dakin.
-        
+
         Updated coding style guidelines to cover a lot of stuff previously absent.
 
         * coding/coding-style.html:
@@ -7933,7 +8559,7 @@
 2006-10-13  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Beth.
-        
+
         Split build, run, and debug steps into separate pages. Darin recommended
         this a while back.
 
@@ -8024,7 +8650,7 @@
 
         http://bugs.webkit.org/show_bug.cgi?id=8220
         Add the favicon.ico to the site.
-        Notice, users of shipping Safari won't see the updated favicon 
+        Notice, users of shipping Safari won't see the updated favicon
         unless they clear their icon cache - ToT users can manually reload
         the site and force the refresh  ;)
 
@@ -8054,13 +8680,13 @@
         Bug 9302: WebKit nightly download image says ~2.5 MB when
         universal binaries make it ~5.0 MB
         http://bugs.webkit.org/show_bug.cgi?id=9302
-        
+
         * images/download.png:
 
 2006-08-21  Timothy Hatcher  <timothy@apple.com>
 
         Stamped by Maciej.
-        
+
         Changes many opendarwin.org links to the proper webkit.org version.
 
         * blog/wp-content/themes/webkit/sidebar.php:
@@ -8094,7 +8720,7 @@
 2006-08-02  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by TimO.
-        
+
         Tweaked the build instructions a bit.
 
         * building/build.html:
@@ -8107,7 +8733,7 @@
 2006-08-01  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Beth.
-        
+
         - Added instructions for debugging in Xcode
 
         * building/build-window.png: Added.
@@ -8118,7 +8744,7 @@
 2006-07-30  Geoffrey Garen  <ggaren@apple.com>
 
         Reviewed by Beth.
-        
+
         - Tweaked the checkout and build instructions to make them simpler and
         clearer.
 
@@ -8140,7 +8766,7 @@
 
         * blog/wp-content/themes/webkit/sidebar.php:
          Add link to Wiki in the navigation menu here too.
-         
+
 2006-06-21  Joost de Valk  <jdevalk@opendarwin.org>
 
         Reviewed and landed by Anders.
@@ -8155,7 +8781,7 @@
 
         Improve wording of first paragraph of webkit site.
 
-        * index.html: 
+        * index.html:
 
 2006-06-08  Timothy Hatcher  <timothy@apple.com>
 
@@ -8230,7 +8856,7 @@
 
         Reviewed by ggaren.
 
-        * blog/wp-config.php: passwords and users don't belong in SVN. 
+        * blog/wp-config.php: passwords and users don't belong in SVN.
 
 2006-04-16  Joost de Valk  <jdevalk@opendarwin.org>
 
@@ -8260,7 +8886,7 @@
 
 2006-04-10  Geoffrey Garen  <ggaren@apple.com>
 
-        Reviewed by Beth. 
+        Reviewed by Beth.
 
         * projects/compat/hitlist.html: updated dates
 
@@ -8301,7 +8927,7 @@
         Reviewed by Darin Adler.
 
         Change "Mail.app" to "Mail".
-        
+
         * index.html:
         * projects/editing/index.html:
 
@@ -8325,7 +8951,7 @@
 
         Doing penance after being set straight by Joost.
 
-        * projects/compat/hitlist.html: Remove slur against QA. My humblest 
+        * projects/compat/hitlist.html: Remove slur against QA. My humblest
         apologies.
 
 2006-03-06  Geoffrey Garen  <ggaren@apple.com>
@@ -8383,7 +9009,7 @@
         Reviewed by Darin Adler.
 
         Fixed Bugzilla URL's
-                
+
         * projects/forms/index.html:
         * projects/html/index.html:
         * projects/xslt/index.html:
@@ -8394,7 +9020,7 @@
 
         Made line-height global instead of just for p
 
-        Editing: 
+        Editing:
         fixed bugzilla link, added starting <p> to first paragraph
         removed paragraph about tab-stops
 
@@ -8416,7 +9042,7 @@
 2006-02-16  Timothy Hatcher  <timothy@apple.com>
 
         Reviewed by Maciej.
-        
+
         Fixes PNGs with 8bit alpha on IE.
 
         * css/ie.css: attach the pngbehavior.htc to img tags
@@ -8429,7 +9055,7 @@
         Changed by Darin on my machine.
 
         * coding/coding-style.html: Re-merged in changes Darin made to the guidelines
-        a few days back. 
+        a few days back.
 
 2006-02-16  Joost de Valk  <jdevalk@opendarwin.org>
 
@@ -8586,7 +9212,7 @@ bold in single view.
 
         Reviewed by eseidel.
 
-        Added a little piece of text to the page about reductions, pointing to the bugzilla page. 
+        Added a little piece of text to the page about reductions, pointing to the bugzilla page.
 
         Changed "Sign up for a" into "Create a" bugzilla account.
 
@@ -8599,9 +9225,9 @@ bold in single view.
 
         Added a Bugzilla page, which contains information about creating a Bugzilla account, what editbugs and canconfirm
         bits are and how to get them.
-        
+
         Changed link in reporting page to link to Bugzilla page.
-        
+
         * quality/bugzilla.html: Added.
         * quality/reporting.html:
 
@@ -8671,17 +9297,17 @@ bold in single view.
 2006-02-09  Joost de Valk  <jdevalk@opendarwin.org>
 
         Reviewed by Darin Adler. Landed by ap.
-        
+
         - fixes from http://bugs.webkit.org/show_bug.cgi?id=4871
         "Reporting Bugs" Page Should Prompt User To Test In Newest Version of WebKit
-        
+
         * quality/reporting.html:
         * webkitdev.css: Added margin-bottom for li.
 
 2006-02-07  Joost de Valk  <jdevalk@opendarwin.org>
 
         Reviewed by Darin Adler. Landed by Maciej.
-        
+
         - Several fixes to the site
         http://bugs.webkit.org/show_bug.cgi?id=7105
 
@@ -8710,5 +9336,5 @@ bold in single view.
 2006-02-05  Eric Seidel  <eseidel@apple.com>
 
         Adding ChangeLog :)
-        
+
         * ChangeLog: Added.

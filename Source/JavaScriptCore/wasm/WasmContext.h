@@ -27,37 +27,18 @@
 
 #if ENABLE(WEBASSEMBLY)
 
-#include "JSWebAssemblyInstance.h"
-#include "Options.h"
+namespace JSC { namespace Wasm {
 
-namespace JSC {
+class Instance;
 
-class VM;
+struct Context {
+    Instance* instance { nullptr };
 
-namespace Wasm {
+    Instance* load() const;
+    void store(Instance*, void* softStackLimit);
 
-// FIXME: We might want this to be something else at some point:
-// https://bugs.webkit.org/show_bug.cgi?id=170260
-using Context = JSWebAssemblyInstance;
-
-inline bool useFastTLS()
-{
-#if ENABLE(FAST_TLS_JIT)
-    return Options::useWebAssemblyFastTLS();
-#else
-    return false;
-#endif
-}
-
-inline bool useFastTLSForContext()
-{
-    if (useFastTLS())
-        return Options::useFastTLSForWasmContext();
-    return false;
-}
-
-Context* loadContext(VM&);
-void storeContext(VM&, Context*);
+    static bool useFastTLS();
+};
 
 } } // namespace JSC::Wasm
 

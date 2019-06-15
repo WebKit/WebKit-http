@@ -8,14 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/transport_feedback.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/transport_feedback.h"
 
 #include <limits>
 #include <memory>
+#include <utility>
 
-#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
-#include "webrtc/test/gmock.h"
-#include "webrtc/test/gtest.h"
+#include "modules/rtp_rtcp/source/byte_io.h"
+#include "test/gmock.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace {
@@ -78,8 +79,8 @@ class FeedbackTester {
     ASSERT_TRUE(feedback_->IsConsistent());
     serialized_ = feedback_->Build();
     VerifyInternal();
-    feedback_ = TransportFeedback::ParseFrom(serialized_.data(),
-                                             serialized_.size());
+    feedback_ =
+        TransportFeedback::ParseFrom(serialized_.data(), serialized_.size());
     ASSERT_TRUE(feedback_->IsConsistent());
     ASSERT_NE(nullptr, feedback_.get());
     VerifyInternal();
@@ -208,10 +209,7 @@ TEST(RtcpPacketTest, TransportFeedback_TwoBitVectorFull) {
 TEST(RtcpPacketTest, TransportFeedback_LargeAndNegativeDeltas) {
   const uint16_t kReceived[] = {1, 2, 6, 7, 8};
   const int64_t kReceiveTimes[] = {
-      2000,
-      1000,
-      4000,
-      3000,
+      2000, 1000, 4000, 3000,
       3000 + TransportFeedback::kDeltaScaleFactor * (1 << 8)};
   const size_t kLength = sizeof(kReceived) / sizeof(uint16_t);
   const size_t kExpectedSizeBytes =
@@ -464,6 +462,32 @@ TEST(RtcpPacketTest, TransportFeedback_CorrectlySplitsVectorChunks) {
                                      serialized_packet.size());
     EXPECT_TRUE(deserialized_packet.get() != nullptr);
   }
+}
+
+TEST(RtcpPacketTest, TransportFeedback_MoveConstructor) {
+  const int kSamples = 100;
+  const int64_t kDelta = TransportFeedback::kDeltaScaleFactor;
+  const uint16_t kBaseSeqNo = 7531;
+  const int64_t kBaseTimestampUs = 123456789;
+  const uint8_t kFeedbackSeqNo = 90;
+
+  TransportFeedback feedback;
+  feedback.SetBase(kBaseSeqNo, kBaseTimestampUs);
+  feedback.SetFeedbackSequenceNumber(kFeedbackSeqNo);
+  for (int i = 0; i < kSamples; ++i) {
+    feedback.AddReceivedPacket(kBaseSeqNo + i, kBaseTimestampUs + i * kDelta);
+  }
+  EXPECT_TRUE(feedback.IsConsistent());
+
+  TransportFeedback feedback_copy(feedback);
+  EXPECT_TRUE(feedback_copy.IsConsistent());
+  EXPECT_TRUE(feedback.IsConsistent());
+  EXPECT_EQ(feedback_copy.Build(), feedback.Build());
+
+  TransportFeedback moved(std::move(feedback));
+  EXPECT_TRUE(moved.IsConsistent());
+  EXPECT_TRUE(feedback.IsConsistent());
+  EXPECT_EQ(moved.Build(), feedback_copy.Build());
 }
 
 }  // namespace

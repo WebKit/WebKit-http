@@ -29,6 +29,8 @@
 #include "MessageReceiverMap.h"
 #include "ProcessLauncher.h"
 
+#include <WebCore/Process.h>
+#include <wtf/ProcessID.h>
 #include <wtf/SystemTracing.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -72,12 +74,16 @@ public:
     };
     State state() const;
 
-    pid_t processIdentifier() const { return m_processLauncher ? m_processLauncher->processIdentifier() : 0; }
+    ProcessID processIdentifier() const { return m_processLauncher ? m_processLauncher->processIdentifier() : 0; }
 
     bool canSendMessage() const { return state() != State::Terminated;}
     bool sendMessage(std::unique_ptr<IPC::Encoder>, OptionSet<IPC::SendOption>);
 
     void shutDownProcess();
+
+    WebCore::ProcessIdentifier coreProcessIdentifier() const { return m_processIdentifier; }
+
+    void setProcessSuppressionEnabled(bool);
 
 protected:
     // ProcessLauncher::Client
@@ -97,6 +103,7 @@ private:
     RefPtr<IPC::Connection> m_connection;
     IPC::MessageReceiverMap m_messageReceiverMap;
     bool m_alwaysRunsAtBackgroundPriority { false };
+    WebCore::ProcessIdentifier m_processIdentifier { generateObjectIdentifier<WebCore::ProcessIdentifierType>() };
 };
 
 template<typename T>

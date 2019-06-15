@@ -25,38 +25,31 @@
 
 #pragma once
 
-#include "WebGPUSize.h"
-
 #if ENABLE(WEBGPU)
 
-#include "WebGPUObject.h"
-
-#include <wtf/Vector.h>
+#include "GPUComputeCommandEncoder.h"
+#include "WebGPUSize.h"
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class GPUComputeCommandEncoder;
 class WebGPUBuffer;
-class WebGPUCommandBuffer;
 class WebGPUComputePipelineState;
-class WebGPURenderingContext;
 
-class WebGPUComputeCommandEncoder : public WebGPUObject {
-
+class WebGPUComputeCommandEncoder : public RefCounted<WebGPUComputeCommandEncoder> {
 public:
-    virtual ~WebGPUComputeCommandEncoder();
-    static Ref<WebGPUComputeCommandEncoder> create(WebGPURenderingContext*, WebGPUCommandBuffer*);
+    static Ref<WebGPUComputeCommandEncoder> create(GPUComputeCommandEncoder&&);
 
     void setComputePipelineState(WebGPUComputePipelineState&);
     void setBuffer(WebGPUBuffer&, unsigned, unsigned);
     void dispatch(WebGPUSize, WebGPUSize);
     void endEncoding();
 
-    GPUComputeCommandEncoder* computeCommandEncoder() { return m_computeCommandEncoder.get(); }
-
 private:
-    WebGPUComputeCommandEncoder(WebGPURenderingContext*, WebGPUCommandBuffer*);
-    RefPtr<GPUComputeCommandEncoder> m_computeCommandEncoder;
+    explicit WebGPUComputeCommandEncoder(GPUComputeCommandEncoder&&);
+
+    GPUComputeCommandEncoder m_encoder;
 };
 
 } // namespace WebCore

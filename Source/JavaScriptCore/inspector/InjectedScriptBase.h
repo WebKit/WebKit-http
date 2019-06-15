@@ -33,7 +33,7 @@
 
 #include "InspectorEnvironment.h"
 #include "InspectorProtocolObjects.h"
-#include "bindings/ScriptObject.h"
+#include "ScriptObject.h"
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
 
@@ -63,13 +63,13 @@ protected:
 
     const Deprecated::ScriptObject& injectedScriptObject() const;
     JSC::JSValue callFunctionWithEvalEnabled(Deprecated::ScriptFunctionCall&, bool& hadException) const;
-    void makeCall(Deprecated::ScriptFunctionCall&, RefPtr<InspectorValue>* result);
-    void makeEvalCall(ErrorString&, Deprecated::ScriptFunctionCall&, RefPtr<Protocol::Runtime::RemoteObject>* result, Protocol::OptOutput<bool>* wasThrown, Protocol::OptOutput<int>* savedResult = nullptr);
+    Ref<JSON::Value> makeCall(Deprecated::ScriptFunctionCall&);
+    void makeEvalCall(ErrorString&, Deprecated::ScriptFunctionCall&, RefPtr<Protocol::Runtime::RemoteObject>& resultObject, bool& wasThrown, std::optional<int>& savedResultIndex);
 
 private:
     String m_name;
     Deprecated::ScriptObject m_injectedScriptObject;
-    InspectorEnvironment* m_environment;
+    InspectorEnvironment* m_environment { nullptr };
 };
 
 } // namespace Inspector

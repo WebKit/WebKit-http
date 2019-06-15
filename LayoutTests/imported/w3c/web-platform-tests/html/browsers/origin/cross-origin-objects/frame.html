@@ -6,6 +6,10 @@
   // properly ignored cross-origin.
   window.frames = "override";
 
+  // Also add a |then| property to test that it doesn't get exposed.
+  window.then = "something";
+  window.location.then = "something-else";
+
   // If we get a postMessage, we grab references to everything and set
   // document.domain to trim off our topmost subdomain.
   window.onmessage = function(evt) {
@@ -35,8 +39,8 @@
 </script>
 </head>
 <body>
-  <!--  Two subframes to give us some indexed properties  -->
+  <!-- Two subframes to give us some indexed properties -->
   <iframe></iframe>
-  <iframe></iframe>
+  <iframe name=donotleakme></iframe><!-- "donotleakme" is excluded as cross-origin named property due to [[HideFromKeys]] -->
 </body>
 </html>

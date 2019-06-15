@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,8 @@
 
 #import "ArgumentCodersCF.h"
 #import "WebCoreArgumentCoders.h"
-#import <WebCore/DataDetectorsCoreSPI.h>
+#import <pal/spi/cocoa/DataDetectorsCoreSPI.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(DataDetectorsCore)
@@ -60,6 +61,9 @@ void InteractionInformationAtPosition::encode(IPC::Encoder& encoder) const
     encoder << title;
     encoder << idAttribute;
     encoder << bounds;
+#if PLATFORM(IOSMAC)
+    encoder << caretRect;
+#endif
     encoder << textBefore;
     encoder << textAfter;
     encoder << linkIndicator;
@@ -72,14 +76,14 @@ void InteractionInformationAtPosition::encode(IPC::Encoder& encoder) const
     encoder << isDataDetectorLink;
     if (isDataDetectorLink) {
         encoder << dataDetectorIdentifier;
-        RetainPtr<NSMutableData> data = adoptNS([[NSMutableData alloc] init]);
-        RetainPtr<NSKeyedArchiver> archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-        [archiver setRequiresSecureCoding:YES];
+        auto archiver = secureArchiver();
         [archiver encodeObject:dataDetectorResults.get() forKey:@"dataDetectorResults"];
-        [archiver finishEncoding];
-        
-        IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));        
+
+        IPC::encode(encoder, reinterpret_cast<CFDataRef>(archiver.get().encodedData));
     }
+#endif
+#if ENABLE(DATALIST_ELEMENT)
+    encoder << preventTextInteraction;
 #endif
 }
 
@@ -137,6 +141,11 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
     
     if (!decoder.decode(result.bounds))
         return false;
+    
+#if PLATFORM(IOSMAC)
+    if (!decoder.decode(result.caretRect))
+        return false;
+#endif
 
     if (!decoder.decode(result.textBefore))
         return false;
@@ -144,8 +153,11 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
     if (!decoder.decode(result.textAfter))
         return false;
     
-    if (!decoder.decode(result.linkIndicator))
+    std::optional<WebCore::TextIndicatorData> linkIndicator;
+    decoder >> linkIndicator;
+    if (!linkIndicator)
         return false;
+    result.linkIndicator = WTFMove(*linkIndicator);
 
     ShareableBitmap::Handle handle;
     if (!decoder.decode(handle))
@@ -165,8 +177,7 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
         if (!IPC::decode(decoder, data))
             return false;
         
-        RetainPtr<NSKeyedUnarchiver> unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:(NSData *)data.get()]);
-        [unarchiver setRequiresSecureCoding:YES];
+        auto unarchiver = secureUnarchiverFromData((NSData *)data.get());
         @try {
             result.dataDetectorResults = [unarchiver decodeObjectOfClasses:[NSSet setWithArray:@[ [NSArray class], getDDScannerResultClass()] ] forKey:@"dataDetectorResults"];
         } @catch (NSException *exception) {
@@ -176,6 +187,11 @@ bool InteractionInformationAtPosition::decode(IPC::Decoder& decoder, Interaction
         
         [unarchiver finishDecoding];
     }
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    if (!decoder.decode(result.preventTextInteraction))
+        return false;
 #endif
 
     return true;

@@ -26,9 +26,8 @@
 
 #pragma once
 
+#include "StoredCredentialsPolicy.h"
 #include "URLHash.h"
-#include "ResourceHandleTypes.h"
-#include <chrono>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/StringHash.h>
@@ -41,36 +40,33 @@ class ResourceResponse;
 class CrossOriginPreflightResultCacheItem {
     WTF_MAKE_NONCOPYABLE(CrossOriginPreflightResultCacheItem); WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit CrossOriginPreflightResultCacheItem(StoredCredentials credentials)
-        : m_credentials(credentials)
+    explicit CrossOriginPreflightResultCacheItem(StoredCredentialsPolicy storedCredentialsPolicy)
+        : m_storedCredentialsPolicy(storedCredentialsPolicy)
     {
     }
 
-    bool parse(const ResourceResponse&, String& errorDescription);
-    bool allowsCrossOriginMethod(const String&, String& errorDescription) const;
-    bool allowsCrossOriginHeaders(const HTTPHeaderMap&, String& errorDescription) const;
-    bool allowsRequest(StoredCredentials, const String& method, const HTTPHeaderMap& requestHeaders) const;
+    WEBCORE_EXPORT bool parse(const ResourceResponse&, String& errorDescription);
+    WEBCORE_EXPORT bool allowsCrossOriginMethod(const String&, String& errorDescription) const;
+    WEBCORE_EXPORT bool allowsCrossOriginHeaders(const HTTPHeaderMap&, String& errorDescription) const;
+    bool allowsRequest(StoredCredentialsPolicy, const String& method, const HTTPHeaderMap& requestHeaders) const;
 
 private:
     // FIXME: A better solution to holding onto the absolute expiration time might be
     // to start a timer for the expiration delta that removes this from the cache when
     // it fires.
-    std::chrono::steady_clock::time_point m_absoluteExpiryTime;
-    StoredCredentials m_credentials;
+    MonotonicTime m_absoluteExpiryTime;
+    StoredCredentialsPolicy m_storedCredentialsPolicy;
     HashSet<String> m_methods;
     HashSet<String, ASCIICaseInsensitiveHash> m_headers;
 };
 
 class CrossOriginPreflightResultCache {
     WTF_MAKE_NONCOPYABLE(CrossOriginPreflightResultCache); WTF_MAKE_FAST_ALLOCATED;
-
 public:
     WEBCORE_EXPORT static CrossOriginPreflightResultCache& singleton();
-
-    void appendEntry(const String& origin, const URL&, std::unique_ptr<CrossOriginPreflightResultCacheItem>);
-    bool canSkipPreflight(const String& origin, const URL&, StoredCredentials, const String& method, const HTTPHeaderMap& requestHeaders);
-
-    WEBCORE_EXPORT void empty();
+    WEBCORE_EXPORT void appendEntry(const String& origin, const URL&, std::unique_ptr<CrossOriginPreflightResultCacheItem>);
+    WEBCORE_EXPORT bool canSkipPreflight(const String& origin, const URL&, StoredCredentialsPolicy, const String& method, const HTTPHeaderMap& requestHeaders);
+    WEBCORE_EXPORT void clear();
 
 private:
     friend NeverDestroyed<CrossOriginPreflightResultCache>;

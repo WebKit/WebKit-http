@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 
 #import "WebNetscapePluginView.h"
 
-#import "QuickDrawCompatibility.h"
 #import "WebDataSourceInternal.h"
 #import "WebDefaultUIDelegate.h"
 #import "WebFrameInternal.h"
@@ -38,7 +37,6 @@
 #import "WebKitErrorsPrivate.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
-#import "WebKitSystemInterface.h"
 #import "WebNSDataExtras.h"
 #import "WebNSDictionaryExtras.h"
 #import "WebNSObjectExtras.h"
@@ -53,6 +51,8 @@
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
 #import <Carbon/Carbon.h>
+#import <JavaScriptCore/InitializeThreading.h>
+#import <JavaScriptCore/JSLock.h>
 #import <WebCore/CommonVM.h>
 #import <WebCore/CookieJar.h>
 #import <WebCore/DocumentLoader.h>
@@ -68,15 +68,14 @@
 #import <WebCore/ScriptController.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/UserGestureIndicator.h>
-#import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
 #import <WebCore/npruntime_impl.h>
 #import <WebCore/runtime_root.h>
 #import <WebKitLegacy/DOMPrivate.h>
 #import <WebKitLegacy/WebUIDelegate.h>
 #import <objc/runtime.h>
-#import <runtime/InitializeThreading.h>
-#import <runtime/JSLock.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/mac/QuickDrawSPI.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/RunLoop.h>
@@ -193,7 +192,7 @@ typedef struct {
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
-    WKSendUserChangeNotifications();
+    sendUserChangeNotifications();
 }
 
 // MARK: EVENTS
@@ -378,11 +377,14 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
             RgnHandle clipRegion = NewRgn();
             qdPortState->clipRegion = clipRegion;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             CGContextRef currentContext = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
-            if (currentContext && WKCGContextIsBitmapContext(currentContext)) {
-                // We use WKCGContextIsBitmapContext here, because if we just called CGBitmapContextGetData
-                // on any context, we'd log to the console every time. But even if WKCGContextIsBitmapContext
-                // returns true, it still might not be a context we need to create a GWorld for; for example
+#pragma clang diagnostic pop
+            if (currentContext && CGContextGetType(currentContext) == kCGContextTypeBitmap) {
+                // We check for kCGContextTypeBitmap here, because if we just called CGBitmapContextGetData
+                // on any context, we'd log to the console every time. But even if currentContext is a
+                // kCGContextTypeBitmap, it still might not be a context we need to create a GWorld for; for example
                 // transparency layers will return true, but return 0 for CGBitmapContextGetData.
                 void* offscreenData = CGBitmapContextGetData(currentContext);
                 if (offscreenData) {
@@ -501,7 +503,10 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
             
             ASSERT([NSView focusView] == self);
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             CGContextRef context = static_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]);
+#pragma clang diagnostic pop
 
             PortState_CG *cgPortState = (PortState_CG *)malloc(sizeof(PortState_CG));
             portState = (PortState)cgPortState;
@@ -529,7 +534,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
                 NSInteger count;
                 [opaqueAncestor getRectsBeingDrawn:&dirtyRects count:&count];
                 Vector<CGRect, 16> convertedDirtyRects;
-                convertedDirtyRects.resize(count);
+                convertedDirtyRects.grow(count);
                 for (int i = 0; i < count; ++i)
                     reinterpret_cast<NSRect&>(convertedDirtyRects[i]) = [self convertRect:dirtyRects[i] fromView:opaqueAncestor];
                 CGContextClipToRects(context, convertedDirtyRects.data(), count);
@@ -690,7 +695,10 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 {
     ASSERT(_eventHandler);
     
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CGContextRef context = static_cast<CGContextRef>([[NSGraphicsContext currentContext] graphicsPort]);
+#pragma clang diagnostic pop
     _eventHandler->drawRect(context, rect);
 }
 
@@ -915,7 +923,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     CGrafPtr port = GetWindowPort(windowRef);
     ::Rect bounds;
     GetPortBounds(port, &bounds);
-    WKCallDrawingNotification(port, &bounds);
+    CallDrawingNotifications(port, &bounds, kBitsProc);
 #endif /* NP_NO_QUICKDRAW */
 }
 
@@ -1090,7 +1098,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
                 // FIXME: This code can be shared between WebHostedNetscapePluginView and WebNetscapePluginView.
                 // Since this layer isn't going to be inserted into a view, we need to create another layer and flip its geometry
                 // in order to get the coordinate system right.
-                RetainPtr<CALayer> realPluginLayer = adoptNS(_pluginLayer.leakRef());
+                RetainPtr<CALayer> realPluginLayer = WTFMove(_pluginLayer);
                 
                 _pluginLayer = adoptNS([[CALayer alloc] init]);
                 _pluginLayer.get().bounds = realPluginLayer.get().bounds;
@@ -1173,9 +1181,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     // To stop active streams it's necessary to invoke stop() on a copy 
     // of streams. This is because calling WebNetscapePluginStream::stop() also has the side effect
     // of removing a stream from this hash set.
-    Vector<RefPtr<WebNetscapePluginStream>> streamsCopy;
-    copyToVector(streams, streamsCopy);
-    for (auto& stream: streamsCopy)
+    for (auto& stream : copyToVector(streams))
         stream->stop();
 
     for (WebFrame *frame in [_pendingFrameLoads keyEnumerator])
@@ -1332,7 +1338,10 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
         if (printedPluginBitmap) {
             // Flip the bitmap before drawing because the QuickDraw port is flipped relative
             // to this view.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             CGContextRef cgContext = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+#pragma clang diagnostic pop
             CGContextSaveGState(cgContext);
             NSRect bounds = [self bounds];
             CGContextTranslateCTM(cgContext, 0.0f, NSHeight(bounds));
@@ -1715,19 +1724,18 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 
     if (file) {
         // If we're posting a file, buf is either a file URL or a path to the file.
-        NSString *bufString = (NSString *)CFStringCreateWithCString(kCFAllocatorDefault, buf, kCFStringEncodingWindowsLatin1);
+        auto bufString = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, buf, kCFStringEncodingWindowsLatin1));
         if (!bufString) {
             return NPERR_INVALID_PARAM;
         }
-        NSURL *fileURL = [NSURL _web_URLWithDataAsString:bufString];
+        NSURL *fileURL = [NSURL _web_URLWithDataAsString:(__bridge NSString *)bufString.get()];
         NSString *path;
         if ([fileURL isFileURL]) {
             path = [fileURL path];
         } else {
-            path = bufString;
+            path = (__bridge NSString *)bufString.get();
         }
         postData = [NSData dataWithContentsOfFile:path];
-        CFRelease(bufString);
         if (!postData) {
             return NPERR_FILE_NOT_FOUND;
         }
@@ -1857,7 +1865,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     
     LOG(Plugins, "NPN_Status: %@", status);
     WebView *wv = [self webView];
-    [[wv _UIDelegateForwarder] webView:wv setStatusText:(NSString *)status];
+    [[wv _UIDelegateForwarder] webView:wv setStatusText:(__bridge NSString *)status];
     CFRelease(status);
 }
 
@@ -2111,7 +2119,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     if (!currentEvent)
         return NPERR_GENERIC_ERROR;
     
-    [NSMenu popUpContextMenu:(NSMenu *)menu withEvent:currentEvent forView:self];
+    [NSMenu popUpContextMenu:(__bridge NSMenu *)menu withEvent:currentEvent forView:self];
     return NPERR_NO_ERROR;
 }
 
@@ -2153,7 +2161,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
             if (!URL)
                 break;
 
-            Vector<ProxyServer> proxyServers = proxyServersForURL(URL, 0);
+            Vector<ProxyServer> proxyServers = proxyServersForURL(URL);
             CString proxiesUTF8 = toString(proxyServers).utf8();
             
             *value = static_cast<char*>(NPN_MemAlloc(proxiesUTF8.length()));
@@ -2249,7 +2257,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     _isSilverlight = [_pluginPackage.get() bundleIdentifier] == "com.microsoft.SilverlightPlugin";
 
     [[self class] setCurrentPluginView:self];
-    NPError npErr = [_pluginPackage.get() pluginFuncs]->newp((char *)[_MIMEType.get() cString], plugin, _mode, argsCount, cAttributes, cValues, NULL);
+    NPError npErr = [_pluginPackage.get() pluginFuncs]->newp(const_cast<char*>([_MIMEType.get() cString]), plugin, _mode, argsCount, cAttributes, cValues, NULL);
     [[self class] setCurrentPluginView:nil];
     LOG(Plugins, "NPP_New: %d", npErr);
     return npErr;

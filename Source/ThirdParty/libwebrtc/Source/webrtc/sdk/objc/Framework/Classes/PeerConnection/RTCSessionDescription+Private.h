@@ -10,7 +10,7 @@
 
 #import "WebRTC/RTCSessionDescription.h"
 
-#include "webrtc/api/jsep.h"
+#include "api/jsep.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -21,8 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
  * RTCSessionDescription object. This is needed to pass to the underlying C++
  * APIs.
  */
-@property(nonatomic, readonly)
-    webrtc::SessionDescriptionInterface *nativeDescription;
+@property(nonatomic, readonly, nullable) webrtc::SessionDescriptionInterface *nativeDescription;
 
 /**
  * Initialize an RTCSessionDescription from a native
@@ -30,7 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
  * description.
  */
 - (instancetype)initWithNativeDescription:
-    (const webrtc::SessionDescriptionInterface *)nativeDescription;
+        (const webrtc::SessionDescriptionInterface *)nativeDescription;
 
 + (std::string)stdStringForType:(RTCSdpType)type;
 

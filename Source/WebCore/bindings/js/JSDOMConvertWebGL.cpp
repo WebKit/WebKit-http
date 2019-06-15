@@ -43,6 +43,7 @@
 #include "JSOESTextureHalfFloatLinear.h"
 #include "JSOESVertexArrayObject.h"
 #include "JSWebGLBuffer.h"
+#include "JSWebGLCompressedTextureASTC.h"
 #include "JSWebGLCompressedTextureATC.h"
 #include "JSWebGLCompressedTexturePVRTC.h"
 #include "JSWebGLCompressedTextureS3TC.h"
@@ -58,9 +59,9 @@
 #include "JSWebGLVertexArrayObject.h"
 #include "JSWebGLVertexArrayObjectOES.h"
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 // FIXME: This should use the IDLUnion JSConverter.
 JSValue convertToJSValue(ExecState& state, JSDOMGlobalObject& globalObject, const WebGLAny& any)
@@ -91,6 +92,14 @@ JSValue convertToJSValue(ExecState& state, JSDOMGlobalObject& globalObject, cons
             MarkedArgumentBuffer list;
             for (auto& value : values)
                 list.append(jsBoolean(value));
+            RELEASE_ASSERT(!list.hasOverflowed());
+            return constructArray(&state, 0, &globalObject, list);
+        },
+        [&] (const Vector<int>& values) {
+            MarkedArgumentBuffer list;
+            for (auto& value : values)
+                list.append(jsNumber(value));
+            RELEASE_ASSERT(!list.hasOverflowed());
             return constructArray(&state, 0, &globalObject, list);
         },
         [&] (const RefPtr<Float32Array>& array) {
@@ -171,6 +180,8 @@ JSValue convertToJSValue(ExecState& state, JSDOMGlobalObject& globalObject, WebG
         return toJS(&state, &globalObject, static_cast<WebGLCompressedTexturePVRTC&>(extension));
     case WebGLExtension::WebGLCompressedTextureS3TCName:
         return toJS(&state, &globalObject, static_cast<WebGLCompressedTextureS3TC&>(extension));
+    case WebGLExtension::WebGLCompressedTextureASTCName:
+        return toJS(&state, &globalObject, static_cast<WebGLCompressedTextureASTC&>(extension));
     case WebGLExtension::WebGLDepthTextureName:
         return toJS(&state, &globalObject, static_cast<WebGLDepthTexture&>(extension));
     case WebGLExtension::WebGLDrawBuffersName:

@@ -37,16 +37,17 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
 #define IO_BUFFERSIZE 4096
 
 namespace WebCore {
 
-CurlCacheManager& CurlCacheManager::getInstance()
+CurlCacheManager& CurlCacheManager::singleton()
 {
-    static CurlCacheManager instance;
-    return instance;
+    static NeverDestroyed<CurlCacheManager> sharedInstance;
+    return sharedInstance;
 }
 
 CurlCacheManager::CurlCacheManager()
@@ -75,8 +76,8 @@ void CurlCacheManager::setCacheDirectory(const String& directory)
         return;
     }
 
-    if (!fileExists(m_cacheDir)) {
-        if (!makeAllDirectories(m_cacheDir)) {
+    if (!FileSystem::fileExists(m_cacheDir)) {
+        if (!FileSystem::makeAllDirectories(m_cacheDir)) {
             LOG(Network, "Cache Error: Could not open or create cache directory! CacheManager disabled.\n");
             m_disabled = true;
             return;
@@ -102,14 +103,14 @@ void CurlCacheManager::loadIndex()
     String indexFilePath(m_cacheDir);
     indexFilePath.append("index.dat");
 
-    PlatformFileHandle indexFile = openFile(indexFilePath, OpenForRead);
-    if (!isHandleValid(indexFile)) {
+    FileSystem::PlatformFileHandle indexFile = FileSystem::openFile(indexFilePath, FileSystem::FileOpenMode::Read);
+    if (!FileSystem::isHandleValid(indexFile)) {
         LOG(Network, "Cache Warning: Could not open %s for read\n", indexFilePath.latin1().data());
         return;
     }
 
     long long filesize = -1;
-    if (!getFileSize(indexFilePath, filesize)) {
+    if (!FileSystem::getFileSize(indexFilePath, filesize)) {
         LOG(Network, "Cache Error: Could not get file size of %s\n", indexFilePath.latin1().data());
         return;
     }
@@ -123,15 +124,14 @@ void CurlCacheManager::loadIndex()
         if (filesize - bufferPosition < bufferReadSize)
             bufferReadSize = filesize - bufferPosition;
 
-        readFromFile(indexFile, buffer.data() + bufferPosition, bufferReadSize);
+        FileSystem::readFromFile(indexFile, buffer.data() + bufferPosition, bufferReadSize);
         bufferPosition += bufferReadSize;
     }
-    closeFile(indexFile);
+    FileSystem::closeFile(indexFile);
 
     // Create strings from buffer
     String headerContent = String(buffer.data(), buffer.size());
-    Vector<String> indexURLs;
-    headerContent.split('\n', indexURLs);
+    Vector<String> indexURLs = headerContent.split('\n');
     buffer.clear();
 
     // Add entries to index
@@ -163,9 +163,9 @@ void CurlCacheManager::saveIndex()
     String indexFilePath(m_cacheDir);
     indexFilePath.append("index.dat");
 
-    deleteFile(indexFilePath);
-    PlatformFileHandle indexFile = openFile(indexFilePath, OpenForWrite);
-    if (!isHandleValid(indexFile)) {
+    FileSystem::deleteFile(indexFilePath);
+    FileSystem::PlatformFileHandle indexFile = FileSystem::openFile(indexFilePath, FileSystem::FileOpenMode::Write);
+    if (!FileSystem::isHandleValid(indexFile)) {
         LOG(Network, "Cache Error: Could not open %s for write\n", indexFilePath.latin1().data());
         return;
     }
@@ -174,12 +174,12 @@ void CurlCacheManager::saveIndex()
     const auto& end = m_LRUEntryList.end();
     while (it != end) {
         const CString& urlLatin1 = it->latin1();
-        writeToFile(indexFile, urlLatin1.data(), urlLatin1.length());
-        writeToFile(indexFile, "\n", 1);
+        FileSystem::writeToFile(indexFile, urlLatin1.data(), urlLatin1.length());
+        FileSystem::writeToFile(indexFile, "\n", 1);
         ++it;
     }
 
-    closeFile(indexFile);
+    FileSystem::closeFile(indexFile);
 }
 
 void CurlCacheManager::makeRoomForNewEntry()
@@ -196,10 +196,6 @@ void CurlCacheManager::makeRoomForNewEntry()
 void CurlCacheManager::didReceiveResponse(ResourceHandle& job, ResourceResponse& response)
 {
     if (m_disabled)
-        return;
-
-    ResourceHandleInternal* d = job.getInternal();
-    if (d->m_cancelled)
         return;
 
     const String& url = job.firstRequest().url().string();

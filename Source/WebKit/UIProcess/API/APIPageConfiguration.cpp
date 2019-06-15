@@ -31,7 +31,12 @@
 #include "WebPageProxy.h"
 #include "WebPreferences.h"
 #include "WebProcessPool.h"
+#include "WebURLSchemeHandler.h"
 #include "WebUserContentControllerProxy.h"
+
+#if ENABLE(APPLICATION_MANIFEST)
+#include "APIApplicationManifest.h"
+#endif
 
 using namespace WebCore;
 using namespace WebKit;
@@ -69,9 +74,16 @@ Ref<PageConfiguration> PageConfiguration::copy() const
     copy->m_alwaysRunsAtForegroundPriority = this->m_alwaysRunsAtForegroundPriority;
 #endif
     copy->m_initialCapitalizationEnabled = this->m_initialCapitalizationEnabled;
-    copy->m_cpuLimit = this->m_cpuLimit;
+    copy->m_waitsForPaintAfterViewDidMoveToWindow = this->m_waitsForPaintAfterViewDidMoveToWindow;
+    copy->m_drawsBackground = this->m_drawsBackground;
     copy->m_controlledByAutomation = this->m_controlledByAutomation;
+    copy->m_cpuLimit = this->m_cpuLimit;
     copy->m_overrideContentSecurityPolicy = this->m_overrideContentSecurityPolicy;
+#if ENABLE(APPLICATION_MANIFEST)
+    copy->m_applicationManifest = this->m_applicationManifest;
+#endif
+    for (auto& pair : this->m_urlSchemeHandlers)
+        copy->m_urlSchemeHandlers.set(pair.key, pair.value.copyRef());
 
     return copy;
 }
@@ -150,19 +162,41 @@ void PageConfiguration::setWebsiteDataStore(API::WebsiteDataStore* websiteDataSt
     if (m_websiteDataStore)
         m_sessionID = m_websiteDataStore->websiteDataStore().sessionID();
     else
-        m_sessionID = WebCore::SessionID();
+        m_sessionID = PAL::SessionID();
 }
 
-WebCore::SessionID PageConfiguration::sessionID()
+PAL::SessionID PageConfiguration::sessionID()
 {
-    ASSERT(!m_websiteDataStore || m_websiteDataStore->websiteDataStore().sessionID() == m_sessionID || m_sessionID == SessionID::legacyPrivateSessionID());
+    ASSERT(!m_websiteDataStore || m_websiteDataStore->websiteDataStore().sessionID() == m_sessionID || m_sessionID == PAL::SessionID::legacyPrivateSessionID());
 
     return m_sessionID;
 }
 
-void PageConfiguration::setSessionID(WebCore::SessionID sessionID)
+void PageConfiguration::setSessionID(PAL::SessionID sessionID)
 {
     m_sessionID = sessionID;
 }
+
+RefPtr<WebKit::WebURLSchemeHandler> PageConfiguration::urlSchemeHandlerForURLScheme(const WTF::String& scheme)
+{
+    return m_urlSchemeHandlers.get(scheme);
+}
+
+void PageConfiguration::setURLSchemeHandlerForURLScheme(Ref<WebKit::WebURLSchemeHandler>&& handler, const WTF::String& scheme)
+{
+    m_urlSchemeHandlers.set(scheme, WTFMove(handler));
+}
+
+#if ENABLE(APPLICATION_MANIFEST)
+ApplicationManifest* PageConfiguration::applicationManifest() const
+{
+    return m_applicationManifest.get();
+}
+
+void PageConfiguration::setApplicationManifest(ApplicationManifest* applicationManifest)
+{
+    m_applicationManifest = applicationManifest;
+}
+#endif
 
 } // namespace API

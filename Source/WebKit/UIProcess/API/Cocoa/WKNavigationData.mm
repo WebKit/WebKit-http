@@ -32,8 +32,6 @@
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/ResourceResponse.h>
 
-using namespace WebKit;
-
 @implementation WKNavigationData {
     API::ObjectStorage<API::NavigationData> _data;
 }
@@ -52,7 +50,7 @@ using namespace WebKit;
 
 - (NSURLRequest *)originalRequest
 {
-    return _data->originalRequest().nsURLRequest(WebCore::DoNotUpdateHTTPBody);
+    return _data->originalRequest().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody);
 }
 
 - (NSURL *)destinationURL

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2008, 2012-2013, 2016 Apple Inc. All rights reserved
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved
  * Copyright (C) Research In Motion Limited 2009. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -22,9 +22,9 @@
 #ifndef StringHash_h
 #define StringHash_h
 
-#include <wtf/text/AtomicString.h>
 #include <wtf/HashTraits.h>
-#include <wtf/Hasher.h>
+#include <wtf/text/AtomicString.h>
+#include <wtf/text/StringHasher.h>
 
 namespace WTF {
 
@@ -80,14 +80,17 @@ namespace WTF {
     };
 
     struct ASCIICaseInsensitiveHash {
-        template<typename T> static inline UChar foldCase(T character)
-        {
-            return toASCIILower(character);
-        }
+        template<typename T>
+        struct FoldCase {
+            static inline UChar convert(T character)
+            {
+                return toASCIILower(character);
+            }
+        };
 
         static unsigned hash(const UChar* data, unsigned length)
         {
-            return StringHasher::computeHashAndMaskTop8Bits<UChar, foldCase<UChar>>(data, length);
+            return StringHasher::computeHashAndMaskTop8Bits<UChar, FoldCase<UChar>>(data, length);
         }
 
         static unsigned hash(StringImpl& string)
@@ -104,7 +107,7 @@ namespace WTF {
 
         static unsigned hash(const LChar* data, unsigned length)
         {
-            return StringHasher::computeHashAndMaskTop8Bits<LChar, foldCase<LChar>>(data, length);
+            return StringHasher::computeHashAndMaskTop8Bits<LChar, FoldCase<LChar>>(data, length);
         }
 
         static inline unsigned hash(const char* data, unsigned length)

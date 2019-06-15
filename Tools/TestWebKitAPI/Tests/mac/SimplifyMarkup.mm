@@ -47,7 +47,7 @@ static bool didFinishLoad;
 
 namespace TestWebKitAPI {
 
-TEST(WebKit1, SimplifyMarkupTest)
+TEST(WebKitLegacy, SimplifyMarkupTest)
 {
     RetainPtr<WebView> webView1 = adoptNS([[WebView alloc] initWithFrame:NSMakeRect(0, 0, 120, 200) frameName:nil groupName:nil]);
     RetainPtr<WebView> webView2 = adoptNS([[WebView alloc] initWithFrame:NSMakeRect(0, 0, 120, 200) frameName:nil groupName:nil]);
@@ -58,12 +58,14 @@ TEST(WebKit1, SimplifyMarkupTest)
     
     Util::run(&didFinishLoad);
     didFinishLoad = false;
- 
+
     webView2.get().frameLoadDelegate = testController.get();
     [[webView2.get() mainFrame] loadRequest:[NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"verboseMarkup" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]]];
     
     Util::run(&didFinishLoad);
     didFinishLoad = false;
+    while (![[[[webView1 mainFrameDocument] body] innerHTML] isEqualToString:[[[webView2 mainFrameDocument] body] innerHTML]])
+        Util::spinRunLoop(1);
 
     DOMDocument *document1 = webView1.get().mainFrameDocument;
     NSString* markupBefore = [[document1 body] innerHTML];

@@ -234,6 +234,49 @@ f (a, b);
 f( a, b );
 ```
 
+[](#spacing-braced-init) When initializing an object, place a space before the leading brace as well as between the braces and their content.
+
+###### Right:
+
+```cpp
+Foo foo { bar };
+```
+
+###### Wrong:
+
+```cpp
+Foo foo{ bar };
+Foo foo {bar};
+```
+
+[](#spacing-objc-block) In Objective-C, do not place spaces between the start of a block and its arguments, or the start of a block and its opening brace. **Do** place a space between argument lists and the opening brace of the block.
+
+###### Right:
+
+```cpp
+block = ^{
+...
+};
+
+block = ^(int, int) {
+...
+};
+
+```
+
+###### Wrong:
+
+```cpp
+block = ^ {
+...
+};
+
+block = ^ (int, int){
+...
+};
+
+```
+
 ### Line breaking
 
 [](#linebreaking-multiple-statements) Each statement should get its own line.
@@ -1083,16 +1126,16 @@ namespace WebCore {
 } // namespace WebCore
 ```
 
-[](#using-position) In implementation files, put all other "using" statements at the beginning of the file, before any namespace definitions and after any "include" statements.
+[](#using-position) In implementation files, put all "using namespace" statements inside namespace definitions.
 
 ###### Right:
 
 ```cpp
 // HTMLSelectElement.cpp
 
-using namespace other;
-
 namespace WebCore {
+
+using namespace other;
 
 } // namespace WebCore
 ```
@@ -1102,9 +1145,9 @@ namespace WebCore {
 ```cpp
 // HTMLSelectElement.cpp
 
-namespace WebCore {
-
 using namespace other;
+
+namespace WebCore {
 
 } // namespace WebCore
 ```
@@ -1297,3 +1340,7 @@ public:
     virtual String description() { ... }; // This is incorrect because it uses the "virtual" keyword to indicate that the method is overridden.
 }
 ```
+
+### Python
+
+[](#python) For Python use PEP8 style.

@@ -37,7 +37,7 @@ struct _UIWebTouchEvent;
 #elif PLATFORM(QT)
 #include <QTouchEvent>
 #elif PLATFORM(WPE)
-#include <wpe/input.h>
+#include <wpe/wpe.h>
 #endif
 
 namespace WebKit {
@@ -56,6 +56,8 @@ public:
 #elif PLATFORM(WPE)
     NativeWebTouchEvent(struct wpe_input_touch_event*, float deviceScaleFactor);
     const struct wpe_input_touch_event_raw* nativeFallbackTouchPoint() const { return &m_fallbackTouchPoint; }
+#elif PLATFORM(WIN)
+    NativeWebTouchEvent();
 #endif
 
 private:

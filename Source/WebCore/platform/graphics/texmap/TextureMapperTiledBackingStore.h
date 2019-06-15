@@ -24,30 +24,30 @@
 #include "Image.h"
 #include "TextureMapperBackingStore.h"
 #include "TextureMapperTile.h"
+#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
 class TextureMapper;
 
-class TextureMapperTiledBackingStore : public TextureMapperBackingStore {
+class TextureMapperTiledBackingStore : public RefCounted<TextureMapperTiledBackingStore>, public TextureMapperBackingStore {
 public:
     static Ref<TextureMapperTiledBackingStore> create() { return adoptRef(*new TextureMapperTiledBackingStore); }
-    virtual ~TextureMapperTiledBackingStore() { }
+    virtual ~TextureMapperTiledBackingStore() = default;
 
-    RefPtr<BitmapTexture> texture() const override;
     void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
     void drawBorder(TextureMapper&, const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) override;
     void drawRepaintCounter(TextureMapper&, int repaintCount, const Color&, const FloatRect&, const TransformationMatrix&) override;
 
     void updateContentsScale(float);
-    void updateContents(TextureMapper&, Image*, const FloatSize&, const IntRect&, BitmapTexture::UpdateContentsFlag);
-    void updateContents(TextureMapper&, GraphicsLayer*, const FloatSize&, const IntRect&, BitmapTexture::UpdateContentsFlag);
+    void updateContents(TextureMapper&, Image*, const FloatSize&, const IntRect&);
+    void updateContents(TextureMapper&, GraphicsLayer*, const FloatSize&, const IntRect&);
 
     void setContentsToImage(Image* image) { m_image = image; }
 
 private:
-    TextureMapperTiledBackingStore() { }
+    TextureMapperTiledBackingStore() = default;
 
     void createOrDestroyTilesIfNeeded(const FloatSize& backingStoreSize, const IntSize& tileSize, bool hasAlpha);
     void updateContentsFromImageIfNeeded(TextureMapper&);

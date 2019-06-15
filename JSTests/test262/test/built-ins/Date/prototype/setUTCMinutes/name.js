@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.setutcminutes
 es6id: 20.3.4.32
 description: >
   Date.prototype.setUTCMinutes.name is "setUTCMinutes".
-info: >
+info: |
   Date.prototype.setUTCMinutes ( min [ , sec [, ms ] ] )
 
   17 ECMAScript Standard Built-in Objects:

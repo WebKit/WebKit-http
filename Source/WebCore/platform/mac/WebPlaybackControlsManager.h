@@ -25,12 +25,12 @@
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
 
-#import <WebCore/AVKitSPI.h>
+#import <pal/spi/cocoa/AVKitSPI.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Vector.h>
 
 namespace WebCore {
-class WebPlaybackSessionInterfaceMac;
+class PlaybackSessionInterfaceMac;
 struct MediaSelectionOption;
 }
 
@@ -58,10 +58,10 @@ WEBCORE_EXPORT
     float _rate;
     BOOL _canTogglePlayback;
 
-    RefPtr<WebCore::WebPlaybackSessionInterfaceMac> _webPlaybackSessionInterfaceMac;
+    RefPtr<WebCore::PlaybackSessionInterfaceMac> _playbackSessionInterfaceMac;
 }
 
-@property (assign) WebCore::WebPlaybackSessionInterfaceMac* webPlaybackSessionInterfaceMac;
+@property (assign) WebCore::PlaybackSessionInterfaceMac* playbackSessionInterfaceMac;
 @property (readwrite) NSTimeInterval contentDuration;
 @property (nonatomic, retain, readwrite) AVValueTiming *timing;
 @property (nonatomic) NSTimeInterval seekToTime;

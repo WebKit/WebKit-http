@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EditorState_h
-#define EditorState_h
+#pragma once
 
 #include "ArgumentCoders.h"
 #include <WebCore/Color.h>
@@ -34,6 +33,10 @@
 #if PLATFORM(IOS)
 #include <WebCore/SelectionRect.h>
 #endif
+
+namespace WTF {
+class TextStream;
+};
 
 namespace WebKit {
 
@@ -92,7 +95,8 @@ struct EditorState {
     WTF::String surroundingText;
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
+    String originIdentifierForPasteboard;
+
     struct PostLayoutData {
         uint32_t typingAttributes { AttributeNone };
 #if PLATFORM(IOS) || PLATFORM(GTK)
@@ -116,6 +120,8 @@ struct EditorState {
         bool hasContent { false };
         bool isStableStateUpdate { false };
         bool insideFixedPosition { false };
+        bool hasPlainText { false };
+        WebCore::Color caretColor;
 #endif
 #if PLATFORM(MAC)
         uint64_t candidateRequestStartPosition { 0 };
@@ -123,24 +129,24 @@ struct EditorState {
         String stringForCandidateRequest;
 #endif
 
+        bool canCut { false };
+        bool canCopy { false };
+        bool canPaste { false };
+
         void encode(IPC::Encoder&) const;
         static bool decode(IPC::Decoder&, PostLayoutData&);
     };
 
     const PostLayoutData& postLayoutData() const;
     PostLayoutData& postLayoutData();
-#endif // PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, EditorState&);
 
-#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 private:
     PostLayoutData m_postLayoutData;
-#endif
 };
 
-#if PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(MAC)
 inline auto EditorState::postLayoutData() -> PostLayoutData&
 {
     ASSERT_WITH_MESSAGE(!isMissingPostLayoutData, "Attempt to access post layout data before receiving it");
@@ -152,8 +158,7 @@ inline auto EditorState::postLayoutData() const -> const PostLayoutData&
     ASSERT_WITH_MESSAGE(!isMissingPostLayoutData, "Attempt to access post layout data before receiving it");
     return m_postLayoutData;
 }
-#endif
 
-}
+WTF::TextStream& operator<<(WTF::TextStream&, const EditorState&);
 
-#endif // EditorState_h
+} // namespace WebKit

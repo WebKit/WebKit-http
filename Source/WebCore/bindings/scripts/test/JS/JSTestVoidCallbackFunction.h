@@ -22,7 +22,6 @@
 
 #if ENABLE(TEST_CONDITIONAL)
 
-#include "ActiveDOMCallback.h"
 #include "IDLTypes.h"
 #include "JSCallbackData.h"
 #include "TestVoidCallbackFunction.h"
@@ -30,7 +29,7 @@
 
 namespace WebCore {
 
-class JSTestVoidCallbackFunction final : public TestVoidCallbackFunction, public ActiveDOMCallback {
+class JSTestVoidCallbackFunction final : public TestVoidCallbackFunction {
 public:
     static Ref<JSTestVoidCallbackFunction> create(JSC::JSObject* callback, JSDOMGlobalObject* globalObject)
     {
@@ -43,7 +42,7 @@ public:
     JSCallbackDataStrong* callbackData() { return m_data; }
 
     // Functions
-    virtual CallbackResult<typename IDLVoid::ImplementationType> handleEvent(typename IDLFloat32Array::ParameterType arrayParam, typename IDLSerializedScriptValue<SerializedScriptValue>::ParameterType srzParam, typename IDLDOMString::ParameterType strArg, typename IDLBoolean::ParameterType boolParam, typename IDLLong::ParameterType longParam, typename IDLInterface<TestNode>::ParameterType testNodeParam) override;
+    CallbackResult<typename IDLVoid::ImplementationType> handleEvent(typename IDLFloat32Array::ParameterType arrayParam, typename IDLSerializedScriptValue<SerializedScriptValue>::ParameterType srzParam, typename IDLDOMString::ParameterType strArg, typename IDLBoolean::ParameterType boolParam, typename IDLLong::ParameterType longParam, typename IDLInterface<TestNode>::ParameterType testNodeParam) override;
 
 private:
     JSTestVoidCallbackFunction(JSC::JSObject*, JSDOMGlobalObject*);

@@ -81,7 +81,7 @@ class TextFileReaderTest(LoggingTestCase):
     def test_process_file__does_not_exist(self):
         try:
             self._file_reader.process_file('does_not_exist.txt')
-        except IOError, err:
+        except IOError as err:
             self.assertEqual(str(err), "File does not exist")
         else:
             self.fail('No Exception raised.')
@@ -150,8 +150,8 @@ class TextFileReaderTest(LoggingTestCase):
                      (['foo'], file_path1, None)]
         self._assert_file_reader(processed, 2)
 
-    def test_count_delete_only_file(self):
-        self._file_reader.count_delete_only_file()
+    def test_delete_file(self):
+        self._file_reader.delete_file()
         delete_only_file_count = self._file_reader.delete_only_file_count
         self.assertEqual(delete_only_file_count, 1)
 

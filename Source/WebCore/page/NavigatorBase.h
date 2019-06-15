@@ -25,11 +25,16 @@
 
 #pragma once
 
+#include "ExceptionOr.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/UniqueRef.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
+
+class ScriptExecutionContext;
+class ServiceWorkerContainer;
 
 class NavigatorBase : public RefCounted<NavigatorBase> {
 public:
@@ -37,7 +42,7 @@ public:
 
     static String appName();
     String appVersion() const;
-    virtual String userAgent() const = 0;
+    virtual const String& userAgent() const = 0;
     static String platform();
 
     static String appCodeName();
@@ -46,10 +51,22 @@ public:
     static String vendor();
     static String vendorSub();
 
-    static bool onLine();
+    virtual bool onLine() const = 0;
 
     static String language();
     static Vector<String> languages();
+
+protected:
+    explicit NavigatorBase(ScriptExecutionContext&);
+
+#if ENABLE(SERVICE_WORKER)
+public:
+    ServiceWorkerContainer& serviceWorker();
+    ExceptionOr<ServiceWorkerContainer&> serviceWorker(ScriptExecutionContext&);
+
+private:
+    UniqueRef<ServiceWorkerContainer> m_serviceWorkerContainer;
+#endif
 };
 
 } // namespace WebCore

@@ -50,20 +50,18 @@ inline ArrayBuffer* JSArrayBufferView::possiblySharedBuffer()
         return existingBufferInButterfly();
     case DataViewMode:
         return jsCast<JSDataView*>(this)->possiblySharedBuffer();
-    default:
-        return methodTable()->slowDownAndWasteMemory(this);
+    case FastTypedArray:
+    case OversizeTypedArray:
+        return slowDownAndWasteMemory();
     }
+    ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
 inline ArrayBuffer* JSArrayBufferView::existingBufferInButterfly()
 {
     ASSERT(m_mode == WastefulTypedArray);
     return butterfly()->indexingHeader()->arrayBuffer();
-}
-
-inline RefPtr<ArrayBufferView> JSArrayBufferView::possiblySharedImpl()
-{
-    return methodTable()->getTypedArrayImpl(this);
 }
 
 inline RefPtr<ArrayBufferView> JSArrayBufferView::unsharedImpl()

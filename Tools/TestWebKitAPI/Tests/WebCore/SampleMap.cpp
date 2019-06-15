@@ -153,6 +153,27 @@ TEST_F(SampleMapTest, findSampleStartingOnOrAfterPresentationTime)
     EXPECT_TRUE(presentationMap.end() == presentationMap.findSampleContainingPresentationTime(MediaTime(20, 1)));
 }
 
+TEST_F(SampleMapTest, findSampleContainingOrAfterPresentationTime)
+{
+    auto& presentationMap = map.presentationOrder();
+    EXPECT_EQ(MediaTime(0, 1), presentationMap.findSampleContainingOrAfterPresentationTime(MediaTime(0, 1))->second->presentationTime());
+    EXPECT_EQ(MediaTime(19, 1), presentationMap.findSampleContainingOrAfterPresentationTime(MediaTime(19, 1))->second->presentationTime());
+    EXPECT_EQ(MediaTime(0, 1), presentationMap.findSampleContainingOrAfterPresentationTime(MediaTime(1, 2))->second->presentationTime());
+    EXPECT_EQ(MediaTime(0, 1), presentationMap.findSampleContainingOrAfterPresentationTime(MediaTime(-1, 1))->second->presentationTime());
+    EXPECT_EQ(MediaTime(11, 1), presentationMap.findSampleContainingOrAfterPresentationTime(MediaTime(10, 1))->second->presentationTime());
+    EXPECT_TRUE(presentationMap.end() == presentationMap.findSampleContainingOrAfterPresentationTime(MediaTime(20, 1)));
+}
+
+TEST_F(SampleMapTest, findSampleStartingAfterPresentationTime)
+{
+    auto& presentationMap = map.presentationOrder();
+    EXPECT_EQ(MediaTime(1, 1), presentationMap.findSampleStartingAfterPresentationTime(MediaTime(0, 1))->second->presentationTime());
+    EXPECT_TRUE(presentationMap.end() == presentationMap.findSampleStartingAfterPresentationTime(MediaTime(19, 1)));
+    EXPECT_EQ(MediaTime(1, 1), presentationMap.findSampleStartingAfterPresentationTime(MediaTime(1, 2))->second->presentationTime());
+    EXPECT_EQ(MediaTime(0, 1), presentationMap.findSampleStartingAfterPresentationTime(MediaTime(-1, 1))->second->presentationTime());
+    EXPECT_EQ(MediaTime(11, 1), presentationMap.findSampleStartingAfterPresentationTime(MediaTime(10, 1))->second->presentationTime());
+    EXPECT_TRUE(presentationMap.end() == presentationMap.findSampleStartingAfterPresentationTime(MediaTime(20, 1)));
+}
 TEST_F(SampleMapTest, findSamplesBetweenPresentationTimes)
 {
     auto& presentationMap = map.presentationOrder();
@@ -181,30 +202,30 @@ TEST_F(SampleMapTest, findSamplesBetweenPresentationTimes)
     EXPECT_TRUE(presentationMap.end() == iterator_range.second);
 }
 
-TEST_F(SampleMapTest, findSamplesWithinPresentationRange)
+TEST_F(SampleMapTest, findSamplesBetweenPresentationTimesFromEnd)
 {
     auto& presentationMap = map.presentationOrder();
-    auto iterator_range = presentationMap.findSamplesWithinPresentationRange(MediaTime(0, 1), MediaTime(1, 1));
-    EXPECT_EQ(MediaTime(1, 1), iterator_range.first->second->presentationTime());
-    EXPECT_EQ(MediaTime(2, 1), iterator_range.second->second->presentationTime());
-
-    iterator_range = presentationMap.findSamplesWithinPresentationRange(MediaTime(1, 2), MediaTime(3, 2));
-    EXPECT_EQ(MediaTime(1, 1), iterator_range.first->second->presentationTime());
-    EXPECT_EQ(MediaTime(2, 1), iterator_range.second->second->presentationTime());
-
-    iterator_range = presentationMap.findSamplesWithinPresentationRange(MediaTime(9, 1), MediaTime(21, 1));
-    EXPECT_EQ(MediaTime(11, 1), iterator_range.first->second->presentationTime());
-    EXPECT_TRUE(presentationMap.end() == iterator_range.second);
-
-    iterator_range = presentationMap.findSamplesWithinPresentationRange(MediaTime(-1, 1), MediaTime(0, 1));
+    auto iterator_range = presentationMap.findSamplesBetweenPresentationTimesFromEnd(MediaTime(0, 1), MediaTime(1, 1));
     EXPECT_EQ(MediaTime(0, 1), iterator_range.first->second->presentationTime());
     EXPECT_EQ(MediaTime(1, 1), iterator_range.second->second->presentationTime());
 
-    iterator_range = presentationMap.findSamplesWithinPresentationRange(MediaTime(10, 1), MediaTime(21, 2));
+    iterator_range = presentationMap.findSamplesBetweenPresentationTimesFromEnd(MediaTime(1, 2), MediaTime(3, 2));
+    EXPECT_EQ(MediaTime(1, 1), iterator_range.first->second->presentationTime());
+    EXPECT_EQ(MediaTime(2, 1), iterator_range.second->second->presentationTime());
+
+    iterator_range = presentationMap.findSamplesBetweenPresentationTimesFromEnd(MediaTime(9, 1), MediaTime(21, 1));
+    EXPECT_EQ(MediaTime(9, 1), iterator_range.first->second->presentationTime());
+    EXPECT_TRUE(presentationMap.end() == iterator_range.second);
+
+    iterator_range = presentationMap.findSamplesBetweenPresentationTimesFromEnd(MediaTime(-1, 1), MediaTime(0, 1));
     EXPECT_TRUE(presentationMap.end() == iterator_range.first);
     EXPECT_TRUE(presentationMap.end() == iterator_range.second);
 
-    iterator_range = presentationMap.findSamplesWithinPresentationRange(MediaTime(20, 1), MediaTime(21, 1));
+    iterator_range = presentationMap.findSamplesBetweenPresentationTimesFromEnd(MediaTime(19, 2), MediaTime(10, 1));
+    EXPECT_TRUE(presentationMap.end() == iterator_range.first);
+    EXPECT_TRUE(presentationMap.end() == iterator_range.second);
+
+    iterator_range = presentationMap.findSamplesBetweenPresentationTimesFromEnd(MediaTime(20, 1), MediaTime(21, 1));
     EXPECT_TRUE(presentationMap.end() == iterator_range.first);
     EXPECT_TRUE(presentationMap.end() == iterator_range.second);
 }

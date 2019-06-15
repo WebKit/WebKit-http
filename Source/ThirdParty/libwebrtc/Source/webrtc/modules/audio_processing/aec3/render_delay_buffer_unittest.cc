@@ -8,18 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
+#include "modules/audio_processing/aec3/render_delay_buffer.h"
 
 #include <memory>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/random.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
-#include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
-#include "webrtc/test/gtest.h"
+#include "api/array_view.h"
+#include "modules/audio_processing/aec3/aec3_common.h"
+#include "modules/audio_processing/logging/apm_data_dumper.h"
+#include "rtc_base/random.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace {
@@ -34,16 +34,27 @@ std::string ProduceDebugText(int sample_rate_hz) {
 
 // Verifies that the buffer overflow is correctly reported.
 TEST(RenderDelayBuffer, BufferOverflow) {
+  const EchoCanceller3Config config;
   for (auto rate : {8000, 16000, 32000, 48000}) {
     SCOPED_TRACE(ProduceDebugText(rate));
     std::unique_ptr<RenderDelayBuffer> delay_buffer(
-        RenderDelayBuffer::Create(NumBandsForRate(rate)));
+        RenderDelayBuffer::Create(config, NumBandsForRate(rate)));
     std::vector<std::vector<float>> block_to_insert(
         NumBandsForRate(rate), std::vector<float>(kBlockSize, 0.f));
-    for (size_t k = 0; k < kMaxApiCallsJitterBlocks; ++k) {
-      EXPECT_TRUE(delay_buffer->Insert(block_to_insert));
+    for (size_t k = 0; k < 10; ++k) {
+      EXPECT_EQ(RenderDelayBuffer::BufferingEvent::kNone,
+                delay_buffer->Insert(block_to_insert));
     }
-    EXPECT_FALSE(delay_buffer->Insert(block_to_insert));
+    bool overrun_occurred = false;
+    for (size_t k = 0; k < 1000; ++k) {
+      RenderDelayBuffer::BufferingEvent event =
+          delay_buffer->Insert(block_to_insert);
+      overrun_occurred =
+          overrun_occurred ||
+          RenderDelayBuffer::BufferingEvent::kRenderOverrun == event;
+    }
+
+    EXPECT_TRUE(overrun_occurred);
   }
 }
 
@@ -51,19 +62,26 @@ TEST(RenderDelayBuffer, BufferOverflow) {
 TEST(RenderDelayBuffer, AvailableBlock) {
   constexpr size_t kNumBands = 1;
   std::unique_ptr<RenderDelayBuffer> delay_buffer(
-      RenderDelayBuffer::Create(kNumBands));
+      RenderDelayBuffer::Create(EchoCanceller3Config(), kNumBands));
   std::vector<std::vector<float>> input_block(
       kNumBands, std::vector<float>(kBlockSize, 1.f));
-  EXPECT_TRUE(delay_buffer->Insert(input_block));
-  delay_buffer->UpdateBuffers();
+  EXPECT_EQ(RenderDelayBuffer::BufferingEvent::kNone,
+            delay_buffer->Insert(input_block));
+  delay_buffer->PrepareCaptureProcessing();
 }
 
 // Verifies the SetDelay method.
 TEST(RenderDelayBuffer, SetDelay) {
-  std::unique_ptr<RenderDelayBuffer> delay_buffer(RenderDelayBuffer::Create(1));
-  EXPECT_EQ(0u, delay_buffer->Delay());
-  for (size_t delay = 0; delay < 20; ++delay) {
-    delay_buffer->SetDelay(delay);
+  EchoCanceller3Config config;
+  std::unique_ptr<RenderDelayBuffer> delay_buffer(
+      RenderDelayBuffer::Create(config, 1));
+  ASSERT_TRUE(delay_buffer->Delay());
+  delay_buffer->Reset();
+  size_t initial_internal_delay = config.delay.min_echo_path_delay_blocks +
+                                  config.delay.api_call_jitter_blocks;
+  for (size_t delay = initial_internal_delay;
+       delay < initial_internal_delay + 20; ++delay) {
+    ASSERT_TRUE(delay_buffer->SetDelay(delay));
     EXPECT_EQ(delay, delay_buffer->Delay());
   }
 }
@@ -74,7 +92,8 @@ TEST(RenderDelayBuffer, SetDelay) {
 // TODO(peah): Re-enable the test once the issue with memory leaks during DEATH
 // tests on test bots has been fixed.
 TEST(RenderDelayBuffer, DISABLED_WrongDelay) {
-  std::unique_ptr<RenderDelayBuffer> delay_buffer(RenderDelayBuffer::Create(3));
+  std::unique_ptr<RenderDelayBuffer> delay_buffer(
+      RenderDelayBuffer::Create(EchoCanceller3Config(), 3));
   EXPECT_DEATH(delay_buffer->SetDelay(21), "");
 }
 
@@ -82,8 +101,8 @@ TEST(RenderDelayBuffer, DISABLED_WrongDelay) {
 TEST(RenderDelayBuffer, WrongNumberOfBands) {
   for (auto rate : {16000, 32000, 48000}) {
     SCOPED_TRACE(ProduceDebugText(rate));
-    std::unique_ptr<RenderDelayBuffer> delay_buffer(
-        RenderDelayBuffer::Create(NumBandsForRate(rate)));
+    std::unique_ptr<RenderDelayBuffer> delay_buffer(RenderDelayBuffer::Create(
+        EchoCanceller3Config(), NumBandsForRate(rate)));
     std::vector<std::vector<float>> block_to_insert(
         NumBandsForRate(rate < 48000 ? rate + 16000 : 16000),
         std::vector<float>(kBlockSize, 0.f));
@@ -96,7 +115,7 @@ TEST(RenderDelayBuffer, WrongBlockLength) {
   for (auto rate : {8000, 16000, 32000, 48000}) {
     SCOPED_TRACE(ProduceDebugText(rate));
     std::unique_ptr<RenderDelayBuffer> delay_buffer(
-        RenderDelayBuffer::Create(3));
+        RenderDelayBuffer::Create(EchoCanceller3Config(), 3));
     std::vector<std::vector<float>> block_to_insert(
         NumBandsForRate(rate), std::vector<float>(kBlockSize - 1, 0.f));
     EXPECT_DEATH(delay_buffer->Insert(block_to_insert), "");

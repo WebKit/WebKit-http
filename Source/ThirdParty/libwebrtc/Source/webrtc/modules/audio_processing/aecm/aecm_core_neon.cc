@@ -8,12 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aecm/aecm_core.h"
+#include "modules/audio_processing/aecm/aecm_core.h"
 
 #include <arm_neon.h>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/common_audio/signal_processing/include/real_fft.h"
+#include "common_audio/signal_processing/include/real_fft.h"
+#include "rtc_base/checks.h"
 
 // TODO(kma): Re-write the corresponding assembly file, the offset
 // generating script and makefile, to replace these C functions.
@@ -77,12 +77,12 @@ void WebRtcAecm_CalcLinearEnergiesNeon(AecmCore* aecm,
     echo_stored_v = vaddq_u32(echo_est_v_low, echo_stored_v);
     echo_stored_v = vaddq_u32(echo_est_v_high, echo_stored_v);
 
-    echo_adapt_v = vmlal_u16(echo_adapt_v,
-                             vreinterpret_u16_s16(vget_low_s16(adapt_v)),
-                             vget_low_u16(spectrum_v));
-    echo_adapt_v = vmlal_u16(echo_adapt_v,
-                             vreinterpret_u16_s16(vget_high_s16(adapt_v)),
-                             vget_high_u16(spectrum_v));
+    echo_adapt_v =
+        vmlal_u16(echo_adapt_v, vreinterpret_u16_s16(vget_low_s16(adapt_v)),
+                  vget_low_u16(spectrum_v));
+    echo_adapt_v =
+        vmlal_u16(echo_adapt_v, vreinterpret_u16_s16(vget_high_s16(adapt_v)),
+                  vget_high_u16(spectrum_v));
 
     start_stored_p += 8;
     start_adapt_p += 8;

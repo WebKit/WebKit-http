@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -165,9 +165,9 @@ public:
     }
 
     void setCallLocations(
-        CodeLocationLabel callReturnLocationOrPatchableJump,
-        CodeLocationLabel hotPathBeginOrSlowPathStart,
-        CodeLocationNearCall hotPathOther)
+        CodeLocationLabel<JSInternalPtrTag> callReturnLocationOrPatchableJump,
+        CodeLocationLabel<JSInternalPtrTag> hotPathBeginOrSlowPathStart,
+        CodeLocationNearCall<JSInternalPtrTag> hotPathOther)
     {
         m_callReturnLocationOrPatchableJump = callReturnLocationOrPatchableJump;
         m_hotPathBeginOrSlowPathStart = hotPathBeginOrSlowPathStart;
@@ -181,27 +181,27 @@ public:
         m_allowStubs = false;
     }
 
-    CodeLocationNearCall callReturnLocation();
-    CodeLocationJump patchableJump();
-    CodeLocationDataLabelPtr hotPathBegin();
-    CodeLocationLabel slowPathStart();
+    CodeLocationNearCall<JSInternalPtrTag> callReturnLocation();
+    CodeLocationJump<JSInternalPtrTag> patchableJump();
+    CodeLocationDataLabelPtr<JSInternalPtrTag> hotPathBegin();
+    CodeLocationLabel<JSInternalPtrTag> slowPathStart();
 
-    CodeLocationNearCall hotPathOther()
+    CodeLocationNearCall<JSInternalPtrTag> hotPathOther()
     {
         return m_hotPathOther;
     }
 
-    void setCallee(VM&, JSCell*, JSFunction* callee);
+    void setCallee(VM&, JSCell*, JSObject* callee);
     void clearCallee();
-    JSFunction* callee();
+    JSObject* callee();
 
     void setCodeBlock(VM&, JSCell*, FunctionCodeBlock*);
     void clearCodeBlock();
     FunctionCodeBlock* codeBlock();
 
-    void setLastSeenCallee(VM& vm, const JSCell* owner, JSFunction* callee);
+    void setLastSeenCallee(VM&, const JSCell* owner, JSObject* callee);
     void clearLastSeenCallee();
-    JSFunction* lastSeenCallee();
+    JSObject* lastSeenCallee();
     bool haveLastSeenCallee();
     
     void setExecutableDuringCompilation(ExecutableBase*);
@@ -264,7 +264,17 @@ public:
     {
         return m_clearedByGC;
     }
+    
+    bool clearedByVirtual()
+    {
+        return m_clearedByVirtual;
+    }
 
+    void setClearedByVirtual()
+    {
+        m_clearedByVirtual = true;
+    }
+    
     void setCallType(CallType callType)
     {
         m_callType = callType;
@@ -327,9 +337,9 @@ public:
     }
 
 private:
-    CodeLocationLabel m_callReturnLocationOrPatchableJump;
-    CodeLocationLabel m_hotPathBeginOrSlowPathStart;
-    CodeLocationNearCall m_hotPathOther;
+    CodeLocationLabel<JSInternalPtrTag> m_callReturnLocationOrPatchableJump;
+    CodeLocationLabel<JSInternalPtrTag> m_hotPathBeginOrSlowPathStart;
+    CodeLocationNearCall<JSInternalPtrTag> m_hotPathOther;
     WriteBarrier<JSCell> m_calleeOrCodeBlock;
     WriteBarrier<JSCell> m_lastSeenCalleeOrExecutable;
     RefPtr<PolymorphicCallStubRoutine> m_stub;
@@ -338,6 +348,7 @@ private:
     bool m_hasSeenShouldRepatch : 1;
     bool m_hasSeenClosure : 1;
     bool m_clearedByGC : 1;
+    bool m_clearedByVirtual : 1;
     bool m_allowStubs : 1;
     bool m_isLinked : 1;
     unsigned m_callType : 4; // CallType
@@ -351,12 +362,6 @@ inline CodeOrigin getCallLinkInfoCodeOrigin(CallLinkInfo& callLinkInfo)
 {
     return callLinkInfo.codeOrigin();
 }
-
-typedef HashMap<CodeOrigin, CallLinkInfo*, CodeOriginApproximateHash> CallLinkInfoMap;
-
-#else // ENABLE(JIT)
-
-typedef HashMap<int, void*> CallLinkInfoMap;
 
 #endif // ENABLE(JIT)
 

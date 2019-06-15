@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The MV of StrUnsignedDecimalLiteral::: DecimalDigits. DecimalDigits ExponentPart
     is (the MV of the first DecimalDigits plus (the MV of the second DecimalDigits times
     10<sup><small>-n</small></sup>)) times 10<sup><small>e</small></sup>, where n is the number
@@ -15,11 +15,11 @@ description: >
 ---*/
 
 // CHECK#1
-if (Number("1234.5678e9") !== (Number("1234")+(Number("5678")*1e-4))*1e9)  {
+if (Number("1234.5678e9") !== (Number("1234") + (Number("5678") * 1e-4)) * 1e9) {
   $ERROR('#1: Number("1234.5678e9") === (Number("1234")+(Number("5678")*1e-4))*1e9');
 }
 
 // CHECK#2
-if (+("1234.5678e-9") !== (Number("1234")+(Number("5678")*1e-4))*1e-9)  {
+if (+("1234.5678e-9") !== (Number("1234") + (Number("5678") * 1e-4)) * 1e-9) {
   $ERROR('#2: +("1234.5678e-9") === (Number("1234")+(Number("5678")*1e-4))*1e-9');
 }

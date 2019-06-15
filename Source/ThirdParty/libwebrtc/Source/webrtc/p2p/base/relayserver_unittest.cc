@@ -10,31 +10,37 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
-#include "webrtc/base/gunit.h"
-#include "webrtc/base/helpers.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/ptr_util.h"
-#include "webrtc/base/socketaddress.h"
-#include "webrtc/base/ssladapter.h"
-#include "webrtc/base/testclient.h"
-#include "webrtc/base/thread.h"
-#include "webrtc/base/virtualsocketserver.h"
-#include "webrtc/p2p/base/relayserver.h"
+#include "absl/memory/memory.h"
+#include "p2p/base/relayserver.h"
+#include "rtc_base/gunit.h"
+#include "rtc_base/helpers.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/socketaddress.h"
+#include "rtc_base/ssladapter.h"
+#include "rtc_base/testclient.h"
+#include "rtc_base/thread.h"
+#include "rtc_base/virtualsocketserver.h"
 
 using rtc::SocketAddress;
-using namespace cricket;
 
-static const uint32_t LIFETIME = 4;  // seconds
-static const SocketAddress server_int_addr("127.0.0.1", 5000);
-static const SocketAddress server_ext_addr("127.0.0.1", 5001);
-static const SocketAddress client1_addr("127.0.0.1", 6000 + (rand() % 1000));
-static const SocketAddress client2_addr("127.0.0.1", 7000 + (rand() % 1000));
-static const char* bad = "this is a completely nonsensical message whose only "
-                         "purpose is to make the parser go 'ack'.  it doesn't "
-                         "look anything like a normal stun message";
-static const char* msg1 = "spamspamspamspamspamspamspambakedbeansspam";
-static const char* msg2 = "Lobster Thermidor a Crevette with a mornay sauce...";
+namespace cricket {
+namespace {
+
+constexpr uint32_t LIFETIME = 4;  // seconds
+const SocketAddress server_int_addr("127.0.0.1", 5000);
+const SocketAddress server_ext_addr("127.0.0.1", 5001);
+const SocketAddress client1_addr("127.0.0.1", 6111);
+const SocketAddress client2_addr("127.0.0.1", 7222);
+const char* bad =
+    "this is a completely nonsensical message whose only "
+    "purpose is to make the parser go 'ack'.  it doesn't "
+    "look anything like a normal stun message";
+const char* msg1 = "spamspamspamspamspamspamspambakedbeansspam";
+const char* msg2 = "Lobster Thermidor a Crevette with a mornay sauce...";
+
+}  // namespace
 
 class RelayServerTest : public testing::Test {
  public:
@@ -53,10 +59,10 @@ class RelayServerTest : public testing::Test {
     server_->AddExternalSocket(
         rtc::AsyncUDPSocket::Create(ss_.get(), server_ext_addr));
 
-    client1_.reset(new rtc::TestClient(
-        WrapUnique(rtc::AsyncUDPSocket::Create(ss_.get(), client1_addr))));
-    client2_.reset(new rtc::TestClient(
-        WrapUnique(rtc::AsyncUDPSocket::Create(ss_.get(), client2_addr))));
+    client1_.reset(new rtc::TestClient(absl::WrapUnique(
+        rtc::AsyncUDPSocket::Create(ss_.get(), client1_addr))));
+    client2_.reset(new rtc::TestClient(absl::WrapUnique(
+        rtc::AsyncUDPSocket::Create(ss_.get(), client2_addr))));
   }
 
   void Allocate() {
@@ -89,30 +95,20 @@ class RelayServerTest : public testing::Test {
   void SendRaw2(const char* data, int len) {
     return Send(client2_.get(), data, len, server_ext_addr);
   }
-  void Send(rtc::TestClient* client, const char* data,
-            int len, const SocketAddress& addr) {
+  void Send(rtc::TestClient* client,
+            const char* data,
+            int len,
+            const SocketAddress& addr) {
     client->SendTo(data, len, addr);
   }
 
-  bool Receive1Fails() {
-    return client1_.get()->CheckNoPacket();
-  }
-  bool Receive2Fails() {
-    return client2_.get()->CheckNoPacket();
-  }
+  bool Receive1Fails() { return client1_.get()->CheckNoPacket(); }
+  bool Receive2Fails() { return client2_.get()->CheckNoPacket(); }
 
-  StunMessage* Receive1() {
-    return Receive(client1_.get());
-  }
-  StunMessage* Receive2() {
-    return Receive(client2_.get());
-  }
-  std::string ReceiveRaw1() {
-    return ReceiveRaw(client1_.get());
-  }
-  std::string ReceiveRaw2() {
-    return ReceiveRaw(client2_.get());
-  }
+  StunMessage* Receive1() { return Receive(client1_.get()); }
+  StunMessage* Receive2() { return Receive(client2_.get()); }
+  std::string ReceiveRaw1() { return ReceiveRaw(client1_.get()); }
+  std::string ReceiveRaw2() { return ReceiveRaw(client2_.get()); }
   StunMessage* Receive(rtc::TestClient* client) {
     StunMessage* msg = NULL;
     std::unique_ptr<rtc::TestClient::Packet> packet =
@@ -138,8 +134,7 @@ class RelayServerTest : public testing::Test {
   static StunMessage* CreateStunMessage(int type) {
     StunMessage* msg = new RelayMessage();
     msg->SetType(type);
-    msg->SetTransactionID(
-        rtc::CreateRandomString(kStunTransactionIdLength));
+    msg->SetTransactionID(rtc::CreateRandomString(kStunTransactionIdLength));
     return msg;
   }
   static void AddMagicCookieAttr(StunMessage* msg) {
@@ -269,8 +264,7 @@ TEST_F(RelayServerTest, TestReallocate) {
   EXPECT_EQ(server_ext_addr.port(), mapped_addr->port());
   EXPECT_EQ(server_ext_addr.ipaddr(), mapped_addr->ipaddr());
 
-  const StunUInt32Attribute* lifetime_attr =
-      res->GetUInt32(STUN_ATTR_LIFETIME);
+  const StunUInt32Attribute* lifetime_attr = res->GetUInt32(STUN_ATTR_LIFETIME);
   ASSERT_TRUE(lifetime_attr != NULL);
   EXPECT_EQ(LIFETIME, lifetime_attr->value());
 }
@@ -290,8 +284,7 @@ TEST_F(RelayServerTest, TestRemoteBind) {
   ASSERT_TRUE(res);
   EXPECT_EQ(STUN_DATA_INDICATION, res->type());
 
-  const StunByteStringAttribute* recv_data =
-      res->GetByteString(STUN_ATTR_DATA);
+  const StunByteStringAttribute* recv_data = res->GetByteString(STUN_ATTR_DATA);
   ASSERT_TRUE(recv_data != NULL);
 
   rtc::ByteBufferReader buf(recv_data->bytes(), recv_data->length());
@@ -511,3 +504,5 @@ TEST_F(RelayServerTest, DISABLED_TestExpiration) {
   SendRaw2(msg2, static_cast<int>(strlen(msg2)));
   EXPECT_TRUE(ReceiveRaw1().empty());
 }
+
+}  // namespace cricket

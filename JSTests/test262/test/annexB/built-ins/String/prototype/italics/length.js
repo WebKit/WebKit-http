@@ -5,7 +5,7 @@
 es6id: B.2.3.9
 description: >
   String.prototype.italics.length is 0.
-info: >
+info: |
   String.prototype.italics ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.italics.length, 0);
-
-verifyNotEnumerable(String.prototype.italics, "length");
-verifyNotWritable(String.prototype.italics, "length");
-verifyConfigurable(String.prototype.italics, "length");
+verifyProperty(String.prototype.italics, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

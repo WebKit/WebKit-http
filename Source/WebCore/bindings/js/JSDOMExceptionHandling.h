@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003-2006, 2008-2009, 2013, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  *  Copyright (C) 2009 Google, Inc. All rights reserved.
  *  Copyright (C) 2012 Ericsson AB. All rights reserved.
@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "ExceptionOr.h"
-#include <runtime/ThrowScope.h>
+#include <JavaScriptCore/ThrowScope.h>
 
 namespace JSC {
 class CatchScope;
@@ -44,26 +43,19 @@ struct ExceptionDetails {
     String sourceURL;
 };
 
-WEBCORE_EXPORT JSC::EncodedJSValue reportDeprecatedGetterError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
-WEBCORE_EXPORT void reportDeprecatedSetterError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
-
 void throwAttributeTypeError(JSC::ExecState&, JSC::ThrowScope&, const char* interfaceName, const char* attributeName, const char* expectedType);
 WEBCORE_EXPORT bool throwSetterTypeError(JSC::ExecState&, JSC::ThrowScope&, const char* interfaceName, const char* attributeName);
 
-void throwArrayElementTypeError(JSC::ExecState&, JSC::ThrowScope&);
 void throwDataCloneError(JSC::ExecState&, JSC::ThrowScope&);
-void throwDOMSyntaxError(JSC::ExecState&, JSC::ThrowScope&); // Not the same as a JavaScript syntax error.
-void throwIndexSizeError(JSC::ExecState&, JSC::ThrowScope&);
-void throwInvalidStateError(JSC::ExecState&, JSC::ThrowScope&, const char* message);
+void throwDOMSyntaxError(JSC::ExecState&, JSC::ThrowScope&, ASCIILiteral); // Not the same as a JavaScript syntax error.
+void throwInvalidStateError(JSC::ExecState&, JSC::ThrowScope&, ASCIILiteral);
 WEBCORE_EXPORT void throwNonFiniteTypeError(JSC::ExecState&, JSC::ThrowScope&);
-void throwNotSupportedError(JSC::ExecState&, JSC::ThrowScope&);
-void throwNotSupportedError(JSC::ExecState&, JSC::ThrowScope&, const char* message);
+void throwNotSupportedError(JSC::ExecState&, JSC::ThrowScope&, ASCIILiteral);
 void throwSecurityError(JSC::ExecState&, JSC::ThrowScope&, const String& message);
 WEBCORE_EXPORT void throwSequenceTypeError(JSC::ExecState&, JSC::ThrowScope&);
-void throwTypeMismatchError(JSC::ExecState&, JSC::ThrowScope&);
 
 WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedValues);
-JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName);
+WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName);
 WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentTypeError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedType);
 WEBCORE_EXPORT JSC::EncodedJSValue throwRequiredMemberTypeError(JSC::ExecState&, JSC::ThrowScope&, const char* memberName, const char* dictionaryName, const char* expectedType);
 JSC::EncodedJSValue throwConstructorScriptExecutionContextUnavailableError(JSC::ExecState&, JSC::ThrowScope&, const char* interfaceName);
@@ -84,7 +76,7 @@ WEBCORE_EXPORT void reportException(JSC::ExecState*, JSC::Exception*, CachedScri
 void reportCurrentException(JSC::ExecState*);
 
 JSC::JSValue createDOMException(JSC::ExecState&, Exception&&);
-JSC::JSValue createDOMException(JSC::ExecState*, ExceptionCode, const String&);
+JSC::JSValue createDOMException(JSC::ExecState*, ExceptionCode, const String& = emptyString());
 
 // Convert a DOM implementation exception into a JavaScript exception in the execution state.
 WEBCORE_EXPORT void propagateExceptionSlowPath(JSC::ExecState&, JSC::ThrowScope&, Exception&&);

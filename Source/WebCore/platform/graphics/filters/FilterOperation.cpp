@@ -29,9 +29,10 @@
 #include "AnimationUtilities.h"
 #include "CachedResourceLoader.h"
 #include "CachedSVGDocumentReference.h"
+#include "ColorUtilities.h"
 #include "FilterEffect.h"
 #include "SVGURIReference.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
     
@@ -50,9 +51,7 @@ ReferenceFilterOperation::ReferenceFilterOperation(const String& url, const Stri
 {
 }
 
-ReferenceFilterOperation::~ReferenceFilterOperation()
-{
-}
+ReferenceFilterOperation::~ReferenceFilterOperation() = default;
     
 bool ReferenceFilterOperation::operator==(const FilterOperation& operation) const
 {
@@ -88,6 +87,37 @@ RefPtr<FilterOperation> BasicColorMatrixFilterOperation::blend(const FilterOpera
     const BasicColorMatrixFilterOperation* fromOperation = downcast<BasicColorMatrixFilterOperation>(from);
     double fromAmount = fromOperation ? fromOperation->amount() : passthroughAmount();
     return BasicColorMatrixFilterOperation::create(WebCore::blend(fromAmount, m_amount, progress), m_type);
+}
+
+bool BasicColorMatrixFilterOperation::transformColor(FloatComponents& colorComponents) const
+{
+    switch (m_type) {
+    case GRAYSCALE: {
+        ColorMatrix matrix = ColorMatrix::grayscaleMatrix(m_amount);
+        matrix.transformColorComponents(colorComponents);
+        return true;
+    }
+    case SEPIA: {
+        ColorMatrix matrix = ColorMatrix::sepiaMatrix(m_amount);
+        matrix.transformColorComponents(colorComponents);
+        return true;
+    }
+    case HUE_ROTATE: {
+        ColorMatrix matrix = ColorMatrix::hueRotateMatrix(m_amount);
+        matrix.transformColorComponents(colorComponents);
+        return true;
+    }
+    case SATURATE: {
+        ColorMatrix matrix = ColorMatrix::saturationMatrix(m_amount);
+        matrix.transformColorComponents(colorComponents);
+        return true;
+    }
+    default:
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
+    return false;
 }
 
 inline bool BasicColorMatrixFilterOperation::operator==(const FilterOperation& operation) const
@@ -126,6 +156,38 @@ RefPtr<FilterOperation> BasicComponentTransferFilterOperation::blend(const Filte
     return BasicComponentTransferFilterOperation::create(WebCore::blend(fromAmount, m_amount, progress), m_type);
 }
 
+bool BasicComponentTransferFilterOperation::transformColor(FloatComponents& colorComponents) const
+{
+    switch (m_type) {
+    case OPACITY:
+        colorComponents.components[3] *= m_amount;
+        return true;
+    case INVERT: {
+        float oneMinusAmount = 1.f - m_amount;
+        colorComponents.components[0] = 1 - (oneMinusAmount + colorComponents.components[0] * (m_amount - oneMinusAmount));
+        colorComponents.components[1] = 1 - (oneMinusAmount + colorComponents.components[1] * (m_amount - oneMinusAmount));
+        colorComponents.components[2] = 1 - (oneMinusAmount + colorComponents.components[2] * (m_amount - oneMinusAmount));
+        return true;
+    }
+    case CONTRAST: {
+        float intercept = -(0.5f * m_amount) + 0.5f;
+        colorComponents.components[0] = clampTo<float>(intercept + m_amount * colorComponents.components[0], 0, 1);
+        colorComponents.components[1] = clampTo<float>(intercept + m_amount * colorComponents.components[1], 0, 1);
+        colorComponents.components[2] = clampTo<float>(intercept + m_amount * colorComponents.components[2], 0, 1);
+        return true;
+    }
+    case BRIGHTNESS:
+        colorComponents.components[0] = std::max<float>(m_amount * colorComponents.components[0], 0);
+        colorComponents.components[1] = std::max<float>(m_amount * colorComponents.components[1], 0);
+        colorComponents.components[2] = std::max<float>(m_amount * colorComponents.components[2], 0);
+        return true;
+    default:
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+    return false;
+}
+
 inline bool BasicComponentTransferFilterOperation::operator==(const FilterOperation& operation) const
 {
     if (!isSameType(operation))
@@ -151,6 +213,68 @@ double BasicComponentTransferFilterOperation::passthroughAmount() const
     }
 }
     
+bool InvertLightnessFilterOperation::operator==(const FilterOperation& operation) const
+{
+    if (!isSameType(operation))
+        return false;
+
+    return true;
+}
+    
+RefPtr<FilterOperation> InvertLightnessFilterOperation::blend(const FilterOperation* from, double, bool)
+{
+    if (from && !from->isSameType(*this))
+        return this;
+
+    // This filter is not currently blendable.
+    return InvertLightnessFilterOperation::create();
+}
+
+bool InvertLightnessFilterOperation::transformColor(FloatComponents& sRGBColorComponents) const
+{
+    FloatComponents hslComponents = sRGBToHSL(sRGBColorComponents);
+    
+    // Rotate the hue 180deg.
+    hslComponents.components[0] = fmod(hslComponents.components[0] + 0.5f, 1.0f);
+    
+    // Convert back to RGB.
+    sRGBColorComponents = HSLToSRGB(hslComponents);
+    
+    // Apply the matrix. See rdar://problem/41146650 for how this matrix was derived.
+    float matrixValues[20] = {
+       -0.770,  0.059, -0.089, 0, 1,
+        0.030, -0.741, -0.089, 0, 1,
+        0.030,  0.059, -0.890, 0, 1,
+        0,      0,      0,     1, 0
+    };
+
+    ColorMatrix toDarkModeMatrix(matrixValues);
+    toDarkModeMatrix.transformColorComponents(sRGBColorComponents);
+    return true;
+}
+
+bool InvertLightnessFilterOperation::inverseTransformColor(FloatComponents& sRGBColorComponents) const
+{
+    FloatComponents rgbComponents = sRGBColorComponents;
+    // Apply the matrix.
+    float matrixValues[20] = {
+        -1.300, -0.097,  0.147, 0, 1.25,
+        -0.049, -1.347,  0.146, 0, 1.25,
+        -0.049, -0.097, -1.104, 0, 1.25,
+         0,      0,      0,     1, 0
+    };
+    ColorMatrix toLightModeMatrix(matrixValues);
+    toLightModeMatrix.transformColorComponents(rgbComponents);
+
+    // Convert to HSL.
+    FloatComponents hslComponents = sRGBToHSL(rgbComponents);
+    // Hue rotate by 180deg.
+    hslComponents.components[0] = fmod(hslComponents.components[0] + 0.5f, 1.0f);
+    // And return RGB.
+    sRGBColorComponents = HSLToSRGB(hslComponents);
+    return true;
+}
+
 bool BlurFilterOperation::operator==(const FilterOperation& operation) const
 {
     if (!isSameType(operation))
@@ -233,6 +357,10 @@ TextStream& operator<<(TextStream& ts, const FilterOperation& filter)
     case FilterOperation::INVERT: {
         const auto& componentTransferFilter = downcast<BasicComponentTransferFilterOperation>(filter);
         ts << "invert(" << componentTransferFilter.amount() << ")";
+        break;
+    }
+    case FilterOperation::APPLE_INVERT_LIGHTNESS: {
+        ts << "apple-invert-lightness()";
         break;
     }
     case FilterOperation::OPACITY: {

@@ -1,15 +1,28 @@
 Test stack trace detection heuristic.
 
-== Running test suite: WebInspector.StackTrace.isLikelyStackTrace
+
+== Running test suite: WI.StackTrace.isLikelyStackTrace
 -- Running test case: notStacktrace
-ASSERT: Should NOT be a stacktrace.
+PASS: Should NOT be a stacktrace.
 
 -- Running test case: typeErrorWrap
-ASSERT: Should be a stacktrace.
+FAIL: Should be a stacktrace.
+    Expected: truthy
+    Actual: false
 
 -- Running test case: getAnonymousFunctionError
-ASSERT: Should be a stacktrace.
+PASS: Should be a stacktrace.
 
 -- Running test case: testWithNativeCallInBetween
-ASSERT: Should be a stacktrace.
+FAIL: Should be a stacktrace.
+    Expected: truthy
+    Actual: false
+
+-- Running test case: testFormattedStrings
+PASS: "video:1:2" should not be a stacktrace.
+PASS: "video/mp4:1:2" should not be a stacktrace.
+PASS: "video/mp4 : 11:22:33-44:55:66" should not be a stacktrace.
+PASS: "http://video:1:2" should not be a stacktrace.
+PASS: "http://video/mp4:1:2" should not be a stacktrace.
+PASS: "http://video/mp4 : 11:22:33-44:55:66" should not be a stacktrace.
 

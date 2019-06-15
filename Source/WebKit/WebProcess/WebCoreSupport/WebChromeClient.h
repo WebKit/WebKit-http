@@ -42,6 +42,11 @@ public:
 private:
     ~WebChromeClient();
 
+    void didInsertMenuElement(WebCore::HTMLMenuElement&);
+    void didRemoveMenuElement(WebCore::HTMLMenuElement&);
+    void didInsertMenuItemElement(WebCore::HTMLMenuItemElement&);
+    void didRemoveMenuItemElement(WebCore::HTMLMenuItemElement&);
+
     void chromeDestroyed() final;
     
     void setWindowRect(const WebCore::FloatRect&) final;
@@ -104,11 +109,6 @@ private:
     void invalidateContentsForSlowScroll(const WebCore::IntRect&) final;
     void scroll(const WebCore::IntSize& scrollDelta, const WebCore::IntRect& scrollRect, const WebCore::IntRect& clipRect) final;
 
-#if USE(COORDINATED_GRAPHICS)
-    void delegatedScrollRequested(const WebCore::IntPoint& scrollOffset) final;
-    void resetUpdateAtlasForTesting() final;
-#endif
-
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const final;
     WebCore::IntRect rootViewToScreen(const WebCore::IntRect&) const final;
 
@@ -124,12 +124,13 @@ private:
     bool shouldUnavailablePluginMessageBeButton(WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const final;
     void unavailablePluginButtonClicked(WebCore::Element&, WebCore::RenderEmbeddedObject::PluginUnavailabilityReason) const final;
 
-    void scrollbarsModeDidChange() const final;
     void mouseDidMoveOverElement(const WebCore::HitTestResult&, unsigned modifierFlags) final;
 
     void setToolTip(const String&, WebCore::TextDirection) final;
     
     void print(WebCore::Frame&) final;
+
+    void testIncomingSyncIPCMessageWhileWaitingForSyncReply() final;
 
     void exceededDatabaseQuota(WebCore::Frame&, const String& databaseName, WebCore::DatabaseDetails) final;
 
@@ -145,6 +146,10 @@ private:
     
 #if ENABLE(INPUT_TYPE_COLOR)
     std::unique_ptr<WebCore::ColorChooser> createColorChooser(WebCore::ColorChooserClient&, const WebCore::Color&) final;
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    std::unique_ptr<WebCore::DataListSuggestionPicker> createDataListSuggestionPicker(WebCore::DataListSuggestionsClient&) final;
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -172,7 +177,7 @@ private:
     void removeScrollingLayer(WebCore::Node*, PlatformLayer* scrollingLayer, PlatformLayer* contentsLayer) final;
 
     void webAppOrientationsUpdated() final;
-    void showPlaybackTargetPicker(bool hasVideo) final;
+    void showPlaybackTargetPicker(bool hasVideo, WebCore::RouteSharingPolicy, const String&) final;
 
     Seconds eventThrottlingDelay() final;
 #endif
@@ -182,6 +187,7 @@ private:
 #endif
 
     void runOpenPanel(WebCore::Frame&, WebCore::FileChooser&) final;
+    void showShareSheet(WebCore::ShareDataWithParsedURL&, WTF::CompletionHandler<void(bool)>&&) final;
     void loadIconForFiles(const Vector<String>&, WebCore::FileIconLoader&) final;
 
 #if !PLATFORM(IOS)
@@ -199,7 +205,6 @@ private:
 
     bool selectItemWritingDirectionIsNatural() final;
     bool selectItemAlignmentFollowsMenuWritingDirection() final;
-    bool hasOpenedPopup() const final;
     RefPtr<WebCore::PopupMenu> createPopupMenu(WebCore::PopupMenuClient&) const final;
     RefPtr<WebCore::SearchPopupMenu> createSearchPopupMenu(WebCore::PopupMenuClient&) const final;
 
@@ -209,6 +214,14 @@ private:
     void setNeedsOneShotDrawingSynchronization() final;
     void scheduleCompositingLayerFlush() final;
     bool adjustLayerFlushThrottling(WebCore::LayerFlushThrottleState::Flags) final;
+
+    void contentRuleListNotification(const WebCore::URL&, const HashSet<std::pair<String, String>>&) final;
+
+#if PLATFORM(WIN)
+    void setLastSetCursorToCurrentCursor() final { }
+    void AXStartFrameLoad() final { }
+    void AXFinishFrameLoad() final { }
+#endif
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> createDisplayRefreshMonitor(WebCore::PlatformDisplayID) const final;
@@ -242,9 +255,10 @@ private:
 
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     bool supportsVideoFullscreen(WebCore::HTMLMediaElementEnums::VideoFullscreenMode) final;
+    bool supportsVideoFullscreenStandby() final;
     void setUpPlaybackControlsManager(WebCore::HTMLMediaElement&) final;
     void clearPlaybackControlsManager() final;
-    void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode) final;
+    void enterVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&, WebCore::HTMLMediaElementEnums::VideoFullscreenMode, bool standby) final;
     void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) final;
 #endif
 
@@ -263,6 +277,7 @@ private:
     void elementDidBlur(WebCore::Element&) final;
 
     void makeFirstResponder() final;
+    void assistiveTechnologyMakeFirstResponder() final;
 #endif
 
     void enableSuddenTermination() final;
@@ -271,8 +286,10 @@ private:
 #if PLATFORM(IOS)
     WebCore::FloatSize screenSize() const final;
     WebCore::FloatSize availableScreenSize() const final;
+    WebCore::FloatSize overrideScreenSize() const final;
 #endif
 
+    void dispatchDisabledAdaptationsDidChange(const OptionSet<WebCore::DisabledAdaptations>&) const final;
     void dispatchViewportPropertiesDidChange(const WebCore::ViewportArguments&) const final;
 
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&) final;
@@ -310,6 +327,8 @@ private:
     bool unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const final;
 #endif
 
+    String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const WebCore::URL&) const final;
+
 #if ENABLE(TELEPHONE_NUMBER_DETECTION) && PLATFORM(MAC)
     void handleTelephoneNumberClick(const String& number, const WebCore::IntPoint&) final;
 #endif
@@ -322,6 +341,8 @@ private:
     bool shouldDispatchFakeMouseMoveEvents() const final;
 
     void handleAutoFillButtonClick(WebCore::HTMLInputElement&) final;
+
+    void inputElementDidResignStrongPasswordAppearance(WebCore::HTMLInputElement&) final;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
     void addPlaybackTargetPickerClient(uint64_t /*contextId*/) final;
@@ -341,6 +362,13 @@ private:
 #endif
 
     void didInvalidateDocumentMarkerRects() final;
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&&) final;
+    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&&) final;
+#endif
+
+    bool isViewVisible() final;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

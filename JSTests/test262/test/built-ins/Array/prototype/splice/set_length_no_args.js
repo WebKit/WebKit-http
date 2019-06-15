@@ -3,17 +3,19 @@
 
 /*---
 description: Array.prototype.splice sets length when called with no arguments
-info: >
+info: |
   22.1.3.25 Array.prototype.splice (start, deleteCount , ...items )
 
   ...
   24. Let setStatus be Set(O, "length", len – actualDeleteCount + itemCount, true).
   25. ReturnIfAbrupt(setStatus).
+esid: sec-array.prototype.splice
 es5id: 15.4.4.12
 es6id: 22.1.3.25
 ---*/
 
-var getCallCount = 0, setCallCount = 0;
+var getCallCount = 0,
+  setCallCount = 0;
 var lengthValue;
 
 var obj = {

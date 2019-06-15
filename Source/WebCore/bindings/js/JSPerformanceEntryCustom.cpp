@@ -30,8 +30,6 @@
 
 #include "config.h"
 
-#if ENABLE(WEB_TIMING)
-
 #include "JSPerformanceEntry.h"
 
 #include "JSDOMBinding.h"
@@ -42,9 +40,9 @@
 #include "PerformanceMeasure.h"
 #include "PerformanceResourceTiming.h"
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<PerformanceEntry>&& entry)
 {
@@ -66,5 +64,3 @@ JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, Performance
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

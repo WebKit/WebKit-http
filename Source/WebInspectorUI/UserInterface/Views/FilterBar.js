@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.FilterBar = class FilterBar extends WebInspector.Object
+WI.FilterBar = class FilterBar extends WI.Object
 {
     constructor(element)
     {
@@ -32,16 +32,18 @@ WebInspector.FilterBar = class FilterBar extends WebInspector.Object
         this._element = element || document.createElement("div");
         this._element.classList.add("filter-bar");
 
-        this._filtersNavigationBar = new WebInspector.NavigationBar;
+        this._filtersNavigationBar = new WI.NavigationBar;
         this._element.appendChild(this._filtersNavigationBar.element);
 
         this._filterFunctionsMap = new Map;
 
         this._inputField = document.createElement("input");
         this._inputField.type = "search";
+        this._inputField.placeholder = WI.UIString("Filter");
         this._inputField.spellcheck = false;
         this._inputField.incremental = true;
-        this._inputField.addEventListener("search", this._handleFilterChanged.bind(this), false);
+        this._inputField.addEventListener("search", this._handleFilterChanged.bind(this));
+        this._inputField.addEventListener("input", this._handleFilterInputEvent.bind(this));
         this._element.appendChild(this._inputField);
 
         this._lastFilterValue = this.filters;
@@ -54,19 +56,29 @@ WebInspector.FilterBar = class FilterBar extends WebInspector.Object
         return this._element;
     }
 
+    get inputField()
+    {
+        return this._inputField;
+    }
+
     get placeholder()
     {
-        return this._inputField.getAttribute("placeholder");
+        return this._inputField.placeholder;
     }
 
     set placeholder(text)
     {
-        this._inputField.setAttribute("placeholder", text);
+        this._inputField.placeholder = text;
     }
 
-    get inputField()
+    get incremental()
     {
-        return this._inputField;
+        return this._inputField.incremental;
+    }
+
+    set incremental(incremental)
+    {
+        this._inputField.incremental = incremental;
     }
 
     get filters()
@@ -84,11 +96,38 @@ WebInspector.FilterBar = class FilterBar extends WebInspector.Object
             this._handleFilterChanged();
     }
 
+    get indicatingProgress()
+    {
+        return this._element.classList.contains("indicating-progress");
+    }
+
+    set indicatingProgress(progress)
+    {
+        this._element.classList.toggle("indicating-progress", !!progress);
+    }
+
+    get indicatingActive()
+    {
+        return this._element.classList.contains("active");
+    }
+
+    set indicatingActive(active)
+    {
+        this._element.classList.toggle("active", !!active);
+    }
+
+    clear()
+    {
+        this._inputField.value = "";
+        this._inputField.value = null; // Get the placeholder to show again.
+        this._lastFilterValue = this.filters;
+    }
+
     addFilterBarButton(identifier, filterFunction, activatedByDefault, defaultToolTip, activatedToolTip, image, imageWidth, imageHeight)
     {
-        var filterBarButton = new WebInspector.FilterBarButton(identifier, filterFunction, activatedByDefault, defaultToolTip, activatedToolTip, image, imageWidth, imageHeight);
-        filterBarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._handleFilterBarButtonClicked, this);
-        filterBarButton.addEventListener(WebInspector.FilterBarButton.Event.ActivatedStateToggled, this._handleFilterButtonToggled, this);
+        var filterBarButton = new WI.FilterBarButton(identifier, filterFunction, activatedByDefault, defaultToolTip, activatedToolTip, image, imageWidth, imageHeight);
+        filterBarButton.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._handleFilterBarButtonClicked, this);
+        filterBarButton.addEventListener(WI.FilterBarButton.Event.ActivatedStateToggled, this._handleFilterButtonToggled, this);
         this._filtersNavigationBar.addNavigationItem(filterBarButton);
         if (filterBarButton.activated) {
             this._filterFunctionsMap.set(filterBarButton.identifier, filterBarButton.filterFunction);
@@ -138,11 +177,22 @@ WebInspector.FilterBar = class FilterBar extends WebInspector.Object
     {
         if (this.hasFilterChanged()) {
             this._lastFilterValue = this.filters;
-            this.dispatchEventToListeners(WebInspector.FilterBar.Event.FilterDidChange);
+            this.dispatchEventToListeners(WI.FilterBar.Event.FilterDidChange);
         }
+    }
+
+    _handleFilterInputEvent(event)
+    {
+        // When not incremental we still want to detect if the field becomes empty.
+
+        if (this.incremental)
+            return;
+
+        if (!this._inputField.value)
+            this._handleFilterChanged();
     }
 };
 
-WebInspector.FilterBar.Event = {
+WI.FilterBar.Event = {
     FilterDidChange: "filter-bar-text-filter-did-change"
 };

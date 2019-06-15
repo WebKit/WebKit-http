@@ -28,9 +28,9 @@
 
 #include "ActiveDOMCallback.h"
 #include "QualifiedName.h"
-#include <heap/Weak.h>
-#include <heap/WeakInlines.h>
-#include <runtime/JSObject.h>
+#include <JavaScriptCore/JSObject.h>
+#include <JavaScriptCore/Weak.h>
+#include <JavaScriptCore/WeakInlines.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/RefCounted.h>
@@ -94,7 +94,7 @@ private:
 
     RefPtr<Element> tryToConstructCustomElement(Document&, const AtomicString&);
 
-    void invokeCallback(Element&, JSC::JSObject* callback, const WTF::Function<void(JSC::ExecState*, JSDOMGlobalObject*, JSC::MarkedArgumentBuffer&)>& addArguments = { });
+    void invokeCallback(Element&, JSC::JSObject* callback, const WTF::Function<void(JSC::ExecState*, JSDOMGlobalObject*, JSC::MarkedArgumentBuffer&)>& addArguments = [](JSC::ExecState*, JSDOMGlobalObject*, JSC::MarkedArgumentBuffer&) { });
 
     QualifiedName m_name;
     JSC::Weak<JSC::JSObject> m_constructor;

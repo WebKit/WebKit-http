@@ -8,15 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_TEST_FAKEVIDEOTRACKSOURCE_H_
-#define WEBRTC_PC_TEST_FAKEVIDEOTRACKSOURCE_H_
+#ifndef PC_TEST_FAKEVIDEOTRACKSOURCE_H_
+#define PC_TEST_FAKEVIDEOTRACKSOURCE_H_
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/media/base/fakevideocapturer.h"
-#include "webrtc/pc/videotracksource.h"
+#include "api/mediastreaminterface.h"
+#include "pc/videotracksource.h"
 
 namespace webrtc {
 
+// A minimal implementation of VideoTrackSource, which doesn't produce
+// any frames.
 class FakeVideoTrackSource : public VideoTrackSource {
  public:
   static rtc::scoped_refptr<FakeVideoTrackSource> Create(bool is_screencast) {
@@ -27,23 +28,23 @@ class FakeVideoTrackSource : public VideoTrackSource {
     return Create(false);
   }
 
-  cricket::FakeVideoCapturer* fake_video_capturer() {
-    return &fake_video_capturer_;
-  }
-
   bool is_screencast() const override { return is_screencast_; }
+  void AddOrUpdateSink(rtc::VideoSinkInterface<VideoFrame>* sink,
+                       const rtc::VideoSinkWants& wants) override {}
+  void RemoveSink(rtc::VideoSinkInterface<VideoFrame>* sink) {}
 
  protected:
   explicit FakeVideoTrackSource(bool is_screencast)
-      : VideoTrackSource(&fake_video_capturer_, false /* remote */),
-        is_screencast_(is_screencast) {}
-  virtual ~FakeVideoTrackSource() {}
+      : VideoTrackSource(false /* remote */), is_screencast_(is_screencast) {}
+  ~FakeVideoTrackSource() override = default;
+
+  // Unused, since we override AddOrUpdateSink and RemoveSink above.
+  rtc::VideoSourceInterface<VideoFrame>* source() override { return nullptr; }
 
  private:
-  cricket::FakeVideoCapturer fake_video_capturer_;
   const bool is_screencast_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_TEST_FAKEVIDEOTRACKSOURCE_H_
+#endif  // PC_TEST_FAKEVIDEOTRACKSOURCE_H_

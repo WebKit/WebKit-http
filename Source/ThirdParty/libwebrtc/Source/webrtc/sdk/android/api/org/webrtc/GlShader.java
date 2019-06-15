@@ -29,7 +29,7 @@ public class GlShader {
     GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compileStatus, 0);
     if (compileStatus[0] != GLES20.GL_TRUE) {
       Logging.e(
-          TAG, "Could not compile shader " + shaderType + ":" + GLES20.glGetShaderInfoLog(shader));
+          TAG, "Compile error " + GLES20.glGetShaderInfoLog(shader) + " in shader:\n" + source);
       throw new RuntimeException(GLES20.glGetShaderInfoLog(shader));
     }
     GlUtil.checkNoGLES2Error("compileShader");
@@ -82,12 +82,20 @@ public class GlShader {
    * |buffer| with |dimension| number of components per vertex.
    */
   public void setVertexAttribArray(String label, int dimension, FloatBuffer buffer) {
+    setVertexAttribArray(label, dimension, 0 /* stride */, buffer);
+  }
+
+  /**
+   * Enable and upload a vertex array for attribute |label|. The vertex data is specified in
+   * |buffer| with |dimension| number of components per vertex and specified |stride|.
+   */
+  public void setVertexAttribArray(String label, int dimension, int stride, FloatBuffer buffer) {
     if (program == -1) {
       throw new RuntimeException("The program has been released");
     }
     int location = getAttribLocation(label);
     GLES20.glEnableVertexAttribArray(location);
-    GLES20.glVertexAttribPointer(location, dimension, GLES20.GL_FLOAT, false, 0, buffer);
+    GLES20.glVertexAttribPointer(location, dimension, GLES20.GL_FLOAT, false, stride, buffer);
     GlUtil.checkNoGLES2Error("setVertexAttribArray");
   }
 

@@ -62,10 +62,13 @@ class CrashLogs(object):
         contents = self._host.symbolicate_crash_log_if_needed(path)
         if not contents:
             return (None, None, None)
+        is_sandbox_violation = False
         for line in contents.splitlines():
+            if line.startswith('Sandbox Violation:'):
+                is_sandbox_violation = True
             match = CrashLogs.DARWIN_PROCESS_REGEX.match(line)
             if match:
-                return (match.group('process_name'), int(match.group('pid')), contents)
+                return (('Sandbox-' if is_sandbox_violation else '') + match.group('process_name'), int(match.group('pid')), contents)
         return (None, None, contents)
 
     def _find_newest_log_darwin(self, process_name, pid, include_errors, newer_than):
@@ -83,10 +86,10 @@ class CrashLogs(object):
                     parsed_name, parsed_pid, log_contents = self._parse_darwin_crash_log(path)
                     if parsed_name == process_name and (pid is None or parsed_pid == pid):
                         return errors + log_contents
-            except IOError, e:
+            except IOError as e:
                 if include_errors:
                     errors += "ERROR: Failed to read '%s': %s\n" % (path, str(e))
-            except OSError, e:
+            except OSError as e:
                 if include_errors:
                     errors += "ERROR: Failed to read '%s': %s\n" % (path, str(e))
 
@@ -116,16 +119,13 @@ class CrashLogs(object):
                     # Note: This output comes from a program that shows PID in hex:
                     if int(match.group('pid'), 16) == pid:
                         return errors + log_file
-            except IOError, e:
-                print "IOError %s" % str(e)
+            except IOError as e:
                 if include_errors:
                     errors += u"ERROR: Failed to read '%s': %s\n" % (path, str(e))
-            except OSError, e:
-                print "OSError %s" % str(e)
+            except OSError as e:
                 if include_errors:
                     errors += u"ERROR: Failed to read '%s': %s\n" % (path, str(e))
-            except UnicodeDecodeError, e:
-                print "UnicodeDecodeError %s" % str(e)
+            except UnicodeDecodeError as e:
                 if include_errors:
                     errors += u"ERROR: Failed to decode '%s' as ascii: %s\n" % (path, str(e))
 
@@ -163,18 +163,18 @@ class CrashLogs(object):
 
                     # Processes can remain running after Sandbox violations, which generate crash logs.
                     # This means that we can have mutliple crash logs attributed to the same process.
-                    # The unique_name must be named in the format PROCESS_NAME-PID-#, where '-#' is optional.
-                    # This is because of how DarwinPort._merge_crash_logs parses the crash name.
+                    # The unique_name must be named in the format PROCESS_NAME-PID-# or Sandbox-PROCESS_NAME-PID-#,
+                    # where '-#' is optional. This is because of how DarwinPort._merge_crash_logs parses the crash name.
                     count = 1
                     unique_name = result_name
                     while unique_name in crash_logs:
                         unique_name = result_name + '-' + str(count)
                         count += 1
                     crash_logs[unique_name] = errors + log_contents
-            except IOError, e:
+            except IOError as e:
                 if include_errors:
                     errors += "ERROR: Failed to read '%s': %s\n" % (path, str(e))
-            except OSError, e:
+            except OSError as e:
                 if include_errors:
                     errors += "ERROR: Failed to read '%s': %s\n" % (path, str(e))
 

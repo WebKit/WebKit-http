@@ -283,7 +283,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
     ASSERT(m_state == Uninitialized);
     m_state = Initialized;
 
-    if (Frame* frame = document->frame())
+    if (RefPtr<Frame> frame = document->frame())
         m_isEnabled = frame->settings().xssAuditorEnabled();
 
     if (!m_isEnabled)
@@ -317,9 +317,8 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
         m_decodedURL = String();
 
     String httpBodyAsString;
-    if (DocumentLoader* documentLoader = document->frame()->loader().documentLoader()) {
-        static NeverDestroyed<String> XSSProtectionHeader(MAKE_STATIC_STRING_IMPL("X-XSS-Protection"));
-        String headerValue = documentLoader->response().httpHeaderField(XSSProtectionHeader);
+    if (RefPtr<DocumentLoader> documentLoader = document->frame()->loader().documentLoader()) {
+        String headerValue = documentLoader->response().httpHeaderField(HTTPHeaderName::XXSSProtection);
         String errorDetails;
         unsigned errorPosition = 0;
         String parsedReportURL;
@@ -343,7 +342,7 @@ void XSSAuditor::init(Document* document, XSSAuditorDelegate* auditorDelegate)
 
         if (auditorDelegate)
             auditorDelegate->setReportURL(reportURL.isolatedCopy());
-        FormData* httpBody = documentLoader->originalRequest().httpBody();
+        RefPtr<FormData> httpBody = documentLoader->originalRequest().httpBody();
         if (httpBody && !httpBody->isEmpty()) {
             httpBodyAsString = httpBody->flattenToString();
             if (!httpBodyAsString.isEmpty()) {
@@ -448,6 +447,7 @@ bool XSSAuditor::filterScriptToken(const FilterTokenRequest& request)
     bool didBlockScript = false;
     if (m_wasScriptTagFoundInRequest) {
         didBlockScript |= eraseAttributeIfInjected(request, srcAttr, blankURL().string(), TruncationStyle::SrcLikeAttribute);
+        didBlockScript |= eraseAttributeIfInjected(request, SVGNames::hrefAttr, blankURL().string(), TruncationStyle::SrcLikeAttribute);
         didBlockScript |= eraseAttributeIfInjected(request, XLinkNames::hrefAttr, blankURL().string(), TruncationStyle::SrcLikeAttribute);
     }
 
@@ -715,11 +715,11 @@ bool XSSAuditor::isContainedInRequest(const String& decodedSnippet)
 {
     if (decodedSnippet.isEmpty())
         return false;
-    if (m_decodedURL.find(decodedSnippet, 0, false) != notFound)
+    if (m_decodedURL.containsIgnoringASCIICase(decodedSnippet))
         return true;
     if (m_decodedHTTPBodySuffixTree && !m_decodedHTTPBodySuffixTree->mightContain(decodedSnippet))
         return false;
-    return m_decodedHTTPBody.find(decodedSnippet, 0, false) != notFound;
+    return m_decodedHTTPBody.containsIgnoringASCIICase(decodedSnippet);
 }
 
 bool XSSAuditor::isLikelySafeResource(const String& url)

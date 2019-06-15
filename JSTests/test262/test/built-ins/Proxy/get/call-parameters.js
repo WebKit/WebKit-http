@@ -6,7 +6,7 @@ description: >
     [[Get]] (P, Receiver)
 
     9. Let trapResult be Call(trap, handler, «target, P, Receiver»).
-info: >
+info: |
     6.1.7.2 Object Internal Methods and Internal Slots
 
     (...) Receiver is used as the this value when evaluating the code
@@ -14,15 +14,15 @@ info: >
 
 var _target, _handler, _prop, _receiver;
 var target = {
-    attr: 1
+  attr: 1
 };
 var handler = {
-    get: function(t, prop, receiver) {
-        _handler = this;
-        _target = t;
-        _prop = prop;
-        _receiver = receiver;
-    }
+  get: function(t, prop, receiver) {
+    _handler = this;
+    _target = t;
+    _prop = prop;
+    _receiver = receiver;
+  }
 };
 var p = new Proxy(target, handler);
 
@@ -36,6 +36,6 @@ assert.sameValue(_receiver, p, "receiver is the Proxy object");
 _prop = null;
 p["attr"];
 assert.sameValue(
-    _prop, "attr",
-    "trap is triggered both by p.attr and p['attr']"
+  _prop, "attr",
+  "trap is triggered both by p.attr and p['attr']"
 );

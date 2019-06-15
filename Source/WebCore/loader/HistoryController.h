@@ -40,6 +40,8 @@ class Frame;
 class HistoryItem;
 class SerializedScriptValue;
 
+enum class ShouldTreatAsContinuingLoad;
+
 struct StringWithDirection;
 
 class HistoryController {
@@ -92,14 +94,14 @@ public:
 private:
     friend class Page;
     bool shouldStopLoadingForHistoryItem(HistoryItem&) const;
-    void goToItem(HistoryItem&, FrameLoadType);
+    void goToItem(HistoryItem&, FrameLoadType, ShouldTreatAsContinuingLoad);
 
     void initializeItem(HistoryItem&);
     Ref<HistoryItem> createItem();
     Ref<HistoryItem> createItemTree(Frame& targetFrame, bool clipAtTarget);
 
     void recursiveSetProvisionalItem(HistoryItem&, HistoryItem*);
-    void recursiveGoToItem(HistoryItem&, HistoryItem*, FrameLoadType);
+    void recursiveGoToItem(HistoryItem&, HistoryItem*, FrameLoadType, ShouldTreatAsContinuingLoad);
     bool isReplaceLoadTypeWithProvisionalItem(FrameLoadType);
     bool isReloadTypeWithProvisionalItem(FrameLoadType);
     void recursiveUpdateForCommit();

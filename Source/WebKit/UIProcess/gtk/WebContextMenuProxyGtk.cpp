@@ -44,9 +44,8 @@ static const char* gContextMenuActionId = "webkit-context-menu-action";
 static const char* gContextMenuTitle = "webkit-context-menu-title";
 static const char* gContextMenuItemGroup = "webkitContextMenu";
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static void contextMenuItemActivatedCallback(GAction* action, GVariant*, WebPageProxy* page)
 {
@@ -124,7 +123,7 @@ void WebContextMenuProxyGtk::populate(const Vector<WebContextMenuItemGlib>& item
     gtk_menu_shell_bind_model(GTK_MENU_SHELL(m_menu), G_MENU_MODEL(menu.get()), nullptr, TRUE);
 }
 
-void WebContextMenuProxyGtk::populate(const Vector<RefPtr<WebContextMenuItem>>& items)
+void WebContextMenuProxyGtk::populate(const Vector<Ref<WebContextMenuItem>>& items)
 {
     GRefPtr<GMenu> menu = adoptGRef(g_menu_new());
     GMenu* sectionMenu = menu.get();
@@ -143,20 +142,17 @@ void WebContextMenuProxyGtk::populate(const Vector<RefPtr<WebContextMenuItem>>& 
 
 void WebContextMenuProxyGtk::show()
 {
-    Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
+    Vector<Ref<WebContextMenuItem>> proposedAPIItems;
     for (auto& item : m_context.menuItems()) {
         if (item.action() != ContextMenuItemTagShareMenu)
             proposedAPIItems.append(WebContextMenuItem::create(item));
     }
 
-    Vector<RefPtr<WebContextMenuItem>> clientItems;
-    bool useProposedItems = true;
+    m_page->contextMenuClient().getContextMenuFromProposedMenu(*m_page, WTFMove(proposedAPIItems), WebContextMenuListenerProxy::create(this).get(), m_context.webHitTestResultData(), m_page->process().transformHandlesToObjects(m_userData.object()).get());
+}
 
-    if (m_page->contextMenuClient().getContextMenuFromProposedMenu(*m_page, proposedAPIItems, clientItems, m_context.webHitTestResultData(), m_page->process().transformHandlesToObjects(m_userData.object()).get()))
-        useProposedItems = false;
-
-    const Vector<RefPtr<WebContextMenuItem>>& items = useProposedItems ? proposedAPIItems : clientItems;
-
+void WebContextMenuProxyGtk::showContextMenuWithItems(Vector<Ref<WebContextMenuItem>>&& items)
+{
     if (!items.isEmpty())
         populate(items);
 
@@ -171,16 +167,11 @@ void WebContextMenuProxyGtk::show()
     NativeWebMouseEvent* mouseEvent = m_page->currentlyProcessedMouseDownEvent();
     const GdkEvent* event = mouseEvent ? mouseEvent->nativeEvent() : 0;
     gtk_menu_attach_to_widget(m_menu, GTK_WIDGET(m_webView), nullptr);
-    gtk_menu_popup(m_menu, nullptr, nullptr, reinterpret_cast<GtkMenuPositionFunc>(menuPositionFunction), this,
-                   event ? event->button.button : 3, event ? event->button.time : GDK_CURRENT_TIME);
+    gtk_menu_popup(m_menu, nullptr, nullptr, reinterpret_cast<GtkMenuPositionFunc>(menuPositionFunction), this, event ? event->button.button : 3, event ? event->button.time : GDK_CURRENT_TIME);
 }
 
-void WebContextMenuProxyGtk::showContextMenuWithItems(const Vector<WebContextMenuItemData>& items)
-{
-}
-
-WebContextMenuProxyGtk::WebContextMenuProxyGtk(GtkWidget* webView, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
-    : WebContextMenuProxy(context, userData)
+WebContextMenuProxyGtk::WebContextMenuProxyGtk(GtkWidget* webView, WebPageProxy& page, ContextMenuContextData&& context, const UserData& userData)
+    : WebContextMenuProxy(WTFMove(context), userData)
     , m_webView(webView)
     , m_page(&page)
     , m_menu(GTK_MENU(gtk_menu_new()))

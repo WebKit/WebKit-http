@@ -29,8 +29,8 @@
 #if PLATFORM(MAC)
 
 #import "BlacklistUpdater.h"
-#import "CFUtilitiesSPI.h"
 #import <OpenGL/OpenGL.h>
+#import <pal/spi/cf/CFUtilitiesSPI.h>
 
 namespace WebCore {
 
@@ -170,7 +170,7 @@ std::unique_ptr<WebGLBlacklist> WebGLBlacklist::create(NSDictionary *propertyLis
 {
     CFDictionaryRef systemVersionDictionary = _CFCopySystemVersionDictionary();
     CFStringRef osBuild = static_cast<CFStringRef>(CFDictionaryGetValue(systemVersionDictionary, _kCFSystemVersionBuildVersionKey));
-    OSBuildInfo buildInfo = buildInfoFromOSBuildString((NSString *)osBuild);
+    OSBuildInfo buildInfo = buildInfoFromOSBuildString((__bridge NSString *)osBuild);
     CFRelease(systemVersionDictionary);
 
     if (!buildInfo.major)

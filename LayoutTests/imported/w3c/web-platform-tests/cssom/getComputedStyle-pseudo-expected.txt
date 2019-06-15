@@ -1,4 +1,0 @@
-
-PASS Resolution of width is correct for ::before and ::after pseudo-elements 
-FAIL Resolution of width is correct for ::before and ::after pseudo-elements of display: contents elements assert_equals: expected "50px" but got "auto"
-

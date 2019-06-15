@@ -5,7 +5,7 @@
 author: Rick Waldron
 esid: sec-unary-operators
 description: Exponentiation Expression syntax error, `void` UnaryExpression
-info: >
+info: |
   ExponentiationExpression :
     UnaryExpression
     ...
@@ -15,6 +15,10 @@ info: >
     `void` UnaryExpression
     ...
 
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 void 1 ** 2;

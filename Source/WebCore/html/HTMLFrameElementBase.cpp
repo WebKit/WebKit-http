@@ -38,8 +38,11 @@
 #include "Settings.h"
 #include "SubframeLoader.h"
 #include "URL.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLFrameElementBase);
 
 using namespace HTMLNames;
 
@@ -69,12 +72,12 @@ bool HTMLFrameElementBase::isURLAllowed(const URL& completeURL) const
         return true;
 
     if (protocolIsJavaScript(completeURL)) {
-        Document* contentDoc = this->contentDocument();
+        RefPtr<Document> contentDoc = this->contentDocument();
         if (contentDoc && !ScriptController::canAccessFromCurrentOrigin(contentDoc->frame()))
             return false;
     }
 
-    Frame* parentFrame = document().frame();
+    RefPtr<Frame> parentFrame = document().frame();
     if (parentFrame)
         return parentFrame->isURLAllowed(completeURL);
 
@@ -89,11 +92,15 @@ void HTMLFrameElementBase::openURL(LockHistory lockHistory, LockBackForwardList 
     if (m_URL.isEmpty())
         m_URL = blankURL().string();
 
-    Frame* parentFrame = document().frame();
+    RefPtr<Frame> parentFrame = document().frame();
     if (!parentFrame)
         return;
 
-    parentFrame->loader().subframeLoader().requestFrame(*this, m_URL, m_frameName, lockHistory, lockBackForwardList);
+    String frameName = getNameAttribute();
+    if (frameName.isNull() && UNLIKELY(document().settings().needsFrameNameFallbackToIdQuirk()))
+        frameName = getIdAttribute();
+
+    parentFrame->loader().subframeLoader().requestFrame(*this, m_URL, frameName, lockHistory, lockBackForwardList);
 }
 
 void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -102,17 +109,7 @@ void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const Atomi
         setLocation("about:srcdoc");
     else if (name == srcAttr && !hasAttributeWithoutSynchronization(srcdocAttr))
         setLocation(stripLeadingAndTrailingHTMLSpaces(value));
-    else if (name == idAttr) {
-        HTMLFrameOwnerElement::parseAttribute(name, value);
-        // Falling back to using the 'id' attribute is not standard but some content relies on this behavior.
-        if (!hasAttributeWithoutSynchronization(nameAttr))
-            m_frameName = value;
-    } else if (name == nameAttr) {
-        m_frameName = value;
-        // FIXME: If we are already attached, this doesn't actually change the frame's name.
-        // FIXME: If we are already attached, this doesn't check for frame name
-        // conflicts and generate a unique frame name.
-    } else if (name == marginwidthAttr) {
+    else if (name == marginwidthAttr) {
         m_marginWidth = value.toInt();
         // FIXME: If we are already attached, this has no effect.
     } else if (name == marginheightAttr) {
@@ -129,24 +126,15 @@ void HTMLFrameElementBase::parseAttribute(const QualifiedName& name, const Atomi
         HTMLFrameOwnerElement::parseAttribute(name, value);
 }
 
-void HTMLFrameElementBase::setNameAndOpenURL()
+Node::InsertedIntoAncestorResult HTMLFrameElementBase::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    m_frameName = getNameAttribute();
-    // Falling back to using the 'id' attribute is not standard but some content relies on this behavior.
-    if (m_frameName.isNull())
-        m_frameName = getIdAttribute();
-    openURL();
+    HTMLFrameOwnerElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
+    return InsertedIntoAncestorResult::Done;
 }
 
-Node::InsertionNotificationRequest HTMLFrameElementBase::insertedInto(ContainerNode& insertionPoint)
-{
-    HTMLFrameOwnerElement::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected())
-        return InsertionShouldCallFinishedInsertingSubtree;
-    return InsertionDone;
-}
-
-void HTMLFrameElementBase::finishedInsertingSubtree()
+void HTMLFrameElementBase::didFinishInsertingNode()
 {
     if (!isConnected())
         return;
@@ -160,13 +148,13 @@ void HTMLFrameElementBase::finishedInsertingSubtree()
 
     if (!renderer())
         invalidateStyleAndRenderersForSubtree();
-    setNameAndOpenURL();
+    openURL();
 }
 
 void HTMLFrameElementBase::didAttachRenderers()
 {
     if (RenderWidget* part = renderWidget()) {
-        if (Frame* frame = contentFrame())
+        if (RefPtr<Frame> frame = contentFrame())
             part->setWidget(frame->view());
     }
 }

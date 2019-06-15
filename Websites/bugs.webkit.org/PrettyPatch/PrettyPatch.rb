@@ -349,7 +349,7 @@ pre, .text {
   height: 4em;
 }
 
-#statusBubbleContainer.wrap {
+.statusBubble.wrap {
   display: block;
 }
 
@@ -488,7 +488,7 @@ div:focus {
   outline-offset: -1px;
 }
 
-.statusBubble {
+.statusBubble > iframe {
   /* The width/height get set to the bubble contents via postMessage on browsers that support it. */
   width: 460px;
   height: 20px;
@@ -523,7 +523,8 @@ div:focus {
     clear: both;
 }
 </style>
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script> 
+<script src="https://webkit.org/ajax/libs/jquery/jquery-1.4.2.min.js"></script> 
+<script src="js/status-bubble.js"></script>
 <script src="code-review.js?version=48"></script>
 </head>
 EOF

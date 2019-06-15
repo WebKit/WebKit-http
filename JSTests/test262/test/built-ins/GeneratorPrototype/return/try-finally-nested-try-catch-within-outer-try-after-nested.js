@@ -7,11 +7,13 @@ description: >
     and following a nested `try..catch` statment, `return` should interrupt
     control flow as if a `return` statement had appeared at that location in
     the function body.
+features: [generators]
 ---*/
 
 var inCatch = 0;
 var inFinally = 0;
 var unreachable = 0;
+
 function* g() {
   try {
     try {
@@ -28,7 +30,7 @@ function* g() {
 var iter = g();
 var result;
 
- iter.next();
+iter.next();
 
 assert.sameValue(inCatch, 1, '`catch` code path executed');
 assert.sameValue(inFinally, 1, '`finally` code path executed');

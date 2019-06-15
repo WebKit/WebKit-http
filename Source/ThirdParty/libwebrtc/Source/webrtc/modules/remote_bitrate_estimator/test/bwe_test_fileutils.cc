@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe_test_fileutils.h"
+#include "modules/remote_bitrate_estimator/test/bwe_test_fileutils.h"
 
 #ifdef WIN32
 #include <Winsock2.h>
@@ -17,8 +17,8 @@
 #endif
 #include <assert.h>
 
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe_test_logging.h"
-#include "webrtc/test/testsupport/fileutils.h"
+#include "modules/remote_bitrate_estimator/test/bwe_test_logging.h"
+#include "test/testsupport/fileutils.h"
 
 namespace webrtc {
 namespace testing {
@@ -80,8 +80,8 @@ bool OutputFileWriter::Write(uint32_t value) {
 
 OutputFileWriter* OutputFileWriter::Create(const std::string& filename,
                                            const std::string& extension) {
-  std::string filepath = webrtc::test::OutputPath() + filename + "." +
-      extension;
+  std::string filepath =
+      webrtc::test::OutputPath() + filename + "." + extension;
   FILE* file = fopen(filepath.c_str(), "wb");
   if (file == NULL) {
     BWE_TEST_LOGGING_CONTEXT("OutputFileWriter");

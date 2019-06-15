@@ -3,8 +3,8 @@
 /*---
 es6id: 23.1.1.1
 description: >
-  Throws a TypeError if iterable itens are not Objects.
-info: >
+  Throws a TypeError if iterable items are not Objects.
+info: |
   Map ( [ iterable ] )
 
   ...
@@ -44,5 +44,8 @@ assert.throws(TypeError, function() {
 });
 
 assert.throws(TypeError, function() {
-  new Map([['a', 1], 2]);
+  new Map([
+    ['a', 1],
+    2
+  ]);
 });

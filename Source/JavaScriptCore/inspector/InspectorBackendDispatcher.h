@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All Rights Reserved.
  * Copyright (C) 2011 The Chromium Authors. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ class JS_EXPORT_PRIVATE SupplementalBackendDispatcher : public RefCounted<Supple
 public:
     SupplementalBackendDispatcher(BackendDispatcher&);
     virtual ~SupplementalBackendDispatcher();
-    virtual void dispatch(long requestId, const String& method, Ref<InspectorObject>&& message) = 0;
+    virtual void dispatch(long requestId, const String& method, Ref<JSON::Object>&& message) = 0;
 protected:
     Ref<BackendDispatcher> m_backendDispatcher;
 };
@@ -60,7 +60,7 @@ public:
         bool isActive() const;
         void disable() { m_alreadySent = true; }
 
-        void sendSuccess(RefPtr<InspectorObject>&&);
+        void sendSuccess(RefPtr<JSON::Object>&&);
         void sendFailure(const ErrorString&);
 
     private:
@@ -85,23 +85,27 @@ public:
     void registerDispatcherForDomain(const String& domain, SupplementalBackendDispatcher*);
     void dispatch(const String& message);
 
-    void sendResponse(long requestId, RefPtr<InspectorObject>&& result);
+    // Note that 'unused' is a workaround so the compiler can pick the right sendResponse based on arity.
+    // When <http://webkit.org/b/179847> is fixed or this class is renamed for the JSON::Object case,
+    // then this alternate method with a dummy parameter can be removed in favor of the one without it.
+    void sendResponse(long requestId, RefPtr<JSON::Object>&& result, bool unused);
+    void sendResponse(long requestId, RefPtr<JSON::Object>&& result);
     void sendPendingErrors();
 
     void reportProtocolError(CommonErrorCode, const String& errorMessage);
     void reportProtocolError(std::optional<long> relatedRequestId, CommonErrorCode, const String& errorMessage);
 
     template<typename T>
-    WTF_HIDDEN_DECLARATION
-    T getPropertyValue(InspectorObject*, const String& name, bool* out_optionalValueFound, T defaultValue, std::function<bool(InspectorValue&, T&)>, const char* typeName);
+    WTF_INTERNAL
+    T getPropertyValue(JSON::Object*, const String& name, bool* out_optionalValueFound, T defaultValue, std::function<bool(JSON::Value&, T&)>, const char* typeName);
 
-    int getInteger(InspectorObject*, const String& name, bool* valueFound);
-    double getDouble(InspectorObject*, const String& name, bool* valueFound);
-    String getString(InspectorObject*, const String& name, bool* valueFound);
-    bool getBoolean(InspectorObject*, const String& name, bool* valueFound);
-    RefPtr<InspectorValue> getValue(InspectorObject*, const String& name, bool* valueFound);
-    RefPtr<InspectorObject> getObject(InspectorObject*, const String& name, bool* valueFound);
-    RefPtr<InspectorArray> getArray(InspectorObject*, const String& name, bool* valueFound);
+    int getInteger(JSON::Object*, const String& name, bool* valueFound);
+    double getDouble(JSON::Object*, const String& name, bool* valueFound);
+    String getString(JSON::Object*, const String& name, bool* valueFound);
+    bool getBoolean(JSON::Object*, const String& name, bool* valueFound);
+    RefPtr<JSON::Value> getValue(JSON::Object*, const String& name, bool* valueFound);
+    RefPtr<JSON::Object> getObject(JSON::Object*, const String& name, bool* valueFound);
+    RefPtr<JSON::Array> getArray(JSON::Object*, const String& name, bool* valueFound);
 
 private:
     BackendDispatcher(Ref<FrontendRouter>&&);

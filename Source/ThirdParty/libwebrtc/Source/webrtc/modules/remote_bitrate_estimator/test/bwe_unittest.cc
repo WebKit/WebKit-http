@@ -8,12 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe.h"
+#include "modules/remote_bitrate_estimator/test/bwe.h"
 
+#include <random>
 #include <vector>
 
-#include "webrtc/base/arraysize.h"
-#include "webrtc/test/gtest.h"
+#include "rtc_base/arraysize.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace testing {
@@ -32,8 +33,7 @@ class LinkedSetTest : public ::testing::Test {
 };
 
 TEST_F(LinkedSetTest, EmptySet) {
-  EXPECT_EQ(linked_set_.OldestSeqNumber(), 0);
-  EXPECT_EQ(linked_set_.NewestSeqNumber(), 0);
+  EXPECT_EQ(linked_set_.Range(), 0);
 }
 
 TEST_F(LinkedSetTest, SinglePacket) {
@@ -41,8 +41,7 @@ TEST_F(LinkedSetTest, SinglePacket) {
   // Other parameters don't matter here.
   linked_set_.Insert(kSeqNumber, 0, 0, 0);
 
-  EXPECT_EQ(linked_set_.OldestSeqNumber(), kSeqNumber);
-  EXPECT_EQ(linked_set_.NewestSeqNumber(), kSeqNumber);
+  EXPECT_EQ(linked_set_.Range(), 1);
 }
 
 TEST_F(LinkedSetTest, MultiplePackets) {
@@ -52,16 +51,16 @@ TEST_F(LinkedSetTest, MultiplePackets) {
   for (size_t i = 0; i < kNumberPackets; ++i) {
     sequence_numbers.push_back(static_cast<uint16_t>(i + 1));
   }
-  random_shuffle(sequence_numbers.begin(), sequence_numbers.end());
+  std::shuffle(sequence_numbers.begin(), sequence_numbers.end(),
+               std::mt19937(std::random_device()()));
 
   for (size_t i = 0; i < kNumberPackets; ++i) {
     // Other parameters don't matter here.
     linked_set_.Insert(static_cast<uint16_t>(i), 0, 0, 0);
   }
 
-  // Packets arriving out of order should not affect the following values:
-  EXPECT_EQ(linked_set_.OldestSeqNumber(), 0);
-  EXPECT_EQ(linked_set_.NewestSeqNumber(), kNumberPackets - 1);
+  // Packets arriving out of order should not affect the following value:
+  EXPECT_EQ(linked_set_.Range(), kNumberPackets);
 }
 
 TEST_F(LinkedSetTest, Overflow) {
@@ -73,32 +72,29 @@ TEST_F(LinkedSetTest, Overflow) {
     linked_set_.Insert(static_cast<uint16_t>(i), 0, 0, 0);
   }
 
-  // Packets arriving out of order should not affect the following values:
-  EXPECT_EQ(linked_set_.OldestSeqNumber(),
-            static_cast<uint16_t>(kFirstSeqNumber));
-  EXPECT_EQ(linked_set_.NewestSeqNumber(),
-            static_cast<uint16_t>(kLastSeqNumber));
+  // Wrapping shouldn't matter
+  EXPECT_EQ(linked_set_.Range(), kLastSeqNumber - kFirstSeqNumber + 1);
 }
 
-class SequenceNumberOlderThanTest : public ::testing::Test {
- public:
-  SequenceNumberOlderThanTest() {}
-  ~SequenceNumberOlderThanTest() {}
+TEST_F(LinkedSetTest, SameSequenceNumbers) {
+  // Test correct behavior when
+  // sequence numbers wrap (after 0xFFFF).
 
- protected:
-  SequenceNumberOlderThan comparator_;
-};
+  // Choose step such as step*capacity < 0x8000
+  // (received packets in a reasonable window)
+  const int kStep = 0x20;
+  // Choose iteration such as step*iteration > 0x10000
+  // (imply wrap)
+  const int kIterations = 0x1000;
 
-TEST_F(SequenceNumberOlderThanTest, Operator) {
-  // Operator()(x, y) returns true <==> y is newer than x.
-  EXPECT_TRUE(comparator_.operator()(0x0000, 0x0001));
-  EXPECT_TRUE(comparator_.operator()(0x0001, 0x1000));
-  EXPECT_FALSE(comparator_.operator()(0x0001, 0x0000));
-  EXPECT_FALSE(comparator_.operator()(0x0002, 0x0002));
-  EXPECT_TRUE(comparator_.operator()(0xFFF6, 0x000A));
-  EXPECT_FALSE(comparator_.operator()(0x000A, 0xFFF6));
-  EXPECT_TRUE(comparator_.operator()(0x0000, 0x8000));
-  EXPECT_FALSE(comparator_.operator()(0x8000, 0x0000));
+  int kSeqNumber = 1;
+  for (int i = 0; i < kIterations; ++i) {
+    // Other parameters don't matter here.
+    linked_set_.Insert(static_cast<uint16_t>(kSeqNumber), 0, 0, 0);
+    kSeqNumber += kStep;
+  }
+
+  EXPECT_EQ(linked_set_.Range(), (kSetCapacity - 1) * kStep + 1);
 }
 
 class LossAccountTest : public ::testing::Test {
@@ -319,7 +315,8 @@ TEST_F(BweReceiverTest, PacketLossUnorderedPackets) {
     sequence_numbers.push_back(static_cast<uint16_t>(i + 1));
   }
 
-  random_shuffle(sequence_numbers.begin(), sequence_numbers.end());
+  std::shuffle(sequence_numbers.begin(), sequence_numbers.end(),
+               std::mt19937(std::random_device()()));
 
   for (size_t i = 0; i < num_packets; ++i) {
     const MediaPacket media_packet(kFlowId, 0, 0, sequence_numbers[i]);

@@ -8,17 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_EXAMPLES_PEERCONNECTION_CLIENT_PEER_CONNECTION_CLIENT_H_
-#define WEBRTC_EXAMPLES_PEERCONNECTION_CLIENT_PEER_CONNECTION_CLIENT_H_
+#ifndef EXAMPLES_PEERCONNECTION_CLIENT_PEER_CONNECTION_CLIENT_H_
+#define EXAMPLES_PEERCONNECTION_CLIENT_PEER_CONNECTION_CLIENT_H_
 
 #include <map>
 #include <memory>
 #include <string>
 
-#include "webrtc/base/nethelpers.h"
-#include "webrtc/base/physicalsocketserver.h"
-#include "webrtc/base/signalthread.h"
-#include "webrtc/base/sigslot.h"
+#include "rtc_base/nethelpers.h"
+#include "rtc_base/physicalsocketserver.h"
+#include "rtc_base/signalthread.h"
+#include "rtc_base/third_party/sigslot/sigslot.h"
 
 typedef std::map<int, std::string> Peers;
 
@@ -56,7 +56,8 @@ class PeerConnectionClient : public sigslot::has_slots<>,
 
   void RegisterObserver(PeerConnectionClientObserver* callback);
 
-  void Connect(const std::string& server, int port,
+  void Connect(const std::string& server,
+               int port,
                const std::string& client_name);
 
   bool SendToPeer(int peer_id, const std::string& message);
@@ -78,14 +79,19 @@ class PeerConnectionClient : public sigslot::has_slots<>,
   void OnMessageFromPeer(int peer_id, const std::string& message);
 
   // Quick and dirty support for parsing HTTP header values.
-  bool GetHeaderValue(const std::string& data, size_t eoh,
-                      const char* header_pattern, size_t* value);
+  bool GetHeaderValue(const std::string& data,
+                      size_t eoh,
+                      const char* header_pattern,
+                      size_t* value);
 
-  bool GetHeaderValue(const std::string& data, size_t eoh,
-                      const char* header_pattern, std::string* value);
+  bool GetHeaderValue(const std::string& data,
+                      size_t eoh,
+                      const char* header_pattern,
+                      std::string* value);
 
   // Returns true if the whole response has been read.
-  bool ReadIntoBuffer(rtc::AsyncSocket* socket, std::string* data,
+  bool ReadIntoBuffer(rtc::AsyncSocket* socket,
+                      std::string* data,
                       size_t* content_length);
 
   void OnRead(rtc::AsyncSocket* socket);
@@ -93,13 +99,17 @@ class PeerConnectionClient : public sigslot::has_slots<>,
   void OnHangingGetRead(rtc::AsyncSocket* socket);
 
   // Parses a single line entry in the form "<name>,<id>,<connected>"
-  bool ParseEntry(const std::string& entry, std::string* name, int* id,
+  bool ParseEntry(const std::string& entry,
+                  std::string* name,
+                  int* id,
                   bool* connected);
 
   int GetResponseStatus(const std::string& response);
 
-  bool ParseServerResponse(const std::string& response, size_t content_length,
-                           size_t* peer_id, size_t* eoh);
+  bool ParseServerResponse(const std::string& response,
+                           size_t content_length,
+                           size_t* peer_id,
+                           size_t* eoh);
 
   void OnClose(rtc::AsyncSocket* socket, int err);
 
@@ -119,4 +129,4 @@ class PeerConnectionClient : public sigslot::has_slots<>,
   int my_id_;
 };
 
-#endif  // WEBRTC_EXAMPLES_PEERCONNECTION_CLIENT_PEER_CONNECTION_CLIENT_H_
+#endif  // EXAMPLES_PEERCONNECTION_CLIENT_PEER_CONNECTION_CLIENT_H_

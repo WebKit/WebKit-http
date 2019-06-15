@@ -19,11 +19,11 @@
 #include <string.h>  // memset
 
 extern "C" {
-#include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
+#include "common_audio/signal_processing/include/signal_processing_library.h"
 }
-#include "webrtc/modules/audio_processing/aec/aec_common.h"
-#include "webrtc/modules/audio_processing/aec/aec_core_optimized_methods.h"
-#include "webrtc/modules/audio_processing/utility/ooura_fft.h"
+#include "modules/audio_processing/aec/aec_common.h"
+#include "modules/audio_processing/aec/aec_core_optimized_methods.h"
+#include "modules/audio_processing/utility/ooura_fft.h"
 
 namespace webrtc {
 
@@ -38,13 +38,12 @@ __inline static float MulIm(float aRe, float aIm, float bRe, float bIm) {
   return aRe * bIm + aIm * bRe;
 }
 
-static void FilterFarNEON(int num_partitions,
-                          int x_fft_buf_block_pos,
-                          float x_fft_buf[2]
-                                         [kExtendedNumPartitions * PART_LEN1],
-                          float h_fft_buf[2]
-                                         [kExtendedNumPartitions * PART_LEN1],
-                          float y_fft[2][PART_LEN1]) {
+static void FilterFarNEON(
+    int num_partitions,
+    int x_fft_buf_block_pos,
+    float x_fft_buf[2][kExtendedNumPartitions * PART_LEN1],
+    float h_fft_buf[2][kExtendedNumPartitions * PART_LEN1],
+    float y_fft[2][PART_LEN1]) {
   int i;
   for (i = 0; i < num_partitions; i++) {
     int j;

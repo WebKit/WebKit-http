@@ -24,10 +24,15 @@
 #include "PlatformDisplay.h"
 #include <wtf/Noncopyable.h>
 
-#if USE(EGL) && !PLATFORM(GTK) && !PLATFORM(WPE)
-#include "eglplatform.h"
+#if USE(EGL) && !PLATFORM(GTK)
+#if PLATFORM(WPE)
+// FIXME: For now default to the GBM EGL platform, but this should really be
+// somehow deducible from the build configuration.
+#define __GBM__ 1
+#endif // PLATFORM(WPE)
+#include <EGL/eglplatform.h>
 typedef EGLNativeWindowType GLNativeWindowType;
-#else
+#else // !USE(EGL) || PLATFORM(GTK)
 typedef uint64_t GLNativeWindowType;
 #endif
 
@@ -40,7 +45,7 @@ namespace WebCore {
 class GLContext {
     WTF_MAKE_NONCOPYABLE(GLContext); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static std::unique_ptr<GLContext> createContextForWindow(GLNativeWindowType windowHandle, PlatformDisplay* = nullptr);
+    WEBCORE_EXPORT static std::unique_ptr<GLContext> createContextForWindow(GLNativeWindowType windowHandle, PlatformDisplay* = nullptr);
     static std::unique_ptr<GLContext> createOffscreenContext(PlatformDisplay* = nullptr);
     static std::unique_ptr<GLContext> createSharingContext(PlatformDisplay&);
     static GLContext* current();

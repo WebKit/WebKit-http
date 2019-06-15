@@ -2,24 +2,25 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-8-c-5
 description: >
     Array.prototype.reduce - if exception occurs, it occurs after any
     side-effects that might be produced by step 2
 ---*/
 
-        var obj = { };
+var obj = {};
 
-        var accessed = false;
+var accessed = false;
 
-        Object.defineProperty(obj, "length", {
-            get: function () {
-                accessed = true;
-                return 2;
-            },
-            configurable: true
-        });
+Object.defineProperty(obj, "length", {
+  get: function() {
+    accessed = true;
+    return 2;
+  },
+  configurable: true
+});
 assert.throws(TypeError, function() {
-            Array.prototype.reduce.call(obj, function () { });
+  Array.prototype.reduce.call(obj, function() {});
 });
 assert(accessed, 'accessed !== true');

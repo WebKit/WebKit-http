@@ -8,17 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/video_capturer.h"
+#include "test/video_capturer.h"
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/base/constructormagic.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 namespace test {
 VideoCapturer::VideoCapturer() : video_adapter_(new cricket::VideoAdapter()) {}
 VideoCapturer::~VideoCapturer() {}
 
-rtc::Optional<VideoFrame> VideoCapturer::AdaptFrame(const VideoFrame& frame) {
+absl::optional<VideoFrame> VideoCapturer::AdaptFrame(const VideoFrame& frame) {
   int cropped_width = 0;
   int cropped_height = 0;
   int out_width = 0;
@@ -28,10 +27,10 @@ rtc::Optional<VideoFrame> VideoCapturer::AdaptFrame(const VideoFrame& frame) {
           frame.width(), frame.height(), frame.timestamp_us() * 1000,
           &cropped_width, &cropped_height, &out_width, &out_height)) {
     // Drop frame in order to respect frame rate constraint.
-    return rtc::Optional<VideoFrame>();
+    return absl::nullopt;
   }
 
-  rtc::Optional<VideoFrame> out_frame;
+  absl::optional<VideoFrame> out_frame;
   if (out_height != frame.height() || out_width != frame.width()) {
     // Video adapter has requested a down-scale. Allocate a new buffer and
     // return scaled version.

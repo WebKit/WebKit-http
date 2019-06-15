@@ -26,9 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if !PLATFORM(IOS)
-
 #import "WebPDFView.h"
+
+#if PLATFORM(MAC)
 
 #import "DOMNodeInternal.h"
 #import "DOMRangeInternal.h"
@@ -57,18 +57,14 @@
 #import <WebCore/FrameLoader.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLFrameOwnerElement.h>
-#import <WebCore/URL.h>
 #import <WebCore/KeyboardEvent.h>
+#import <WebCore/LegacyNSPasteboardTypes.h>
 #import <WebCore/MouseEvent.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <WebCore/URL.h>
 #import <WebCore/WebNSAttributedStringExtras.h>
 #import <wtf/Assertions.h>
-#import <wtf/CurrentTime.h>
-
-#if USE(APPLE_INTERNAL_SDK)
-#import <ApplicationServices/ApplicationServicesPriv.h>
-#endif
 
 extern "C" {
     bool CGContextGetAllowsFontSmoothing(CGContextRef context);
@@ -128,17 +124,17 @@ extern "C" NSString *_NSPathForSystemFramework(NSString *framework);
 
 static void _applicationInfoForMIMEType(NSString *type, NSString **name, NSImage **image)
 {
-    NSURL *appURL = nil;
+    CFURLRef appURL = nullptr;
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    OSStatus error = LSCopyApplicationForMIMEType((CFStringRef)type, kLSRolesAll, (CFURLRef *)&appURL);
+    OSStatus error = LSCopyApplicationForMIMEType((__bridge CFStringRef)type, kLSRolesAll, &appURL);
 #pragma clang diagnostic pop
     if (error != noErr)
         return;
     
-    NSString *appPath = [appURL path];
-    CFRelease (appURL);
+    NSString *appPath = [(__bridge NSURL *)appURL path];
+    CFRelease(appURL);
     
     *image = [[NSWorkspace sharedWorkspace] iconForFile:appPath];  
     [*image setSize:NSMakeSize(16.f,16.f)];  
@@ -374,7 +370,10 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (void)_recursiveDisplayRectIfNeededIgnoringOpacity:(NSRect)rect isVisibleRect:(BOOL)isVisibleRect rectIsVisibleRectForView:(NSView *)visibleView topView:(BOOL)topView
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+#pragma clang diagnostic pop
     
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context);
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context);
@@ -387,7 +386,10 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (void)_recursiveDisplayAllDirtyWithLockFocus:(BOOL)needsLockFocus visRect:(NSRect)visRect
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CGContextRef context = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+#pragma clang diagnostic pop
     
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context);
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context);
@@ -400,7 +402,10 @@ static BOOL _PDFSelectionsAreEqual(PDFSelection *selectionA, PDFSelection *selec
 
 - (void)_recursive:(BOOL)recurse displayRectIgnoringOpacity:(NSRect)displayRect inContext:(NSGraphicsContext *)graphicsContext topView:(BOOL)topView
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     CGContextRef context = (CGContextRef)[graphicsContext graphicsPort];
+#pragma clang diagnostic pop
     
     bool allowsSmoothing = CGContextGetAllowsFontSmoothing(context);
     bool allowsSubpixelQuantization = CGContextGetAllowsFontSubpixelQuantization(context);
@@ -969,28 +974,28 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
 
 - (NSArray *)pasteboardTypesForSelection
 {
-    return [NSArray arrayWithObjects:NSRTFDPboardType, NSRTFPboardType, NSStringPboardType, nil];
+    return [NSArray arrayWithObjects:legacyRTFDPasteboardType(), legacyRTFPasteboardType(), legacyStringPasteboardType(), nil];
 }
 
 - (void)writeSelectionWithPasteboardTypes:(NSArray *)types toPasteboard:(NSPasteboard *)pasteboard
 {
     NSAttributedString *attributedString = [self selectedAttributedString];
     
-    if ([types containsObject:NSRTFDPboardType]) {
+    if ([types containsObject:legacyRTFDPasteboardType()]) {
         NSData *RTFDData = [attributedString RTFDFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:@{ }];
-        [pasteboard setData:RTFDData forType:NSRTFDPboardType];
+        [pasteboard setData:RTFDData forType:legacyRTFDPasteboardType()];
     }        
     
-    if ([types containsObject:NSRTFPboardType]) {
+    if ([types containsObject:legacyRTFPasteboardType()]) {
         if ([attributedString containsAttachments])
             attributedString = attributedStringByStrippingAttachmentCharacters(attributedString);
 
         NSData *RTFData = [attributedString RTFFromRange:NSMakeRange(0, [attributedString length]) documentAttributes:@{ }];
-        [pasteboard setData:RTFData forType:NSRTFPboardType];
+        [pasteboard setData:RTFData forType:legacyRTFPasteboardType()];
     }
     
-    if ([types containsObject:NSStringPboardType])
-        [pasteboard setString:[self selectedString] forType:NSStringPboardType];
+    if ([types containsObject:legacyStringPasteboardType()])
+        [pasteboard setString:[self selectedString] forType:legacyStringPasteboardType()];
 }
 
 // MARK: PDFView DELEGATE METHODS
@@ -1018,22 +1023,17 @@ static BOOL isFrameInRange(WebFrame *frame, DOMRange *range)
     case NSEventTypeKeyDown: {
         PlatformKeyboardEvent pe = PlatformEventFactory::createPlatformKeyboardEvent(nsEvent);
         pe.disambiguateKeyDownEvent(PlatformEvent::RawKeyDown);
-        event = KeyboardEvent::create(pe, 0);
+        event = KeyboardEvent::create(pe, nullptr);
         break;
     }
     default:
         break;
     }
     if (button != noButton) {
-        event = MouseEvent::create(eventNames().clickEvent, true, true, currentTime(), 0, [nsEvent clickCount], 0, 0, 0, 0,
-#if ENABLE(POINTER_LOCK)
-            0, 0,
-#endif
-            [nsEvent modifierFlags] & NSEventModifierFlagControl,
-            [nsEvent modifierFlags] & NSEventModifierFlagOption,
-            [nsEvent modifierFlags] & NSEventModifierFlagShift,
-            [nsEvent modifierFlags] & NSEventModifierFlagCommand,
-            button, 0, WebCore::ForceAtClick, 0, 0, true);
+        // FIXME: Use createPlatformMouseEvent instead.
+        event = MouseEvent::create(eventNames().clickEvent, Event::CanBubble::Yes, Event::IsCancelable::Yes, Event::IsComposed::Yes,
+            MonotonicTime::now(), nullptr, [nsEvent clickCount], { }, { }, { }, modifiersForEvent(nsEvent),
+            button, [NSEvent pressedMouseButtons], nullptr, WebCore::ForceAtClick, 0, nullptr, MouseEvent::IsSimulated::Yes);
     }
 
     // Call to the frame loader because this is where our security checks are made.
@@ -1589,4 +1589,4 @@ static void removeUselessMenuItemSeparators(NSMutableArray *menuItems)
 
 @end
 
-#endif // !PLATFORM(IOS)
+#endif // PLATFORM(MAC)

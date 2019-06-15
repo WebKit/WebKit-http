@@ -25,13 +25,14 @@
 
 #include "config.h"
 #include "SelectionRect.h"
-#include "TextStream.h"
+
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
 SelectionRect::SelectionRect(const IntRect& rect, bool isHorizontal, int pageNumber)
     : m_rect(rect)
-    , m_direction(LTR)
+    , m_direction(TextDirection::LTR)
     , m_minX(0)
     , m_maxX(0)
     , m_maxY(0)
@@ -71,7 +72,7 @@ SelectionRect::SelectionRect(const IntRect& rect, TextDirection direction, int m
 }
 
 SelectionRect::SelectionRect()
-    : m_direction(LTR)
+    : m_direction(TextDirection::LTR)
     , m_minX(0)
     , m_maxX(0)
     , m_maxY(0)
@@ -116,7 +117,7 @@ TextStream& operator<<(TextStream& stream, SelectionRect rect)
 
     if (rect.isHorizontal())
         stream.dumpProperty("is horizontal", true);
-    
+
     if (rect.isInFixedPosition())
         stream.dumpProperty("is in fixed position", true);
 

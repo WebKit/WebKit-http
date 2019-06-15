@@ -28,6 +28,7 @@
 #include "WebKit.h"
 #include <WebCore/COMPtr.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
 
 #if USE(CFURLCONNECTION)
@@ -97,7 +98,7 @@ public:
     void didFinish();
     void didFail(CFErrorRef);
 #elif USE(CURL)
-    virtual void didReceiveResponse();
+    virtual void didReceiveResponse(const WebCore::ResourceResponse&);
     virtual void didReceiveDataOfLength(int size);
     virtual void didFinish();
     virtual void didFail();
@@ -117,8 +118,8 @@ protected:
     COMPtr<IWebDownloadDelegate> m_delegate;
 
 #ifndef NDEBUG
-    double m_startTime;
-    double m_dataTime;
+    WallTime m_startTime;
+    WallTime m_dataTime;
     int m_received;
 #endif
 };

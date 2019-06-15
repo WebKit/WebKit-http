@@ -2,18 +2,19 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-1-10
 description: Array.prototype.forEach applied to the Math object
 ---*/
 
-        var result = false;
+var result = false;
 
-        function callbackfn(val, idx, obj) {
-            result = ('[object Math]' === Object.prototype.toString.call(obj));
-        }
+function callbackfn(val, idx, obj) {
+  result = ('[object Math]' === Object.prototype.toString.call(obj));
+}
 
-            Math.length = 1;
-            Math[0] = 1;
-            Array.prototype.forEach.call(Math, callbackfn);
+Math.length = 1;
+Math[0] = 1;
+Array.prototype.forEach.call(Math, callbackfn);
 
 assert(result, 'result !== true');

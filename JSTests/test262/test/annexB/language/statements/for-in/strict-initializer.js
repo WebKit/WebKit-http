@@ -4,9 +4,13 @@
 esid: sec-initializers-in-forin-statement-heads
 description: >
     for-in initializers in strict mode are prohibited
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 flags: [onlyStrict]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 throw NotEarlyError;
 for (var a = 0 in {});
 

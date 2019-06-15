@@ -39,11 +39,7 @@
 #import <UIKit/UIWindow_Private.h>
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIScreen_Private.h>
-
-@interface UIKeyboardPredictionView : UIView
-+ (UIKeyboardPredictionView *)activeInstance;
-- (BOOL)hasPredictions;
-@end
+#import <UIKit/_UIApplicationRotationFollowing.h>
 
 #else
 
@@ -79,6 +75,15 @@
 
 @interface UIScreen ()
 - (void)_setScale:(CGFloat)scale;
+@end
+
+@interface UIApplicationRotationFollowingWindow : UIWindow
+@end
+
+@interface UIApplicationRotationFollowingController : UIViewController
+@end
+
+@interface UIApplicationRotationFollowingControllerNoTouches : UIApplicationRotationFollowingController
 @end
  
 #endif // USE(APPLE_INTERNAL_SDK)

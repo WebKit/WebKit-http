@@ -8,11 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+#import "RTCI420Buffer+Private.h"
 #import "RTCVideoRendererAdapter+Private.h"
-
-#import "RTCVideoFrame+Private.h"
+#import "WebRTC/RTCVideoFrame.h"
+#import "WebRTC/RTCVideoFrameBuffer.h"
 
 #include <memory>
+
+#include "sdk/objc/Framework/Native/api/video_frame.h"
 
 namespace webrtc {
 
@@ -25,12 +28,8 @@ class VideoRendererAdapter
   }
 
   void OnFrame(const webrtc::VideoFrame& nativeVideoFrame) override {
-    RTCVideoFrame* videoFrame = [[RTCVideoFrame alloc]
-        initWithVideoBuffer:nativeVideoFrame.video_frame_buffer()
-                   rotation:static_cast<RTCVideoRotation>(
-                                nativeVideoFrame.rotation())
-                timeStampNs:nativeVideoFrame.timestamp_us() *
-                            rtc::kNumNanosecsPerMicrosec];
+    RTCVideoFrame* videoFrame = NativeToObjCVideoFrame(nativeVideoFrame);
+
     CGSize current_size = (videoFrame.rotation % 180 == 0)
                               ? CGSizeMake(videoFrame.width, videoFrame.height)
                               : CGSizeMake(videoFrame.height, videoFrame.width);

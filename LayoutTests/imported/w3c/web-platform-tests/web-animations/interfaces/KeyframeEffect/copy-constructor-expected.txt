@@ -1,0 +1,7 @@
+
+PASS Copied KeyframeEffectReadOnly has the same target 
+PASS Copied KeyframeEffectReadOnly has the same keyframes 
+PASS Copied KeyframeEffectReadOnly has the same KeyframeEffectOptions 
+PASS Copied KeyframeEffectReadOnly has the same timing content 
+PASS KeyframeEffect constructed from a KeyframeEffectReadOnly is mutable 
+

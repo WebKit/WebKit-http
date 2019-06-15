@@ -97,6 +97,14 @@ class LinuxBrowserDriver(BrowserDriver):
                                                  stdout=subprocess.PIPE,
                                                  stderr=subprocess.STDOUT)
 
+    def launch_webdriver(self, url, driver):
+        try:
+            driver.maximize_window()
+        except Exception as error:
+            _log.error('Failed to maximize {browser} window - Error: {error}'.format(browser=driver.name, error=error))
+        _log.info('Launching "%s" with url "%s"' % (driver.name, url))
+        driver.get(url)
+
     def _get_first_executable_path_from_list(self, searchlist):
         searchpath = [os.path.curdir] + os.environ['PATH'].split(os.pathsep)
         for program in searchlist:

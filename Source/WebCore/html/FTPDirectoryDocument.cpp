@@ -39,10 +39,13 @@
 #include "SharedBuffer.h"
 #include "Text.h"
 #include <wtf/GregorianDateTime.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(FTPDirectoryDocument);
 
 using namespace HTMLNames;
     
@@ -156,7 +159,7 @@ Ref<Element> FTPDirectoryDocumentParser::createTDForFilename(const String& filen
 static String processFilesizeString(const String& size, bool isDirectory)
 {
     if (isDirectory)
-        return ASCIILiteral("--");
+        return "--"_s;
 
     bool valid;
     int64_t bytes = size.toUInt64(&valid);
@@ -299,13 +302,13 @@ bool FTPDirectoryDocumentParser::loadDocumentTemplate()
 
     auto& document = *this->document();
 
-    auto* foundElement = document.getElementById(String(ASCIILiteral("ftpDirectoryTable")));
+    auto foundElement = makeRefPtr(document.getElementById(String("ftpDirectoryTable"_s)));
     if (!foundElement)
         LOG_ERROR("Unable to find element by id \"ftpDirectoryTable\" in the template document.");
-    else if (!is<HTMLTableElement>(*foundElement))
+    else if (!is<HTMLTableElement>(foundElement))
         LOG_ERROR("Element of id \"ftpDirectoryTable\" is not a table element");
     else {
-        m_tableElement = downcast<HTMLTableElement>(foundElement);
+        m_tableElement = downcast<HTMLTableElement>(foundElement.get());
         return true;
     }
 
@@ -314,7 +317,7 @@ bool FTPDirectoryDocumentParser::loadDocumentTemplate()
 
     // If we didn't find the table element, lets try to append our own to the body.
     // If that fails for some reason, cram it on the end of the document as a last ditch effort.
-    if (auto* body = document.bodyOrFrameset())
+    if (auto body = makeRefPtr(document.bodyOrFrameset()))
         body->appendChild(*m_tableElement);
     else
         document.appendChild(*m_tableElement);

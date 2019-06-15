@@ -29,7 +29,7 @@
 
 namespace JSC {
 
-class MapPrototype : public JSNonFinalObject {
+class MapPrototype final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
@@ -56,8 +56,5 @@ private:
     }
     void finishCreation(VM&, JSGlobalObject*);
 };
-
-EncodedJSValue JSC_HOST_CALL privateFuncMapIterator(ExecState*);
-EncodedJSValue JSC_HOST_CALL privateFuncMapIteratorNext(ExecState*);
 
 } // namespace JSC

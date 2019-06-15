@@ -5,7 +5,7 @@
 es6id: B.2.3.5
 description: >
   String.prototype.bold.length is 0.
-info: >
+info: |
   String.prototype.bold ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.bold.length, 0);
-
-verifyNotEnumerable(String.prototype.bold, "length");
-verifyNotWritable(String.prototype.bold, "length");
-verifyConfigurable(String.prototype.bold, "length");
+verifyProperty(String.prototype.bold, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

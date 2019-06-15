@@ -1,5 +1,6 @@
 /*
  * Copyright (C) Research In Motion Limited 2010. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,7 +21,7 @@
 #pragma once
 
 #include "SVGPropertyTearOff.h"
-#include "SVGRectTraits.h"
+#include "SVGPropertyTraits.h"
 
 namespace WebCore {
 
@@ -32,11 +33,6 @@ public:
     }
 
     static Ref<SVGRect> create(const FloatRect& initialValue = { })
-    {
-        return adoptRef(*new SVGRect(initialValue));
-    }
-
-    static Ref<SVGRect> create(const FloatRect* initialValue)
     {
         return adoptRef(*new SVGRect(initialValue));
     }
@@ -56,7 +52,7 @@ public:
     ExceptionOr<void> setX(float xValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setX(xValue);
         commitChange();
@@ -72,7 +68,7 @@ public:
     ExceptionOr<void> setY(float xValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setY(xValue);
         commitChange();
@@ -88,7 +84,7 @@ public:
     ExceptionOr<void> setWidth(float widthValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setWidth(widthValue);
         commitChange();
@@ -104,7 +100,7 @@ public:
     ExceptionOr<void> setHeight(float heightValue)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setHeight(heightValue);
         commitChange();
@@ -119,11 +115,6 @@ private:
     }
 
     explicit SVGRect(const FloatRect& initialValue)
-        : SVGPropertyTearOff<FloatRect>(initialValue)
-    {
-    }
-
-    explicit SVGRect(const FloatRect* initialValue)
         : SVGPropertyTearOff<FloatRect>(initialValue)
     {
     }

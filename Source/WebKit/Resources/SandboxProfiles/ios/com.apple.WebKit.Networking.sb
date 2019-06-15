@@ -25,9 +25,11 @@
 (deny default (with partial-symbolication))
 (allow system-audit file-read-metadata)
 
+(import "common.sb")
+
 (deny mach-lookup (xpc-service-name-prefix ""))
 
-(import "common.sb")
+(deny lsopen)
 
 (deny sysctl*)
 (allow sysctl-read
@@ -66,11 +68,14 @@
 (allow-well-known-system-group-container-subpath-read
     "/systemgroup.com.apple.nsurlstoragedresources/Library/dafsaData.bin")
 
+(allow file-read-data
+    (literal "/usr/local/lib/log") ; <rdar://problem/36629495>
+)
+
 ;; Security framework
 (allow mach-lookup
     (global-name "com.apple.ocspd")
-    (global-name "com.apple.securityd")
-    (global-name "com.apple.accountsd.accountmanager"))
+    (global-name "com.apple.securityd"))
 
 (deny file-write-create
        (vnode-type SYMLINK))
@@ -85,4 +90,7 @@
 ;; Various services required by system frameworks
 (allow mach-lookup
     (global-name "com.apple.lsd.mapdb")
-    (global-name "com.apple.analyticsd"))
+    (global-name "com.apple.analyticsd")
+    (global-name "com.apple.WirelessCoexManager")
+    (global-name "com.apple.wifi.manager")
+    (global-name "com.apple.identityservicesd.embedded.auth"))

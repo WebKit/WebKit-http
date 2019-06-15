@@ -8,21 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/transient/transient_suppressor.h"
+#include "modules/audio_processing/transient/transient_suppressor.h"
 
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <memory>
 #include <string>
 
-#include "gflags/gflags.h"
-#include "webrtc/common_audio/include/audio_util.h"
-#include "webrtc/modules/audio_processing/agc/agc.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/testsupport/fileutils.h"
-#include "webrtc/typedefs.h"
+#include "common_audio/include/audio_util.h"
+#include "modules/audio_processing/agc/agc.h"
+#include "rtc_base/flags.h"
+#include "test/gtest.h"
+#include "test/testsupport/fileutils.h"
 
 DEFINE_string(in_file_name, "", "PCM file that contains the signal.");
 DEFINE_string(detection_file_name,
@@ -32,31 +31,18 @@ DEFINE_string(reference_file_name,
               "",
               "PCM file that contains the reference signal.");
 
-static bool ValidatePositiveInt(const char* flagname, int32_t value) {
-  if (value <= 0) {
-    printf("%s must be a positive integer.\n", flagname);
-    return false;
-  }
-  return true;
-}
-DEFINE_int32(chunk_size_ms,
-             10,
-             "Time between each chunk of samples in milliseconds.");
-static const bool chunk_size_ms_dummy =
-    google::RegisterFlagValidator(&FLAGS_chunk_size_ms, &ValidatePositiveInt);
+DEFINE_int(chunk_size_ms,
+           10,
+           "Time between each chunk of samples in milliseconds.");
 
-DEFINE_int32(sample_rate_hz,
-             16000,
-             "Sampling frequency of the signal in Hertz.");
-static const bool sample_rate_hz_dummy =
-    google::RegisterFlagValidator(&FLAGS_sample_rate_hz, &ValidatePositiveInt);
-DEFINE_int32(detection_rate_hz,
-             0,
-             "Sampling frequency of the detection signal in Hertz.");
+DEFINE_int(sample_rate_hz, 16000, "Sampling frequency of the signal in Hertz.");
+DEFINE_int(detection_rate_hz,
+           0,
+           "Sampling frequency of the detection signal in Hertz.");
 
-DEFINE_int32(num_channels, 1, "Number of channels.");
-static const bool num_channels_dummy =
-    google::RegisterFlagValidator(&FLAGS_num_channels, &ValidatePositiveInt);
+DEFINE_int(num_channels, 1, "Number of channels.");
+
+DEFINE_bool(help, false, "Print this message.");
 
 namespace webrtc {
 
@@ -90,9 +76,7 @@ bool ReadBuffers(FILE* in_file,
     tmpbuf.reset(new int16_t[num_channels * audio_buffer_size]);
     read_ptr = tmpbuf.get();
   }
-  if (fread(read_ptr,
-            sizeof(*read_ptr),
-            num_channels * audio_buffer_size,
+  if (fread(read_ptr, sizeof(*read_ptr), num_channels * audio_buffer_size,
             in_file) != num_channels * audio_buffer_size) {
     return false;
   }
@@ -115,8 +99,8 @@ bool ReadBuffers(FILE* in_file,
   }
   if (reference_file) {
     std::unique_ptr<int16_t[]> ibuf(new int16_t[audio_buffer_size]);
-    if (fread(ibuf.get(), sizeof(ibuf[0]), audio_buffer_size, reference_file)
-        != audio_buffer_size)
+    if (fread(ibuf.get(), sizeof(ibuf[0]), audio_buffer_size, reference_file) !=
+        audio_buffer_size)
       return false;
     S16ToFloat(ibuf.get(), audio_buffer_size, reference_buffer);
   }
@@ -146,19 +130,19 @@ static void WritePCM(FILE* f,
 void void_main() {
   // TODO(aluebs): Remove all FileWrappers.
   // Prepare the input file.
-  FILE* in_file = fopen(FLAGS_in_file_name.c_str(), "rb");
+  FILE* in_file = fopen(FLAG_in_file_name, "rb");
   ASSERT_TRUE(in_file != NULL);
 
   // Prepare the detection file.
   FILE* detection_file = NULL;
-  if (!FLAGS_detection_file_name.empty()) {
-    detection_file = fopen(FLAGS_detection_file_name.c_str(), "rb");
+  if (strlen(FLAG_detection_file_name) > 0) {
+    detection_file = fopen(FLAG_detection_file_name, "rb");
   }
 
   // Prepare the reference file.
   FILE* reference_file = NULL;
-  if (!FLAGS_reference_file_name.empty()) {
-    reference_file = fopen(FLAGS_reference_file_name.c_str(), "rb");
+  if (strlen(FLAG_reference_file_name) > 0) {
+    reference_file = fopen(FLAG_reference_file_name, "rb");
   }
 
   // Prepare the output file.
@@ -166,27 +150,27 @@ void void_main() {
   FILE* out_file = fopen(out_file_name.c_str(), "wb");
   ASSERT_TRUE(out_file != NULL);
 
-  int detection_rate_hz = FLAGS_detection_rate_hz;
+  int detection_rate_hz = FLAG_detection_rate_hz;
   if (detection_rate_hz == 0) {
-    detection_rate_hz = FLAGS_sample_rate_hz;
+    detection_rate_hz = FLAG_sample_rate_hz;
   }
 
   Agc agc;
 
   TransientSuppressor suppressor;
-  suppressor.Initialize(
-      FLAGS_sample_rate_hz, detection_rate_hz, FLAGS_num_channels);
+  suppressor.Initialize(FLAG_sample_rate_hz, detection_rate_hz,
+                        FLAG_num_channels);
 
   const size_t audio_buffer_size =
-      FLAGS_chunk_size_ms * FLAGS_sample_rate_hz / 1000;
+      FLAG_chunk_size_ms * FLAG_sample_rate_hz / 1000;
   const size_t detection_buffer_size =
-      FLAGS_chunk_size_ms * detection_rate_hz / 1000;
+      FLAG_chunk_size_ms * detection_rate_hz / 1000;
 
   // int16 and float variants of the same data.
   std::unique_ptr<int16_t[]> audio_buffer_i(
-      new int16_t[FLAGS_num_channels * audio_buffer_size]);
+      new int16_t[FLAG_num_channels * audio_buffer_size]);
   std::unique_ptr<float[]> audio_buffer_f(
-      new float[FLAGS_num_channels * audio_buffer_size]);
+      new float[FLAG_num_channels * audio_buffer_size]);
 
   std::unique_ptr<float[]> detection_buffer, reference_buffer;
 
@@ -195,40 +179,27 @@ void void_main() {
   if (reference_file)
     reference_buffer.reset(new float[audio_buffer_size]);
 
-  while (ReadBuffers(in_file,
-                     audio_buffer_size,
-                     FLAGS_num_channels,
-                     audio_buffer_i.get(),
-                     detection_file,
-                     detection_buffer_size,
-                     detection_buffer.get(),
-                     reference_file,
-                     reference_buffer.get())) {
-    ASSERT_EQ(0,
-              agc.Process(audio_buffer_i.get(),
-                          static_cast<int>(audio_buffer_size),
-                          FLAGS_sample_rate_hz))
-        << "The AGC could not process the frame";
+  while (ReadBuffers(in_file, audio_buffer_size, FLAG_num_channels,
+                     audio_buffer_i.get(), detection_file,
+                     detection_buffer_size, detection_buffer.get(),
+                     reference_file, reference_buffer.get())) {
+    agc.Process(audio_buffer_i.get(), static_cast<int>(audio_buffer_size),
+                FLAG_sample_rate_hz);
 
-    for (size_t i = 0; i < FLAGS_num_channels * audio_buffer_size; ++i) {
+    for (size_t i = 0; i < FLAG_num_channels * audio_buffer_size; ++i) {
       audio_buffer_f[i] = audio_buffer_i[i];
     }
 
-    ASSERT_EQ(0,
-              suppressor.Suppress(audio_buffer_f.get(),
-                                  audio_buffer_size,
-                                  FLAGS_num_channels,
-                                  detection_buffer.get(),
-                                  detection_buffer_size,
-                                  reference_buffer.get(),
-                                  audio_buffer_size,
-                                  agc.voice_probability(),
-                                  true))
+    ASSERT_EQ(0, suppressor.Suppress(audio_buffer_f.get(), audio_buffer_size,
+                                     FLAG_num_channels, detection_buffer.get(),
+                                     detection_buffer_size,
+                                     reference_buffer.get(), audio_buffer_size,
+                                     agc.voice_probability(), true))
         << "The transient suppressor could not suppress the frame";
 
     // Write result to out file.
-    WritePCM(
-        out_file, audio_buffer_size, FLAGS_num_channels, audio_buffer_f.get());
+    WritePCM(out_file, audio_buffer_size, FLAG_num_channels,
+             audio_buffer_f.get());
   }
 
   fclose(in_file);
@@ -244,8 +215,19 @@ void void_main() {
 }  // namespace webrtc
 
 int main(int argc, char* argv[]) {
-  google::SetUsageMessage(webrtc::kUsage);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  if (rtc::FlagList::SetFlagsFromCommandLine(&argc, argv, true) || FLAG_help ||
+      argc != 1) {
+    printf("%s", webrtc::kUsage);
+    if (FLAG_help) {
+      rtc::FlagList::Print(nullptr, false);
+      return 0;
+    }
+    return 1;
+  }
+  RTC_CHECK_GT(FLAG_chunk_size_ms, 0);
+  RTC_CHECK_GT(FLAG_sample_rate_hz, 0);
+  RTC_CHECK_GT(FLAG_num_channels, 0);
+
   webrtc::void_main();
   return 0;
 }

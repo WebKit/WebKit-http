@@ -28,10 +28,6 @@
 
 #import <Foundation/Foundation.h>
 
-@interface NSURLRequest (PrivateThingsWeShouldntReallyUse)
-+(void)setAllowsAnyHTTPSCertificate:(BOOL)allow forHost:(NSString *)host;
-@end
-
 @interface NSSound ()
 + (void)_setAlertType:(NSUInteger)alertType;
 @end
@@ -76,9 +72,6 @@ void InjectedBundle::platformInitialize(WKTypeRef initializationUserData)
             @"wellcome": @"welcome",
             @"hellolfworld": @"hello\nworld"
         },
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
-        @"AppleSystemFontOSSubversion": @(10),
-#endif
         @"AppleEnableSwipeNavigateWithScrolls": @YES,
         @"com.apple.swipescrolldirection": @1,
         @"com.apple.trackpad.forceClick": @1,
@@ -86,17 +79,9 @@ void InjectedBundle::platformInitialize(WKTypeRef initializationUserData)
 
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:dict forName:NSArgumentDomain];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
-    // Make NSFont use the new defaults.
-    [NSFont initialize];
-#endif
-
     // Underlying frameworks have already read AppleAntiAliasingThreshold default before we changed it.
     // A distributed notification is delivered to all applications, but it should be harmless, and it's the only way to update all underlying frameworks anyway.
     [[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"AppleAquaAntiAliasingChanged" object:nil userInfo:nil deliverImmediately:YES];
-
-    [NSURLRequest setAllowsAnyHTTPSCertificate:YES forHost:@"localhost"];
-    [NSURLRequest setAllowsAnyHTTPSCertificate:YES forHost:@"127.0.0.1"];
 
     [NSSound _setAlertType:0];
 }

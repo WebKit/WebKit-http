@@ -83,58 +83,58 @@ static inline EditAction editActionForTypingCommand(TypingCommand::ETypingComman
 {
     if (compositionType == TypingCommand::TextCompositionPending) {
         if (command == TypingCommand::InsertText)
-            return EditActionTypingInsertPendingComposition;
+            return EditAction::TypingInsertPendingComposition;
         if (command == TypingCommand::DeleteSelection)
-            return EditActionTypingDeletePendingComposition;
+            return EditAction::TypingDeletePendingComposition;
         ASSERT_NOT_REACHED();
     }
 
     if (compositionType == TypingCommand::TextCompositionFinal) {
         if (command == TypingCommand::InsertText)
-            return EditActionTypingInsertFinalComposition;
+            return EditAction::TypingInsertFinalComposition;
         if (command == TypingCommand::DeleteSelection)
-            return EditActionTypingDeleteFinalComposition;
+            return EditAction::TypingDeleteFinalComposition;
         ASSERT_NOT_REACHED();
     }
 
     switch (command) {
     case TypingCommand::DeleteSelection:
-        return EditActionTypingDeleteSelection;
+        return EditAction::TypingDeleteSelection;
     case TypingCommand::DeleteKey: {
         if (granularity == WordGranularity)
-            return EditActionTypingDeleteWordBackward;
+            return EditAction::TypingDeleteWordBackward;
         if (granularity == LineBoundary)
-            return EditActionTypingDeleteLineBackward;
-        return EditActionTypingDeleteBackward;
+            return EditAction::TypingDeleteLineBackward;
+        return EditAction::TypingDeleteBackward;
     }
     case TypingCommand::ForwardDeleteKey:
         if (granularity == WordGranularity)
-            return EditActionTypingDeleteWordForward;
+            return EditAction::TypingDeleteWordForward;
         if (granularity == LineBoundary)
-            return EditActionTypingDeleteLineForward;
-        return EditActionTypingDeleteForward;
+            return EditAction::TypingDeleteLineForward;
+        return EditAction::TypingDeleteForward;
     case TypingCommand::InsertText:
-        return isAutocompletion ? EditActionInsertReplacement : EditActionTypingInsertText;
+        return isAutocompletion ? EditAction::InsertReplacement : EditAction::TypingInsertText;
     case TypingCommand::InsertLineBreak:
-        return EditActionTypingInsertLineBreak;
+        return EditAction::TypingInsertLineBreak;
     case TypingCommand::InsertParagraphSeparator:
     case TypingCommand::InsertParagraphSeparatorInQuotedContent:
-        return EditActionTypingInsertParagraph;
+        return EditAction::TypingInsertParagraph;
     default:
-        return EditActionUnspecified;
+        return EditAction::Unspecified;
     }
 }
 
 static inline bool editActionIsDeleteByTyping(EditAction action)
 {
     switch (action) {
-    case EditActionTypingDeleteSelection:
-    case EditActionTypingDeleteBackward:
-    case EditActionTypingDeleteWordBackward:
-    case EditActionTypingDeleteLineBackward:
-    case EditActionTypingDeleteForward:
-    case EditActionTypingDeleteWordForward:
-    case EditActionTypingDeleteLineForward:
+    case EditAction::TypingDeleteSelection:
+    case EditAction::TypingDeleteBackward:
+    case EditAction::TypingDeleteWordBackward:
+    case EditAction::TypingDeleteLineBackward:
+    case EditAction::TypingDeleteForward:
+    case EditAction::TypingDeleteWordForward:
+    case EditAction::TypingDeleteLineForward:
         return true;
     default:
         return false;
@@ -401,17 +401,17 @@ String TypingCommand::inputEventTypeName() const
 
 bool TypingCommand::isBeforeInputEventCancelable() const
 {
-    return m_currentTypingEditAction != EditActionTypingInsertPendingComposition && m_currentTypingEditAction != EditActionTypingDeletePendingComposition;
+    return m_currentTypingEditAction != EditAction::TypingInsertPendingComposition && m_currentTypingEditAction != EditAction::TypingDeletePendingComposition;
 }
 
 String TypingCommand::inputEventData() const
 {
     switch (m_currentTypingEditAction) {
-    case EditActionTypingInsertText:
-    case EditActionTypingInsertPendingComposition:
-    case EditActionTypingInsertFinalComposition:
+    case EditAction::TypingInsertText:
+    case EditAction::TypingInsertPendingComposition:
+    case EditAction::TypingInsertFinalComposition:
         return m_currentTextToInsert;
-    case EditActionInsertReplacement:
+    case EditAction::InsertReplacement:
         return isEditingTextAreaOrTextInput() ? m_currentTextToInsert : String();
     default:
         return CompositeEditCommand::inputEventData();
@@ -420,7 +420,7 @@ String TypingCommand::inputEventData() const
 
 RefPtr<DataTransfer> TypingCommand::inputEventDataTransfer() const
 {
-    if (m_currentTypingEditAction != EditActionInsertReplacement || isEditingTextAreaOrTextInput())
+    if (m_currentTypingEditAction != EditAction::InsertReplacement || isEditingTextAreaOrTextInput())
         return nullptr;
 
     StringBuilder htmlText;
@@ -477,7 +477,7 @@ void TypingCommand::markMisspellingsAfterTyping(ETypingCommand commandType)
         UChar32 c = previous.characterAfter();
         // FIXME: VisiblePosition::characterAfter() and characterBefore() do not emit newlines the same
         // way as TextIterator, so we do an isEndOfParagraph check here.
-        if (isSpaceOrNewline(c) || c == 0xA0 || isEndOfParagraph(previous)) {
+        if (isSpaceOrNewline(c) || c == noBreakSpace || isEndOfParagraph(previous)) {
             startWordSide = RightWordIfOnBoundary;
         }
         VisiblePosition p1 = startOfWord(previous, startWordSide);
@@ -548,7 +548,7 @@ void TypingCommand::insertTextRunWithoutNewlines(const String &text, bool select
         return;
 
     auto command = InsertTextCommand::create(document(), text, selectInsertedText,
-        m_compositionType == TextCompositionNone ? InsertTextCommand::RebalanceLeadingAndTrailingWhitespaces : InsertTextCommand::RebalanceAllWhitespaces, EditActionTypingInsertText);
+        m_compositionType == TextCompositionNone ? InsertTextCommand::RebalanceLeadingAndTrailingWhitespaces : InsertTextCommand::RebalanceAllWhitespaces, EditAction::TypingInsertText);
 
     applyCommandToComposite(WTFMove(command), endingSelection());
 
@@ -583,7 +583,7 @@ void TypingCommand::insertParagraphSeparator()
     if (!willAddTypingToOpenCommand(InsertParagraphSeparator, ParagraphGranularity))
         return;
 
-    applyCommandToComposite(InsertParagraphSeparatorCommand::create(document(), false, false, EditActionTypingInsertParagraph));
+    applyCommandToComposite(InsertParagraphSeparatorCommand::create(document(), false, false, EditAction::TypingInsertParagraph));
     typingAddedToOpenCommand(InsertParagraphSeparator);
 }
 
@@ -649,6 +649,7 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
 
     VisibleSelection selectionToDelete;
     VisibleSelection selectionAfterUndo;
+    bool expandForSpecialElements = !endingSelection().isCaret();
 
     switch (endingSelection().selectionType()) {
     case VisibleSelection::RangeSelection:
@@ -669,7 +670,11 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
         if (shouldAddToKillRing && selection.isCaret() && granularity != CharacterGranularity)
             selection.modify(FrameSelection::AlterationExtend, DirectionBackward, CharacterGranularity);
 
-        if (endingSelection().visibleStart().previous(CannotCrossEditingBoundary).isNull()) {
+        const VisiblePosition& visibleStart = endingSelection().visibleStart();
+        const VisiblePosition& previousPosition = visibleStart.previous(CannotCrossEditingBoundary);
+        Node* enclosingTableCell = enclosingNodeOfType(visibleStart.deepEquivalent(), &isTableCell);
+        const Node* enclosingTableCellForPreviousPosition = enclosingNodeOfType(previousPosition.deepEquivalent(), &isTableCell);
+        if (previousPosition.isNull() || enclosingTableCell != enclosingTableCellForPreviousPosition) {
             // When the caret is at the start of the editable area in an empty list item, break out of the list item.
             if (auto deleteListSelection = shouldBreakOutOfEmptyListItem()) {
                 if (willAddTypingToOpenCommand(DeleteKey, granularity, { }, Range::create(document(), deleteListSelection.value().start(), deleteListSelection.value().end()))) {
@@ -678,17 +683,17 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
                 }
                 return;
             }
+        }
+        if (previousPosition.isNull()) {
             // When there are no visible positions in the editing root, delete its entire contents.
             // FIXME: Dispatch a `beforeinput` event here and bail if preventDefault() was invoked.
-            if (endingSelection().visibleStart().next(CannotCrossEditingBoundary).isNull() && makeEditableRootEmpty()) {
+            if (visibleStart.next(CannotCrossEditingBoundary).isNull() && makeEditableRootEmpty()) {
                 typingAddedToOpenCommand(DeleteKey);
                 return;
             }
         }
 
-        VisiblePosition visibleStart(endingSelection().visibleStart());
         // If we have a caret selection at the beginning of a cell, we have nothing to do.
-        Node* enclosingTableCell = enclosingNodeOfType(visibleStart.deepEquivalent(), &isTableCell);
         if (enclosingTableCell && visibleStart == firstPositionInNode(enclosingTableCell))
             return;
 
@@ -756,7 +761,7 @@ void TypingCommand::deleteKeyPressed(TextGranularity granularity, bool shouldAdd
     // more text than you insert.  In that case all of the text that was around originally should be selected.
     if (m_openedByBackwardDelete)
         setStartingSelection(selectionAfterUndo);
-    CompositeEditCommand::deleteSelection(selectionToDelete, m_smartDelete);
+    CompositeEditCommand::deleteSelection(selectionToDelete, m_smartDelete, /* mergeBlocksAfterDelete*/ true, /* replace*/ false, expandForSpecialElements, /*sanitizeMarkup*/ true);
     setSmartDelete(false);
     typingAddedToOpenCommand(DeleteKey);
 }
@@ -770,6 +775,7 @@ void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool sh
 
     VisibleSelection selectionToDelete;
     VisibleSelection selectionAfterUndo;
+    bool expandForSpecialElements = !endingSelection().isCaret();
 
     switch (endingSelection().selectionType()) {
     case VisibleSelection::RangeSelection:
@@ -858,7 +864,7 @@ void TypingCommand::forwardDeleteKeyPressed(TextGranularity granularity, bool sh
         frame.editor().addRangeToKillRing(*selectionToDelete.toNormalizedRange().get(), Editor::KillRingInsertionMode::AppendText);
     // make undo select what was deleted
     setStartingSelection(selectionAfterUndo);
-    CompositeEditCommand::deleteSelection(selectionToDelete, m_smartDelete);
+    CompositeEditCommand::deleteSelection(selectionToDelete, m_smartDelete, /* mergeBlocksAfterDelete*/ true, /* replace*/ false, expandForSpecialElements, /*sanitizeMarkup*/ true);
     setSmartDelete(false);
     typingAddedToOpenCommand(ForwardDeleteKey);
 }

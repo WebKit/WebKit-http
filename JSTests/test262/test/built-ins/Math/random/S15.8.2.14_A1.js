@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Math.random() returns a number value with positive sign, greater than or
     equal to 0 but less than 1
 es5id: 15.8.2.14_A1
@@ -14,15 +14,15 @@ description: >
 // CHECK#1
 for (var i = 0; i < 100; i++)
 {
-	var val = Math.random();
+  var val = Math.random();
 
-	assert.sameValue(
-		typeof val, 'number', 'should not produce a non-numeric value: ' + val
-	);
-	assert.notSameValue(val, NaN, 'should not produce NaN');
+  assert.sameValue(
+    typeof val, 'number', 'should not produce a non-numeric value: ' + val
+  );
+  assert.notSameValue(val, NaN, 'should not produce NaN');
 
-	if (val < 0 || val >= 1)
-	{
-		$ERROR("#1: Math.random() = " + val);
-	}
+  if (val < 0 || val >= 1)
+  {
+    $ERROR("#1: Math.random() = " + val);
+  }
 }

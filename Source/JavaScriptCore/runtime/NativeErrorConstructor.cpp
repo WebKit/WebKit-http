@@ -35,7 +35,7 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(NativeErrorConstructor);
 const ClassInfo NativeErrorConstructor::s_info = { "Function", &InternalFunction::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(NativeErrorConstructor) };
 
 NativeErrorConstructor::NativeErrorConstructor(VM& vm, Structure* structure)
-    : InternalFunction(vm, structure)
+    : InternalFunction(vm, structure, Interpreter::callNativeErrorConstructor, Interpreter::constructWithNativeErrorConstructor)
 {
 }
 
@@ -46,8 +46,8 @@ void NativeErrorConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject
     
     NativeErrorPrototype* prototype = NativeErrorPrototype::create(vm, prototypeStructure, name, this);
     
-    putDirect(vm, vm.propertyNames->length, jsNumber(1), DontEnum | ReadOnly);
-    putDirect(vm, vm.propertyNames->prototype, prototype, DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+    putDirect(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
     m_errorStructure.set(vm, this, ErrorInstance::createStructure(vm, globalObject, prototype));
     ASSERT(m_errorStructure);
     ASSERT(m_errorStructure->isObject());
@@ -73,23 +73,11 @@ EncodedJSValue JSC_HOST_CALL Interpreter::constructWithNativeErrorConstructor(Ex
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
-ConstructType NativeErrorConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = Interpreter::constructWithNativeErrorConstructor;
-    return ConstructType::Host;
-}
-    
 EncodedJSValue JSC_HOST_CALL Interpreter::callNativeErrorConstructor(ExecState* exec)
 {
     JSValue message = exec->argument(0);
     Structure* errorStructure = static_cast<NativeErrorConstructor*>(exec->jsCallee())->errorStructure();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
-}
-
-CallType NativeErrorConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = Interpreter::callNativeErrorConstructor;
-    return CallType::Host;
 }
 
 } // namespace JSC

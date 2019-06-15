@@ -32,8 +32,11 @@
 #include "SVGNames.h"
 #include "SVGRenderingContext.h"
 #include "SVGTextPositioningElement.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGRootInlineBox);
 
 SVGRootInlineBox::SVGRootInlineBox(RenderSVGText& renderSVGText)
     : RootInlineBox(renderSVGText)
@@ -48,12 +51,12 @@ RenderSVGText& SVGRootInlineBox::renderSVGText()
 
 void SVGRootInlineBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit, LayoutUnit)
 {
-    ASSERT(paintInfo.phase == PaintPhaseForeground || paintInfo.phase == PaintPhaseSelection);
+    ASSERT(paintInfo.phase == PaintPhase::Foreground || paintInfo.phase == PaintPhase::Selection);
     ASSERT(!paintInfo.context().paintingDisabled());
 
     bool isPrinting = renderSVGText().document().printing();
     bool hasSelection = !isPrinting && selectionState() != RenderObject::SelectionNone;
-    bool shouldPaintSelectionHighlight = !(paintInfo.paintBehavior & PaintBehaviorSkipSelectionHighlight);
+    bool shouldPaintSelectionHighlight = !(paintInfo.paintBehavior.contains(PaintBehavior::SkipSelectionHighlight));
 
     PaintInfo childPaintInfo(paintInfo);
     if (hasSelection && shouldPaintSelectionHighlight) {

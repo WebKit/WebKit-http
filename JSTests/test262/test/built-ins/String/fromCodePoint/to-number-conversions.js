@@ -4,7 +4,7 @@
 es6id: 21.1.2.2
 description: >
   Returns the String value with the code unit for the given coerced types.
-info: >
+info: |
   String.fromCodePoint ( ...codePoints )
 
   1. Let codePoints be a List containing the arguments passed to this function.
@@ -25,6 +25,10 @@ assert.sameValue(String.fromCodePoint(true), '\x01');
 assert.sameValue(String.fromCodePoint('42'), '\x2A');
 assert.sameValue(String.fromCodePoint('042'), '\x2A');
 assert.sameValue(
-  String.fromCodePoint({ valueOf: function() { return 31; } }),
+  String.fromCodePoint({
+    valueOf: function() {
+      return 31;
+    }
+  }),
   '\x1F'
 );

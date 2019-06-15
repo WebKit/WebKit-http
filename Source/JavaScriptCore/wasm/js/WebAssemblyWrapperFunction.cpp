@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,6 +32,7 @@
 #include "FunctionPrototype.h"
 #include "JSCInlines.h"
 #include "JSWebAssemblyInstance.h"
+#include "WasmSignatureInlines.h"
 
 namespace JSC {
 
@@ -53,17 +54,17 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyWrapperFunction(ExecState* ex
     return JSValue::encode(call(exec, function, callType, callData, jsUndefined(), ArgList(exec)));
 }
 
-WebAssemblyWrapperFunction::WebAssemblyWrapperFunction(VM& vm, JSGlobalObject* globalObject, Structure* structure, Wasm::CallableFunction wasmFunction)
+WebAssemblyWrapperFunction::WebAssemblyWrapperFunction(VM& vm, JSGlobalObject* globalObject, Structure* structure, Wasm::WasmToWasmImportableFunction importableFunction)
     : Base(vm, globalObject, structure)
-    , m_wasmFunction(wasmFunction)
+    , m_importableFunction(importableFunction)
 { }
 
 WebAssemblyWrapperFunction* WebAssemblyWrapperFunction::create(VM& vm, JSGlobalObject* globalObject, JSObject* function, unsigned importIndex, JSWebAssemblyInstance* instance, Wasm::SignatureIndex signatureIndex)
 {
-    ASSERT_WITH_MESSAGE(!function->inherits(vm, WebAssemblyWrapperFunction::info()), "We should never double wrap a wrapper function.");
+    ASSERT_WITH_MESSAGE(!function->inherits<WebAssemblyWrapperFunction>(vm), "We should never double wrap a wrapper function.");
     String name = "";
     NativeExecutable* executable = vm.getHostFunction(callWebAssemblyWrapperFunction, NoIntrinsic, callHostFunctionAsConstructor, nullptr, name);
-    WebAssemblyWrapperFunction* result = new (NotNull, allocateCell<WebAssemblyWrapperFunction>(vm.heap)) WebAssemblyWrapperFunction(vm, globalObject, globalObject->webAssemblyWrapperFunctionStructure(), Wasm::CallableFunction(signatureIndex, instance->codeBlock()->wasmToJsCallStubForImport(importIndex)));
+    WebAssemblyWrapperFunction* result = new (NotNull, allocateCell<WebAssemblyWrapperFunction>(vm.heap)) WebAssemblyWrapperFunction(vm, globalObject, globalObject->webAssemblyWrapperFunctionStructure(), Wasm::WasmToWasmImportableFunction { signatureIndex, &instance->instance().importFunctionInfo(importIndex)->wasmToEmbedderStub } );
     const Wasm::Signature& signature = Wasm::SignatureInformation::get(signatureIndex);
     result->finishCreation(vm, executable, signature.argumentCount(), name, function, instance);
     return result;
@@ -72,14 +73,14 @@ WebAssemblyWrapperFunction* WebAssemblyWrapperFunction::create(VM& vm, JSGlobalO
 void WebAssemblyWrapperFunction::finishCreation(VM& vm, NativeExecutable* executable, unsigned length, const String& name, JSObject* function, JSWebAssemblyInstance* instance)
 {
     Base::finishCreation(vm, executable, length, name, instance);
-    RELEASE_ASSERT(JSValue(function).isFunction());
+    RELEASE_ASSERT(JSValue(function).isFunction(vm));
     m_function.set(vm, this, function);
 }
 
 Structure* WebAssemblyWrapperFunction::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
     ASSERT(globalObject);
-    return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    return Structure::create(vm, globalObject, prototype, TypeInfo(JSFunctionType, StructureFlags), info());
 }
 
 void WebAssemblyWrapperFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)

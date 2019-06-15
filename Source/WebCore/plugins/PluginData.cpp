@@ -24,6 +24,7 @@
 #include "config.h"
 #include "PluginData.h"
 
+#include "Document.h"
 #include "LocalizedStrings.h"
 #include "Page.h"
 #include "PluginInfoProvider.h"
@@ -36,17 +37,24 @@ PluginData::PluginData(Page& page)
     initPlugins();
 }
 
-Vector<PluginInfo> PluginData::webVisiblePlugins() const
+const Vector<PluginInfo>& PluginData::webVisiblePlugins() const
 {
-    Vector<PluginInfo> plugins;
-    m_page.pluginInfoProvider().getWebVisiblePluginInfo(m_page, plugins);
-    return plugins;
+    auto documentURL = m_page.mainFrame().document() ? m_page.mainFrame().document()->url() : URL { };
+    if (!documentURL.isNull() && !protocolHostAndPortAreEqual(m_cachedVisiblePlugins.pageURL, documentURL)) {
+        m_cachedVisiblePlugins.pageURL = WTFMove(documentURL);
+        m_cachedVisiblePlugins.pluginList = std::nullopt;
+    }
+
+    if (!m_cachedVisiblePlugins.pluginList)
+        m_cachedVisiblePlugins.pluginList = m_page.pluginInfoProvider().webVisiblePluginInfo(m_page, m_cachedVisiblePlugins.pageURL);
+
+    return *m_cachedVisiblePlugins.pluginList;
 }
 
 #if PLATFORM(COCOA)
-static inline bool isBuiltInPDFPlugIn(const PluginInfo& plugIn)
+static inline bool isBuiltInPDFPlugIn(const PluginInfo& plugin)
 {
-    return plugIn.name == builtInPDFPluginName();
+    return equalLettersIgnoringASCIICase(plugin.bundleIdentifier, "com.apple.webkit.builtinpdfplugin");
 }
 #else
 static inline bool isBuiltInPDFPlugIn(const PluginInfo&)
@@ -73,17 +81,14 @@ static bool shouldBePubliclyVisible(const PluginInfo& plugin)
 
 Vector<PluginInfo> PluginData::publiclyVisiblePlugins() const
 {
-    if (m_page.showAllPlugins())
-        return webVisiblePlugins();
-    
-    Vector<PluginInfo> allPlugins;
-    m_page.pluginInfoProvider().getWebVisiblePluginInfo(m_page, allPlugins);
+    auto plugins = webVisiblePlugins();
 
-    Vector<PluginInfo> plugins;
-    for (auto&& plugin : allPlugins) {
-        if (shouldBePubliclyVisible(plugin))
-            plugins.append(WTFMove(plugin));
-    }
+    if (m_page.showAllPlugins())
+        return plugins;
+    
+    plugins.removeAllMatching([](auto& plugin) {
+        return !shouldBePubliclyVisible(plugin);
+    });
 
     std::sort(plugins.begin(), plugins.end(), [](const PluginInfo& a, const PluginInfo& b) {
         return codePointCompareLessThan(a.name, b.name);
@@ -115,12 +120,25 @@ void PluginData::getMimesAndPluginIndiciesForPlugins(const Vector<PluginInfo>& p
     }
 }
 
+bool PluginData::supportsWebVisibleMimeTypeForURL(const String& mimeType, const AllowedPluginTypes allowedPluginTypes, const URL& url) const
+{
+    if (!protocolHostAndPortAreEqual(m_cachedVisiblePlugins.pageURL, url))
+        m_cachedVisiblePlugins = { url, m_page.pluginInfoProvider().webVisiblePluginInfo(m_page, url) };
+    if (!m_cachedVisiblePlugins.pluginList)
+        return false;
+    return supportsWebVisibleMimeType(mimeType, allowedPluginTypes, *m_cachedVisiblePlugins.pluginList);
+}
+
 bool PluginData::supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes allowedPluginTypes) const
+{
+    return supportsWebVisibleMimeType(mimeType, allowedPluginTypes, webVisiblePlugins());
+}
+
+bool PluginData::supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes allowedPluginTypes, const Vector<PluginInfo>& plugins) const
 {
     Vector<MimeClassInfo> mimes;
     Vector<size_t> mimePluginIndices;
-    const Vector<PluginInfo>& plugins = webVisiblePlugins();
-    getWebVisibleMimesAndPluginIndices(mimes, mimePluginIndices);
+    getMimesAndPluginIndiciesForPlugins(plugins, mimes, mimePluginIndices);
 
     for (unsigned i = 0; i < mimes.size(); ++i) {
         if (mimes[i].type == mimeType && (allowedPluginTypes == AllPlugins || plugins[mimePluginIndices[i]].isApplicationPlugin))
@@ -174,7 +192,7 @@ void PluginData::initPlugins()
 {
     ASSERT(m_plugins.isEmpty());
 
-    m_page.pluginInfoProvider().getPluginInfo(m_page, m_plugins);
+    m_plugins = m_page.pluginInfoProvider().pluginInfo(m_page, m_supportedPluginIdentifiers);
 }
 
 } // namespace WebCore

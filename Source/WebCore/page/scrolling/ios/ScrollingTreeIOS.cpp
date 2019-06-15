@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ScrollingTreeIOS.h"
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS)
 
 #include "AsyncScrollingCoordinator.h"
 #include "PlatformWheelEvent.h"
@@ -86,8 +86,9 @@ void ScrollingTreeIOS::scrollingTreeNodeDidScroll(ScrollingNodeID nodeID, const 
 Ref<ScrollingTreeNode> ScrollingTreeIOS::createScrollingTreeNode(ScrollingNodeType nodeType, ScrollingNodeID nodeID)
 {
     switch (nodeType) {
-    case FrameScrollingNode:
-        return ScrollingTreeFrameScrollingNodeIOS::create(*this, nodeID);
+    case MainFrameScrollingNode:
+    case SubframeScrollingNode:
+        return ScrollingTreeFrameScrollingNodeIOS::create(*this, nodeType, nodeID);
     case OverflowScrollingNode:
         ASSERT_NOT_REACHED();
         break;
@@ -120,4 +121,4 @@ void ScrollingTreeIOS::currentSnapPointIndicesDidChange(WebCore::ScrollingNodeID
 
 } // namespace WebCore
 
-#endif // ENABLE(ASYNC_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS)

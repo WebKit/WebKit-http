@@ -7,9 +7,9 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#include "webrtc/modules/audio_processing/include/config.h"
+#include "modules/audio_processing/include/config.h"
 
-#include "webrtc/test/gtest.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace {
@@ -19,11 +19,9 @@ struct MyExperiment {
   static const int kDefaultFactor;
   static const int kDefaultOffset;
 
-  MyExperiment()
-    : factor(kDefaultFactor), offset(kDefaultOffset) {}
+  MyExperiment() : factor(kDefaultFactor), offset(kDefaultOffset) {}
 
-  MyExperiment(int factor, int offset)
-    : factor(factor), offset(offset) {}
+  MyExperiment(int factor, int offset) : factor(factor), offset(offset) {}
 
   int factor;
   int offset;
@@ -61,17 +59,13 @@ struct Algo1_CostFunction {
       ConfigOptionID::kAlgo1CostFunctionForTest;
   Algo1_CostFunction() {}
 
-  virtual int cost(int x) const {
-    return x;
-  }
+  virtual int cost(int x) const { return x; }
 
   virtual ~Algo1_CostFunction() {}
 };
 
 struct SqrCost : Algo1_CostFunction {
-  virtual int cost(int x) const {
-    return x*x;
-  }
+  virtual int cost(int x) const { return x * x; }
 };
 
 TEST(Config, SupportsPolymorphism) {

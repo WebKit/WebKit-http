@@ -42,7 +42,7 @@
 #import "runtime_root.h"
 #import <JavaScriptCore/APICast.h>
 #import <JavaScriptCore/JSContextInternal.h>
-#import <runtime/JSLock.h>
+#import <JavaScriptCore/JSLock.h>
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 #import "c_instance.h"
@@ -66,7 +66,7 @@ RefPtr<JSC::Bindings::Instance> ScriptController::createScriptInstanceForWidget(
     if (!widgetView)
         return nullptr;
 
-    auto rootObject = createRootObject(widgetView);
+    auto rootObject = createRootObject((__bridge void*)widgetView);
 
     if ([widgetView respondsToSelector:@selector(createPluginBindingsInstance:)])
         return [widgetView createPluginBindingsInstance:WTFMove(rootObject)];
@@ -103,7 +103,7 @@ WebScriptObject *ScriptController::windowScriptObject()
     if (!m_windowScriptObject) {
         JSC::JSLockHolder lock(commonVM());
         JSC::Bindings::RootObject* root = bindingRootObject();
-        m_windowScriptObject = [WebScriptObject scriptObjectForJSObject:toRef(windowProxy(pluginWorld())) originRootObject:root rootObject:root];
+        m_windowScriptObject = [WebScriptObject scriptObjectForJSObject:toRef(&jsWindowProxy(pluginWorld())) originRootObject:root rootObject:root];
     }
 
     return m_windowScriptObject.get();

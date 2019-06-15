@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.3.2
+esid: sec-weakmap.prototype.delete
 description: >
   WeakMap.prototype.delete.name value and writability.
-info: >
+info: |
   WeakMap.prototype.delete ( value )
 
   17 ECMAScript Standard Built-in Objects

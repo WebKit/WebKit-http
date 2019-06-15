@@ -28,7 +28,7 @@
 
 #pragma once
 
-#include "ReferrerPolicy.h"
+#include "FetchOptions.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -42,10 +42,16 @@ public:
     // If you intend to send a referrer header, you should use generateReferrerHeader instead.
     WEBCORE_EXPORT static bool shouldHideReferrer(const URL&, const String& referrer);
 
+    // Returns the referrer's security origin plus a / to make it a canonical URL
+    // and thus useable as referrer.
+    static String referrerToOriginString(const String& referrer);
+
     // Returns the referrer modified according to the referrer policy for a
     // navigation to a given URL. If the referrer returned is empty, the
     // referrer header should be omitted.
     WEBCORE_EXPORT static String generateReferrerHeader(ReferrerPolicy, const URL&, const String& referrer);
+
+    static bool shouldInheritSecurityOriginFromOwner(const URL&);
 
     enum LocalLoadPolicy {
         AllowLocalLoadsForAll, // No restriction on local loads.

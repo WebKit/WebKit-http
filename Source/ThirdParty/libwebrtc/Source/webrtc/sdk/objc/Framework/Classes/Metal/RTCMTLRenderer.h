@@ -21,7 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 /**
  * Protocol defining ability to render RTCVideoFrame in Metal enabled views.
  */
-@protocol RTCMTLRenderer<NSObject>
+@protocol RTCMTLRenderer <NSObject>
 
 /**
  * Method to be implemented to perform actual rendering of the provided frame.
@@ -46,10 +46,16 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 /**
- * Implementation of RTCMTLRenderer protocol for rendering native nv12 video frames.
+ * Implementation of RTCMTLRenderer protocol.
  */
 NS_AVAILABLE(10_11, 9_0)
-@interface RTCMTLRenderer : NSObject<RTCMTLRenderer>
+@interface RTCMTLRenderer : NSObject <RTCMTLRenderer>
+
+/** @abstract   A wrapped RTCVideoRotation, or nil.
+    @discussion When not nil, the rotation of the actual frame is ignored when rendering.
+ */
+@property(atomic, nullable) NSValue *rotationOverride;
+
 @end
 
 NS_ASSUME_NONNULL_END

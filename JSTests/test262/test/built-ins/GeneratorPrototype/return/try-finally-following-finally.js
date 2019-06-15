@@ -6,13 +6,14 @@ description: >
     When a generator is paused after a `try..finally` statement, `return`
     should interrupt control flow as if a `return` statement had appeared at
     that location in the function body.
+features: [generators]
 ---*/
 
 var afterFinally = 0;
 var unreachable = 0;
+
 function* g() {
-  try {
-  } finally {}
+  try {} finally {}
   afterFinally += 1;
   yield;
   unreachable += 1;

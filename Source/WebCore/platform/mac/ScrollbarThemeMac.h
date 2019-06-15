@@ -23,10 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ScrollbarThemeMac_h
-#define ScrollbarThemeMac_h
+#pragma once
 
 #include "ScrollbarThemeComposite.h"
+
+#if PLATFORM(MAC)
 
 namespace WebCore {
 
@@ -35,11 +36,12 @@ public:
     ScrollbarThemeMac();
     virtual ~ScrollbarThemeMac();
 
-    void preferencesChanged();
+    WEBCORE_EXPORT void preferencesChanged();
 
     void updateEnabledState(Scrollbar&) override;
 
     bool paint(Scrollbar&, GraphicsContext&, const IntRect& damageRect) override;
+    void paintScrollCorner(GraphicsContext&, const IntRect& cornerRect) override;
 
     int scrollbarThickness(ScrollbarControlSize = RegularScrollbar, ScrollbarExpansionState = ScrollbarExpansionState::Expanded) override;
     
@@ -99,4 +101,4 @@ protected:
 
 }
 
-#endif
+#endif // PLATFORM(MAC)

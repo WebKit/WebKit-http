@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     String.prototype.split(separator, limit):
     i) can be transferred to other kinds of objects for use as a method.
     separator and limit can be any kinds of object since:
@@ -15,20 +15,28 @@ description: >
     have overrided valueOf function, that throw exception
 ---*/
 
-var __obj = {toString:function(){throw "intostr";}};
-var __obj2 = {valueOf:function(){throw "intoint";}};
+var __obj = {
+  toString: function() {
+    throw "intostr";
+  }
+};
+var __obj2 = {
+  valueOf: function() {
+    throw "intoint";
+  }
+};
 var __instance = new Number(10001.10001);
-Number.prototype.split=String.prototype.split;
+Number.prototype.split = String.prototype.split;
 
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
-    try {
-      var x = __instance.split(__obj, __obj2);
-      $ERROR('#1: "var x = __instance.split(__obj, __obj2)" lead to throwing exception');
-    } catch (e) {
-      if (e!=="intoint") {
-        $ERROR('#1.1: Exception === "intoint". Actual: '+e);
-      }
-    }
+try {
+  var x = __instance.split(__obj, __obj2);
+  $ERROR('#1: "var x = __instance.split(__obj, __obj2)" lead to throwing exception');
+} catch (e) {
+  if (e !== "intoint") {
+    $ERROR('#1.1: Exception === "intoint". Actual: ' + e);
+  }
+}
 //
 //////////////////////////////////////////////////////////////////////////////

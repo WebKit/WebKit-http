@@ -29,20 +29,19 @@
 #include "AutoscrollController.h"
 
 #include "EventHandler.h"
+#include "Frame.h"
 #include "FrameView.h"
 #include "HitTestResult.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "RenderBox.h"
 #include "RenderView.h"
 #include "ScrollView.h"
 #include "Settings.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
 // Delay time in second for start autoscroll if pointer is in border edge of scrollable element.
-static const double autoscrollDelay = 0.2;
+static const Seconds autoscrollDelay { 200_ms };
 
 // When the autoscroll or the panScroll is triggered when do the scroll every 50ms to make it smooth.
 static const Seconds autoscrollInterval { 50_ms };
@@ -59,7 +58,6 @@ AutoscrollController::AutoscrollController()
     : m_autoscrollTimer(*this, &AutoscrollController::autoscrollTimerFired)
     , m_autoscrollRenderer(nullptr)
     , m_autoscrollType(NoAutoscroll)
-    , m_dragAndDropAutoscrollStartTime(0)
 {
 }
 
@@ -140,7 +138,7 @@ void AutoscrollController::updateAutoscrollRenderer()
     m_autoscrollRenderer = is<RenderBox>(renderer) ? downcast<RenderBox>(renderer) : nullptr;
 }
 
-void AutoscrollController::updateDragAndDrop(Node* dropTargetNode, const IntPoint& eventPosition, double eventTime)
+void AutoscrollController::updateDragAndDrop(Node* dropTargetNode, const IntPoint& eventPosition, WallTime eventTime)
 {
     if (!dropTargetNode) {
         stopAutoscrollTimer();
@@ -241,18 +239,18 @@ void AutoscrollController::autoscrollTimerFired()
     Frame& frame = m_autoscrollRenderer->frame();
     switch (m_autoscrollType) {
     case AutoscrollForDragAndDrop:
-        if (WTF::currentTime() - m_dragAndDropAutoscrollStartTime > autoscrollDelay)
+        if (WallTime::now() - m_dragAndDropAutoscrollStartTime > autoscrollDelay)
             m_autoscrollRenderer->autoscroll(m_dragAndDropAutoscrollReferencePosition);
         break;
     case AutoscrollForSelection: {
-        if (!frame.eventHandler().mousePressed()) {
+        if (!frame.eventHandler().shouldUpdateAutoscroll()) {
             stopAutoscrollTimer();
             return;
         }
 #if ENABLE(DRAG_SUPPORT)
         frame.eventHandler().updateSelectionForMouseDrag();
 #endif
-        m_autoscrollRenderer->autoscroll(frame.eventHandler().effectiveMousePositionForSelectionAutoscroll());
+        m_autoscrollRenderer->autoscroll(frame.eventHandler().targetPositionInWindowForSelectionAutoscroll());
         break;
     }
     case NoAutoscroll:

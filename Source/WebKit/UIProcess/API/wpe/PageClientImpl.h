@@ -26,6 +26,9 @@
 #pragma once
 
 #include "PageClient.h"
+#include "WebFullScreenManagerProxy.h"
+
+struct wpe_view_backend;
 
 namespace WKWPE {
 class View;
@@ -35,10 +38,18 @@ namespace WebKit {
 
 class ScrollGestureController;
 
-class PageClientImpl final : public PageClient {
+enum class UndoOrRedo;
+
+class PageClientImpl final : public PageClient
+#if ENABLE(FULLSCREEN_API)
+    , public WebFullScreenManagerProxyClient
+#endif
+{
 public:
     PageClientImpl(WKWPE::View&);
     virtual ~PageClientImpl();
+
+    struct wpe_view_backend* viewBackend();
 
 private:
     // PageClient
@@ -67,10 +78,10 @@ private:
     void setCursorHiddenUntilMouseMoves(bool) override;
     void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
 
-    void registerEditCommand(Ref<WebEditCommandProxy>&&, WebPageProxy::UndoOrRedo) override;
+    void registerEditCommand(Ref<WebEditCommandProxy>&&, UndoOrRedo) override;
     void clearAllEditCommands() override;
-    bool canUndoRedo(WebPageProxy::UndoOrRedo) override;
-    void executeUndoRedo(WebPageProxy::UndoOrRedo) override;
+    bool canUndoRedo(UndoOrRedo) override;
+    void executeUndoRedo(UndoOrRedo) override;
 
     WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
     WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
@@ -83,7 +94,7 @@ private:
 
     RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
 #if ENABLE(CONTEXT_MENUS)
-    RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
+    Ref<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, ContextMenuContextData&&, const UserData&) override;
 #endif
 
     void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
@@ -105,21 +116,32 @@ private:
     void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
 
     void didChangeBackgroundColor() override;
+    void isPlayingAudioWillChange() final { }
+    void isPlayingAudioDidChange() final { }
 
     void refView() override;
     void derefView() override;
 
-#if ENABLE(VIDEO)
+#if ENABLE(VIDEO) && USE(GSTREAMER)
     bool decidePolicyForInstallMissingMediaPluginsPermissionRequest(InstallMissingMediaPluginsPermissionRequest&) override;
 #endif
 
     void didRestoreScrollPosition() override;
 
+#if ENABLE(FULLSCREEN_API)
+    WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;
+
+    void closeFullScreenManager() override;
+    bool isFullScreen() override;
+    void enterFullScreen() override;
+    void exitFullScreen() override;
+    void beganEnterFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) override;
+    void beganExitFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) override;
+#endif
+
+    void didFinishProcessingAllPendingMouseEvents() final { }
+
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
-
-    void didChangeAvoidsUnsafeArea(bool) override { }
-
-    JSGlobalContextRef javascriptGlobalContext() override;
 
     WKWPE::View& m_view;
 

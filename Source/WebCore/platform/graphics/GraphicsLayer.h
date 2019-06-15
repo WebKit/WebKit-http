@@ -44,12 +44,15 @@
 #include "GraphicsTypes.h"
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class GraphicsContext;
 class GraphicsLayerFactory;
 class Image;
-class TextStream;
 class TiledBacking;
 class TimingFunction;
 class TransformationMatrix;
@@ -65,7 +68,7 @@ typedef unsigned AsTextFlags;
 class AnimationValue {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual ~AnimationValue() { }
+    virtual ~AnimationValue() = default;
 
     double keyTime() const { return m_keyTime; }
     const TimingFunction* timingFunction() const { return m_timingFunction.get(); }
@@ -230,7 +233,7 @@ protected:
 class GraphicsLayer {
     WTF_MAKE_NONCOPYABLE(GraphicsLayer); WTF_MAKE_FAST_ALLOCATED;
 public:
-    enum class Type {
+    enum class Type : uint8_t {
         Normal,
         PageTiledBacking,
         Scrolling,
@@ -264,13 +267,13 @@ public:
     // Returns true if the child list changed.
     WEBCORE_EXPORT virtual bool setChildren(const Vector<GraphicsLayer*>&);
 
-    enum ContentsLayerPurpose {
-        NoContentsLayer = 0,
-        ContentsLayerForImage,
-        ContentsLayerForMedia,
-        ContentsLayerForCanvas,
-        ContentsLayerForBackgroundColor,
-        ContentsLayerForPlugin
+    enum class ContentsLayerPurpose : uint8_t {
+        None = 0,
+        Image,
+        Media,
+        Canvas,
+        BackgroundColor,
+        Plugin
     };
 
     // Add child layers. If the child is already parented, it will be removed from its old parent.
@@ -336,11 +339,13 @@ public:
     // For platforms that move underlying platform layers on a different thread for scrolling; just update the GraphicsLayer state.
     virtual void syncBoundsOrigin(const FloatPoint& origin) { m_boundsOrigin = origin; }
 
-    const TransformationMatrix& transform() const { return m_transform; }
-    virtual void setTransform(const TransformationMatrix& t) { m_transform = t; }
+    const TransformationMatrix& transform() const;
+    virtual void setTransform(const TransformationMatrix&);
+    bool hasNonIdentityTransform() const { return m_transform && !m_transform->isIdentity(); }
 
-    const TransformationMatrix& childrenTransform() const { return m_childrenTransform; }
-    virtual void setChildrenTransform(const TransformationMatrix& t) { m_childrenTransform = t; }
+    const TransformationMatrix& childrenTransform() const;
+    virtual void setChildrenTransform(const TransformationMatrix&);
+    bool hasNonIdentityChildrenTransform() const { return m_childrenTransform && !m_childrenTransform->isIdentity(); }
 
     bool preserves3D() const { return m_preserves3D; }
     virtual void setPreserves3D(bool b) { m_preserves3D = b; }
@@ -449,9 +454,10 @@ public:
     // These methods handle both transitions and keyframe animations.
     virtual bool addAnimation(const KeyframeValueList&, const FloatSize& /*boxSize*/, const Animation*, const String& /*animationName*/, double /*timeOffset*/)  { return false; }
     virtual void pauseAnimation(const String& /*animationName*/, double /*timeOffset*/) { }
+    virtual void seekAnimation(const String& /*animationName*/, double /*timeOffset*/) { }
     virtual void removeAnimation(const String& /*animationName*/) { }
 
-    WEBCORE_EXPORT virtual void suspendAnimations(double time);
+    WEBCORE_EXPORT virtual void suspendAnimations(MonotonicTime);
     WEBCORE_EXPORT virtual void resumeAnimations();
 
     // Layer contents
@@ -466,18 +472,18 @@ public:
     virtual bool usesContentsLayer() const { return false; }
 
     // Callback from the underlying graphics system to draw layer contents.
-    void paintGraphicsLayerContents(GraphicsContext&, const FloatRect& clip, GraphicsLayerPaintFlags = GraphicsLayerPaintFlags::AllowAsyncImageDecoding);
+    void paintGraphicsLayerContents(GraphicsContext&, const FloatRect& clip, GraphicsLayerPaintBehavior = GraphicsLayerPaintNormal);
 
     // For hosting this GraphicsLayer in a native layer hierarchy.
     virtual PlatformLayer* platformLayer() const { return 0; }
 
-    enum CompositingCoordinatesOrientation { CompositingCoordinatesTopDown, CompositingCoordinatesBottomUp };
+    enum class CompositingCoordinatesOrientation : uint8_t { TopDown, BottomUp };
 
     // Flippedness of the contents of this layer. Does not affect sublayer geometry.
     virtual void setContentsOrientation(CompositingCoordinatesOrientation orientation) { m_contentsOrientation = orientation; }
     CompositingCoordinatesOrientation contentsOrientation() const { return m_contentsOrientation; }
 
-    void dumpLayer(TextStream&, int indent = 0, LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
+    void dumpLayer(WTF::TextStream&, LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
 
     virtual void setShowDebugBorder(bool show) { m_showDebugBorder = show; }
     bool isShowingDebugBorder() const { return m_showDebugBorder; }
@@ -492,7 +498,13 @@ public:
     virtual void setDebugBackgroundColor(const Color&) { }
     virtual void setDebugBorder(const Color&, float /*borderWidth*/) { }
 
-    enum CustomAppearance { NoCustomAppearance, ScrollingOverhang, ScrollingShadow, LightBackdropAppearance, DarkBackdropAppearance };
+    enum class CustomAppearance : uint8_t {
+        None,
+        ScrollingOverhang,
+        ScrollingShadow,
+        LightBackdrop,
+        DarkBackdrop
+    };
     virtual void setCustomAppearance(CustomAppearance customAppearance) { m_customAppearance = customAppearance; }
     CustomAppearance customAppearance() const { return m_customAppearance; }
 
@@ -503,9 +515,6 @@ public:
     WEBCORE_EXPORT virtual void distributeOpacity(float);
     WEBCORE_EXPORT virtual float accumulatedOpacity() const;
 
-#if PLATFORM(IOS)
-    bool hasFlattenedPerspectiveTransform() const { return !preserves3D() && m_childrenTransform.hasPerspective(); }
-#endif
     virtual FloatSize pixelAlignmentOffset() const { return FloatSize(); }
     
     virtual void setAppliesPageScale(bool appliesScale = true) { m_appliesPageScale = appliesScale; }
@@ -538,16 +547,17 @@ public:
     WEBCORE_EXPORT String layerTreeAsText(LayerTreeAsTextBehavior = LayerTreeAsTextBehaviorNormal) const;
 
     // For testing.
-    WEBCORE_EXPORT virtual String displayListAsText(DisplayList::AsTextFlags) const { return String(); }
+    virtual String displayListAsText(DisplayList::AsTextFlags) const { return String(); }
 
-    WEBCORE_EXPORT virtual void setIsTrackingDisplayListReplay(bool isTracking) { m_isTrackingDisplayListReplay = isTracking; }
-    WEBCORE_EXPORT virtual bool isTrackingDisplayListReplay() const { return m_isTrackingDisplayListReplay; }
-    WEBCORE_EXPORT virtual String replayDisplayListAsText(DisplayList::AsTextFlags) const { return String(); }
+    virtual void setIsTrackingDisplayListReplay(bool isTracking) { m_isTrackingDisplayListReplay = isTracking; }
+    virtual bool isTrackingDisplayListReplay() const { return m_isTrackingDisplayListReplay; }
+    virtual String replayDisplayListAsText(DisplayList::AsTextFlags) const { return String(); }
 
     // Return an estimate of the backing store memory cost (in bytes). May be incorrect for tiled layers.
     WEBCORE_EXPORT virtual double backingStoreMemoryEstimate() const;
 
     virtual bool backingStoreAttached() const { return true; }
+    virtual bool backingStoreAttachedForTesting() const { return backingStoreAttached(); }
 
     void setCanDetachBackingStore(bool b) { m_canDetachBackingStore = b; }
     bool canDetachBackingStore() const { return m_canDetachBackingStore; }
@@ -606,8 +616,8 @@ protected:
     GraphicsLayer* replicatedLayer() const { return m_replicatedLayer; }
     virtual void setReplicatedLayer(GraphicsLayer* layer) { m_replicatedLayer = layer; }
 
-    void dumpProperties(TextStream&, int indent, LayerTreeAsTextBehavior) const;
-    virtual void dumpAdditionalProperties(TextStream&, int /*indent*/, LayerTreeAsTextBehavior) const { }
+    void dumpProperties(WTF::TextStream&, LayerTreeAsTextBehavior) const;
+    virtual void dumpAdditionalProperties(WTF::TextStream&, LayerTreeAsTextBehavior) const { }
 
     WEBCORE_EXPORT virtual void getDebugBorderInfo(Color&, float& width) const;
 
@@ -623,25 +633,28 @@ protected:
     // If set, overrides m_position. Only used for coverage computation.
     std::optional<FloatPoint> m_approximatePosition;
 
-    FloatPoint3D m_anchorPoint;
+    FloatPoint3D m_anchorPoint { 0.5f, 0.5f, 0 };
     FloatSize m_size;
     FloatPoint m_boundsOrigin;
 
-    TransformationMatrix m_transform;
-    TransformationMatrix m_childrenTransform;
+    std::unique_ptr<TransformationMatrix> m_transform;
+    std::unique_ptr<TransformationMatrix> m_childrenTransform;
 
     Color m_backgroundColor;
-    float m_opacity;
-    float m_zPosition;
+    float m_opacity { 1 };
+    float m_zPosition { 0 };
     
     FilterOperations m_filters;
     FilterOperations m_backdropFilters;
 
 #if ENABLE(CSS_COMPOSITING)
-    BlendMode m_blendMode;
+    BlendMode m_blendMode { BlendMode::Normal };
 #endif
 
     const Type m_type;
+    CustomAppearance m_customAppearance { CustomAppearance::None };
+    GraphicsLayerPaintingPhase m_paintingPhase { GraphicsLayerPaintAllWithOverflowClip };
+    CompositingCoordinatesOrientation m_contentsOrientation { CompositingCoordinatesOrientation::TopDown }; // affects orientation of layer contents
 
     bool m_contentsOpaque : 1;
     bool m_supportsSubpixelAntialiasedText : 1;
@@ -659,18 +672,17 @@ protected:
     bool m_isTrackingDisplayListReplay : 1;
     bool m_userInteractionEnabled : 1;
     bool m_canDetachBackingStore : 1;
-    
-    GraphicsLayerPaintingPhase m_paintingPhase;
-    CompositingCoordinatesOrientation m_contentsOrientation; // affects orientation of layer contents
+
+    int m_repaintCount { 0 };
 
     Vector<GraphicsLayer*> m_children;
-    GraphicsLayer* m_parent;
+    GraphicsLayer* m_parent { nullptr };
 
-    GraphicsLayer* m_maskLayer; // Reference to mask layer. We don't own this.
+    GraphicsLayer* m_maskLayer { nullptr }; // Reference to mask layer. We don't own this.
 
-    GraphicsLayer* m_replicaLayer; // A layer that replicates this layer. We only allow one, for now.
+    GraphicsLayer* m_replicaLayer { nullptr }; // A layer that replicates this layer. We only allow one, for now.
                                    // The replica is not parented; this is the primary reference to it.
-    GraphicsLayer* m_replicatedLayer; // For a replica layer, a reference to the original layer.
+    GraphicsLayer* m_replicatedLayer { nullptr }; // For a replica layer, a reference to the original layer.
     FloatPoint m_replicatedLayerPosition; // For a replica layer, the position of the replica.
 
     FloatRect m_contentsRect;
@@ -681,17 +693,14 @@ protected:
     FloatRoundedRect m_backdropFiltersRect;
     std::optional<FloatRect> m_animationExtent;
 
-    int m_repaintCount;
-    CustomAppearance m_customAppearance;
-
 #if USE(CA)
+    WindRule m_shapeLayerWindRule { WindRule::NonZero };
     Path m_shapeLayerPath;
-    WindRule m_shapeLayerWindRule { RULE_NONZERO };
 #endif
 };
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const Vector<GraphicsLayer::PlatformLayerID>&);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const GraphicsLayer::CustomAppearance&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const Vector<GraphicsLayer::PlatformLayerID>&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const GraphicsLayer::CustomAppearance&);
 
 } // namespace WebCore
 

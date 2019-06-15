@@ -49,12 +49,16 @@ bool doesGC(Graph& graph, Node* node)
     case Int52Constant:
     case LazyJSConstant:
     case Identity:
+    case IdentityWithProfile:
     case GetCallee:
+    case SetCallee:
     case GetArgumentCountIncludingThis:
+    case SetArgumentCountIncludingThis:
     case GetRestLength:
     case GetLocal:
     case SetLocal:
     case MovHint:
+    case InitializeEntrypointArguments:
     case ZombieHint:
     case ExitOK:
     case Phantom:
@@ -62,7 +66,6 @@ bool doesGC(Graph& graph, Node* node)
     case Phi:
     case Flush:
     case PhantomLocal:
-    case GetLocalUnlinked:
     case SetArgument:
     case BitAnd:
     case BitOr:
@@ -94,10 +97,13 @@ bool doesGC(Graph& graph, Node* node)
     case ArithFRound:
     case ArithUnary:
     case ValueAdd:
+    case ValueNegate:
     case TryGetById:
     case GetById:
     case GetByIdFlush:
     case GetByIdWithThis:
+    case GetByIdDirect:
+    case GetByIdDirectFlush:
     case PutById:
     case PutByIdFlush:
     case PutByIdWithThis:
@@ -113,6 +119,8 @@ bool doesGC(Graph& graph, Node* node)
     case DeleteById:
     case DeleteByVal:
     case CheckStructure:
+    case CheckStructureOrEmpty:
+    case CheckStructureImmediate:
     case GetExecutable:
     case GetButterfly:
     case CheckSubClass:
@@ -120,6 +128,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetScope:
     case SkipScope:
     case GetGlobalObject:
+    case GetGlobalThis:
     case GetClosureVar:
     case PutClosureVar:
     case GetRegExpObjectLastIndex:
@@ -130,16 +139,23 @@ bool doesGC(Graph& graph, Node* node)
     case PutGlobalVariable:
     case CheckCell:
     case CheckNotEmpty:
+    case AssertNotEmpty:
     case CheckStringIdent:
     case RegExpExec:
+    case RegExpExecNonGlobalOrSticky:
     case RegExpTest:
+    case RegExpMatchFast:
+    case RegExpMatchFastGlobal:
     case CompareLess:
     case CompareLessEq:
     case CompareGreater:
     case CompareGreaterEq:
+    case CompareBelow:
+    case CompareBelowEq:
     case CompareEq:
     case CompareStrictEq:
     case CompareEqPtr:
+    case SameValue:
     case Call:
     case DirectCall:
     case TailCallInlinedCaller:
@@ -164,6 +180,7 @@ bool doesGC(Graph& graph, Node* node)
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
+    case NumberIsInteger:
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
@@ -176,26 +193,40 @@ bool doesGC(Graph& graph, Node* node)
     case ToString:
     case CallStringConstructor:
     case NumberToStringWithRadix:
-    case In:
+    case NumberToStringWithValidRadixConstant:
+    case InByVal:
+    case InById:
     case HasOwnProperty:
     case Jump:
     case Branch:
     case Switch:
+    case EntrySwitch:
     case Return:
     case TailCall:
     case DirectTailCall:
     case TailCallVarargs:
     case Throw:
     case CountExecution:
+    case SuperSamplerBegin:
+    case SuperSamplerEnd:
     case ForceOSRExit:
+    case CPUIntrinsic:
     case CheckTraps:
     case StringFromCharCode:
-    case MapHash:
+    case NormalizeMapKey:
     case GetMapBucket:
-    case LoadFromJSMapBucket:
-    case IsNonEmptyMapBucket:
+    case GetMapBucketHead:
+    case GetMapBucketNext:
+    case LoadKeyFromMapBucket:
+    case LoadValueFromMapBucket:
+    case ExtractValueFromWeakMapGet:
+    case WeakMapGet:
+    case WeakSetAdd:
+    case WeakMapSet:
     case Unreachable:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
+    case ClearCatchLocals:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
@@ -207,6 +238,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckInBounds:
     case ConstantStoragePointer:
     case Check:
+    case CheckVarargs:
     case CheckTypeInfoFlags:
     case MultiGetByOffset:
     case ValueRep:
@@ -224,6 +256,7 @@ bool doesGC(Graph& graph, Node* node)
     case StringCharAt:
     case StringCharCodeAt:
     case GetTypedArrayByteOffset:
+    case GetPrototypeOf:
     case PutByValDirect:
     case PutByVal:
     case PutByValAlias:
@@ -244,17 +277,19 @@ bool doesGC(Graph& graph, Node* node)
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
     case PhantomNewAsyncFunction:
+    case PhantomNewAsyncGeneratorFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomCreateRest:
     case PhantomNewArrayWithSpread:
+    case PhantomNewArrayBuffer:
     case PhantomSpread:
     case PhantomClonedArguments:
+    case PhantomNewRegexp:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
     case ForwardVarargs:
     case PutHint:
-    case CheckStructureImmediate:
     case PutStack:
     case KillStack:
     case GetStack:
@@ -278,15 +313,26 @@ bool doesGC(Graph& graph, Node* node)
     case AtomicsSub:
     case AtomicsXor:
     case AtomicsIsLockFree:
+    case MatchStructure:
+    case FilterCallLinkStatus:
+    case FilterGetByIdStatus:
+    case FilterPutByIdStatus:
+    case FilterInByIdStatus:
+    case DataViewGetInt:
+    case DataViewGetFloat:
+    case DataViewSet:
         return false;
 
+    case PushWithScope:
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:
     case CallObjectConstructor:
+    case ToObject:
     case ToThis:
     case CreateThis:
+    case ObjectCreate:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
     case Arrayify:
@@ -302,6 +348,7 @@ bool doesGC(Graph& graph, Node* node)
     case MakeRope:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncGeneratorFunction:
     case NewAsyncFunction:
     case NewTypedArray:
     case ThrowStaticError:
@@ -315,6 +362,8 @@ bool doesGC(Graph& graph, Node* node)
     case StrCat:
     case StringReplace:
     case StringReplaceRegExp:
+    case StringSlice:
+    case StringValueOf:
     case CreateRest:
     case ToLowerCase:
     case CallDOMGetter:
@@ -322,7 +371,21 @@ bool doesGC(Graph& graph, Node* node)
     case ArraySlice:
     case ArrayIndexOf:
     case ParseInt: // We might resolve a rope even though we don't clobber anything.
+    case SetAdd:
+    case MapSet:
         return true;
+
+    case MapHash:
+        switch (node->child1().useKind()) {
+        case BooleanUse:
+        case Int32Use:
+        case SymbolUse:
+        case ObjectUse:
+            return false;
+        default:
+            // We might resolve a rope.
+            return true;
+        }
         
     case MultiPutByOffset:
         return node->multiPutByOffsetData().reallocatesStorage();

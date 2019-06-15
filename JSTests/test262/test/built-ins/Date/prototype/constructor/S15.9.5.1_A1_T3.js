@@ -3,6 +3,7 @@
 
 /*---
 info: The Date.prototype property "constructor" has { DontEnum } attributes
+esid: sec-date.prototype.constructor
 es5id: 15.9.5.1_A1_T3
 description: Checking DontEnum attribute
 ---*/
@@ -11,8 +12,8 @@ if (Date.prototype.propertyIsEnumerable('constructor')) {
   $ERROR('#1: The Date.prototype.constructor property has the attribute DontEnum');
 }
 
-for(var x in Date.prototype) {
-  if(x === "constructor") {
+for (var x in Date.prototype) {
+  if (x === "constructor") {
     $ERROR('#2: The Date.prototype.constructor has the attribute DontEnum');
   }
 }

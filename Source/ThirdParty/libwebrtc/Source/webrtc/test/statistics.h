@@ -7,10 +7,10 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_TEST_STATISTICS_H_
-#define WEBRTC_TEST_STATISTICS_H_
+#ifndef TEST_STATISTICS_H_
+#define TEST_STATISTICS_H_
 
-#include "webrtc/typedefs.h"
+#include <stdint.h>
 
 namespace webrtc {
 namespace test {
@@ -21,16 +21,20 @@ class Statistics {
 
   void AddSample(double sample);
 
+  double Max() const;
   double Mean() const;
+  double Min() const;
   double Variance() const;
   double StandardDeviation() const;
 
  private:
   double sum_;
   double sum_squared_;
+  double max_;
+  double min_;
   uint64_t count_;
 };
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_TEST_STATISTICS_H_
+#endif  // TEST_STATISTICS_H_

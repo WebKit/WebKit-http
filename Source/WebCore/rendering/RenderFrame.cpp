@@ -26,8 +26,11 @@
 
 #include "HTMLFrameElement.h"
 #include "RenderFrameSet.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderFrame);
 
 RenderFrame::RenderFrame(HTMLFrameElement& frame, RenderStyle&& style)
     : RenderFrameBase(frame, WTFMove(style))

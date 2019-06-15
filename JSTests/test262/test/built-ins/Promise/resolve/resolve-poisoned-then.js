@@ -3,7 +3,7 @@
 /*---
 description: Resolving with an object with a "poisoned" then property
 es6id: 25.4.4.5
-info: >
+info: |
     [...]
     6. Let resolveResult be Call(promiseCapability.[[Resolve]], undefined,
        «x»).
@@ -26,12 +26,12 @@ var poisonedThen = Object.defineProperty({}, 'then', {
 });
 
 Promise.resolve(poisonedThen).then(function() {
-    $DONE('The promise should not be fulfilled.');
-  }, function(val) {
-    if (val !== value) {
-      $DONE('The promise should be rejected with the provided value.');
-      return;
-    }
+  $DONE('The promise should not be fulfilled.');
+}, function(val) {
+  if (val !== value) {
+    $DONE('The promise should be rejected with the provided value.');
+    return;
+  }
 
-    $DONE();
-  });
+  $DONE();
+});

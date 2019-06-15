@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,9 +69,9 @@ void PolymorphicCallCase::dump(PrintStream& out) const
 }
 
 PolymorphicCallStubRoutine::PolymorphicCallStubRoutine(
-    const MacroAssemblerCodeRef& codeRef, VM& vm, const JSCell* owner, ExecState* callerFrame,
+    const MacroAssemblerCodeRef<JITStubRoutinePtrTag>& codeRef, VM& vm, const JSCell* owner, ExecState* callerFrame,
     CallLinkInfo& info, const Vector<PolymorphicCallCase>& cases,
-    std::unique_ptr<uint32_t[]> fastCounts)
+    UniqueArray<uint32_t>&& fastCounts)
     : GCAwareJITStubRoutine(codeRef, vm)
     , m_fastCounts(WTFMove(fastCounts))
 {
@@ -96,10 +96,22 @@ CallVariantList PolymorphicCallStubRoutine::variants() const
     return result;
 }
 
+bool PolymorphicCallStubRoutine::hasEdges() const
+{
+    // The FTL does not count edges in its poly call stub routines. If the FTL went poly call, then
+    // it's not meaningful to keep profiling - we can just leave it at that. Remember, the FTL would
+    // have had full edge profiling from the DFG, and based on this information, it would have
+    // decided to go poly.
+    //
+    // There probably are very-difficult-to-imagine corner cases where the FTL not doing edge
+    // profiling is bad for polyvariant inlining. But polyvariant inlining is profitable sometimes
+    // while not having to increment counts is profitable always. So, we let the FTL run faster and
+    // not keep counts.
+    return !!m_fastCounts;
+}
+
 CallEdgeList PolymorphicCallStubRoutine::edges() const
 {
-    // We wouldn't have these if this was an FTL stub routine. We shouldn't be asking for profiling
-    // from the FTL.
     RELEASE_ASSERT(m_fastCounts);
     
     CallEdgeList result;

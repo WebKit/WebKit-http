@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/rapid_resync_request.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/rapid_resync_request.h"
 
-#include "webrtc/test/gmock.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/rtcp_packet_parser.h"
+#include "test/gmock.h"
+#include "test/gtest.h"
+#include "test/rtcp_packet_parser.h"
 
 using testing::ElementsAreArray;
 using testing::make_tuple;
@@ -23,9 +23,8 @@ namespace {
 const uint32_t kSenderSsrc = 0x12345678;
 const uint32_t kRemoteSsrc = 0x23456789;
 // Manually created packet matching constants above.
-const uint8_t kPacket[] = {0x85, 205,  0x00, 0x02,
-                           0x12, 0x34, 0x56, 0x78,
-                           0x23, 0x45, 0x67, 0x89};
+const uint8_t kPacket[] = {0x85, 205,  0x00, 0x02, 0x12, 0x34,
+                           0x56, 0x78, 0x23, 0x45, 0x67, 0x89};
 }  // namespace
 
 TEST(RtcpPacketRapidResyncRequestTest, Parse) {
@@ -56,9 +55,8 @@ TEST(RtcpPacketRapidResyncRequestTest, ParseFailsOnTooSmallPacket) {
 }
 
 TEST(RtcpPacketRapidResyncRequestTest, ParseFailsOnTooLargePacket) {
-  const uint8_t kTooLargePacket[] = {0x85, 205,  0x00, 0x03,
-                                     0x12, 0x34, 0x56, 0x78,
-                                     0x32, 0x21, 0x65, 0x87,
+  const uint8_t kTooLargePacket[] = {0x85, 205,  0x00, 0x03, 0x12, 0x34,
+                                     0x56, 0x78, 0x32, 0x21, 0x65, 0x87,
                                      0x23, 0x45, 0x67, 0x89};
   RapidResyncRequest parsed;
   EXPECT_FALSE(test::ParseSinglePacket(kTooLargePacket, &parsed));

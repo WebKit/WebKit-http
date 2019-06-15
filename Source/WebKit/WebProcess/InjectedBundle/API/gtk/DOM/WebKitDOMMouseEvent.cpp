@@ -24,8 +24,7 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMDOMWindowPrivate.h"
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTargetPrivate.h"
@@ -35,6 +34,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -59,23 +60,23 @@ WebKitDOMMouseEvent* wrapMouseEvent(WebCore::MouseEvent* coreObject)
 G_DEFINE_TYPE(WebKitDOMMouseEvent, webkit_dom_mouse_event, WEBKIT_DOM_TYPE_UI_EVENT)
 
 enum {
-    PROP_0,
-    PROP_SCREEN_X,
-    PROP_SCREEN_Y,
-    PROP_CLIENT_X,
-    PROP_CLIENT_Y,
-    PROP_CTRL_KEY,
-    PROP_SHIFT_KEY,
-    PROP_ALT_KEY,
-    PROP_META_KEY,
-    PROP_BUTTON,
-    PROP_RELATED_TARGET,
-    PROP_OFFSET_X,
-    PROP_OFFSET_Y,
-    PROP_X,
-    PROP_Y,
-    PROP_FROM_ELEMENT,
-    PROP_TO_ELEMENT,
+    DOM_MOUSE_EVENT_PROP_0,
+    DOM_MOUSE_EVENT_PROP_SCREEN_X,
+    DOM_MOUSE_EVENT_PROP_SCREEN_Y,
+    DOM_MOUSE_EVENT_PROP_CLIENT_X,
+    DOM_MOUSE_EVENT_PROP_CLIENT_Y,
+    DOM_MOUSE_EVENT_PROP_CTRL_KEY,
+    DOM_MOUSE_EVENT_PROP_SHIFT_KEY,
+    DOM_MOUSE_EVENT_PROP_ALT_KEY,
+    DOM_MOUSE_EVENT_PROP_META_KEY,
+    DOM_MOUSE_EVENT_PROP_BUTTON,
+    DOM_MOUSE_EVENT_PROP_RELATED_TARGET,
+    DOM_MOUSE_EVENT_PROP_OFFSET_X,
+    DOM_MOUSE_EVENT_PROP_OFFSET_Y,
+    DOM_MOUSE_EVENT_PROP_X,
+    DOM_MOUSE_EVENT_PROP_Y,
+    DOM_MOUSE_EVENT_PROP_FROM_ELEMENT,
+    DOM_MOUSE_EVENT_PROP_TO_ELEMENT,
 };
 
 static void webkit_dom_mouse_event_get_property(GObject* object, guint propertyId, GValue* value, GParamSpec* pspec)
@@ -83,52 +84,52 @@ static void webkit_dom_mouse_event_get_property(GObject* object, guint propertyI
     WebKitDOMMouseEvent* self = WEBKIT_DOM_MOUSE_EVENT(object);
 
     switch (propertyId) {
-    case PROP_SCREEN_X:
+    case DOM_MOUSE_EVENT_PROP_SCREEN_X:
         g_value_set_long(value, webkit_dom_mouse_event_get_screen_x(self));
         break;
-    case PROP_SCREEN_Y:
+    case DOM_MOUSE_EVENT_PROP_SCREEN_Y:
         g_value_set_long(value, webkit_dom_mouse_event_get_screen_y(self));
         break;
-    case PROP_CLIENT_X:
+    case DOM_MOUSE_EVENT_PROP_CLIENT_X:
         g_value_set_long(value, webkit_dom_mouse_event_get_client_x(self));
         break;
-    case PROP_CLIENT_Y:
+    case DOM_MOUSE_EVENT_PROP_CLIENT_Y:
         g_value_set_long(value, webkit_dom_mouse_event_get_client_y(self));
         break;
-    case PROP_CTRL_KEY:
+    case DOM_MOUSE_EVENT_PROP_CTRL_KEY:
         g_value_set_boolean(value, webkit_dom_mouse_event_get_ctrl_key(self));
         break;
-    case PROP_SHIFT_KEY:
+    case DOM_MOUSE_EVENT_PROP_SHIFT_KEY:
         g_value_set_boolean(value, webkit_dom_mouse_event_get_shift_key(self));
         break;
-    case PROP_ALT_KEY:
+    case DOM_MOUSE_EVENT_PROP_ALT_KEY:
         g_value_set_boolean(value, webkit_dom_mouse_event_get_alt_key(self));
         break;
-    case PROP_META_KEY:
+    case DOM_MOUSE_EVENT_PROP_META_KEY:
         g_value_set_boolean(value, webkit_dom_mouse_event_get_meta_key(self));
         break;
-    case PROP_BUTTON:
+    case DOM_MOUSE_EVENT_PROP_BUTTON:
         g_value_set_uint(value, webkit_dom_mouse_event_get_button(self));
         break;
-    case PROP_RELATED_TARGET:
+    case DOM_MOUSE_EVENT_PROP_RELATED_TARGET:
         g_value_set_object(value, webkit_dom_mouse_event_get_related_target(self));
         break;
-    case PROP_OFFSET_X:
+    case DOM_MOUSE_EVENT_PROP_OFFSET_X:
         g_value_set_long(value, webkit_dom_mouse_event_get_offset_x(self));
         break;
-    case PROP_OFFSET_Y:
+    case DOM_MOUSE_EVENT_PROP_OFFSET_Y:
         g_value_set_long(value, webkit_dom_mouse_event_get_offset_y(self));
         break;
-    case PROP_X:
+    case DOM_MOUSE_EVENT_PROP_X:
         g_value_set_long(value, webkit_dom_mouse_event_get_x(self));
         break;
-    case PROP_Y:
+    case DOM_MOUSE_EVENT_PROP_Y:
         g_value_set_long(value, webkit_dom_mouse_event_get_y(self));
         break;
-    case PROP_FROM_ELEMENT:
+    case DOM_MOUSE_EVENT_PROP_FROM_ELEMENT:
         g_value_set_object(value, webkit_dom_mouse_event_get_from_element(self));
         break;
-    case PROP_TO_ELEMENT:
+    case DOM_MOUSE_EVENT_PROP_TO_ELEMENT:
         g_value_set_object(value, webkit_dom_mouse_event_get_to_element(self));
         break;
     default:
@@ -144,7 +145,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SCREEN_X,
+        DOM_MOUSE_EVENT_PROP_SCREEN_X,
         g_param_spec_long(
             "screen-x",
             "MouseEvent:screen-x",
@@ -154,7 +155,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SCREEN_Y,
+        DOM_MOUSE_EVENT_PROP_SCREEN_Y,
         g_param_spec_long(
             "screen-y",
             "MouseEvent:screen-y",
@@ -164,7 +165,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CLIENT_X,
+        DOM_MOUSE_EVENT_PROP_CLIENT_X,
         g_param_spec_long(
             "client-x",
             "MouseEvent:client-x",
@@ -174,7 +175,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CLIENT_Y,
+        DOM_MOUSE_EVENT_PROP_CLIENT_Y,
         g_param_spec_long(
             "client-y",
             "MouseEvent:client-y",
@@ -184,7 +185,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CTRL_KEY,
+        DOM_MOUSE_EVENT_PROP_CTRL_KEY,
         g_param_spec_boolean(
             "ctrl-key",
             "MouseEvent:ctrl-key",
@@ -194,7 +195,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SHIFT_KEY,
+        DOM_MOUSE_EVENT_PROP_SHIFT_KEY,
         g_param_spec_boolean(
             "shift-key",
             "MouseEvent:shift-key",
@@ -204,7 +205,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALT_KEY,
+        DOM_MOUSE_EVENT_PROP_ALT_KEY,
         g_param_spec_boolean(
             "alt-key",
             "MouseEvent:alt-key",
@@ -214,7 +215,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_META_KEY,
+        DOM_MOUSE_EVENT_PROP_META_KEY,
         g_param_spec_boolean(
             "meta-key",
             "MouseEvent:meta-key",
@@ -224,7 +225,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BUTTON,
+        DOM_MOUSE_EVENT_PROP_BUTTON,
         g_param_spec_uint(
             "button",
             "MouseEvent:button",
@@ -234,7 +235,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_RELATED_TARGET,
+        DOM_MOUSE_EVENT_PROP_RELATED_TARGET,
         g_param_spec_object(
             "related-target",
             "MouseEvent:related-target",
@@ -244,7 +245,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_OFFSET_X,
+        DOM_MOUSE_EVENT_PROP_OFFSET_X,
         g_param_spec_long(
             "offset-x",
             "MouseEvent:offset-x",
@@ -254,7 +255,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_OFFSET_Y,
+        DOM_MOUSE_EVENT_PROP_OFFSET_Y,
         g_param_spec_long(
             "offset-y",
             "MouseEvent:offset-y",
@@ -264,7 +265,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_X,
+        DOM_MOUSE_EVENT_PROP_X,
         g_param_spec_long(
             "x",
             "MouseEvent:x",
@@ -274,7 +275,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_Y,
+        DOM_MOUSE_EVENT_PROP_Y,
         g_param_spec_long(
             "y",
             "MouseEvent:y",
@@ -284,7 +285,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FROM_ELEMENT,
+        DOM_MOUSE_EVENT_PROP_FROM_ELEMENT,
         g_param_spec_object(
             "from-element",
             "MouseEvent:from-element",
@@ -294,7 +295,7 @@ static void webkit_dom_mouse_event_class_init(WebKitDOMMouseEventClass* requestC
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TO_ELEMENT,
+        DOM_MOUSE_EVENT_PROP_TO_ELEMENT,
         g_param_spec_object(
             "to-element",
             "MouseEvent:to-element",
@@ -318,9 +319,8 @@ void webkit_dom_mouse_event_init_mouse_event(WebKitDOMMouseEvent* self, const gc
     g_return_if_fail(WEBKIT_DOM_IS_EVENT_TARGET(relatedTarget));
     WebCore::MouseEvent* item = WebKit::core(self);
     WTF::String convertedType = WTF::String::fromUTF8(type);
-    WebCore::DOMWindow* convertedView = WebKit::core(view);
     WebCore::EventTarget* convertedRelatedTarget = WebKit::core(relatedTarget);
-    item->initMouseEvent(convertedType, canBubble, cancelable, convertedView, detail, screenX, screenY, clientX, clientY, ctrlKey, altKey, shiftKey, metaKey, button, convertedRelatedTarget);
+    item->initMouseEvent(convertedType, canBubble, cancelable, WebKit::toWindowProxy(view), detail, screenX, screenY, clientX, clientY, ctrlKey, altKey, shiftKey, metaKey, button, convertedRelatedTarget);
 }
 
 glong webkit_dom_mouse_event_get_screen_x(WebKitDOMMouseEvent* self)
@@ -467,3 +467,4 @@ WebKitDOMNode* webkit_dom_mouse_event_get_to_element(WebKitDOMMouseEvent* self)
     return WebKit::kit(gobjectResult.get());
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

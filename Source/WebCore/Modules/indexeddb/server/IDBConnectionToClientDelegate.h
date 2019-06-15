@@ -27,7 +27,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -42,7 +42,7 @@ class UniqueIDBDatabaseConnection;
 
 class IDBConnectionToClientDelegate {
 public:
-    virtual ~IDBConnectionToClientDelegate() { }
+    virtual ~IDBConnectionToClientDelegate() = default;
     
     virtual uint64_t identifier() const = 0;
 

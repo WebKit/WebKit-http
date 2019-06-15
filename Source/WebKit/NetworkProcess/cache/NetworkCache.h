@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkCache_h
-#define NetworkCache_h
-
-#if ENABLE(NETWORK_CACHE)
+#pragma once
 
 #include "NetworkCacheEntry.h"
 #include "NetworkCacheStorage.h"
@@ -49,8 +46,6 @@ namespace NetworkCache {
 class Cache;
 class SpeculativeLoadManager;
 class Statistics;
-
-Cache& singleton();
 
 struct MappedBody {
 #if ENABLE(SHAREABLE_RESOURCE)
@@ -91,25 +86,33 @@ enum class UseDecision {
 
 using GlobalFrameID = std::pair<uint64_t /*webPageID*/, uint64_t /*webFrameID*/>;
 
-class Cache {
-    WTF_MAKE_NONCOPYABLE(Cache);
-    friend class WTF::NeverDestroyed<Cache>;
+class Cache : public RefCounted<Cache> {
 public:
     enum class Option {
         EfficacyLogging = 1 << 0,
         // In testing mode we try to eliminate sources of randomness. Cache does not shrink and there are no read timeouts.
         TestingMode = 1 << 1,
+        RegisterNotify = 1 << 2,
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
-        SpeculativeRevalidation = 1 << 2,
+        SpeculativeRevalidation = 1 << 3,
 #endif
     };
-    bool initialize(const String& cachePath, OptionSet<Option>);
+    static RefPtr<Cache> open(const String& cachePath, OptionSet<Option>);
+
     void setCapacity(size_t);
 
-    bool isEnabled() const { return !!m_storage; }
-
     // Completion handler may get called back synchronously on failure.
-    void retrieve(const WebCore::ResourceRequest&, const GlobalFrameID&, Function<void (std::unique_ptr<Entry>)>&&);
+    struct RetrieveInfo {
+        MonotonicTime startTime;
+        MonotonicTime completionTime;
+        unsigned priority;
+        Storage::Timings storageTimings;
+        bool wasSpeculativeLoad { false };
+
+        WTF_MAKE_FAST_ALLOCATED;
+    };
+    using RetrieveCompletionHandler = Function<void (std::unique_ptr<Entry>, const RetrieveInfo&)>;
+    void retrieve(const WebCore::ResourceRequest&, const GlobalFrameID&, RetrieveCompletionHandler&&);
     std::unique_ptr<Entry> store(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&, Function<void (MappedBody&)>&&);
     std::unique_ptr<Entry> storeRedirect(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, const WebCore::ResourceRequest& redirectRequest);
     std::unique_ptr<Entry> update(const WebCore::ResourceRequest&, const GlobalFrameID&, const Entry&, const WebCore::ResourceResponse& validatingResponse);
@@ -124,7 +127,7 @@ public:
     void remove(const Vector<Key>&, Function<void ()>&&);
 
     void clear();
-    void clear(std::chrono::system_clock::time_point modifiedSince, Function<void ()>&& completionHandler);
+    void clear(WallTime modifiedSince, Function<void ()>&& completionHandler);
 
     void retrieveData(const DataKey&, Function<void (const uint8_t* data, size_t size)>);
     void storeData(const DataKey&,  const uint8_t* data, size_t);
@@ -135,22 +138,25 @@ public:
     void dumpContentsToFile();
 
     String recordsPath() const;
-    bool canUseSharedMemoryForBodyData() const { return m_storage && m_storage->canUseSharedMemoryForBodyData(); }
 
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     SpeculativeLoadManager* speculativeLoadManager() { return m_speculativeLoadManager.get(); }
 #endif
 
+    ~Cache();
+
 private:
-    Cache() = default;
-    ~Cache() = delete;
+    Cache(Ref<Storage>&&, OptionSet<Option> options);
 
     Key makeCacheKey(const WebCore::ResourceRequest&);
+
+    static void completeRetrieve(RetrieveCompletionHandler&&, std::unique_ptr<Entry>, RetrieveInfo&);
 
     String dumpFilePath() const;
     void deleteDumpFile();
 
-    std::unique_ptr<Storage> m_storage;
+    Ref<Storage> m_storage;
+
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     std::unique_ptr<WebCore::LowPowerModeNotifier> m_lowPowerModeNotifier;
     std::unique_ptr<SpeculativeLoadManager> m_speculativeLoadManager;
@@ -162,5 +168,3 @@ private:
 
 }
 }
-#endif
-#endif

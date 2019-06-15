@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,10 +33,11 @@
 #import "ContentType.h"
 #import "LegacyCDM.h"
 #import "MediaPlayerPrivateMediaSourceAVFObjC.h"
-#import "WebCoreSystemInterface.h"
+#import <JavaScriptCore/RegularExpression.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringView.h>
-#import <yarr/RegularExpression.h>
+
+#import "VideoToolboxSoftLink.h"
 
 using JSC::Yarr::RegularExpression;
 
@@ -44,7 +45,7 @@ namespace WebCore {
 
 static RegularExpression& validKeySystemRE()
 {
-    static NeverDestroyed<RegularExpression> keySystemRE("^com\\.apple\\.fps\\.[23]_\\d+(?:,\\d+)*$", TextCaseInsensitive);
+    static NeverDestroyed<RegularExpression> keySystemRE("^com\\.apple\\.fps\\.[23]_\\d+(?:,\\d+)*$", JSC::Yarr::TextCaseInsensitive);
     return keySystemRE;
 }
 
@@ -54,9 +55,18 @@ CDMPrivateMediaSourceAVFObjC::~CDMPrivateMediaSourceAVFObjC()
         session->invalidateCDM();
 }
 
+static bool queryDecoderAvailability()
+{
+    if (!canLoad_VideoToolbox_VTGetGVADecoderAvailability())
+        return false;
+    uint32_t totalInstanceCount = 0;
+    OSStatus status = VTGetGVADecoderAvailability(&totalInstanceCount, nullptr);
+    return status == noErr && totalInstanceCount;
+}
+
 bool CDMPrivateMediaSourceAVFObjC::supportsKeySystem(const String& keySystem)
 {
-    if (!wkQueryDecoderAvailability())
+    if (!queryDecoderAvailability())
         return false;
 
     if (!keySystem.isEmpty() && validKeySystemRE().match(keySystem) < 0)
@@ -100,7 +110,7 @@ bool CDMPrivateMediaSourceAVFObjC::supportsMIMEType(const String& mimeType)
     return MediaPlayerPrivateMediaSourceAVFObjC::supportsType(parameters) != MediaPlayer::IsNotSupported;
 }
 
-std::unique_ptr<CDMSession> CDMPrivateMediaSourceAVFObjC::createSession(CDMSessionClient* client)
+std::unique_ptr<LegacyCDMSession> CDMPrivateMediaSourceAVFObjC::createSession(LegacyCDMSessionClient* client)
 {
     String keySystem = m_cdm->keySystem(); // Local copy for StringView usage
     StringView keySystemStringView { keySystem };

@@ -33,11 +33,10 @@
 
 #include "AudioTrackList.h"
 #if PLATFORM(WIN)
-#include "CoreTextSPIWin.h"
+#include <pal/spi/win/CoreTextSPIWin.h>
 #endif
 #include "FloatConversion.h"
 #include "HTMLMediaElement.h"
-#include "Language.h"
 #include "LocalizedStrings.h"
 #include "Logging.h"
 #include "MediaControlElements.h"
@@ -46,8 +45,8 @@
 #include "UserStyleSheetTypes.h"
 #include "VTTCue.h"
 #include <algorithm>
+#include <wtf/Language.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/PlatformUserPreferredLanguages.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/SoftLinking.h>
 #include <wtf/text/CString.h>
@@ -86,7 +85,7 @@ SOFT_LINK_AVF_FRAMEWORK_IMPORT_OPTIONAL(CoreMedia, MTEnableCaption2015Behavior, 
 
 #else
 
-SOFT_LINK_FRAMEWORK(MediaToolbox)
+SOFT_LINK_FRAMEWORK_OPTIONAL(MediaToolbox)
 SOFT_LINK_OPTIONAL(MediaToolbox, MTEnableCaption2015Behavior, Boolean, (), ())
 
 #endif // PLATFORM(WIN)
@@ -118,6 +117,11 @@ CaptionUserPreferencesMediaAF::CaptionUserPreferencesMediaAF(PageGroup& group)
     static bool initialized;
     if (!initialized) {
         initialized = true;
+
+#if !PLATFORM(WIN)
+        if (!MediaToolboxLibrary())
+            return;
+#endif
 
         MTEnableCaption2015BehaviorPtrType function = MTEnableCaption2015BehaviorPtr();
         if (!function || !function())
@@ -396,7 +400,7 @@ String CaptionUserPreferencesMediaAF::captionsTextEdgeCSS() const
         appendCSS(builder, CSSPropertyTextShadow, makeString(edgeStyleDropShadow.get(), " black"), important);
 
     if (textEdgeStyle == kMACaptionAppearanceTextEdgeStyleDropShadow || textEdgeStyle == kMACaptionAppearanceTextEdgeStyleUniform) {
-        appendCSS(builder, CSSPropertyWebkitTextStrokeColor, "black", important);
+        appendCSS(builder, CSSPropertyStrokeColor, "black", important);
         appendCSS(builder, CSSPropertyPaintOrder, getValueName(CSSValueStroke), important);
         appendCSS(builder, CSSPropertyStrokeLinejoin, getValueName(CSSValueRound), important);
         appendCSS(builder, CSSPropertyStrokeLinecap, getValueName(CSSValueRound), important);

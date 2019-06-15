@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_RTC_EVENT_LOG_SOURCE_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_RTC_EVENT_LOG_SOURCE_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_TOOLS_RTC_EVENT_LOG_SOURCE_H_
+#define MODULES_AUDIO_CODING_NETEQ_TOOLS_RTC_EVENT_LOG_SOURCE_H_
 
 #include <memory>
 #include <string>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/logging/rtc_event_log/rtc_event_log_parser.h"
-#include "webrtc/modules/audio_coding/neteq/tools/packet_source.h"
-#include "webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "logging/rtc_event_log/rtc_event_log_parser_new.h"
+#include "modules/audio_coding/neteq/tools/packet_source.h"
+#include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -53,7 +53,7 @@ class RtcEventLogSource : public PacketSource {
   size_t rtp_packet_index_ = 0;
   size_t audio_output_index_ = 0;
 
-  ParsedRtcEventLog parsed_stream_;
+  ParsedRtcEventLogNew parsed_stream_;
   std::unique_ptr<RtpHeaderParser> parser_;
 
   RTC_DISALLOW_COPY_AND_ASSIGN(RtcEventLogSource);
@@ -62,4 +62,4 @@ class RtcEventLogSource : public PacketSource {
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_RTC_EVENT_LOG_SOURCE_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_TOOLS_RTC_EVENT_LOG_SOURCE_H_

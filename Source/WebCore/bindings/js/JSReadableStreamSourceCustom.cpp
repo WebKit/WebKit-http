@@ -31,9 +31,9 @@
 
 #if ENABLE(STREAMS_API)
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 JSValue JSReadableStreamSource::start(ExecState& state, Ref<DeferredPromise>&& promise)
 {
@@ -41,7 +41,7 @@ JSValue JSReadableStreamSource::start(ExecState& state, Ref<DeferredPromise>&& p
     
     // FIXME: Why is it ok to ASSERT the argument count here?
     ASSERT(state.argumentCount());
-    JSReadableStreamDefaultController* controller = jsDynamicDowncast<JSReadableStreamDefaultController*>(vm, state.uncheckedArgument(0));
+    JSReadableStreamDefaultController* controller = jsDynamicCast<JSReadableStreamDefaultController*>(vm, state.uncheckedArgument(0));
     ASSERT(controller);
 
     m_controller.set(vm, this, controller);

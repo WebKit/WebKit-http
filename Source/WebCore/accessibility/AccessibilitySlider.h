@@ -38,7 +38,7 @@ class HTMLInputElement;
 class AccessibilitySlider : public AccessibilityRenderObject {
 public:
     static Ref<AccessibilitySlider> create(RenderObject*);
-    virtual ~AccessibilitySlider() { }
+    virtual ~AccessibilitySlider() = default;
 
 protected:
     explicit AccessibilitySlider(RenderObject*);
@@ -47,7 +47,7 @@ private:
     HTMLInputElement* inputElement() const;
     AccessibilityObject* elementAccessibilityHitTest(const IntPoint&) const override;
 
-    AccessibilityRole roleValue() const override { return SliderRole; }
+    AccessibilityRole roleValue() const override { return AccessibilityRole::Slider; }
     bool isSlider() const final { return true; }
     bool isInputSlider() const override { return true; }
     bool isControl() const override { return true; }
@@ -67,9 +67,9 @@ private:
 class AccessibilitySliderThumb final : public AccessibilityMockObject {
 public:
     static Ref<AccessibilitySliderThumb> create();
-    virtual ~AccessibilitySliderThumb() { }
+    virtual ~AccessibilitySliderThumb() = default;
 
-    AccessibilityRole roleValue() const override { return SliderThumbRole; }
+    AccessibilityRole roleValue() const override { return AccessibilityRole::SliderThumb; }
     LayoutRect elementRect() const override;
 
 private:

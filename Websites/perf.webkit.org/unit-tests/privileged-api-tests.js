@@ -1,12 +1,13 @@
 'use strict';
 
 const assert = require('assert');
-
-const MockRemoteAPI = require('./resources/mock-remote-api.js').MockRemoteAPI;
 require('../tools/js/v3-models.js');
+const BrowserPrivilegedAPI = require('../public/v3/privileged-api.js').PrivilegedAPI;
+const NodePrivilegedAPI = require('../tools/js/privileged-api').PrivilegedAPI;
+const MockRemoteAPI = require('./resources/mock-remote-api.js').MockRemoteAPI;
 
-describe('PrivilegedAPI', () => {
-    let requests = MockRemoteAPI.inject();
+describe('BrowserPrivilegedAPI', () => {
+    const requests = MockRemoteAPI.inject(null, BrowserPrivilegedAPI);
 
     beforeEach(() => {
         PrivilegedAPI._token = null;
@@ -50,7 +51,7 @@ describe('PrivilegedAPI', () => {
             });
         });
     });
-    
+
     describe('sendRequest', () => {
 
         it('should generate a new token if no token had been fetched', () => {
@@ -164,6 +165,29 @@ describe('PrivilegedAPI', () => {
             });
         });
 
+    });
+
+});
+
+describe('NodePrivilegedAPI', () => {
+    let requests = MockRemoteAPI.inject(null, NodePrivilegedAPI);
+    beforeEach(() => {
+        PrivilegedAPI.configure('slave_name', 'password');
+    });
+
+    describe('sendRequest', () => {
+        it('should post slave name and password in data', async () => {
+            const request = PrivilegedAPI.sendRequest('test', {foo: 'bar'});
+
+            assert.equal(requests.length, 1);
+            assert.equal(requests[0].url, '/privileged-api/test');
+            assert.equal(requests[0].method, 'POST');
+            assert.deepEqual(requests[0].data,  {foo: 'bar', slaveName: 'slave_name', slavePassword: 'password'});
+
+            requests[0].resolve({test: 'success'});
+            const result = await request;
+            assert.deepEqual(result, {test: 'success'});
+        });
     });
 
 });

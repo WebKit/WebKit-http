@@ -5,7 +5,7 @@ esid: sec-%typedarray%.prototype.slice
 description: >
   Does not throw a TypeError if buffer is detached on custom constructor and
   `k >= final`. Using other targetType.
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
@@ -20,7 +20,7 @@ info: >
   ...
   16. Return A.
 includes: [testTypedArray.js, detachArrayBuffer.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -26,10 +26,10 @@
 #include "config.h"
 #include "runtime_array.h"
 
-#include <runtime/ArrayPrototype.h>
-#include <runtime/Error.h>
-#include <runtime/PropertyNameArray.h>
 #include "JSDOMBinding.h"
+#include <JavaScriptCore/ArrayPrototype.h>
+#include <JavaScriptCore/Error.h>
+#include <JavaScriptCore/PropertyNameArray.h>
 
 using namespace WebCore;
 
@@ -65,7 +65,7 @@ EncodedJSValue RuntimeArray::lengthGetter(ExecState* exec, EncodedJSValue thisVa
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    RuntimeArray* thisObject = jsDynamicDowncast<RuntimeArray*>(vm, JSValue::decode(thisValue));
+    RuntimeArray* thisObject = jsDynamicCast<RuntimeArray*>(vm, JSValue::decode(thisValue));
     if (!thisObject)
         return throwVMTypeError(exec, scope);
     return JSValue::encode(jsNumber(thisObject->getLength()));
@@ -73,28 +73,30 @@ EncodedJSValue RuntimeArray::lengthGetter(ExecState* exec, EncodedJSValue thisVa
 
 void RuntimeArray::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
+    VM& vm = exec->vm();
     RuntimeArray* thisObject = jsCast<RuntimeArray*>(object);
     unsigned length = thisObject->getLength();
     for (unsigned i = 0; i < length; ++i)
         propertyNames.add(Identifier::from(exec, i));
 
     if (mode.includeDontEnumProperties())
-        propertyNames.add(exec->propertyNames().length);
+        propertyNames.add(vm.propertyNames->length);
 
     JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
 bool RuntimeArray::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
 {
+    VM& vm = exec->vm();
     RuntimeArray* thisObject = jsCast<RuntimeArray*>(object);
-    if (propertyName == exec->propertyNames().length) {
-        slot.setCacheableCustom(thisObject, DontDelete | ReadOnly | DontEnum, thisObject->lengthGetter);
+    if (propertyName == vm.propertyNames->length) {
+        slot.setCacheableCustom(thisObject, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum, thisObject->lengthGetter);
         return true;
     }
     
     std::optional<uint32_t> index = parseIndex(propertyName);
     if (index && index.value() < thisObject->getLength()) {
-        slot.setValue(thisObject, DontDelete | DontEnum,
+        slot.setValue(thisObject, PropertyAttribute::DontDelete | PropertyAttribute::DontEnum,
             thisObject->getConcreteArray()->valueAt(exec, index.value()));
         return true;
     }
@@ -106,7 +108,7 @@ bool RuntimeArray::getOwnPropertySlotByIndex(JSObject* object, ExecState *exec, 
 {
     RuntimeArray* thisObject = jsCast<RuntimeArray*>(object);
     if (index < thisObject->getLength()) {
-        slot.setValue(thisObject, DontDelete | DontEnum,
+        slot.setValue(thisObject, PropertyAttribute::DontDelete | PropertyAttribute::DontEnum,
             thisObject->getConcreteArray()->valueAt(exec, index));
         return true;
     }
@@ -120,7 +122,7 @@ bool RuntimeArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName,
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     RuntimeArray* thisObject = jsCast<RuntimeArray*>(cell);
-    if (propertyName == exec->propertyNames().length) {
+    if (propertyName == vm.propertyNames->length) {
         throwException(exec, scope, createRangeError(exec, "Range error"));
         return false;
     }

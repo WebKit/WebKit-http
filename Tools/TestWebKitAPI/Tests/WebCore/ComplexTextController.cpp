@@ -25,6 +25,8 @@
 
 #include "config.h"
 
+#if !PLATFORM(WIN)
+
 #include <JavaScriptCore/InitializeThreading.h>
 #include <WebCore/ComplexTextController.h>
 #include <WebCore/FontCascade.h>
@@ -49,7 +51,7 @@ TEST_F(ComplexTextControllerTest, InitialAdvanceWithLeftRunInRTL)
     FontCascadeDescription description;
     description.setOneFamily("Times");
     description.setComputedSize(80);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
     auto spaceWidth = font.primaryFont().spaceWidth();
 
@@ -96,7 +98,7 @@ TEST_F(ComplexTextControllerTest, InitialAdvanceInRTL)
     FontCascadeDescription description;
     description.setOneFamily("Times");
     description.setComputedSize(80);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
 
     Vector<FloatSize> advances = { FloatSize(), FloatSize(21.640625, 0.0), FloatSize(42.3046875, 0.0), FloatSize(55.8984375, 0.0), FloatSize(22.34375, 0.0) };
@@ -140,7 +142,7 @@ TEST_F(ComplexTextControllerTest, InitialAdvanceWithLeftRunInLTR)
     FontCascadeDescription description;
     description.setOneFamily("LucidaGrande");
     description.setComputedSize(80);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
     auto spaceWidth = font.primaryFont().spaceWidth();
 
@@ -183,7 +185,7 @@ TEST_F(ComplexTextControllerTest, InitialAdvanceInLTR)
     FontCascadeDescription description;
     description.setOneFamily("LucidaGrande");
     description.setComputedSize(80);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
 
     Vector<FloatSize> advances = { FloatSize(76.347656, 0.000000), FloatSize(0.000000, 0.000000) };
@@ -220,7 +222,7 @@ TEST_F(ComplexTextControllerTest, InitialAdvanceInRTLNoOrigins)
     FontCascadeDescription description;
     description.setOneFamily("Times");
     description.setComputedSize(48);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
 
     FloatSize initialAdvance = FloatSize(4.33996383363472, 12.368896925859);
@@ -266,7 +268,7 @@ TEST_F(ComplexTextControllerTest, LeadingExpansion)
     FontCascadeDescription description;
     description.setOneFamily("Times");
     description.setComputedSize(48);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
 
     UChar characters[] = { 'a' };
@@ -296,7 +298,7 @@ TEST_F(ComplexTextControllerTest, VerticalAdvances)
     FontCascadeDescription description;
     description.setOneFamily("Times");
     description.setComputedSize(48);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
 
     UChar characters[] = { 'a', 'b', 'c', 'd' };
@@ -340,7 +342,7 @@ TEST_F(ComplexTextControllerTest, TotalWidthWithJustification)
     FontCascadeDescription description;
     description.setOneFamily("Times");
     description.setComputedSize(80);
-    FontCascade font(description);
+    FontCascade font(WTFMove(description));
     font.update();
 
     Vector<FloatSize> advances = { FloatSize(1, 0), FloatSize(2, 0), FloatSize(4, 0), FloatSize(8, 0), FloatSize(16, 0) };
@@ -350,7 +352,7 @@ TEST_F(ComplexTextControllerTest, TotalWidthWithJustification)
 
     UChar characters[] = { 0x644, ' ', 0x644, ' ', 0x644 };
     size_t charactersLength = WTF_ARRAY_LENGTH(characters);
-    TextRun textRun(StringView(characters, charactersLength), 0, 14, DefaultExpansion, RTL);
+    TextRun textRun(StringView(characters, charactersLength), 0, 14, DefaultExpansion, TextDirection::RTL);
     auto run = ComplexTextController::ComplexTextRun::create(advances, origins, { 5, 6, 7, 8, 9 }, { 4, 3, 2, 1, 0 }, initialAdvance, font.primaryFont(), characters, 0, charactersLength, 0, 5, false);
     Vector<Ref<ComplexTextController::ComplexTextRun>> runs;
     runs.append(WTFMove(run));
@@ -365,3 +367,5 @@ TEST_F(ComplexTextControllerTest, TotalWidthWithJustification)
 }
 
 }
+
+#endif

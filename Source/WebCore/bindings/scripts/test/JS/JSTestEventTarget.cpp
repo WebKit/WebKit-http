@@ -31,13 +31,17 @@
 #include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include "JSNode.h"
-#include <runtime/JSCInlines.h>
-#include <runtime/PropertyNameArray.h>
+#include "ScriptExecutionContext.h"
+#include "URL.h"
+#include <JavaScriptCore/HeapSnapshotBuilder.h>
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/PropertyNameArray.h>
 #include <wtf/GetPtr.h>
+#include <wtf/PointerPreparations.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 // Functions
 
@@ -82,9 +86,9 @@ template<> JSValue JSTestEventTargetConstructor::prototypeForStructure(JSC::VM& 
 
 template<> void JSTestEventTargetConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    putDirect(vm, vm.propertyNames->prototype, JSTestEventTarget::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestEventTarget"))), ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestEventTarget::prototype(vm, globalObject), JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String("TestEventTarget"_s)), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(0), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
 }
 
 template<> const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTarget", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
@@ -93,8 +97,8 @@ template<> const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTa
 
 static const HashTableValue JSTestEventTargetPrototypeTableValues[] =
 {
-    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventTargetConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestEventTargetConstructor) } },
-    { "item", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionItem), (intptr_t) (1) } },
+    { "constructor", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestEventTargetConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestEventTargetConstructor) } },
+    { "item", static_cast<unsigned>(JSC::PropertyAttribute::Function), NoIntrinsic, { (intptr_t)static_cast<RawNativeFunction>(jsTestEventTargetPrototypeFunctionItem), (intptr_t) (1) } },
 };
 
 const ClassInfo JSTestEventTargetPrototype::s_info = { "TestEventTargetPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTargetPrototype) };
@@ -102,7 +106,7 @@ const ClassInfo JSTestEventTargetPrototype::s_info = { "TestEventTargetPrototype
 void JSTestEventTargetPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestEventTargetPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestEventTarget::info(), JSTestEventTargetPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTarget) };
@@ -141,7 +145,7 @@ bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* state, P
     if (auto index = parseIndex(propertyName)) {
         if (index.value() < thisObject->wrapped().length()) {
             auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), thisObject->wrapped().item(index.value()));
-            slot.setValue(thisObject, ReadOnly, value);
+            slot.setValue(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), value);
             return true;
         }
         return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
@@ -155,7 +159,7 @@ bool JSTestEventTarget::getOwnPropertySlot(JSObject* object, ExecState* state, P
     };
     if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::No>(*state, *thisObject, propertyName, getterFunctor)) {
         auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), WTFMove(namedProperty.value()));
-        slot.setValue(thisObject, ReadOnly, value);
+        slot.setValue(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), value);
         return true;
     }
     return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
@@ -168,7 +172,7 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* s
     if (LIKELY(index <= MAX_ARRAY_INDEX)) {
         if (index < thisObject->wrapped().length()) {
             auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), thisObject->wrapped().item(index));
-            slot.setValue(thisObject, ReadOnly, value);
+            slot.setValue(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), value);
             return true;
         }
         return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
@@ -183,7 +187,7 @@ bool JSTestEventTarget::getOwnPropertySlotByIndex(JSObject* object, ExecState* s
     };
     if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::No>(*state, *thisObject, propertyName, getterFunctor)) {
         auto value = toJS<IDLInterface<Node>>(*state, *thisObject->globalObject(), WTFMove(namedProperty.value()));
-        slot.setValue(thisObject, ReadOnly, value);
+        slot.setValue(thisObject, static_cast<unsigned>(JSC::PropertyAttribute::ReadOnly), value);
         return true;
     }
     return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
@@ -202,14 +206,14 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, 
 
 template<> inline JSTestEventTarget* IDLOperation<JSTestEventTarget>::cast(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestEventTarget*>(state.vm(), state.thisValue());
+    return jsDynamicCast<JSTestEventTarget*>(state.vm(), state.thisValue());
 }
 
 EncodedJSValue jsTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestEventTarget::getConstructor(state->vm(), prototype->globalObject()));
@@ -219,13 +223,13 @@ bool setJSTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue,
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
 static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemBody(JSC::ExecState* state, typename IDLOperation<JSTestEventTarget>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
@@ -245,6 +249,15 @@ EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* s
     return IDLOperation<JSTestEventTarget>::call<jsTestEventTargetPrototypeFunctionItemBody>(*state, "item");
 }
 
+void JSTestEventTarget::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
+{
+    auto* thisObject = jsCast<JSTestEventTarget*>(cell);
+    builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
+    if (thisObject->scriptExecutionContext())
+        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+    Base::heapSnapshot(cell, builder);
+}
+
 #if ENABLE(BINDING_INTEGRITY)
 #if PLATFORM(WIN)
 #pragma warning(disable: 4483)
@@ -260,9 +273,9 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
 #if ENABLE(BINDING_INTEGRITY)
     void* actualVTablePointer = *(reinterpret_cast<void**>(impl.ptr()));
 #if PLATFORM(WIN)
-    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestEventTarget@WebCore@@6B@"));
+    void* expectedVTablePointer = WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION(__identifier("??_7TestEventTarget@WebCore@@6B@"));
 #else
-    void* expectedVTablePointer = &_ZTVN7WebCore15TestEventTargetE[2];
+    void* expectedVTablePointer = WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION(&_ZTVN7WebCore15TestEventTargetE[2]);
 #endif
 
     // If this fails TestEventTarget does not have a vtable, so you need to add the
@@ -285,7 +298,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestEv
 
 TestEventTarget* JSTestEventTarget::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestEventTarget*>(vm, value))
+    if (auto* wrapper = jsDynamicCast<JSTestEventTarget*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

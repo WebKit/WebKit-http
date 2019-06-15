@@ -29,15 +29,42 @@
 #include "config.h"
 #include "JSLexicalEnvironment.h"
 
+#include "HeapSnapshotBuilder.h"
 #include "Interpreter.h"
 #include "JSFunction.h"
 #include "JSCInlines.h"
 
-using namespace std;
-
 namespace JSC {
 
 const ClassInfo JSLexicalEnvironment::s_info = { "JSLexicalEnvironment", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSLexicalEnvironment) };
+
+void JSLexicalEnvironment::visitChildren(JSCell* cell, SlotVisitor& visitor)
+{
+    auto* thisObject = jsCast<JSLexicalEnvironment*>(cell);
+    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    Base::visitChildren(thisObject, visitor);
+    visitor.appendValuesHidden(thisObject->variables(), thisObject->symbolTable()->scopeSize());
+}
+
+void JSLexicalEnvironment::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
+{
+    auto* thisObject = jsCast<JSLexicalEnvironment*>(cell);
+    Base::heapSnapshot(cell, builder);
+
+    ConcurrentJSLocker locker(thisObject->symbolTable()->m_lock);
+    SymbolTable::Map::iterator end = thisObject->symbolTable()->end(locker);
+    for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
+        SymbolTableEntry::Fast entry = it->value;
+        ASSERT(!entry.isNull());
+        ScopeOffset offset = entry.scopeOffset();
+        if (!thisObject->isValidScopeOffset(offset))
+            continue;
+
+        JSValue toValue = thisObject->variableAt(offset).get();
+        if (toValue && toValue.isCell())
+            builder.appendVariableNameEdge(thisObject, toValue.asCell(), it->key.get());
+    }
+}
 
 void JSLexicalEnvironment::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
@@ -47,7 +74,7 @@ void JSLexicalEnvironment::getOwnNonIndexPropertyNames(JSObject* object, ExecSta
         ConcurrentJSLocker locker(thisObject->symbolTable()->m_lock);
         SymbolTable::Map::iterator end = thisObject->symbolTable()->end(locker);
         for (SymbolTable::Map::iterator it = thisObject->symbolTable()->begin(locker); it != end; ++it) {
-            if (it->value.getAttributes() & DontEnum && !mode.includeDontEnumProperties())
+            if (it->value.getAttributes() & PropertyAttribute::DontEnum && !mode.includeDontEnumProperties())
                 continue;
             if (!thisObject->isValidScopeOffset(it->value.scopeOffset()))
                 continue;
@@ -56,7 +83,7 @@ void JSLexicalEnvironment::getOwnNonIndexPropertyNames(JSObject* object, ExecSta
             propertyNames.add(Identifier::fromUid(exec, it->key.get()));
         }
     }
-    // Skip the JSEnvironmentRecord implementation of getOwnNonIndexPropertyNames
+    // Skip the JSSymbolTableObject's implementation of getOwnNonIndexPropertyNames
     JSObject::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
@@ -67,16 +94,17 @@ bool JSLexicalEnvironment::getOwnPropertySlot(JSObject* object, ExecState* exec,
     if (symbolTableGet(thisObject, propertyName, slot))
         return true;
 
+    VM& vm = exec->vm();
     unsigned attributes;
-    if (JSValue value = thisObject->getDirect(exec->vm(), propertyName, attributes)) {
+    if (JSValue value = thisObject->getDirect(vm, propertyName, attributes)) {
         slot.setValue(thisObject, attributes, value);
         return true;
     }
 
     // We don't call through to JSObject because there's no way to give a 
     // lexical environment object getter properties or a prototype.
-    ASSERT(!thisObject->hasGetterSetterProperties());
-    ASSERT(thisObject->getPrototypeDirect().isNull());
+    ASSERT(!thisObject->hasGetterSetterProperties(vm));
+    ASSERT(thisObject->getPrototypeDirect(vm).isNull());
     return false;
 }
 
@@ -94,23 +122,17 @@ bool JSLexicalEnvironment::put(JSCell* cell, ExecState* exec, PropertyName prope
     // We don't call through to JSObject because __proto__ and getter/setter 
     // properties are non-standard extensions that other implementations do not
     // expose in the lexicalEnvironment object.
-    ASSERT(!thisObject->hasGetterSetterProperties());
+    ASSERT(!thisObject->hasGetterSetterProperties(exec->vm()));
     return thisObject->putOwnDataProperty(exec->vm(), propertyName, value, slot);
 }
 
 bool JSLexicalEnvironment::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
-    if (propertyName == exec->propertyNames().arguments)
+    VM& vm = exec->vm();
+    if (propertyName == vm.propertyNames->arguments)
         return false;
 
     return Base::deleteProperty(cell, exec, propertyName);
-}
-
-JSValue JSLexicalEnvironment::toThis(JSCell*, ExecState* exec, ECMAMode ecmaMode)
-{
-    if (ecmaMode == StrictMode)
-        return jsUndefined();
-    return exec->globalThisValue();
 }
 
 } // namespace JSC

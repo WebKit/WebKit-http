@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the hasOwnProperty method is called with argument V, the following steps are taken:
     i) Let O be this object
     ii) Call ToString(V)
@@ -14,8 +14,8 @@ description: >
     function object
 ---*/
 
-var FACTORY = function(){
-    this.aproperty = 1;
+var FACTORY = function() {
+  this.aproperty = 1;
 };
 
 var instance = new FACTORY;

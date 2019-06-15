@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,20 +27,28 @@
 #define RUNTIME_FUNCTION_H_
 
 #include "BridgeJSC.h"
-#include <runtime/InternalFunction.h>
-#include <runtime/JSGlobalObject.h>
+#include <JavaScriptCore/InternalFunction.h>
+#include <JavaScriptCore/JSGlobalObject.h>
 
 namespace JSC {
 
 class WEBCORE_EXPORT RuntimeMethod : public InternalFunction {
 public:
     typedef InternalFunction Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | TypeOfShouldCallGetCallData;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetCallData;
 
-    static RuntimeMethod* create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, const String& name, Bindings::Method* method)
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
     {
-        RuntimeMethod* runtimeMethod = new (NotNull, allocateCell<RuntimeMethod>(*exec->heap())) RuntimeMethod(globalObject, structure, method);
-        runtimeMethod->finishCreation(exec->vm(), name);
+        static_assert(sizeof(CellType) == sizeof(RuntimeMethod), "RuntimeMethod subclasses that add fields need to override subspaceFor<>()");
+        return subspaceForImpl(vm);
+    }
+    
+    static RuntimeMethod* create(ExecState*, JSGlobalObject* globalObject, Structure* structure, const String& name, Bindings::Method* method)
+    {
+        VM& vm = globalObject->vm();
+        RuntimeMethod* runtimeMethod = new (NotNull, allocateCell<RuntimeMethod>(vm.heap)) RuntimeMethod(globalObject, structure, method);
+        runtimeMethod->finishCreation(vm, name);
         return runtimeMethod;
     }
 
@@ -55,18 +63,19 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
 protected:
     RuntimeMethod(JSGlobalObject*, Structure*, Bindings::Method*);
     void finishCreation(VM&, const String&);
-    static CallType getCallData(JSCell*, CallData&);
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
 
 private:
     static EncodedJSValue lengthGetter(ExecState*, EncodedJSValue, PropertyName);
+
+    static IsoSubspace* subspaceForImpl(VM&);
 
     Bindings::Method* m_method;
 };

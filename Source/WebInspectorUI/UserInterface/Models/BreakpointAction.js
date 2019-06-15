@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.BreakpointAction = class BreakpointAction extends WebInspector.Object
+WI.BreakpointAction = class BreakpointAction
 {
     constructor(breakpoint, typeOrInfo, data)
     {
-        super();
-
         console.assert(breakpoint);
         console.assert(typeOrInfo);
 
@@ -41,10 +39,10 @@ WebInspector.BreakpointAction = class BreakpointAction extends WebInspector.Obje
             this._type = typeOrInfo.type;
             this._data = typeOrInfo.data || null;
         } else
-            console.error("Unexpected type passed to WebInspector.BreakpointAction");
+            console.error("Unexpected type passed to WI.BreakpointAction");
 
         console.assert(typeof this._type === "string");
-        this._id = WebInspector.debuggerManager.nextBreakpointActionIdentifier();
+        this._id = WI.debuggerManager.nextBreakpointActionIdentifier();
     }
 
     // Public
@@ -77,7 +75,7 @@ WebInspector.BreakpointAction = class BreakpointAction extends WebInspector.Obje
     }
 };
 
-WebInspector.BreakpointAction.Type = {
+WI.BreakpointAction.Type = {
     Log: "log",
     Evaluate: "evaluate",
     Sound: "sound",

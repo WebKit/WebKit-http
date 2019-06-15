@@ -8,18 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_FFT_DATA_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_FFT_DATA_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_FFT_DATA_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_FFT_DATA_H_
 
-#include "webrtc/typedefs.h"
+// Defines WEBRTC_ARCH_X86_FAMILY, used below.
+#include "rtc_base/system/arch.h"
+
 #if defined(WEBRTC_ARCH_X86_FAMILY)
 #include <emmintrin.h>
 #endif
 #include <algorithm>
 #include <array>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
+#include "api/array_view.h"
+#include "modules/audio_processing/aec3/aec3_common.h"
 
 namespace webrtc {
 
@@ -40,8 +42,8 @@ struct FftData {
 
   // Computes the power spectrum of the data.
   void Spectrum(Aec3Optimization optimization,
-                std::array<float, kFftLengthBy2Plus1>* power_spectrum) const {
-    RTC_DCHECK(power_spectrum);
+                rtc::ArrayView<float> power_spectrum) const {
+    RTC_DCHECK_EQ(kFftLengthBy2Plus1, power_spectrum.size());
     switch (optimization) {
 #if defined(WEBRTC_ARCH_X86_FAMILY)
       case Aec3Optimization::kSse2: {
@@ -53,16 +55,14 @@ struct FftData {
           const __m128 ii = _mm_mul_ps(i, i);
           const __m128 rr = _mm_mul_ps(r, r);
           const __m128 rrii = _mm_add_ps(rr, ii);
-          _mm_storeu_ps(&(*power_spectrum)[k], rrii);
+          _mm_storeu_ps(&power_spectrum[k], rrii);
         }
-        (*power_spectrum)[kFftLengthBy2] =
-            re[kFftLengthBy2] * re[kFftLengthBy2] +
-            im[kFftLengthBy2] * im[kFftLengthBy2];
+        power_spectrum[kFftLengthBy2] = re[kFftLengthBy2] * re[kFftLengthBy2] +
+                                        im[kFftLengthBy2] * im[kFftLengthBy2];
       } break;
 #endif
       default:
-        std::transform(re.begin(), re.end(), im.begin(),
-                       power_spectrum->begin(),
+        std::transform(re.begin(), re.end(), im.begin(), power_spectrum.begin(),
                        [](float a, float b) { return a * a + b * b; });
     }
   }
@@ -95,4 +95,4 @@ struct FftData {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_FFT_DATA_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_FFT_DATA_H_

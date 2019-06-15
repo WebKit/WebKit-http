@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "LegacyWebArchive.h"
+#import "config.h"
+#import "LegacyWebArchive.h"
+
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 
 namespace WebCore {
 
@@ -42,17 +44,24 @@ ResourceResponse LegacyWebArchive::createResourceResponseFromMacArchivedData(CFD
         return ResourceResponse();
     
     NSURLResponse *response = nil;
-    NSKeyedUnarchiver *unarchiver = [[NSKeyedUnarchiver alloc] initForReadingWithData:(NSData *)responseData];
+#if USE(SECURE_ARCHIVER_API)
+    auto unarchiver = secureUnarchiverFromData((__bridge NSData *)responseData);
+    @try {
+        response = [unarchiver decodeObjectOfClass:[NSURLResponse class] forKey:LegacyWebArchiveResourceResponseKey];
+#else
+    // Because of <rdar://problem/34063313> we can't use secure coding for decoding in older OS's.
+    auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:(NSData *)responseData]);
     @try {
         id responseObject = [unarchiver decodeObjectForKey:LegacyWebArchiveResourceResponseKey];
         if ([responseObject isKindOfClass:[NSURLResponse class]])
             response = responseObject;
+#endif
         [unarchiver finishDecoding];
-    } @catch(id) {
+    } @catch (NSException *exception) {
+        LOG_ERROR("Failed to decode NS(HTTP)URLResponse: %@", exception);
         response = nil;
     }
-    [unarchiver release];
-    
+
     return ResourceResponse(response);
 }
 
@@ -63,14 +72,19 @@ RetainPtr<CFDataRef> LegacyWebArchive::createPropertyListRepresentation(const Re
     if (!nsResponse)
         return nullptr;
 
+#if USE(SECURE_ARCHIVER_API)
+    auto archiver = secureArchiver();
+    [archiver encodeObject:nsResponse forKey:LegacyWebArchiveResourceResponseKey];
+    return retainPtr((__bridge CFDataRef)archiver.get().encodedData);
+#else
+    // Because of <rdar://problem/34063313> we can't use this for encoding in older OS's.
     CFMutableDataRef responseData = CFDataCreateMutable(0, 0);
-
-    NSKeyedArchiver *archiver = [[NSKeyedArchiver alloc] initForWritingWithMutableData:(NSMutableData *)responseData];
+    auto archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:(NSMutableData *)responseData]);
     [archiver encodeObject:nsResponse forKey:LegacyWebArchiveResourceResponseKey];
     [archiver finishEncoding];
-    [archiver release];
-    
+
     return adoptCF(responseData);
+#endif
 }
 
 }

@@ -2,14 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When "continue Identifier" is evaluated Identifier must be label in the
     label set of an enclosing (but not crossing function boundaries)
     IterationStatement
 es5id: 12.7_A5_T2
 description: Identifier is a function name
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 LABEL_OUT : var x=0, y=0;
 LABEL_DO_LOOP : do {

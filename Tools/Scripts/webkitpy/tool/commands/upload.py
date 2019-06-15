@@ -61,7 +61,7 @@ class CommitMessageForCurrentDiff(Command):
     def execute(self, options, args, tool):
         # This command is a useful test to make sure commit_message_for_this_commit
         # always returns the right value regardless of the current working directory.
-        print "%s" % tool.checkout().commit_message_for_this_commit(options.git_commit).message()
+        print("%s" % tool.checkout().commit_message_for_this_commit(options.git_commit).message())
 
 
 class CleanPendingCommit(Command):
@@ -220,6 +220,7 @@ class Post(AbstractPatchUploadingCommand):
         steps.SuggestReviewers,
         steps.EnsureBugIsOpenAndAssigned,
         steps.PostDiff,
+        steps.SubmitToEWS,
     ]
 
 
@@ -257,6 +258,7 @@ class Prepare(AbstractSequencedCommand):
     steps = [
         steps.PromptForBugOrTitle,
         steps.CreateBug,
+        steps.SortXcodeProjectFiles,
         steps.PrepareChangeLog,
     ]
 
@@ -275,6 +277,7 @@ class Upload(AbstractPatchUploadingCommand):
         steps.CheckStyle,
         steps.PromptForBugOrTitle,
         steps.CreateBug,
+        steps.SortXcodeProjectFiles,
         steps.PrepareChangeLog,
         steps.EditChangeLog,
         steps.ConfirmDiff,
@@ -282,6 +285,9 @@ class Upload(AbstractPatchUploadingCommand):
         steps.SuggestReviewers,
         steps.EnsureBugIsOpenAndAssigned,
         steps.PostDiff,
+        steps.AddRadar,
+        steps.SubmitToEWS,
+        steps.WPTChangeExport,
     ]
     long_help = """upload uploads the current diff to bugs.webkit.org.
     If no bug id is provided, upload will create a bug.
@@ -319,6 +325,7 @@ class PostCommits(Command):
             steps.Options.obsolete_patches,
             steps.Options.review,
             steps.Options.request_commit,
+            steps.Options.ews,
         ]
         Command.__init__(self, options=options, requires_local_commits=True)
 
@@ -354,7 +361,13 @@ class PostCommits(Command):
             diff = tool.scm().create_patch(git_commit=commit_id)
             description = options.description or commit_message.description(lstrip=True, strip_url=True)
             comment_text = self._comment_text_for_commit(options, commit_message, tool, commit_id)
-            tool.bugs.add_patch_to_bug(bug_id, diff, description, comment_text, mark_for_review=options.review, mark_for_commit_queue=options.request_commit)
+            attachment_id = tool.bugs.add_patch_to_bug(bug_id, diff, description, comment_text, mark_for_review=options.review, mark_for_commit_queue=options.request_commit)
+
+            # We only need to submit --no-review patches to EWS as patches posted for review are
+            # automatically submitted to EWS by EWSFeeder.
+            if not options.review and options.ews:
+                state = {'attachment_ids': [attachment_id]}
+                steps.SubmitToEWS(tool, options).run(state)
 
 
 # FIXME: This command needs to be brought into the modern age with steps and CommitInfo.
@@ -499,7 +512,7 @@ class CreateBug(Command):
     def prompt_for_bug_title_and_comment(self):
         bug_title = User.prompt("Bug title: ")
         # FIXME: User should provide a function for doing this multi-line prompt.
-        print "Bug comment (hit ^D on blank line to end):"
+        print("Bug comment (hit ^D on blank line to end):")
         lines = sys.stdin.readlines()
         try:
             sys.stdin.seek(0, os.SEEK_END)
@@ -520,3 +533,25 @@ class CreateBug(Command):
             self.create_bug_from_commit(options, args, tool)
         else:
             self.create_bug_from_patch(options, args, tool)
+
+
+class WPTChangeExport(AbstractPatchUploadingCommand):
+    name = "wpt-change-export"
+    help_text = "Opens a pull request to synchronize any changes in the LayoutTests/imported/w3c/web-platform-tests directory"
+    argument_names = "[BUGID]"
+    steps = [
+        steps.WPTChangeExport,
+    ]
+
+    long_help = """Opens a pull request to the w3c/web-platform-tests
+    github repo for any changes in the
+    LayoutTests/imported/w3c/web-platform-tests directory. This step
+    will noop if there are no changes in the web-platform-tests directory.
+    The user will be prompted to provide a github username and OAuth token
+    the first time this is run.
+    """
+
+    def _prepare_state(self, options, args, tool):
+        state = {}
+        state["bug_id"] = self._bug_id(options, args, tool, state)
+        return state

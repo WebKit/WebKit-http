@@ -17,7 +17,11 @@ description: >
 
     Strict Mode
 
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 flags: [onlyStrict]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 var af = package => 1;

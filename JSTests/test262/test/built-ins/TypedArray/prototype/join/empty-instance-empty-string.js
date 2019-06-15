@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.join
 description: Return the empty String if length is 0
-info: >
+info: |
   22.2.3.15 %TypedArray%.prototype.join ( separator )
 
   %TypedArray%.prototype.join is a distinct function that implements the same
@@ -18,6 +18,7 @@ info: >
   5. If len is zero, return the empty String.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

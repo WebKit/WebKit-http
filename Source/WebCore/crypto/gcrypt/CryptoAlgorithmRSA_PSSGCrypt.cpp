@@ -32,13 +32,11 @@
 
 #include "CryptoAlgorithmRsaPssParams.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
 #include "GCryptUtilities.h"
-#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
-static std::optional<Vector<uint8_t>> gcryptSign(gcry_sexp_t keySexp, size_t keyLength, const Vector<uint8_t>& data, CryptoAlgorithmIdentifier hashAlgorithmIdentifier, size_t saltLength)
+static std::optional<Vector<uint8_t>> gcryptSign(gcry_sexp_t keySexp, const Vector<uint8_t>& data, CryptoAlgorithmIdentifier hashAlgorithmIdentifier, size_t saltLength, size_t keySizeInBytes)
 {
     // Perform digest operation with the specified algorithm on the given data.
     Vector<uint8_t> dataHash;
@@ -86,12 +84,7 @@ static std::optional<Vector<uint8_t>> gcryptSign(gcry_sexp_t keySexp, size_t key
     if (!sSexp)
         return std::nullopt;
 
-    // Validate the MPI data size -- it should match the key length in bytes.
-    auto signature = mpiData(sSexp);
-    if (!signature || signature->size() != keyLength / 8)
-        return std::nullopt;
-
-    return signature;
+    return mpiZeroPrefixedData(sSexp, keySizeInBytes);
 }
 
 static std::optional<bool> gcryptVerify(gcry_sexp_t keySexp, const Vector<uint8_t>& signature, const Vector<uint8_t>& data, CryptoAlgorithmIdentifier hashAlgorithmIdentifier, size_t saltLength)
@@ -142,60 +135,21 @@ static std::optional<bool> gcryptVerify(gcry_sexp_t keySexp, const Vector<uint8_
     return { error == GPG_ERR_NO_ERROR };
 }
 
-void CryptoAlgorithmRSA_PSS::platformSign(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmRSA_PSS::platformSign(const CryptoAlgorithmRsaPssParams& parameters, const CryptoKeyRSA& key, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch(
-        [parameters = WTFMove(parameters), key = WTFMove(key), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-            auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
-            auto& rsaParameters = downcast<CryptoAlgorithmRsaPssParams>(*parameters);
-
-            auto output = gcryptSign(rsaKey.platformKey(), rsaKey.keySizeInBits(), data, rsaKey.hashAlgorithmIdentifier(), rsaParameters.saltLength);
-            if (!output) {
-                // We should only dereference callbacks after being back to the Document/Worker threads.
-                context.postTask(
-                    [callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-                        exceptionCallback(OperationError);
-                        context.deref();
-                    });
-                return;
-            }
-
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask(
-                [output = WTFMove(*output), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-                    callback(output);
-                    context.deref();
-                });
-        });
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!(key.keySizeInBits() % 8));
+    auto output = gcryptSign(key.platformKey(), data, key.hashAlgorithmIdentifier(), parameters.saltLength, key.keySizeInBits() / 8);
+    if (!output)
+        return Exception { OperationError };
+    return WTFMove(*output);
 }
 
-void CryptoAlgorithmRSA_PSS::platformVerify(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<bool> CryptoAlgorithmRSA_PSS::platformVerify(const CryptoAlgorithmRsaPssParams& parameters, const CryptoKeyRSA& key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch(
-        [parameters = WTFMove(parameters), key = WTFMove(key), signature = WTFMove(signature), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-            auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
-            auto& rsaParameters = downcast<CryptoAlgorithmRsaPssParams>(*parameters);
-
-            auto output = gcryptVerify(rsaKey.platformKey(), signature, data, rsaKey.hashAlgorithmIdentifier(), rsaParameters.saltLength);
-            if (!output) {
-                // We should only dereference callbacks after being back to the Document/Worker threads.
-                context.postTask(
-                    [callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-                        exceptionCallback(OperationError);
-                        context.deref();
-                    });
-                return;
-            }
-
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask(
-                [output = WTFMove(*output), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-                    callback(output);
-                    context.deref();
-                });
-        });
+    auto output = gcryptVerify(key.platformKey(), signature, data, key.hashAlgorithmIdentifier(), parameters.saltLength);
+    if (!output)
+        return Exception { OperationError };
+    return WTFMove(*output);
 }
 
 

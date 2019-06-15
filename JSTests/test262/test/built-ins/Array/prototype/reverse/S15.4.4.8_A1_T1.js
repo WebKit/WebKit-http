@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The elements of the array are rearranged so as to reverse their order.
     The object is returned as the result of the call
+esid: sec-array.prototype.reverse
 es5id: 15.4.4.8_A1_T1
 description: Checking case when reverse is given no arguments or one argument
 ---*/
@@ -14,7 +15,7 @@ var x = [];
 var reverse = x.reverse();
 if (reverse !== x) {
   $ERROR('#1: x = []; x.reverse() === x. Actual: ' + (reverse));
-}  
+}
 
 //CHECK#2
 x = [];
@@ -25,7 +26,7 @@ if (reverse !== x) {
 }
 
 //CHECK#3
-x = new Array(1,2);
+x = new Array(1, 2);
 var reverse = x.reverse();
 if (reverse !== x) {
   $ERROR('#3: x = new Array(1,2); x.reverse() === x. Actual: ' + (reverse));
@@ -39,7 +40,7 @@ if (x[0] !== 2) {
 //CHECK#5
 if (x[1] !== 1) {
   $ERROR('#5: x = new Array(1,2); x.reverse(); x[1] === 1. Actual: ' + (x[1]));
-} 
+}
 
 //CHECK#6
 if (x.length !== 2) {

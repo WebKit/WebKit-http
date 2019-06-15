@@ -1,4 +1,4 @@
-# Copyright (C) 2012 Apple Inc. All rights reserved.
+# Copyright (C) 2012-2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -35,40 +35,30 @@ messages -> NetworkProcess LegacyReceiver {
 
     ClearCachedCredentials()
 
-    EnsurePrivateBrowsingSession(struct WebKit::WebsiteDataStoreParameters websiteDataStoreParameters)
     AddWebsiteDataStore(struct WebKit::WebsiteDataStoreParameters websiteDataStoreParameters);
-    DestroySession(WebCore::SessionID sessionID)
+    DestroySession(PAL::SessionID sessionID)
 
-    FetchWebsiteData(WebCore::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, OptionSet<WebKit::WebsiteDataFetchOption> fetchOptions, uint64_t callbackID)
-    DeleteWebsiteData(WebCore::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
-    DeleteWebsiteDataForOrigins(WebCore::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, Vector<WebCore::SecurityOriginData> origins, Vector<String> cookieHostNames, uint64_t callbackID)
+    FetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, OptionSet<WebKit::WebsiteDataFetchOption> fetchOptions, uint64_t callbackID)
+    DeleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, WallTime modifiedSince, uint64_t callbackID)
+    DeleteWebsiteDataForOrigins(PAL::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, Vector<WebCore::SecurityOriginData> origins, Vector<String> cookieHostNames, Vector<String> HSTSCacheHostNames, uint64_t callbackID)
 
-    DownloadRequest(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, WebCore::ResourceRequest request, String suggestedFilename)
-    ResumeDownload(WebCore::SessionID sessionID, WebKit::DownloadID downloadID, IPC::DataReference resumeData, String path, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
+    DownloadRequest(PAL::SessionID sessionID, WebKit::DownloadID downloadID, WebCore::ResourceRequest request, String suggestedFilename)
+    ResumeDownload(PAL::SessionID sessionID, WebKit::DownloadID downloadID, IPC::DataReference resumeData, String path, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
     CancelDownload(WebKit::DownloadID downloadID)
 #if PLATFORM(QT)
     StartTransfer(WebKit::DownloadID downloadID, String destination)
 #endif
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    ContinueCanAuthenticateAgainstProtectionSpace(uint64_t loaderID, bool canAuthenticate)
-#endif
-#if USE(NETWORK_SESSION)
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    ContinueCanAuthenticateAgainstProtectionSpaceDownload(WebKit::DownloadID downloadID, bool canAuthenticate)
-#endif
     ContinueWillSendRequest(WebKit::DownloadID downloadID, WebCore::ResourceRequest request)
-#endif
     ContinueDecidePendingDownloadDestination(WebKit::DownloadID downloadID, String destination, WebKit::SandboxExtension::Handle sandboxExtensionHandle, bool allowOverwrite)
 
-    SetProcessSuppressionEnabled(bool flag)
 #if PLATFORM(COCOA)
     SetQOS(int latencyQOS, int throughputQOS)
-    SetCookieStoragePartitioningEnabled(bool enabled)
+    SetStorageAccessAPIEnabled(bool enabled)
 #endif
     SetAllowsAnySSLCertificateForWebSocket(bool enabled) -> ()
 
-    SyncAllCookies() -> ()
+    SyncAllCookies()
 
     AllowSpecificHTTPSCertificateForHost(WebCore::CertificateInfo certificate, String host)
     SetCanHandleHTTPSServerTrustEvaluation(bool value)
@@ -78,14 +68,38 @@ messages -> NetworkProcess LegacyReceiver {
     ClearCacheForAllOrigins(uint32_t cachesToClear)
     SetCacheModel(uint32_t cacheModel);
 
+    ProcessDidTransitionToBackground()
+    ProcessDidTransitionToForeground()
+
     ProcessWillSuspendImminently() -> (bool handled)
     PrepareToSuspend()
     CancelPrepareToSuspend()
     ProcessDidResume()
 
-    DidGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t requestID)
+    DidGrantSandboxExtensionsToStorageProcessForBlobs(uint64_t requestID)
+
+    WriteBlobToFilePath(WebCore::URL blobURL, String path, WebKit::SandboxExtension::Handle handle, uint64_t callbackID)
+
+    PreconnectTo(WebCore::URL url, enum WebCore::StoredCredentialsPolicy storedCredentialsPolicy);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    UpdateCookiePartitioningForTopPrivatelyOwnedDomains(Vector<String> domainsToRemove, Vector<String> domainsToAdd, bool shouldClearFirst)
+    UpdatePrevalentDomainsToBlockCookiesFor(PAL::SessionID sessionID, Vector<String> domainsToBlock, bool shouldClearFirst, uint64_t contextId)
+    HasStorageAccessForFrame(PAL::SessionID sessionID, String resourceDomain, String firstPartyDomain, uint64_t frameID, uint64_t pageID, uint64_t contextId)
+    GetAllStorageAccessEntries(PAL::SessionID sessionID, uint64_t contextId)
+    GrantStorageAccess(PAL::SessionID sessionID, String resourceDomain, String firstPartyDomain, std::optional<uint64_t> frameID, uint64_t pageID, uint64_t contextId)
+    RemoveAllStorageAccess(PAL::SessionID sessionID, uint64_t contextId)
+    RemovePrevalentDomains(PAL::SessionID sessionID, Vector<String> domainsWithInteraction);
 #endif
+
+    SetSessionIsControlledByAutomation(PAL::SessionID sessionID, bool controlled);
+
+    RegisterURLSchemeAsSecure(String scheme)
+    RegisterURLSchemeAsBypassingContentSecurityPolicy(String scheme)
+    RegisterURLSchemeAsLocal(String scheme)
+    RegisterURLSchemeAsNoAccess(String scheme)
+    RegisterURLSchemeAsDisplayIsolated(String scheme)
+    RegisterURLSchemeAsCORSEnabled(String scheme)
+    RegisterURLSchemeAsCanDisplayOnlyIfCanRequest(String scheme)
+
+    SetCacheStorageParameters(PAL::SessionID sessionID, uint64_t quota, String cacheStorageDirectory, WebKit::SandboxExtension::Handle handle);
 }

@@ -25,18 +25,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ImageBuffer_h
-#define ImageBuffer_h
+#pragma once
 
 #include "AffineTransform.h"
 #include "ColorSpace.h"
 #include "GraphicsTypes.h"
 #include "GraphicsTypes3D.h"
-#include "IntSize.h"
 #include "ImageBufferData.h"
+#include "IntSize.h"
 #include "PlatformLayer.h"
+#include <JavaScriptCore/Uint8ClampedArray.h>
 #include <memory>
-#include <runtime/Uint8ClampedArray.h>
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -56,20 +55,16 @@ class Image;
 class ImageData;
 class IntPoint;
 class IntRect;
-
-enum Multiply {
-    Premultiplied,
-    Unmultiplied
-};
-
+class HostWindow;
+    
 enum BackingStoreCopy {
     CopyBackingStore, // Guarantee subsequent draws don't affect the copy.
     DontCopyBackingStore // Subsequent draws may affect the copy.
 };
 
-enum ScaleBehavior {
-    Scaled,
-    Unscaled
+enum class PreserveResolution {
+    No,
+    Yes,
 };
 
 class ImageBuffer {
@@ -77,7 +72,7 @@ class ImageBuffer {
     friend class IOSurface;
 public:
     // Will return a null pointer on allocation failure.
-    WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB);
+    WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB, const HostWindow* = nullptr);
 #if USE(DIRECT2D)
     WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, const GraphicsContext*, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB);
 #endif
@@ -105,8 +100,8 @@ public:
 
     WEBCORE_EXPORT GraphicsContext& context() const;
 
-    WEBCORE_EXPORT RefPtr<Image> copyImage(BackingStoreCopy = CopyBackingStore, ScaleBehavior = Scaled) const;
-    WEBCORE_EXPORT static RefPtr<Image> sinkIntoImage(std::unique_ptr<ImageBuffer>, ScaleBehavior = Scaled);
+    WEBCORE_EXPORT RefPtr<Image> copyImage(BackingStoreCopy = CopyBackingStore, PreserveResolution = PreserveResolution::No) const;
+    WEBCORE_EXPORT static RefPtr<Image> sinkIntoImage(std::unique_ptr<ImageBuffer>, PreserveResolution = PreserveResolution::No);
     // Give hints on the faster copyImage Mode, return DontCopyBackingStore if it supports the DontCopyBackingStore behavior
     // or return CopyBackingStore if it doesn't.  
     static BackingStoreCopy fastCopyImageMode();
@@ -116,18 +111,18 @@ public:
     RefPtr<Uint8ClampedArray> getUnmultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
     RefPtr<Uint8ClampedArray> getPremultipliedImageData(const IntRect&, IntSize* pixelArrayDimensions = nullptr, CoordinateSystem = LogicalCoordinateSystem) const;
 
-    void putByteArray(Multiply multiplied, Uint8ClampedArray*, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem = LogicalCoordinateSystem);
+    void putByteArray(const Uint8ClampedArray&, AlphaPremultiplication bufferFormat, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem = LogicalCoordinateSystem);
     
     void convertToLuminanceMask();
-    
-    String toDataURL(const String& mimeType, std::optional<double> quality = std::nullopt, CoordinateSystem = LogicalCoordinateSystem) const;
+
+    String toDataURL(const String& mimeType, std::optional<double> quality = std::nullopt, PreserveResolution = PreserveResolution::No) const;
     Vector<uint8_t> toData(const String& mimeType, std::optional<double> quality = std::nullopt) const;
     Vector<uint8_t> toBGRAData() const;
 
 #if !USE(CG)
     AffineTransform baseTransform() const { return AffineTransform(); }
     void transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace);
-    void platformTransformColorSpace(const Vector<int>&);
+    void platformTransformColorSpace(const std::array<uint8_t, 256>&);
 #else
     AffineTransform baseTransform() const { return AffineTransform(1, 0, 0, -1, 0, m_data.backingStoreSize.height()); }
 #endif
@@ -158,10 +153,10 @@ private:
     void flushContext() const;
 #endif
     
-    void draw(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
-    void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
+    void draw(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendMode::Normal);
+    void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendMode::Normal);
 
-    static void drawConsuming(std::unique_ptr<ImageBuffer>, GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
+    static void drawConsuming(std::unique_ptr<ImageBuffer>, GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendMode::Normal);
 
     inline void genericConvertToLuminanceMask();
 
@@ -179,10 +174,10 @@ private:
 
     // This constructor will place its success into the given out-variable
     // so that create() knows when it should return failure.
-    WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
+    WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, const HostWindow*, bool& success);
 #if USE(CG)
-    ImageBuffer(const FloatSize&, float resolutionScale, CGColorSpaceRef, RenderingMode, bool& success);
-    RetainPtr<CFDataRef> toCFData(const String& mimeType, std::optional<double> quality) const;
+    ImageBuffer(const FloatSize&, float resolutionScale, CGColorSpaceRef, RenderingMode, const HostWindow*, bool& success);
+    RetainPtr<CFDataRef> toCFData(const String& mimeType, std::optional<double> quality, PreserveResolution) const;
 #elif USE(DIRECT2D)
     ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, const GraphicsContext*, bool& success);
 #elif PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
@@ -197,4 +192,3 @@ Vector<uint8_t> data(const ImageData&, const String& mimeType, std::optional<dou
 
 } // namespace WebCore
 
-#endif // ImageBuffer_h

@@ -8,17 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_DELAY_ESTIMATOR_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_DELAY_ESTIMATOR_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_DELAY_ESTIMATOR_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_DELAY_ESTIMATOR_H_
 
 #include <vector>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/audio_processing/aec3/decimator_by_4.h"
-#include "webrtc/modules/audio_processing/aec3/downsampled_render_buffer.h"
-#include "webrtc/modules/audio_processing/aec3/matched_filter.h"
-#include "webrtc/modules/audio_processing/aec3/matched_filter_lag_aggregator.h"
+#include "absl/types/optional.h"
+#include "api/audio/echo_canceller3_config.h"
+#include "modules/audio_processing/aec3/decimator.h"
+#include "modules/audio_processing/aec3/delay_estimate.h"
+#include "modules/audio_processing/aec3/downsampled_render_buffer.h"
+#include "modules/audio_processing/aec3/matched_filter.h"
+#include "modules/audio_processing/aec3/matched_filter_lag_aggregator.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -27,25 +29,37 @@ class ApmDataDumper;
 // Estimates the delay of the echo path.
 class EchoPathDelayEstimator {
  public:
-  explicit EchoPathDelayEstimator(ApmDataDumper* data_dumper);
+  EchoPathDelayEstimator(ApmDataDumper* data_dumper,
+                         const EchoCanceller3Config& config);
   ~EchoPathDelayEstimator();
 
-  // Resets the estimation.
-  void Reset();
+  // Resets the estimation. If the soft-reset is specified, only  the matched
+  // filters are reset.
+  void Reset(bool soft_reset);
 
   // Produce a delay estimate if such is avaliable.
-  rtc::Optional<size_t> EstimateDelay(
+  absl::optional<DelayEstimate> EstimateDelay(
       const DownsampledRenderBuffer& render_buffer,
       rtc::ArrayView<const float> capture);
 
+  // Log delay estimator properties.
+  void LogDelayEstimationProperties(int sample_rate_hz, size_t shift) const {
+    matched_filter_.LogFilterProperties(sample_rate_hz, shift,
+                                        down_sampling_factor_);
+  }
+
  private:
   ApmDataDumper* const data_dumper_;
-  DecimatorBy4 capture_decimator_;
+  const size_t down_sampling_factor_;
+  const size_t sub_block_size_;
+  Decimator capture_decimator_;
   MatchedFilter matched_filter_;
   MatchedFilterLagAggregator matched_filter_lag_aggregator_;
+  absl::optional<DelayEstimate> old_aggregated_lag_;
+  size_t consistent_estimate_counter_ = 0;
 
-  RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(EchoPathDelayEstimator);
+  RTC_DISALLOW_COPY_AND_ASSIGN(EchoPathDelayEstimator);
 };
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_DELAY_ESTIMATOR_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_DELAY_ESTIMATOR_H_

@@ -47,28 +47,12 @@ namespace WebCore {
 
 struct JsonWebKey;
 
-class EcKeyAlgorithm : public KeyAlgorithm {
-public:
-    EcKeyAlgorithm(const String& name, const String& curve)
-        : KeyAlgorithm(name)
-        , m_curve(curve)
-    {
-    }
-
-    KeyAlgorithmClass keyAlgorithmClass() const override { return KeyAlgorithmClass::EC; }
-
-    const String& namedCurve() const { return m_curve; }
-
-private:
-    String m_curve;
-};
-
 class CryptoKeyEC final : public CryptoKey {
 public:
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=169231
     enum class NamedCurve {
         P256,
         P384,
+        P521,
     };
 
     static Ref<CryptoKeyEC> create(CryptoAlgorithmIdentifier identifier, NamedCurve curve, CryptoKeyType type, PlatformECKey platformKey, bool extractable, CryptoKeyUsageBitmap usages)
@@ -84,14 +68,14 @@ public:
     static RefPtr<CryptoKeyEC> importPkcs8(CryptoAlgorithmIdentifier, const String& curve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
 
     ExceptionOr<Vector<uint8_t>> exportRaw() const;
-    JsonWebKey exportJwk() const;
+    ExceptionOr<JsonWebKey> exportJwk() const;
     ExceptionOr<Vector<uint8_t>> exportSpki() const;
     ExceptionOr<Vector<uint8_t>> exportPkcs8() const;
 
     size_t keySizeInBits() const;
     NamedCurve namedCurve() const { return m_curve; }
     String namedCurveString() const;
-    PlatformECKey platformKey() { return m_platformKey; }
+    PlatformECKey platformKey() const { return m_platformKey; }
     static bool isValidECAlgorithm(CryptoAlgorithmIdentifier);
 
 private:
@@ -99,9 +83,9 @@ private:
 
     CryptoKeyClass keyClass() const final { return CryptoKeyClass::EC; }
 
-    std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
-    std::unique_ptr<CryptoKeyData> exportData() const final;
+    KeyAlgorithm algorithm() const final;
 
+    static bool platformSupportedCurve(NamedCurve);
     static std::optional<CryptoKeyPair> platformGeneratePair(CryptoAlgorithmIdentifier, NamedCurve, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> platformImportRaw(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> platformImportJWKPublic(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& x, Vector<uint8_t>&& y, bool extractable, CryptoKeyUsageBitmap);
@@ -109,7 +93,7 @@ private:
     static RefPtr<CryptoKeyEC> platformImportSpki(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyEC> platformImportPkcs8(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
     Vector<uint8_t> platformExportRaw() const;
-    void platformAddFieldElements(JsonWebKey&) const;
+    bool platformAddFieldElements(JsonWebKey&) const;
     Vector<uint8_t> platformExportSpki() const;
     Vector<uint8_t> platformExportPkcs8() const;
 
@@ -120,7 +104,5 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyEC, CryptoKeyClass::EC)
-
-SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(EcKeyAlgorithm, KeyAlgorithmClass::EC)
 
 #endif // ENABLE(SUBTLE_CRYPTO)

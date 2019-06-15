@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When Boolean is called as part of a new expression it is
     a constructor: it initialises the newly created object
+esid: sec-boolean-constructor
 es5id: 15.6.2.1_A1
 description: Checking type of the newly created object and it value
 ---*/
@@ -21,13 +22,13 @@ if (new Boolean() === undefined) {
 
 //CHECK#3
 var x3 = new Boolean();
-if(typeof x3 !== "object"){
+if (typeof x3 !== "object") {
   $ERROR("#3: typeof new Boolean() !== 'object'");
 }
 
 //CHECK#4
 var x4 = new Boolean();
-if(x4 === undefined){
+if (x4 === undefined) {
   $ERROR("#4: new Boolean() should not be undefined");
 }
 
@@ -43,12 +44,12 @@ if (new Boolean(1) === undefined) {
 
 //CHECK#7
 var x7 = new Boolean(1);
-if(typeof x7 !== "object"){
+if (typeof x7 !== "object") {
   $ERROR("#7: typeof new Boolean(1) !== 'object'");
 }
 
 //CHECK#8
 var x8 = new Boolean(1);
-if(x8 === undefined){
+if (x8 === undefined) {
   $ERROR("#8: new Boolean(1) should not be undefined");
 }

@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.lastindexof
 description: Returns -1 if length is 0
-info: >
+info: |
   22.2.3.17 %TypedArray%.prototype.lastIndexOf ( searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.lastIndexOf is a distinct function that implements the
@@ -18,6 +18,7 @@ info: >
   3. If len is 0, return -1.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var fromIndex = {

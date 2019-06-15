@@ -2,10 +2,12 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The length property of encodeURIComponent does not have the attribute
     DontDelete
 es5id: 15.1.3.4_A5.2
+es6id: 18.2.6.5
+esid: sec-encodeuricomponent-uricomponent
 description: Checking use hasOwnProperty, delete
 ---*/
 

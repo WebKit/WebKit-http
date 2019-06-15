@@ -5,7 +5,7 @@
 es6id: 13.3.3
 description: >
   The ArrayBindingPattern with an element list with initializers
-info: >
+info: |
   Destructuring Binding Patterns - Syntax
 
   ArrayBindingPattern[Yield] :
@@ -23,6 +23,7 @@ info: >
   BindingElement[Yield ] :
     SingleNameBinding[?Yield]
     BindingPattern[?Yield] Initializer[In, ?Yield]opt
+features: [destructuring-binding]
 ---*/
 
 function fn1([a, b = 42]) {}

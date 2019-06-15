@@ -26,6 +26,7 @@
 
 enum ForcedAccessibilityValue { "system", "on", "off" };
 enum FrameFlatteningValue { "Disabled", "EnabledForNonFullScreenIFrames", "FullyEnabled" };
+enum FontLoadTimingOverride { "Block", "Swap", "Failure" };
 
 [
     NoInterfaceObject,
@@ -43,7 +44,8 @@ enum FrameFlatteningValue { "Disabled", "EnabledForNonFullScreenIFrames", "Fully
     [MayThrowException] void setFantasyFontFamily(DOMString family, DOMString script);
     [MayThrowException] void setPictographFontFamily(DOMString family, DOMString script);
     [MayThrowException] void setFontFallbackPrefersPictographs(boolean preferPictographs);
-    [MayThrowException] void setWebFontsAlwaysFallBack(boolean enable);
+    [MayThrowException] void setFontLoadTimingOverride(FontLoadTimingOverride override);
+    [MayThrowException] void setShouldIgnoreFontLoadCompletions(boolean ignore);
 
     [MayThrowException] void setTextAutosizingEnabled(boolean enabled);
     [MayThrowException] void setTextAutosizingWindowSizeOverride(long width, long height);
@@ -83,12 +85,15 @@ enum FrameFlatteningValue { "Disabled", "EnabledForNonFullScreenIFrames", "Fully
     [MayThrowException] void setAllowsInlineMediaPlaybackAfterFullscreen(boolean allows);
     [MayThrowException] void setInlineMediaPlaybackRequiresPlaysInlineAttribute(boolean requires);
     [MayThrowException] void setFrameFlattening(FrameFlatteningValue frameFlattening);
+    [MayThrowException] void setIncompleteImageBorderEnabled(boolean enabled);
 
     // RuntimeEnabledFeatures.
     void setIndexedDBWorkersEnabled(boolean enabled);
-    void setCSSGridLayoutEnabled(boolean enabled);
     void setWebGL2Enabled(boolean enabled);
     void setWebGPUEnabled(boolean enabled);
+    void setWebVREnabled(boolean enabled);
+    void setScreenCaptureEnabled(boolean enabled);
+    void setStorageAccessPromptsEnabled(boolean enabled);
 
     [MayThrowException] DOMString userInterfaceDirectionPolicy();
     [MayThrowException] void setUserInterfaceDirectionPolicy(DOMString policy);
@@ -105,5 +110,10 @@ enum FrameFlatteningValue { "Disabled", "EnabledForNonFullScreenIFrames", "Fully
     attribute ForcedAccessibilityValue forcedPrefersReducedMotionAccessibilityValue;
 
     [MayThrowException] void setShouldManageAudioSessionCategory(boolean should);
+    [MayThrowException] void setCustomPasteboardDataEnabled(boolean enabled);
+
+    [EnabledAtRuntime=WebAnimations] boolean webAnimationsCSSIntegrationEnabled();
+
+    [MayThrowException] void setAccessibilityEventsEnabled(boolean enabled);
 };
 

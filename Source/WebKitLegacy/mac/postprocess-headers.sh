@@ -6,7 +6,7 @@ postProcessInDirectory()
 
     cd "$1"
 
-    local unifdefOptions sedExpression
+    local unifdefOptions
 
     if [[ ${USE_INTERNAL_SDK} == "YES" ]]; then
         USE_APPLE_INTERNAL_SDK=1
@@ -14,12 +14,12 @@ postProcessInDirectory()
         USE_APPLE_INTERNAL_SDK=0
     fi
 
-    if [[ ${PLATFORM_NAME} == macosx ]]; then
-        unifdefOptions="-DTARGET_OS_EMBEDDED=0 -DTARGET_OS_IPHONE=0 -DTARGET_IPHONE_SIMULATOR=0";
-    elif [[ ${PLATFORM_NAME} == *simulator* ]]; then
-        unifdefOptions="-DTARGET_OS_EMBEDDED=0 -DTARGET_OS_IPHONE=1 -DTARGET_IPHONE_SIMULATOR=1 -DUSE_APPLE_INTERNAL_SDK=${USE_APPLE_INTERNAL_SDK}";
+    if [[ ${WK_PLATFORM_NAME} == macosx ]]; then
+        unifdefOptions="-DTARGET_OS_IPHONE=0 -DTARGET_OS_SIMULATOR=0";
+    elif [[ ${WK_PLATFORM_NAME} == *simulator* ]]; then
+        unifdefOptions="-DTARGET_OS_IPHONE=1 -DTARGET_OS_SIMULATOR=1 -DUSE_APPLE_INTERNAL_SDK=${USE_APPLE_INTERNAL_SDK}";
     else
-        unifdefOptions="-DTARGET_OS_EMBEDDED=1 -DTARGET_OS_IPHONE=1 -DTARGET_IPHONE_SIMULATOR=0 -DUSE_APPLE_INTERNAL_SDK=${USE_APPLE_INTERNAL_SDK}";
+        unifdefOptions="-DTARGET_OS_IPHONE=1 -DTARGET_OS_SIMULATOR=0 -DUSE_APPLE_INTERNAL_SDK=${USE_APPLE_INTERNAL_SDK}";
     fi
 
     # FIXME: We should consider making this logic general purpose so as to support keeping or removing
@@ -35,12 +35,6 @@ postProcessInDirectory()
             unifdefOptions="$unifdefOptions -D$featureDefine=1"
         fi
     done
-
-    if [[ ${PLATFORM_NAME} == macosx ]]; then
-        sedExpression='s/WEBKIT_((CLASS_|ENUM_)?AVAILABLE|DEPRECATED)/NS_\1/g';
-    else
-        sedExpression='s/ *WEBKIT_((CLASS_|ENUM_)?AVAILABLE|DEPRECATED)_MAC\([^)]+\)//g';
-    fi
 
     for header in $(find . -name '*.h' -type f); do
         unifdef -B ${unifdefOptions} -o ${header}.unifdef ${header}
@@ -60,11 +54,13 @@ postProcessInDirectory()
             continue
         fi
 
-        sed -E -e "${sedExpression}" < ${header} > ${header}.sed
-        if cmp -s ${header} ${header}.sed; then
-            rm ${header}.sed
-        else
-            mv ${header}.sed ${header}
+        if [[ ${WK_PLATFORM_NAME} != macosx ]]; then
+            sed -E -e "s/ *WEBKIT_((CLASS_|ENUM_)?(AVAILABLE|DEPRECATED))_MAC\([^)]+\)//g" < ${header} > ${header}.sed
+            if cmp -s ${header} ${header}.sed; then
+                rm ${header}.sed
+            else
+                mv ${header}.sed ${header}
+            fi
         fi
     done
 

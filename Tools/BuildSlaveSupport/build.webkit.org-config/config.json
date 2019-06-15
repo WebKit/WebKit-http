@@ -1,60 +1,51 @@
 {
     "slaves":     [ { "name": "test-slave", "platform": "*" },
 
-                    { "name": "bot123", "platform": "mac-elcapitan" },
-                    { "name": "bot126", "platform": "mac-elcapitan" },
-                    { "name": "bot133", "platform": "mac-elcapitan" },
-                    { "name": "bot145", "platform": "mac-elcapitan" },
-                    { "name": "bot162", "platform": "mac-elcapitan" },
-                    { "name": "bot165", "platform": "mac-elcapitan" },
-                    { "name": "bot169", "platform": "mac-elcapitan" },
-                    { "name": "bot170", "platform": "mac-elcapitan" },
-                    { "name": "bot173", "platform": "mac-elcapitan" },
-                    { "name": "bot174", "platform": "mac-elcapitan" },
-                    { "name": "bot205", "platform": "mac-elcapitan" },
-                    { "name": "bot208", "platform": "mac-elcapitan" },
-                    { "name": "bot209", "platform": "mac-elcapitan" },
-                    { "name": "bot210", "platform": "mac-elcapitan" },
-                    { "name": "bot415", "platform": "mac-elcapitan" },
-                    { "name": "bot416", "platform": "mac-elcapitan" },
-                    { "name": "bot417", "platform": "mac-elcapitan" },
-                    { "name": "bot418", "platform": "mac-elcapitan" },
-                    { "name": "bot419", "platform": "mac-elcapitan" },
-                    { "name": "bot433", "platform": "mac-elcapitan" },
-                    { "name": "bot434", "platform": "mac-elcapitan" },
+                    { "name": "bot121", "platform": "mac-highsierra" },
+                    { "name": "bot155", "platform": "mac-highsierra" },
+                    { "name": "bot153", "platform": "mac-highsierra" },
+                    { "name": "bot157", "platform": "mac-highsierra" },
+                    { "name": "bot163", "platform": "mac-highsierra" },
+                    { "name": "bot182", "platform": "mac-highsierra" },
+                    { "name": "bot186", "platform": "mac-highsierra" },
+                    { "name": "bot187", "platform": "mac-highsierra" },
+                    { "name": "bot194", "platform": "mac-highsierra" },
+                    { "name": "bot197", "platform": "mac-highsierra" },
+                    { "name": "bot215", "platform": "mac-highsierra" },
+                    { "name": "bot216", "platform": "mac-highsierra" },
+                    { "name": "bot217", "platform": "mac-highsierra" },
+                    { "name": "bot630", "platform": "mac-highsierra" },
+                    { "name": "bot631", "platform": "mac-highsierra" },
+                    { "name": "bot635", "platform": "mac-highsierra" },
+                    { "name": "bot636", "platform": "mac-highsierra" },
+                    { "name": "bot638", "platform": "mac-highsierra" },
 
                     { "name": "bot118", "platform": "mac-sierra" },
-                    { "name": "bot121", "platform": "mac-sierra" },
                     { "name": "bot122", "platform": "mac-sierra" },
                     { "name": "bot141", "platform": "mac-sierra" },
-                    { "name": "bot155", "platform": "mac-sierra" },
-                    { "name": "bot157", "platform": "mac-sierra" },
                     { "name": "bot160", "platform": "mac-sierra" },
                     { "name": "bot164", "platform": "mac-sierra" },
-                    { "name": "bot186", "platform": "mac-sierra" },
-                    { "name": "bot187", "platform": "mac-sierra" },
                     { "name": "bot199", "platform": "mac-sierra" },
                     { "name": "bot202", "platform": "mac-sierra" },
+                    { "name": "bot205", "platform": "mac-sierra" },
                     { "name": "bot219", "platform": "mac-sierra" },
+                    { "name": "bot603", "platform": "mac-sierra" },
+                    { "name": "bot632", "platform": "mac-sierra" },
                     { "name": "bot439", "platform": "mac-sierra" },
                     { "name": "bot443", "platform": "mac-sierra" },
                     { "name": "bot600", "platform": "mac-sierra" },
                     { "name": "bot698", "platform": "mac-sierra" },
                     { "name": "bot699", "platform": "mac-sierra" },
 
-                    { "name": "bot673", "platform": "ios-10" },
-                    { "name": "bot197", "platform": "ios-simulator-10" },
-                    { "name": "bot626", "platform": "ios-simulator-10" },
-                    { "name": "bot618", "platform": "ios-simulator-10" },
-                    { "name": "bot620", "platform": "ios-simulator-10" },
-                    { "name": "bot621", "platform": "ios-simulator-10" },
-                    { "name": "bot215", "platform": "ios-simulator-10" },
-                    { "name": "bot216", "platform": "ios-simulator-10" },
-                    { "name": "bot217", "platform": "ios-simulator-10" },
-                    { "name": "bot651", "platform": "ios-simulator-10" },
-                    { "name": "bot652", "platform": "ios-simulator-10" },
-                    { "name": "bot653", "platform": "ios-simulator-10" },
-                    { "name": "bot654", "platform": "ios-simulator-10" },
+                    { "name": "bot673", "platform": "ios-11" },
+                    { "name": "bot626", "platform": "ios-simulator-11" },
+                    { "name": "bot618", "platform": "ios-simulator-11" },
+                    { "name": "bot620", "platform": "ios-simulator-11" },
+                    { "name": "bot621", "platform": "ios-simulator-11" },
+                    { "name": "bot651", "platform": "ios-simulator-11" },
+                    { "name": "bot652", "platform": "ios-simulator-11" },
+                    { "name": "bot653", "platform": "ios-simulator-11" },
+                    { "name": "bot654", "platform": "ios-simulator-11" },
 
                     { "name": "bot516", "platform": "win" },
                     { "name": "bot514", "platform": "win" },
@@ -63,8 +54,14 @@
                     { "name": "bot511", "platform": "win" },
                     { "name": "bot501", "platform": "win" },
 
-                    { "name": "wincairo-1", "platform": "wincairo" },
-                    { "name": "wincairo-2", "platform": "wincairo" },
+                    { "name": "wincairo-wkl-release-build-01", "platform": "wincairo" },
+                    { "name": "wincairo-wkl-release-tests-01", "platform": "wincairo" },
+                    { "name": "wincairo-wkl-release-tests-02", "platform": "wincairo" },
+                    { "name": "wincairo-jsc-release-tests-01", "platform": "wincairo" },
+                    { "name": "wincairo-wkl-debug-build-01", "platform": "wincairo" },
+                    { "name": "wincairo-wkl-debug-tests-01", "platform": "wincairo" },
+                    { "name": "wincairo-wkl-debug-tests-02", "platform": "wincairo" },
+                    { "name": "wincairo-jsc-debug-tests-01", "platform": "wincairo" },
 
                     { "name": "gtk-linux-slave-1", "platform": "gtk" },
                     { "name": "gtk-linux-slave-2", "platform": "gtk" },
@@ -77,17 +74,76 @@
                     { "name": "gtk-linux-slave-10", "platform": "gtk" },
                     { "name": "gtk-linux-slave-11", "platform": "gtk" },
 
-                    { "name": "jsconly-linux-szeged-slave-1", "platform": "jsc-only" },
-                    { "name": "jsconly-linux-szeged-slave-2", "platform": "jsc-only" },
-                    { "name": "jsconly-linux-szeged-slave-3", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-1", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-2", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-3", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-4", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-5", "platform": "jsc-only" },
 
                     { "name": "wpe-linux-bot-1", "platform": "wpe" },
-                    { "name": "wpe-linux-bot-2", "platform": "wpe" }
+                    { "name": "wpe-linux-bot-2", "platform": "wpe" },
+                    { "name": "wpe-linux-bot-3", "platform": "wpe" },
+                    { "name": "wpe-linux-bot-4", "platform": "wpe" }
                   ],
 
-    "builders":   [ { "name": "Apple Sierra Debug (Build)", "type": "Build", "builddir": "sierra-debug",
+    "builders":   [ { "name": "Apple High Sierra Debug (Build)", "type": "Build", "builddir": "highsierra-debug",
+                      "platform": "mac-highsierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "triggers": ["highsierra-debug-tests-jsc", "highsierra-debug-tests-wk1", "highsierra-debug-tests-wk2"],
+                      "slavenames": ["bot630", "bot631"]
+                    },
+                    { "name": "Apple High Sierra Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "highsierra-debug-tests-wk1",
+                      "platform": "mac-highsierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot153", "bot163"]
+                    },
+                    { "name": "Apple High Sierra Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "highsierra-debug-tests-wk2",
+                      "platform": "mac-highsierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot182", "bot194"]
+                    },
+                    { "name": "Apple High Sierra Release (Build)", "type": "Build", "builddir": "highsierra-release",
+                      "platform": "mac-highsierra", "configuration": "release", "architectures": ["x86_64"],
+                      "triggers": ["highsierra-release-tests-jsc", "highsierra-release-tests-wk1", "highsierra-release-tests-wk2", "highsierra-leaks"],
+                      "slavenames": ["bot635", "bot636"]
+                    },
+                    { "name": "Apple High Sierra Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "highsierra-release-tests-wk1",
+                      "platform": "mac-highsierra", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot197", "bot215"]
+                    },
+                    { "name": "Apple High Sierra Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "highsierra-release-tests-wk2",
+                      "platform": "mac-highsierra", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot216", "bot217"]
+                    },
+                    { "name": "Apple High Sierra Release (32-bit Build)", "type": "Build", "builddir": "highsierra-32bit-release",
+                      "platform": "mac-highsierra", "configuration": "release", "architectures": ["i386"],
+                      "slavenames": ["bot638"]
+                    },
+                    { "name": "Apple High Sierra Debug JSC (Tests)", "type": "TestJSC", "builddir": "highsierra-debug-tests-jsc",
+                      "platform": "mac-highsierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "slavenames": ["bot155"]
+                    },
+                    { "name": "Apple High Sierra Release JSC (Tests)", "type": "TestJSC", "builddir": "highsierra-release-tests-jsc",
+                      "platform": "mac-highsierra", "configuration": "release", "architectures": ["x86_64"],
+                      "slavenames": ["bot157"]
+                    },
+                    { "name": "Apple High Sierra LLINT CLoop (BuildAndTest)", "type": "BuildAndTestLLINTCLoop", "builddir": "highsierra-cloop-debug",
+                      "platform": "mac-highsierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "slavenames": ["bot186"]
+                    },
+                    { "name": "Apple High Sierra 32-bit JSC (BuildAndTest)", "type": "BuildAndTest32bitJSC", "builddir": "highsierra-32bitJSC-debug",
+                      "platform": "mac-highsierra", "configuration": "debug", "architectures": ["i386"],
+                      "slavenames": ["bot187"]
+                    },
+                    { "name": "Apple High Sierra (Leaks)", "type": "TestWebKit1Leaks", "builddir": "highsierra-leaks",
+                      "platform": "mac-highsierra", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
+                      "slavenames": ["bot121"]
+                    },
+                    { "name": "Apple Sierra Debug (Build)", "type": "Build", "builddir": "sierra-debug",
                       "platform": "mac-sierra", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["sierra-debug-tests-jsc", "sierra-debug-tests-wk1", "sierra-debug-tests-wk2"],
+                      "triggers": ["sierra-debug-tests-wk1", "sierra-debug-tests-wk2", "sierra-debug-tests-test262"],
                       "slavenames": ["bot439", "bot698"]
                     },
                     { "name": "Apple Sierra Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "sierra-debug-tests-wk1",
@@ -102,7 +158,7 @@
                     },
                     { "name": "Apple Sierra Release (Build)", "type": "Build", "builddir": "sierra-release",
                       "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["sierra-release-tests-jsc", "sierra-release-tests-wk1", "sierra-release-tests-wk2", "sierra-leaks"],
+                      "triggers": ["sierra-release-tests-wk1", "sierra-release-tests-wk2", "sierra-release-tests-test262", "sierra-release-perf-tests"],
                       "slavenames": ["bot443", "bot699"]
                     },
                     { "name": "Apple Sierra Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "sierra-release-tests-wk1",
@@ -119,133 +175,45 @@
                       "platform": "mac-sierra", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["bot600"]
                     },
-                    { "name": "Apple Sierra Debug JSC (Tests)", "type": "TestJSC", "builddir": "sierra-debug-tests-jsc",
+                    { "name": "Apple Sierra Debug Test262 (Tests)", "type": "Test262", "builddir": "sierra-debug-tests-test262",
                       "platform": "mac-sierra", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["bot155"]
-                    },
-                    { "name": "Apple Sierra Release JSC (Tests)", "type": "TestJSC", "builddir": "sierra-release-tests-jsc",
-                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["bot157"]
-                    },
-                    { "name": "Apple Sierra LLINT CLoop (BuildAndTest)", "type": "BuildAndTestLLINTCLoop", "builddir": "sierra-cloop-debug",
-                      "platform": "mac-sierra", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["bot186"]
-                    },
-                    { "name": "Apple Sierra 32-bit JSC (BuildAndTest)", "type": "BuildAndTest32bitJSC", "builddir": "sierra-32bitJSC-debug",
-                      "platform": "mac-sierra", "configuration": "debug", "architectures": ["i386"],
-                      "slavenames": ["bot187"]
-                    },
-                    { "name": "Apple Sierra (Leaks)", "type": "TestWebKit1Leaks", "builddir": "sierra-leaks",
-                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot121"]
-                    },
-                    { "name": "Apple El Capitan Debug (Build)", "type": "Build", "builddir": "elcapitan-debug",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["elcapitan-debug-tests-jsc", "elcapitan-debug-tests-test262", "elcapitan-debug-tests-wk1", "elcapitan-debug-tests-wk2"],
-                      "slavenames": ["bot415", "bot416"]
-                    },
-                    { "name": "Apple El Capitan CMake Debug (Build)", "type": "Build", "builddir": "elcapitan-cmake-debug",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--cmake"],
-                      "slavenames": ["bot170"]
-                    },
-                    { "name": "Apple El Capitan Debug JSC (Tests)", "type": "TestJSC", "builddir": "elcapitan-debug-tests-jsc",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["bot210"]
-                    },
-                    { "name": "Apple El Capitan Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "elcapitan-debug-tests-wk1",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot133", "bot145"]
-                    },
-                    { "name": "Apple El Capitan Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "elcapitan-debug-tests-wk2",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot162", "bot165"]
-                    },
-                    { "name": "Apple El Capitan Debug Test262 (Tests)", "type": "Test262", "builddir": "elcapitan-debug-tests-test262",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["bot433"]
-                    },
-                    { "name": "Apple El Capitan LLINT CLoop (BuildAndTest)", "type": "BuildAndTestLLINTCLoop", "builddir": "elcapitan-cloop-debug",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "slavenames": ["bot169"]
-                    },
-                    { "name": "Apple El Capitan 32-bit JSC (BuildAndTest)", "type": "BuildAndTest32bitJSC", "builddir": "elcapitan-32bitJSC-debug",
-                      "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["i386"],
-                      "slavenames": ["bot123"]
-                    },
-                    { "name": "Apple El Capitan Release (Build)", "type": "Build", "builddir": "elcapitan-release",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["elcapitan-release-tests-jsc", "elcapitan-release-tests-test262", "elcapitan-release-tests-wk1", "elcapitan-release-tests-wk2", "elcapitan-release-perf"],
-                      "slavenames": ["bot417", "bot418"]
-                    },
-                    { "name": "Apple El Capitan Release JSC (Tests)", "type": "TestJSC", "builddir": "elcapitan-release-tests-jsc",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["bot126"]
-                    },
-                    { "name": "Apple El Capitan Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "elcapitan-release-tests-wk1",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot173", "bot174"]
-                    },
-                    { "name": "Apple El Capitan Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "elcapitan-release-tests-wk2",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot208", "bot209"]
+                      "slavenames": ["bot603"]
                     },
                     {
-                      "name": "Apple El Capitan Release WK2 (Perf)", "type": "DownloadAndPerfTest", "builddir": "elcapitan-release-perf-tests",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
+                      "name": "Apple Sierra Release WK2 (Perf)", "type": "DownloadAndPerfTest", "builddir": "sierra-release-perf-tests",
+                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["bot205"]
                     },
-                    { "name": "Apple El Capitan Release (32-bit Build)", "type": "Build", "builddir": "elcapitan-32bit-release",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["i386"],
-                      "slavenames": ["bot419"]
-                    },
-                    { "name": "Apple El Capitan Release Test262 (Tests)", "type": "Test262", "builddir": "elcapitan-release-tests-test262",
-                      "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["bot434"]
+                    { "name": "Apple Sierra Release Test262 (Tests)", "type": "Test262", "builddir": "sierra-release-tests-test262",
+                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
+                      "slavenames": ["bot632"]
                     },
                     {
-                      "name": "Apple iOS 10 Release (Build)", "type": "Build", "builddir": "ios-10-release",
-                      "platform": "ios-10", "configuration": "release", "architectures": ["armv7s", "arm64"],
+                      "name": "Apple iOS 11 Release (Build)", "type": "Build", "builddir": "ios-11-release",
+                      "platform": "ios-11", "configuration": "release", "architectures": ["arm64"],
                       "slavenames": ["bot673"]
                     },
                     {
-                      "name": "Apple iOS 10 Simulator Release (Build)", "type": "Build", "builddir": "ios-simulator-10-release",
-                      "platform": "ios-simulator-10", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["ios-simulator-10-release-tests-wk1", "ios-simulator-10-release-tests-wk2"],
+                      "name": "Apple iOS 11 Simulator Release (Build)", "type": "Build", "builddir": "ios-simulator-11-release",
+                      "platform": "ios-simulator-11", "configuration": "release", "architectures": ["x86_64"],
+                      "triggers": ["ios-simulator-11-release-tests-wk2"],
                       "slavenames": ["bot618", "bot620"]
                     },
                     {
-                      "name": "Apple iOS 10 Simulator Debug (Build)", "type": "Build", "builddir": "ios-simulator-10-debug",
-                      "platform": "ios-simulator-10", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["ios-simulator-10-debug-tests-wk1", "ios-simulator-10-debug-tests-wk2"],
+                      "name": "Apple iOS 11 Simulator Debug (Build)", "type": "Build", "builddir": "ios-simulator-11-debug",
+                      "platform": "ios-simulator-11", "configuration": "debug", "architectures": ["x86_64"],
+                      "triggers": ["ios-simulator-11-debug-tests-wk2"],
                       "slavenames": ["bot626", "bot621"]
                     },
                     {
-                      "name": "Apple iOS 10 Simulator Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "ios-simulator-10-release-tests-wk1",
-                      "platform": "ios-simulator-10", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot197", "bot215"]
-                    },
-                    {
-                      "name": "Apple iOS 10 Simulator Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "ios-simulator-10-debug-tests-wk1",
-                      "platform": "ios-simulator-10", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
-                      "slavenames": ["bot216", "bot217"]
-                    },
-                    {
-                      "name": "Apple iOS 10 Simulator Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-10-release-tests-wk2",
-                      "platform": "ios-simulator-10", "configuration": "release", "architectures": ["x86_64"],
+                      "name": "Apple iOS 11 Simulator Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-11-release-tests-wk2",
+                      "platform": "ios-simulator-11", "configuration": "release", "architectures": ["x86_64"],
                       "additionalArguments": ["--no-retry-failures"],
                       "slavenames": ["bot651", "bot652"]
                     },
                     {
-                      "name": "Apple iOS 10 Simulator Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-10-debug-tests-wk2",
-                      "platform": "ios-simulator-10", "configuration": "debug", "architectures": ["x86_64"],
+                      "name": "Apple iOS 11 Simulator Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-11-debug-tests-wk2",
+                      "platform": "ios-simulator-11", "configuration": "debug", "architectures": ["x86_64"],
                       "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot653", "bot654"]
                     },
@@ -272,12 +240,12 @@
                       "slavenames": ["bot507", "bot504"]
                     },
                     {
-                      "name": "GTK Linux 32-bit Release", "type": "BuildAndNonLayoutTest", "builddir": "gtk-linux-32-release",
+                      "name": "GTK Linux 32-bit Release", "type": "BuildAndNonLayoutTestAndGenerateJSCBundle", "builddir": "gtk-linux-32-release",
                       "platform": "gtk", "configuration": "release", "architectures": ["i386"],
                       "slavenames": ["gtk-linux-slave-1"]
                     },
                     {
-                      "name": "GTK Linux 64-bit Release (Build)", "type": "Build", "builddir": "gtk-linux-64-release",
+                      "name": "GTK Linux 64-bit Release (Build)", "type": "BuildAndGenerateJSCBundle", "builddir": "gtk-linux-64-release",
                       "platform": "gtk", "configuration": "release", "architectures": ["x86_64"],
                       "triggers": ["gtk-linux-64-release-tests", "gtk-linux-64-release-wayland-tests", "gtk-linux-64-release-perf-tests"],
                       "slavenames": ["gtk-linux-slave-2"]
@@ -318,37 +286,71 @@
                     {
                       "name": "GTK Linux 64-bit Release Debian Stable (Build)", "type": "Build", "builddir": "gtk-linux-64-release-debian",
                       "platform": "gtk", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--default-cmake-features"],
+                      "additionalArguments": ["--no-experimental-features"],
                       "slavenames": ["gtk-linux-slave-10"]
                     },
                     {
                       "name": "GTK Linux 64-bit Release Ubuntu LTS (Build)", "type": "Build", "builddir": "gtk-linux-64-release-ubuntu",
                       "platform": "gtk", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--default-cmake-features"],
+                      "additionalArguments": ["--no-experimental-features"],
                       "slavenames": ["gtk-linux-slave-11"]
                     },
                     {
-                      "name": "WinCairo 64-Bit Release", "type": "Build", "builddir": "win-cairo-release",
+                      "name": "WinCairo 64-bit WKL Release (Build)", "type": "Build", "builddir": "wincairo-wkl-release",
                       "platform": "wincairo", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["wincairo-1", "wincairo-2"]
+                      "triggers": ["wincairo-wkl-release-tests", "wincairo-jsc-release-tests"],
+                      "slavenames": ["wincairo-wkl-release-build-01"]
+                    },
+                    {
+                      "name": "WinCairo 64-bit WKL Release (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "wincairo-wkl-release-tests",
+                      "platform": "wincairo", "configuration": "release", "architectures": ["x86_64"],
+                      "slavenames": ["wincairo-wkl-release-tests-01", "wincairo-wkl-release-tests-02"]
+                    },
+                    {
+                      "name": "WinCairo 64-bit JSC Release (Tests)", "type": "TestJSC", "builddir": "wincairo-jsc-release-tests",
+                      "platform": "wincairo", "configuration": "release", "architectures": ["x86_64"],
+                      "slavenames": ["wincairo-jsc-release-tests-01"]
+                    },
+                    {
+                      "name": "WinCairo 64-bit WKL Debug (Build)", "type": "Build", "builddir": "wincairo-wkl-debug",
+                      "platform": "wincairo", "configuration": "debug", "architectures": ["x86_64"],
+                      "triggers": ["wincairo-wkl-debug-tests", "wincairo-jsc-debug-tests"],
+                      "slavenames": ["wincairo-wkl-debug-build-01"]
+                    },
+                    {
+                      "name": "WinCairo 64-bit WKL Debug (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "wincairo-wkl-debug-tests",
+                      "platform": "wincairo", "configuration": "debug", "architectures": ["x86_64"],
+                      "slavenames": ["wincairo-wkl-debug-tests-01", "wincairo-wkl-debug-tests-02"]
+                    },
+                    {
+                      "name": "WinCairo 64-bit JSC Debug (Tests)", "type": "TestJSC", "builddir": "wincairo-jsc-debug-tests",
+                      "platform": "wincairo", "configuration": "debug", "architectures": ["x86_64"],
+                      "slavenames": ["wincairo-jsc-debug-tests-01"]
                     },
                     {
                       "name": "JSCOnly Linux AArch64 Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-aarch64-release",
                       "platform": "jsc-only", "configuration": "release", "architectures": ["aarch64"],
-                      "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
-                      "slavenames": ["jsconly-linux-szeged-slave-1"]
+                      "slavenames": ["jsconly-linux-igalia-bot-2"]
                     },
                     {
                       "name": "JSCOnly Linux ARMv7 Thumb2 Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-armv7-thumb2-release",
                       "platform": "jsc-only", "configuration": "release", "architectures": ["armv7"],
-                      "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
-                      "slavenames": ["jsconly-linux-szeged-slave-2"]
+                      "slavenames": ["jsconly-linux-igalia-bot-3"]
                     },
                     {
                       "name": "JSCOnly Linux ARMv7 Traditional Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-armv7-traditional-release",
                       "platform": "jsc-only", "configuration": "release", "architectures": ["armv7"],
-                      "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
-                      "slavenames": ["jsconly-linux-szeged-slave-3"]
+                      "slavenames": ["jsconly-linux-igalia-bot-4"]
+                    },
+                    {
+                      "name": "JSCOnly Linux ARMv7 Thumb2 SoftFP Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-armv7-thumb2-softfp-release",
+                      "platform": "jsc-only", "configuration": "release", "architectures": ["armv7"],
+                      "slavenames": ["jsconly-linux-igalia-bot-5"]
+                    },
+                    {
+                      "name": "JSCOnly Linux MIPS32el Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-mips32el-release",
+                      "platform": "jsc-only", "configuration": "release", "architectures": ["mips"],
+                      "slavenames": ["jsconly-linux-igalia-bot-1"]
                     },
                     {
                       "name": "WPE Linux 64-bit Release (Build)", "type": "Build", "builddir": "wpe-linux-64-release",
@@ -360,29 +362,64 @@
                       "name": "WPE Linux 64-bit Release (Tests)", "type": "Test", "builddir": "wpe-linux-64-release-tests",
                       "platform": "wpe", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["wpe-linux-bot-2"]
+                    },
+                    {
+                      "name": "WPE Linux 64-bit Debug (Build)", "type": "Build", "builddir": "wpe-linux-64-debug",
+                      "platform": "wpe", "configuration": "debug", "architectures": ["x86_64"],
+                      "triggers": ["wpe-linux-64-debug-tests"],
+                      "slavenames": ["wpe-linux-bot-3"]
+                    },
+                    {
+                      "name": "WPE Linux 64-bit Debug (Tests)", "type": "Test", "builddir": "wpe-linux-64-debug-tests",
+                      "platform": "wpe", "configuration": "debug", "architectures": ["x86_64"],
+                      "slavenames": ["wpe-linux-bot-4"]
                     }
                   ],
 
     "schedulers": [ { "type": "AnyBranchScheduler", "name": "trunk", "change_filter": "trunk_filter", "treeStableTimer": 45.0,
                       "builderNames": ["GTK Linux 32-bit Release", "GTK Linux 64-bit Release (Build)", "GTK Linux 64-bit Debug (Build)", "GTK Linux ARM Release",
                                        "GTK Linux 64-bit Release Debian Stable (Build)", "GTK Linux 64-bit Release Ubuntu LTS (Build)",
-                                       "JSCOnly Linux AArch64 Release", "JSCOnly Linux ARMv7 Thumb2 Release", "JSCOnly Linux ARMv7 Traditional Release",
-                                       "WinCairo 64-Bit Release", "WPE Linux 64-bit Release (Build)"]
+                                       "JSCOnly Linux AArch64 Release",
+                                       "JSCOnly Linux ARMv7 Thumb2 Release", "JSCOnly Linux ARMv7 Thumb2 SoftFP Release",
+                                       "JSCOnly Linux ARMv7 Traditional Release",
+                                       "JSCOnly Linux MIPS32el Release", "WinCairo 64-bit WKL Release (Build)", "WinCairo 64-bit WKL Debug (Build)",
+                                       "WPE Linux 64-bit Release (Build)", "WPE Linux 64-bit Debug (Build)"]
                     },
-                    { "type": "PlatformSpecificScheduler", "platform": "mac-elcapitan", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple El Capitan Release (Build)", "Apple El Capitan Debug (Build)", "Apple El Capitan LLINT CLoop (BuildAndTest)", "Apple El Capitan 32-bit JSC (BuildAndTest)", "Apple El Capitan Release (32-bit Build)", "Apple El Capitan CMake Debug (Build)"]
+                    { "type": "PlatformSpecificScheduler", "platform": "mac-highsierra", "branch": "trunk", "treeStableTimer": 45.0,
+                      "builderNames": ["Apple High Sierra Release (Build)", "Apple High Sierra Debug (Build)", "Apple High Sierra Release (32-bit Build)", "Apple High Sierra LLINT CLoop (BuildAndTest)", "Apple High Sierra 32-bit JSC (BuildAndTest)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "mac-sierra", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple Sierra Release (Build)", "Apple Sierra Debug (Build)", "Apple Sierra Release (32-bit Build)", "Apple Sierra LLINT CLoop (BuildAndTest)", "Apple Sierra 32-bit JSC (BuildAndTest)"]
+                      "builderNames": ["Apple Sierra Release (Build)", "Apple Sierra Debug (Build)", "Apple Sierra Release (32-bit Build)"]
                     },
-                    { "type": "PlatformSpecificScheduler", "platform": "ios-10", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple iOS 10 Release (Build)"]
+                    { "type": "PlatformSpecificScheduler", "platform": "ios-11", "branch": "trunk", "treeStableTimer": 45.0,
+                      "builderNames": ["Apple iOS 11 Release (Build)"]
                     },
-                    { "type": "PlatformSpecificScheduler", "platform": "ios-simulator-10", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple iOS 10 Simulator Release (Build)", "Apple iOS 10 Simulator Debug (Build)"]
+                    { "type": "PlatformSpecificScheduler", "platform": "ios-simulator-11", "branch": "trunk", "treeStableTimer": 45.0,
+                      "builderNames": ["Apple iOS 11 Simulator Release (Build)", "Apple iOS 11 Simulator Debug (Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "win", "branch": "trunk", "treeStableTimer": 45.0,
                       "builderNames": ["Apple Win Release (Build)", "Apple Win Debug (Build)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-release-tests-wk1",
+                      "builderNames": ["Apple High Sierra Release WK1 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-release-tests-wk2",
+                      "builderNames": ["Apple High Sierra Release WK2 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-debug-tests-wk1",
+                      "builderNames": ["Apple High Sierra Debug WK1 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-debug-tests-wk2",
+                      "builderNames": ["Apple High Sierra Debug WK2 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-debug-tests-jsc",
+                      "builderNames": ["Apple High Sierra Debug JSC (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-release-tests-jsc",
+                      "builderNames": ["Apple High Sierra Release JSC (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "highsierra-leaks",
+                      "builderNames": ["Apple High Sierra (Leaks)"]
                     },
                     { "type": "Triggerable", "name": "sierra-release-tests-wk1",
                       "builderNames": ["Apple Sierra Release WK1 (Tests)"]
@@ -396,53 +433,20 @@
                     { "type": "Triggerable", "name": "sierra-debug-tests-wk2",
                       "builderNames": ["Apple Sierra Debug WK2 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "sierra-debug-tests-jsc",
-                      "builderNames": ["Apple Sierra Debug JSC (Tests)"]
+                    { "type": "Triggerable", "name": "sierra-release-perf-tests",
+                      "builderNames": ["Apple Sierra Release WK2 (Perf)"]
                     },
-                    { "type": "Triggerable", "name": "sierra-release-tests-jsc",
-                      "builderNames": ["Apple Sierra Release JSC (Tests)"]
+                    { "type": "Triggerable", "name": "sierra-debug-tests-test262",
+                      "builderNames": ["Apple Sierra Debug Test262 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "sierra-leaks",
-                      "builderNames": ["Apple Sierra (Leaks)"]
+                    { "type": "Triggerable", "name": "sierra-release-tests-test262",
+                      "builderNames": ["Apple Sierra Release Test262 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "elcapitan-release-tests-jsc",
-                      "builderNames": ["Apple El Capitan Release JSC (Tests)"]
+                    { "type": "Triggerable", "name": "ios-simulator-11-release-tests-wk2",
+                      "builderNames": ["Apple iOS 11 Simulator Release WK2 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "elcapitan-release-tests-wk1",
-                      "builderNames": ["Apple El Capitan Release WK1 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-release-tests-wk2",
-                      "builderNames": ["Apple El Capitan Release WK2 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-debug-tests-jsc",
-                      "builderNames": ["Apple El Capitan Debug JSC (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-debug-tests-wk1",
-                      "builderNames": ["Apple El Capitan Debug WK1 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-debug-tests-wk2",
-                      "builderNames": ["Apple El Capitan Debug WK2 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-release-perf",
-                      "builderNames": ["Apple El Capitan Release WK2 (Perf)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-debug-tests-test262",
-                      "builderNames": ["Apple El Capitan Debug Test262 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "elcapitan-release-tests-test262",
-                      "builderNames": ["Apple El Capitan Release Test262 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "ios-simulator-10-release-tests-wk1",
-                      "builderNames": ["Apple iOS 10 Simulator Release WK1 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "ios-simulator-10-debug-tests-wk1",
-                      "builderNames": ["Apple iOS 10 Simulator Debug WK1 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "ios-simulator-10-release-tests-wk2",
-                      "builderNames": ["Apple iOS 10 Simulator Release WK2 (Tests)"]
-                    },
-                    { "type": "Triggerable", "name": "ios-simulator-10-debug-tests-wk2",
-                      "builderNames": ["Apple iOS 10 Simulator Debug WK2 (Tests)"]
+                    { "type": "Triggerable", "name": "ios-simulator-11-debug-tests-wk2",
+                      "builderNames": ["Apple iOS 11 Simulator Debug WK2 (Tests)"]
                     },
                     { "type": "Triggerable", "name": "win-release-tests",
                       "builderNames": ["Apple Win 7 Release (Tests)"]
@@ -462,8 +466,23 @@
                     { "type": "Triggerable", "name": "gtk-linux-64-release-wayland-tests",
                       "builderNames": ["GTK Linux 64-bit Release Wayland (Tests)"]
                     },
+                    { "type": "Triggerable", "name": "wincairo-wkl-release-tests",
+                      "builderNames": ["WinCairo 64-bit WKL Release (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "wincairo-jsc-release-tests",
+                      "builderNames": ["WinCairo 64-bit JSC Release (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "wincairo-wkl-debug-tests",
+                      "builderNames": ["WinCairo 64-bit WKL Debug (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "wincairo-jsc-debug-tests",
+                      "builderNames": ["WinCairo 64-bit JSC Debug (Tests)"]
+                    },
                     { "type": "Triggerable", "name": "wpe-linux-64-release-tests",
                       "builderNames": ["WPE Linux 64-bit Release (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "wpe-linux-64-debug-tests",
+                      "builderNames": ["WPE Linux 64-bit Debug (Tests)"]
                     }
                   ]
 }

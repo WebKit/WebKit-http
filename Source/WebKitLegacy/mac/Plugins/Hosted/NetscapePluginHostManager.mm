@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,14 +29,15 @@
 
 #import "NetscapePluginHostProxy.h"
 #import "NetscapePluginInstanceProxy.h"
-#import "WebKitSystemInterface.h"
 #import "WebLocalizableStringsInternal.h"
 #import "WebNetscapePluginPackage.h"
-#import <WebCore/ServersSPI.h>
-#import <WebCore/WebCoreNSStringExtras.h>
 #import <mach/mach_port.h>
+#import <pal/spi/cf/CFLocaleSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <pal/spi/cocoa/ServersSPI.h>
 #import <spawn.h>
 #import <wtf/Assertions.h>
+#import <wtf/MachSendRight.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
@@ -75,18 +76,18 @@ NetscapePluginHostProxy* NetscapePluginHostManager::hostForPlugin(const WTF::Str
     if (!result.isNewEntry)
         return result.iterator->value;
         
-    mach_port_t clientPort;
+    mach_port_t clientPort = MACH_PORT_NULL;
     if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &clientPort) != KERN_SUCCESS) {
         m_pluginHosts.remove(result.iterator);
-        return 0;
+        return nullptr;
     }
     
-    mach_port_t pluginHostPort;
+    mach_port_t pluginHostPort = MACH_PORT_NULL;
     ProcessSerialNumber pluginHostPSN;
     if (!spawnPluginHost(pluginPath, pluginArchitecture, clientPort, pluginHostPort, pluginHostPSN)) {
         mach_port_destroy(mach_task_self(), clientPort);
         m_pluginHosts.remove(result.iterator);
-        return 0;
+        return nullptr;
     }
     
     // Since Flash NPObjects add methods dynamically, we don't want to cache when a property/method doesn't exist
@@ -100,6 +101,29 @@ NetscapePluginHostProxy* NetscapePluginHostManager::hostForPlugin(const WTF::Str
     return hostProxy;
 }
 
+static NSString *preferredBundleLocalizationName()
+{
+    // FIXME: Any use of this function to pass localizations to another
+    // process is likely not completely right, since it only considers
+    // one localization.
+    NSArray *preferredLocalizations = [[NSBundle mainBundle] preferredLocalizations];
+    if (!preferredLocalizations || ![preferredLocalizations count])
+        return @"en_US";
+
+    NSString *language = [preferredLocalizations objectAtIndex:0];
+
+    // FIXME: <rdar://problem/18083880> Replace use of Script Manager
+    // to canonicalize locales with a custom Web-specific table
+    LangCode languageCode;
+    RegionCode regionCode;
+
+    Boolean success = CFLocaleGetLanguageRegionEncodingForLocaleIdentifier((__bridge CFStringRef)language, &languageCode, &regionCode, nullptr, nullptr);
+    if (!success)
+        return @"en_US";
+
+    return CFBridgingRelease(CFLocaleCreateCanonicalLocaleIdentifierFromScriptManagerCodes(0, languageCode, regionCode));
+}
+
 bool NetscapePluginHostManager::spawnPluginHost(const String& pluginPath, cpu_type_t pluginArchitecture, mach_port_t clientPort, mach_port_t& pluginHostPort, ProcessSerialNumber& pluginHostPSN)
 {
     if (m_pluginVendorPort == MACH_PORT_NULL) {
@@ -107,7 +131,10 @@ bool NetscapePluginHostManager::spawnPluginHost(const String& pluginPath, cpu_ty
             return false;
     }
 
-    mach_port_t renderServerPort = WKInitializeRenderServer();
+    if (!CARenderServerStart())
+        return MACH_PORT_NULL;
+
+    mach_port_t renderServerPort = CARenderServerGetPort();
     if (renderServerPort == MACH_PORT_NULL)
         return false;
 
@@ -165,12 +192,13 @@ bool NetscapePluginHostManager::spawnPluginHost(const String& pluginPath, cpu_ty
     GetCurrentProcess(&psn);
 #pragma clang diagnostic pop
 
-    kr = _WKPHCheckInWithPluginHost(pluginHostPort, (uint8_t*)[data bytes], [data length], clientPort, psn.highLongOfPSN, psn.lowLongOfPSN, renderServerPort,
+    ASSERT(MACH_PORT_VALID(clientPort));
+    kr = _WKPHCheckInWithPluginHost(pluginHostPort, static_cast<uint8_t*>(const_cast<void*>([data bytes])), [data length], clientPort, psn.highLongOfPSN, psn.lowLongOfPSN, renderServerPort,
                                     &pluginHostPSN.highLongOfPSN, &pluginHostPSN.lowLongOfPSN);
     
     if (kr != KERN_SUCCESS) {
-        mach_port_deallocate(mach_task_self(), pluginHostPort);
         LOG_ERROR("Failed to check in with plug-in host, error %x", kr);
+        deallocateSendRightSafely(pluginHostPort);
 
         return false;
     }
@@ -183,7 +211,7 @@ bool NetscapePluginHostManager::initializeVendorPort()
     ASSERT(m_pluginVendorPort == MACH_PORT_NULL);
 
     // Get the plug-in agent port.
-    mach_port_t pluginAgentPort;
+    mach_port_t pluginAgentPort = MACH_PORT_NULL;
     if (bootstrap_look_up(bootstrap_port, "com.apple.WebKit.PluginAgent", &pluginAgentPort) != KERN_SUCCESS) {
         LOG_ERROR("Failed to look up the plug-in agent port");
         return false;
@@ -192,7 +220,7 @@ bool NetscapePluginHostManager::initializeVendorPort()
     NSData *appNameData = [[[NSProcessInfo processInfo] processName] dataUsingEncoding:NSUTF8StringEncoding];
     
     // Tell the plug-in agent that we exist.
-    if (_WKPACheckInApplication(pluginAgentPort, (uint8_t*)[appNameData bytes], [appNameData length], &m_pluginVendorPort) != KERN_SUCCESS)
+    if (_WKPACheckInApplication(pluginAgentPort, static_cast<uint8_t*>(const_cast<void*>([appNameData bytes])), [appNameData length], &m_pluginVendorPort) != KERN_SUCCESS)
         return false;
 
     // FIXME: Should we add a notification for when the vendor port dies?
@@ -246,7 +274,7 @@ RefPtr<NetscapePluginInstanceProxy> NetscapePluginHostManager::instantiatePlugin
     
     RefPtr<NetscapePluginInstanceProxy> instance = NetscapePluginInstanceProxy::create(hostProxy, pluginView, fullFrame);
     uint32_t requestID = instance->nextRequestID();
-    kern_return_t kr = _WKPHInstantiatePlugin(hostProxy->port(), requestID, (uint8_t*)[data bytes], [data length], instance->pluginID());
+    kern_return_t kr = _WKPHInstantiatePlugin(hostProxy->port(), requestID, static_cast<uint8_t*>(const_cast<void*>([data bytes])), [data length], instance->pluginID());
     if (kr == MACH_SEND_INVALID_DEST) {
         // Invalidate the instance.
         instance->invalidate();
@@ -260,7 +288,7 @@ RefPtr<NetscapePluginInstanceProxy> NetscapePluginHostManager::instantiatePlugin
         // Create a new instance.
         instance = NetscapePluginInstanceProxy::create(hostProxy, pluginView, fullFrame);
         requestID = instance->nextRequestID();
-        _WKPHInstantiatePlugin(hostProxy->port(), requestID, (uint8_t*)[data bytes], [data length], instance->pluginID());
+        _WKPHInstantiatePlugin(hostProxy->port(), requestID, static_cast<uint8_t*>(const_cast<void*>([data bytes])), [data length], instance->pluginID());
     }
 
     auto reply = instance->waitForReply<NetscapePluginInstanceProxy::InstantiatePluginReply>(requestID);

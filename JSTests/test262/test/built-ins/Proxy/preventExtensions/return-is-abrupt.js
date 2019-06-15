@@ -4,7 +4,7 @@
 es6id: 9.5.4
 description: >
     Trap returns abrupt.
-info: >
+info: |
     [[PreventExtensions]] ( )
 
     ...
@@ -14,11 +14,11 @@ info: >
 ---*/
 
 var p = new Proxy({}, {
-    preventExtensions: function(t) {
-        throw new Test262Error();
-    }
+  preventExtensions: function(t) {
+    throw new Test262Error();
+  }
 });
 
 assert.throws(Test262Error, function() {
-    Object.preventExtensions(p);
+  Object.preventExtensions(p);
 });

@@ -24,8 +24,11 @@
 
 #include "SVGFontFaceElement.h"
 #include "SVGNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFontFaceFormatElement);
     
 using namespace SVGNames;
     
@@ -47,7 +50,7 @@ void SVGFontFaceFormatElement::childrenChanged(const ChildChange& change)
     if (!parentNode() || !parentNode()->hasTagName(font_face_uriTag))
         return;
     
-    ContainerNode* ancestor = parentNode()->parentNode();
+    auto ancestor = makeRefPtr(parentNode()->parentNode());
     if (!ancestor || !ancestor->hasTagName(font_face_srcTag))
         return;
     

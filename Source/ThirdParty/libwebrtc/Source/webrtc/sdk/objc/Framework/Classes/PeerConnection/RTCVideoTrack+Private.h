@@ -10,15 +10,14 @@
 
 #import "WebRTC/RTCVideoTrack.h"
 
-#include "webrtc/api/mediastreaminterface.h"
+#include "api/mediastreaminterface.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface RTCVideoTrack ()
 
 /** VideoTrackInterface created or passed in at construction. */
-@property(nonatomic, readonly)
-    rtc::scoped_refptr<webrtc::VideoTrackInterface> nativeVideoTrack;
+@property(nonatomic, readonly) rtc::scoped_refptr<webrtc::VideoTrackInterface> nativeVideoTrack;
 
 /** Initialize an RTCVideoTrack with its source and an id. */
 - (instancetype)initWithFactory:(RTCPeerConnectionFactory *)factory

@@ -28,17 +28,18 @@
 #include "LabelsNodeList.h"
 #include "NodeRareData.h"
 #include "RenderStyle.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(LabelableElement);
 
 LabelableElement::LabelableElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
 {
 }
 
-LabelableElement::~LabelableElement()
-{
-}
+LabelableElement::~LabelableElement() = default;
 
 RefPtr<NodeList> LabelableElement::labels()
 {

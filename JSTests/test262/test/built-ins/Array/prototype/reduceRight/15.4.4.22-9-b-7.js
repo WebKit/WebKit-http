@@ -2,35 +2,36 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduceright
 es5id: 15.4.4.22-9-b-7
 description: >
     Array.prototype.reduceRight - properties added to prototype in
     step 8 visited on an Array
 ---*/
 
-        var testResult = false;
+var testResult = false;
 
-        function callbackfn(preVal, curVal, idx, obj) {
-            if (idx === 1 && curVal === 6.99) {
-                testResult = true;
-            }
-        }
+function callbackfn(preVal, curVal, idx, obj) {
+  if (idx === 1 && curVal === 6.99) {
+    testResult = true;
+  }
+}
 
-        var arr = [0, , 2];
+var arr = [0, , 2];
 
-        Object.defineProperty(arr, "2", {
-            get: function () {
-                Object.defineProperty(Array.prototype, "1", {
-                    get: function () {
-                        return 6.99;
-                    },
-                    configurable: true
-                });
-                return 0;
-            },
-            configurable: true
-        });
+Object.defineProperty(arr, "2", {
+  get: function() {
+    Object.defineProperty(Array.prototype, "1", {
+      get: function() {
+        return 6.99;
+      },
+      configurable: true
+    });
+    return 0;
+  },
+  configurable: true
+});
 
-            arr.reduceRight(callbackfn);
+arr.reduceRight(callbackfn);
 
 assert(testResult, 'testResult !== true');

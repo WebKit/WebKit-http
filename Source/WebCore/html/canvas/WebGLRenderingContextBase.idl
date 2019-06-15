@@ -41,12 +41,7 @@ typedef (ArrayBuffer or ArrayBufferView) BufferDataSource;
 typedef (Float32Array or sequence<GLfloat>) Float32List;
 typedef (Int32Array or sequence<GLint>) Int32List;
 
-// FIXME: Should allow ImageBitmap too.
-#ifdef ENABLE_VIDEO
-typedef (ImageData or HTMLImageElement or HTMLCanvasElement or HTMLVideoElement) TexImageSource;
-#else
-typedef (ImageData or HTMLImageElement or HTMLCanvasElement) TexImageSource;
-#endif
+typedef (HTMLCanvasElement or OffscreenCanvas) WebGLCanvas;
 
 [
     Conditional=WEBGL,
@@ -58,8 +53,7 @@ typedef (ImageData or HTMLImageElement or HTMLCanvasElement) TexImageSource;
     ExportMacro=WEBCORE_EXPORT,
 ] interface WebGLRenderingContextBase {
 
-    // back-reference to the canvas
-    readonly attribute HTMLCanvasElement canvas;
+    readonly attribute WebGLCanvas canvas;
 
     /* ClearBufferMask */
     const GLenum DEPTH_BUFFER_BIT = 0x00000100;
@@ -507,8 +501,10 @@ typedef (ImageData or HTMLImageElement or HTMLCanvasElement) TexImageSource;
     void colorMask(GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
     void compileShader(WebGLShader? shader);
 
-    void compressedTexImage2D(GLenum target, GLint level, GLenum internalformat,
-    GLsizei width, GLsizei height, GLint border, ArrayBufferView data);
+    // compressedTexImage2D is split between WebGLRenderingContext and
+    // WebGL2RenderingContext because the ArrayBufferView overloads are
+    // indistinguishable.
+
     void compressedTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset,
         GLsizei width, GLsizei height, GLenum format, ArrayBufferView data);
     
@@ -619,13 +615,6 @@ typedef (ImageData or HTMLImageElement or HTMLCanvasElement) TexImageSource;
 
     void texParameterf(GLenum target, GLenum pname, GLfloat param);
     void texParameteri(GLenum target, GLenum pname, GLint param);
-
-    // Supported forms:
-    void texImage2D(GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, ArrayBufferView? pixels);
-    [MayThrowException] void texImage2D(GLenum target, GLint level, GLenum internalformat, GLenum format, GLenum type, TexImageSource? source);
-
-    void texSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, ArrayBufferView? pixels);
-    [MayThrowException] void texSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLenum format, GLenum type, TexImageSource? source);
 
     void uniform1f(WebGLUniformLocation? location, GLfloat x);
     void uniform2f(WebGLUniformLocation? location, GLfloat x, GLfloat y);

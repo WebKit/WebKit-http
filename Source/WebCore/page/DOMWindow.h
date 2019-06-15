@@ -26,13 +26,17 @@
 
 #pragma once
 
+#include "AbstractDOMWindow.h"
 #include "Base64Utilities.h"
 #include "ContextDestructionObserver.h"
-#include "EventTarget.h"
 #include "ExceptionOr.h"
+#include "Frame.h"
 #include "FrameDestructionObserver.h"
+#include "ImageBitmap.h"
 #include "ScrollToOptions.h"
+#include "ScrollTypes.h"
 #include "Supplementable.h"
+#include <JavaScriptCore/HandleTypes.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/WeakPtr.h>
@@ -74,17 +78,21 @@ class ScheduledAction;
 class Screen;
 class Storage;
 class StyleMedia;
+class VisualViewport;
 class WebKitNamespace;
 class WebKitPoint;
 
+struct ImageBitmapOptions;
 struct WindowFeatures;
 
 enum SetLocationLocking { LockHistoryBasedOnGestureState, LockHistoryAndBackForwardList };
+enum class IncludeTargetOrigin { No, Yes };
 
 // FIXME: DOMWindow shouldn't subclass FrameDestructionObserver and instead should get to Frame via its Document.
+// FIXME: Rename DOMWindow to LocalWindow and AbstractDOMWindow to DOMWindow.
 class DOMWindow final
-    : public RefCounted<DOMWindow>
-    , public EventTargetWithInlineData
+    : public AbstractDOMWindow
+    , public CanMakeWeakPtr<DOMWindow>
     , public ContextDestructionObserver
     , public FrameDestructionObserver
     , public Base64Utilities
@@ -133,6 +141,7 @@ public:
     BarProp* statusbar() const;
     BarProp* toolbar() const;
     Navigator* navigator() const;
+    Navigator* optionalNavigator() const { return m_navigator.get(); }
     Navigator* clientInformation() const { return navigator(); }
 
     Location* location() const;
@@ -150,7 +159,7 @@ public:
     void print();
     void stop();
 
-    WEBCORE_EXPORT RefPtr<DOMWindow> open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<WindowProxy>> open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString);
 
     void showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction);
 
@@ -185,15 +194,14 @@ public:
     String defaultStatus() const;
     void setDefaultStatus(const String&);
 
-    // Self-referential attributes
+    WindowProxy* self() const;
 
-    DOMWindow* self() const;
-    DOMWindow* window() const { return self(); }
-    DOMWindow* frames() const { return self(); }
+    WindowProxy* opener() const;
+    void disownOpener();
+    WindowProxy* parent() const;
+    WindowProxy* top() const;
 
-    DOMWindow* opener() const;
-    DOMWindow* parent() const;
-    DOMWindow* top() const;
+    Frame* frame() const final { return FrameDestructionObserver::frame(); }
 
     String origin() const;
 
@@ -220,7 +228,8 @@ public:
     PageConsoleClient* console() const;
 
     void printErrorMessage(const String&);
-    String crossDomainAccessErrorMessage(const DOMWindow& activeWindow);
+
+    String crossDomainAccessErrorMessage(const DOMWindow& activeWindow, IncludeTargetOrigin);
 
     ExceptionOr<void> postMessage(JSC::ExecState&, DOMWindow& incumbentWindow, JSC::JSValue message, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&&);
     void postMessageTimerFired(PostMessageTimer&);
@@ -229,8 +238,8 @@ public:
 
     void scrollBy(const ScrollToOptions&) const;
     void scrollBy(double x, double y) const;
-    void scrollTo(const ScrollToOptions&) const;
-    void scrollTo(double x, double y) const;
+    void scrollTo(const ScrollToOptions&, ScrollClamping = ScrollClamping::Clamped) const;
+    void scrollTo(double x, double y, ScrollClamping = ScrollClamping::Clamped) const;
 
     void moveBy(float x, float y) const;
     void moveTo(float x, float y) const;
@@ -238,15 +247,21 @@ public:
     void resizeBy(float x, float y) const;
     void resizeTo(float width, float height) const;
 
+    VisualViewport* visualViewport() const;
+
     // Timers
-    ExceptionOr<int> setTimeout(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setTimeout(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearTimeout(int timeoutId);
-    ExceptionOr<int> setInterval(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setInterval(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearInterval(int timeoutId);
 
     int requestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     int webkitRequestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     void cancelAnimationFrame(int id);
+
+    // ImageBitmap
+    void createImageBitmap(ImageBitmap::Source&&, ImageBitmapOptions&&, ImageBitmap::Promise&&);
+    void createImageBitmap(ImageBitmap::Source&&, int sx, int sy, int sw, int sh, ImageBitmapOptions&&, ImageBitmap::Promise&&);
 
     // Secure Contexts
     bool isSecureContext() const;
@@ -258,7 +273,7 @@ public:
     void removeAllEventListeners() final;
 
     using EventTarget::dispatchEvent;
-    bool dispatchEvent(Event&, EventTarget*);
+    void dispatchEvent(Event&, EventTarget*);
 
     void dispatchLoadEvent();
 
@@ -266,9 +281,6 @@ public:
     void releaseEvents();
 
     void finishedLoading();
-
-    using RefCounted::ref;
-    using RefCounted::deref;
 
     // HTML 5 key/value storage
     ExceptionOr<Storage*> sessionStorage() const;
@@ -292,11 +304,8 @@ public:
     int orientation() const;
 #endif
 
-#if ENABLE(WEB_TIMING)
     Performance* performance() const;
-#endif
-
-    double nowTimestamp() const;
+    WEBCORE_EXPORT double nowTimestamp() const;
 
 #if PLATFORM(IOS)
     void incrementScrollEventListenersCount();
@@ -327,15 +336,13 @@ public:
     void enableSuddenTermination();
     void disableSuddenTermination();
 
-    WeakPtr<DOMWindow> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
 private:
     explicit DOMWindow(Document&);
 
-    EventTargetInterface eventTargetInterface() const final { return DOMWindowEventTargetInterfaceType; }
     ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
-    DOMWindow* toDOMWindow() final;
+    bool isLocalDOMWindow() const final { return true; }
+    bool isRemoteDOMWindow() const final { return false; }
 
     Page* page();
     bool allowedToChangeWindowGeometry() const;
@@ -343,10 +350,7 @@ private:
     void frameDestroyed() final;
     void willDetachPage() final;
 
-    void refEventTarget() final { ref(); }
-    void derefEventTarget() final { deref(); }
-
-    static RefPtr<Frame> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&, DOMWindow& activeWindow, Frame& firstFrame, Frame& openerFrame, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction = nullptr);
+    static ExceptionOr<RefPtr<Frame>> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&, DOMWindow& activeWindow, Frame& firstFrame, Frame& openerFrame, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction = nullptr);
     bool isInsecureScriptAccess(DOMWindow& activeWindow, const String& urlString);
 
     void resetDOMWindowProperties();
@@ -380,14 +384,13 @@ private:
     mutable RefPtr<BarProp> m_statusbar;
     mutable RefPtr<BarProp> m_toolbar;
     mutable RefPtr<Location> m_location;
+    mutable RefPtr<VisualViewport> m_visualViewport;
 
     String m_status;
     String m_defaultStatus;
 
     enum class PageStatus { None, Shown, Hidden };
     PageStatus m_lastPageStatus { PageStatus::None };
-
-    WeakPtrFactory<DOMWindow> m_weakPtrFactory;
 
 #if PLATFORM(IOS)
     unsigned m_scrollEventListenerCount { 0 };
@@ -407,9 +410,7 @@ private:
 
     RefPtr<CustomElementRegistry> m_customElementRegistry;
 
-#if ENABLE(WEB_TIMING)
     mutable RefPtr<Performance> m_performance;
-#endif
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
     mutable RefPtr<WebKitNamespace> m_webkitNamespace;
@@ -427,3 +428,8 @@ inline String DOMWindow::defaultStatus() const
 }
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::DOMWindow)
+    static bool isType(const WebCore::AbstractDOMWindow& window) { return window.isLocalDOMWindow(); }
+    static bool isType(const WebCore::EventTarget& target) { return target.eventTargetInterface() == WebCore::DOMWindowEventTargetInterfaceType; }
+SPECIALIZE_TYPE_TRAITS_END()

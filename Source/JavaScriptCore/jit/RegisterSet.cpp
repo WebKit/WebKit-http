@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,9 @@
 #if ENABLE(JIT)
 
 #include "GPRInfo.h"
-#include "MacroAssembler.h"
 #include "JSCInlines.h"
+#include "MacroAssembler.h"
+#include "RegisterAtOffsetList.h"
 #include <wtf/CommaPrinter.h>
 
 namespace JSC {
@@ -50,8 +51,10 @@ RegisterSet RegisterSet::reservedHardwareRegisters()
 #else
     return RegisterSet(ARM64Registers::lr);
 #endif // PLATFORM(IOS)
+#elif CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL)
+    return RegisterSet(ARMRegisters::lr, ARMRegisters::pc);
 #else
-    return RegisterSet();
+    return { };
 #endif
 }
 
@@ -60,7 +63,7 @@ RegisterSet RegisterSet::runtimeRegisters()
 #if USE(JSVALUE64)
     return RegisterSet(GPRInfo::tagTypeNumberRegister, GPRInfo::tagMaskRegister);
 #else
-    return RegisterSet();
+    return { };
 #endif
 }
 
@@ -81,6 +84,9 @@ RegisterSet RegisterSet::volatileRegistersForJSCall()
 
 RegisterSet RegisterSet::stubUnavailableRegisters()
 {
+    // FIXME: This is overly conservative. We could subtract out those callee-saves that we
+    // actually saved.
+    // https://bugs.webkit.org/show_bug.cgi?id=185686
     return RegisterSet(specialRegisters(), vmCalleeSaveRegisters());
 }
 
@@ -98,7 +104,7 @@ RegisterSet RegisterSet::macroScratchRegisters()
     result.set(MacroAssembler::cmpTempRegister);
     return result;
 #else
-    return RegisterSet();
+    return { };
 #endif
 }
 
@@ -196,6 +202,16 @@ RegisterSet RegisterSet::vmCalleeSaveRegisters()
     result.set(FPRInfo::fpRegCS6);
     result.set(FPRInfo::fpRegCS7);
 #endif
+    return result;
+}
+
+RegisterAtOffsetList* RegisterSet::vmCalleeSaveRegisterOffsets()
+{
+    static RegisterAtOffsetList* result;
+    static std::once_flag calleeSavesFlag;
+    std::call_once(calleeSavesFlag, [] () {
+        result = new RegisterAtOffsetList(vmCalleeSaveRegisters(), RegisterAtOffsetList::ZeroBased);
+    });
     return result;
 }
 

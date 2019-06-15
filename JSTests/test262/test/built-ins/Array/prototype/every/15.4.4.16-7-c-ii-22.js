@@ -2,27 +2,32 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.every
 es5id: 15.4.4.16-7-c-ii-22
 description: >
     Array.prototype.every - callbackfn called with correct parameters
     (the index k is correct)
 ---*/
 
-        var accessed = false;
+var accessed = false;
 
-        function callbackfn(val, idx, obj) {
-            accessed = true;
-            if (val === 11) {
-                return idx === 0;
-            }
+function callbackfn(val, idx, obj) {
+  accessed = true;
+  if (val === 11) {
+    return idx === 0;
+  }
 
-            if (val === 12) {
-                return idx === 1;
-            }
+  if (val === 12) {
+    return idx === 1;
+  }
 
-        }
+}
 
-        var obj = { 0: 11, 1: 12, length: 2 };
+var obj = {
+  0: 11,
+  1: 12,
+  length: 2
+};
 
 assert(Array.prototype.every.call(obj, callbackfn), 'Array.prototype.every.call(obj, callbackfn) !== true');
 assert(accessed, 'accessed !== true');

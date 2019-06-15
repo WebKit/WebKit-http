@@ -46,9 +46,27 @@ static WebCore::AutoFillButtonType toAutoFillButtonType(WKAutoFillButtonType wkA
         return WebCore::AutoFillButtonType::Contacts;
     case kWKAutoFillButtonTypeCredentials:
         return WebCore::AutoFillButtonType::Credentials;
+    case kWKAutoFillButtonTypeStrongPassword:
+        return WebCore::AutoFillButtonType::StrongPassword;
     }
     ASSERT_NOT_REACHED();
     return WebCore::AutoFillButtonType::None;
+}
+
+static WKAutoFillButtonType toWKAutoFillButtonType(WebCore::AutoFillButtonType autoFillButtonType)
+{
+    switch (autoFillButtonType) {
+    case WebCore::AutoFillButtonType::None:
+        return kWKAutoFillButtonTypeNone;
+    case WebCore::AutoFillButtonType::Contacts:
+        return kWKAutoFillButtonTypeContacts;
+    case WebCore::AutoFillButtonType::Credentials:
+        return kWKAutoFillButtonTypeCredentials;
+    case WebCore::AutoFillButtonType::StrongPassword:
+        return kWKAutoFillButtonTypeStrongPassword;
+    }
+    ASSERT_NOT_REACHED();
+    return kWKAutoFillButtonTypeNone;
 }
 
 WKTypeID WKBundleNodeHandleGetTypeID()
@@ -118,6 +136,26 @@ bool WKBundleNodeHandleGetHTMLInputElementAutoFillButtonEnabled(WKBundleNodeHand
 void WKBundleNodeHandleSetHTMLInputElementAutoFillButtonEnabledWithButtonType(WKBundleNodeHandleRef htmlInputElementHandleRef, WKAutoFillButtonType autoFillButtonType)
 {
     toImpl(htmlInputElementHandleRef)->setHTMLInputElementAutoFillButtonEnabled(toAutoFillButtonType(autoFillButtonType));
+}
+
+WKAutoFillButtonType WKBundleNodeHandleGetHTMLInputElementAutoFillButtonType(WKBundleNodeHandleRef htmlInputElementHandleRef)
+{
+    return toWKAutoFillButtonType(toImpl(htmlInputElementHandleRef)->htmlInputElementAutoFillButtonType());
+}
+
+WKAutoFillButtonType WKBundleNodeHandleGetHTMLInputElementLastAutoFillButtonType(WKBundleNodeHandleRef htmlInputElementHandleRef)
+{
+    return toWKAutoFillButtonType(toImpl(htmlInputElementHandleRef)->htmlInputElementLastAutoFillButtonType());
+}
+
+bool WKBundleNodeHandleGetHTMLInputElementAutoFillAvailable(WKBundleNodeHandleRef htmlInputElementHandleRef)
+{
+    return toImpl(htmlInputElementHandleRef)->isAutoFillAvailable();
+}
+
+void WKBundleNodeHandleSetHTMLInputElementAutoFillAvailable(WKBundleNodeHandleRef htmlInputElementHandleRef, bool autoFillAvailable)
+{
+    toImpl(htmlInputElementHandleRef)->setAutoFillAvailable(autoFillAvailable);
 }
 
 WKRect WKBundleNodeHandleGetHTMLInputElementAutoFillButtonBounds(WKBundleNodeHandleRef htmlInputElementHandleRef)

@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.copywithin
-es6id: 22.2.3.5
 description: >
   Max value of end position is the this.length.
-info: >
+info: |
   22.2.3.5 %TypedArray%.prototype.copyWithin (target, start [ , end ] )
 
   %TypedArray%.prototype.copyWithin is a distinct function that implements the
@@ -17,6 +16,7 @@ info: >
 
   ...
 includes: [compareArray.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -30,9 +30,25 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(0, 1, Infinity),
+      [2, 3, 4, 5, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(0, 1, Infinity) -> [2, 3, 4, 5, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3, 4, 5]).copyWithin(1, 3, 6),
       [0, 3, 4, 5, 4, 5]
     ),
     '[0, 1, 2, 3, 4, 5].copyWithin(1, 3, 6) -> [0, 3, 4, 5, 4, 5]'
+  );
+
+  assert(
+    compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(1, 3, Infinity),
+      [1, 4, 5, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(1, 3, Infinity) -> [1, 4, 5, 4, 5]'
   );
 });

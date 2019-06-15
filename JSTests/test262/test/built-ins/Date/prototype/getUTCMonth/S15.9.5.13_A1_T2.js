@@ -3,11 +3,12 @@
 
 /*---
 info: The Date.prototype property "getUTCMonth" has { DontEnum } attributes
+esid: sec-date.prototype.getutcmonth
 es5id: 15.9.5.13_A1_T2
 description: Checking absence of DontDelete attribute
 ---*/
 
-if (delete Date.prototype.getUTCMonth  === false) {
+if (delete Date.prototype.getUTCMonth === false) {
   $ERROR('#1: The Date.prototype.getUTCMonth property has not the attributes DontDelete');
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +28,12 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "CompilationResult.h"
-#include "VM.h"
 #include "WasmB3IRGenerator.h"
 #include "WasmModuleInformation.h"
 #include "WasmPlan.h"
 #include "WasmTierUpCount.h"
 #include <wtf/Bag.h>
+#include <wtf/Function.h>
 #include <wtf/SharedTask.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
@@ -41,8 +41,6 @@
 namespace JSC {
 
 class CallLinkInfo;
-class JSGlobalObject;
-class JSPromiseDeferred;
 
 namespace Wasm {
 
@@ -50,14 +48,18 @@ class BBQPlan final : public Plan {
 public:
     using Base = Plan;
     enum AsyncWork : uint8_t { FullCompile, Validation };
-    // Note: CompletionTask should not hold a reference to the Plan otherwise there will be a reference cycle.
-    BBQPlan(VM*, Ref<ModuleInformation>, AsyncWork, CompletionTask&&);
-    JS_EXPORT_PRIVATE BBQPlan(VM*, Vector<uint8_t>&&, AsyncWork, CompletionTask&&);
-    // Note: This constructor should only be used if you are not actually building a module e.g. validation/function tests
-    // FIXME: When we get rid of function tests we should remove AsyncWork from this constructor.
-    JS_EXPORT_PRIVATE BBQPlan(VM*, const uint8_t*, size_t, AsyncWork, CompletionTask&&);
 
-    bool parseAndValidateModule();
+    // Note: CompletionTask should not hold a reference to the Plan otherwise there will be a reference cycle.
+    BBQPlan(Context*, Ref<ModuleInformation>, AsyncWork, CompletionTask&&, CreateEmbedderWrapper&&, ThrowWasmException);
+    JS_EXPORT_PRIVATE BBQPlan(Context*, Vector<uint8_t>&&, AsyncWork, CompletionTask&&, CreateEmbedderWrapper&&, ThrowWasmException);
+    BBQPlan(Context*, AsyncWork, CompletionTask&&);
+
+
+    bool parseAndValidateModule()
+    {
+        return parseAndValidateModule(m_source.data(), m_source.size());
+    }
+    bool parseAndValidateModule(const uint8_t*, size_t);
 
     JS_EXPORT_PRIVATE void prepare();
     void compileFunctions(CompilationEffort);
@@ -89,7 +91,7 @@ public:
         return WTFMove(m_callLinkInfos);
     }
 
-    Vector<MacroAssemblerCodeRef>&& takeWasmToWasmExitStubs()
+    Vector<MacroAssemblerCodeRef<WasmEntryPtrTag>>&& takeWasmToWasmExitStubs()
     {
         RELEASE_ASSERT(!failed() && !hasWork());
         return WTFMove(m_wasmToWasmExitStubs);
@@ -137,11 +139,12 @@ private:
 
     const char* stateString(State);
     
+    Vector<uint8_t> m_source;
     Bag<CallLinkInfo> m_callLinkInfos;
-    Vector<MacroAssemblerCodeRef> m_wasmToWasmExitStubs;
+    Vector<MacroAssemblerCodeRef<WasmEntryPtrTag>> m_wasmToWasmExitStubs;
     Vector<std::unique_ptr<InternalFunction>> m_wasmInternalFunctions;
     HashSet<uint32_t, typename DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> m_exportedFunctionIndices;
-    HashMap<uint32_t, std::unique_ptr<InternalFunction>, typename DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> m_jsToWasmInternalFunctions;
+    HashMap<uint32_t, std::unique_ptr<InternalFunction>, typename DefaultHash<uint32_t>::Hash, WTF::UnsignedWithZeroKeyHashTraits<uint32_t>> m_embedderToWasmInternalFunctions;
     Vector<CompilationContext> m_compilationContexts;
     Vector<TierUpCount> m_tierUpCounts;
 

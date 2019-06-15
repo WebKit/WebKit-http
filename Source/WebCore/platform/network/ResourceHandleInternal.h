@@ -34,26 +34,12 @@
 
 #if USE(CFURLCONNECTION)
 #include "ResourceHandleCFURLConnectionDelegate.h"
-#include <CFNetwork/CFURLConnectionPriv.h>
-#endif
-
-#if USE(CURL) && PLATFORM(WIN)
-#include <winsock2.h>
-#include <windows.h>
+#include <pal/spi/cf/CFNetworkSPI.h>
 #endif
 
 #if USE(CURL)
-#include "CurlContext.h"
-#include "FormDataStreamCurl.h"
-#include "MultipartHandle.h"
-#endif
-
-#if USE(SOUP)
-#include "GUniquePtrSoup.h"
-#include "SoupNetworkSession.h"
-#include <libsoup/soup.h>
-#include <wtf/RunLoop.h>
-#include <wtf/glib/GRefPtr.h>
+#include "CurlRequest.h"
+#include <wtf/MessageQueue.h>
 #endif
 
 #if PLATFORM(QT)
@@ -83,7 +69,7 @@ namespace WebCore {
 class ResourceHandleInternal {
     WTF_MAKE_NONCOPYABLE(ResourceHandleInternal); WTF_MAKE_FAST_ALLOCATED;
 public:
-    ResourceHandleInternal(ResourceHandle* loader, NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff)
+    ResourceHandleInternal(ResourceHandle* loader, NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff, bool shouldContentEncodingSniff)
         : m_context(context)
         , m_client(client)
         , m_firstRequest(request)
@@ -91,15 +77,9 @@ public:
         , m_partition(request.cachePartition())
         , m_defersLoading(defersLoading)
         , m_shouldContentSniff(shouldContentSniff)
-        , m_usesAsyncCallbacks(client && client->usesAsyncCallbacks())
+        , m_shouldContentEncodingSniff(shouldContentEncodingSniff)
 #if USE(CFURLCONNECTION)
         , m_currentRequest(request)
-#endif
-#if USE(CURL)
-        , m_formDataStream(loader)
-#endif
-#if USE(SOUP)
-        , m_timeoutSource(RunLoop::main(), loader, &ResourceHandle::timeoutFired)
 #endif
         , m_failureTimer(*loader, &ResourceHandle::failureTimerFired)
     {
@@ -129,13 +109,13 @@ public:
 
     bool m_defersLoading;
     bool m_shouldContentSniff;
-    bool m_usesAsyncCallbacks;
+    bool m_shouldContentEncodingSniff;
 #if USE(CFURLCONNECTION)
     RetainPtr<CFURLConnectionRef> m_connection;
     ResourceRequest m_currentRequest;
     RefPtr<ResourceHandleCFURLConnectionDelegate> m_connectionDelegate;
 #endif
-#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
     RetainPtr<NSURLConnection> m_connection;
     RetainPtr<id> m_delegate;
 #endif
@@ -146,41 +126,14 @@ public:
     RetainPtr<CFURLStorageSessionRef> m_storageSession;
 #endif
 #if USE(CURL)
-    CurlHandle m_curlHandle;
-
-    ResourceResponse m_response;
+    std::unique_ptr<CurlResourceHandleDelegate> m_delegate;
+    
     bool m_cancelled { false };
-    unsigned short m_authFailureCount { 0 };
-
-    FormDataStream m_formDataStream;
-    unsigned m_sslErrors { 0 };
-    Vector<char> m_postBytes;
-
-    std::unique_ptr<MultipartHandle> m_multipartHandle;
+    unsigned m_redirectCount { 0 };
+    unsigned m_authFailureCount { 0 };
     bool m_addedCacheValidationHeaders { false };
-#endif
-#if USE(SOUP)
-    SoupNetworkSession* m_session { nullptr };
-    GRefPtr<SoupMessage> m_soupMessage;
-    ResourceResponse m_response;
-    bool m_cancelled { false };
-    GRefPtr<SoupRequest> m_soupRequest;
-    GRefPtr<GInputStream> m_inputStream;
-    GRefPtr<SoupMultipartInputStream> m_multipartInputStream;
-    GRefPtr<GCancellable> m_cancellable;
-    GRefPtr<GAsyncResult> m_deferredResult;
-    RunLoop::Timer<ResourceHandle> m_timeoutSource;
-    GUniquePtr<SoupBuffer> m_soupBuffer;
-    unsigned long m_bodySize { 0 };
-    unsigned long m_bodyDataSent { 0 };
-    SoupSession* soupSession();
-    int m_redirectCount { 0 };
-    size_t m_previousPosition { 0 };
-    bool m_useAuthenticationManager { true };
-    struct {
-        Credential credential;
-        ProtectionSpace protectionSpace;
-    } m_credentialDataToSaveInPersistentStore;
+    RefPtr<CurlRequest> m_curlRequest;
+    MessageQueue<WTF::Function<void()>>* m_messageQueue { };
 #endif
 #if PLATFORM(QT)
     QNetworkReplyHandler* m_job { nullptr };

@@ -46,14 +46,12 @@
 #include "JSCSSSupportsRule.h"
 #include "JSNode.h"
 #include "JSStyleSheetCustom.h"
-#include "JSWebKitCSSRegionRule.h"
 #include "JSWebKitCSSViewportRule.h"
-#include "WebKitCSSRegionRule.h"
 #include "WebKitCSSViewportRule.h"
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 void JSCSSRule::visitAdditionalChildren(SlotVisitor& visitor)
 {
@@ -84,10 +82,6 @@ JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<CSSRul
 #if ENABLE(CSS_DEVICE_ADAPTATION)
     case CSSRule::WEBKIT_VIEWPORT_RULE:
         return createWrapper<WebKitCSSViewportRule>(globalObject, WTFMove(rule));
-#endif
-#if ENABLE(CSS_REGIONS)
-    case CSSRule::WEBKIT_REGION_RULE:
-        return createWrapper<WebKitCSSRegionRule>(globalObject, WTFMove(rule));
 #endif
     default:
         return createWrapper<CSSRule>(globalObject, WTFMove(rule));

@@ -8,34 +8,34 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-// Android's FindClass() is trickier than usual because the app-specific
-// ClassLoader is not consulted when there is no app-specific frame on the
-// stack.  Consequently, we only look up all classes once in app/webrtc.
-// http://developer.android.com/training/articles/perf-jni.html#faq_FindClass
+#ifndef SDK_ANDROID_SRC_JNI_CLASSREFERENCEHOLDER_H_
+#define SDK_ANDROID_SRC_JNI_CLASSREFERENCEHOLDER_H_
 
-#ifndef WEBRTC_SDK_ANDROID_SRC_JNI_CLASSREFERENCEHOLDER_H_
-#define WEBRTC_SDK_ANDROID_SRC_JNI_CLASSREFERENCEHOLDER_H_
+// TODO(magjed): Update external clients to call webrtc::jni::InitClassLoader
+// immediately instead.
+#include "sdk/android/native_api/jni/class_loader.h"
+#include "sdk/android/src/jni/jni_helpers.h"
 
-#include <jni.h>
-#include <map>
-#include <string>
+namespace webrtc {
+namespace jni {
 
+// Deprecated. Call webrtc::jni::InitClassLoader() immediately instead..
+inline void LoadGlobalClassReferenceHolder() {
+  webrtc::InitClassLoader(GetEnv());
+}
+
+// Deprecated. Do not call at all.
+inline void FreeGlobalClassReferenceHolder() {}
+
+}  // namespace jni
+}  // namespace webrtc
+
+// TODO(magjed): Remove once external clients are updated.
 namespace webrtc_jni {
 
-// LoadGlobalClassReferenceHolder must be called in JNI_OnLoad.
-void LoadGlobalClassReferenceHolder();
-// FreeGlobalClassReferenceHolder must be called in JNI_UnLoad.
-void FreeGlobalClassReferenceHolder();
-
-// Returns a global reference guaranteed to be valid for the lifetime of the
-// process.
-jclass FindClass(JNIEnv* jni, const char* name);
-
-// Convenience macro defining JNI-accessible methods in the org.webrtc package.
-// Eliminates unnecessary boilerplate and line-wraps, reducing visual clutter.
-#define JOW(rettype, name) \
-  extern "C" JNIEXPORT rettype JNICALL Java_org_webrtc_##name
+using webrtc::jni::LoadGlobalClassReferenceHolder;
+using webrtc::jni::FreeGlobalClassReferenceHolder;
 
 }  // namespace webrtc_jni
 
-#endif  // WEBRTC_SDK_ANDROID_SRC_JNI_CLASSREFERENCEHOLDER_H_
+#endif  // SDK_ANDROID_SRC_JNI_CLASSREFERENCEHOLDER_H_

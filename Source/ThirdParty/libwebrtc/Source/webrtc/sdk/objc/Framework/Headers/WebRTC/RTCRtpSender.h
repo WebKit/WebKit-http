@@ -10,6 +10,7 @@
 
 #import <Foundation/Foundation.h>
 
+#import <WebRTC/RTCDtmfSender.h>
 #import <WebRTC/RTCMacros.h>
 #import <WebRTC/RTCMediaStreamTrack.h>
 #import <WebRTC/RTCRtpParameters.h>
@@ -34,9 +35,13 @@ RTC_EXPORT
  */
 @property(nonatomic, copy, nullable) RTCMediaStreamTrack *track;
 
+/** The RTCDtmfSender accociated with the RTP sender. */
+@property(nonatomic, readonly, nullable) id<RTCDtmfSender> dtmfSender;
+
 @end
 
 RTC_EXPORT
+__attribute__((objc_runtime_name("WK_RTCRtpSender")))
 @interface RTCRtpSender : NSObject <RTCRtpSender>
 
 - (instancetype)init NS_UNAVAILABLE;

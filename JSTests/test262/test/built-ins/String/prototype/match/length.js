@@ -5,7 +5,7 @@
 es5id: 15.5.4.10_A11
 es6id: 21.1.3.11
 description: Checking String.prototype.match.length
-info: >
+info: |
     The length property of the match method is 1.
 
     ES6 Section 17:
@@ -25,7 +25,7 @@ includes: [propertyHelper.js]
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if (!(String.prototype.match.hasOwnProperty("length"))) {
-  $ERROR('#1: String.prototype.match.hasOwnProperty("length") return true. Actual: '+String.prototype.match.hasOwnProperty("length"));
+  $ERROR('#1: String.prototype.match.hasOwnProperty("length") return true. Actual: ' + String.prototype.match.hasOwnProperty("length"));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ if (!(String.prototype.match.hasOwnProperty("length"))) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (String.prototype.match.length !== 1) {
-  $ERROR('#2: String.prototype.match.length === 1. Actual: '+String.prototype.match.length );
+  $ERROR('#2: String.prototype.match.length === 1. Actual: ' + String.prototype.match.length);
 }
 //
 //////////////////////////////////////////////////////////////////////////////

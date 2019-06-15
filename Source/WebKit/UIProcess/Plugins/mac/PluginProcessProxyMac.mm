@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,16 +29,17 @@
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
 #import "PluginProcessCreationParameters.h"
+#import "PluginProcessManager.h"
 #import "PluginProcessMessages.h"
 #import "SandboxUtilities.h"
-#import "WebKitSystemInterface.h"
 #import <QuartzCore/CARemoteLayerServer.h>
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/URL.h>
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <spawn.h>
+#import <wtf/ProcessPrivilege.h>
 #import <wtf/text/CString.h>
 
 @interface WKPlaceholderModalWindow : NSWindow 
@@ -55,9 +56,9 @@
 
 @end
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
     
 void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions, const PluginProcessAttributes& pluginProcessAttributes)
 {
@@ -67,6 +68,9 @@ void PluginProcessProxy::platformGetLaunchOptions(ProcessLauncher::LaunchOptions
         launchOptions.processType = ProcessLauncher::ProcessType::Plugin64;
 
     launchOptions.extraInitializationData.add("plugin-path", pluginProcessAttributes.moduleInfo.path);
+
+    if (PluginProcessManager::singleton().experimentalPlugInSandboxProfilesEnabled())
+        launchOptions.extraInitializationData.add("experimental-sandbox-plugin", "1");
 
     if (pluginProcessAttributes.sandboxPolicy == PluginProcessSandboxPolicyUnsandboxed) {
         if (!currentProcessIsSandboxed())
@@ -132,6 +136,7 @@ void PluginProcessProxy::setFullscreenWindowIsShowing(bool fullscreenWindowIsSho
 
 void PluginProcessProxy::enterFullscreen()
 {
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
     // Get the current presentation options.
     m_preFullscreenAppPresentationOptions = [NSApp presentationOptions];
 
@@ -192,7 +197,8 @@ void PluginProcessProxy::beginModal()
 {
     ASSERT(!m_placeholderWindow);
     ASSERT(!m_activationObserver);
-    
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
+
     m_placeholderWindow = adoptNS([[WKPlaceholderModalWindow alloc] initWithContentRect:NSMakeRect(0, 0, 1, 1) styleMask:NSWindowStyleMaskBorderless backing:NSBackingStoreBuffered defer:YES]);
     [m_placeholderWindow setReleasedWhenClosed:NO];
     
@@ -213,7 +219,8 @@ void PluginProcessProxy::endModal()
 {
     ASSERT(m_placeholderWindow);
     ASSERT(m_activationObserver);
-    
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
+
     [[NSNotificationCenter defaultCenter] removeObserver:m_activationObserver.get()];
     m_activationObserver = nullptr;
     
@@ -225,14 +232,6 @@ void PluginProcessProxy::endModal()
 void PluginProcessProxy::applicationDidBecomeActive()
 {
     makePluginProcessTheFrontProcess();
-}
-
-void PluginProcessProxy::setProcessSuppressionEnabled(bool processSuppressionEnabled)
-{
-    if (!isValid())
-        return;
-
-    m_connection->send(Messages::PluginProcess::SetProcessSuppressionEnabled(processSuppressionEnabled), 0);
 }
 
 static bool isFlashUpdater(const String& launchPath, const Vector<String>& arguments)

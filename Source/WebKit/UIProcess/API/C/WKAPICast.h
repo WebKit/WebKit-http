@@ -77,7 +77,7 @@ namespace WebKit {
 class AuthenticationChallengeProxy;
 class AuthenticationDecisionListener;
 class DownloadProxy;
-class GeolocationPermissionRequestProxy;
+class GeolocationPermissionRequest;
 class NotificationPermissionRequest;
 class UserMediaPermissionCheckProxy;
 class UserMediaPermissionRequestProxy;
@@ -111,7 +111,6 @@ class WebResourceLoadStatisticsManager;
 class WebTextChecker;
 class WebUserContentControllerProxy;
 class WebViewportAttributes;
-struct WebsitePolicies;
 
 WK_ADD_API_MAPPING(WKAuthenticationChallengeRef, AuthenticationChallengeProxy)
 WK_ADD_API_MAPPING(WKAuthenticationDecisionListenerRef, AuthenticationDecisionListener)
@@ -131,7 +130,7 @@ WK_ADD_API_MAPPING(WKFrameHandleRef, API::FrameHandle)
 WK_ADD_API_MAPPING(WKFrameInfoRef, API::FrameInfo)
 WK_ADD_API_MAPPING(WKFrameRef, WebFrameProxy)
 WK_ADD_API_MAPPING(WKGeolocationManagerRef, WebGeolocationManagerProxy)
-WK_ADD_API_MAPPING(WKGeolocationPermissionRequestRef, GeolocationPermissionRequestProxy)
+WK_ADD_API_MAPPING(WKGeolocationPermissionRequestRef, GeolocationPermissionRequest)
 WK_ADD_API_MAPPING(WKGeolocationPositionRef, WebGeolocationPosition)
 WK_ADD_API_MAPPING(WKHitTestResultRef, API::HitTestResult)
 WK_ADD_API_MAPPING(WKIconDatabaseRef, WebIconDatabase)
@@ -237,6 +236,10 @@ inline WKProcessTerminationReason toAPI(ProcessTerminationReason reason)
         return kWKProcessTerminationReasonExceededMemoryLimit;
     case ProcessTerminationReason::ExceededCPULimit:
         return kWKProcessTerminationReasonExceededCPULimit;
+    case ProcessTerminationReason::NavigationSwap:
+        // We probably shouldn't bother coming up with a new C-API type for process-swapping.
+        // "Requested by client" seems like the best match for existing types.
+        FALLTHROUGH;
     case ProcessTerminationReason::RequestedByClient:
         return kWKProcessTerminationReasonRequestedByClient;
     case ProcessTerminationReason::Crash:
@@ -361,6 +364,8 @@ inline WKProtectionSpaceAuthenticationScheme toAPI(WebCore::ProtectionSpaceAuthe
         return kWKProtectionSpaceAuthenticationSchemeClientCertificateRequested;
     case WebCore::ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested:
         return kWKProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested;
+    case WebCore::ProtectionSpaceAuthenticationSchemeOAuth:
+        return kWKProtectionSpaceAuthenticationSchemeOAuth;
     default:
         return kWKProtectionSpaceAuthenticationSchemeUnknown;
     }
@@ -567,6 +572,10 @@ inline WKWebGLLoadPolicy toAPI(WebCore::WebGLLoadPolicy webGLLoadPolicy)
 
 #if defined(BUILDING_WPE__)
 #include "WKAPICastWPE.h"
+#endif
+
+#if defined(WIN32) || defined(_WIN32)
+#include "WKAPICastWin.h"
 #endif
 
 #endif // WKAPICast_h

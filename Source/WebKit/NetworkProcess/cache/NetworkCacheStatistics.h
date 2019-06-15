@@ -26,8 +26,6 @@
 #ifndef NetworkCacheStatistics_h
 #define NetworkCacheStatistics_h
 
-#if ENABLE(NETWORK_CACHE)
-
 #include "NetworkCache.h"
 #include "NetworkCacheKey.h"
 #include <WebCore/SQLiteDatabase.h>
@@ -43,8 +41,8 @@ namespace NetworkCache {
 
 class Statistics {
 public:
-    static std::unique_ptr<Statistics> open(const String& cachePath);
-    explicit Statistics(const String& databasePath);
+    static std::unique_ptr<Statistics> open(Cache&, const String& cachePath);
+    explicit Statistics(Cache&, const String& databasePath);
 
     void clear();
 
@@ -77,6 +75,8 @@ private:
         RequestedCompletionHandler completionHandler;
     };
 
+    Cache& m_cache;
+
     std::atomic<size_t> m_approximateEntryCount { 0 };
 
     mutable Ref<WorkQueue> m_serialBackgroundIOQueue;
@@ -89,7 +89,5 @@ private:
 
 }
 }
-
-#endif // ENABLE(NETWORK_CACHE)
 
 #endif // NetworkCacheStatistics_h

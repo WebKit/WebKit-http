@@ -11,20 +11,20 @@
 #include <memory>
 #include <vector>
 
-#include "webrtc/api/video/i420_buffer.h"
-#include "webrtc/modules/video_coding/codecs/vp8/include/vp8.h"
-#include "webrtc/modules/video_coding/codecs/vp8/include/vp8_common_types.h"
-#include "webrtc/modules/video_coding/codecs/vp8/simulcast_rate_allocator.h"
-#include "webrtc/modules/video_coding/codecs/vp8/temporal_layers.h"
-#include "webrtc/modules/video_coding/include/mock/mock_vcm_callbacks.h"
-#include "webrtc/modules/video_coding/include/mock/mock_video_codec_interface.h"
-#include "webrtc/modules/video_coding/include/video_coding.h"
-#include "webrtc/modules/video_coding/video_coding_impl.h"
-#include "webrtc/modules/video_coding/utility/default_video_bitrate_allocator.h"
-#include "webrtc/system_wrappers/include/clock.h"
-#include "webrtc/test/frame_generator.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/testsupport/fileutils.h"
+#include "api/video/i420_buffer.h"
+#include "modules/video_coding/codecs/vp8/include/vp8.h"
+#include "modules/video_coding/codecs/vp8/temporal_layers.h"
+#include "modules/video_coding/include/mock/mock_vcm_callbacks.h"
+#include "modules/video_coding/include/mock/mock_video_codec_interface.h"
+#include "modules/video_coding/include/video_coding.h"
+#include "modules/video_coding/utility/default_video_bitrate_allocator.h"
+#include "modules/video_coding/utility/simulcast_rate_allocator.h"
+#include "modules/video_coding/video_coding_impl.h"
+#include "system_wrappers/include/clock.h"
+#include "test/frame_generator.h"
+#include "test/gtest.h"
+#include "test/testsupport/fileutils.h"
+#include "test/video_codec_settings.h"
 
 using ::testing::_;
 using ::testing::AllOf;
@@ -181,7 +181,7 @@ class TestVideoSender : public ::testing::Test {
   TestVideoSender() : clock_(1000), encoded_frame_callback_(&clock_) {}
 
   void SetUp() override {
-    sender_.reset(new VideoSender(&clock_, &encoded_frame_callback_, nullptr));
+    sender_.reset(new VideoSender(&clock_, &encoded_frame_callback_));
   }
 
   void AddFrame() {
@@ -205,8 +205,8 @@ class TestVideoSenderWithMockEncoder : public TestVideoSender {
  protected:
   void SetUp() override {
     TestVideoSender::SetUp();
-    sender_->RegisterExternalEncoder(&encoder_, kUnusedPayloadType, false);
-    VideoCodingModule::Codec(kVideoCodecVP8, &settings_);
+    sender_->RegisterExternalEncoder(&encoder_, false);
+    webrtc::test::CodecSettings(kVideoCodecVP8, &settings_);
     settings_.numberOfSimulcastStreams = kNumberOfStreams;
     ConfigureStream(kDefaultWidth / 4, kDefaultHeight / 4, 100,
                     &settings_.simulcastStream[0]);
@@ -227,17 +227,16 @@ class TestVideoSenderWithMockEncoder : public TestVideoSender {
     ExpectEncodeWithFrameTypes(stream, false);
   }
 
-  void ExpectInitialKeyFrames() {
-    ExpectEncodeWithFrameTypes(-1, true);
-  }
+  void ExpectInitialKeyFrames() { ExpectEncodeWithFrameTypes(-1, true); }
 
   void ExpectEncodeWithFrameTypes(int intra_request_stream, bool first_frame) {
     if (intra_request_stream == -1) {
       // No intra request expected, keyframes on first frame.
       FrameType frame_type = first_frame ? kVideoFrameKey : kVideoFrameDelta;
-      EXPECT_CALL(encoder_,
-                  Encode(_, _, Pointee(ElementsAre(frame_type, frame_type,
-                                                   frame_type))))
+      EXPECT_CALL(
+          encoder_,
+          Encode(_, _,
+                 Pointee(ElementsAre(frame_type, frame_type, frame_type))))
           .Times(1)
           .WillRepeatedly(Return(0));
       return;
@@ -247,9 +246,10 @@ class TestVideoSenderWithMockEncoder : public TestVideoSender {
     ASSERT_LT(intra_request_stream, kNumberOfStreams);
     std::vector<FrameType> frame_types(kNumberOfStreams, kVideoFrameDelta);
     frame_types[intra_request_stream] = kVideoFrameKey;
-    EXPECT_CALL(encoder_,
-                Encode(_, _, Pointee(ElementsAreArray(&frame_types[0],
-                                                      frame_types.size()))))
+    EXPECT_CALL(
+        encoder_,
+        Encode(_, _,
+               Pointee(ElementsAreArray(&frame_types[0], frame_types.size()))))
         .Times(1)
         .WillRepeatedly(Return(0));
   }
@@ -305,7 +305,7 @@ TEST_F(TestVideoSenderWithMockEncoder, TestSetRate) {
   const uint32_t new_bitrate_kbps = settings_.startBitrate + 300;
 
   // Initial frame rate is taken from config, as we have no data yet.
-  BitrateAllocation new_rate_allocation = rate_allocator_->GetAllocation(
+  VideoBitrateAllocation new_rate_allocation = rate_allocator_->GetAllocation(
       new_bitrate_kbps * 1000, settings_.maxFramerate);
   EXPECT_CALL(encoder_,
               SetRateAllocation(new_rate_allocation, settings_.maxFramerate))
@@ -324,9 +324,9 @@ TEST_F(TestVideoSenderWithMockEncoder, TestSetRate) {
 
 TEST_F(TestVideoSenderWithMockEncoder, TestIntraRequestsInternalCapture) {
   // De-register current external encoder.
-  sender_->RegisterExternalEncoder(nullptr, kUnusedPayloadType, false);
+  sender_->RegisterExternalEncoder(nullptr, false);
   // Register encoder with internal capture.
-  sender_->RegisterExternalEncoder(&encoder_, kUnusedPayloadType, true);
+  sender_->RegisterExternalEncoder(&encoder_, true);
   EXPECT_EQ(0, sender_->RegisterSendCodec(&settings_, 1, 1200));
   // Initial request should be all keyframes.
   ExpectInitialKeyFrames();
@@ -343,14 +343,14 @@ TEST_F(TestVideoSenderWithMockEncoder, TestIntraRequestsInternalCapture) {
 
 TEST_F(TestVideoSenderWithMockEncoder, TestEncoderParametersForInternalSource) {
   // De-register current external encoder.
-  sender_->RegisterExternalEncoder(nullptr, kUnusedPayloadType, false);
+  sender_->RegisterExternalEncoder(nullptr, false);
   // Register encoder with internal capture.
-  sender_->RegisterExternalEncoder(&encoder_, kUnusedPayloadType, true);
+  sender_->RegisterExternalEncoder(&encoder_, true);
   EXPECT_EQ(0, sender_->RegisterSendCodec(&settings_, 1, 1200));
   // Update encoder bitrate parameters. We expect that to immediately call
   // SetRates on the encoder without waiting for AddFrame processing.
   const uint32_t new_bitrate_kbps = settings_.startBitrate + 300;
-  BitrateAllocation new_rate_allocation = rate_allocator_->GetAllocation(
+  VideoBitrateAllocation new_rate_allocation = rate_allocator_->GetAllocation(
       new_bitrate_kbps * 1000, settings_.maxFramerate);
   EXPECT_CALL(encoder_, SetRateAllocation(new_rate_allocation, _))
       .Times(1)
@@ -382,7 +382,7 @@ TEST_F(TestVideoSenderWithMockEncoder,
   // Call to SetChannelParameters with changed bitrate should call encoder
   // SetRates but not encoder SetChannelParameters (that are unchanged).
   uint32_t new_bitrate_bps = 2 * settings_.startBitrate * 1000;
-  BitrateAllocation new_rate_allocation =
+  VideoBitrateAllocation new_rate_allocation =
       rate_allocator_->GetAllocation(new_bitrate_bps, kInputFps);
   EXPECT_CALL(encoder_, SetRateAllocation(new_rate_allocation, kInputFps))
       .Times(1)
@@ -412,13 +412,10 @@ class TestVideoSenderWithVp8 : public TestVideoSender {
     codec_.startBitrate = codec_bitrate_kbps_;
     codec_.maxBitrate = codec_bitrate_kbps_;
 
-    TemporalLayersFactory* tl_factory = new TemporalLayersFactory();
-    rate_allocator_.reset(new SimulcastRateAllocator(
-        codec_, std::unique_ptr<TemporalLayersFactory>(tl_factory)));
-    codec_.VP8()->tl_factory = tl_factory;
+    rate_allocator_.reset(new SimulcastRateAllocator(codec_));
 
-    encoder_.reset(VP8Encoder::Create());
-    sender_->RegisterExternalEncoder(encoder_.get(), codec_.plType, false);
+    encoder_ = VP8Encoder::Create();
+    sender_->RegisterExternalEncoder(encoder_.get(), false);
     EXPECT_EQ(0, sender_->RegisterSendCodec(&codec_, 1, 1200));
   }
 
@@ -426,7 +423,7 @@ class TestVideoSenderWithVp8 : public TestVideoSender {
                                       int height,
                                       int temporal_layers) {
     VideoCodec codec;
-    VideoCodingModule::Codec(kVideoCodecVP8, &codec);
+    webrtc::test::CodecSettings(kVideoCodecVP8, &codec);
     codec.width = width;
     codec.height = height;
     codec.VP8()->numberOfTemporalLayers = temporal_layers;
@@ -474,9 +471,15 @@ class TestVideoSenderWithVp8 : public TestVideoSender {
 #define MAYBE_FixedTemporalLayersStrategy FixedTemporalLayersStrategy
 #endif
 TEST_F(TestVideoSenderWithVp8, MAYBE_FixedTemporalLayersStrategy) {
-  const int low_b = codec_bitrate_kbps_ * kVp8LayerRateAlloction[2][0];
-  const int mid_b = codec_bitrate_kbps_ * kVp8LayerRateAlloction[2][1];
-  const int high_b = codec_bitrate_kbps_ * kVp8LayerRateAlloction[2][2];
+  const int low_b =
+      codec_bitrate_kbps_ *
+      webrtc::SimulcastRateAllocator::GetTemporalRateAllocation(3, 0);
+  const int mid_b =
+      codec_bitrate_kbps_ *
+      webrtc::SimulcastRateAllocator::GetTemporalRateAllocation(3, 1);
+  const int high_b =
+      codec_bitrate_kbps_ *
+      webrtc::SimulcastRateAllocator::GetTemporalRateAllocation(3, 2);
   {
     Vp8StreamInfo expected = {{7.5, 15.0, 30.0}, {low_b, mid_b, high_b}};
     EXPECT_THAT(SimulateWithFramerate(30.0), MatchesVp8StreamInfo(expected));

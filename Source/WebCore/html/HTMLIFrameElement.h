@@ -31,18 +31,20 @@ class DOMTokenList;
 class RenderIFrame;
 
 class HTMLIFrameElement final : public HTMLFrameElementBase {
+    WTF_MAKE_ISO_ALLOCATED(HTMLIFrameElement);
 public:
     static Ref<HTMLIFrameElement> create(const QualifiedName&, Document&);
 
     DOMTokenList& sandbox();
 
     RenderIFrame* renderer() const;
+    const String& allow() const { return m_allow; }
 
 private:
     HTMLIFrameElement(const QualifiedName&, Document&);
 
 #if PLATFORM(IOS)
-    bool isKeyboardFocusable(KeyboardEvent&) const final { return false; }
+    bool isKeyboardFocusable(KeyboardEvent*) const final { return false; }
 #endif
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
@@ -53,6 +55,7 @@ private:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
     std::unique_ptr<DOMTokenList> m_sandbox;
+    String m_allow;
 };
 
 } // namespace WebCore

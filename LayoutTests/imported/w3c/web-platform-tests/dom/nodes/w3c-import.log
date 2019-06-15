@@ -94,6 +94,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-insertAdjacentText.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-lastElementChild-xhtml.xhtml
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-lastElementChild.html
+/LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches-init.js
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-matches.js
 /LayoutTests/imported/w3c/web-platform-tests/dom/nodes/Element-nextElementSibling-xhtml.xhtml

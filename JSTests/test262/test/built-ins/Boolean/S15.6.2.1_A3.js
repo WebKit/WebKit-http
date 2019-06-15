@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The [[Value]] property of the newly constructed object
     is set to ToBoolean(value)
+esid: sec-boolean-constructor
 es5id: 15.6.2.1_A3
 description: Checking value of the newly created object
 ---*/

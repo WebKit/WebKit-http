@@ -10,12 +10,11 @@
 
 #include <utility>
 
-#include "webrtc/modules/audio_processing/aec_dump/aec_dump_factory.h"
+#include "modules/audio_processing/aec_dump/aec_dump_factory.h"
 
-#include "webrtc/base/task_queue.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/testsupport/fileutils.h"
+#include "rtc_base/task_queue.h"
+#include "test/gtest.h"
+#include "test/testsupport/fileutils.h"
 
 TEST(AecDumper, APICallsDoNotCrash) {
   // Note order of initialization: Task queue has to be initialized
@@ -40,8 +39,9 @@ TEST(AecDumper, APICallsDoNotCrash) {
     webrtc::InternalAPMConfig apm_config;
     aec_dump->WriteConfig(apm_config);
 
-    webrtc::InternalAPMStreamsConfig streams_config;
-    aec_dump->WriteInitMessage(streams_config);
+    webrtc::ProcessingConfig api_format;
+    constexpr int64_t kTimeNowMs = 123456789ll;
+    aec_dump->WriteInitMessage(api_format, kTimeNowMs);
   }
   // Remove file after the AecDump d-tor has finished.
   ASSERT_EQ(0, remove(filename.c_str()));

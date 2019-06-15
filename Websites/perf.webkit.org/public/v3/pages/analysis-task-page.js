@@ -24,8 +24,8 @@ class AnalysisTaskChartPane extends ChartPaneBase {
 
     didConstructShadowTree()
     {
-        this.part('form').listenToAction('startTesting', (repetitionCount, name, commitSetMap) => {
-            this.dispatchAction('newTestGroup', name, repetitionCount, commitSetMap);
+        this.part('form').listenToAction('startTesting', (repetitionCount, name, commitSetMap, notifyOnCompletion) => {
+            this.dispatchAction('newTestGroup', name, repetitionCount, commitSetMap, notifyOnCompletion);
         });
     }
 
@@ -106,8 +106,8 @@ class AnalysisTaskResultsPane extends ComponentBase {
         repositoryPicker.addEventListener('change', () => this.enqueueToRender());
         this.part('commit-viewer').setShowRepositoryName(false);
 
-        this.part('form').listenToAction('startTesting', (repetitionCount, name, commitSetMap) => {
-            this.dispatchAction('newTestGroup', name, repetitionCount, commitSetMap);
+        this.part('form').listenToAction('startTesting', (repetitionCount, name, commitSetMap, notifyOnCompletion) => {
+            this.dispatchAction('newTestGroup', name, repetitionCount, commitSetMap, notifyOnCompletion);
         });
     }
 
@@ -258,15 +258,23 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         this._renderCurrentTestGroupLazily = new LazilyEvaluatedFunction(this._renderCurrentTestGroup.bind(this));
         this._testGroupMap = new Map;
         this._testGroups = [];
+        this._bisectingCommitSetByTestGroup = null;
         this._currentTestGroup = null;
         this._showHiddenGroups = false;
+        this._allTestGroupIdSetForCurrentTask = null;
     }
 
     didConstructShadowTree()
     {
         this.content('hide-button').onclick = () => this.dispatchAction('toggleTestGroupVisibility', this._currentTestGroup);
-        this.part('retry-form').listenToAction('startTesting', (repetitionCount) => {
-            this.dispatchAction('retryTestGroup', this._currentTestGroup, repetitionCount);
+        this.part('retry-form').listenToAction('startTesting', (repetitionCount, notifyOnCompletion) => {
+            this.dispatchAction('retryTestGroup', this._currentTestGroup, repetitionCount, notifyOnCompletion);
+        });
+        this.part('bisect-form').listenToAction('startTesting', (repetitionCount, notifyOnCompletion) => {
+            const bisectingCommitSet = this._bisectingCommitSetByTestGroup.get(this._currentTestGroup);
+            const [oneCommitSet, anotherCommitSet] = this._currentTestGroup.requestedCommitSets();
+            const commitSets = [oneCommitSet, bisectingCommitSet, anotherCommitSet];
+            this.dispatchAction('bisectTestGroup', this._currentTestGroup, commitSets, repetitionCount, notifyOnCompletion);
         });
     }
 
@@ -277,7 +285,30 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         this._showHiddenGroups = showHiddenGroups;
         this.part('revision-table').setTestGroup(currentTestGroup);
         this.part('results-viewer').setTestGroup(currentTestGroup);
-        this.enqueueToRender();
+
+        const analysisTask = currentTestGroup.task();
+        const allTestGroupIdsForCurrentTask = TestGroup.findAllByTask(analysisTask.id()).map((testGroup) => testGroup.id());
+        const testGroupChanged = !this._allTestGroupIdSetForCurrentTask
+            || this._allTestGroupIdSetForCurrentTask.size !== allTestGroupIdsForCurrentTask.length
+            || !allTestGroupIdsForCurrentTask.every((testGroupId) => this._allTestGroupIdSetForCurrentTask.has(testGroupId));
+
+        const computedForCurrentTestGroup = this._bisectingCommitSetByTestGroup && this._bisectingCommitSetByTestGroup.has(currentTestGroup);
+
+        if (!testGroupChanged && computedForCurrentTestGroup) {
+            this.enqueueToRender();
+            return;
+        }
+
+        if (testGroupChanged) {
+            this._bisectingCommitSetByTestGroup = new Map;
+            this._allTestGroupIdSetForCurrentTask = new Set(allTestGroupIdsForCurrentTask);
+        }
+
+        analysisTask.commitSetsFromTestGroupsAndMeasurementSet().then(async (availableCommitSets) => {
+            const commitSetClosestToMiddle = await CommitSetRangeBisector.commitSetClosestToMiddleOfAllCommits(currentTestGroup.requestedCommitSets(), availableCommitSets);
+            this._bisectingCommitSetByTestGroup.set(currentTestGroup, commitSetClosestToMiddle);
+            this.enqueueToRender();
+        });
     }
 
     setAnalysisResults(analysisResults, metric)
@@ -337,9 +368,12 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
         if (currentGroup)
             this._testGroupMap.get(currentGroup).listItem.classList.add('selected');
 
-        if (currentGroup)
+        if (currentGroup) {
             this.part('retry-form').setRepetitionCount(currentGroup.repetitionCount());
+            this.part('bisect-form').setRepetitionCount(currentGroup.repetitionCount());
+        }
         this.content('retry-form').style.display = currentGroup ? null : 'none';
+        this.content('bisect-form').style.display = currentGroup && this._bisectingCommitSetByTestGroup.get(currentGroup) ? null : 'none';
 
         const hideButton = this.content('hide-button');
         hideButton.textContent = currentGroup && currentGroup.isHidden() ? 'Unhide' : 'Hide';
@@ -356,6 +390,7 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
                 <test-group-results-viewer id="results-viewer"></test-group-results-viewer>
                 <test-group-revision-table id="revision-table"></test-group-revision-table>
                 <test-group-form id="retry-form">Retry</test-group-form>
+                <test-group-form id="bisect-form">Bisect</test-group-form>
                 <button id="hide-button">Hide</button>
                 <span id="pending-request-cancel-warning">(cancels pending requests)</span>
             </div>`;
@@ -423,7 +458,7 @@ class AnalysisTaskTestGroupPane extends ComponentBase {
                 margin: 0;
             }
 
-            #retry-form {
+            #retry-form, #bisect-form {
                 display: block;
                 margin: 0.5rem;
             }
@@ -508,7 +543,8 @@ class AnalysisTaskPage extends PageWithHeading {
         groupPane.listenToAction('showHiddenTestGroups', () => this._showAllTestGroups());
         groupPane.listenToAction('renameTestGroup', (testGroup, newName) => this._updateTestGroupName(testGroup, newName));
         groupPane.listenToAction('toggleTestGroupVisibility', (testGroup) => this._hideCurrentTestGroup(testGroup));
-        groupPane.listenToAction('retryTestGroup', (testGroup, repetitionCount) => this._retryCurrentTestGroup(testGroup, repetitionCount));
+        groupPane.listenToAction('retryTestGroup', (testGroup, repetitionCount, notifyOnCompletion) => this._retryCurrentTestGroup(testGroup, repetitionCount, notifyOnCompletion));
+        groupPane.listenToAction('bisectTestGroup', (testGroup, commitSets, repetitionCount, notifyOnCompletion) => this._bisectCurrentTestGroup(testGroup, commitSets, repetitionCount, notifyOnCompletion));
 
         this.part('cause-list').listenToAction('addItem', (repository, revision) => {
             this._associateCommit('cause', repository, revision);
@@ -668,9 +704,9 @@ class AnalysisTaskPage extends PageWithHeading {
         this.renderReplace(this.content('related-tasks-list'), (task && relatedTasks ? relatedTasks : []).map((otherTask) => {
                 let suffix = '';
                 const taskLabel = otherTask.label();
-                if (otherTask.metric() != task.metric() && taskLabel.indexOf(otherTask.metric().label()) < 0)
+                if (otherTask.metric() && otherTask.metric() != task.metric() && taskLabel.indexOf(otherTask.metric().label()) < 0)
                     suffix += ` with "${otherTask.metric().label()}"`;
-                if (otherTask.platform() != task.platform() && taskLabel.indexOf(otherTask.platform().label()) < 0)
+                if (otherTask.platform() && otherTask.platform() != task.platform() && taskLabel.indexOf(otherTask.platform().label()) < 0)
                     suffix += ` on ${otherTask.platform().label()}`;
                 return element('li', [link(taskLabel, this.router().url(`analysis/task/${otherTask.id()}`)), suffix]);
             }));
@@ -751,7 +787,7 @@ class AnalysisTaskPage extends PageWithHeading {
             newChangeType = null;
 
         const updateRendering = () => {
-            this._chartPane.didUpdateAnnotations();
+            this.part('chart-pane').didUpdateAnnotations();
             this.enqueueToRender();
         };
         return this._task.updateChangeType(newChangeType).then(updateRendering, (error) => {
@@ -783,19 +819,38 @@ class AnalysisTaskPage extends PageWithHeading {
         });
     }
 
-    _retryCurrentTestGroup(testGroup, repetitionCount)
+    _retryCurrentTestGroup(testGroup, repetitionCount, notifyOnCompletion)
     {
-        const newName = this._createRetryNameForTestGroup(testGroup.name());
+        const existingNames = (this._testGroups || []).map((group) => group.name());
+        const newName = CommitSet.createNameWithoutCollision(testGroup.name(), new Set(existingNames));
         const commitSetList = testGroup.requestedCommitSets();
         const platform = this._task.platform() || testGroup.platform();
-        return TestGroup.createWithCustomConfiguration(this._task, platform, testGroup.test(), newName, repetitionCount, commitSetList)
+        return TestGroup.createWithCustomConfiguration(this._task, platform, testGroup.test(), newName, repetitionCount, commitSetList, notifyOnCompletion)
             .then(this._didFetchTestGroups.bind(this), function (error) {
             alert('Failed to create a new test group: ' + error);
         });
-        return this._createTestGroupAfterVerifyingCommitSetList(newName, repetitionCount, commitSetMap);
     }
 
-    _createTestGroupAfterVerifyingCommitSetList(testGroupName, repetitionCount, commitSetMap)
+    async _bisectCurrentTestGroup(testGroup, commitSets, repetitionCount, notifyOnCompletion)
+    {
+        console.assert(testGroup.task());
+        const existingTestGroupNames = new Set((this._testGroups || []).map((testGroup) => testGroup.name()));
+
+        for (let i = 1; i < commitSets.length; i++) {
+            const previousCommitSet = commitSets[i - 1];
+            const currentCommitSet = commitSets[i];
+            const testGroupName = CommitSet.createNameWithoutCollision(CommitSet.diff(previousCommitSet, currentCommitSet), existingTestGroupNames);
+            try {
+                const testGroups = await TestGroup.createAndRefetchTestGroups(testGroup.task(), testGroupName, repetitionCount, [previousCommitSet, currentCommitSet], notifyOnCompletion);
+                await this._didFetchTestGroups(testGroups);
+            } catch(error) {
+                alert('Failed to create a new test group: ' + error);
+                break;
+            }
+        }
+    }
+
+    _createTestGroupAfterVerifyingCommitSetList(testGroupName, repetitionCount, commitSetMap, notifyOnCompletion)
     {
         if (this._hasDuplicateTestGroupName(testGroupName)) {
             alert(`There is already a test group named "${testGroupName}"`);
@@ -821,13 +876,13 @@ class AnalysisTaskPage extends PageWithHeading {
         for (let label in commitSetMap)
             commitSets.push(commitSetMap[label]);
 
-        return TestGroup.createAndRefetchTestGroups(this._task, testGroupName, repetitionCount, commitSets)
+        return TestGroup.createAndRefetchTestGroups(this._task, testGroupName, repetitionCount, commitSets, notifyOnCompletion)
             .then(this._didFetchTestGroups.bind(this), function (error) {
             alert('Failed to create a new test group: ' + error);
         });
     }
 
-    _createCustomTestGroup(repetitionCount, testGroupName, commitSets, platform, test)
+    _createCustomTestGroup(repetitionCount, testGroupName, commitSets, platform, test, notifyOnCompletion)
     {
         console.assert(this._task.isCustom());
         if (this._hasDuplicateTestGroupName(testGroupName)) {
@@ -835,28 +890,10 @@ class AnalysisTaskPage extends PageWithHeading {
             return;
         }
 
-        TestGroup.createWithCustomConfiguration(this._task, platform, test, testGroupName, repetitionCount, commitSets)
+        TestGroup.createWithCustomConfiguration(this._task, platform, test, testGroupName, repetitionCount, commitSets, notifyOnCompletion)
             .then(this._didFetchTestGroups.bind(this), function (error) {
             alert('Failed to create a new test group: ' + error);
         });
-    }
-
-    _createRetryNameForTestGroup(name)
-    {
-        var nameWithNumberMatch = name.match(/(.+?)\s*\(\s*(\d+)\s*\)\s*$/);
-        var number = 1;
-        if (nameWithNumberMatch) {
-            name = nameWithNumberMatch[1];
-            number = parseInt(nameWithNumberMatch[2]);
-        }
-
-        var newName;
-        do {
-            number++;
-            newName = `${name} (${number})`;
-        } while (this._hasDuplicateTestGroupName(newName));
-
-        return newName;
     }
 
     _hasDuplicateTestGroupName(name)

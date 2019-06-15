@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   The following steps are taken:
@@ -12,7 +12,7 @@ info: >
   2. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var subarray = TypedArray.prototype.subarray;

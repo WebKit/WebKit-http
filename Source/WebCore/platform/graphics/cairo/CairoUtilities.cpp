@@ -40,11 +40,12 @@
 #include "Region.h"
 #include <wtf/Assertions.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/UniqueArray.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(EGL) && USE(LIBEPOXY)
-#include <epoxy/egl.h>
+#include "EpoxyEGL.h"
 #endif
 #include <cairo-gl.h>
 #endif
@@ -163,37 +164,37 @@ static cairo_operator_t toCairoCompositeOperator(CompositeOperator op)
 cairo_operator_t toCairoOperator(CompositeOperator op, BlendMode blendOp)
 {
     switch (blendOp) {
-    case BlendModeNormal:
+    case BlendMode::Normal:
         return toCairoCompositeOperator(op);
-    case BlendModeMultiply:
+    case BlendMode::Multiply:
         return CAIRO_OPERATOR_MULTIPLY;
-    case BlendModeScreen:
+    case BlendMode::Screen:
         return CAIRO_OPERATOR_SCREEN;
-    case BlendModeOverlay:
+    case BlendMode::Overlay:
         return CAIRO_OPERATOR_OVERLAY;
-    case BlendModeDarken:
+    case BlendMode::Darken:
         return CAIRO_OPERATOR_DARKEN;
-    case BlendModeLighten:
+    case BlendMode::Lighten:
         return CAIRO_OPERATOR_LIGHTEN;
-    case BlendModeColorDodge:
+    case BlendMode::ColorDodge:
         return CAIRO_OPERATOR_COLOR_DODGE;
-    case BlendModeColorBurn:
+    case BlendMode::ColorBurn:
         return CAIRO_OPERATOR_COLOR_BURN;
-    case BlendModeHardLight:
+    case BlendMode::HardLight:
         return CAIRO_OPERATOR_HARD_LIGHT;
-    case BlendModeSoftLight:
+    case BlendMode::SoftLight:
         return CAIRO_OPERATOR_SOFT_LIGHT;
-    case BlendModeDifference:
+    case BlendMode::Difference:
         return CAIRO_OPERATOR_DIFFERENCE;
-    case BlendModeExclusion:
+    case BlendMode::Exclusion:
         return CAIRO_OPERATOR_EXCLUSION;
-    case BlendModeHue:
+    case BlendMode::Hue:
         return CAIRO_OPERATOR_HSL_HUE;
-    case BlendModeSaturation:
+    case BlendMode::Saturation:
         return CAIRO_OPERATOR_HSL_SATURATION;
-    case BlendModeColor:
+    case BlendMode::Color:
         return CAIRO_OPERATOR_HSL_COLOR;
-    case BlendModeLuminosity:
+    case BlendMode::Luminosity:
         return CAIRO_OPERATOR_HSL_LUMINOSITY;
     default:
         return CAIRO_OPERATOR_OVER;
@@ -254,7 +255,7 @@ void drawPatternToCairoContext(cairo_t* cr, cairo_surface_t* image, const IntSiz
     // are drawing a repeated pattern. This means that, assuming that (w, h) is the size of the pattern, samplig it at (x, y) is the same
     // than sampling it at (x mod w, y mod h), so we transform the translation component of the pattern matrix in that way.
 
-    cairo_matrix_t patternMatrix = cairo_matrix_t(patternTransform);
+    cairo_matrix_t patternMatrix = toCairoMatrix(patternTransform);
     // dx and dy are added here as well to compensate the previous translation of the destination rectangle.
     double phaseOffsetX = phase.x() + tileRect.x() * patternTransform.a() + dx;
     double phaseOffsetY = phase.y() + tileRect.y() * patternTransform.d() + dy;
@@ -340,7 +341,7 @@ void flipImageSurfaceVertically(cairo_surface_t* surface)
     int halfHeight = size.height() / 2;
 
     uint8_t* source = static_cast<uint8_t*>(cairo_image_surface_get_data(surface));
-    std::unique_ptr<uint8_t[]> tmp = std::make_unique<uint8_t[]>(stride);
+    auto tmp = makeUniqueArray<uint8_t>(stride);
 
     for (int i = 0; i < halfHeight; ++i) {
         uint8_t* top = source + (i * stride);
@@ -383,6 +384,11 @@ RefPtr<cairo_region_t> toCairoRegion(const Region& region)
         cairo_region_union_rectangle(cairoRegion.get(), &cairoRect);
     }
     return cairoRegion;
+}
+
+cairo_matrix_t toCairoMatrix(const AffineTransform& transform)
+{
+    return cairo_matrix_t { transform.a(), transform.b(), transform.c(), transform.d(), transform.e(), transform.f() };
 }
 
 } // namespace WebCore

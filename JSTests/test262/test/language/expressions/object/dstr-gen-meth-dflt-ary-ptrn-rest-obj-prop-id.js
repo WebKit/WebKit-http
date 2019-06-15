@@ -5,7 +5,7 @@
 description: Rest element containing an object binding pattern (generator method (default parameter))
 esid: sec-generator-function-definitions-runtime-semantics-propertydefinitionevaluation
 es6id: 14.4.13
-features: [destructuring-binding, default-parameters]
+features: [generators, destructuring-binding, default-parameters]
 flags: [generated]
 info: |
     GeneratorMethod :
@@ -56,6 +56,7 @@ info: |
              BindingPattern with A and environment as the arguments.
        [...]
 ---*/
+let length = "outer";
 
 var callCount = 0;
 var obj = {
@@ -66,9 +67,7 @@ var obj = {
     assert.sameValue(y, undefined);
     assert.sameValue(z, 3);
 
-    assert.throws(ReferenceError, function() {
-      length;
-    });
+    assert.sameValue(length, "outer", "the length prop is not set as a binding name");
     callCount = callCount + 1;
   }
 };

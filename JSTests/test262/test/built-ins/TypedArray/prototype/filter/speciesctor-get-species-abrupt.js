@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.filter
 description: >
   Returns abrupt from get @@species on found constructor
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -25,7 +25,7 @@ info: >
   5. Let S be ? Get(C, @@species).
   ...
 includes: [testTypedArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

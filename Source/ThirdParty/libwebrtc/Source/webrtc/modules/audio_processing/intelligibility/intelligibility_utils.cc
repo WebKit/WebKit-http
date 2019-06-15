@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/intelligibility/intelligibility_utils.h"
+#include "modules/audio_processing/intelligibility/intelligibility_utils.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <limits>
 
-#include "webrtc/base/safe_minmax.h"
+#include "rtc_base/numerics/safe_minmax.h"
 
 namespace webrtc {
 
@@ -37,11 +37,11 @@ float UpdateFactor(float target, float current, float limit) {
 
 }  // namespace
 
-template<typename T>
+template <typename T>
 PowerEstimator<T>::PowerEstimator(size_t num_freqs, float decay)
     : power_(num_freqs, 0.f), decay_(decay) {}
 
-template<typename T>
+template <typename T>
 void PowerEstimator<T>::Step(const T* data) {
   for (size_t i = 0; i < power_.size(); ++i) {
     power_[i] = decay_ * power_[i] +

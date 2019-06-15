@@ -23,23 +23,23 @@
 #include "JSDOMConvertStrings.h"
 
 #include "JSDOMExceptionHandling.h"
-#include <heap/HeapInlines.h>
-#include <runtime/JSCJSValueInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/JSCJSValueInlines.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/CharacterNames.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 static inline String stringToByteString(ExecState& state, JSC::ThrowScope& scope, String&& string)
 {
-    if (!string.containsOnlyLatin1()) {
+    if (!string.isAllLatin1()) {
         throwTypeError(&state, scope);
         return { };
     }
 
-    return string;
+    return WTFMove(string);
 }
 
 String identifierToByteString(ExecState& state, const Identifier& identifier)
@@ -78,7 +78,7 @@ static inline String stringToUSVString(String&& string)
 {
     // Fast path for the case where there are no unpaired surrogates.
     if (!hasUnpairedSurrogate(string))
-        return string;
+        return WTFMove(string);
 
     // Slow path: http://heycam.github.io/webidl/#dfn-obtain-unicode
     // Replaces unpaired surrogates with the replacement character.

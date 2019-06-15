@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.sort
 description: >
     The SortCompare abstract operation calls ToString() for  identical
     elements (step 14/15)
@@ -10,10 +11,10 @@ author: Thomas Dahlstrom (tdahlstrom@gmail.com)
 
 var counter = 0;
 var object = {
-    toString: function(){
-        counter++;
-        return "";
-    }
+  toString: function() {
+    counter++;
+    return "";
+  }
 };
 
 [object, object].sort();

@@ -8,14 +8,23 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/logging/rtc_event_log/rtc_event_log_factory.h"
+#include "logging/rtc_event_log/rtc_event_log_factory.h"
 
-#include "webrtc/logging/rtc_event_log/rtc_event_log.h"
+#include <utility>
+
+#include "logging/rtc_event_log/rtc_event_log.h"
 
 namespace webrtc {
 
-std::unique_ptr<RtcEventLog> RtcEventLogFactory::CreateRtcEventLog() {
-  return RtcEventLog::Create();
+std::unique_ptr<RtcEventLog> RtcEventLogFactory::CreateRtcEventLog(
+    RtcEventLog::EncodingType encoding_type) {
+  return RtcEventLog::Create(encoding_type);
+}
+
+std::unique_ptr<RtcEventLog> RtcEventLogFactory::CreateRtcEventLog(
+    RtcEventLog::EncodingType encoding_type,
+    std::unique_ptr<rtc::TaskQueue> task_queue) {
+  return RtcEventLog::Create(encoding_type, std::move(task_queue));
 }
 
 std::unique_ptr<RtcEventLogFactoryInterface> CreateRtcEventLogFactory() {

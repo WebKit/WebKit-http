@@ -35,7 +35,6 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "InputTypeNames.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
@@ -47,6 +46,7 @@ using namespace HTMLNames;
 static const int monthDefaultStep = 1;
 static const int monthDefaultStepBase = 0;
 static const int monthStepScaleFactor = 1;
+static const StepRange::StepDescription monthStepDescription { monthDefaultStep, monthDefaultStepBase, monthStepScaleFactor, StepRange::ParsedStepValueShouldBeInteger };
 
 const AtomicString& MonthInputType::formControlType() const
 {
@@ -60,8 +60,9 @@ DateComponents::Type MonthInputType::dateType() const
 
 double MonthInputType::valueAsDate() const
 {
+    ASSERT(element());
     DateComponents date;
-    if (!parseToDateComponents(element().value(), &date))
+    if (!parseToDateComponents(element()->value(), &date))
         return DateComponents::invalidMilliseconds();
     double msec = date.millisecondsSinceEpoch();
     ASSERT(std::isfinite(msec));
@@ -78,7 +79,7 @@ String MonthInputType::serializeWithMilliseconds(double value) const
 
 Decimal MonthInputType::defaultValueForStepUp() const
 {
-    double current = currentTimeMS();
+    double current = WallTime::now().secondsSinceEpoch().milliseconds();
     int offset = calculateLocalTimeOffset(current).offset / msPerMinute;
     current += offset * msPerMinute;
 
@@ -91,13 +92,12 @@ Decimal MonthInputType::defaultValueForStepUp() const
 
 StepRange MonthInputType::createStepRange(AnyStepHandling anyStepHandling) const
 {
-    static NeverDestroyed<const StepRange::StepDescription> stepDescription(monthDefaultStep, monthDefaultStepBase, monthStepScaleFactor, StepRange::ParsedStepValueShouldBeInteger);
-
-    const Decimal stepBase = parseToNumber(element().attributeWithoutSynchronization(minAttr), Decimal::fromDouble(monthDefaultStepBase));
-    const Decimal minimum = parseToNumber(element().attributeWithoutSynchronization(minAttr), Decimal::fromDouble(DateComponents::minimumMonth()));
-    const Decimal maximum = parseToNumber(element().attributeWithoutSynchronization(maxAttr), Decimal::fromDouble(DateComponents::maximumMonth()));
-    const Decimal step = StepRange::parseStep(anyStepHandling, stepDescription, element().attributeWithoutSynchronization(stepAttr));
-    return StepRange(stepBase, RangeLimitations::Valid, minimum, maximum, step, stepDescription);
+    ASSERT(element());
+    const Decimal stepBase = parseToNumber(element()->attributeWithoutSynchronization(minAttr), Decimal::fromDouble(monthDefaultStepBase));
+    const Decimal minimum = parseToNumber(element()->attributeWithoutSynchronization(minAttr), Decimal::fromDouble(DateComponents::minimumMonth()));
+    const Decimal maximum = parseToNumber(element()->attributeWithoutSynchronization(maxAttr), Decimal::fromDouble(DateComponents::maximumMonth()));
+    const Decimal step = StepRange::parseStep(anyStepHandling, monthStepDescription, element()->attributeWithoutSynchronization(stepAttr));
+    return StepRange(stepBase, RangeLimitations::Valid, minimum, maximum, step, monthStepDescription);
 }
 
 Decimal MonthInputType::parseToNumber(const String& src, const Decimal& defaultValue) const

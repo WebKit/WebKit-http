@@ -42,6 +42,13 @@ Buildbot = function(baseURL, queuesInfo, options)
     this._needsAuthentication = typeof options === "object" && options.needsAuthentication === true;
     this._authenticationStatus = Buildbot.AuthenticationStatus.Unauthenticated;
 
+    this.VERSION_LESS_THAN_09 = options && options.USE_BUILDBOT_VERSION_LESS_THAN_09;
+
+    if (!this.VERSION_LESS_THAN_09) {
+        this._builderNameToIDMap = {};
+        this._computeBuilderNameToIDMap();
+    }
+
     for (var id in queuesInfo) {
         if (queuesInfo[id].combinedQueues) {
             for (var combinedQueueID in queuesInfo[id].combinedQueues)
@@ -146,19 +153,35 @@ Buildbot.prototype = {
         }
     },
 
+    // FIXME: Remove this logic after <https://github.com/buildbot/buildbot/issues/3465> is fixed.
+    _computeBuilderNameToIDMap: function()
+    {
+        JSON.load(this.baseURL + "api/v2/builders", function(data) {
+            if (!data || !(data.builders instanceof Array))
+                return;
+
+            for (var builder of data.builders)
+                this._builderNameToIDMap[builder.name] = builder.builderid;
+        }.bind(this));
+    },
+
     buildPageURLForIteration: function(iteration)
     {
-        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id;
+        if (this.VERSION_LESS_THAN_09)
+            return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id;
+
+        // FIXME: Remove this._builderNameToIDMap lookup after <https://github.com/buildbot/buildbot/issues/3465> is fixed.
+        return this.baseURL + "#/builders/" + encodeURIComponent(this._builderNameToIDMap[iteration.queue.id]) + "/builds/" + iteration.id;
     },
 
     javaScriptCoreTestFailuresURLForIteration: function(iteration, name)
     {
-        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/" + name + "/logs/json/text";
+        return this.buildPageURLForIteration(iteration) + "/steps/" + name + "/logs/json/text";
     },
 
     javaScriptCoreTestStdioUrlForIteration: function(iteration, name)
     {
-        return this.baseURL + "builders/" + encodeURIComponent(iteration.queue.id) + "/builds/" + iteration.id + "/steps/" + name + "/logs/stdio";
+        return this.buildPageURLForIteration(iteration) + "/steps/" + name + "/logs/stdio";
     },
 
     layoutTestResultsDirectoryURLForIteration: function(iteration)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,7 +38,7 @@
 #include <atomic>
 #include <dlfcn.h>
 #include <mutex>
-#include <wtf/NeverDestroyed.h>
+#include <wtf/ProcessPrivilege.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #include <CFNetwork/CFURLConnectionPriv.h>
@@ -99,14 +99,19 @@ static OSStatus webSecItemCopyMatching(CFDictionaryRef query, CFTypeRef* result)
     return response->resultCode();
 }
 
-static OSStatus webSecItemAdd(CFDictionaryRef query, CFTypeRef* result)
+static OSStatus webSecItemAdd(CFDictionaryRef query, CFTypeRef* unusedResult)
 {
+    // Return value of SecItemAdd should be ignored for WebKit use cases. WebKit can't serialize SecKeychainItemRef, so we do not use it.
+    // If someone passes a result value to be populated, the API contract is being violated so we should assert.
+    if (unusedResult) {
+        ASSERT_NOT_REACHED();
+        return errSecParam;
+    }
+
     auto response = sendSecItemRequest(SecItemRequestData::Add, query);
     if (!response)
         return errSecInteractionNotAllowed;
 
-    if (result)
-        *result = response->resultObject().leakRef();
     return response->resultCode();
 }
 

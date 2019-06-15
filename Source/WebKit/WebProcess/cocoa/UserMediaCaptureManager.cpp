@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,9 +40,8 @@
 #include <WebCore/WebAudioBufferList.h>
 #include <WebCore/WebAudioSourceProviderAVFObjC.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static uint64_t nextSessionID()
 {
@@ -75,8 +74,9 @@ public:
     const RealtimeMediaSourceSettings& settings() const final { return m_settings; }
     void setSettings(RealtimeMediaSourceSettings&& settings)
     {
+        auto changed = m_settings.difference(settings);
         m_settings = WTFMove(settings);
-        settingsDidChange();
+        settingsDidChange(changed);
     }
 
     const CAAudioStreamDescription& description() const { return m_description; }
@@ -152,8 +152,8 @@ private:
     Deque<ApplyConstraintsCallback> m_pendingApplyConstraintsCallbacks;
 };
 
-UserMediaCaptureManager::UserMediaCaptureManager(WebProcess* process)
-    : m_process(*process)
+UserMediaCaptureManager::UserMediaCaptureManager(WebProcess& process)
+    : m_process(process)
 {
     m_process.addMessageReceiver(Messages::UserMediaCaptureManager::messageReceiverName(), *this);
 }
@@ -175,20 +175,19 @@ void UserMediaCaptureManager::initialize(const WebProcessCreationParameters& par
         RealtimeMediaSourceCenter::singleton().setAudioFactory(*this);
 }
 
-WebCore::CaptureSourceOrError UserMediaCaptureManager::createCaptureSource(const String& deviceID, WebCore::RealtimeMediaSource::Type sourceType, const WebCore::MediaConstraints* constraints)
+WebCore::CaptureSourceOrError UserMediaCaptureManager::createCaptureSource(const CaptureDevice& device, WebCore::RealtimeMediaSource::Type sourceType, const WebCore::MediaConstraints* constraints)
 {
     if (!constraints)
         return { };
 
     uint64_t id = nextSessionID();
-    bool succeeded;
-
     RealtimeMediaSourceSettings settings;
     String errorMessage;
-    if (!m_process.sendSync(Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints(id, deviceID, sourceType, *constraints), Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints::Reply(succeeded, errorMessage, settings), 0))
+    bool succeeded;
+    if (!m_process.sendSync(Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints(id, device, sourceType, *constraints), Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints::Reply(succeeded, errorMessage, settings), 0))
         return WTFMove(errorMessage);
 
-    auto source = adoptRef(*new Source(String::number(id), sourceType, emptyString(), id, *this));
+    auto source = adoptRef(*new Source(String::number(id), sourceType, settings.label(), id, *this));
     source->setSettings(WTFMove(settings));
     m_sources.set(id, source.copyRef());
     return WebCore::CaptureSourceOrError(WTFMove(source));
@@ -198,6 +197,12 @@ void UserMediaCaptureManager::sourceStopped(uint64_t id)
 {
     ASSERT(m_sources.contains(id));
     m_sources.get(id)->stop();
+}
+
+void UserMediaCaptureManager::captureFailed(uint64_t id)
+{
+    ASSERT(m_sources.contains(id));
+    m_sources.get(id)->captureFailed();
 }
 
 void UserMediaCaptureManager::sourceMutedChanged(uint64_t id, bool muted)

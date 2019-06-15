@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,9 +33,15 @@ namespace JSC {
 class JSArrayBufferPrototype;
 class GetterSetter;
 
-class JSArrayBufferConstructor : public InternalFunction {
+class JSArrayBufferConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
+
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.arrayBufferConstructorSpace;
+    }
 
 protected:
     JSArrayBufferConstructor(VM&, Structure*, ArrayBufferSharingMode);
@@ -49,10 +55,6 @@ public:
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
     
     ArrayBufferSharingMode sharingMode() const { return m_sharingMode; }
-
-protected:
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 
 private:
     ArrayBufferSharingMode m_sharingMode;

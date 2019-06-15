@@ -15,7 +15,8 @@
 
 #include <arm_neon.h>
 
-#include "webrtc/base/checks.h"
+#include "modules/audio_coding/codecs/isac/fix/source/filterbank_internal.h"
+#include "rtc_base/checks.h"
 
 void WebRtcIsacfix_AllpassFilter2FixDec16Neon(
     int16_t* data_ch1,  // Input and output in channel 1, in Q0

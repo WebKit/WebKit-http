@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef DistantLightSource_h
-#define DistantLightSource_h
+#pragma once
 
 #include "LightSource.h"
 #include <wtf/Ref.h>
@@ -35,16 +34,17 @@ public:
         return adoptRef(*new DistantLightSource(azimuth, elevation));
     }
 
+    // These are in degrees.
     float azimuth() const { return m_azimuth; }
     float elevation() const { return m_elevation; }
 
     bool setAzimuth(float) override;
     bool setElevation(float) override;
 
-    void initPaintingData(PaintingData&) override;
-    void updatePaintingData(PaintingData&, int x, int y, float z) override;
+    void initPaintingData(const FilterEffect&, PaintingData&) override;
+    ComputedLightingData computePixelLightingData(const PaintingData&, int x, int y, float z) const final;
 
-    TextStream& externalRepresentation(TextStream&) const override;
+    WTF::TextStream& externalRepresentation(WTF::TextStream&) const override;
 
 private:
     DistantLightSource(float azimuth, float elevation)
@@ -60,4 +60,4 @@ private:
 
 } // namespace WebCore
 
-#endif // DistantLightSource_h
+SPECIALIZE_TYPE_TRAITS_LIGHTSOURCE(DistantLightSource, LS_DISTANT)

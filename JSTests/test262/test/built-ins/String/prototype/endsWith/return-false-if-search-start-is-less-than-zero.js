@@ -4,7 +4,7 @@
 es6id: 21.1.3.6
 description: >
   Returns false if search start is less than 0.
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   ...
@@ -19,6 +19,7 @@ info: >
   ...
 
   Note: (min(max(pos, 0), len) - searchString.length) < 0;
+features: [String.prototype.endsWith]
 ---*/
 
 assert.sameValue(

@@ -58,7 +58,7 @@ public:
     FloatSize fixedSize(const RenderElement*);
 
     bool isPending() const;
-    bool knownToBeOpaque(const RenderElement*) const;
+    bool knownToBeOpaque(const RenderElement&) const;
 
     void loadSubimages(CachedResourceLoader&, const ResourceLoaderOptions&);
 
@@ -94,7 +94,7 @@ private:
         {
         }
 
-        virtual ~FilterSubimageObserverProxy() { }
+        virtual ~FilterSubimageObserverProxy() = default;
         void imageChanged(CachedImage*, const IntRect* = nullptr) final;
         void setReady(bool ready) { m_ready = ready; }
     private:

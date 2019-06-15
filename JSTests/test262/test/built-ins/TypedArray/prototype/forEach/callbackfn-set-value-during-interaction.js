@@ -5,7 +5,7 @@
 esid: sec-%typedarray%.prototype.foreach
 description: >
   Integer indexed values changed during iteration
-info: >
+info: |
   22.2.3.12 %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.forEach is a distinct function that implements the same
@@ -13,7 +13,7 @@ info: >
   this object's [[ArrayLength]] internal slot is accessed in place of performing
   a [[Get]] of "length"
 includes: [testTypedArray.js]
-features: [Reflect.set]
+features: [Reflect.set, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

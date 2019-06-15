@@ -23,16 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "PlatformSpeechSynthesizer.h"
+#import "config.h"
+#import "PlatformSpeechSynthesizer.h"
 
-#include "PlatformSpeechSynthesisUtterance.h"
-#include "PlatformSpeechSynthesisVoice.h"
-#include "WebCoreSystemInterface.h"
-#include <AppKit/NSSpeechSynthesizer.h>
-#include <wtf/RetainPtr.h>
+#if ENABLE(SPEECH_SYNTHESIS) && PLATFORM(MAC)
 
-#if ENABLE(SPEECH_SYNTHESIS)
+#import "PlatformSpeechSynthesisUtterance.h"
+#import "PlatformSpeechSynthesisVoice.h"
+#import <AppKit/NSSpeechSynthesizer.h>
+#import <pal/spi/mac/SpeechSynthesisSPI.h>
+#import <wtf/RetainPtr.h>
 
 @interface WebSpeechSynthesisWrapper : NSObject<NSSpeechSynthesizerDelegate>
 {
@@ -214,9 +214,25 @@ PlatformSpeechSynthesizer::~PlatformSpeechSynthesizer()
     [m_platformSpeechWrapper.get() invalidate];
 }
 
+static NSArray *speechSynthesisGetVoiceIdentifiers()
+{
+    // Get all the voices offered by TTS.
+    // By default speech only returns "premium" voices, which does not include all the
+    // international voices. This allows us to offer speech synthesis for all supported languages.
+    return CFBridgingRelease(CopySpeechSynthesisVoicesForMode((__bridge CFArrayRef)@[ @"VoiceGroupDefault", @"VoiceGroupCompact" ]));
+}
+
+static NSString *speechSynthesisGetDefaultVoiceIdentifierForLocale(NSLocale *userLocale)
+{
+    if (!userLocale)
+        return nil;
+
+    return (__bridge NSString *)GetIdentifierStringForPreferredVoiceInListWithLocale((__bridge CFArrayRef)speechSynthesisGetVoiceIdentifiers(), (__bridge CFLocaleRef)userLocale);
+}
+
 void PlatformSpeechSynthesizer::initializeVoiceList()
 {
-    NSArray *availableVoices = wkSpeechSynthesisGetVoiceIdentifiers();
+    NSArray *availableVoices = speechSynthesisGetVoiceIdentifiers();
     NSUInteger count = [availableVoices count];
     for (NSUInteger k = 0; k < count; k++) {
         NSString *voiceName = [availableVoices objectAtIndex:k];
@@ -226,7 +242,7 @@ void PlatformSpeechSynthesizer::initializeVoiceList()
         NSString *name = [attributes objectForKey:NSVoiceName];
         NSString *language = [attributes objectForKey:NSVoiceLocaleIdentifier];
         NSLocale *locale = [[NSLocale alloc] initWithLocaleIdentifier:language];
-        NSString *defaultVoiceURI = wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale(locale);
+        NSString *defaultVoiceURI = speechSynthesisGetDefaultVoiceIdentifierForLocale(locale);
         [locale release];
 
         // Change to BCP-47 format as defined by spec.
@@ -263,4 +279,4 @@ void PlatformSpeechSynthesizer::cancel()
 
 } // namespace WebCore
 
-#endif // ENABLE(SPEECH_SYNTHESIS)
+#endif // ENABLE(SPEECH_SYNTHESIS) && PLATFORM(MAC)

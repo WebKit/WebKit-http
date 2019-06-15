@@ -5,7 +5,7 @@
  *                     2000-2001 Simon Hausmann <hausmann@kde.org>
  *                     2000-2001 Dirk Mueller <mueller@kde.org>
  *                     2000 Stefan Schimanski <1Stein@gmx.de>
- * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2008 Eric Seidel <eric@webkit.org>
  *
@@ -27,12 +27,12 @@
 
 #pragma once
 
+#include "AbstractFrame.h"
 #include "AdjustViewSizeOrNot.h"
 #include "FrameTree.h"
 #include "ScrollTypes.h"
 #include "UserScriptTypes.h"
 #include <wtf/HashSet.h>
-#include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/UniqueRef.h>
 
 #if PLATFORM(IOS)
@@ -61,6 +61,7 @@ namespace WebCore {
 
 class CSSAnimationController;
 class Color;
+class DOMWindow;
 class Document;
 class Editor;
 class Element;
@@ -78,7 +79,6 @@ class ImageBuffer;
 class IntPoint;
 class IntRect;
 class IntSize;
-class MainFrame;
 class NavigationScheduler;
 class Node;
 class Page;
@@ -87,6 +87,7 @@ class RenderLayer;
 class RenderView;
 class RenderWidget;
 class ScriptController;
+class SecurityOrigin;
 class Settings;
 class URL;
 class VisiblePosition;
@@ -102,7 +103,7 @@ enum {
 };
 
 enum OverflowScrollAction { DoNotPerformOverflowScroll, PerformOverflowScroll };
-typedef Node* (*NodeQualifier)(const HitTestResult&, Node* terminationNode, IntRect* nodeBounds);
+using NodeQualifier = Function<Node* (const HitTestResult&, Node* terminationNode, IntRect* nodeBounds)>;
 #endif
 
 enum {
@@ -117,7 +118,8 @@ enum {
 };
 typedef unsigned LayerTreeFlags;
 
-class Frame : public ThreadSafeRefCounted<Frame> {
+// FIXME: Rename Frame to LocalFrame and AbstractFrame to Frame.
+class Frame final : public AbstractFrame {
 public:
     WEBCORE_EXPORT static Ref<Frame> create(Page*, HTMLFrameOwnerElement*, FrameLoaderClient*);
 
@@ -132,16 +134,18 @@ public:
         bool useFixedLayout = false, ScrollbarMode = ScrollbarAuto, bool horizontalLock = false,
         ScrollbarMode = ScrollbarAuto, bool verticalLock = false);
 
-    WEBCORE_EXPORT virtual ~Frame();
+    WEBCORE_EXPORT ~Frame();
+
+    WEBCORE_EXPORT DOMWindow* window() const;
 
     void addDestructionObserver(FrameDestructionObserver*);
     void removeDestructionObserver(FrameDestructionObserver*);
 
-    void willDetachPage();
+    WEBCORE_EXPORT void willDetachPage();
     void detachFromPage();
     void disconnectOwnerElement();
 
-    MainFrame& mainFrame() const;
+    Frame& mainFrame() const;
     bool isMainFrame() const { return this == static_cast<void*>(&m_mainFrame); }
 
     Page* page() const;
@@ -171,7 +175,8 @@ public:
 
 // ======== All public functions below this point are candidates to move out of Frame into another class. ========
 
-    void injectUserScripts(UserScriptInjectionTime);
+    WEBCORE_EXPORT void injectUserScripts(UserScriptInjectionTime);
+    WEBCORE_EXPORT void injectUserScriptImmediately(DOMWrapperWorld&, const UserScript&);
     
     WEBCORE_EXPORT String layerTreeAsText(LayerTreeFlags = 0) const;
     WEBCORE_EXPORT String trackedRepaintRectsAsText() const;
@@ -207,7 +212,7 @@ public:
     WEBCORE_EXPORT void setViewportArguments(const ViewportArguments&);
 
     WEBCORE_EXPORT Node* deepestNodeAtLocation(const FloatPoint& viewportLocation);
-    WEBCORE_EXPORT Node* nodeRespondingToClickEvents(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation);
+    WEBCORE_EXPORT Node* nodeRespondingToClickEvents(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, SecurityOrigin* = nullptr);
     WEBCORE_EXPORT Node* nodeRespondingToScrollWheelEvents(const FloatPoint& viewportLocation);
 
     WEBCORE_EXPORT NSArray *wordsInCurrentParagraph() const;
@@ -281,14 +286,24 @@ public:
 
 // ========
 
-protected:
-    Frame(Page&, HTMLFrameOwnerElement*, FrameLoaderClient&);
-    void setMainFrameWasDestroyed();
+    void selfOnlyRef();
+    void selfOnlyDeref();
 
 private:
+    friend class NavigationDisabler;
+
+    Frame(Page&, HTMLFrameOwnerElement*, FrameLoaderClient&);
+
+    void dropChildren();
+
+    bool isLocalFrame() const final { return true; }
+    bool isRemoteFrame() const final { return false; }
+
+    AbstractDOMWindow* virtualWindow() const final;
+
     HashSet<FrameDestructionObserver*> m_destructionObservers;
 
-    MainFrame& m_mainFrame;
+    Frame& m_mainFrame;
     Page* m_page;
     const RefPtr<Settings> m_settings;
     mutable FrameTree m_treeNode;
@@ -308,9 +323,9 @@ private:
     RetainPtr<NSArray> m_dataDetectionResults;
 #endif
 #if PLATFORM(IOS)
-    void betterApproximateNode(const IntPoint& testPoint, NodeQualifier, Node*& best, Node* failedNode, IntPoint& bestPoint, IntRect& bestRect, const IntRect& testRect);
+    void betterApproximateNode(const IntPoint& testPoint, const NodeQualifier&, Node*& best, Node* failedNode, IntPoint& bestPoint, IntRect& bestRect, const IntRect& testRect);
     bool hitTestResultAtViewportLocation(const FloatPoint& viewportLocation, HitTestResult&, IntPoint& center);
-    Node* qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, NodeQualifier, bool shouldApproximate);
+    Node* qualifyingNodeAtViewportLocation(const FloatPoint& viewportLocation, FloatPoint& adjustedViewportLocation, const NodeQualifier&, bool shouldApproximate);
 
     void overflowAutoScrollTimerFired();
     void startOverflowAutoScroll(const IntPoint&);
@@ -331,8 +346,9 @@ private:
     float m_textZoomFactor;
 
     int m_activeDOMObjectsAndAnimationsSuspendedCount;
-    bool m_mainFrameWasDestroyed { false };
     bool m_documentIsBeingReplaced { false };
+    unsigned m_navigationDisableCount { 0 };
+    unsigned m_selfOnlyRefCount { 0 };
 
 protected:
     UniqueRef<EventHandler> m_eventHandler;
@@ -378,15 +394,13 @@ inline void Frame::detachFromPage()
     m_page = nullptr;
 }
 
-inline MainFrame& Frame::mainFrame() const
+inline Frame& Frame::mainFrame() const
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!m_mainFrameWasDestroyed);
     return m_mainFrame;
 }
 
-inline void Frame::setMainFrameWasDestroyed()
-{
-    m_mainFrameWasDestroyed = false;
-}
-
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Frame)
+    static bool isType(const WebCore::AbstractFrame& frame) { return frame.isLocalFrame(); }
+SPECIALIZE_TYPE_TRAITS_END()

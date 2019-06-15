@@ -42,11 +42,7 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/Threading.h>
 
-#if PLATFORM(IOS)
-#include <MacErrors.h>
-#elif PLATFORM(MAC)
-#include <CoreServices/CoreServices.h>
-#endif
+static const SInt32 fileNotFoundError = -43;
 
 #if PLATFORM(COCOA)
 extern "C" void CFURLRequestSetHTTPRequestBody(CFMutableURLRequestRef mutableHTTPRequest, CFDataRef httpBody);
@@ -147,13 +143,13 @@ static bool advanceCurrentStream(FormStreamFields* form)
         form->currentData = WTFMove(data);
     } else {
         // Check if the file has been changed or not if required.
-        if (isValidFileTime(nextInput.m_expectedFileModificationTime)) {
+        if (FileSystem::isValidFileTime(nextInput.m_expectedFileModificationTime)) {
             time_t fileModificationTime;
-            if (!getFileModificationTime(nextInput.m_filename, fileModificationTime) || fileModificationTime != static_cast<time_t>(nextInput.m_expectedFileModificationTime))
+            if (!FileSystem::getFileModificationTime(nextInput.m_filename, fileModificationTime) || fileModificationTime != static_cast<time_t>(nextInput.m_expectedFileModificationTime))
                 return false;
         }
         const String& path = nextInput.m_shouldGenerateFile ? nextInput.m_generatedFilename : nextInput.m_filename;
-        form->currentStream = CFReadStreamCreateWithFile(0, pathAsURL(path).get());
+        form->currentStream = CFReadStreamCreateWithFile(0, FileSystem::pathAsURL(path).get());
         if (!form->currentStream) {
             // The file must have been removed or become unreadable.
             return false;
@@ -241,7 +237,7 @@ static Boolean formOpen(CFReadStreamRef, CFStreamError* error, Boolean* openComp
 #if PLATFORM(WIN)
         ENOENT;
 #else
-        fnfErr;
+        fileNotFoundError;
 #endif
     return opened;
 }
@@ -303,8 +299,8 @@ static CFTypeRef formCopyProperty(CFReadStreamRef, CFStringRef propertyName, voi
     FormStreamFields* form = static_cast<FormStreamFields*>(context);
 
     if (kCFCompareEqualTo == CFStringCompare(propertyName, formDataPointerPropertyName, 0)) {
-        long formDataAsNumber = static_cast<long>(reinterpret_cast<intptr_t>(form->formData.get()));
-        return CFNumberCreate(0, kCFNumberLongType, &formDataAsNumber);
+        long long formDataAsNumber = static_cast<long long>(reinterpret_cast<intptr_t>(form->formData.get()));
+        return CFNumberCreate(0, kCFNumberLongLongType, &formDataAsNumber);
     }
 
     if (kCFCompareEqualTo == CFStringCompare(propertyName, formDataStreamLengthPropertyName(), 0))
@@ -379,7 +375,7 @@ RetainPtr<CFReadStreamRef> createHTTPBodyCFReadStream(FormData& formData)
                 continue;
             }
             long long fileSize;
-            if (getFileSize(element.m_shouldGenerateFile ? element.m_generatedFilename : element.m_filename, fileSize))
+            if (FileSystem::getFileSize(element.m_shouldGenerateFile ? element.m_generatedFilename : element.m_filename, fileSize))
                 length += fileSize;
         }
     }

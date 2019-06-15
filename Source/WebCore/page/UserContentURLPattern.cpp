@@ -125,7 +125,7 @@ bool UserContentURLPattern::matches(const URL& test) const
 
 bool UserContentURLPattern::matchesHost(const URL& test) const
 {
-    const String& host = test.host();
+    auto host = test.host();
     if (equalIgnoringASCIICase(host, m_host))
         return true;
 
@@ -138,7 +138,7 @@ bool UserContentURLPattern::matchesHost(const URL& test) const
         return true;
 
     // Check if the domain is a subdomain of our host.
-    if (!host.endsWith(m_host, false))
+    if (!host.endsWithIgnoringASCIICase(m_host))
         return false;
 
     ASSERT(host.length() > m_host.length());

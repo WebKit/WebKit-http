@@ -1,3 +1,4 @@
 
-FAIL Fetch in service worker: referrer with origin-when-cross-origin policy undefined is not an object (evaluating 'navigator.serviceWorker.getRegistration')
+PASS Fetch in service worker: referrer with origin-when-cross-origin policy 
+FAIL Request's referrer is origin promise_test: Unhandled rejection with value: object "TypeError: A server with the specified hostname could not be found."
 

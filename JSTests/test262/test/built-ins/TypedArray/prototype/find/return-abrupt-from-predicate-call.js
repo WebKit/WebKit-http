@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.find
-es6id: 22.2.3.10
 description: >
   Return abrupt from predicate call.
-info: >
+info: |
   22.2.3.10 %TypedArray%.prototype.find (predicate [ , thisArg ] )
 
   %TypedArray%.prototype.find is a distinct function that implements the same
@@ -25,6 +24,7 @@ info: >
     c. Let testResult be ToBoolean(? Call(predicate, T, « kValue, k, O »)).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

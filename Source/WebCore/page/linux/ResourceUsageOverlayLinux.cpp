@@ -35,7 +35,7 @@
 #include "Page.h"
 #include "RenderTheme.h"
 #include "ResourceUsageThread.h"
-#include <runtime/VM.h>
+#include <JavaScriptCore/VM.h>
 
 namespace WebCore {
 
@@ -44,7 +44,7 @@ static ResourceUsageData gData;
 static String cpuUsageString(float cpuUsage)
 {
     if (cpuUsage < 0)
-        return ASCIILiteral("<unknown>");
+        return "<unknown>"_s;
     return String::format("%.1f%%", cpuUsage);
 }
 
@@ -62,7 +62,7 @@ static String formatByteNumber(size_t number)
 static String gcTimerString(MonotonicTime timerFireDate, MonotonicTime now)
 {
     if (std::isnan(timerFireDate))
-        return ASCIILiteral("[not scheduled]");
+        return "[not scheduled]"_s;
     return String::format("%g", (timerFireDate - now).seconds());
 }
 
@@ -76,16 +76,14 @@ public:
         FontCascadeDescription fontDescription;
         RenderTheme::singleton().systemFont(CSSValueMessageBox, fontDescription);
         fontDescription.setComputedSize(gFontSize);
-        m_textFont = FontCascade(fontDescription, 0, 0);
+        m_textFont = FontCascade(WTFMove(fontDescription), 0, 0);
         m_textFont.update(nullptr);
     }
 
-    ~ResourceUsageOverlayPainter()
-    {
-    }
+    ~ResourceUsageOverlayPainter() = default;
 
 private:
-    void paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip, GraphicsLayerPaintFlags) override
+    void paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip, GraphicsLayerPaintBehavior) override
     {
         GraphicsContextStateSaver stateSaver(context);
         context.fillRect(clip, Color(0.0f, 0.0f, 0.0f, 0.8f));

@@ -2,59 +2,38 @@
 
 <html>
 <head>
+    <script src="../../../../resources/basic-gestures.js"></script>
     <script>
         if (window.testRunner) {
             testRunner.dumpAsText();
             testRunner.waitUntilDone();
         }
-
-        function getPressScript()
-        {
-            return `
-            (function() {
-                uiController.longPressAtPoint(30, 20, function() {
-                    uiController.uiScriptComplete();
-                });
-            })();`
-        }
     
-        function getTapScript()
-        {
-            return `
-            (function() {
-             uiController.singleTapAtPoint(30, 20, function() {
-                 uiController.uiScriptComplete();
-                });
-             })();`
-        }
-    
-        function runTest()
+        async function runTest()
         {
             if (!testRunner.runUIScript)
                 return;
 
             var output = '';
-            var target = document.getElementById('target');
-            if (testRunner.runUIScript) {
-                testRunner.runUIScript(getPressScript(), function(result) {
-                    var selectionText = document.getSelection().toString();
-                    if (selectionText == "PressMe")
-                        output += 'PASS: Selected: ' + selectionText;
-                    else
-                        output += 'FAIL: failed to select a word as a result of a long press';
-                    output += '<br>';
-                    testRunner.runUIScript(getTapScript(), function(result) {
-                      var secondSelectionText = document.getSelection().toString();
-                      if (secondSelectionText == "")
-                            output += 'PASS: Cleared selection';
-                      else
-                            output += 'FAIL: failed to clear selection after tap.'
-                      output += '<br>';
-                      document.getElementById('target').innerHTML = output;
-                      testRunner.notifyDone();
-                    });
-                });
-            }
+            var targetRect = document.getElementById('selection').getBoundingClientRect();
+            
+            var pressPointX = targetRect.x + targetRect.width / 2;
+            var pressPointY = targetRect.y + targetRect.height / 2;
+            
+            await longPressAtPoint(pressPointX, pressPointY);
+            if (document.getSelection().toString() == "PressMe")
+                output += 'PASS: Correct Selection';
+            else
+                output += 'FAIL: failed to select a word as a result of a long press. Incorrect Selection: ' + document.getSelection().toString();
+            output += '<br>';
+            await tapAtPoint(100, 100);
+            if (document.getSelection().toString() == "")
+                output += 'PASS: Cleared selection';
+            else
+                output += 'FAIL: failed to clear selection after tap.' + document.getSelection().toString();
+            output += '<br>';
+            document.getElementById('target').innerHTML = output;
+            testRunner.notifyDone();
         }
 
         window.addEventListener('load', runTest, false);
@@ -70,7 +49,7 @@
 </head>
 <body>
 <div id="target">
-	<p>PressMe</p>
+	<p><span id="selection">PressMe</span></p>
     This test requires UIScriptController to run.
 </div>
 </body>

@@ -49,7 +49,7 @@ public:
         Method method() const { return m_method; }
         static Method parseMethodType(const String&);
         void updateMethodType(const String&);
-        static ASCIILiteral methodString(Method method) { return ASCIILiteral { method == Method::Post ? "post" : "get" }; }
+        static ASCIILiteral methodString(Method method) { return method == Method::Post ? "post"_s : "get"_s; }
 
         const String& action() const { return m_action; }
         void parseAction(const String&);
@@ -70,7 +70,7 @@ public:
         bool m_isMultiPartForm { false };
         String m_action;
         String m_target;
-        String m_encodingType { ASCIILiteral { "application/x-www-form-urlencoded" } };
+        String m_encodingType { "application/x-www-form-urlencoded"_s };
         String m_acceptCharset;
     };
 
@@ -83,7 +83,8 @@ public:
     const URL& action() const { return m_action; }
     const String& target() const { return m_target; }
     const String& contentType() const { return m_contentType; }
-    FormState& state() const { return m_formState; }
+    FormState& state() const { return *m_formState; }
+    Ref<FormState> takeState() { return m_formState.releaseNonNull(); }
     FormData& data() const { return m_formData; }
     const String boundary() const { return m_boundary; }
     LockHistory lockHistory() const { return m_lockHistory; }
@@ -103,7 +104,7 @@ private:
     URL m_action;
     String m_target;
     String m_contentType;
-    Ref<FormState> m_formState;
+    RefPtr<FormState> m_formState;
     Ref<FormData> m_formData;
     String m_boundary;
     LockHistory m_lockHistory;

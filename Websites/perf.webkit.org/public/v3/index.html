@@ -39,12 +39,14 @@ Run tools/bundle-v3-scripts to speed up the load time for production.`);
     <template id="unbundled-scripts">
         <script src="../shared/statistics.js"></script>
         <script src="../shared/common-remote.js"></script>
+        <script src="../shared/common-component-base.js"></script>
 
         <script src="instrumentation.js"></script>
         <script src="remote.js"></script>
         <script src="privileged-api.js"></script>
         <script src="async-task.js"></script>
         <script src="lazily-evaluated-function.js"></script>
+        <script src="commit-set-range-bisector.js"></script>
 
         <script src="models/time-series.js"></script>
         <script src="models/measurement-adaptor.js"></script>
@@ -74,7 +76,7 @@ Run tools/bundle-v3-scripts to speed up the load time for production.`);
         <script src="components/warning-icon.js"></script>
         <script src="components/close-button.js"></script>
         <script src="components/commit-log-viewer.js"></script>
-        <script src="components/sub-commit-viewer.js"></script>
+        <script src="components/owned-commit-viewer.js"></script>
         <script src="components/editable-text.js"></script>
         <script src="components/expand-collapse-button.js"></script>
         <script src="components/time-series-chart.js"></script>
@@ -98,6 +100,10 @@ Run tools/bundle-v3-scripts to speed up the load time for production.`);
         <script src="components/custom-analysis-task-configurator.js"></script>
         <script src="components/custom-configuration-test-group-form.js"></script>
         <script src="components/instant-file-uploader.js"></script>
+        <script src="components/freshness-indicator.js"></script>
+        <script src="components/plus-button.js"></script>
+        <script src="components/minus-button.js"></script>
+        <script src="components/combo-box.js"></script>
 
         <script src="pages/page.js"></script>
         <script src="pages/page-router.js"></script>
@@ -117,6 +123,7 @@ Run tools/bundle-v3-scripts to speed up the load time for production.`);
         <script src="pages/create-analysis-task-page.js"></script>
         <script src="pages/build-request-queue-page.js"></script>
         <script src="pages/summary-page.js"></script>
+        <script src="pages/test-freshness-page.js"></script>
 
         <script src="main.js"></script>
     </template>

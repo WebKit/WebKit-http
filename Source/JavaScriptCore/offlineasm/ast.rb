@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -928,10 +928,25 @@ class Instruction < Node
         when "globalAnnotation"
             $asm.putGlobalAnnotation
         when "emit"
-          $asm.puts "#{operands[0].dump}"
+            $asm.puts "#{operands[0].dump}"
+        when "tagReturnAddress", "untagReturnAddress", "removeCodePtrTag"
         else
             raise "Unhandled opcode #{opcode} at #{codeOriginString}"
         end
+    end
+
+    def prepareToLower(backendName)
+        if respond_to?("recordMetaData#{backendName}")
+            send("recordMetaData#{backendName}")
+        else
+            recordMetaDataDefault
+        end
+    end
+
+    def recordMetaDataDefault
+        $asm.codeOrigin codeOriginString if $enableCodeOriginComments
+        $asm.annotation annotation if $enableInstrAnnotations
+        $asm.debugAnnotation codeOrigin.debugDirective if $enableDebugAnnotations
     end
 end
 
@@ -945,23 +960,53 @@ class Error < NoChildren
     end
 end
 
+class ConstExpr < NoChildren
+    attr_reader :variable, :value
+
+    def initialize(codeOrigin, value)
+        super(codeOrigin)
+        @value = value
+    end
+
+    @@mapping = {}
+
+    def self.forName(codeOrigin, text)
+        unless @@mapping[text]
+            @@mapping[text] = ConstExpr.new(codeOrigin, text)
+        end
+        @@mapping[text]
+    end
+
+    def dump
+        "constexpr (#{@value.dump})"
+    end
+
+    def <=>(other)
+        @value <=> other.value
+    end
+
+    def immediate?
+        true
+    end
+end
+
 class ConstDecl < Node
     attr_reader :variable, :value
-    
+
     def initialize(codeOrigin, variable, value)
         super(codeOrigin)
         @variable = variable
         @value = value
     end
-    
+
     def children
         [@variable, @value]
     end
-    
+
     def mapChildren
         ConstDecl.new(codeOrigin, (yield @variable), (yield @value))
     end
-    
+
     def dump
         "const #{@variable.dump} = #{@value.dump}"
     end
@@ -1080,10 +1125,18 @@ end
 
 class LabelReference < Node
     attr_reader :label
+    attr_accessor :offset
     
     def initialize(codeOrigin, label)
         super(codeOrigin)
         @label = label
+        @offset = 0
+    end
+    
+    def plusOffset(additionalOffset)
+        result = LabelReference.new(codeOrigin, label)
+        result.offset = @offset + additionalOffset
+        result
     end
     
     def children

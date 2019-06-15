@@ -48,13 +48,19 @@ class ObjCCallbackFunction : public InternalFunction {
 public:
     typedef InternalFunction Base;
 
+    template<typename CellType>
+    static IsoSubspace* subspaceFor(VM& vm)
+    {
+        return &vm.objCCallbackFunctionSpace;
+    }
+
     static ObjCCallbackFunction* create(VM&, JSGlobalObject*, const String& name, std::unique_ptr<ObjCCallbackFunctionImpl>);
     static void destroy(JSCell*);
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
         ASSERT(globalObject);
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
     DECLARE_EXPORT_INFO;
@@ -65,9 +71,6 @@ protected:
     ObjCCallbackFunction(VM&, Structure*, JSObjectCallAsFunctionCallback, JSObjectCallAsConstructorCallback, std::unique_ptr<ObjCCallbackFunctionImpl>);
 
 private:
-    static CallType getCallData(JSCell*, CallData&);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-
     JSObjectCallAsFunctionCallback functionCallback() { return m_functionCallback; }
     JSObjectCallAsConstructorCallback constructCallback() { return m_constructCallback; }
 

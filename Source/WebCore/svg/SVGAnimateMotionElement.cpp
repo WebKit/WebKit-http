@@ -33,11 +33,14 @@
 #include "SVGPathData.h"
 #include "SVGPathElement.h"
 #include "SVGPathUtilities.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGAnimateMotionElement);
     
 using namespace SVGNames;
 
@@ -56,7 +59,7 @@ Ref<SVGAnimateMotionElement> SVGAnimateMotionElement::create(const QualifiedName
 
 bool SVGAnimateMotionElement::hasValidAttributeType()
 {
-    SVGElement* targetElement = this->targetElement();
+    auto targetElement = makeRefPtr(this->targetElement());
     if (!targetElement)
         return false;
 
@@ -96,8 +99,7 @@ bool SVGAnimateMotionElement::hasValidAttributeName()
 void SVGAnimateMotionElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::pathAttr) {
-        m_path = Path();
-        buildPathFromString(value, m_path);
+        m_path = buildPathFromString(value);
         updateAnimationPath();
         return;
     }
@@ -123,9 +125,9 @@ void SVGAnimateMotionElement::updateAnimationPath()
     bool foundMPath = false;
 
     for (auto& mPath : childrenOfType<SVGMPathElement>(*this)) {
-        SVGPathElement* pathElement = mPath.pathElement();
+        auto pathElement = mPath.pathElement();
         if (pathElement) {
-            updatePathFromGraphicsElement(pathElement, m_animationPath);
+            m_animationPath = pathFromGraphicsElement(pathElement.get());
             foundMPath = true;
             break;
         }
@@ -137,36 +139,11 @@ void SVGAnimateMotionElement::updateAnimationPath()
     updateAnimationMode();
 }
 
-static bool parsePoint(const String& s, FloatPoint& point)
-{
-    if (s.isEmpty())
-        return false;
-    auto upconvertedCharacters = StringView(s).upconvertedCharacters();
-    const UChar* cur = upconvertedCharacters;
-    const UChar* end = cur + s.length();
-    
-    if (!skipOptionalSVGSpaces(cur, end))
-        return false;
-    
-    float x = 0;
-    if (!parseNumber(cur, end, x))
-        return false;
-    
-    float y = 0;
-    if (!parseNumber(cur, end, y))
-        return false;
-    
-    point = FloatPoint(x, y);
-    
-    // disallow anything except spaces at the end
-    return !skipOptionalSVGSpaces(cur, end);
-}
-    
 void SVGAnimateMotionElement::resetAnimatedType()
 {
     if (!hasValidAttributeType())
         return;
-    SVGElement* targetElement = this->targetElement();
+    auto targetElement = makeRefPtr(this->targetElement());
     if (!targetElement)
         return;
     if (AffineTransform* transform = targetElement->supplementalTransform())
@@ -221,7 +198,7 @@ void SVGAnimateMotionElement::buildTransformForProgress(AffineTransform* transfo
     FloatPoint position = traversalState.current();
     float angle = traversalState.normalAngle();
 
-    transform->translate(position.x(), position.y());
+    transform->translate(position);
     RotateMode rotateMode = this->rotateMode();
     if (rotateMode != RotateAuto && rotateMode != RotateAutoReverse)
         return;
@@ -232,7 +209,7 @@ void SVGAnimateMotionElement::buildTransformForProgress(AffineTransform* transfo
 
 void SVGAnimateMotionElement::calculateAnimatedValue(float percentage, unsigned repeatCount, SVGSMILElement*)
 {
-    SVGElement* targetElement = this->targetElement();
+    auto targetElement = makeRefPtr(this->targetElement());
     if (!targetElement)
         return;
     AffineTransform* transform = targetElement->supplementalTransform();
@@ -272,7 +249,7 @@ void SVGAnimateMotionElement::calculateAnimatedValue(float percentage, unsigned 
 void SVGAnimateMotionElement::applyResultsToTarget()
 {
     // We accumulate to the target element transform list so there is not much to do here.
-    SVGElement* targetElement = this->targetElement();
+    auto targetElement = makeRefPtr(this->targetElement());
     if (!targetElement)
         return;
 

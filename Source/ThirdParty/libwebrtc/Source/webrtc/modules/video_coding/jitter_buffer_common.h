@@ -8,10 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CODING_JITTER_BUFFER_COMMON_H_
-#define WEBRTC_MODULES_VIDEO_CODING_JITTER_BUFFER_COMMON_H_
-
-#include "webrtc/typedefs.h"
+#ifndef MODULES_VIDEO_CODING_JITTER_BUFFER_COMMON_H_
+#define MODULES_VIDEO_CODING_JITTER_BUFFER_COMMON_H_
 
 namespace webrtc {
 
@@ -58,15 +56,6 @@ enum VCMFrameBufferStateEnum {
 };
 
 enum { kH264StartCodeLengthBytes = 4 };
-
-// Used to indicate if a received packet contain a complete NALU (or equivalent)
-enum VCMNaluCompleteness {
-  kNaluUnset = 0,     // Packet has not been filled.
-  kNaluComplete = 1,  // Packet can be decoded as is.
-  kNaluStart,         // Packet contain beginning of NALU
-  kNaluIncomplete,    // Packet is not beginning or end of NALU
-  kNaluEnd,           // Packet is the end of a NALU
-};
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_VIDEO_CODING_JITTER_BUFFER_COMMON_H_
+#endif  // MODULES_VIDEO_CODING_JITTER_BUFFER_COMMON_H_

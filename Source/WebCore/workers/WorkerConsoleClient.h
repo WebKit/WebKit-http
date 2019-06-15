@@ -26,7 +26,7 @@
 #pragma once
 
 #include "WorkerGlobalScope.h"
-#include <runtime/ConsoleClient.h>
+#include <JavaScriptCore/ConsoleClient.h>
 #include <wtf/Forward.h>
 
 namespace JSC {
@@ -50,6 +50,8 @@ protected:
     void time(JSC::ExecState*, const String& title) override;
     void timeEnd(JSC::ExecState*, const String& title) override;
     void timeStamp(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void record(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
+    void recordEnd(JSC::ExecState*, Ref<Inspector::ScriptArguments>&&) override;
 
 private:
     WorkerGlobalScope& m_workerGlobalScope;

@@ -30,19 +30,19 @@
 #elif ENABLE(TOUCH_EVENTS)
 
 #include <functional>
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
-class DOMWindow;
 class Document;
 class EventTarget;
 class Touch;
 class TouchList;
+class WindowProxy;
 
 class DocumentTouch {
 public:
-    static Ref<Touch> createTouch(Document&, DOMWindow*, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force);
+    static Ref<Touch> createTouch(Document&, RefPtr<WindowProxy>&&, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force);
     static Ref<TouchList> createTouchList(Document&, Vector<std::reference_wrapper<Touch>>&&);
 };
 

@@ -50,6 +50,7 @@ NSString *NSTextInsertionUndoableAttributeName;
 #import <WebKit/WebScriptObject.h>
 #import <WebKit/WebTypesInternal.h>
 #import <WebKit/WebView.h>
+#import <WebKit/WebViewPrivate.h>
 #import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
 @interface TextInputController (DumpRenderTreeInputMethodHandler)
@@ -223,7 +224,7 @@ NSString *NSTextInsertionUndoableAttributeName;
 {
     if (aSelector == @selector(insertText:)
         || aSelector == @selector(doCommand:)
-        || aSelector == @selector(setMarkedText:selectedFrom:length:)
+        || aSelector == @selector(setMarkedText:selectedFrom:length:suppressUnderline:)
         || aSelector == @selector(unmarkText)
         || aSelector == @selector(hasMarkedText)
         || aSelector == @selector(conversationIdentifier)
@@ -235,6 +236,7 @@ NSString *NSTextInsertionUndoableAttributeName;
         || aSelector == @selector(firstRectForCharactersFrom:length:)
         || aSelector == @selector(characterIndexForPointX:Y:)
         || aSelector == @selector(validAttributesForMarkedText)
+        || aSelector == @selector(attributedStringForTyping)
         || aSelector == @selector(attributedStringWithString:)
         || aSelector == @selector(setInputMethodHandler:)
         || aSelector == @selector(dictatedStringWithPrimaryString:alternative:alternativeOffset:alternativeLength:)
@@ -249,7 +251,7 @@ NSString *NSTextInsertionUndoableAttributeName;
         return @"insertText";
     if (aSelector == @selector(doCommand:))
         return @"doCommand";
-    if (aSelector == @selector(setMarkedText:selectedFrom:length:))
+    if (aSelector == @selector(setMarkedText:selectedFrom:length:suppressUnderline:))
         return @"setMarkedText";
     if (aSelector == @selector(substringFrom:length:))
         return @"substringFromRange";
@@ -312,7 +314,7 @@ NSString *NSTextInsertionUndoableAttributeName;
         [textInput doCommandBySelector:NSSelectorFromString(aCommand)];
 }
 
-- (void)setMarkedText:(NSString *)aString selectedFrom:(int)from length:(int)length
+- (void)setMarkedText:(NSString *)aString selectedFrom:(int)from length:(int)length suppressUnderline:(BOOL)suppressUnderline
 {
     NSObject <NSTextInput> *textInput = [self textInput];
 
@@ -454,6 +456,12 @@ NSString *NSTextInsertionUndoableAttributeName;
     return nil;
 }
 
+- (NSMutableAttributedString *)attributedStringForTyping
+{
+    // The string has to be non-empty.
+    return [[[NSMutableAttributedString alloc] initWithString:@" " attributes:[webView typingAttributes]] autorelease];
+}
+
 - (NSMutableAttributedString *)attributedStringWithString:(NSString *)aString
 {
     return [[[NSMutableAttributedString alloc] initWithString:aString] autorelease];
@@ -546,4 +554,4 @@ NSString *NSTextInsertionUndoableAttributeName;
 
 @end
 
-#endif // !PLATFORM(IOS)
+#endif // PLATFORM(MAC)

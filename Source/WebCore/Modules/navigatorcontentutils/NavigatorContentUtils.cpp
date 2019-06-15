@@ -31,7 +31,6 @@
 #if ENABLE(NAVIGATOR_CONTENT_UTILS)
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "Navigator.h"
 #include "Page.h"
@@ -42,14 +41,14 @@ namespace WebCore {
 
 static bool verifyCustomHandlerURL(const URL& baseURL, const String& url)
 {
-    // The specification requires that it is a SYNTAX_ERR if the "%s" token is
+    // The specification requires that it is a SyntaxError if the "%s" token is
     // not present.
     static const char token[] = "%s";
     int index = url.find(token);
     if (-1 == index)
         return false;
 
-    // It is also a SYNTAX_ERR if the custom handler URL, as created by removing
+    // It is also a SyntaxError if the custom handler URL, as created by removing
     // the "%s" token and prepending the base url, does not resolve.
     String newURL = url;
     newURL.remove(index, WTF_ARRAY_LENGTH(token) - 1);
@@ -93,9 +92,7 @@ NavigatorContentUtils* NavigatorContentUtils::from(Page* page)
     return static_cast<NavigatorContentUtils*>(Supplement<Page>::from(page, supplementName()));
 }
 
-NavigatorContentUtils::~NavigatorContentUtils()
-{
-}
+NavigatorContentUtils::~NavigatorContentUtils() = default;
 
 ExceptionOr<void> NavigatorContentUtils::registerProtocolHandler(Navigator& navigator, const String& scheme, const String& url, const String& title)
 {
@@ -105,10 +102,10 @@ ExceptionOr<void> NavigatorContentUtils::registerProtocolHandler(Navigator& navi
     URL baseURL = navigator.frame()->document()->baseURL();
 
     if (!verifyCustomHandlerURL(baseURL, url))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (!verifyProtocolHandlerScheme(scheme))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     NavigatorContentUtils::from(navigator.frame()->page())->client()->registerProtocolHandler(scheme, baseURL, URL(ParsedURLString, url), navigator.frame()->displayStringModifiedByEncoding(title));
     return { };
@@ -145,10 +142,10 @@ ExceptionOr<String> NavigatorContentUtils::isProtocolHandlerRegistered(Navigator
     URL baseURL = navigator.frame()->document()->baseURL();
 
     if (!verifyCustomHandlerURL(baseURL, url))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (!verifyProtocolHandlerScheme(scheme))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     return customHandlersStateString(NavigatorContentUtils::from(navigator.frame()->page())->client()->isProtocolHandlerRegistered(scheme, baseURL, URL(ParsedURLString, url)));
 }
@@ -161,10 +158,10 @@ ExceptionOr<void> NavigatorContentUtils::unregisterProtocolHandler(Navigator& na
     URL baseURL = navigator.frame()->document()->baseURL();
 
     if (!verifyCustomHandlerURL(baseURL, url))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (!verifyProtocolHandlerScheme(scheme))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
 
     NavigatorContentUtils::from(navigator.frame()->page())->client()->unregisterProtocolHandler(scheme, baseURL, URL(ParsedURLString, url));
     return { };

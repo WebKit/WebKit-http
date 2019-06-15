@@ -8,11 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/api/statstypes.h"
+#include "api/statstypes.h"
 
 #include <string.h>
 
-#include "webrtc/base/checks.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/refcountedobject.h"
 
 // TODO(tommi): Could we have a static map of value name -> expected type
 // and use this to RTC_DCHECK on correct usage (somewhat strongly typed values)?
@@ -97,9 +98,8 @@ class TypedIntId : public StatsReport::IdBase {
   }
 
   std::string ToString() const override {
-    return std::string(InternalTypeToString(type_)) +
-           kSeparator +
-           rtc::ToString<int>(id_);
+    return std::string(InternalTypeToString(type_)) + kSeparator +
+           rtc::ToString(id_);
   }
 
  protected:
@@ -108,7 +108,8 @@ class TypedIntId : public StatsReport::IdBase {
 
 class IdWithDirection : public TypedId {
  public:
-  IdWithDirection(StatsReport::StatsType type, const std::string& id,
+  IdWithDirection(StatsReport::StatsType type,
+                  const std::string& id,
                   StatsReport::Direction direction)
       : TypedId(type, id), direction_(direction) {}
 
@@ -131,45 +132,40 @@ class IdWithDirection : public TypedId {
 class CandidateId : public TypedId {
  public:
   CandidateId(bool local, const std::string& id)
-      : TypedId(local ?
-                    StatsReport::kStatsReportTypeIceLocalCandidate :
-                    StatsReport::kStatsReportTypeIceRemoteCandidate,
-                id) {
-  }
+      : TypedId(local ? StatsReport::kStatsReportTypeIceLocalCandidate
+                      : StatsReport::kStatsReportTypeIceRemoteCandidate,
+                id) {}
 
-  std::string ToString() const override {
-    return "Cand-" + id_;
-  }
+  std::string ToString() const override { return "Cand-" + id_; }
 };
 
 class ComponentId : public StatsReport::IdBase {
  public:
   ComponentId(const std::string& content_name, int component)
-      : ComponentId(StatsReport::kStatsReportTypeComponent, content_name,
-            component) {}
+      : ComponentId(StatsReport::kStatsReportTypeComponent,
+                    content_name,
+                    component) {}
 
   bool Equals(const IdBase& other) const override {
     return IdBase::Equals(other) &&
-        static_cast<const ComponentId&>(other).component_ == component_ &&
-        static_cast<const ComponentId&>(other).content_name_ == content_name_;
+           static_cast<const ComponentId&>(other).component_ == component_ &&
+           static_cast<const ComponentId&>(other).content_name_ ==
+               content_name_;
   }
 
-  std::string ToString() const override {
-    return ToString("Channel-");
-  }
+  std::string ToString() const override { return ToString("Channel-"); }
 
  protected:
-  ComponentId(StatsReport::StatsType type, const std::string& content_name,
+  ComponentId(StatsReport::StatsType type,
+              const std::string& content_name,
               int component)
-      : IdBase(type),
-        content_name_(content_name),
-        component_(component) {}
+      : IdBase(type), content_name_(content_name), component_(component) {}
 
   std::string ToString(const char* prefix) const {
     std::string ret(prefix);
     ret += content_name_;
     ret += '-';
-    ret += rtc::ToString<>(component_);
+    ret += rtc::ToString(component_);
     return ret;
   }
 
@@ -181,19 +177,20 @@ class ComponentId : public StatsReport::IdBase {
 class CandidatePairId : public ComponentId {
  public:
   CandidatePairId(const std::string& content_name, int component, int index)
-      : ComponentId(StatsReport::kStatsReportTypeCandidatePair, content_name,
-            component),
+      : ComponentId(StatsReport::kStatsReportTypeCandidatePair,
+                    content_name,
+                    component),
         index_(index) {}
 
   bool Equals(const IdBase& other) const override {
     return ComponentId::Equals(other) &&
-        static_cast<const CandidatePairId&>(other).index_ == index_;
+           static_cast<const CandidatePairId&>(other).index_ == index_;
   }
 
   std::string ToString() const override {
     std::string ret(ComponentId::ToString("Conn-"));
     ret += '-';
-    ret += rtc::ToString<>(index_);
+    ret += rtc::ToString(index_);
     return ret;
   }
 
@@ -206,7 +203,9 @@ class CandidatePairId : public ComponentId {
 StatsReport::IdBase::IdBase(StatsType type) : type_(type) {}
 StatsReport::IdBase::~IdBase() {}
 
-StatsReport::StatsType StatsReport::IdBase::type() const { return type_; }
+StatsReport::StatsType StatsReport::IdBase::type() const {
+  return type_;
+}
 
 bool StatsReport::IdBase::Equals(const IdBase& other) const {
   return other.type_ == type_;
@@ -315,8 +314,8 @@ bool StatsReport::Value::operator==(const char* value) const {
 }
 
 bool StatsReport::Value::operator==(int64_t value) const {
-  return type_ == kInt ? value_.int_ == static_cast<int>(value) :
-      (type_ == kInt64 ? value_.int64_ == value : false);
+  return type_ == kInt ? value_.int_ == static_cast<int>(value)
+                       : (type_ == kInt64 ? value_.int64_ == value : false);
 }
 
 bool StatsReport::Value::operator==(bool value) const {
@@ -371,6 +370,10 @@ const char* StatsReport::Value::display_name() const {
       return "audioInputLevel";
     case kStatsValueNameBytesSent:
       return "bytesSent";
+    case kStatsValueNameConcealedSamples:
+      return "concealedSamples";
+    case kStatsValueNameConcealmentEvents:
+      return "concealmentEvents";
     case kStatsValueNamePacketsSent:
       return "packetsSent";
     case kStatsValueNameBytesReceived:
@@ -383,6 +386,8 @@ const char* StatsReport::Value::display_name() const {
       return "packetsLost";
     case kStatsValueNameProtocol:
       return "protocol";
+    case kStatsValueNameTotalSamplesReceived:
+      return "totalSamplesReceived";
     case kStatsValueNameTransportId:
       return "transportId";
     case kStatsValueNameSelectedCandidatePairId:
@@ -397,6 +402,8 @@ const char* StatsReport::Value::display_name() const {
       return "framesDecoded";
     case kStatsValueNameFramesEncoded:
       return "framesEncoded";
+    case kStatsValueNameJitterBufferDelay:
+      return "jitterBufferDelay";
     case kStatsValueNameCodecImplementationName:
       return "codecImplementationName";
     case kStatsValueNameMediaType:
@@ -421,7 +428,9 @@ const char* StatsReport::Value::display_name() const {
     case kStatsValueNameBandwidthLimitedResolution:
       return "googBandwidthLimitedResolution";
     // STUN ping related attributes.
+    //
     // TODO(zhihuang) Rename these stats to follow the standards.
+    // Connectivity checks.
     case kStatsValueNameSentPingRequestsTotal:
       return "requestsSent";
     case kStatsValueNameSentPingRequestsBeforeFirstResponse:
@@ -432,6 +441,15 @@ const char* StatsReport::Value::display_name() const {
       return "requestsReceived";
     case kStatsValueNameRecvPingResponses:
       return "responsesReceived";
+    // STUN Keepalive pings.
+    case kStatsValueNameSentStunKeepaliveRequests:
+      return "stunKeepaliveRequestsSent";
+    case kStatsValueNameRecvStunKeepaliveResponses:
+      return "stunKeepaliveResponsesReceived";
+    case kStatsValueNameStunKeepaliveRttTotal:
+      return "stunKeepaliveRttTotal";
+    case kStatsValueNameStunKeepaliveRttSquaredTotal:
+      return "stunKeepaliveRttSquaredTotal";
 
     // Candidate related attributes. Values are taken from
     // http://w3c.github.io/webrtc-stats/#rtcstatstype-enum*.
@@ -456,6 +474,8 @@ const char* StatsReport::Value::display_name() const {
       return "googComponent";
     case kStatsValueNameContentName:
       return "googContentName";
+    case kStatsValueNameContentType:
+      return "googContentType";
     case kStatsValueNameCpuLimitedResolution:
       return "googCpuLimitedResolution";
     case kStatsValueNameDecodingCTSG:
@@ -476,8 +496,6 @@ const char* StatsReport::Value::display_name() const {
       return "googDerBase64";
     case kStatsValueNameDtlsCipher:
       return "dtlsCipher";
-    case kStatsValueNameEchoCancellationQualityMin:
-      return "googEchoCancellationQualityMin";
     case kStatsValueNameEchoDelayMedian:
       return "googEchoCancellationEchoDelayMedian";
     case kStatsValueNameEchoDelayStdDev:
@@ -536,8 +554,14 @@ const char* StatsReport::Value::display_name() const {
       return "googFrameWidthReceived";
     case kStatsValueNameFrameWidthSent:
       return "googFrameWidthSent";
+    case kStatsValueNameHasEnteredLowResolution:
+      return "googHasEnteredLowResolution";
+    case kStatsValueNameHugeFramesSent:
+      return "hugeFramesSent";
     case kStatsValueNameInitiator:
       return "googInitiator";
+    case kStatsValueNameInterframeDelayMaxMs:
+      return "googInterframeDelayMax";
     case kStatsValueNameIssuerId:
       return "googIssuerId";
     case kStatsValueNameJitterReceived:
@@ -578,12 +602,28 @@ const char* StatsReport::Value::display_name() const {
       return "googResidualEchoLikelihood";
     case kStatsValueNameResidualEchoLikelihoodRecentMax:
       return "googResidualEchoLikelihoodRecentMax";
+    case kStatsValueNameAnaBitrateActionCounter:
+      return "googAnaBitrateActionCounter";
+    case kStatsValueNameAnaChannelActionCounter:
+      return "googAnaChannelActionCounter";
+    case kStatsValueNameAnaDtxActionCounter:
+      return "googAnaDtxActionCounter";
+    case kStatsValueNameAnaFecActionCounter:
+      return "googAnaFecActionCounter";
+    case kStatsValueNameAnaFrameLengthIncreaseCounter:
+      return "googAnaFrameLengthIncreaseCounter";
+    case kStatsValueNameAnaFrameLengthDecreaseCounter:
+      return "googAnaFrameLengthDecreaseCounter";
+    case kStatsValueNameAnaUplinkPacketLossFraction:
+      return "googAnaUplinkPacketLossFraction";
     case kStatsValueNameRetransmitBitrate:
       return "googRetransmitBitrate";
     case kStatsValueNameRtt:
       return "googRtt";
     case kStatsValueNameSecondaryDecodedRate:
       return "googSecondaryDecodedRate";
+    case kStatsValueNameSecondaryDiscardedRate:
+      return "googSecondaryDiscardedRate";
     case kStatsValueNameSendPacketsDiscarded:
       return "packetsDiscardedOnSend";
     case kStatsValueNameSpeechExpandRate:
@@ -592,12 +632,18 @@ const char* StatsReport::Value::display_name() const {
       return "srtpCipher";
     case kStatsValueNameTargetEncBitrate:
       return "googTargetEncBitrate";
+    case kStatsValueNameTotalAudioEnergy:
+      return "totalAudioEnergy";
+    case kStatsValueNameTotalSamplesDuration:
+      return "totalSamplesDuration";
     case kStatsValueNameTransmitBitrate:
       return "googTransmitBitrate";
     case kStatsValueNameTransportType:
       return "googTransportType";
     case kStatsValueNameTrackId:
       return "googTrackId";
+    case kStatsValueNameTimingFrameInfo:
+      return "googTimingFrameInfo";
     case kStatsValueNameTypingNoiseState:
       return "googTypingNoiseState";
     case kStatsValueNameWritable:
@@ -651,7 +697,9 @@ StatsReport::Id StatsReport::NewTypedIntId(StatsType type, int id) {
 
 // static
 StatsReport::Id StatsReport::NewIdWithDirection(
-    StatsType type, const std::string& id, StatsReport::Direction direction) {
+    StatsType type,
+    const std::string& id,
+    StatsReport::Direction direction) {
   return Id(new RefCountedObject<IdWithDirection>(type, id, direction));
 }
 
@@ -661,16 +709,17 @@ StatsReport::Id StatsReport::NewCandidateId(bool local, const std::string& id) {
 }
 
 // static
-StatsReport::Id StatsReport::NewComponentId(
-    const std::string& content_name, int component) {
+StatsReport::Id StatsReport::NewComponentId(const std::string& content_name,
+                                            int component) {
   return Id(new RefCountedObject<ComponentId>(content_name, component));
 }
 
 // static
-StatsReport::Id StatsReport::NewCandidatePairId(
-    const std::string& content_name, int component, int index) {
-  return Id(new RefCountedObject<CandidatePairId>(
-      content_name, component, index));
+StatsReport::Id StatsReport::NewCandidatePairId(const std::string& content_name,
+                                                int component,
+                                                int index) {
+  return Id(
+      new RefCountedObject<CandidatePairId>(content_name, component, index));
 }
 
 const char* StatsReport::TypeToString() const {
@@ -715,8 +764,7 @@ void StatsReport::AddBoolean(StatsReport::StatsValueName name, bool value) {
     values_[name] = ValuePtr(new Value(name, value));
 }
 
-void StatsReport::AddId(StatsReport::StatsValueName name,
-                        const Id& value) {
+void StatsReport::AddId(StatsReport::StatsValueName name, const Id& value) {
   const Value* found = FindValue(name);
   if (!found || !(*found == value))
     values_[name] = ValuePtr(new Value(name, value));
@@ -727,8 +775,7 @@ const StatsReport::Value* StatsReport::FindValue(StatsValueName name) const {
   return it == values_.end() ? nullptr : it->second.get();
 }
 
-StatsCollection::StatsCollection() {
-}
+StatsCollection::StatsCollection() {}
 
 StatsCollection::~StatsCollection() {
   RTC_DCHECK(thread_checker_.CalledOnValidThread());
@@ -768,8 +815,9 @@ StatsReport* StatsCollection::FindOrAddNew(const StatsReport::Id& id) {
 StatsReport* StatsCollection::ReplaceOrAddNew(const StatsReport::Id& id) {
   RTC_DCHECK(thread_checker_.CalledOnValidThread());
   RTC_DCHECK(id.get());
-  Container::iterator it = std::find_if(list_.begin(), list_.end(),
-      [&id](const StatsReport* r)->bool { return r->id()->Equals(id); });
+  Container::iterator it = std::find_if(
+      list_.begin(), list_.end(),
+      [&id](const StatsReport* r) -> bool { return r->id()->Equals(id); });
   if (it != end()) {
     StatsReport* report = new StatsReport((*it)->id());
     delete *it;
@@ -783,8 +831,9 @@ StatsReport* StatsCollection::ReplaceOrAddNew(const StatsReport::Id& id) {
 // will be returned.
 StatsReport* StatsCollection::Find(const StatsReport::Id& id) {
   RTC_DCHECK(thread_checker_.CalledOnValidThread());
-  Container::iterator it = std::find_if(list_.begin(), list_.end(),
-      [&id](const StatsReport* r)->bool { return r->id()->Equals(id); });
+  Container::iterator it = std::find_if(
+      list_.begin(), list_.end(),
+      [&id](const StatsReport* r) -> bool { return r->id()->Equals(id); });
   return it == list_.end() ? nullptr : *it;
 }
 

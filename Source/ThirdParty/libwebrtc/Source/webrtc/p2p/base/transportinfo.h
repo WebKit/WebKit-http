@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_TRANSPORTINFO_H_
-#define WEBRTC_P2P_BASE_TRANSPORTINFO_H_
+#ifndef P2P_BASE_TRANSPORTINFO_H_
+#define P2P_BASE_TRANSPORTINFO_H_
 
 #include <string>
 #include <vector>
 
-#include "webrtc/p2p/base/candidate.h"
-#include "webrtc/p2p/base/p2pconstants.h"
-#include "webrtc/p2p/base/transportdescription.h"
-#include "webrtc/base/helpers.h"
+#include "api/candidate.h"
+#include "p2p/base/p2pconstants.h"
+#include "p2p/base/transportdescription.h"
+#include "rtc_base/helpers.h"
 
 namespace cricket {
 
@@ -29,8 +29,7 @@ struct TransportInfo {
 
   TransportInfo(const std::string& content_name,
                 const TransportDescription& description)
-      : content_name(content_name),
-        description(description) {}
+      : content_name(content_name), description(description) {}
 
   std::string content_name;
   TransportDescription description;
@@ -40,4 +39,4 @@ typedef std::vector<TransportInfo> TransportInfos;
 
 }  // namespace cricket
 
-#endif  // WEBRTC_P2P_BASE_TRANSPORTINFO_H_
+#endif  // P2P_BASE_TRANSPORTINFO_H_

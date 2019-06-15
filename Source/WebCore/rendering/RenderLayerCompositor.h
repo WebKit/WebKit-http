@@ -38,7 +38,6 @@ class FixedPositionViewportConstraints;
 class GraphicsLayer;
 class GraphicsLayerUpdater;
 class RenderEmbeddedObject;
-class RenderNamedFlowFragment;
 class RenderVideo;
 class RenderWidget;
 class ScrollingCoordinator;
@@ -47,12 +46,12 @@ class TiledBacking;
 
 typedef unsigned LayerTreeFlags;
 
-enum CompositingUpdateType {
-    CompositingUpdateAfterStyleChange,
-    CompositingUpdateAfterLayout,
-    CompositingUpdateOnHitTest,
-    CompositingUpdateOnScroll,
-    CompositingUpdateOnCompositedScroll
+enum class CompositingUpdateType {
+    AfterStyleChange,
+    AfterLayout,
+    OnHitTest,
+    OnScroll,
+    OnCompositedScroll
 };
 
 enum class CompositingReason {
@@ -111,9 +110,6 @@ public:
 
     bool canRender3DTransforms() const;
 
-    // Copy the accelerated compositing related flags from Settings
-    void cacheAcceleratedCompositingFlags();
-
     // Called when the layer hierarchy needs to be updated (compositing layers have been
     // created, destroyed or re-parented).
     void setCompositingLayersNeedRebuild(bool needRebuild = true);
@@ -152,7 +148,7 @@ public:
     bool updateLayerCompositingState(RenderLayer&, CompositingChangeRepaint = CompositingChangeRepaintNow);
 
     // Update the geometry for compositing children of compositingAncestor.
-    void updateCompositingDescendantGeometry(RenderLayer& compositingAncestor, RenderLayer&, bool compositedChildrenOnly);
+    void updateCompositingDescendantGeometry(RenderLayer& compositingAncestor, RenderLayer&);
     
     // Whether layer's backing needs a graphics layer to do clipping by an ancestor (non-stacking-context parent with overflow).
     bool clippedByAncestor(RenderLayer&) const;
@@ -169,7 +165,7 @@ public:
     void rootOrBodyStyleChanged(RenderElement&, const RenderStyle* oldStyle);
 
     // Called after the view transparency, or the document or base background color change.
-    void rootBackgroundTransparencyChanged();
+    void rootBackgroundColorOrTransparencyChanged();
     
     // Repaint the appropriate layers when the given RenderLayer starts or stops being composited.
     void repaintOnCompositingChange(RenderLayer&);
@@ -195,13 +191,15 @@ public:
 
     WEBCORE_EXPORT RenderLayer& rootRenderLayer() const;
     GraphicsLayer* rootGraphicsLayer() const;
-    WEBCORE_EXPORT GraphicsLayer* scrollLayer() const;
-    GraphicsLayer* clipLayer() const;
-    GraphicsLayer* rootContentLayer() const;
+
+    GraphicsLayer* scrollLayer() const { return m_scrollLayer.get(); }
+    GraphicsLayer* clipLayer() const { return m_clipLayer.get(); }
+    GraphicsLayer* rootContentLayer() const { return m_rootContentLayer.get(); }
+
 
 #if ENABLE(RUBBER_BANDING)
-    GraphicsLayer* headerLayer() const;
-    GraphicsLayer* footerLayer() const;
+    GraphicsLayer* headerLayer() const { return m_layerForHeader.get(); }
+    GraphicsLayer* footerLayer() const { return m_layerForFooter.get(); }
 #endif
 
     enum RootLayerAttachment {
@@ -279,7 +277,12 @@ public:
 
     ScrollableArea* scrollableAreaForScrollLayerID(ScrollingNodeID) const;
 
-    void updateScrollCoordinatedStatus(RenderLayer&);
+    enum class ScrollingNodeChangeFlags {
+        Layer           = 1 << 0,
+        LayerGeometry   = 1 << 1,
+    };
+
+    void updateScrollCoordinatedStatus(RenderLayer&, OptionSet<ScrollingNodeChangeFlags>);
     void removeFromScrollCoordinatedLayers(RenderLayer&);
 
     void willRemoveScrollingLayerWithBacking(RenderLayer&, RenderLayerBacking&);
@@ -294,7 +297,8 @@ public:
 #endif
 
     void resetTrackedRepaintRects();
-    void setTracksRepaints(bool);
+    void setTracksRepaints(bool tracksRepaints) { m_isTrackingRepaints = tracksRepaints; }
+
 
     void setShouldReevaluateCompositingAfterLayout() { m_reevaluateCompositingAfterLayout = true; }
 
@@ -309,7 +313,6 @@ public:
     
     void didPaintBacking(RenderLayerBacking*);
 
-    void setRootExtendedBackgroundColor(const Color&);
     const Color& rootExtendedBackgroundColor() const { return m_rootExtendedBackgroundColor; }
 
     void updateRootContentLayerClipping();
@@ -319,25 +322,32 @@ public:
 #endif
 
     // For testing.
-    WEBCORE_EXPORT void startTrackingLayerFlushes();
-    WEBCORE_EXPORT unsigned layerFlushCount() const;
+    void startTrackingLayerFlushes() { m_layerFlushCount = 0; }
+    unsigned layerFlushCount() const { return m_layerFlushCount; }
 
-    WEBCORE_EXPORT void startTrackingCompositingUpdates();
-    WEBCORE_EXPORT unsigned compositingUpdateCount() const;
+    void startTrackingCompositingUpdates() { m_compositingUpdateCount = 0; }
+    unsigned compositingUpdateCount() const { return m_compositingUpdateCount; }
 
 private:
     class OverlapMap;
     struct CompositingState;
     struct OverlapExtent;
 
+    // Returns true if the policy changed.
+    bool updateCompositingPolicy();
+    
     // GraphicsLayerClient implementation
     void notifyFlushRequired(const GraphicsLayer*) override;
-    void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&, GraphicsLayerPaintFlags) override;
+    void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect&, GraphicsLayerPaintBehavior) override;
     void customPositionForVisibleRectComputation(const GraphicsLayer*, FloatPoint&) const override;
-    bool isTrackingRepaints() const override;
+    bool isTrackingRepaints() const override { return m_isTrackingRepaints; }
     
     // GraphicsLayerUpdaterClient implementation
     void flushLayersSoon(GraphicsLayerUpdater&) override;
+
+    // Copy the accelerated compositing related flags from Settings
+    void cacheAcceleratedCompositingFlags();
+    void cacheAcceleratedCompositingFlagsAfterLayout();
 
     // Whether the given RL needs a compositing layer.
     bool needsToBeComposited(const RenderLayer&, RenderLayer::ViewportConstrainedNotCompositedReason* = nullptr) const;
@@ -365,18 +375,8 @@ private:
     // Returns true if any layer's compositing changed
     void computeCompositingRequirements(RenderLayer* ancestorLayer, RenderLayer&, OverlapMap&, CompositingState&, bool& layersChanged, bool& descendantHas3DTransform);
 
-    void computeRegionCompositingRequirements(RenderNamedFlowFragment*, OverlapMap&, CompositingState&, bool& layersChanged, bool& anyDescendantHas3DTransform);
-
-    void computeCompositingRequirementsForNamedFlowFixed(RenderLayer&, OverlapMap&, CompositingState&, bool& layersChanged, bool& anyDescendantHas3DTransform);
-
     // Recurses down the tree, parenting descendant compositing layers and collecting an array of child layers for the current compositing layer.
     void rebuildCompositingLayerTree(RenderLayer&, Vector<GraphicsLayer*>& childGraphicsLayersOfEnclosingLayer, int depth);
-
-    // Recurses down the RenderFlowThread tree, parenting descendant compositing layers and collecting an array of child 
-    // layers for the current compositing layer corresponding to the anonymous region (that belongs to the region's parent).
-    void rebuildRegionCompositingLayerTree(RenderNamedFlowFragment*, Vector<GraphicsLayer*>& childList, int depth);
-
-    void rebuildCompositingLayerTreeForNamedFlowFixed(RenderLayer&, Vector<GraphicsLayer*>& childList, int depth);
 
     // Recurses down the tree, updating layer geometry only.
     void updateLayerTreeGeometry(RenderLayer&, int depth);
@@ -410,6 +410,8 @@ private:
     bool isFlushingLayers() const { return m_flushingLayers; }
     void updateScrollCoordinatedLayersAfterFlushIncludingSubframes();
     void updateScrollCoordinatedLayersAfterFlush();
+
+    FloatRect visibleRectForLayerFlushing() const;
     
     Page& page() const;
     
@@ -443,8 +445,8 @@ private:
 
     void updateScrollCoordinationForThisFrame(ScrollingNodeID);
     ScrollingNodeID attachScrollingNode(RenderLayer&, ScrollingNodeType, ScrollingNodeID parentNodeID);
-    void updateScrollCoordinatedLayer(RenderLayer&, LayerScrollCoordinationRoles);
-    void detachScrollCoordinatedLayer(RenderLayer&, LayerScrollCoordinationRoles);
+    void updateScrollCoordinatedLayer(RenderLayer&, OptionSet<LayerScrollCoordinationRole>, OptionSet<ScrollingNodeChangeFlags>);
+    void detachScrollCoordinatedLayer(RenderLayer&, OptionSet<LayerScrollCoordinationRole>);
     void reattachSubframeScrollLayers();
     
     FixedPositionViewportConstraints computeFixedViewportConstraints(RenderLayer&) const;
@@ -481,6 +483,8 @@ private:
 
     bool documentUsesTiledBacking() const;
     bool isMainFrameCompositor() const;
+    
+    void setRootLayerConfigurationNeedsUpdate() { m_rootLayerConfigurationNeedsUpdate = true; }
 
 private:
     RenderView& m_renderView;
@@ -489,6 +493,8 @@ private:
 
     ChromeClient::CompositingTriggerFlags m_compositingTriggers { static_cast<ChromeClient::CompositingTriggerFlags>(ChromeClient::AllTriggers) };
     bool m_hasAcceleratedCompositing { true };
+    
+    CompositingPolicy m_compositingPolicy { CompositingPolicy::Normal };
 
     bool m_showDebugBorders { false };
     bool m_showRepaintCounter { false };
@@ -501,6 +507,7 @@ private:
 
     bool m_compositing { false };
     bool m_compositingLayersNeedRebuild { false };
+    bool m_rootLayerConfigurationNeedsUpdate { false };
     bool m_flushingLayers { false };
     bool m_shouldFlushOnReattach { false };
     bool m_forceCompositingMode { false };
@@ -561,11 +568,15 @@ private:
     double m_secondaryBackingStoreBytes { 0 };
 #endif
 
+    Color m_viewBackgroundColor;
     Color m_rootExtendedBackgroundColor;
 
     HashMap<ScrollingNodeID, RenderLayer*> m_scrollingNodeToLayerMap;
 };
 
 void paintScrollbar(Scrollbar*, GraphicsContext&, const IntRect& clip);
+
+WTF::TextStream& operator<<(WTF::TextStream&, CompositingUpdateType);
+WTF::TextStream& operator<<(WTF::TextStream&, CompositingPolicy);
 
 } // namespace WebCore

@@ -32,10 +32,10 @@ function enqueue(chunk)
     if (!@isReadableByteStreamController(this))
         throw @makeThisTypeError("ReadableByteStreamController", "enqueue");
 
-    if (this.@closeRequested)
+    if (@getByIdDirectPrivate(this, "closeRequested"))
         @throwTypeError("ReadableByteStreamController is requested to close");
 
-    if (this.@controlledReadableStream.@state !== @streamReadable)
+    if (@getByIdDirectPrivate(@getByIdDirectPrivate(this, "controlledReadableStream"), "state") !== @streamReadable)
         @throwTypeError("ReadableStream is not readable");
 
     if (!@isObject(chunk))
@@ -54,7 +54,7 @@ function error(error)
     if (!@isReadableByteStreamController(this))
         throw @makeThisTypeError("ReadableByteStreamController", "error");
 
-    if (this.@controlledReadableStream.@state !== @streamReadable)
+    if (@getByIdDirectPrivate(@getByIdDirectPrivate(this, "controlledReadableStream"), "state") !== @streamReadable)
         @throwTypeError("ReadableStream is not readable");
 
     @readableByteStreamControllerError(this, error);
@@ -67,15 +67,16 @@ function close()
     if (!@isReadableByteStreamController(this))
         throw @makeThisTypeError("ReadableByteStreamController", "close");
 
-    if (this.@closeRequested)
+    if (@getByIdDirectPrivate(this, "closeRequested"))
         @throwTypeError("Close has already been requested");
 
-    if (this.@controlledReadableStream.@state !== @streamReadable)
+    if (@getByIdDirectPrivate(@getByIdDirectPrivate(this, "controlledReadableStream"), "state") !== @streamReadable)
         @throwTypeError("ReadableStream is not readable");
 
     @readableByteStreamControllerClose(this);
 }
 
+@getter
 function byobRequest()
 {
     "use strict";
@@ -83,17 +84,18 @@ function byobRequest()
     if (!@isReadableByteStreamController(this))
         throw @makeGetterTypeError("ReadableByteStreamController", "byobRequest");
 
-    if (this.@byobRequest === @undefined && this.@pendingPullIntos.length) {
-        const firstDescriptor = this.@pendingPullIntos[0];
+    if (@getByIdDirectPrivate(this, "byobRequest") === @undefined && @getByIdDirectPrivate(this, "pendingPullIntos").length) {
+        const firstDescriptor = @getByIdDirectPrivate(this, "pendingPullIntos")[0];
         const view = new @Uint8Array(firstDescriptor.buffer,
             firstDescriptor.byteOffset + firstDescriptor.bytesFilled,
             firstDescriptor.byteLength - firstDescriptor.bytesFilled);
-        this.@byobRequest = new @ReadableStreamBYOBRequest(this, view);
+        @putByIdDirectPrivate(this, "byobRequest", new @ReadableStreamBYOBRequest(this, view));
     }
 
-    return this.@byobRequest;
+    return @getByIdDirectPrivate(this, "byobRequest");
 }
 
+@getter
 function desiredSize()
 {
     "use strict";

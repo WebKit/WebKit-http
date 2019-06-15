@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-# Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -48,8 +48,10 @@ PERFORMANCETESTS_PATH = OPENSOURCE_PATH + "PerformanceTests"
 SUNSPIDER_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "sunspider-1.0"
 LONGSPIDER_PATH = PERFORMANCETESTS_PATH + "LongSpider"
 V8_PATH = PERFORMANCETESTS_PATH + "SunSpider" + "tests" + "v8-v6"
+TAILBENCH_PATH = PERFORMANCETESTS_PATH + "TailBench9000"
 MICROBENCHMARKS_PATH = OPENSOURCE_PATH + "JSTests" + "microbenchmarks"
-OCTANE_WRAPPER_PATH = PERFORMANCETESTS_PATH + "Octane" + "wrappers"
+OPENSOURCE_OCTANE_PATH = PERFORMANCETESTS_PATH + "Octane"
+OCTANE_WRAPPER_PATH = OPENSOURCE_OCTANE_PATH + "wrappers"
 JSBENCH_PATH = PERFORMANCETESTS_PATH + "JSBench"
 SIXSPEED_PATH = PERFORMANCETESTS_PATH + "SixSpeed" + "tests"
 SIXSPEED_WRAPPER_PATH = PERFORMANCETESTS_PATH + "SixSpeed" + "wrappers"
@@ -214,8 +216,10 @@ $warmup=1
 $outer=4
 $quantum=1000
 $includeSunSpider=true
-$includeLongSpider=true
+$includeSunSpiderCompileTime=true
+$includeLongSpider=false
 $includeV8=true
+$includeV8CompileTime=true
 $includeKraken=true
 $includeJSBench=true
 $includeMicrobenchmarks=true
@@ -224,8 +228,9 @@ $includeDSPJS=true
 $includeBrowsermarkJS=false
 $includeBrowsermarkDOM=false
 $includeOctane=true
-$includeCompressionBench = true
-$includeSixSpeed = true
+$includeCompressionBench = false
+$includeSixSpeed = false
+$includeTailBench = true
 $measureGC=false
 $benchmarkPattern=nil
 $verbosity=0
@@ -308,7 +313,11 @@ def usage
   puts "--dont-copy-vms      Don't copy VMs even when doing a remote benchmarking run;"
   puts "                     instead assume that they are already there."
   puts "--sunspider          Only run SunSpider."
-  puts "--v8-spider          Only run V8."
+  puts "--sunspider-compile-time"
+  puts "                     Only run the SunSpider compile time benchmark."
+  puts "--v8-spider          Only run SunSpider-style V8."
+  puts "--v8-spider-compile-time"
+  puts "                     Only run the SunSpider-style V8 compile time benchmark."
   puts "--kraken             Only run Kraken."
   puts "--js-bench           Only run JSBench."
   puts "--microbenchmarks    Only run microbenchmarks."
@@ -317,6 +326,7 @@ def usage
   puts "--browsermark-js     Only run browsermark-js."
   puts "--browsermark-dom    Only run browsermark-dom."
   puts "--octane             Only run Octane."
+  puts "--tail-bench         Only run TailBench"
   puts "--compression-bench  Only run compression bench"
   puts "                     The default is to run all benchmarks. The above options can"
   puts "                     be combined to run any subset (so --sunspider --dsp will run"
@@ -838,6 +848,34 @@ class SingleFileTimedBenchmarkParameters
   end
 end
 
+# Benchmark that consists of a single file and must be loaded in its own global object each
+# time (i.e. run()), but returns its result in a custom way.
+class SingleFileCustomTimedBenchmarkParameters
+  attr_reader :benchPath
+  
+  def initialize(benchPath)
+    @benchPath = benchPath
+  end
+  
+  def kind
+    :singleFileCustomTimedBenchmark
+  end
+end
+
+# Benchmark that consists of a single file and must be loaded in its own global object each
+# time (i.e. run()), and returns the time spent compiling
+class SingleFileCompileTimeBenchmarkParameters
+  attr_reader :benchPath
+  
+  def initialize(benchPath)
+    @benchPath = benchPath
+  end
+  
+  def kind
+    :singleFileCompileTimeBenchmark
+  end
+end
+
 # Benchmark that consists of one or more data files that should be loaded globally, followed
 # by a command to run the benchmark.
 class MultiFileTimedBenchmarkParameters
@@ -962,6 +1000,42 @@ def emitBenchRunCodeFile(name, plan, benchParams)
         doublePuts($stderr,file,"    if (__bencher_index >= #{warmup}) print(\"#{name}: #{plan.vm}: #{plan.iteration}: \" + (__bencher_index - #{warmup}) + \": Time: \"+((__after-__before)/__runs));")
         doublePuts($stderr,file,"}")
         doublePuts($stderr,file,"#{benchParams.tearDownCommand.js}")
+      elsif benchParams.kind == :singleFileCustomTimedBenchmark
+        doublePuts($stderr,file,"function __bencher_run(__bencher_what) {")
+        doublePuts($stderr,file,"   var __bencher_result = {value: null};")
+        $rerun.times {
+          doublePuts($stderr,file,"   run(__bencher_what, __bencher_result);")
+        }
+        doublePuts($stderr,file,"   if (__bencher_result.value == null)")
+        doublePuts($stderr,file,"      throw new Error(\"Null result\");")
+        doublePuts($stderr,file,"   return __bencher_result.value;")
+        doublePuts($stderr,file,"}")
+        $warmup.times {
+          doublePuts($stderr,file,"__bencher_run(#{benchParams.benchPath.inspect})")
+          doublePuts($stderr,file,"gc();") unless plan.vm.shouldMeasureGC
+        }
+        $inner.times {
+          | innerIndex |
+          doublePuts($stderr,file,"print(\"#{name}: #{plan.vm}: #{plan.iteration}: #{innerIndex}: Time: \"+__bencher_run(#{benchParams.benchPath.inspect}));")
+          doublePuts($stderr,file,"gc();") unless plan.vm.shouldMeasureGC
+        }
+      elsif benchParams.kind == :singleFileCompileTimeBenchmark
+        doublePuts($stderr,file,"function __bencher_run(__bencher_what) {")
+        doublePuts($stderr,file,"   var __compileTimeBefore = totalCompileTime();")
+        $rerun.times {
+          doublePuts($stderr,file,"   run(__bencher_what);")
+        }
+        doublePuts($stderr,file,"   return totalCompileTime() - __compileTimeBefore;")
+        doublePuts($stderr,file,"}")
+        $warmup.times {
+          doublePuts($stderr,file,"__bencher_run(#{benchParams.benchPath.inspect})")
+          doublePuts($stderr,file,"gc();") unless plan.vm.shouldMeasureGC
+        }
+        $inner.times {
+          | innerIndex |
+          doublePuts($stderr,file,"print(\"#{name}: #{plan.vm}: #{plan.iteration}: #{innerIndex}: Time: \"+__bencher_run(#{benchParams.benchPath.inspect}));")
+          doublePuts($stderr,file,"gc();") unless plan.vm.shouldMeasureGC
+        }
       else
         raise unless benchParams.kind == :singleFileTimedBenchmark
         doublePuts($stderr,file,"function __bencher_run(__bencher_what) {")
@@ -1305,10 +1379,10 @@ class VM
       @libPath, @relativeBinPath = [$~.pre_match+"/Release"], "./#{$1}"
     elsif @path =~ /\/Debug\/([a-zA-Z]+)$/
       @libPath, @relativeBinPath = [$~.pre_match+"/Debug"], "./#{$1}"
-    elsif @path =~ /\/Release\/bin\/([a-zA-Z]+)$/
-      @libPath, @relativeBinPath = [$~.pre_match+"/Release/lib"], "./#{$1}"
-    elsif @path =~ /\/Debug\/bin\/([a-zA-Z]+)$/
-      @libPath, @relativeBinPath = [$~.pre_match+"/Debug/lib"], "./#{$1}"
+    elsif @path =~ /\/Release\/bin(64|32|)\/([\.a-zA-Z]+)$/
+      @libPath, @relativeBinPath = [$~.pre_match+"/Release/lib#{$1}"], "./#{$2}"
+    elsif @path =~ /\/Debug\/bin(64|32|)\/([\.a-zA-Z]+)$/
+      @libPath, @relativeBinPath = [$~.pre_match+"/Debug/lib#{$1}"], "./#{$2}"
     elsif @path =~ /\/Contents\/Resources\/([a-zA-Z]+)$/
       @libPath = [$~.pre_match + "/Contents/Resources", $~.pre_match + "/Contents/Frameworks"]
     elsif @path =~ /\/JavaScriptCore.framework\/Resources\/([a-zA-Z]+)$/
@@ -1404,6 +1478,7 @@ class VM
       | key |
       $script.puts "unset #{Shellwords.shellescape(key)}"
     }
+    $script.puts "export JSC_useDollarVM=true" if @vmType == :jsc
     $script.puts "export DYLD_LIBRARY_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
     $script.puts "export DYLD_FRAMEWORK_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
     $script.puts "export LD_LIBRARY_PATH=#{Shellwords.shellescape(myLibPath.join(':').to_s)}"
@@ -1431,7 +1506,7 @@ class VM
     $script.puts "}"
     plan.environment.keys.each {
         | key |
-        $script.puts "export #{Shellwords.shellescape(key)}="
+        $script.puts "unset #{Shellwords.shellescape(key)}"
     }
   end
 end
@@ -1500,6 +1575,10 @@ module Benchmark
     else
       "x#{weight} "
     end
+  end
+  
+  def environment
+    {}
   end
 end
 
@@ -1590,6 +1669,36 @@ class OctaneBenchmark
   end
 end
 
+class CustomTimedBenchmark
+  include Benchmark
+  
+  def initialize(name, fullPath)
+    @name = name
+    @fullPath = fullPath
+  end
+  
+  def emitRunCode(plan)
+    emitBenchRunCode(fullname, plan, SingleFileCustomTimedBenchmarkParameters.new(ensureFile("CustomTimed-#{@name}", @fullPath)))
+  end
+end
+
+class CompileTimeBenchmark
+  include Benchmark
+  
+  def initialize(name, fullPath)
+    @name = name
+    @fullPath = fullPath
+  end
+  
+  def emitRunCode(plan)
+    emitBenchRunCode(fullname, plan, SingleFileCompileTimeBenchmarkParameters.new(ensureFile("CompileTime-#{@name}", @fullPath)))
+  end
+  
+  def environment
+    {"JSC_useConcurrentJIT" => "false", "JSC_reportTotalCompileTimes" => "true"}
+  end
+end
+
 class KrakenBenchmark
   include Benchmark
   
@@ -1621,6 +1730,18 @@ class JSBenchBenchmark
     callbackDecl += "    reportResult(result.time);\n"
     callbackDecl += "}\n"
     emitBenchRunCode(fullname, plan, SingleFileTimedCallbackBenchmarkParameters.new(callbackDecl, ensureFile("JSBench-#{@name}", "#{JSBENCH_PATH}/#{@name}/#{@jsBenchMode}.js")))
+  end
+end
+
+class TailBenchBenchmark
+  include Benchmark
+
+  def initialize(name)
+    @name = name
+  end
+
+  def emitRunCode(plan)
+    emitBenchRunCode(fullname, plan, SingleFileTimedBenchmarkParameters.new(ensureFile("TailBench-#{@name}", "#{TAILBENCH_PATH}/#{@name}.js")))
   end
 end
 
@@ -1975,7 +2096,12 @@ class BenchRunPlan
   end
  
   def environment
-    @environment
+    result = @environment.clone
+    benchmark.environment.each_pair {
+      | key, value |
+      result[key] = value
+    }
+    result
   end
  
   def prefix
@@ -2659,8 +2785,10 @@ begin
   def resetBenchOptionsIfNecessary
     unless $sawBenchOptions
       $includeSunSpider = false
+      $includeSunSpiderCompileTime = false
       $includeLongSpider = false
       $includeV8 = false
+      $includeV8CompileTime = false
       $includeKraken = false
       $includeJSBench = false
       $includeMicrobenchmarks = false
@@ -2671,6 +2799,7 @@ begin
       $includeOctane = false
       $includeCompressionBench = false
       $includeSixSpeed = false
+      $includeTailBench = false;
       $sawBenchOptions = true
     end
   end
@@ -2684,8 +2813,10 @@ begin
                  ['--minimum', GetoptLong::REQUIRED_ARGUMENT],
                  ['--timing-mode', GetoptLong::REQUIRED_ARGUMENT],
                  ['--sunspider', GetoptLong::NO_ARGUMENT],
+                 ['--sunspider-compile-time', GetoptLong::NO_ARGUMENT],
                  ['--longspider', GetoptLong::NO_ARGUMENT],
                  ['--v8-spider', GetoptLong::NO_ARGUMENT],
+                 ['--v8-spider-compile-time', GetoptLong::NO_ARGUMENT],
                  ['--kraken', GetoptLong::NO_ARGUMENT],
                  ['--js-bench', GetoptLong::NO_ARGUMENT],
                  ['--microbenchmarks', GetoptLong::NO_ARGUMENT],
@@ -2696,6 +2827,7 @@ begin
                  ['--octane', GetoptLong::NO_ARGUMENT],
                  ['--compression-bench', GetoptLong::NO_ARGUMENT],
                  ['--six-speed', GetoptLong::NO_ARGUMENT],
+                 ['--tail-bench', GetoptLong::NO_ARGUMENT],
                  ['--benchmarks', GetoptLong::REQUIRED_ARGUMENT],
                  ['--measure-gc', GetoptLong::OPTIONAL_ARGUMENT],
                  ['--force-vm-kind', GetoptLong::REQUIRED_ARGUMENT],
@@ -2763,18 +2895,27 @@ begin
     when '--sunspider'
       resetBenchOptionsIfNecessary
       $includeSunSpider = true
+    when '--sunspider-compile-time'
+      resetBenchOptionsIfNecessary
+      $includeSunSpiderCompileTime = true
     when '--longspider'
       resetBenchOptionsIfNecessary
       $includeLongSpider = true
     when '--v8-spider'
       resetBenchOptionsIfNecessary
       $includeV8 = true
+    when '--v8-spider-compile-time'
+      resetBenchOptionsIfNecessary
+      $includeV8CompileTime = true
     when '--kraken'
       resetBenchOptionsIfNecessary
       $includeKraken = true
     when '--js-bench'
       resetBenchOptionsIfNecessary
       $includeJSBench = true
+    when '--tail-bench'
+      resetBenchOptionsIfNecessary
+      $includeTailBench = true
     when '--microbenchmarks'
       resetBenchOptionsIfNecessary
       $includeMicrobenchmarks = true
@@ -2934,6 +3075,7 @@ begin
   }
   
   SUNSPIDER = BenchmarkSuite.new("SunSpider", :arithmeticMean, 0)
+  SUNSPIDER_COMPILE_TIME = BenchmarkSuite.new("SunSpider-CompileTime", :arithmeticMean, 0)
   WARMUP = BenchmarkSuite.new("WARMUP", :arithmeticMean, 0)
   ["3d-cube", "3d-morph", "3d-raytrace", "access-binary-trees",
    "access-fannkuch", "access-nbody", "access-nsieve",
@@ -2945,6 +3087,7 @@ begin
    "string-unpack-code", "string-validate-input"].each {
     | name |
     SUNSPIDER.add SunSpiderBenchmark.new(name)
+    SUNSPIDER_COMPILE_TIME.add CompileTimeBenchmark.new(name, "#{SUNSPIDER_PATH}/#{name}.js")
     WARMUP.addIgnoringPattern SunSpiderBenchmark.new(name)
   }
 
@@ -2961,10 +3104,12 @@ begin
   }
 
   V8 = BenchmarkSuite.new("V8Spider", :geometricMean, 0)
+  V8_COMPILE_TIME = BenchmarkSuite.new("V8Spider-CompileTime", :geometricMean, 0)
   ["crypto", "deltablue", "earley-boyer", "raytrace",
    "regexp", "richards", "splay"].each {
     | name |
     V8.add V8Benchmark.new(name)
+    V8_COMPILE_TIME.add CompileTimeBenchmark.new(name, "#{V8_PATH}/v8-#{name}.js")
   }
 
   OCTANE = BenchmarkSuite.new("Octane", :geometricMean, 1)
@@ -2989,6 +3134,7 @@ begin
     | args |
     OCTANE.add OctaneBenchmark.new(*args)
   }
+  OCTANE.add CustomTimedBenchmark.new("splay-latency", (OPENSOURCE_OCTANE_PATH + "splay.js").to_s)
 
   KRAKEN = BenchmarkSuite.new("Kraken", :arithmeticMean, -1)
   ["ai-astar", "audio-beat-detection", "audio-dft", "audio-fft",
@@ -3015,7 +3161,13 @@ begin
     | nameAndMode |
     JSBENCH.add JSBenchBenchmark.new(*nameAndMode)
   }
-  
+
+  TAILBENCH = BenchmarkSuite.new("TailBench", :geometricMean, 0)
+  ["n-body", "merge-sort", "merge-sort-cps", "bf-interpreter"].each {
+    | name |
+    TAILBENCH.add TailBenchBenchmark.new(name);
+  }
+
   MICROBENCHMARKS = BenchmarkSuite.new("Microbenchmarks", :geometricMean, 0)
   Dir.foreach(MICROBENCHMARKS_PATH) {
     | filename |
@@ -3118,12 +3270,20 @@ begin
     $suites << SUNSPIDER
   end
   
+  if $includeSunSpiderCompileTime and not SUNSPIDER_COMPILE_TIME.empty?
+    $suites << SUNSPIDER_COMPILE_TIME
+  end
+  
   if $includeLongSpider and not LONGSPIDER.empty?
     $suites << LONGSPIDER
   end
   
   if $includeV8 and not V8.empty?
     $suites << V8
+  end
+  
+  if $includeV8CompileTime and not V8_COMPILE_TIME.empty?
+    $suites << V8_COMPILE_TIME
   end
   
   if $includeOctane and not OCTANE.empty?
@@ -3154,10 +3314,14 @@ begin
     end
   end
   
+  if $includeTailBench and not TAILBENCH.empty?
+    $suites << TAILBENCH
+  end
+
   if $includeMicrobenchmarks and not MICROBENCHMARKS.empty?
     $suites << MICROBENCHMARKS
   end
-  
+
   if $includeAsmBench and not ASMBENCH.empty?
     if ASMBENCH_PATH
       $suites << ASMBENCH

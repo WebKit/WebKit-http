@@ -2,18 +2,24 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.map
 es5id: 15.4.4.19-3-13
 description: >
     Array.prototype.map - value of 'length' is string that is able to
     convert to number primitive (value is a decimal number)
 ---*/
 
-        function callbackfn(val, idx, obj) {
-            return val < 10;
-        }
+function callbackfn(val, idx, obj) {
+  return val < 10;
+}
 
-        var obj = { 0: 11, 1: 9, 2: 12, length: "2.5" };
+var obj = {
+  0: 11,
+  1: 9,
+  2: 12,
+  length: "2.5"
+};
 
-        var newArr = Array.prototype.map.call(obj, callbackfn);
+var newArr = Array.prototype.map.call(obj, callbackfn);
 
 assert.sameValue(newArr.length, 2, 'newArr.length');

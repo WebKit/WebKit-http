@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2006, 2008, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -58,6 +58,7 @@ public:
 
     AtomicString(AtomicStringImpl*);
     AtomicString(RefPtr<AtomicStringImpl>&&);
+    AtomicString(const StaticStringImpl*);
     ATOMICSTRING_CONVERSION AtomicString(StringImpl*);
     ATOMICSTRING_CONVERSION AtomicString(const String&);
     AtomicString(StringImpl* baseString, unsigned start, unsigned length);
@@ -71,12 +72,11 @@ public:
     {
     }
 
-    template<unsigned charactersCount>
-    ALWAYS_INLINE AtomicString(const char (&characters)[charactersCount], ConstructFromLiteralTag)
-        : m_string(AtomicStringImpl::addLiteral(characters, charactersCount - 1))
+    template<unsigned characterCount> ALWAYS_INLINE AtomicString(const char (&characters)[characterCount], ConstructFromLiteralTag)
+        : m_string(AtomicStringImpl::addLiteral(characters, characterCount - 1))
     {
-        COMPILE_ASSERT(charactersCount > 1, AtomicStringFromLiteralNotEmpty);
-        COMPILE_ASSERT((charactersCount - 1 <= ((unsigned(~0) - sizeof(StringImpl)) / sizeof(LChar))), AtomicStringFromLiteralCannotOverflow);
+        COMPILE_ASSERT(characterCount > 1, AtomicStringFromLiteralNotEmpty);
+        COMPILE_ASSERT((characterCount - 1 <= ((unsigned(~0) - sizeof(StringImpl)) / sizeof(LChar))), AtomicStringFromLiteralCannotOverflow);
     }
 
     // We have to declare the copy constructor and copy assignment operator as well, otherwise
@@ -104,61 +104,37 @@ public:
 
     UChar operator[](unsigned int i) const { return m_string[i]; }
 
-    WTF_EXPORT_STRING_API static AtomicString number(int);
-    WTF_EXPORT_STRING_API static AtomicString number(unsigned);
-    WTF_EXPORT_STRING_API static AtomicString number(unsigned long);
-    WTF_EXPORT_STRING_API static AtomicString number(unsigned long long);
-    WTF_EXPORT_STRING_API static AtomicString number(double);
+    WTF_EXPORT_PRIVATE static AtomicString number(int);
+    WTF_EXPORT_PRIVATE static AtomicString number(unsigned);
+    WTF_EXPORT_PRIVATE static AtomicString number(unsigned long);
+    WTF_EXPORT_PRIVATE static AtomicString number(unsigned long long);
+    WTF_EXPORT_PRIVATE static AtomicString number(double);
     // If we need more overloads of the number function, we can add all the others that String has, but these seem to do for now.
 
-    bool contains(UChar c) const { return m_string.contains(c); }
-    bool contains(const LChar* s, bool caseSensitive = true) const
-        { return m_string.contains(s, caseSensitive); }
-    bool contains(const String& s) const
-        { return m_string.contains(s); }
-    bool contains(const String& s, bool caseSensitive) const
-        { return m_string.contains(s, caseSensitive); }
-    bool containsIgnoringASCIICase(const String& s) const
-        { return m_string.containsIgnoringASCIICase(s); }
+    bool contains(UChar character) const { return m_string.contains(character); }
+    bool contains(const LChar* string) const { return m_string.contains(string); }
+    bool contains(const String& string) const { return m_string.contains(string); }
+    bool containsIgnoringASCIICase(const String& string) const { return m_string.containsIgnoringASCIICase(string); }
 
-    size_t find(UChar c, unsigned start = 0) const { return m_string.find(c, start); }
-    size_t find(const LChar* s, unsigned start = 0, bool caseSentitive = true) const
-        { return m_string.find(s, start, caseSentitive); }
-    size_t find(const String& s, unsigned start = 0, bool caseSentitive = true) const
-        { return m_string.find(s, start, caseSentitive); }
-    size_t findIgnoringASCIICase(const String& s) const
-        { return m_string.findIgnoringASCIICase(s); }
-    size_t findIgnoringASCIICase(const String& s, unsigned startOffset) const
-        { return m_string.findIgnoringASCIICase(s, startOffset); }
-    size_t find(CharacterMatchFunctionPtr matchFunction, unsigned start = 0) const
-        { return m_string.find(matchFunction, start); }
+    size_t find(UChar character, unsigned start = 0) const { return m_string.find(character, start); }
+    size_t find(const LChar* string, unsigned start = 0) const { return m_string.find(string, start); }
+    size_t find(const String& string, unsigned start = 0) const { return m_string.find(string, start); }
+    size_t findIgnoringASCIICase(const String& string) const { return m_string.findIgnoringASCIICase(string); }
+    size_t findIgnoringASCIICase(const String& string, unsigned startOffset) const { return m_string.findIgnoringASCIICase(string, startOffset); }
+    size_t find(CodeUnitMatchFunction matchFunction, unsigned start = 0) const { return m_string.find(matchFunction, start); }
 
-    bool startsWith(const String& s) const
-        { return m_string.startsWith(s); }
-    bool startsWithIgnoringASCIICase(const String& s) const
-        { return m_string.startsWithIgnoringASCIICase(s); }
-    bool startsWith(const String& s, bool caseSensitive) const
-        { return m_string.startsWith(s, caseSensitive); }
-    bool startsWith(UChar character) const
-        { return m_string.startsWith(character); }
-    template<unsigned matchLength>
-    bool startsWith(const char (&prefix)[matchLength], bool caseSensitive = true) const
-        { return m_string.startsWith<matchLength>(prefix, caseSensitive); }
+    bool startsWith(const String& string) const { return m_string.startsWith(string); }
+    bool startsWithIgnoringASCIICase(const String& string) const { return m_string.startsWithIgnoringASCIICase(string); }
+    bool startsWith(UChar character) const { return m_string.startsWith(character); }
+    template<unsigned matchLength> bool startsWith(const char (&prefix)[matchLength]) const { return m_string.startsWith<matchLength>(prefix); }
 
-    bool endsWith(const String& s) const
-        { return m_string.endsWith(s); }
-    bool endsWithIgnoringASCIICase(const String& s) const
-        { return m_string.endsWithIgnoringASCIICase(s); }
-    bool endsWith(const String& s, bool caseSensitive) const
-        { return m_string.endsWith(s, caseSensitive); }
-    bool endsWith(UChar character) const
-        { return m_string.endsWith(character); }
-    template<unsigned matchLength>
-    bool endsWith(const char (&prefix)[matchLength], bool caseSensitive = true) const
-        { return m_string.endsWith<matchLength>(prefix, caseSensitive); }
+    bool endsWith(const String& string) const { return m_string.endsWith(string); }
+    bool endsWithIgnoringASCIICase(const String& string) const { return m_string.endsWithIgnoringASCIICase(string); }
+    bool endsWith(UChar character) const { return m_string.endsWith(character); }
+    template<unsigned matchLength> bool endsWith(const char (&prefix)[matchLength]) const { return m_string.endsWith<matchLength>(prefix); }
 
-    WTF_EXPORT_STRING_API AtomicString convertToASCIILowercase() const;
-    WTF_EXPORT_STRING_API AtomicString convertToASCIIUppercase() const;
+    WTF_EXPORT_PRIVATE AtomicString convertToASCIILowercase() const;
+    WTF_EXPORT_PRIVATE AtomicString convertToASCIIUppercase() const;
 
     int toInt(bool* ok = 0) const { return m_string.toInt(ok); }
     double toDouble(bool* ok = 0) const { return m_string.toDouble(ok); }
@@ -171,6 +147,7 @@ public:
 #if USE(CF)
     AtomicString(CFStringRef);
 #endif
+
 #ifdef __OBJC__
     AtomicString(NSString*);
     operator NSString*() const { return m_string; }
@@ -182,8 +159,7 @@ public:
     operator QString() const { return m_string; }
 #endif
 
-    // AtomicString::fromUTF8 will return a null string if
-    // the input data contains invalid UTF-8 sequences.
+    // AtomicString::fromUTF8 will return a null string if the input data contains invalid UTF-8 sequences.
     static AtomicString fromUTF8(const char*, size_t);
     static AtomicString fromUTF8(const char*);
 
@@ -198,7 +174,7 @@ private:
     enum class CaseConvertType { Upper, Lower };
     template<CaseConvertType> AtomicString convertASCIICase() const;
 
-    WTF_EXPORT_STRING_API static AtomicString fromUTF8Internal(const char*, const char*);
+    WTF_EXPORT_PRIVATE static AtomicString fromUTF8Internal(const char*, const char*);
 
     String m_string;
 };
@@ -234,48 +210,53 @@ inline AtomicString::AtomicString()
 {
 }
 
-inline AtomicString::AtomicString(const LChar* s)
-    : m_string(AtomicStringImpl::add(s))
+inline AtomicString::AtomicString(const LChar* string)
+    : m_string(AtomicStringImpl::add(string))
 {
 }
 
-inline AtomicString::AtomicString(const char* s)
-    : m_string(AtomicStringImpl::add(s))
+inline AtomicString::AtomicString(const char* string)
+    : m_string(AtomicStringImpl::add(string))
 {
 }
 
-inline AtomicString::AtomicString(const LChar* s, unsigned length)
-    : m_string(AtomicStringImpl::add(s, length))
+inline AtomicString::AtomicString(const LChar* string, unsigned length)
+    : m_string(AtomicStringImpl::add(string, length))
 {
 }
 
-inline AtomicString::AtomicString(const UChar* s, unsigned length)
-    : m_string(AtomicStringImpl::add(s, length))
+inline AtomicString::AtomicString(const UChar* string, unsigned length)
+    : m_string(AtomicStringImpl::add(string, length))
 {
 }
 
-inline AtomicString::AtomicString(const UChar* s)
-    : m_string(AtomicStringImpl::add(s))
+inline AtomicString::AtomicString(const UChar* string)
+    : m_string(AtomicStringImpl::add(string))
 {
 }
 
-inline AtomicString::AtomicString(AtomicStringImpl* imp)
-    : m_string(imp)
+inline AtomicString::AtomicString(AtomicStringImpl* string)
+    : m_string(string)
 {
 }
 
-inline AtomicString::AtomicString(RefPtr<AtomicStringImpl>&& imp)
-    : m_string(WTFMove(imp))
+inline AtomicString::AtomicString(RefPtr<AtomicStringImpl>&& string)
+    : m_string(WTFMove(string))
 {
 }
 
-inline AtomicString::AtomicString(StringImpl* imp)
-    : m_string(AtomicStringImpl::add(imp))
+inline AtomicString::AtomicString(StringImpl* string)
+    : m_string(AtomicStringImpl::add(string))
 {
 }
 
-inline AtomicString::AtomicString(const String& s)
-    : m_string(AtomicStringImpl::add(s.impl()))
+inline AtomicString::AtomicString(const StaticStringImpl* string)
+    : m_string(AtomicStringImpl::add(string))
+{
+}
+
+inline AtomicString::AtomicString(const String& string)
+    : m_string(AtomicStringImpl::add(string.impl()))
 {
 }
 
@@ -290,26 +271,30 @@ inline AtomicString::AtomicString(UniquedStringImpl* uid)
 }
 
 #if USE(CF)
-inline AtomicString::AtomicString(CFStringRef s)
-    :  m_string(AtomicStringImpl::add(s))
+
+inline AtomicString::AtomicString(CFStringRef string)
+    :  m_string(AtomicStringImpl::add(string))
 {
 }
+
 #endif
 
 #ifdef __OBJC__
-inline AtomicString::AtomicString(NSString* s)
-    : m_string(AtomicStringImpl::add((__bridge CFStringRef)s))
+
+inline AtomicString::AtomicString(NSString* string)
+    : m_string(AtomicStringImpl::add((__bridge CFStringRef)string))
 {
 }
+
 #endif
 
 // Define external global variables for the commonly used atomic strings.
 // These are only usable from the main thread.
-extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> nullAtomData;
-extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> emptyAtomData;
-extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> starAtomData;
-extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> xmlAtomData;
-extern WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> xmlnsAtomData;
+extern WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> nullAtomData;
+extern WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> emptyAtomData;
+extern WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> starAtomData;
+extern WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> xmlAtomData;
+extern WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> xmlnsAtomData;
 
 inline const AtomicString& nullAtom() { return nullAtomData.get(); }
 inline const AtomicString& emptyAtom() { return emptyAtomData.get(); }

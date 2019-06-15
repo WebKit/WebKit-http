@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "getUTCMinutes" has { DontEnum } attributes
+esid: sec-date.prototype.getutcminutes
 es5id: 15.9.5.21_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.getUTCMinutes;
-if(x === 1)
+if (x === 1)
   Date.prototype.getUTCMinutes = 2;
 else
   Date.prototype.getUTCMinutes = 1;

@@ -22,10 +22,9 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMDocumentFragmentPrivate.h"
 #include "WebKitDOMNodePrivate.h"
 #include "WebKitDOMPrivate.h"
@@ -40,6 +39,8 @@
 typedef struct _WebKitDOMRangePrivate {
     RefPtr<WebCore::Range> coreObject;
 } WebKitDOMRangePrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -70,14 +71,14 @@ WebKitDOMRange* wrapRange(WebCore::Range* coreObject)
 G_DEFINE_TYPE(WebKitDOMRange, webkit_dom_range, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_START_CONTAINER,
-    PROP_START_OFFSET,
-    PROP_END_CONTAINER,
-    PROP_END_OFFSET,
-    PROP_COLLAPSED,
-    PROP_COMMON_ANCESTOR_CONTAINER,
-    PROP_TEXT,
+    DOM_RANGE_PROP_0,
+    DOM_RANGE_PROP_START_CONTAINER,
+    DOM_RANGE_PROP_START_OFFSET,
+    DOM_RANGE_PROP_END_CONTAINER,
+    DOM_RANGE_PROP_END_OFFSET,
+    DOM_RANGE_PROP_COLLAPSED,
+    DOM_RANGE_PROP_COMMON_ANCESTOR_CONTAINER,
+    DOM_RANGE_PROP_TEXT,
 };
 
 static void webkit_dom_range_finalize(GObject* object)
@@ -95,25 +96,25 @@ static void webkit_dom_range_get_property(GObject* object, guint propertyId, GVa
     WebKitDOMRange* self = WEBKIT_DOM_RANGE(object);
 
     switch (propertyId) {
-    case PROP_START_CONTAINER:
+    case DOM_RANGE_PROP_START_CONTAINER:
         g_value_set_object(value, webkit_dom_range_get_start_container(self, nullptr));
         break;
-    case PROP_START_OFFSET:
+    case DOM_RANGE_PROP_START_OFFSET:
         g_value_set_long(value, webkit_dom_range_get_start_offset(self, nullptr));
         break;
-    case PROP_END_CONTAINER:
+    case DOM_RANGE_PROP_END_CONTAINER:
         g_value_set_object(value, webkit_dom_range_get_end_container(self, nullptr));
         break;
-    case PROP_END_OFFSET:
+    case DOM_RANGE_PROP_END_OFFSET:
         g_value_set_long(value, webkit_dom_range_get_end_offset(self, nullptr));
         break;
-    case PROP_COLLAPSED:
+    case DOM_RANGE_PROP_COLLAPSED:
         g_value_set_boolean(value, webkit_dom_range_get_collapsed(self, nullptr));
         break;
-    case PROP_COMMON_ANCESTOR_CONTAINER:
+    case DOM_RANGE_PROP_COMMON_ANCESTOR_CONTAINER:
         g_value_set_object(value, webkit_dom_range_get_common_ancestor_container(self, nullptr));
         break;
-    case PROP_TEXT:
+    case DOM_RANGE_PROP_TEXT:
         g_value_take_string(value, webkit_dom_range_get_text(self));
         break;
     default:
@@ -143,7 +144,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_START_CONTAINER,
+        DOM_RANGE_PROP_START_CONTAINER,
         g_param_spec_object(
             "start-container",
             "Range:start-container",
@@ -153,7 +154,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_START_OFFSET,
+        DOM_RANGE_PROP_START_OFFSET,
         g_param_spec_long(
             "start-offset",
             "Range:start-offset",
@@ -163,7 +164,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_END_CONTAINER,
+        DOM_RANGE_PROP_END_CONTAINER,
         g_param_spec_object(
             "end-container",
             "Range:end-container",
@@ -173,7 +174,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_END_OFFSET,
+        DOM_RANGE_PROP_END_OFFSET,
         g_param_spec_long(
             "end-offset",
             "Range:end-offset",
@@ -183,7 +184,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_COLLAPSED,
+        DOM_RANGE_PROP_COLLAPSED,
         g_param_spec_boolean(
             "collapsed",
             "Range:collapsed",
@@ -193,7 +194,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_COMMON_ANCESTOR_CONTAINER,
+        DOM_RANGE_PROP_COMMON_ANCESTOR_CONTAINER,
         g_param_spec_object(
             "common-ancestor-container",
             "Range:common-ancestor-container",
@@ -203,7 +204,7 @@ static void webkit_dom_range_class_init(WebKitDOMRangeClass* requestClass)
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TEXT,
+        DOM_RANGE_PROP_TEXT,
         g_param_spec_string(
             "text",
             "Range:text",
@@ -229,8 +230,8 @@ void webkit_dom_range_set_start(WebKitDOMRange* self, WebKitDOMNode* refNode, gl
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->setStart(*convertedRefNode, offset);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -244,8 +245,8 @@ void webkit_dom_range_set_end(WebKitDOMRange* self, WebKitDOMNode* refNode, glon
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->setEnd(*convertedRefNode, offset);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -259,8 +260,8 @@ void webkit_dom_range_set_start_before(WebKitDOMRange* self, WebKitDOMNode* refN
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->setStartBefore(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -274,8 +275,8 @@ void webkit_dom_range_set_start_after(WebKitDOMRange* self, WebKitDOMNode* refNo
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->setStartAfter(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -289,8 +290,8 @@ void webkit_dom_range_set_end_before(WebKitDOMRange* self, WebKitDOMNode* refNod
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->setEndBefore(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -304,8 +305,8 @@ void webkit_dom_range_set_end_after(WebKitDOMRange* self, WebKitDOMNode* refNode
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->setEndAfter(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -328,8 +329,8 @@ void webkit_dom_range_select_node(WebKitDOMRange* self, WebKitDOMNode* refNode, 
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->selectNode(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -343,8 +344,8 @@ void webkit_dom_range_select_node_contents(WebKitDOMRange* self, WebKitDOMNode* 
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->selectNodeContents(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -358,8 +359,8 @@ gshort webkit_dom_range_compare_boundary_points(WebKitDOMRange* self, gushort ho
     WebCore::Range* convertedSourceRange = WebKit::core(sourceRange);
     auto result = item->compareBoundaryPointsForBindings(how, *convertedSourceRange);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return 0;
     }
     return result.releaseReturnValue();
@@ -373,8 +374,8 @@ void webkit_dom_range_delete_contents(WebKitDOMRange* self, GError** error)
     WebCore::Range* item = WebKit::core(self);
     auto result = item->deleteContents();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -386,8 +387,8 @@ WebKitDOMDocumentFragment* webkit_dom_range_extract_contents(WebKitDOMRange* sel
     WebCore::Range* item = WebKit::core(self);
     auto result = item->extractContents();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue().ptr());
@@ -401,8 +402,8 @@ WebKitDOMDocumentFragment* webkit_dom_range_clone_contents(WebKitDOMRange* self,
     WebCore::Range* item = WebKit::core(self);
     auto result = item->cloneContents();
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue().ptr());
@@ -418,8 +419,8 @@ void webkit_dom_range_insert_node(WebKitDOMRange* self, WebKitDOMNode* newNode, 
     WebCore::Node* convertedNewNode = WebKit::core(newNode);
     auto result = item->insertNode(*convertedNewNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -433,8 +434,8 @@ void webkit_dom_range_surround_contents(WebKitDOMRange* self, WebKitDOMNode* new
     WebCore::Node* convertedNewParent = WebKit::core(newParent);
     auto result = item->surroundContents(*convertedNewParent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -477,8 +478,8 @@ WebKitDOMDocumentFragment* webkit_dom_range_create_contextual_fragment(WebKitDOM
     WTF::String convertedHtml = WTF::String::fromUTF8(html);
     auto result = item->createContextualFragment(convertedHtml);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return nullptr;
     }
     return WebKit::kit(result.releaseReturnValue().ptr());
@@ -494,8 +495,8 @@ gshort webkit_dom_range_compare_node(WebKitDOMRange* self, WebKitDOMNode* refNod
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->compareNode(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return 0;
     }
     return result.releaseReturnValue();
@@ -511,8 +512,8 @@ gboolean webkit_dom_range_intersects_node(WebKitDOMRange* self, WebKitDOMNode* r
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->intersectsNode(*convertedRefNode);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -528,8 +529,8 @@ gshort webkit_dom_range_compare_point(WebKitDOMRange* self, WebKitDOMNode* refNo
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->comparePoint(*convertedRefNode, offset);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return 0;
     }
     return result.releaseReturnValue();
@@ -545,8 +546,8 @@ gboolean webkit_dom_range_is_point_in_range(WebKitDOMRange* self, WebKitDOMNode*
     WebCore::Node* convertedRefNode = WebKit::core(refNode);
     auto result = item->isPointInRange(*convertedRefNode, offset);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -562,8 +563,8 @@ void webkit_dom_range_expand(WebKitDOMRange* self, const gchar* unit, GError** e
     WTF::String convertedUnit = WTF::String::fromUTF8(unit);
     auto result = item->expand(convertedUnit);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -636,3 +637,4 @@ gchar* webkit_dom_range_get_text(WebKitDOMRange* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

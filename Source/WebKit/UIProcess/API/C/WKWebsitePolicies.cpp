@@ -26,9 +26,13 @@
 #include "config.h"
 #include "WKWebsitePolicies.h"
 
+#include "APIDictionary.h"
+#include "APIWebsiteDataStore.h"
 #include "APIWebsitePolicies.h"
 #include "WKAPICast.h"
-#include "WebsitePolicies.h"
+#include "WKArray.h"
+#include "WKDictionary.h"
+#include "WKRetainPtr.h"
 
 using namespace WebKit;
 
@@ -52,14 +56,40 @@ bool WKWebsitePoliciesGetContentBlockersEnabled(WKWebsitePoliciesRef websitePoli
     return toImpl(websitePolicies)->contentBlockersEnabled();
 }
 
+WK_EXPORT WKDictionaryRef WKWebsitePoliciesCopyCustomHeaderFields(WKWebsitePoliciesRef websitePolicies)
+{
+    HashMap<WTF::String, RefPtr<API::Object>> fields;
+    for (const auto& field : toImpl(websitePolicies)->customHeaderFields())
+        fields.add(field.name(), API::String::create(field.value()));
+    return toAPI(API::Dictionary::create(WTFMove(fields)).ptr());
+}
+
+WK_EXPORT void WKWebsitePoliciesSetCustomHeaderFields(WKWebsitePoliciesRef websitePolicies, WKDictionaryRef dictionary)
+{
+    auto keys = adoptWK(WKDictionaryCopyKeys(dictionary));
+    size_t length = WKArrayGetSize(keys.get());
+    Vector<WebCore::HTTPHeaderField> fields;
+    fields.reserveInitialCapacity(length);
+    for (size_t i = 0; i < length; ++i) {
+        WKStringRef name = static_cast<WKStringRef>(WKArrayGetItemAtIndex(keys.get(), i));
+        auto field = WebCore::HTTPHeaderField::create(toImpl(name)->string(), toImpl(static_cast<WKStringRef>(WKDictionaryGetItemForKey(dictionary, name)))->string());
+        if (field && startsWithLettersIgnoringASCIICase(field->name(), "x-"))
+            fields.uncheckedAppend(WTFMove(*field));
+    }
+    toImpl(websitePolicies)->setCustomHeaderFields(WTFMove(fields));
+}
+
 void WKWebsitePoliciesSetAllowedAutoplayQuirks(WKWebsitePoliciesRef websitePolicies, WKWebsiteAutoplayQuirk allowedQuirks)
 {
     OptionSet<WebsiteAutoplayQuirk> quirks;
     if (allowedQuirks & kWKWebsiteAutoplayQuirkInheritedUserGestures)
-        quirks |= WebsiteAutoplayQuirk::InheritedUserGestures;
+        quirks.add(WebsiteAutoplayQuirk::InheritedUserGestures);
 
     if (allowedQuirks & kWKWebsiteAutoplayQuirkSynthesizedPauseEvents)
-        quirks |= WebsiteAutoplayQuirk::SynthesizedPauseEvents;
+        quirks.add(WebsiteAutoplayQuirk::SynthesizedPauseEvents);
+
+    if (allowedQuirks & kWKWebsiteAutoplayQuirkArbitraryUserGestures)
+        quirks.add(WebsiteAutoplayQuirk::ArbitraryUserGestures);
 
     toImpl(websitePolicies)->setAllowedAutoplayQuirks(quirks);
 }
@@ -74,6 +104,9 @@ WKWebsiteAutoplayQuirk WKWebsitePoliciesGetAllowedAutoplayQuirks(WKWebsitePolici
 
     if (allowedQuirks.contains(WebsiteAutoplayQuirk::InheritedUserGestures))
         quirks |= kWKWebsiteAutoplayQuirkInheritedUserGestures;
+
+    if (allowedQuirks.contains(WebsiteAutoplayQuirk::ArbitraryUserGestures))
+        quirks |= kWKWebsiteAutoplayQuirkArbitraryUserGestures;
 
     return quirks;
 }
@@ -112,3 +145,44 @@ void WKWebsitePoliciesSetAutoplayPolicy(WKWebsitePoliciesRef websitePolicies, WK
     }
     ASSERT_NOT_REACHED();
 }
+
+WKWebsitePopUpPolicy WKWebsitePoliciesGetPopUpPolicy(WKWebsitePoliciesRef websitePolicies)
+{
+    switch (toImpl(websitePolicies)->popUpPolicy()) {
+    case WebsitePopUpPolicy::Default:
+        return kWKWebsitePopUpPolicyDefault;
+    case WebsitePopUpPolicy::Allow:
+        return kWKWebsitePopUpPolicyAllow;
+    case WebsitePopUpPolicy::Block:
+        return kWKWebsitePopUpPolicyBlock;
+    }
+    ASSERT_NOT_REACHED();
+    return kWKWebsitePopUpPolicyDefault;
+}
+
+void WKWebsitePoliciesSetPopUpPolicy(WKWebsitePoliciesRef websitePolicies, WKWebsitePopUpPolicy policy)
+{
+    switch (policy) {
+    case kWKWebsitePopUpPolicyDefault:
+        toImpl(websitePolicies)->setPopUpPolicy(WebsitePopUpPolicy::Default);
+        return;
+    case kWKWebsitePopUpPolicyAllow:
+        toImpl(websitePolicies)->setPopUpPolicy(WebsitePopUpPolicy::Allow);
+        return;
+    case kWKWebsitePopUpPolicyBlock:
+        toImpl(websitePolicies)->setPopUpPolicy(WebsitePopUpPolicy::Block);
+        return;
+    }
+    ASSERT_NOT_REACHED();
+}
+
+WKWebsiteDataStoreRef WKWebsitePoliciesGetDataStore(WKWebsitePoliciesRef websitePolicies)
+{
+    return toAPI(toImpl(websitePolicies)->websiteDataStore());
+}
+
+void WKWebsitePoliciesSetDataStore(WKWebsitePoliciesRef websitePolicies, WKWebsiteDataStoreRef websiteDataStore)
+{
+    toImpl(websitePolicies)->setWebsiteDataStore(toImpl(websiteDataStore));
+}
+

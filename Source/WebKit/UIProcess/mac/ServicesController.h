@@ -36,7 +36,7 @@ namespace WebKit {
 
 class ServicesController {
     WTF_MAKE_NONCOPYABLE(ServicesController);
-    friend class NeverDestroyed<ServicesController>;
+    friend NeverDestroyed<ServicesController>;
 public:
     static ServicesController& singleton();
 
@@ -52,9 +52,13 @@ private:
     dispatch_queue_t m_refreshQueue;
     std::atomic_bool m_hasPendingRefresh;
 
-    bool m_hasImageServices;
-    bool m_hasSelectionServices;
-    bool m_hasRichContentServices;
+    std::atomic<bool> m_hasImageServices;
+    std::atomic<bool> m_hasSelectionServices;
+    std::atomic<bool> m_hasRichContentServices;
+
+    bool m_lastSentHasImageServices;
+    bool m_lastSentHasSelectionServices;
+    bool m_lastSentHasRichContentServices;
 
     RetainPtr<id> m_extensionWatcher;
     RetainPtr<id> m_uiExtensionWatcher;

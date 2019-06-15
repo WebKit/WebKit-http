@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-dataview.prototype.getfloat32
 es6id: 24.2.4.5
 description: >
   DataView.prototype.getFloat32.name is "getFloat32".
-info: >
+info: |
   DataView.prototype.getFloat32 ( byteOffset [ , littleEndian ] )
 
   17 ECMAScript Standard Built-in Objects:

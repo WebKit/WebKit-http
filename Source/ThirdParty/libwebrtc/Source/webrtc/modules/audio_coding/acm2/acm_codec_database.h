@@ -13,12 +13,11 @@
  * codecs.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_ACM2_ACM_CODEC_DATABASE_H_
-#define WEBRTC_MODULES_AUDIO_CODING_ACM2_ACM_CODEC_DATABASE_H_
+#ifndef MODULES_AUDIO_CODING_ACM2_ACM_CODEC_DATABASE_H_
+#define MODULES_AUDIO_CODING_ACM2_ACM_CODEC_DATABASE_H_
 
-#include "webrtc/common_types.h"
-#include "webrtc/modules/audio_coding/acm2/rent_a_codec.h"
-#include "webrtc/typedefs.h"
+#include "common_types.h"  // NOLINT(build/include)
+#include "modules/audio_coding/acm2/rent_a_codec.h"
 
 namespace webrtc {
 
@@ -31,7 +30,7 @@ class ACMCodecDB {
   //                 build.
   // kMaxNumPacketSize - Maximum number of allowed packet sizes for one codec.
   // These might need to be increased if adding a new codec to the database
-  static const int kMaxNumCodecs =  50;
+  static const int kMaxNumCodecs = 50;
   static const int kMaxNumPacketSize = 6;
 
   // Codec specific settings
@@ -79,4 +78,4 @@ class ACMCodecDB {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_ACM2_ACM_CODEC_DATABASE_H_
+#endif  // MODULES_AUDIO_CODING_ACM2_ACM_CODEC_DATABASE_H_

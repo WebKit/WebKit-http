@@ -24,6 +24,7 @@ import android.media.AudioManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
+import javax.annotation.Nullable;
 import android.util.Log;
 import java.util.List;
 import java.util.Set;
@@ -64,14 +65,18 @@ public class AppRTCBluetoothManager {
 
   private final Context apprtcContext;
   private final AppRTCAudioManager apprtcAudioManager;
+  @Nullable
   private final AudioManager audioManager;
   private final Handler handler;
 
   int scoConnectionAttempts;
   private State bluetoothState;
   private final BluetoothProfile.ServiceListener bluetoothServiceListener;
+  @Nullable
   private BluetoothAdapter bluetoothAdapter;
+  @Nullable
   private BluetoothHeadset bluetoothHeadset;
+  @Nullable
   private BluetoothDevice bluetoothDevice;
   private final BroadcastReceiver bluetoothHeadsetReceiver;
 
@@ -187,7 +192,7 @@ public class AppRTCBluetoothManager {
       }
       Log.d(TAG, "onReceive done: BT state=" + bluetoothState);
     }
-  };
+  }
 
   /** Construction. */
   static AppRTCBluetoothManager create(Context context, AppRTCAudioManager audioManager) {
@@ -276,23 +281,25 @@ public class AppRTCBluetoothManager {
   /** Stops and closes all components related to Bluetooth audio. */
   public void stop() {
     ThreadUtils.checkIsOnMainThread();
-    unregisterReceiver(bluetoothHeadsetReceiver);
     Log.d(TAG, "stop: BT state=" + bluetoothState);
-    if (bluetoothAdapter != null) {
-      // Stop BT SCO connection with remote device if needed.
-      stopScoAudio();
-      // Close down remaining BT resources.
-      if (bluetoothState != State.UNINITIALIZED) {
-        cancelTimer();
-        if (bluetoothHeadset != null) {
-          bluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET, bluetoothHeadset);
-          bluetoothHeadset = null;
-        }
-        bluetoothAdapter = null;
-        bluetoothDevice = null;
-        bluetoothState = State.UNINITIALIZED;
-      }
+    if (bluetoothAdapter == null) {
+      return;
     }
+    // Stop BT SCO connection with remote device if needed.
+    stopScoAudio();
+    // Close down remaining BT resources.
+    if (bluetoothState == State.UNINITIALIZED) {
+      return;
+    }
+    unregisterReceiver(bluetoothHeadsetReceiver);
+    cancelTimer();
+    if (bluetoothHeadset != null) {
+      bluetoothAdapter.closeProfileProxy(BluetoothProfile.HEADSET, bluetoothHeadset);
+      bluetoothHeadset = null;
+    }
+    bluetoothAdapter = null;
+    bluetoothDevice = null;
+    bluetoothState = State.UNINITIALIZED;
     Log.d(TAG, "stop done: BT state=" + bluetoothState);
   }
 
@@ -329,9 +336,11 @@ public class AppRTCBluetoothManager {
     // intent ACTION_SCO_AUDIO_STATE_UPDATED and wait for the state to be SCO_AUDIO_STATE_CONNECTED.
     bluetoothState = State.SCO_CONNECTING;
     audioManager.startBluetoothSco();
+    audioManager.setBluetoothScoOn(true);
     scoConnectionAttempts++;
     startTimer();
-    Log.d(TAG, "startScoAudio done: BT state=" + bluetoothState);
+    Log.d(TAG, "startScoAudio done: BT state=" + bluetoothState + ", "
+            + "SCO is on: " + isScoOn());
     return true;
   }
 
@@ -345,8 +354,10 @@ public class AppRTCBluetoothManager {
     }
     cancelTimer();
     audioManager.stopBluetoothSco();
+    audioManager.setBluetoothScoOn(false);
     bluetoothState = State.SCO_DISCONNECTING;
-    Log.d(TAG, "stopScoAudio done: BT state=" + bluetoothState);
+    Log.d(TAG, "stopScoAudio done: BT state=" + bluetoothState + ", "
+            + "SCO is on: " + isScoOn());
   }
 
   /**
@@ -370,7 +381,7 @@ public class AppRTCBluetoothManager {
       bluetoothState = State.HEADSET_UNAVAILABLE;
       Log.d(TAG, "No connected bluetooth headset");
     } else {
-      // Always use first device is list. Android only supports one device.
+      // Always use first device in list. Android only supports one device.
       bluetoothDevice = devices.get(0);
       bluetoothState = State.HEADSET_AVAILABLE;
       Log.d(TAG, "Connected bluetooth headset: "
@@ -384,6 +395,7 @@ public class AppRTCBluetoothManager {
   /**
    * Stubs for test mocks.
    */
+  @Nullable
   protected AudioManager getAudioManager(Context context) {
     return (AudioManager) context.getSystemService(Context.AUDIO_SERVICE);
   }

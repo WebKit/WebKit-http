@@ -33,6 +33,12 @@
 
 @implementation TestNavigationDelegate
 
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation
+{
+    if (_didStartProvisionalNavigation)
+        _didStartProvisionalNavigation(webView, navigation);
+}
+
 - (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
     if (_didFailProvisionalNavigation)
@@ -57,6 +63,20 @@
         _renderingProgressDidChange(webView, progressEvents);
 }
 
+- (void)waitForDidStartProvisionalNavigation
+{
+    EXPECT_FALSE(self.didStartProvisionalNavigation);
+
+    __block bool finished = false;
+    self.didStartProvisionalNavigation = ^(WKWebView *, WKNavigation *) {
+        finished = true;
+    };
+
+    TestWebKitAPI::Util::run(&finished);
+
+    self.didStartProvisionalNavigation = nil;
+}
+
 - (void)waitForDidFinishNavigation
 {
     EXPECT_FALSE(self.didFinishNavigation);
@@ -75,6 +95,17 @@
 
 @implementation WKWebView (TestWebKitAPIExtras)
 
+- (void)_test_waitForDidStartProvisionalNavigation
+{
+    EXPECT_FALSE(self.navigationDelegate);
+
+    auto navigationDelegate = adoptNS([[TestNavigationDelegate alloc] init]);
+    self.navigationDelegate = navigationDelegate.get();
+    [navigationDelegate waitForDidStartProvisionalNavigation];
+
+    self.navigationDelegate = nil;
+}
+
 - (void)_test_waitForDidFinishNavigation
 {
     EXPECT_FALSE(self.navigationDelegate);
@@ -84,6 +115,14 @@
     [navigationDelegate waitForDidFinishNavigation];
 
     self.navigationDelegate = nil;
+
+#if PLATFORM(IOS)
+    __block bool presentationUpdateHappened = false;
+    [self _doAfterNextPresentationUpdateWithoutWaitingForAnimatedResizeForTesting:^{
+        presentationUpdateHappened = true;
+    }];
+    TestWebKitAPI::Util::run(&presentationUpdateHappened);
+#endif
 }
 
 @end

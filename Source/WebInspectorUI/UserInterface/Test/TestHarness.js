@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-TestHarness = class TestHarness extends WebInspector.Object
+TestHarness = class TestHarness extends WI.Object
 {
     constructor()
     {
@@ -55,7 +55,14 @@ TestHarness = class TestHarness extends WebInspector.Object
         throw new Error("Must be implemented by subclasses.");
     }
 
-    evaluateInPage(string, callback)
+    // If 'callback' is a function, it will be with the arguments
+    // callback(error, result, wasThrown). Otherwise, a promise is
+    // returned that resolves with 'result' or rejects with 'error'.
+
+    // The options object accepts the following keys and values:
+    // 'remoteObjectOnly': if true, do not unwrap the result payload to a
+    // primitive value even if possible. Useful if testing WI.RemoteObject directly.
+    evaluateInPage(string, callback, options={})
     {
         throw new Error("Must be implemented by subclasses.");
     }
@@ -88,6 +95,11 @@ TestHarness = class TestHarness extends WebInspector.Object
             this.debugLog(message);
         else
             this.addResult(message);
+    }
+
+    json(object, filter)
+    {
+        this.log(JSON.stringify(object, filter || null, 2));
     }
 
     assert(condition, message)
@@ -179,6 +191,46 @@ TestHarness = class TestHarness extends WebInspector.Object
         this.log("FAIL: " + stringifiedMessage);
     }
 
+    // Use this to expect an exception. To further examine the exception,
+    // chain onto the result with .then() and add your own test assertions.
+    // The returned promise is rejected if an exception was not thrown.
+    expectException(work)
+    {
+        if (typeof work !== "function")
+            throw new Error("Invalid argument to catchException: work must be a function.");
+
+        let expectAndDumpError = (e) => {
+            this.expectNotNull(e, "Should produce an exception.");
+            if (e)
+                this.log(e.toString());
+        }
+
+        let error = null;
+        let result = null;
+        try {
+            result = work();
+        } catch (caughtError) {
+            error = caughtError;
+        } finally {
+            // If 'work' returns a promise, it will settle (resolve or reject) by itself.
+            // Invert the promise's settled state to match the expectation of the caller.
+            if (result instanceof Promise) {
+                return result.then((resolvedValue) => {
+                    expectAndDumpError(null);
+                    return Promise.reject(resolvedValue);
+                }, (e) => { // Don't chain the .catch as it will log the value we just rejected.
+                    expectAndDumpError(e);
+                    return Promise.resolve(e);
+                });
+            }
+
+            // If a promise is not produced, turn the exception into a resolved promise, and a
+            // resolved value into a rejected value (since an exception was expected).
+            expectAndDumpError(error);
+            return error ? Promise.resolve(error) : Promise.reject(result);
+        }
+    }
+
     // Protected
 
     static messageAsString(message)
@@ -186,7 +238,7 @@ TestHarness = class TestHarness extends WebInspector.Object
         if (message instanceof Element)
             return message.textContent;
 
-        return (typeof message !== "string") ? JSON.stringify(message) : message;
+        return typeof message !== "string" ? JSON.stringify(message) : message;
     }
 
     static sanitizeURL(url)
@@ -195,7 +247,7 @@ TestHarness = class TestHarness extends WebInspector.Object
             return "(unknown)";
 
         let lastPathSeparator = Math.max(url.lastIndexOf("/"), url.lastIndexOf("\\"));
-        let location = (lastPathSeparator > 0) ? url.substr(lastPathSeparator + 1) : url;
+        let location = lastPathSeparator > 0 ? url.substr(lastPathSeparator + 1) : url;
         if (!location.length)
             location = "(unknown)";
 
@@ -211,10 +263,10 @@ TestHarness = class TestHarness extends WebInspector.Object
         // Most frames are of the form "functionName@file:///foo/bar/File.js:345".
         // But, some frames do not have a functionName. Get rid of the file path.
         let nameAndURLSeparator = frame.indexOf("@");
-        let frameName = (nameAndURLSeparator > 0) ? frame.substr(0, nameAndURLSeparator) : "(anonymous)";
+        let frameName = nameAndURLSeparator > 0 ? frame.substr(0, nameAndURLSeparator) : "(anonymous)";
 
         let lastPathSeparator = Math.max(frame.lastIndexOf("/"), frame.lastIndexOf("\\"));
-        let frameLocation = (lastPathSeparator > 0) ? frame.substr(lastPathSeparator + 1) : frame;
+        let frameLocation = lastPathSeparator > 0 ? frame.substr(lastPathSeparator + 1) : frame;
         if (!frameLocation.length)
             frameLocation = "unknown";
 
@@ -282,14 +334,14 @@ TestHarness = class TestHarness extends WebInspector.Object
             let valueString = JSON.stringify(value);
             if (valueString.length <= maximumValueStringLength)
                 return valueString;
-        } catch (e) {}
+        } catch { }
 
         try {
             let valueString = String(value);
             if (valueString === defaultValueString && value.constructor && value.constructor.name !== "Object")
                 return value.constructor.name + " instance " + instanceIdentifier(value);
             return valueString;
-        } catch (e) {
+        } catch {
             return defaultValueString;
         }
     }

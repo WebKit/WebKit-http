@@ -33,15 +33,15 @@
 #include "NetworkRTCMonitorMessages.h"
 #include "WebProcess.h"
 #include <WebCore/LibWebRTCMacros.h>
-#include <webrtc/base/nethelpers.h>
+#include <webrtc/rtc_base/nethelpers.h>
 #include <wtf/MainThread.h>
 
 namespace WebKit {
 
-static inline void sendOnMainThread(Function<void(IPC::Connection&)>&& callback)
+void WebRTCMonitor::sendOnMainThread(Function<void(IPC::Connection&)>&& callback)
 {
     callOnMainThread([callback = WTFMove(callback)]() {
-        callback(WebProcess::singleton().networkConnection().connection());
+        callback(WebProcess::singleton().ensureNetworkProcessConnection().connection());
     });
 }
 

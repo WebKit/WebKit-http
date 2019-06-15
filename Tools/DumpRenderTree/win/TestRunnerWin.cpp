@@ -39,8 +39,8 @@
 #include <JavaScriptCore/JSStringRefBSTR.h>
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <WebCore/COMPtr.h>
-#include <WebKit/WebKit.h>
-#include <WebKit/WebKitCOMAPI.h>
+#include <WebKitLegacy/WebKit.h>
+#include <WebKitLegacy/WebKitCOMAPI.h>
 #include <comutil.h>
 #include <shlguid.h>
 #include <shlwapi.h>
@@ -293,6 +293,14 @@ void TestRunner::notifyDone()
     m_waitToDump = false;
 }
 
+void TestRunner::forceImmediateCompletion()
+{
+    // Same as on mac. This can be shared.
+    if (m_waitToDump && !WorkQueue::singleton().count())
+        dump();
+    m_waitToDump = false;
+}
+
 static wstring jsStringRefToWString(JSStringRef jsStr)
 {
     size_t length = JSStringGetLength(jsStr);
@@ -465,7 +473,7 @@ void TestRunner::setMockDeviceOrientation(bool canProvideAlpha, double alpha, bo
     fprintf(testResult, "ERROR: TestRunner::setMockDeviceOrientation() not implemented\n");
 }
 
-void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
+void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed, bool providesFloorLevel, double floorLevel)
 {
     // FIXME: Implement for Geolocation layout tests.
     // See https://bugs.webkit.org/show_bug.cgi?id=28264.
@@ -485,19 +493,8 @@ void TestRunner::setGeolocationPermission(bool allow)
     setGeolocationPermissionCommon(allow);
 }
 
-void TestRunner::setIconDatabaseEnabled(bool iconDatabaseEnabled)
+void TestRunner::setIconDatabaseEnabled(bool)
 {
-#if ENABLE(ICONDATABASE)
-    // See also <rdar://problem/6480108>
-    COMPtr<IWebIconDatabase> iconDatabase;
-    COMPtr<IWebIconDatabase> tmpIconDatabase;
-    if (FAILED(WebKitCreateInstance(CLSID_WebIconDatabase, 0, IID_IWebIconDatabase, (void**)&tmpIconDatabase)))
-        return;
-    if (FAILED(tmpIconDatabase->sharedIconDatabase(&iconDatabase)))
-        return;
-
-    iconDatabase->setEnabled(iconDatabaseEnabled);
-#endif
 }
 
 void TestRunner::setMainFrameIsFirstResponder(bool)
@@ -537,8 +534,19 @@ void TestRunner::setXSSAuditorEnabled(bool enabled)
 
 void TestRunner::setSpatialNavigationEnabled(bool enabled)
 {
-    // FIXME: Implement for SpatialNavigation layout tests.
-    fprintf(testResult, "ERROR: TestRunner::setSpatialNavigationEnabled(bool) not implemented\n");
+    COMPtr<IWebView> webView;
+    if (FAILED(frame->webView(&webView)))
+        return;
+
+    COMPtr<IWebPreferences> preferences;
+    if (FAILED(webView->preferences(&preferences)))
+        return;
+
+    COMPtr<IWebPreferencesPrivate6> prefsPrivate(Query, preferences);
+    if (!prefsPrivate)
+        return;
+
+    prefsPrivate->setSpatialNavigationEnabled(enabled);
 }
 
 void TestRunner::setAllowUniversalAccessFromFileURLs(bool enabled)
@@ -843,11 +851,6 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef element, JSStr
     _bstr_t valueBSTR(JSStringCopyBSTR(value), false);
 
     domInputElement->setValueForUser(valueBSTR);
-}
-
-void TestRunner::setViewModeMediaFeature(JSStringRef mode)
-{
-    // FIXME: implement
 }
 
 void TestRunner::dispatchPendingLoadRequests()
@@ -1402,4 +1405,9 @@ unsigned TestRunner::imageCountInGeneralPasteboard() const
 void TestRunner::setSpellCheckerLoggingEnabled(bool enabled)
 {
     fprintf(testResult, "ERROR: TestRunner::setSpellCheckerLoggingEnabled() not implemented\n");
+}
+
+void TestRunner::setSpellCheckerResults(JSContextRef, JSObjectRef)
+{
+    fprintf(testResult, "ERROR: TestRunner::setSpellCheckerResults() not implemented\n");
 }

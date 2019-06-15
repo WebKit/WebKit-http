@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduceright
 es5id: 15.4.4.22-9-c-ii-18
 description: >
     Array.prototype.reduceRight - 'accumulator' used for first
@@ -9,17 +10,17 @@ description: >
     Array
 ---*/
 
-        var arr = [11, 12];
-        var testResult = false;
-        var initVal = 6.99;
+var arr = [11, 12];
+var testResult = false;
+var initVal = 6.99;
 
-        function callbackfn(prevVal, curVal, idx, obj) {
-            if (idx === 1) {
-                testResult = (prevVal === initVal);
-            }
-            return curVal;
-        }
+function callbackfn(prevVal, curVal, idx, obj) {
+  if (idx === 1) {
+    testResult = (prevVal === initVal);
+  }
+  return curVal;
+}
 
-        arr.reduceRight(callbackfn, initVal);
+arr.reduceRight(callbackfn, initVal);
 
 assert(testResult, 'testResult !== true');

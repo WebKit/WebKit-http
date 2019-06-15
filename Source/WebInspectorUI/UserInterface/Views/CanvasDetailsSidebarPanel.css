@@ -26,3 +26,8 @@
 .sidebar > .panel.details.canvas .details-section > .content .row.simple > .value > .node-link {
     display: block;
 }
+
+.sidebar > .panel.details.canvas .details-section.canvas-extensions .content > ul {
+    margin: 4px 0;
+    -webkit-padding-start: 22.5px;
+}

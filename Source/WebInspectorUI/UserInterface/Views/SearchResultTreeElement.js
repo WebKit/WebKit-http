@@ -23,22 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.SearchResultTreeElement = class SearchResultTreeElement extends WebInspector.GeneralTreeElement
+WI.SearchResultTreeElement = class SearchResultTreeElement extends WI.GeneralTreeElement
 {
     constructor(representedObject)
     {
-        console.assert(representedObject instanceof WebInspector.DOMSearchMatchObject || representedObject instanceof WebInspector.SourceCodeSearchMatchObject);
+        console.assert(representedObject instanceof WI.DOMSearchMatchObject || representedObject instanceof WI.SourceCodeSearchMatchObject);
 
-        var title = WebInspector.SearchResultTreeElement.truncateAndHighlightTitle(representedObject.title, representedObject.searchTerm, representedObject.sourceCodeTextRange);
-
-        super(representedObject.className, title, null, representedObject, false);
+        var title = WI.SearchResultTreeElement.truncateAndHighlightTitle(representedObject.title, representedObject.searchTerm, representedObject.sourceCodeTextRange);
+        const subtitle = null;
+        super(representedObject.className, title, subtitle, representedObject);
     }
 
     // Static
 
     static truncateAndHighlightTitle(title, searchTerm, sourceCodeTextRange)
     {
-        let isRTL = WebInspector.resolvedLayoutDirection() === WebInspector.LayoutDirection.RTL;
+        let isRTL = WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL;
         const charactersToShowBeforeSearchMatch = isRTL ? 20 : 15;
         const charactersToShowAfterSearchMatch = isRTL ? 15 : 50;
 
@@ -59,8 +59,7 @@ WebInspector.SearchResultTreeElement = class SearchResultTreeElement extends Web
         } else
             modifiedTitle = title;
 
-        // Truncate the tail of the title so the tooltip isn't so large.
-        modifiedTitle = modifiedTitle.trimEnd(searchTermIndex + searchTerm.length + charactersToShowAfterSearchMatch);
+        modifiedTitle = modifiedTitle.truncateEnd(searchTermIndex + searchTerm.length + charactersToShowAfterSearchMatch);
 
         console.assert(modifiedTitle.substring(searchTermIndex, searchTermIndex + searchTerm.length).toLowerCase() === searchTerm.toLowerCase());
 
@@ -88,5 +87,27 @@ WebInspector.SearchResultTreeElement = class SearchResultTreeElement extends Web
     get synthesizedTextValue()
     {
         return this.representedObject.sourceCodeTextRange.synthesizedTextValue + ":" + this.representedObject.title;
+    }
+
+    // Protected
+
+    populateContextMenu(contextMenu, event)
+    {
+        if (this.representedObject instanceof WI.DOMSearchMatchObject) {
+            contextMenu.appendItem(WI.UIString("Reveal in Elements Tab"), () => {
+                WI.showMainFrameDOMTree(this.representedObject.domNode, {
+                    ignoreSearchTab: true,
+                });
+            });
+        } else if (this.representedObject instanceof WI.SourceCodeSearchMatchObject) {
+            contextMenu.appendItem(WI.UIString("Reveal in Resources Tab"), () => {
+                WI.showOriginalOrFormattedSourceCodeTextRange(this.representedObject.sourceCodeTextRange, {
+                    ignoreNetworkTab: true,
+                    ignoreSearchTab: true,
+                });
+            });
+        }
+
+        super.populateContextMenu(contextMenu, event);
     }
 };

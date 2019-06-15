@@ -24,17 +24,49 @@
  */
  
 #import "config.h"
+#import "WebProcessPool.h"
 #import "WebProcessProxy.h"
 
 #if PLATFORM(MAC)
 
 #import "WKFullKeyboardAccessWatcher.h"
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#import <Kernel/kern/cs_blobs.h>
+#import <wtf/spi/cocoa/SecuritySPI.h>
+#endif
+
 namespace WebKit {
 
 bool WebProcessProxy::fullKeyboardAccessEnabled()
 {
     return [WKFullKeyboardAccessWatcher fullKeyboardAccessEnabled];
+}
+
+bool WebProcessProxy::shouldAllowNonValidInjectedCode() const
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    static bool isSystemWebKit = [] {
+#if WK_API_ENABLED
+        NSBundle *webkit2Bundle = [NSBundle bundleForClass:NSClassFromString(@"WKWebView")];
+#else
+        NSBundle *webkit2Bundle = [NSBundle bundleForClass:NSClassFromString(@"WKView")];
+#endif
+        return [webkit2Bundle.bundlePath hasPrefix:@"/System/"];
+    }();
+
+    if (!isSystemWebKit)
+        return false;
+
+    static bool isPlatformBinary = SecTaskGetCodeSignStatus(adoptCF(SecTaskCreateFromSelf(kCFAllocatorDefault)).get()) & CS_PLATFORM_BINARY;
+    if (isPlatformBinary)
+        return false;
+
+    const String& path = m_processPool->configuration().injectedBundlePath();
+    return !path.isEmpty() && !path.startsWith("/System/");
+#else
+    return false;
+#endif
 }
 
 } // namespace WebKit

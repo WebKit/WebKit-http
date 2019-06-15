@@ -23,11 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GraphicsTypes_h
-#define GraphicsTypes_h
+#pragma once
 
 #include "WindRule.h"
 #include <wtf/Forward.h>
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
 
@@ -48,25 +51,25 @@ enum CompositeOperator {
     CompositeDifference
 };
 
-enum BlendMode {
-    BlendModeNormal = 1, // Start with 1 to match SVG's blendmode enumeration.
-    BlendModeMultiply,
-    BlendModeScreen,
-    BlendModeDarken,
-    BlendModeLighten,
-    BlendModeOverlay,
-    BlendModeColorDodge,
-    BlendModeColorBurn,
-    BlendModeHardLight,
-    BlendModeSoftLight,
-    BlendModeDifference,
-    BlendModeExclusion,
-    BlendModeHue,
-    BlendModeSaturation,
-    BlendModeColor,
-    BlendModeLuminosity,
-    BlendModePlusDarker,
-    BlendModePlusLighter
+enum class BlendMode {
+    Normal = 1, // Start with 1 to match SVG's blendmode enumeration.
+    Multiply,
+    Screen,
+    Darken,
+    Lighten,
+    Overlay,
+    ColorDodge,
+    ColorBurn,
+    HardLight,
+    SoftLight,
+    Difference,
+    Exclusion,
+    Hue,
+    Saturation,
+    Color,
+    Luminosity,
+    PlusDarker,
+    PlusLighter
 };
 
 enum GradientSpreadMethod {
@@ -83,15 +86,40 @@ enum InterpolationQuality {
     InterpolationHigh
 };
 
-enum LineCap { ButtCap, RoundCap, SquareCap };
+enum LineCap {
+    ButtCap,
+    RoundCap,
+    SquareCap
+};
 
-enum LineJoin { MiterJoin, RoundJoin, BevelJoin };
+enum LineJoin {
+    MiterJoin,
+    RoundJoin,
+    BevelJoin
+};
 
-enum HorizontalAlignment { AlignLeft, AlignRight, AlignHCenter };
+enum HorizontalAlignment {
+    AlignLeft,
+    AlignRight,
+    AlignHCenter
+};
 
-enum TextBaseline { AlphabeticTextBaseline, TopTextBaseline, MiddleTextBaseline, BottomTextBaseline, IdeographicTextBaseline, HangingTextBaseline };
+enum TextBaseline {
+    AlphabeticTextBaseline,
+    TopTextBaseline,
+    MiddleTextBaseline,
+    BottomTextBaseline,
+    IdeographicTextBaseline,
+    HangingTextBaseline
+};
 
-enum TextAlign { StartTextAlign, EndTextAlign, LeftTextAlign, CenterTextAlign, RightTextAlign };
+enum TextAlign {
+    StartTextAlign,
+    EndTextAlign,
+    LeftTextAlign,
+    CenterTextAlign,
+    RightTextAlign
+};
 
 enum RenderingMode {
     Unaccelerated,
@@ -99,29 +127,22 @@ enum RenderingMode {
     Accelerated
 };
 
+enum class AlphaPremultiplication {
+    Premultiplied,
+    Unpremultiplied
+};
+
 String compositeOperatorName(CompositeOperator, BlendMode);
+String blendModeName(BlendMode);
 bool parseBlendMode(const String&, BlendMode&);
 bool parseCompositeAndBlendOperator(const String&, CompositeOperator&, BlendMode&);
 
-String lineCapName(LineCap);
-bool parseLineCap(const String&, LineCap&);
-
-String lineJoinName(LineJoin);
-bool parseLineJoin(const String&, LineJoin&);
-
-String textAlignName(TextAlign);
-bool parseTextAlign(const String&, TextAlign&);
-
-String textBaselineName(TextBaseline);
-bool parseTextBaseline(const String&, TextBaseline&);
-
-class TextStream;
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, BlendMode);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, CompositeOperator);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, WindRule);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, LineCap);
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, LineJoin);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, BlendMode);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, CompositeOperator);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, WindRule);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, LineCap);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, LineJoin);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, AlphaPremultiplication);
 
 } // namespace WebCore
 
-#endif

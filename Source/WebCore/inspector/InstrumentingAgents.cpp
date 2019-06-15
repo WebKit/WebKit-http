@@ -32,9 +32,10 @@
 #include "config.h"
 #include "InstrumentingAgents.h"
 
-using namespace Inspector;
 
 namespace WebCore {
+
+using namespace Inspector;
 
 InstrumentingAgents::InstrumentingAgents(InspectorEnvironment& environment)
     : m_environment(environment)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,6 +23,7 @@
 #include "Node.h"
 
 #include <wtf/Forward.h>
+#include <wtf/OptionSet.h>
 #include <wtf/Variant.h>
 #include <wtf/text/WTFString.h>
 
@@ -81,49 +82,7 @@ public:
         DraggedContent = 1 << 14
     };
 
-    class MarkerTypes {
-    public:
-        // This constructor is left implicit to allow conversion from result of a bit-wise or of enumeration values.
-        MarkerTypes(unsigned mask) : m_mask(mask) { }
-
-        bool contains(MarkerType type) const { return m_mask & type; }
-        bool intersects(MarkerTypes types) const { return m_mask & types.m_mask; }
-        bool operator==(MarkerTypes other) const { return m_mask == other.m_mask; }
-
-        void add(MarkerTypes types) { m_mask |= types.m_mask; }
-        void remove(MarkerTypes types) { m_mask &= ~types.m_mask; }
-
-    private:
-        unsigned m_mask;
-    };
-
-    class AllMarkers : public MarkerTypes {
-    public:
-        AllMarkers()
-            : MarkerTypes(0
-                | AcceptedCandidate
-                | Autocorrected
-                | CorrectionIndicator
-                | DeletedAutocorrection
-                | DictationAlternatives
-                | Grammar
-                | RejectedCorrection
-                | Replacement
-                | SpellCheckingExemption
-                | Spelling
-                | TextMatch
-#if ENABLE(TELEPHONE_NUMBER_DETECTION)
-                | TelephoneNumber
-#endif
-#if PLATFORM(IOS)
-                | DictationPhraseWithAlternatives
-                | DictationResult
-#endif
-                | DraggedContent
-            )
-        {
-        }
-    };
+    static OptionSet<MarkerType> allMarkers();
 
     using IsActiveMatchData = bool;
     using DescriptionData = String;
@@ -168,6 +127,7 @@ public:
     void shiftOffsets(int delta);
 
 #if PLATFORM(IOS)
+    bool isDictation() const;
     const Vector<String>& alternatives() const;
     void setAlternative(const String&, size_t index);
     id metadata() const;
@@ -180,6 +140,32 @@ private:
     unsigned m_endOffset;
     Data m_data;
 };
+
+inline auto DocumentMarker::allMarkers() -> OptionSet<MarkerType>
+{
+    OptionSet<MarkerType> markers {
+        AcceptedCandidate,
+        Autocorrected,
+        CorrectionIndicator,
+        DeletedAutocorrection,
+        DictationAlternatives,
+        DraggedContent,
+        Grammar,
+        RejectedCorrection,
+        Replacement,
+        SpellCheckingExemption,
+        Spelling,
+        TextMatch,
+#if ENABLE(TELEPHONE_NUMBER_DETECTION)
+        TelephoneNumber,
+#endif
+#if PLATFORM(IOS)
+        DictationPhraseWithAlternatives,
+        DictationResult,
+#endif
+    };
+    return markers;
+}
 
 inline DocumentMarker::DocumentMarker(unsigned startOffset, unsigned endOffset, bool isActiveMatch)
     : m_type(TextMatch)
@@ -237,7 +223,12 @@ inline DocumentMarker::DocumentMarker(MarkerType type, unsigned startOffset, uns
     , m_endOffset(endOffset)
     , m_data(DictationAlternativesData { alternatives, metadata })
 {
-    ASSERT(type == DictationPhraseWithAlternatives || type == DictationResult);
+    ASSERT(isDictation());
+}
+
+inline bool DocumentMarker::isDictation() const
+{
+    return m_type == DictationPhraseWithAlternatives || m_type == DictationResult;
 }
 
 inline const Vector<String>& DocumentMarker::alternatives() const

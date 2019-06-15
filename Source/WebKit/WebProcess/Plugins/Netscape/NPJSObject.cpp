@@ -41,15 +41,14 @@
 #include <WebCore/IdentifierRep.h>
 #include <wtf/text/WTFString.h>
 
+namespace WebKit {
 using namespace JSC;
 using namespace WebCore;
-
-namespace WebKit {
 
 NPJSObject* NPJSObject::create(VM& vm, NPRuntimeObjectMap* objectMap, JSObject* jsObject)
 {
     // We should never have a JSNPObject inside an NPJSObject.
-    ASSERT(!jsObject->inherits(vm, JSNPObject::info()));
+    ASSERT(!jsObject->inherits<JSNPObject>(vm));
 
     NPJSObject* npJSObject = toNPJSObject(createNPObject(0, npClass()));
     npJSObject->initialize(vm, objectMap, jsObject);
@@ -110,7 +109,7 @@ bool NPJSObject::hasMethod(NPIdentifier methodName)
     scope.clearException();
 
     CallData callData;
-    return getCallData(value, callData) != CallType::None;
+    return getCallData(vm, value, callData) != CallType::None;
 }
 
 bool NPJSObject::invoke(NPIdentifier methodName, const NPVariant* arguments, uint32_t argumentCount, NPVariant* result)
@@ -202,9 +201,9 @@ bool NPJSObject::setProperty(NPIdentifier propertyName, const NPVariant* value)
     JSValue jsValue = m_objectMap->convertNPVariantToJSValue(exec, m_objectMap->globalObject(), *value);
     if (identifierRep->isString()) {
         PutPropertySlot slot(m_jsObject.get());
-        m_jsObject->methodTable()->put(m_jsObject.get(), exec, identifierFromIdentifierRep(exec, identifierRep), jsValue, slot);
+        m_jsObject->methodTable(vm)->put(m_jsObject.get(), exec, identifierFromIdentifierRep(exec, identifierRep), jsValue, slot);
     } else
-        m_jsObject->methodTable()->putByIndex(m_jsObject.get(), exec, identifierRep->number(), jsValue, false);
+        m_jsObject->methodTable(vm)->putByIndex(m_jsObject.get(), exec, identifierRep->number(), jsValue, false);
     scope.clearException();
     
     return true;
@@ -230,14 +229,14 @@ bool NPJSObject::removeProperty(NPIdentifier propertyName)
             return false;
         }
         
-        m_jsObject->methodTable()->deleteProperty(m_jsObject.get(), exec, identifier);
+        m_jsObject->methodTable(vm)->deleteProperty(m_jsObject.get(), exec, identifier);
     } else {
         if (!m_jsObject->hasProperty(exec, identifierRep->number())) {
             scope.clearException();
             return false;
         }
 
-        m_jsObject->methodTable()->deletePropertyByIndex(m_jsObject.get(), exec, identifierRep->number());
+        m_jsObject->methodTable(vm)->deletePropertyByIndex(m_jsObject.get(), exec, identifierRep->number());
     }
 
     scope.clearException();
@@ -249,11 +248,12 @@ bool NPJSObject::enumerate(NPIdentifier** identifiers, uint32_t* identifierCount
     ExecState* exec = m_objectMap->globalExec();
     if (!exec)
         return false;
-    
-    JSLockHolder lock(exec);
 
-    PropertyNameArray propertyNames(exec, PropertyNameMode::Strings);
-    m_jsObject->methodTable()->getPropertyNames(m_jsObject.get(), exec, propertyNames, EnumerationMode());
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+
+    PropertyNameArray propertyNames(&vm, PropertyNameMode::Strings, PrivateSymbolMode::Exclude);
+    m_jsObject->methodTable(vm)->getPropertyNames(m_jsObject.get(), exec, propertyNames, EnumerationMode());
 
     NPIdentifier* nameIdentifiers = npnMemNewArray<NPIdentifier>(propertyNames.size());
 
@@ -277,7 +277,7 @@ bool NPJSObject::construct(const NPVariant* arguments, uint32_t argumentCount, N
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     ConstructData constructData;
-    ConstructType constructType = getConstructData(m_jsObject.get(), constructData);
+    ConstructType constructType = getConstructData(vm, m_jsObject.get(), constructData);
     if (constructType == ConstructType::None)
         return false;
 
@@ -285,6 +285,7 @@ bool NPJSObject::construct(const NPVariant* arguments, uint32_t argumentCount, N
     MarkedArgumentBuffer argumentList;
     for (uint32_t i = 0; i < argumentCount; ++i)
         argumentList.append(m_objectMap->convertNPVariantToJSValue(exec, m_objectMap->globalObject(), arguments[i]));
+    RELEASE_ASSERT(!argumentList.hasOverflowed());
 
     JSValue value = JSC::construct(exec, m_jsObject.get(), constructType, constructData, argumentList);
     
@@ -301,7 +302,7 @@ bool NPJSObject::invoke(ExecState* exec, JSGlobalObject* globalObject, JSValue f
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     CallData callData;
-    CallType callType = getCallData(function, callData);
+    CallType callType = getCallData(vm, function, callData);
     if (callType == CallType::None)
         return false;
 
@@ -309,6 +310,7 @@ bool NPJSObject::invoke(ExecState* exec, JSGlobalObject* globalObject, JSValue f
     MarkedArgumentBuffer argumentList;
     for (uint32_t i = 0; i < argumentCount; ++i)
         argumentList.append(m_objectMap->convertNPVariantToJSValue(exec, globalObject, arguments[i]));
+    RELEASE_ASSERT(!argumentList.hasOverflowed());
 
     JSValue value = JSC::call(exec, function, callType, callData, m_jsObject.get(), argumentList);
 

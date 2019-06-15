@@ -3,7 +3,7 @@
 /*---
 es6id: 21.2.5.8
 description: RegExp.prototype[Symbol.replace] `length` property
-info: >
+info: |
     ES6 Section 17:
     Every built-in Function object, including constructors, has a length
     property whose value is an integer. Unless otherwise specified, this value
@@ -16,6 +16,7 @@ info: >
     object has the attributes { [[Writable]]: false, [[Enumerable]]: false,
     [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol.replace]
 ---*/
 
 assert.sameValue(RegExp.prototype[Symbol.replace].length, 2);

@@ -100,7 +100,7 @@ class PatchAnalysisTask(object):
             self._delegate.run_command(command)
             self._delegate.command_passed(success_message, patch=self._patch)
             return True
-        except ScriptError, e:
+        except ScriptError as e:
             self._script_error = e
             self.failure_status_id = self._delegate.command_failed(failure_message, script_error=self._script_error, patch=self._patch)
             return False
@@ -368,6 +368,8 @@ class PatchAnalysisTask(object):
             return self._retry_jsc_tests()
         elif hasattr(self._delegate, 'group') and self._delegate.group() == "bindings":
             return self._retry_bindings_tests()
+        elif hasattr(self._delegate, 'group') and self._delegate.group() == "webkitpy":
+            return self.report_failure()
         else:
             return self._retry_layout_tests()
 

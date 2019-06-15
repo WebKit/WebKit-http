@@ -8,15 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/ortc/rtptransportadapter.h"
+#include "ortc/rtptransportadapter.h"
 
 #include <algorithm>  // For std::find.
 #include <set>
 #include <sstream>
 #include <utility>  // For std::move.
 
-#include "webrtc/api/proxy.h"
-#include "webrtc/base/logging.h"
+#include "absl/memory/memory.h"
+#include "api/proxy.h"
+#include "rtc_base/logging.h"
 
 namespace webrtc {
 
@@ -24,8 +25,8 @@ BEGIN_OWNED_PROXY_MAP(RtpTransport)
 PROXY_SIGNALING_THREAD_DESTRUCTOR()
 PROXY_CONSTMETHOD0(PacketTransportInterface*, GetRtpPacketTransport)
 PROXY_CONSTMETHOD0(PacketTransportInterface*, GetRtcpPacketTransport)
-PROXY_METHOD1(RTCError, SetRtcpParameters, const RtcpParameters&)
-PROXY_CONSTMETHOD0(RtcpParameters, GetRtcpParameters)
+PROXY_METHOD1(RTCError, SetParameters, const RtpTransportParameters&)
+PROXY_CONSTMETHOD0(RtpTransportParameters, GetParameters)
 protected:
 RtpTransportAdapter* GetInternal() override {
   return internal();
@@ -36,8 +37,8 @@ BEGIN_OWNED_PROXY_MAP(SrtpTransport)
 PROXY_SIGNALING_THREAD_DESTRUCTOR()
 PROXY_CONSTMETHOD0(PacketTransportInterface*, GetRtpPacketTransport)
 PROXY_CONSTMETHOD0(PacketTransportInterface*, GetRtcpPacketTransport)
-PROXY_METHOD1(RTCError, SetRtcpParameters, const RtcpParameters&)
-PROXY_CONSTMETHOD0(RtcpParameters, GetRtcpParameters)
+PROXY_METHOD1(RTCError, SetParameters, const RtpTransportParameters&)
+PROXY_CONSTMETHOD0(RtpTransportParameters, GetParameters)
 PROXY_METHOD1(RTCError, SetSrtpSendKey, const cricket::CryptoParams&)
 PROXY_METHOD1(RTCError, SetSrtpReceiveKey, const cricket::CryptoParams&)
 protected:
@@ -49,7 +50,7 @@ END_PROXY_MAP()
 // static
 RTCErrorOr<std::unique_ptr<RtpTransportInterface>>
 RtpTransportAdapter::CreateProxied(
-    const RtcpParameters& rtcp_parameters,
+    const RtpTransportParameters& parameters,
     PacketTransportInterface* rtp,
     PacketTransportInterface* rtcp,
     RtpTransportControllerAdapter* rtp_transport_controller) {
@@ -57,12 +58,12 @@ RtpTransportAdapter::CreateProxied(
     LOG_AND_RETURN_ERROR(RTCErrorType::INVALID_PARAMETER,
                          "Must provide an RTP packet transport.");
   }
-  if (!rtcp_parameters.mux && !rtcp) {
+  if (!parameters.rtcp.mux && !rtcp) {
     LOG_AND_RETURN_ERROR(
         RTCErrorType::INVALID_PARAMETER,
         "Must provide an RTCP packet transport when RTCP muxing is not used.");
   }
-  if (rtcp_parameters.mux && rtcp) {
+  if (parameters.rtcp.mux && rtcp) {
     LOG_AND_RETURN_ERROR(RTCErrorType::INVALID_PARAMETER,
                          "Creating an RtpTransport with RTCP muxing enabled, "
                          "with a separate RTCP packet transport?");
@@ -74,17 +75,23 @@ RtpTransportAdapter::CreateProxied(
     LOG_AND_RETURN_ERROR(RTCErrorType::INVALID_PARAMETER,
                          "Must provide an RTP transport controller.");
   }
+  std::unique_ptr<RtpTransportAdapter> transport_adapter(
+      new RtpTransportAdapter(parameters.rtcp, rtp, rtcp,
+                              rtp_transport_controller,
+                              false /*is_srtp_transport*/));
+  RTCError params_result = transport_adapter->SetParameters(parameters);
+  if (!params_result.ok()) {
+    return std::move(params_result);
+  }
+
   return RtpTransportProxyWithInternal<RtpTransportAdapter>::Create(
       rtp_transport_controller->signaling_thread(),
-      rtp_transport_controller->worker_thread(),
-      std::unique_ptr<RtpTransportAdapter>(new RtpTransportAdapter(
-          rtcp_parameters, rtp, rtcp, rtp_transport_controller,
-          /*is_srtp_transport*/ false)));
+      rtp_transport_controller->worker_thread(), std::move(transport_adapter));
 }
 
 RTCErrorOr<std::unique_ptr<SrtpTransportInterface>>
 RtpTransportAdapter::CreateSrtpProxied(
-    const RtcpParameters& rtcp_parameters,
+    const RtpTransportParameters& parameters,
     PacketTransportInterface* rtp,
     PacketTransportInterface* rtcp,
     RtpTransportControllerAdapter* rtp_transport_controller) {
@@ -92,12 +99,12 @@ RtpTransportAdapter::CreateSrtpProxied(
     LOG_AND_RETURN_ERROR(RTCErrorType::INVALID_PARAMETER,
                          "Must provide an RTP packet transport.");
   }
-  if (!rtcp_parameters.mux && !rtcp) {
+  if (!parameters.rtcp.mux && !rtcp) {
     LOG_AND_RETURN_ERROR(
         RTCErrorType::INVALID_PARAMETER,
         "Must provide an RTCP packet transport when RTCP muxing is not used.");
   }
-  if (rtcp_parameters.mux && rtcp) {
+  if (parameters.rtcp.mux && rtcp) {
     LOG_AND_RETURN_ERROR(RTCErrorType::INVALID_PARAMETER,
                          "Creating an RtpTransport with RTCP muxing enabled, "
                          "with a separate RTCP packet transport?");
@@ -109,12 +116,19 @@ RtpTransportAdapter::CreateSrtpProxied(
     LOG_AND_RETURN_ERROR(RTCErrorType::INVALID_PARAMETER,
                          "Must provide an RTP transport controller.");
   }
+
+  std::unique_ptr<RtpTransportAdapter> transport_adapter;
+  transport_adapter.reset(new RtpTransportAdapter(parameters.rtcp, rtp, rtcp,
+                                                  rtp_transport_controller,
+                                                  true /*is_srtp_transport*/));
+  RTCError params_result = transport_adapter->SetParameters(parameters);
+  if (!params_result.ok()) {
+    return std::move(params_result);
+  }
+
   return SrtpTransportProxyWithInternal<RtpTransportAdapter>::Create(
       rtp_transport_controller->signaling_thread(),
-      rtp_transport_controller->worker_thread(),
-      std::unique_ptr<RtpTransportAdapter>(new RtpTransportAdapter(
-          rtcp_parameters, rtp, rtcp, rtp_transport_controller,
-          /*is_srtp_transport*/ true)));
+      rtp_transport_controller->worker_thread(), std::move(transport_adapter));
 }
 
 void RtpTransportAdapter::TakeOwnershipOfRtpTransportController(
@@ -125,7 +139,7 @@ void RtpTransportAdapter::TakeOwnershipOfRtpTransportController(
 }
 
 RtpTransportAdapter::RtpTransportAdapter(
-    const RtcpParameters& rtcp_parameters,
+    const RtcpParameters& rtcp_params,
     PacketTransportInterface* rtp,
     PacketTransportInterface* rtcp,
     RtpTransportControllerAdapter* rtp_transport_controller,
@@ -133,46 +147,64 @@ RtpTransportAdapter::RtpTransportAdapter(
     : rtp_packet_transport_(rtp),
       rtcp_packet_transport_(rtcp),
       rtp_transport_controller_(rtp_transport_controller),
-      rtcp_parameters_(rtcp_parameters),
-      is_srtp_transport_(is_srtp_transport) {
-  RTC_DCHECK(rtp_transport_controller);
+      network_thread_(rtp_transport_controller_->network_thread()) {
+  parameters_.rtcp = rtcp_params;
   // CNAME should have been filled by OrtcFactory if empty.
-  RTC_DCHECK(!rtcp_parameters_.cname.empty());
+  RTC_DCHECK(!parameters_.rtcp.cname.empty());
+  RTC_DCHECK(rtp_transport_controller);
+
+  if (is_srtp_transport) {
+    srtp_transport_ = absl::make_unique<SrtpTransport>(rtcp == nullptr);
+    transport_ = srtp_transport_.get();
+  } else {
+    unencrypted_rtp_transport_ =
+        absl::make_unique<RtpTransport>(rtcp == nullptr);
+    transport_ = unencrypted_rtp_transport_.get();
+  }
+  RTC_DCHECK(transport_);
+
+  network_thread_->Invoke<void>(RTC_FROM_HERE, [=] {
+    SetRtpPacketTransport(rtp->GetInternal());
+    if (rtcp) {
+      SetRtcpPacketTransport(rtcp->GetInternal());
+    }
+  });
+
+  transport_->SignalReadyToSend.connect(this,
+                                        &RtpTransportAdapter::OnReadyToSend);
+  transport_->SignalRtcpPacketReceived.connect(
+      this, &RtpTransportAdapter::OnRtcpPacketReceived);
+  transport_->SignalWritableState.connect(
+      this, &RtpTransportAdapter::OnWritableState);
 }
 
 RtpTransportAdapter::~RtpTransportAdapter() {
   SignalDestroyed(this);
 }
 
-PacketTransportInterface* RtpTransportAdapter::GetRtpPacketTransport() const {
-  return rtp_packet_transport_;
-}
-
-PacketTransportInterface* RtpTransportAdapter::GetRtcpPacketTransport() const {
-  return rtcp_packet_transport_;
-}
-
-RTCError RtpTransportAdapter::SetRtcpParameters(
-    const RtcpParameters& parameters) {
-  if (!parameters.mux && rtcp_parameters_.mux) {
+RTCError RtpTransportAdapter::SetParameters(
+    const RtpTransportParameters& parameters) {
+  if (!parameters.rtcp.mux && parameters_.rtcp.mux) {
     LOG_AND_RETURN_ERROR(webrtc::RTCErrorType::INVALID_STATE,
                          "Can't disable RTCP muxing after enabling.");
   }
-  if (!parameters.cname.empty() && parameters.cname != rtcp_parameters_.cname) {
+  if (!parameters.rtcp.cname.empty() &&
+      parameters.rtcp.cname != parameters_.rtcp.cname) {
     LOG_AND_RETURN_ERROR(webrtc::RTCErrorType::UNSUPPORTED_OPERATION,
                          "Changing the RTCP CNAME is currently unsupported.");
   }
   // If the CNAME is empty, use the existing one.
-  RtcpParameters copy = parameters;
-  if (copy.cname.empty()) {
-    copy.cname = rtcp_parameters_.cname;
+  RtpTransportParameters copy = parameters;
+  if (copy.rtcp.cname.empty()) {
+    copy.rtcp.cname = parameters_.rtcp.cname;
   }
-  RTCError err = rtp_transport_controller_->SetRtcpParameters(copy, this);
+  RTCError err =
+      rtp_transport_controller_->SetRtpTransportParameters(copy, this);
   if (!err.ok()) {
     return err;
   }
-  rtcp_parameters_ = copy;
-  if (rtcp_parameters_.mux) {
+  parameters_ = copy;
+  if (parameters_.rtcp.mux) {
     rtcp_packet_transport_ = nullptr;
   }
   return RTCError::OK();
@@ -180,34 +212,20 @@ RTCError RtpTransportAdapter::SetRtcpParameters(
 
 RTCError RtpTransportAdapter::SetSrtpSendKey(
     const cricket::CryptoParams& params) {
-  if (send_key_) {
-    LOG_AND_RETURN_ERROR(
-        webrtc::RTCErrorType::UNSUPPORTED_OPERATION,
-        "Setting the SRTP send key twice is currently unsupported.");
+  if (!network_thread_->IsCurrent()) {
+    return network_thread_->Invoke<RTCError>(
+        RTC_FROM_HERE, [&] { return SetSrtpSendKey(params); });
   }
-  if (receive_key_ && receive_key_->cipher_suite != params.cipher_suite) {
-    LOG_AND_RETURN_ERROR(
-        webrtc::RTCErrorType::UNSUPPORTED_OPERATION,
-        "The send key and receive key must have the same cipher suite.");
-  }
-  send_key_ = rtc::Optional<cricket::CryptoParams>(params);
-  return RTCError::OK();
+  return transport_->SetSrtpSendKey(params);
 }
 
 RTCError RtpTransportAdapter::SetSrtpReceiveKey(
     const cricket::CryptoParams& params) {
-  if (receive_key_) {
-    LOG_AND_RETURN_ERROR(
-        webrtc::RTCErrorType::UNSUPPORTED_OPERATION,
-        "Setting the SRTP receive key twice is currently unsupported.");
+  if (!network_thread_->IsCurrent()) {
+    return network_thread_->Invoke<RTCError>(
+        RTC_FROM_HERE, [&] { return SetSrtpReceiveKey(params); });
   }
-  if (send_key_ && send_key_->cipher_suite != params.cipher_suite) {
-    LOG_AND_RETURN_ERROR(
-        webrtc::RTCErrorType::UNSUPPORTED_OPERATION,
-        "The send key and receive key must have the same cipher suite.");
-  }
-  receive_key_ = rtc::Optional<cricket::CryptoParams>(params);
-  return RTCError::OK();
+  return transport_->SetSrtpReceiveKey(params);
 }
 
 }  // namespace webrtc

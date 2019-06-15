@@ -29,7 +29,6 @@
 #include "DeprecatedCSSOMCounter.h"
 #include "DeprecatedCSSOMRGBColor.h"
 #include "DeprecatedCSSOMRect.h"
-#include "ExceptionCode.h"
 
 namespace WebCore {
     
@@ -67,24 +66,24 @@ ExceptionOr<Ref<DeprecatedCSSOMCounter>> DeprecatedCSSOMPrimitiveValue::getCount
 {
     ExceptionOr<Counter&> counter = m_value->getCounterValue();
     if (counter.hasException())
-        return Exception { INVALID_ACCESS_ERR };
-    return DeprecatedCSSOMCounter::create(counter.releaseReturnValue());
+        return Exception { InvalidAccessError };
+    return DeprecatedCSSOMCounter::create(counter.releaseReturnValue(), m_owner.get());
 }
     
 ExceptionOr<Ref<DeprecatedCSSOMRect>> DeprecatedCSSOMPrimitiveValue::getRectValue() const
 {
     ExceptionOr<Rect&> rect = m_value->getRectValue();
     if (rect.hasException())
-        return Exception { INVALID_ACCESS_ERR };
-    return DeprecatedCSSOMRect::create(rect.releaseReturnValue());
+        return Exception { InvalidAccessError };
+    return DeprecatedCSSOMRect::create(rect.releaseReturnValue(), m_owner.get());
 }
 
 ExceptionOr<Ref<DeprecatedCSSOMRGBColor>> DeprecatedCSSOMPrimitiveValue::getRGBColorValue() const
 {
     ExceptionOr<Ref<RGBColor>> color = m_value->getRGBColorValue();
     if (color.hasException())
-        return Exception { INVALID_ACCESS_ERR };
-    return DeprecatedCSSOMRGBColor::create(color.releaseReturnValue());
+        return Exception { InvalidAccessError };
+    return DeprecatedCSSOMRGBColor::create(color.releaseReturnValue(), m_owner.get());
 }
 
 }

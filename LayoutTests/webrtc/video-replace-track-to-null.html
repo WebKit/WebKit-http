@@ -15,106 +15,93 @@
 video = document.getElementById("video");
 canvas = document.getElementById("canvas");
 
-function grabImagePixels()
+async function getOutboundRTPStatsNumberOfEncodedFrames(connection)
 {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    imageData = canvas.getContext('2d').getImageData(20, 20, 100, 100);
-    return imageData.data;
- }
-
-var firstFrameData;
-
-function storeFrame()
-{
-    firstFrameData = grabImagePixels();
-}
-
-function checkCameraImageIsDifferent()
-{
-    data = grabImagePixels();
-
-    assert_true(data[0] < 20);
-    assert_true(data[1] < 20);
-    assert_true(data[2] < 20);
-
-    var same = true;
-    for (var cptr = 0; cptr < data.length; ++cptr) {
-        if (data[cptr] != firstFrameData[cptr]) {
-            same = false;
-            break;
+    var report = await connection.getStats();
+    var framesEncoded;
+    report.forEach((statItem) => {
+        if (statItem.type === "outbound-rtp") {
+            framesEncoded = statItem.framesEncoded;
         }
-    }
-    return !same;
+    });
+    return framesEncoded;
 }
 
-function testCameraImage(resolve, reject, counter)
+async function testFrameEncodedStarted(connection, count, previousFramesNumber)
 {
-    if (!counter)
-        counter = 0;
+    var framesEncodedNumber = await getOutboundRTPStatsNumberOfEncodedFrames(connection);
+    if (previousFramesNumber && framesEncodedNumber > previousFramesNumber)
+        return;
 
-    if (checkCameraImageIsDifferent()) {
-        resolve();
-        return;
-    }
-    if (++counter === 40) {
-        reject("testCameraImage timed out");
-        return;
-    }
-    setTimeout(() => testCameraImage(resolve, reject, counter), 100);
+    if (count === undefined)
+        count = 0;
+
+    if (count >= 20)
+        return Promise.reject("test increasing frame encoded timed out");
+
+    await waitFor(100);
+    return testFrameEncodedStarted(connection, ++count, framesEncodedNumber);
 }
 
-function testStoppedImage()
+async function testFrameEncodedStopped(connection, count, previousFramesNumber)
 {
-    assert_array_equals(grabImagePixels(), firstFrameData);
+    var framesEncodedNumber = await getOutboundRTPStatsNumberOfEncodedFrames(connection);
+    if (previousFramesNumber && framesEncodedNumber === previousFramesNumber)
+        return;
+
+    if (count === undefined)
+        count = 0;
+
+    if (count === 20)
+        return Promise.reject("test that number of encoded frames stopped increasing timed out");
+
+    await waitFor(100);
+    return testFrameEncodedStopped(connection, ++count, framesEncodedNumber);
 }
 
-promise_test((test) => {
+var sender;
+var sendingTrack;
+var connection;
+promise_test(async (test) => {
     if (window.testRunner)
         testRunner.setUserMediaPermission(true);
 
-    var sender;
-    var frontStream;
-    return navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
-        frontStream = stream;
-    }).then(() => {
-        return new Promise((resolve, reject) => {
-            createConnections((firstConnection) => {
-                sender = firstConnection.addTrack(frontStream.getVideoTracks()[0], frontStream);
-            }, (secondConnection) => {
-                secondConnection.ontrack = (trackEvent) => {
-                    resolve(trackEvent.streams[0]);
-                };
-            });
-            setTimeout(() => reject("Test timed out"), 5000);
+    const frontStream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+    const remoteStream = await new Promise((resolve, reject) => {
+        createConnections((firstConnection) => {
+            connection = firstConnection;
+            sender = firstConnection.addTrack(frontStream.getVideoTracks()[0], frontStream);
+        }, (secondConnection) => {
+            secondConnection.ontrack = (trackEvent) => {
+                resolve(trackEvent.streams[0]);
+            };
         });
-    }).then((remoteStream) => {
-        video.srcObject = remoteStream;
-        return video.play();
-    }).then(() => {
-        return waitFor(100);
-    }).then(() => {
-        storeFrame();
-        return waitFor(100);
-    }).then(() => {
-        return new Promise((resolve, reject) => {
-            testCameraImage(resolve, reject);
-        });
-    }).then(() => {
-        promise = sender.replaceTrack(null);
-        assert_true(!!sender.track);
-        return promise;
-    }).then(() => {
-        return waitFor(100);
-    }).then(() => {
-        storeFrame();
-        return waitFor(100);
-    }).then(() => {
-        testStoppedImage();
+        setTimeout(() => reject("Test timed out"), 5000);
     });
-}, "Stopping sending video using replaceTrack");
+
+    video.srcObject = remoteStream;
+    await video.play();
+}, "Set-up test");
+
+promise_test(async (test) => {
+    await testFrameEncodedStarted(connection);
+
+    sendingTrack = sender.track;
+    assert_equals(sendingTrack.readyState, "live");
+}, "Test that frame counter increases");
+
+promise_test(async (test) => {
+    promise = sender.replaceTrack(null);
+    assert_true(!!sender.track);
+    await promise;
+    assert_equals(sender.track, null);
+}, "Test replaceTrack with null track");
+
+promise_test(async (test) => {
+    await testFrameEncodedStopped(connection);
+    assert_equals(sendingTrack.readyState, "live");
+}, "Test that frame counter no longer increases");
         </script>
     </body>
 </html>

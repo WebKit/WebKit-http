@@ -3,7 +3,7 @@
 /*---
 description: Resolving with an object with a "poisoned" `then` property from a pending promise that is later fulfilled
 es6id: 25.4.5.3
-info: >
+info: |
     [...]
     7. Return PerformPromiseThen(promise, onFulfilled, onRejected,
        resultCapability).
@@ -30,22 +30,24 @@ var poisonedThen = Object.defineProperty({}, 'then', {
     throw value;
   }
 });
-var p1 = new Promise(function(_resolve) { resolve = _resolve; });
+var p1 = new Promise(function(_resolve) {
+  resolve = _resolve;
+});
 var p2;
 
 p2 = p1.then(function() {
-    return poisonedThen;
-  });
+  return poisonedThen;
+});
 
 p2.then(function(x) {
-    $DONE('The promise should not be fulfilled.');
-  }, function(x) {
-    if (x !== value) {
-      $DONE('The promise should be rejected with the thrown exception.');
-      return;
-    }
+  $DONE('The promise should not be fulfilled.');
+}, function(x) {
+  if (x !== value) {
+    $DONE('The promise should be rejected with the thrown exception.');
+    return;
+  }
 
-    $DONE();
-  });
+  $DONE();
+});
 
 resolve();

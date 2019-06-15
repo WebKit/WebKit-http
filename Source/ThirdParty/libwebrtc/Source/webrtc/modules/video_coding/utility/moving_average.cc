@@ -8,13 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/video_coding/utility/moving_average.h"
+#include "modules/video_coding/utility/moving_average.h"
 
 #include <algorithm>
 
 namespace webrtc {
 
 MovingAverage::MovingAverage(size_t s) : sum_history_(s + 1, 0) {}
+MovingAverage::~MovingAverage() = default;
 
 void MovingAverage::AddSample(int sample) {
   count_++;
@@ -22,15 +23,15 @@ void MovingAverage::AddSample(int sample) {
   sum_history_[count_ % sum_history_.size()] = sum_;
 }
 
-rtc::Optional<int> MovingAverage::GetAverage() const {
+absl::optional<int> MovingAverage::GetAverage() const {
   return GetAverage(size());
 }
 
-rtc::Optional<int> MovingAverage::GetAverage(size_t num_samples) const {
+absl::optional<int> MovingAverage::GetAverage(size_t num_samples) const {
   if (num_samples > size() || num_samples == 0)
-    return rtc::Optional<int>();
+    return absl::nullopt;
   int sum = sum_ - sum_history_[(count_ - num_samples) % sum_history_.size()];
-  return rtc::Optional<int>(sum / static_cast<int>(num_samples));
+  return sum / static_cast<int>(num_samples);
 }
 
 void MovingAverage::Reset() {

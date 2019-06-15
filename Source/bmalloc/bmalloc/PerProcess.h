@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PerProcess_h
-#define PerProcess_h
+#pragma once
 
-#include "Inline.h"
+#include "BInline.h"
+#include "Mutex.h"
 #include "Sizes.h"
-#include "StaticMutex.h"
-#include <mutex>
 
 namespace bmalloc {
 
@@ -46,65 +44,88 @@ namespace bmalloc {
 //
 // Object* object = PerProcess<Object>::get();
 // x = object->m_field; // OK
-// if (gobalFlag) { ... } // Undefined behavior.
+// if (globalFlag) { ... } // Undefined behavior.
 //
-// std::lock_guard<StaticMutex> lock(PerProcess<Object>::mutex());
+// std::lock_guard<Mutex> lock(PerProcess<Object>::mutex());
 // Object* object = PerProcess<Object>::get(lock);
-// if (gobalFlag) { ... } // OK.
+// if (globalFlag) { ... } // OK.
+
+struct PerProcessData {
+    const char* disambiguator;
+    void* memory;
+    size_t size;
+    size_t alignment;
+    Mutex mutex;
+    bool isInitialized;
+    PerProcessData* next;
+};
+
+constexpr unsigned stringHash(const char* string)
+{
+    unsigned result = 5381;
+    while (char c = *string++)
+        result = result * 33 + c;
+    return result;
+}
+
+BEXPORT PerProcessData* getPerProcessData(unsigned disambiguatorHash, const char* disambiguator, size_t size, size_t alignment);
 
 template<typename T>
 class PerProcess {
 public:
-    static T* get();
-    static T* getFastCase();
+    static T* get()
+    {
+        T* object = getFastCase();
+        if (!object)
+            return getSlowCase();
+        return object;
+    }
+
+    static T* getFastCase()
+    {
+        return s_object.load(std::memory_order_relaxed);
+    }
     
-    static StaticMutex& mutex() { return s_mutex; }
+    static Mutex& mutex()
+    {
+        if (!s_data)
+            coalesce();
+        return s_data->mutex;
+    }
 
 private:
-    static T* getSlowCase();
+    static void coalesce()
+    {
+        if (s_data)
+            return;
+        
+        const char* disambiguator = __PRETTY_FUNCTION__;
+        s_data = getPerProcessData(stringHash(disambiguator), disambiguator, sizeof(T), std::alignment_of<T>::value);
+    }
+    
+    BNO_INLINE static T* getSlowCase()
+    {
+        std::lock_guard<Mutex> lock(mutex());
+        if (!s_object.load()) {
+            if (s_data->isInitialized)
+                s_object.store(static_cast<T*>(s_data->memory));
+            else {
+                T* t = new (s_data->memory) T(lock);
+                s_object.store(t);
+                s_data->isInitialized = true;
+            }
+        }
+        return s_object.load();
+    }
 
     static std::atomic<T*> s_object;
-    static StaticMutex s_mutex;
-
-    typedef typename std::aligned_storage<sizeof(T), std::alignment_of<T>::value>::type Memory;
-    static Memory s_memory;
+    static PerProcessData* s_data;
 };
 
 template<typename T>
-INLINE T* PerProcess<T>::getFastCase()
-{
-    return s_object.load(std::memory_order_consume);
-}
+std::atomic<T*> PerProcess<T>::s_object { nullptr };
 
 template<typename T>
-INLINE T* PerProcess<T>::get()
-{
-    T* object = getFastCase();
-    if (!object)
-        return getSlowCase();
-    return object;
-}
-
-template<typename T>
-NO_INLINE T* PerProcess<T>::getSlowCase()
-{
-    std::lock_guard<StaticMutex> lock(s_mutex);
-    if (!s_object.load(std::memory_order_consume)) {
-        T* t = new (&s_memory) T(lock);
-        s_object.store(t, std::memory_order_release);
-    }
-    return s_object.load(std::memory_order_consume);
-}
-
-template<typename T>
-std::atomic<T*> PerProcess<T>::s_object;
-
-template<typename T>
-StaticMutex PerProcess<T>::s_mutex;
-
-template<typename T>
-typename PerProcess<T>::Memory PerProcess<T>::s_memory;
+PerProcessData* PerProcess<T>::s_data { nullptr };
 
 } // namespace bmalloc
-
-#endif // PerProcess_h

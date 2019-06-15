@@ -3,7 +3,7 @@
 /*---
 description: Resolving with a resolved Promise instance whose `then` method has been overridden
 es6id: 25.4.4.3
-info: >
+info: |
     [...]
     6. Let promiseCapability be NewPromiseCapability(C).
     [...]
@@ -26,6 +26,7 @@ info: >
         [...]
     12. Perform EnqueueJob ("PromiseJobs", PromiseResolveThenableJob,
         «promise, resolution, thenAction»)
+flags: [async]
 ---*/
 
 var value = {};
@@ -34,7 +35,9 @@ var thenableValue = {
     resolve(value);
   }
 };
-var thenable = new Promise(function(resolve) { resolve(); });
+var thenable = new Promise(function(resolve) {
+  resolve();
+});
 
 thenable.then = function(resolve) {
   resolve(thenableValue);

@@ -26,8 +26,9 @@
 #pragma once
 
 #include "ScrollSnapOffsetsInfo.h"
+#include "ScrollTypes.h"
 #include "Scrollbar.h"
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
@@ -47,10 +48,10 @@ typedef IntPoint ScrollPosition;
 // scrollOffset() is the value used by scrollbars (min is 0,0), and should never have negative components.
 typedef IntPoint ScrollOffset;
 
-class ScrollableArea {
+class ScrollableArea : public CanMakeWeakPtr<ScrollableArea> {
 public:
     WEBCORE_EXPORT bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1);
-    WEBCORE_EXPORT void scrollToOffsetWithoutAnimation(const FloatPoint&);
+    WEBCORE_EXPORT void scrollToOffsetWithoutAnimation(const FloatPoint&, ScrollClamping = ScrollClamping::Clamped);
     void scrollToOffsetWithoutAnimation(ScrollbarOrientation, float offset);
 
     // Should be called when the scroll position changes externally, for example if the scroll layer position
@@ -63,8 +64,6 @@ public:
     virtual bool requestScrollPositionUpdate(const ScrollPosition&) { return false; }
 
     WEBCORE_EXPORT bool handleWheelEvent(const PlatformWheelEvent&);
-
-    WeakPtr<ScrollableArea> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
 
 #if ENABLE(CSS_SCROLL_SNAP)
     WEBCORE_EXPORT const Vector<LayoutUnit>* horizontalSnapOffsets() const;
@@ -88,12 +87,10 @@ public:
     void updateScrollSnapState();
 
 #if ENABLE(TOUCH_EVENTS)
-    virtual bool isTouchScrollable() const { return false; }
     virtual bool handleTouchEvent(const PlatformTouchEvent&);
 #endif
 
 #if PLATFORM(IOS)
-    virtual bool isOverflowScroll() const { return false; }
     virtual void didStartScroll() { }
     virtual void didEndScroll() { }
     virtual void didUpdateScroll() { }
@@ -347,14 +344,12 @@ private:
     friend class ScrollAnimator;
     void setScrollOffsetFromAnimation(const ScrollOffset&);
 
-    // This function should be overriden by subclasses to perform the actual
+    // This function should be overridden by subclasses to perform the actual
     // scroll of the content.
     virtual void setScrollOffset(const ScrollOffset&) = 0;
     ScrollSnapOffsetsInfo<LayoutUnit>& ensureSnapOffsetsInfo();
 
     mutable std::unique_ptr<ScrollAnimator> m_scrollAnimator;
-
-    WeakPtrFactory<ScrollableArea> m_weakPtrFactory { this };
 
 #if ENABLE(CSS_SCROLL_SNAP)
     std::unique_ptr<ScrollSnapOffsetsInfo<LayoutUnit>> m_snapOffsetsInfo;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,9 +43,7 @@ CSSImageSetValue::CSSImageSetValue()
 {
 }
 
-CSSImageSetValue::~CSSImageSetValue()
-{
-}
+CSSImageSetValue::~CSSImageSetValue() = default;
 
 void CSSImageSetValue::fillImageSet()
 {
@@ -53,7 +51,7 @@ void CSSImageSetValue::fillImageSet()
     size_t i = 0;
     while (i < length) {
         CSSValue* imageValue = item(i);
-        String imageURL = downcast<CSSImageValue>(*imageValue).url();
+        URL imageURL = downcast<CSSImageValue>(*imageValue).url();
 
         ++i;
         ASSERT_WITH_SECURITY_IMPLICATION(i < length);
@@ -105,7 +103,7 @@ std::pair<CachedImage*, float> CSSImageSetValue::loadBestFitImage(CachedResource
         if (options.mode == FetchOptions::Mode::Cors)
             request.updateForAccessControl(*document);
 
-        m_cachedImage = loader.requestImage(WTFMove(request));
+        m_cachedImage = loader.requestImage(WTFMove(request)).value_or(nullptr);
         m_bestFitImageScaleFactor = image.scaleFactor;
     }
     return { m_cachedImage.get(), m_bestFitImageScaleFactor };

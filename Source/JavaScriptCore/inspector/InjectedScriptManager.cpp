@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  * Copyright (C) 2012 Google Inc. All rights reserved.
  *
@@ -35,12 +35,12 @@
 #include "Completion.h"
 #include "InjectedScriptHost.h"
 #include "InjectedScriptSource.h"
-#include "InspectorValues.h"
 #include "JSCInlines.h"
 #include "JSInjectedScriptHost.h"
 #include "JSLock.h"
 #include "ScriptObject.h"
 #include "SourceCode.h"
+#include <wtf/JSONValues.h>
 
 using namespace JSC;
 
@@ -101,16 +101,16 @@ int InjectedScriptManager::injectedScriptIdFor(ExecState* scriptState)
 
 InjectedScript InjectedScriptManager::injectedScriptForObjectId(const String& objectId)
 {
-    RefPtr<InspectorValue> parsedObjectId;
-    if (!InspectorValue::parseJSON(objectId, parsedObjectId))
+    RefPtr<JSON::Value> parsedObjectId;
+    if (!JSON::Value::parseJSON(objectId, parsedObjectId))
         return InjectedScript();
 
-    RefPtr<InspectorObject> resultObject;
+    RefPtr<JSON::Object> resultObject;
     if (!parsedObjectId->asObject(resultObject))
         return InjectedScript();
 
     long injectedScriptId = 0;
-    if (!resultObject->getInteger(ASCIILiteral("injectedScriptId"), injectedScriptId))
+    if (!resultObject->getInteger("injectedScriptId"_s, injectedScriptId))
         return InjectedScript();
 
     return m_idToInjectedScript.get(injectedScriptId);
@@ -150,7 +150,7 @@ JSC::JSObject* InjectedScriptManager::createInjectedScript(const String& source,
         return nullptr;
 
     CallData callData;
-    CallType callType = getCallData(functionValue, callData);
+    CallType callType = getCallData(vm, functionValue, callData);
     if (callType == CallType::None)
         return nullptr;
 
@@ -158,6 +158,7 @@ JSC::JSObject* InjectedScriptManager::createInjectedScript(const String& source,
     args.append(m_injectedScriptHost->wrapper(scriptState, globalObject));
     args.append(globalThisValue);
     args.append(jsNumber(id));
+    ASSERT(!args.hasOverflowed());
 
     JSValue result = JSC::call(scriptState, functionValue, callType, callData, globalThisValue, args);
     scope.clearException();

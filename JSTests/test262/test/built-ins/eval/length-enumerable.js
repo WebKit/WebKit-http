@@ -4,6 +4,8 @@
 /*---
 info: The length property of eval has the attribute DontEnum
 es5id: 15.1.2.1_A4.1
+es6id: 18.2.1
+esid: sec-eval-x
 description: Checking use propertyIsEnumerable, for-in
 ---*/
 
@@ -14,10 +16,10 @@ if (eval.propertyIsEnumerable('length') !== false) {
 
 //CHECK#2
 var result = true;
-for (p in eval){
+for (p in eval) {
   if (p === "length") {
     result = false;
-  }  
+  }
 }
 
 if (result !== true) {

@@ -15,6 +15,10 @@ description: >
 
     ReservedWord : Keyword
 
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 var af = switch => 1;

@@ -26,6 +26,8 @@
 #include "config.h"
 #include "TestRunner.h"
 
+#include "ActivateFonts.h"
+
 namespace WTR {
 
 JSRetainPtr<JSStringRef> TestRunner::pathToLocalResource(JSStringRef)
@@ -50,8 +52,12 @@ void TestRunner::platformInitialize()
 void TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded()
 {
     if (!m_waitToDumpWatchdogTimer.isActive())
-        m_waitToDumpWatchdogTimer.startOneShot(m_timeout / 1000.0);
+        m_waitToDumpWatchdogTimer.startOneShot(m_timeout);
 }
 
+void TestRunner::installFakeHelvetica(JSStringRef configuration)
+{
+    WTR::installFakeHelvetica(toWK(configuration).get());
+}
 
 } // namespace WTR

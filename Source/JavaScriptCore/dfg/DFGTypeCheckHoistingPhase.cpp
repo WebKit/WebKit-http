@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -134,17 +134,29 @@ public:
                     if (!iter->value.m_structure && !iter->value.m_arrayModeIsValid)
                         break;
 
-                    // Currently we should only be doing this hoisting for SetArguments at the prologue.
-                    ASSERT(!blockIndex);
+                    // Currently we should only be doing this hoisting for SetArguments at a CFG root.
+                    ASSERT(m_graph.isRoot(block));
 
                     NodeOrigin origin = node->origin;
+                    RELEASE_ASSERT(origin.exitOK);
                     
                     Node* getLocal = insertionSet.insertNode(
                         indexInBlock + 1, variable->prediction(), GetLocal, origin,
                         OpInfo(variable), Edge(node));
                     if (iter->value.m_structure) {
+                        auto checkOp = CheckStructure;
+                        if (SpecCellCheck & SpecEmpty) {
+                            VirtualRegister local = node->variableAccessData()->local();
+                            auto* inlineCallFrame = node->origin.semantic.inlineCallFrame;
+                            if ((local - (inlineCallFrame ? inlineCallFrame->stackOffset : 0)) == virtualRegisterForArgument(0)) {
+                                // |this| can be the TDZ value. The call entrypoint won't have |this| as TDZ,
+                                // but a catch or a loop OSR entry may have |this| be TDZ.
+                                checkOp = CheckStructureOrEmpty;
+                            }
+                        }
+
                         insertionSet.insertNode(
-                            indexInBlock + 1, SpecNone, CheckStructure, origin,
+                            indexInBlock + 1, SpecNone, checkOp, origin,
                             OpInfo(m_graph.addStructureSet(iter->value.m_structure)),
                             Edge(getLocal, CellUse));
                     } else if (iter->value.m_arrayModeIsValid) {
@@ -177,8 +189,13 @@ public:
                     Edge child1 = node->child1();
                     
                     if (iter->value.m_structure) {
+                        // Note: On 64-bit platforms, cell checks allow the empty value to flow through.
+                        // This means that this structure check may see the empty value as input. We need
+                        // to emit a node that explicitly handles the empty value. Most of the time, CheckStructureOrEmpty
+                        // will be folded to CheckStructure because AI proves that the incoming value is
+                        // definitely not empty.
                         insertionSet.insertNode(
-                            indexForChecks, SpecNone, CheckStructure,
+                            indexForChecks, SpecNone, (SpecCellCheck & SpecEmpty) ? CheckStructureOrEmpty : CheckStructure,
                             originForChecks.withSemantic(origin.semantic),
                             OpInfo(m_graph.addStructureSet(iter->value.m_structure)),
                             Edge(child1.node(), CellUse));
@@ -425,10 +442,11 @@ private:
             ASSERT(block->isReachable);
             if (!block->isOSRTarget)
                 continue;
-            if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex)
+            if (block->bytecodeBegin != m_graph.m_plan.osrEntryBytecodeIndex())
                 continue;
-            for (size_t i = 0; i < m_graph.m_plan.mustHandleValues.size(); ++i) {
-                int operand = m_graph.m_plan.mustHandleValues.operandForIndex(i);
+            const Operands<JSValue>& mustHandleValues = m_graph.m_plan.mustHandleValues();
+            for (size_t i = 0; i < mustHandleValues.size(); ++i) {
+                int operand = mustHandleValues.operandForIndex(i);
                 Node* node = block->variablesAtHead.operand(operand);
                 if (!node)
                     continue;
@@ -438,7 +456,7 @@ private:
                     continue;
                 if (!TypeCheck::isValidToHoist(iter->value))
                     continue;
-                JSValue value = m_graph.m_plan.mustHandleValues[i];
+                JSValue value = mustHandleValues[i];
                 if (!value || !value.isCell() || TypeCheck::isContravenedByValue(iter->value, value)) {
                     TypeCheck::disableHoisting(iter->value);
                     continue;

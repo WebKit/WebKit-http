@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-7-b-16
 description: >
     Array.prototype.forEach - decreasing length of array does not
@@ -9,31 +10,31 @@ description: >
 flags: [noStrict]
 ---*/
 
-        var testResult = false;
+var testResult = false;
 
-        function callbackfn(val, idx, obj) {
-            if (idx === 2 && val === "unconfigurable") {
-                testResult = true;
-            }
-        }
+function callbackfn(val, idx, obj) {
+  if (idx === 2 && val === "unconfigurable") {
+    testResult = true;
+  }
+}
 
-        var arr = [0, 1, 2];
+var arr = [0, 1, 2];
 
-        Object.defineProperty(arr, "2", {
-            get: function () {
-                return "unconfigurable";
-            },
-            configurable: false
-        });
+Object.defineProperty(arr, "2", {
+  get: function() {
+    return "unconfigurable";
+  },
+  configurable: false
+});
 
-        Object.defineProperty(arr, "1", {
-            get: function () {
-                arr.length = 2;
-                return 1;
-            },
-            configurable: true
-        });
+Object.defineProperty(arr, "1", {
+  get: function() {
+    arr.length = 2;
+    return 1;
+  },
+  configurable: true
+});
 
-        arr.forEach(callbackfn);
+arr.forEach(callbackfn);
 
 assert(testResult, 'testResult !== true');

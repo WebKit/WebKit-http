@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.todatestring
 es6id: 20.3.4.35
 description: >
   Date.prototype.toDateString.name is "toDateString".
-info: >
+info: |
   Date.prototype.toDateString ( )
 
   17 ECMAScript Standard Built-in Objects:

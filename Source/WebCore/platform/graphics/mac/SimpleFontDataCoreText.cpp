@@ -27,11 +27,7 @@
 #include "config.h"
 #include "Font.h"
 
-#if !PLATFORM(IOS)
-#include <ApplicationServices/ApplicationServices.h>
-#else
 #include <CoreText/CoreText.h>
-#endif
 
 namespace WebCore {
 
@@ -42,18 +38,17 @@ CFDictionaryRef Font::getCFStringAttributes(bool enableKerning, FontOrientation 
         return attributesDictionary.get();
 
     attributesDictionary = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 4, &kCFCopyStringDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-    CFMutableDictionaryRef mutableAttributes = (CFMutableDictionaryRef)attributesDictionary.get();
 
-    CFDictionarySetValue(mutableAttributes, kCTFontAttributeName, platformData().ctFont());
+    CFDictionarySetValue(attributesDictionary.get(), kCTFontAttributeName, platformData().ctFont());
 
     if (!enableKerning) {
         const float zero = 0;
         static CFNumberRef zeroKerningValue = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &zero);
-        CFDictionarySetValue(mutableAttributes, kCTKernAttributeName, zeroKerningValue);
+        CFDictionarySetValue(attributesDictionary.get(), kCTKernAttributeName, zeroKerningValue);
     }
 
-    if (orientation == Vertical)
-        CFDictionarySetValue(mutableAttributes, kCTVerticalFormsAttributeName, kCFBooleanTrue);
+    if (orientation == FontOrientation::Vertical)
+        CFDictionarySetValue(attributesDictionary.get(), kCTVerticalFormsAttributeName, kCFBooleanTrue);
 
     return attributesDictionary.get();
 }

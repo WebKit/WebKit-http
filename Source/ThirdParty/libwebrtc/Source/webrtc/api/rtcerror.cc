@@ -8,9 +8,9 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/api/rtcerror.h"
+#include "api/rtcerror.h"
 
-#include "webrtc/base/arraysize.h"
+#include "rtc_base/arraysize.h"
 
 namespace {
 
@@ -63,6 +63,11 @@ RTCError::~RTCError() {
   }
 }
 
+// static
+RTCError RTCError::OK() {
+  return RTCError();
+}
+
 const char* RTCError::message() const {
   if (have_string_message_) {
     return string_message_.c_str();
@@ -88,9 +93,10 @@ void RTCError::set_message(std::string&& message) {
   }
 }
 
-std::ostream& operator<<(std::ostream& stream, RTCErrorType error) {
+// TODO(jonasolsson): Change to use absl::string_view when it's available.
+std::string ToString(RTCErrorType error) {
   int index = static_cast<int>(error);
-  return stream << kRTCErrorTypeNames[index];
+  return std::string(kRTCErrorTypeNames[index]);
 }
 
 }  // namespace webrtc

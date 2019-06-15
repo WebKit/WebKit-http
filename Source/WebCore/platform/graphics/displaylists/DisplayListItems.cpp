@@ -27,7 +27,7 @@
 #include "DisplayListItems.h"
 
 #include "FontCascade.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 namespace DisplayList {
@@ -364,18 +364,14 @@ inline GlyphBuffer DrawGlyphs::generateGlyphBuffer() const
 {
     GlyphBuffer result;
     for (size_t i = 0; i < m_glyphs.size(); ++i) {
-#if USE(CAIRO)
-        result.add(m_glyphs[i].index, &m_font.get(), m_advances[i]);
-#else
         result.add(m_glyphs[i], &m_font.get(), m_advances[i]);
-#endif
     }
     return result;
 }
 
 void DrawGlyphs::apply(GraphicsContext& context) const
 {
-    FontCascade::drawGlyphs(context, m_font, generateGlyphBuffer(), 0, m_glyphs.size(), anchorPoint(), m_smoothingMode);
+    context.drawGlyphs(m_font, generateGlyphBuffer(), 0, m_glyphs.size(), anchorPoint(), m_smoothingMode);
 }
 
 void DrawGlyphs::computeBounds()

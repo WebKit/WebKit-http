@@ -8,31 +8,34 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_MOCK_MOCK_RENDER_DELAY_CONTROLLER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_MOCK_MOCK_RENDER_DELAY_CONTROLLER_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_MOCK_MOCK_RENDER_DELAY_CONTROLLER_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_MOCK_MOCK_RENDER_DELAY_CONTROLLER_H_
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/audio_processing/aec3/downsampled_render_buffer.h"
-#include "webrtc/modules/audio_processing/aec3/render_delay_controller.h"
-#include "webrtc/test/gmock.h"
+#include "absl/types/optional.h"
+#include "api/array_view.h"
+#include "modules/audio_processing/aec3/downsampled_render_buffer.h"
+#include "modules/audio_processing/aec3/render_delay_controller.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 namespace test {
 
 class MockRenderDelayController : public RenderDelayController {
  public:
-  virtual ~MockRenderDelayController() = default;
+  MockRenderDelayController();
+  virtual ~MockRenderDelayController();
 
   MOCK_METHOD0(Reset, void());
-  MOCK_METHOD1(SetDelay, void(size_t render_delay));
-  MOCK_METHOD2(GetDelay,
-               size_t(const DownsampledRenderBuffer& render_buffer,
-                      rtc::ArrayView<const float> capture));
-  MOCK_CONST_METHOD0(AlignmentHeadroomSamples, rtc::Optional<size_t>());
+  MOCK_METHOD0(LogRenderCall, void());
+  MOCK_METHOD4(GetDelay,
+               absl::optional<DelayEstimate>(
+                   const DownsampledRenderBuffer& render_buffer,
+                   size_t render_delay_buffer_delay,
+                   const absl::optional<int>& echo_remover_delay,
+                   rtc::ArrayView<const float> capture));
 };
 
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_MOCK_MOCK_RENDER_DELAY_CONTROLLER_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_MOCK_MOCK_RENDER_DELAY_CONTROLLER_H_

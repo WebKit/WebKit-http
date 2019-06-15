@@ -3,7 +3,7 @@
 /*---
 esid: sec-get-%typedarray%.prototype.bytelength
 description: Returns 0 if the instance has a detached buffer
-info: >
+info: |
   22.2.3.2 get %TypedArray%.prototype.byteLength
 
   ...
@@ -11,6 +11,7 @@ info: >
   5. If IsDetachedBuffer(buffer) is true, return 0.
   ...
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

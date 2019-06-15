@@ -4,7 +4,7 @@
 /*---
 description: Type coercion of `lastIndex` property value
 es6id: 21.2.5.6
-info: >
+info: |
     [...]
     7. If global is false, then
        a. Return RegExpExec(rx, S).
@@ -17,7 +17,7 @@ info: >
     21.2.5.2.2 Runtime Semantics: RegExpBuiltinExec ( R, S )
 
     [...]
-    4. Let lastIndex be ToLength(Get(R,"lastIndex")).
+    8. Else, let lastIndex be ? ToLength(? Get(R, "lastIndex")).
 features: [Symbol.match]
 ---*/
 

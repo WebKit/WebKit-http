@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.some
 description: >
   Returns true if any callbackfn returns a coerced true.
-info: >
+info: |
   22.2.3.25 %TypedArray%.prototype.some ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.some is a distinct function that implements the same
@@ -23,7 +23,7 @@ info: >
       iii. If testResult is true, return true.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol("1");

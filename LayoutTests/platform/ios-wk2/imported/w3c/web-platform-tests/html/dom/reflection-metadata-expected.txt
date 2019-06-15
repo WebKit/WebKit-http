@@ -742,6 +742,26 @@ PASS base.tabIndex: IDL set to 0
 PASS base.tabIndex: IDL set to 1 
 PASS base.tabIndex: IDL set to 2147483647 
 PASS base.tabIndex: IDL set to -2147483648 
+PASS base.href: typeof IDL attribute 
+FAIL base.href: IDL get with DOM attribute unset assert_equals: expected "" but got "http://localhost:8800/html/dom/reflection-metadata.html"
+PASS base.href: IDL set to "" 
+PASS base.href: IDL set to " foo " 
+PASS base.href: IDL set to "http://site.example/" 
+PASS base.href: IDL set to "//site.example/path???@#l" 
+PASS base.href: IDL set to "\0\x01\x02\x03\x04\x05\x06\x07 \b\t\n\v\f\r\x0e\x0f \x10\x11\x12\x13\x14\x15\x16\x17 \x18\x19\x1a\x1b\x1c\x1d\x1e\x1f " 
+PASS base.href: IDL set to undefined 
+PASS base.href: IDL set to 7 
+PASS base.href: IDL set to 1.5 
+PASS base.href: IDL set to true 
+PASS base.href: IDL set to false 
+PASS base.href: IDL set to object "[object Object]" 
+PASS base.href: IDL set to NaN 
+PASS base.href: IDL set to Infinity 
+PASS base.href: IDL set to -Infinity 
+PASS base.href: IDL set to "\0" 
+PASS base.href: IDL set to null 
+PASS base.href: IDL set to object "test-toString" 
+PASS base.href: IDL set to object "test-valueOf" 
 PASS base.target: typeof IDL attribute 
 PASS base.target: IDL get with DOM attribute unset 
 PASS base.target: setAttribute() to "" 
@@ -1210,12 +1230,6 @@ PASS link.as: setAttribute() to "xscript"
 PASS link.as: setAttribute() to "script\0" 
 PASS link.as: setAttribute() to "cript" 
 FAIL link.as: setAttribute() to "SCRIPT" assert_equals: IDL get expected "script" but got "SCRIPT"
-FAIL link.as: setAttribute() to "serviceworker" assert_equals: IDL get expected "serviceworker" but got ""
-PASS link.as: setAttribute() to "xserviceworker" 
-PASS link.as: setAttribute() to "serviceworker\0" 
-PASS link.as: setAttribute() to "erviceworker" 
-FAIL link.as: setAttribute() to "SERVICEWORKER" assert_equals: IDL get expected "serviceworker" but got ""
-PASS link.as: setAttribute() to "serviceworKer" 
 FAIL link.as: setAttribute() to "sharedworker" assert_equals: IDL get expected "sharedworker" but got ""
 PASS link.as: setAttribute() to "xsharedworker" 
 PASS link.as: setAttribute() to "sharedworker\0" 
@@ -1314,12 +1328,6 @@ PASS link.as: IDL set to "xscript"
 PASS link.as: IDL set to "script\0" 
 PASS link.as: IDL set to "cript" 
 FAIL link.as: IDL set to "SCRIPT" assert_equals: IDL get expected "script" but got "SCRIPT"
-FAIL link.as: IDL set to "serviceworker" assert_equals: IDL get expected "serviceworker" but got ""
-PASS link.as: IDL set to "xserviceworker" 
-PASS link.as: IDL set to "serviceworker\0" 
-PASS link.as: IDL set to "erviceworker" 
-FAIL link.as: IDL set to "SERVICEWORKER" assert_equals: IDL get expected "serviceworker" but got ""
-PASS link.as: IDL set to "serviceworKer" 
 FAIL link.as: IDL set to "sharedworker" assert_equals: IDL get expected "sharedworker" but got ""
 PASS link.as: IDL set to "xsharedworker" 
 PASS link.as: IDL set to "sharedworker\0" 
@@ -2375,6 +2383,38 @@ PASS style.media: IDL set to "\0"
 PASS style.media: IDL set to null 
 PASS style.media: IDL set to object "test-toString" 
 PASS style.media: IDL set to object "test-valueOf" 
+PASS style.nonce: typeof IDL attribute 
+PASS style.nonce: IDL get with DOM attribute unset 
+PASS style.nonce: setAttribute() to "" 
+PASS style.nonce: setAttribute() to " \0\x01\x02\x03\x04\x05\x06\x07 \b\t\n\v\f\r\x0e\x0f \x10\x11\x12\x13\x14\x15\x16\x17 \x18\x19\x1a\x1b\x1c\x1d\x1e\x1f  foo " 
+PASS style.nonce: setAttribute() to undefined 
+PASS style.nonce: setAttribute() to 7 
+PASS style.nonce: setAttribute() to 1.5 
+PASS style.nonce: setAttribute() to true 
+PASS style.nonce: setAttribute() to false 
+PASS style.nonce: setAttribute() to object "[object Object]" 
+PASS style.nonce: setAttribute() to NaN 
+PASS style.nonce: setAttribute() to Infinity 
+PASS style.nonce: setAttribute() to -Infinity 
+PASS style.nonce: setAttribute() to "\0" 
+PASS style.nonce: setAttribute() to null 
+PASS style.nonce: setAttribute() to object "test-toString" 
+PASS style.nonce: setAttribute() to object "test-valueOf" 
+PASS style.nonce: IDL set to "" 
+PASS style.nonce: IDL set to " \0\x01\x02\x03\x04\x05\x06\x07 \b\t\n\v\f\r\x0e\x0f \x10\x11\x12\x13\x14\x15\x16\x17 \x18\x19\x1a\x1b\x1c\x1d\x1e\x1f  foo " 
+PASS style.nonce: IDL set to undefined 
+PASS style.nonce: IDL set to 7 
+PASS style.nonce: IDL set to 1.5 
+PASS style.nonce: IDL set to true 
+PASS style.nonce: IDL set to false 
+PASS style.nonce: IDL set to object "[object Object]" 
+PASS style.nonce: IDL set to NaN 
+PASS style.nonce: IDL set to Infinity 
+PASS style.nonce: IDL set to -Infinity 
+PASS style.nonce: IDL set to "\0" 
+PASS style.nonce: IDL set to null 
+PASS style.nonce: IDL set to object "test-toString" 
+PASS style.nonce: IDL set to object "test-valueOf" 
 PASS style.type: typeof IDL attribute 
 PASS style.type: IDL get with DOM attribute unset 
 PASS style.type: setAttribute() to "" 

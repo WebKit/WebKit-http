@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class RenderSVGRect final : public RenderSVGShape {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGRect);
 public:
     RenderSVGRect(SVGRectElement&, RenderStyle&&);
     virtual ~RenderSVGRect();
@@ -49,7 +50,7 @@ private:
     bool isRenderingDisabled() const override;
     void fillShape(GraphicsContext&) const override;
     void strokeShape(GraphicsContext&) const override;
-    bool shapeDependentStrokeContains(const FloatPoint&) override;
+    bool shapeDependentStrokeContains(const FloatPoint&, PointCoordinateSpace = GlobalCoordinateSpace) override;
     bool shapeDependentFillContains(const FloatPoint&, const WindRule) const override;
 
 private:

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2004, 2007-2009, 2014, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -39,36 +39,10 @@ void GetterSetter::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
     GetterSetter* thisObject = jsCast<GetterSetter*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    JSCell::visitChildren(thisObject, visitor);
+    Base::visitChildren(thisObject, visitor);
 
     visitor.append(thisObject->m_getter);
     visitor.append(thisObject->m_setter);
-}
-
-GetterSetter* GetterSetter::withGetter(VM& vm, JSGlobalObject* globalObject, JSObject* newGetter)
-{
-    if (isGetterNull()) {
-        setGetter(vm, globalObject, newGetter);
-        return this;
-    }
-    
-    GetterSetter* result = GetterSetter::create(vm, globalObject);
-    result->setGetter(vm, globalObject, newGetter);
-    result->setSetter(vm, globalObject, setter());
-    return result;
-}
-
-GetterSetter* GetterSetter::withSetter(VM& vm, JSGlobalObject* globalObject, JSObject* newSetter)
-{
-    if (isSetterNull()) {
-        setSetter(vm, globalObject, newSetter);
-        return this;
-    }
-    
-    GetterSetter* result = GetterSetter::create(vm, globalObject);
-    result->setGetter(vm, globalObject, getter());
-    result->setSetter(vm, globalObject, newSetter);
-    return result;
 }
 
 JSValue callGetter(ExecState* exec, JSValue base, JSValue getterSetter)
@@ -95,12 +69,13 @@ bool callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue val
     GetterSetter* getterSetterObj = jsCast<GetterSetter*>(getterSetter);
 
     if (getterSetterObj->isSetterNull())
-        return typeError(exec, scope, ecmaMode == StrictMode, ASCIILiteral(ReadonlyPropertyWriteError));
+        return typeError(exec, scope, ecmaMode == StrictMode, ReadonlyPropertyWriteError);
 
     JSObject* setter = getterSetterObj->setter();
 
     MarkedArgumentBuffer args;
     args.append(value);
+    ASSERT(!args.hasOverflowed());
 
     CallData callData;
     CallType callType = setter->methodTable(vm)->getCallData(setter, callData);

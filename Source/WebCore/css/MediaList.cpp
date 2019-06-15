@@ -25,11 +25,11 @@
 #include "CSSStyleSheet.h"
 #include "DOMWindow.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "MediaQuery.h"
 #include "MediaQueryParser.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -58,21 +58,18 @@ namespace WebCore {
  * document.styleSheets[0].media.mediaText = "screen and resolution > 40dpi" will be ok and
  * enabled, while
  * document.styleSheets[0].cssRules[0].media.mediaText = "screen and resolution > 40dpi" will
- * throw SYNTAX_ERR exception.
+ * throw SyntaxError exception.
  */
     
-Ref<MediaQuerySet> MediaQuerySet::create(const String& mediaString)
+Ref<MediaQuerySet> MediaQuerySet::create(const String& mediaString, MediaQueryParserContext context)
 {
     if (mediaString.isEmpty())
         return MediaQuerySet::create();
     
-    return MediaQueryParser::parseMediaQuerySet(mediaString).releaseNonNull();
+    return MediaQueryParser::parseMediaQuerySet(mediaString, context).releaseNonNull();
 }
 
-MediaQuerySet::MediaQuerySet()
-    : m_lastLine(0)
-{
-}
+MediaQuerySet::MediaQuerySet() = default;
 
 MediaQuerySet::MediaQuerySet(const MediaQuerySet& o)
     : RefCounted()
@@ -81,9 +78,7 @@ MediaQuerySet::MediaQuerySet(const MediaQuerySet& o)
 {
 }
 
-MediaQuerySet::~MediaQuerySet()
-{
-}
+MediaQuerySet::~MediaQuerySet() = default;
 
 bool MediaQuerySet::set(const String& mediaString)
 {
@@ -101,13 +96,13 @@ bool MediaQuerySet::add(const String& queryString)
     
     // Only continue if exactly one media query is found, as described above.
     if (result->m_queries.size() != 1)
-        return true;
+        return false;
     
     // If comparing with any of the media queries in the collection of media
     // queries returns true terminate these steps.
     for (size_t i = 0; i < m_queries.size(); ++i) {
         if (m_queries[i] == result->m_queries[0])
-            return true;
+            return false;
     }
     
     m_queries.append(result->m_queries[0]);
@@ -178,9 +173,7 @@ MediaList::MediaList(MediaQuerySet* mediaQueries, CSSRule* parentRule)
 {
 }
 
-MediaList::~MediaList()
-{
-}
+MediaList::~MediaList() = default;
 
 ExceptionOr<void> MediaList::setMediaText(const String& value)
 {
@@ -205,24 +198,20 @@ ExceptionOr<void> MediaList::deleteMedium(const String& medium)
 
     bool success = m_mediaQueries->remove(medium);
     if (!success)
-        return Exception { NOT_FOUND_ERR };
+        return Exception { NotFoundError };
     if (m_parentStyleSheet)
         m_parentStyleSheet->didMutate();
     return { };
 }
 
-ExceptionOr<void> MediaList::appendMedium(const String& medium)
+void MediaList::appendMedium(const String& medium)
 {
     CSSStyleSheet::RuleMutationScope mutationScope(m_parentRule);
 
-    bool success = m_mediaQueries->add(medium);
-    if (!success) {
-        // FIXME: Should this really be INVALID_CHARACTER_ERR?
-        return Exception { INVALID_CHARACTER_ERR };
-    }
+    if (!m_mediaQueries->add(medium))
+        return;
     if (m_parentStyleSheet)
         m_parentStyleSheet->didMutate();
-    return { };
 }
 
 void MediaList::reattach(MediaQuerySet* mediaQueries)
@@ -278,4 +267,17 @@ void reportMediaQueryWarningIfNeeded(Document* document, const MediaQuerySet* me
 
 #endif
 
+TextStream& operator<<(TextStream& ts, const MediaQuerySet& querySet)
+{
+    ts << querySet.mediaText();
+    return ts;
 }
+
+TextStream& operator<<(TextStream& ts, const MediaList& mediaList)
+{
+    ts << mediaList.mediaText();
+    return ts;
+}
+
+} // namespace WebCore
+

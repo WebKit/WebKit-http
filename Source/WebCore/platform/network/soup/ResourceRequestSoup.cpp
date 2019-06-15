@@ -41,17 +41,21 @@ static uint64_t appendEncodedBlobItemToSoupMessageBody(SoupMessage* soupMessage,
         soup_message_body_append(soupMessage->request_body, SOUP_MEMORY_TEMPORARY, blobItem.data().data()->data() + blobItem.offset(), blobItem.length());
         return blobItem.length();
     case BlobDataItem::Type::File: {
-        if (!isValidFileTime(blobItem.file()->expectedModificationTime()))
+        if (!FileSystem::isValidFileTime(blobItem.file()->expectedModificationTime()))
             return 0;
 
         time_t fileModificationTime;
-        if (!getFileModificationTime(blobItem.file()->path(), fileModificationTime)
+        if (!FileSystem::getFileModificationTime(blobItem.file()->path(), fileModificationTime)
             || fileModificationTime != static_cast<time_t>(blobItem.file()->expectedModificationTime()))
             return 0;
 
         if (RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(blobItem.file()->path())) {
+            if (buffer->isEmpty())
+                return 0;
+
             GUniquePtr<SoupBuffer> soupBuffer(buffer->createSoupBuffer(blobItem.offset(), blobItem.length() == BlobDataItem::toEndOfFile ? 0 : blobItem.length()));
-            soup_message_body_append_buffer(soupMessage->request_body, soupBuffer.get());
+            if (soupBuffer->length)
+                soup_message_body_append_buffer(soupMessage->request_body, soupBuffer.get());
             return soupBuffer->length;
         }
         break;
@@ -77,9 +81,13 @@ void ResourceRequest::updateSoupMessageBody(SoupMessage* soupMessage) const
             break;
         case FormDataElement::Type::EncodedFile:
             if (RefPtr<SharedBuffer> buffer = SharedBuffer::createWithContentsOfFile(element.m_filename)) {
+                if (buffer->isEmpty())
+                    break;
+
                 GUniquePtr<SoupBuffer> soupBuffer(buffer->createSoupBuffer());
                 bodySize += buffer->size();
-                soup_message_body_append_buffer(soupMessage->request_body, soupBuffer.get());
+                if (soupBuffer->length)
+                    soup_message_body_append_buffer(soupMessage->request_body, soupBuffer.get());
             }
             break;
         case FormDataElement::Type::EncodedBlob:

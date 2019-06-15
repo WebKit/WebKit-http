@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Return abrupt from ToInteger(end), end is symbol
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
@@ -11,7 +11,7 @@ info: >
   be ? ToInteger(end).
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol("1");

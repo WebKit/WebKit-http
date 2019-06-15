@@ -1,5 +1,16 @@
+list(APPEND WTF_PUBLIC_HEADERS
+    glib/GLibUtilities.h
+    glib/GMutexLocker.h
+    glib/GRefPtr.h
+    glib/GTypedefs.h
+    glib/GUniquePtr.h
+    glib/RunLoopSourcePriority.h
+    glib/WTFGType.h
+
+    linux/CurrentProcessMemoryStatus.h
+)
+
 list(APPEND WTF_SOURCES
-    PlatformUserPreferredLanguagesUnix.cpp
     UniStdExtras.cpp
 
     generic/MainThreadGeneric.cpp
@@ -16,6 +27,7 @@ list(APPEND WTF_SOURCES
     text/unix/TextBreakIteratorInternalICUUnix.cpp
 
     unix/CPUTimeUnix.cpp
+    unix/LanguageUnix.cpp
 )
 
 list(APPEND WTF_LIBRARIES
@@ -26,6 +38,6 @@ list(APPEND WTF_LIBRARIES
     ${ZLIB_LIBRARIES}
 )
 
-list(APPEND WTF_INCLUDE_DIRECTORIES
+list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
 )

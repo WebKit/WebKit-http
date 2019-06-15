@@ -32,16 +32,13 @@
 
 #import "WebDelegateImplementationCaching.h"
 #import "WebElementDictionary.h"
-#import "WebFrame.h"
 #import "WebFrameInternal.h"
-#import "WebHTMLView.h"
+#import "WebFrameView.h"
 #import "WebHTMLViewInternal.h"
 #import "WebKitVersionChecks.h"
 #import "WebNSPasteboardExtras.h"
 #import "WebSharingServicePickerController.h"
-#import "WebUIDelegate.h"
 #import "WebUIDelegatePrivate.h"
-#import "WebView.h"
 #import "WebViewInternal.h"
 #import <WebCore/BitmapImage.h>
 #import <WebCore/ContextMenu.h>
@@ -52,14 +49,14 @@
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/ImageBuffer.h>
 #import <WebCore/LocalizedStrings.h>
-#import <WebCore/NSSharingServicePickerSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/RenderBox.h>
 #import <WebCore/RenderObject.h>
-#import <WebCore/SharedBuffer.h>
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <WebCore/SharedBuffer.h>
 #import <WebCore/URL.h>
 #import <WebKitLegacy/DOMPrivate.h>
+#import <pal/spi/mac/NSSharingServicePickerSPI.h>
 
 using namespace WebCore;
 
@@ -121,7 +118,7 @@ bool WebContextMenuClient::isSpeaking()
 
 void WebContextMenuClient::speak(const String& string)
 {
-    [NSApp speakString:[[(NSString*)string copy] autorelease]];
+    [NSApp speakString:(NSString *)string];
 }
 
 void WebContextMenuClient::stopSpeaking()
@@ -213,8 +210,8 @@ RetainPtr<NSImage> WebContextMenuClient::imageForCurrentSharingServicePickerItem
     RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
     frameView->frame().selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
 
-    PaintBehavior oldPaintBehavior = frameView->paintBehavior();
-    frameView->setPaintBehavior(PaintBehaviorSelectionOnly);
+    OptionSet<PaintBehavior> oldPaintBehavior = frameView->paintBehavior();
+    frameView->setPaintBehavior(PaintBehavior::SelectionOnly);
 
     buffer->context().translate(-toFloatSize(rect.location()));
     frameView->paintContents(buffer->context(), roundedIntRect(rect));
@@ -242,7 +239,7 @@ NSMenu *WebContextMenuClient::contextMenuForEvent(NSEvent *event, NSView *view, 
     if (Image* image = page->contextMenuController().context().controlledImage()) {
         ASSERT(page->contextMenuController().context().hitTestResult().innerNode());
 
-        RetainPtr<NSItemProvider> itemProvider = adoptNS([[NSItemProvider alloc] initWithItem:image->snapshotNSImage().autorelease() typeIdentifier:@"public.image"]);
+        RetainPtr<NSItemProvider> itemProvider = adoptNS([[NSItemProvider alloc] initWithItem:image->snapshotNSImage().get() typeIdentifier:@"public.image"]);
 
         bool isContentEditable = page->contextMenuController().context().hitTestResult().innerNode()->isContentEditable();
         m_sharingServicePickerController = adoptNS([[WebSharingServicePickerController alloc] initWithItems:@[ itemProvider.get() ] includeEditorServices:isContentEditable client:this style:NSSharingServicePickerStyleRollover]);

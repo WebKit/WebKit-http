@@ -30,6 +30,7 @@
 namespace WebCore {
 
 const char* const errorDomainWebKitInternal = "WebKitInternal";
+const char* const errorDomainWebKitServiceWorker = "WebKitServiceWorker";
 
 inline const ResourceError& ResourceErrorBase::asResourceError() const
 {
@@ -60,7 +61,7 @@ void ResourceErrorBase::lazyInit() const
 void ResourceErrorBase::setType(Type type)
 {
     // setType should only be used to specialize the error type.
-    ASSERT(m_type == Type::General || m_type == Type::Null || (m_type == Type::Cancellation && type == Type::AccessControl));
+    ASSERT(m_type == type || m_type == Type::General || m_type == Type::Null || (m_type == Type::Cancellation && type == Type::AccessControl));
     m_type = type;
 }
 

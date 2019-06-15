@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,59 +27,51 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "JSCPoison.h"
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
+#include "WasmLimits.h"
+#include "WasmTable.h"
 #include "WebAssemblyWrapperFunction.h"
 #include "WebAssemblyFunction.h"
 #include <wtf/MallocPtr.h>
+#include <wtf/Ref.h>
 
 namespace JSC {
 
-namespace Wasm {
-struct CallableFunction;
-}
-
-class JSWebAssemblyTable : public JSDestructibleObject {
+class JSWebAssemblyTable final : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static JSWebAssemblyTable* create(ExecState*, VM&, Structure*, uint32_t initial, std::optional<uint32_t> maximum);
+    static JSWebAssemblyTable* create(ExecState*, VM&, Structure*, Ref<Wasm::Table>&&);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
 
-    std::optional<uint32_t> maximum() const { return m_maximum; }
-    uint32_t size() const { return m_size; }
+    static bool isValidLength(uint32_t length) { return Wasm::Table::isValidLength(length); }
+    std::optional<uint32_t> maximum() const { return m_table->maximum(); }
+    uint32_t length() const { return m_table->length(); }
+    uint32_t allocatedLength() const { return m_table->allocatedLength(length()); }
     bool grow(uint32_t delta) WARN_UNUSED_RETURN;
-    JSObject* getFunction(uint32_t index)
-    {
-        RELEASE_ASSERT(index < m_size);
-        return m_jsFunctions.get()[index].get();
-    }
-    void clearFunction(uint32_t index);
-    void setFunction(VM&, uint32_t index, WebAssemblyFunction*);
-    void setFunction(VM&, uint32_t index, WebAssemblyWrapperFunction*);
+    JSObject* getFunction(uint32_t);
+    void clearFunction(uint32_t);
+    void setFunction(VM&, uint32_t, WebAssemblyFunction*);
+    void setFunction(VM&, uint32_t, WebAssemblyWrapperFunction*);
 
-    static ptrdiff_t offsetOfSize() { return OBJECT_OFFSETOF(JSWebAssemblyTable, m_size); }
-    static ptrdiff_t offsetOfFunctions() { return OBJECT_OFFSETOF(JSWebAssemblyTable, m_functions); }
-    static ptrdiff_t offsetOfJSFunctions() { return OBJECT_OFFSETOF(JSWebAssemblyTable, m_jsFunctions); }
-
-    static bool isValidSize(uint32_t size)
-    {
-        // This tops out at ~384 MB worth of data in this class.
-        return size < (1 << 24);
-    }
+    Wasm::Table* table() { return m_table.ptr(); }
 
 private:
-    JSWebAssemblyTable(VM&, Structure*, uint32_t initial, std::optional<uint32_t> maximum);
+    JSWebAssemblyTable(VM&, Structure*, Ref<Wasm::Table>&&);
     void finishCreation(VM&);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    MallocPtr<Wasm::CallableFunction> m_functions;
-    MallocPtr<WriteBarrier<JSObject>> m_jsFunctions;
-    std::optional<uint32_t> m_maximum;
-    uint32_t m_size;
+    PoisonedRef<JSWebAssemblyTablePoison, Wasm::Table> m_table;
+
+    template<typename T>
+    using PoisonedBarrier = PoisonedWriteBarrier<JSWebAssemblyTablePoison, T>;
+
+    MallocPtr<PoisonedBarrier<JSObject>> m_jsFunctions;
 };
 
 } // namespace JSC

@@ -25,15 +25,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-
-#include "config.h"
 #include "PluginPackage.h"
 
-#include "MIMETypeRegistry.h"
 #include "PluginDatabase.h"
 #include "PluginDebug.h"
-#include "Timer.h"
-#include "npruntime_impl.h"
+#include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/Timer.h>
+#include <WebCore/npruntime_impl.h>
 #include <shlwapi.h>
 #include <string.h>
 #include <wtf/StdLibExtras.h>
@@ -172,19 +170,19 @@ bool PluginPackage::fetchInfo()
     if (versionInfoSize == 0)
         return false;
 
-    auto versionInfoData = std::make_unique<char[]>(versionInfoSize);
+    Vector<char> versionInfoData(versionInfoSize);
 
-    if (!GetFileVersionInfoW(stringToNullTerminatedWChar(m_path).data(), 0, versionInfoSize, versionInfoData.get()))
+    if (!GetFileVersionInfoW(stringToNullTerminatedWChar(m_path).data(), 0, versionInfoSize, versionInfoData.data()))
         return false;
 
-    m_name = getVersionInfo(versionInfoData.get(), "ProductName");
-    m_description = getVersionInfo(versionInfoData.get(), "FileDescription");
+    m_name = getVersionInfo(versionInfoData.data(), "ProductName");
+    m_description = getVersionInfo(versionInfoData.data(), "FileDescription");
     if (m_name.isNull() || m_description.isNull())
         return false;
 
     VS_FIXEDFILEINFO* info;
     UINT infoSize;
-    if (!VerQueryValueW(versionInfoData.get(), L"\\", (LPVOID*) &info, &infoSize) || infoSize < sizeof(VS_FIXEDFILEINFO))
+    if (!VerQueryValueW(versionInfoData.data(), L"\\", (LPVOID*) &info, &infoSize) || infoSize < sizeof(VS_FIXEDFILEINFO))
         return false;
     m_moduleVersion.leastSig = info->dwFileVersionLS;
     m_moduleVersion.mostSig = info->dwFileVersionMS;
@@ -192,20 +190,16 @@ bool PluginPackage::fetchInfo()
     if (isPluginBlacklisted())
         return false;
 
-    Vector<String> types;
-    getVersionInfo(versionInfoData.get(), "MIMEType").split('|', types);
-    Vector<String> extensionLists;
-    getVersionInfo(versionInfoData.get(), "FileExtents").split('|', extensionLists);
-    Vector<String> descriptions;
-    getVersionInfo(versionInfoData.get(), "FileOpenName").split('|', descriptions);
+    Vector<String> types = getVersionInfo(versionInfoData.data(), "MIMEType").split('|');
+    Vector<String> extensionLists = getVersionInfo(versionInfoData.data(), "FileExtents").split('|');
+    Vector<String> descriptions = getVersionInfo(versionInfoData.data(), "FileOpenName").split('|');
 
     for (unsigned i = 0; i < types.size(); i++) {
         String type = types[i].convertToASCIILowercase();
         String description = i < descriptions.size() ? descriptions[i] : "";
         String extensionList = i < extensionLists.size() ? extensionLists[i] : "";
 
-        Vector<String> extensionsVector;
-        extensionList.split(',', extensionsVector);
+        Vector<String> extensionsVector = extensionList.split(',');
 
         // Get rid of the extension list that may be at the end of the description string.
         int pos = description.find("(*");
@@ -264,15 +258,20 @@ bool PluginPackage::load()
 
     NP_GetEntryPointsFuncPtr NP_GetEntryPoints = 0;
     NP_InitializeFuncPtr NP_Initialize = 0;
-    NPError npErr;
+    NPError npErr = NPERR_NO_ERROR;
 
     NP_Initialize = (NP_InitializeFuncPtr)GetProcAddress(m_module, "NP_Initialize");
     NP_GetEntryPoints = (NP_GetEntryPointsFuncPtr)GetProcAddress(m_module, "NP_GetEntryPoints");
+#if ENABLE(NETSCAPE_PLUGIN_API)
     m_NPP_Shutdown = (NPP_ShutdownProcPtr)GetProcAddress(m_module, "NP_Shutdown");
 
     if (!NP_Initialize || !NP_GetEntryPoints || !m_NPP_Shutdown)
+#else
+    if (!NP_Initialize || !NP_GetEntryPoints)
+#endif
         goto abort;
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     memset(&m_pluginFuncs, 0, sizeof(m_pluginFuncs));
     m_pluginFuncs.size = sizeof(m_pluginFuncs);
 
@@ -288,7 +287,7 @@ bool PluginPackage::load()
 
     if (npErr != NPERR_NO_ERROR)
         goto abort;
-
+#endif
     m_loadCount++;
     return true;
 

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginProxy_h
-#define PluginProxy_h
+#pragma once
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
@@ -32,7 +31,6 @@
 #include "Plugin.h"
 #include "PluginProcess.h"
 #include <WebCore/AffineTransform.h>
-#include <WebCore/FindOptions.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/SecurityOrigin.h>
 #include <memory>
@@ -174,7 +172,7 @@ private:
     void setComplexTextInputState(uint64_t);
     void setLayerHostingContextID(uint32_t);
 #endif
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     void createPluginContainer(uint64_t& windowID);
     void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID);
     void windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID);
@@ -238,4 +236,3 @@ SPECIALIZE_TYPE_TRAITS_PLUGIN(PluginProxy, PluginProxyType)
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#endif // PluginProxy_h

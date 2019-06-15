@@ -4,7 +4,7 @@
 es6id: 9.5.9
 description: >
     Trap is not callable.
-info: >
+info: |
     [[Set]] ( P, V, Receiver)
 
     6. Let trap be GetMethod(handler, "set").
@@ -16,13 +16,13 @@ info: >
 ---*/
 
 var p = new Proxy({}, {
-    set: {}
+  set: {}
 });
 
 assert.throws(TypeError, function() {
-    p.attr = 1;
+  p.attr = 1;
 });
 
 assert.throws(TypeError, function() {
-    p["attr"] = 1;
+  p["attr"] = 1;
 });

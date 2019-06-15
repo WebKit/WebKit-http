@@ -52,7 +52,9 @@ public:
     bool isEqual(const ScriptCallFrame&) const;
     bool isNative() const;
 
-    Ref<Inspector::Protocol::Console::CallFrame> buildInspectorObject() const;
+    bool operator==(const ScriptCallFrame& other) const { return isEqual(other); }
+
+    Ref<Protocol::Console::CallFrame> buildInspectorObject() const;
 
 private:
     String m_functionName;

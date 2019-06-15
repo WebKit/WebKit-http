@@ -2,11 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-get-%typedarray%.prototype.bytelength
-es6id: 22.2.3.2
-description: |
+description: >
   Throws a TypeError exception when `this` does not have a [[TypedArrayName]]
   internal slot
-info: >
+info: |
   22.2.3.2 get %TypedArray%.prototype.byteLength
 
   1. Let O be the this value.
@@ -15,7 +14,7 @@ info: >
   exception.
   ...
 includes: [testTypedArray.js]
-features: [DataView]
+features: [DataView, TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

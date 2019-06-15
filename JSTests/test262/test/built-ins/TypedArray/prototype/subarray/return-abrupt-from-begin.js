@@ -3,13 +3,14 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Return abrupt from ToInteger(begin)
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
   7. Let relativeBegin be ? ToInteger(begin).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var o1 = {

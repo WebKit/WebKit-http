@@ -2,7 +2,7 @@
  * Copyright (C) 2001 Peter Kelly (pmk@post.com)
  * Copyright (C) 2001 Tobias Anton (anton@stud.fbi.fh-darmstadt.de)
  * Copyright (C) 2006 Samuel Weinig (sam.weinig@gmail.com)
- * Copyright (C) 2003, 2005, 2006, 2008, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,53 +23,76 @@
 #include "config.h"
 #include "Event.h"
 
+#include "DOMWindow.h"
+#include "Document.h"
 #include "EventNames.h"
 #include "EventPath.h"
 #include "EventTarget.h"
+#include "Performance.h"
 #include "UserGestureIndicator.h"
-#include <wtf/CurrentTime.h>
+#include "WorkerGlobalScope.h"
 
 namespace WebCore {
 
+ALWAYS_INLINE Event::Event(MonotonicTime createTime, const AtomicString& type, IsTrusted isTrusted, CanBubble canBubble, IsCancelable cancelable, IsComposed composed)
+    : m_isInitialized { !type.isNull() }
+    , m_canBubble { canBubble == CanBubble::Yes }
+    , m_cancelable { cancelable == IsCancelable::Yes }
+    , m_composed { composed == IsComposed::Yes }
+    , m_propagationStopped { false }
+    , m_immediatePropagationStopped { false }
+    , m_wasCanceled { false }
+    , m_defaultHandled { false }
+    , m_isDefaultEventHandlerIgnored { false }
+    , m_isTrusted { isTrusted == IsTrusted::Yes }
+    , m_isExecutingPassiveEventListener { false }
+    , m_eventPhase { NONE }
+    , m_type { type }
+    , m_createTime { createTime }
+{
+}
+
 Event::Event(IsTrusted isTrusted)
-    : m_isTrusted(isTrusted == IsTrusted::Yes)
-    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+    : Event { MonotonicTime::now(), { }, isTrusted, CanBubble::No, IsCancelable::No, IsComposed::No }
 {
 }
 
-Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableArg)
-    : m_type(eventType)
-    , m_isInitialized(true)
-    , m_canBubble(canBubbleArg)
-    , m_cancelable(cancelableArg)
-    , m_isTrusted(true)
-    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+Event::Event(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed)
+    : Event { MonotonicTime::now(), eventType, IsTrusted::Yes, canBubble, isCancelable, isComposed }
 {
+    ASSERT(!eventType.isNull());
 }
 
-Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableArg, double timestamp)
-    : m_type(eventType)
-    , m_isInitialized(true)
-    , m_canBubble(canBubbleArg)
-    , m_cancelable(cancelableArg)
-    , m_isTrusted(true)
-    , m_createTime(convertSecondsToDOMTimeStamp(timestamp))
+Event::Event(const AtomicString& eventType, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed, MonotonicTime timestamp, IsTrusted isTrusted)
+    : Event { timestamp, eventType, isTrusted, canBubble, isCancelable, isComposed }
 {
+    ASSERT(!eventType.isNull());
 }
 
 Event::Event(const AtomicString& eventType, const EventInit& initializer, IsTrusted isTrusted)
-    : m_type(eventType)
-    , m_isInitialized(true)
-    , m_canBubble(initializer.bubbles)
-    , m_cancelable(initializer.cancelable)
-    , m_composed(initializer.composed)
-    , m_isTrusted(isTrusted == IsTrusted::Yes)
-    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+    : Event { MonotonicTime::now(), eventType, isTrusted,
+        initializer.bubbles ? CanBubble::Yes : CanBubble::No,
+        initializer.cancelable ? IsCancelable::Yes : IsCancelable::No,
+        initializer.composed ? IsComposed::Yes : IsComposed::No }
 {
+    ASSERT(!eventType.isNull());
 }
 
-Event::~Event()
+Event::~Event() = default;
+
+Ref<Event> Event::create(const AtomicString& type, CanBubble canBubble, IsCancelable isCancelable, IsComposed isComposed)
 {
+    return adoptRef(*new Event(type, canBubble, isCancelable, isComposed));
+}
+
+Ref<Event> Event::createForBindings()
+{
+    return adoptRef(*new Event);
+}
+
+Ref<Event> Event::create(const AtomicString& type, const EventInit& initializer, IsTrusted isTrusted)
+{
+    return adoptRef(*new Event(type, initializer, isTrusted));
 }
 
 void Event::initEvent(const AtomicString& eventTypeArg, bool canBubbleArg, bool cancelableArg)
@@ -80,104 +103,14 @@ void Event::initEvent(const AtomicString& eventTypeArg, bool canBubbleArg, bool 
     m_isInitialized = true;
     m_propagationStopped = false;
     m_immediatePropagationStopped = false;
-    m_defaultPrevented = false;
+    m_wasCanceled = false;
     m_isTrusted = false;
     m_target = nullptr;
-
     m_type = eventTypeArg;
     m_canBubble = canBubbleArg;
     m_cancelable = cancelableArg;
-}
 
-bool Event::composed() const
-{
-    if (m_composed)
-        return true;
-
-    // http://w3c.github.io/webcomponents/spec/shadow/#scoped-flag
-    if (!isTrusted())
-        return false;
-
-    return m_type == eventNames().inputEvent
-        || m_type == eventNames().textInputEvent
-        || m_type == eventNames().DOMActivateEvent
-        || isCompositionEvent()
-        || isClipboardEvent()
-        || isFocusEvent()
-        || isKeyboardEvent()
-        || isMouseEvent()
-        || isTouchEvent()
-        || isInputEvent();
-}
-
-EventInterface Event::eventInterface() const
-{
-    return EventInterfaceType;
-}
-
-bool Event::isUIEvent() const
-{
-    return false;
-}
-
-bool Event::isMouseEvent() const
-{
-    return false;
-}
-
-bool Event::isFocusEvent() const
-{
-    return false;
-}
-
-bool Event::isKeyboardEvent() const
-{
-    return false;
-}
-
-bool Event::isInputEvent() const
-{
-    return false;
-}
-
-bool Event::isCompositionEvent() const
-{
-    return false;
-}
-
-bool Event::isTouchEvent() const
-{
-    return false;
-}
-
-bool Event::isClipboardEvent() const
-{
-    return false;
-}
-
-bool Event::isBeforeTextInsertedEvent() const
-{
-    return false;
-}
-
-bool Event::isBeforeUnloadEvent() const
-{
-    return false;
-}
-
-bool Event::isErrorEvent() const
-{
-    return false;
-}
-
-bool Event::isTextEvent() const
-{
-    return false;
-}
-
-bool Event::isWheelEvent() const
-{
-    return false;
+    m_underlyingEvent = nullptr;
 }
 
 void Event::setTarget(RefPtr<EventTarget>&& target)
@@ -202,18 +135,42 @@ Vector<EventTarget*> Event::composedPath() const
     return m_eventPath->computePathUnclosedToTarget(*m_currentTarget);
 }
 
-void Event::receivedTarget()
-{
-}
-
 void Event::setUnderlyingEvent(Event* underlyingEvent)
 {
-    // Prohibit creation of a cycle -- just do nothing in that case.
+    // Prohibit creation of a cycle by doing nothing if a cycle would be created.
     for (Event* event = underlyingEvent; event; event = event->underlyingEvent()) {
         if (event == this)
             return;
     }
     m_underlyingEvent = underlyingEvent;
+}
+
+DOMHighResTimeStamp Event::timeStampForBindings(ScriptExecutionContext& context) const
+{
+    Performance* performance = nullptr;
+    if (is<WorkerGlobalScope>(context))
+        performance = &downcast<WorkerGlobalScope>(context).performance();
+    else if (auto* window = downcast<Document>(context).domWindow())
+        performance = window->performance();
+
+    if (!performance)
+        return 0;
+
+    return std::max(performance->relativeTimeFromTimeOriginInReducedResolution(m_createTime), 0.);
+}
+
+void Event::resetBeforeDispatch()
+{
+    m_defaultHandled = false;
+}
+
+void Event::resetAfterDispatch()
+{
+    m_eventPath = nullptr;
+    m_currentTarget = nullptr;
+    m_eventPhase = NONE;
+    m_propagationStopped = false;
+    m_immediatePropagationStopped = false;
 }
 
 } // namespace WebCore

@@ -26,8 +26,10 @@
  */
 
 [
-    NoInterfaceObject
+    NoInterfaceObject,
+    Exposed=(Window,Worker)
 ] interface CanvasPath {
+    // shared path API methods
     void closePath();
     void moveTo(unrestricted double x, unrestricted double y);
     void lineTo(unrestricted double x, unrestricted double y);
@@ -38,4 +40,7 @@
     void rect(unrestricted double x, unrestricted double y, unrestricted double w, unrestricted double h);
     [MayThrowException] void arc(unrestricted double x, unrestricted double y, unrestricted double radius, unrestricted double startAngle, unrestricted double endAngle, optional boolean anticlockwise = false);
     [MayThrowException] void ellipse(unrestricted double x, unrestricted double y, unrestricted double radiusX, unrestricted double radiusY, unrestricted double rotation, unrestricted double startAngle, unrestricted double endAngle, optional boolean anticlockwise = false);
+
+    [EnabledAtRuntime=InspectorAdditions] readonly attribute float currentX;
+    [EnabledAtRuntime=InspectorAdditions] readonly attribute float currentY;
 };

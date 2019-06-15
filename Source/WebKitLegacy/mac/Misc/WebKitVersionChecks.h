@@ -61,6 +61,8 @@
 #define WEBKIT_FIRST_VERSION_WITH_CSS_ATTRIBUTE_SETTERS_IGNORING_PRIORITY 0x02170D00 // 535.13.0
 #define WEBKIT_FIRST_VERSION_WITHOUT_LEGACY_BACKGROUNDSIZE_SHORTHAND_BEHAVIOR 0x02190100 // 537.1.0
 #define WEBKIT_FIRST_VERSION_WITH_INSECURE_CONTENT_BLOCKING 0x02590116 // 601.1.22
+#define WEBKIT_FIRST_VERSION_WITH_DEFAULT_ICON_LOADING 0x025C0126 // 604.1.38
+
 #else
 // <rdar://problem/6627758> Need to implement WebKitLinkedOnOrAfter
 // Actually UIKit version numbers, since applications don't link against WebKit
@@ -73,6 +75,7 @@
 enum class SDKVersion : uint32_t {
 #if PLATFORM(IOS)
     FirstToExcludeLocalStorageFromBackup = DYLD_IOS_VERSION_11_0,
+    FirstThatDefaultsToPassiveTouchListenersOnDocument = DYLD_IOS_VERSION_11_3,
 #else
     FirstWithDropToNavigateDisallowedByDefault = DYLD_MACOSX_VERSION_10_13,
     FirstWithWebIconDatabaseWarning = DYLD_MACOSX_VERSION_10_13,

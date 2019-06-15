@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "ImageDecoder.h"
+#include "ScalableImageDecoder.h"
 #if ENABLE(APNG)
 #include <png.h>
 #endif
@@ -35,23 +35,23 @@ namespace WebCore {
     class PNGImageReader;
 
     // This class decodes the PNG image format.
-    class PNGImageDecoder final : public ImageDecoder {
+    class PNGImageDecoder final : public ScalableImageDecoder {
     public:
-        static Ref<ImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        static Ref<ScalableImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
         {
             return adoptRef(*new PNGImageDecoder(alphaOption, gammaAndColorProfileOption));
         }
 
         virtual ~PNGImageDecoder();
 
-        // ImageDecoder
-        String filenameExtension() const override { return ASCIILiteral("png"); }
+        // ScalableImageDecoder
+        String filenameExtension() const override { return "png"_s; }
 #if ENABLE(APNG)
         size_t frameCount() const override { return m_frameCount; }
         RepetitionCount repetitionCount() const override;
 #endif
         bool setSize(const IntSize&) override;
-        ImageFrame* frameBufferAtIndex(size_t index) override;
+        ScalableImageDecoderFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
         // PNGImageReader!

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DisplayRefreshMonitorManager_h
-#define DisplayRefreshMonitorManager_h
+#pragma once
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 
@@ -39,7 +38,7 @@ namespace WebCore {
 class DisplayRefreshMonitorManager {
     friend class NeverDestroyed<DisplayRefreshMonitorManager>;
 public:
-    static DisplayRefreshMonitorManager& sharedManager();
+    WEBCORE_EXPORT static DisplayRefreshMonitorManager& sharedManager();
     
     void registerClient(DisplayRefreshMonitorClient&);
     void unregisterClient(DisplayRefreshMonitorClient&);
@@ -47,6 +46,8 @@ public:
     bool scheduleAnimation(DisplayRefreshMonitorClient&);
     void windowScreenDidChange(PlatformDisplayID, DisplayRefreshMonitorClient&);
 
+    WEBCORE_EXPORT void displayWasUpdated();
+    
 private:
     friend class DisplayRefreshMonitor;
     void displayDidRefresh(DisplayRefreshMonitor&);
@@ -62,5 +63,3 @@ private:
 }
 
 #endif // USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-
-#endif

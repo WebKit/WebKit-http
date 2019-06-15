@@ -69,15 +69,15 @@ public:
         }
 
         if (webEvent.shiftKey())
-            m_modifiers |= Modifier::ShiftKey;
+            m_modifiers.add(Modifier::ShiftKey);
         if (webEvent.controlKey())
-            m_modifiers |= Modifier::CtrlKey;
+            m_modifiers.add(Modifier::CtrlKey);
         if (webEvent.altKey())
-            m_modifiers |= Modifier::AltKey;
+            m_modifiers.add(Modifier::AltKey);
         if (webEvent.metaKey())
-            m_modifiers |= Modifier::MetaKey;
+            m_modifiers.add(Modifier::MetaKey);
         if (webEvent.capsLockKey())
-            m_modifiers |= Modifier::CapsLockKey;
+            m_modifiers.add(Modifier::CapsLockKey);
 
         m_timestamp = webEvent.timestamp();
 
@@ -98,6 +98,8 @@ public:
         default:
             ASSERT_NOT_REACHED();
         }
+
+        m_buttons = webEvent.buttons();
 
         m_position = webEvent.position();
 #if ENABLE(POINTER_LOCK)
@@ -134,15 +136,15 @@ public:
         m_type = PlatformEvent::Wheel;
 
         if (webEvent.shiftKey())
-            m_modifiers |= Modifier::ShiftKey;
+            m_modifiers.add(Modifier::ShiftKey);
         if (webEvent.controlKey())
-            m_modifiers |= Modifier::CtrlKey;
+            m_modifiers.add(Modifier::CtrlKey);
         if (webEvent.altKey())
-            m_modifiers |= Modifier::AltKey;
+            m_modifiers.add(Modifier::AltKey);
         if (webEvent.metaKey())
-            m_modifiers |= Modifier::MetaKey;
+            m_modifiers.add(Modifier::MetaKey);
         if (webEvent.capsLockKey())
-            m_modifiers |= Modifier::CapsLockKey;
+            m_modifiers.add(Modifier::CapsLockKey);
 
         m_timestamp = webEvent.timestamp();
 
@@ -196,15 +198,15 @@ public:
         }
 
         if (webEvent.shiftKey())
-            m_modifiers |= Modifier::ShiftKey;
+            m_modifiers.add(Modifier::ShiftKey);
         if (webEvent.controlKey())
-            m_modifiers |= Modifier::CtrlKey;
+            m_modifiers.add(Modifier::CtrlKey);
         if (webEvent.altKey())
-            m_modifiers |= Modifier::AltKey;
+            m_modifiers.add(Modifier::AltKey);
         if (webEvent.metaKey())
-            m_modifiers |= Modifier::MetaKey;
+            m_modifiers.add(Modifier::MetaKey);
         if (webEvent.capsLockKey())
-            m_modifiers |= Modifier::CapsLockKey;
+            m_modifiers.add(Modifier::CapsLockKey);
 
         m_timestamp = webEvent.timestamp();
 
@@ -377,15 +379,15 @@ public:
         }
 
         if (webEvent.shiftKey())
-            m_modifiers |= Modifier::ShiftKey;
+            m_modifiers.add(Modifier::ShiftKey);
         if (webEvent.controlKey())
-            m_modifiers |= Modifier::CtrlKey;
+            m_modifiers.add(Modifier::CtrlKey);
         if (webEvent.altKey())
-            m_modifiers |= Modifier::AltKey;
+            m_modifiers.add(Modifier::AltKey);
         if (webEvent.metaKey())
-            m_modifiers |= Modifier::MetaKey;
+            m_modifiers.add(Modifier::MetaKey);
         if (webEvent.capsLockKey())
-            m_modifiers |= Modifier::CapsLockKey;
+            m_modifiers.add(Modifier::CapsLockKey);
 
         m_timestamp = webEvent.timestamp();
 
@@ -436,15 +438,15 @@ public:
         }
 
         if (webEvent.shiftKey())
-            m_modifiers |= Modifier::ShiftKey;
+            m_modifiers.add(Modifier::ShiftKey);
         if (webEvent.controlKey())
-            m_modifiers |= Modifier::CtrlKey;
+            m_modifiers.add(Modifier::CtrlKey);
         if (webEvent.altKey())
-            m_modifiers |= Modifier::AltKey;
+            m_modifiers.add(Modifier::AltKey);
         if (webEvent.metaKey())
-            m_modifiers |= Modifier::MetaKey;
+            m_modifiers.add(Modifier::MetaKey);
         if (webEvent.capsLockKey())
-            m_modifiers |= Modifier::CapsLockKey;
+            m_modifiers.add(Modifier::CapsLockKey);
 
         m_timestamp = webEvent.timestamp();
 

@@ -37,7 +37,6 @@
 #include "DOMRect.h"
 #include "DOMTokenList.h"
 #include "ElementChildIterator.h"
-#include "ExceptionCode.h"
 #include "HTMLDivElement.h"
 #include "HTMLParserIdioms.h"
 #include "Logging.h"
@@ -65,9 +64,7 @@ VTTRegion::VTTRegion(ScriptExecutionContext& context)
 {
 }
 
-VTTRegion::~VTTRegion()
-{
-}
+VTTRegion::~VTTRegion() = default;
 
 void VTTRegion::setTrack(TextTrack* track)
 {
@@ -82,7 +79,7 @@ void VTTRegion::setId(const String& id)
 ExceptionOr<void> VTTRegion::setWidth(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_width = value;
     return { };
 }
@@ -90,7 +87,7 @@ ExceptionOr<void> VTTRegion::setWidth(double value)
 ExceptionOr<void> VTTRegion::setHeight(int value)
 {
     if (value < 0)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_heightInLines = value;
     return { };
 }
@@ -98,7 +95,7 @@ ExceptionOr<void> VTTRegion::setHeight(int value)
 ExceptionOr<void> VTTRegion::setRegionAnchorX(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_regionAnchor.setX(value);
     return { };
 }
@@ -106,7 +103,7 @@ ExceptionOr<void> VTTRegion::setRegionAnchorX(double value)
 ExceptionOr<void> VTTRegion::setRegionAnchorY(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_regionAnchor.setY(value);
     return { };
 }
@@ -114,7 +111,7 @@ ExceptionOr<void> VTTRegion::setRegionAnchorY(double value)
 ExceptionOr<void> VTTRegion::setViewportAnchorX(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_viewportAnchor.setX(value);
     return { };
 }
@@ -122,7 +119,7 @@ ExceptionOr<void> VTTRegion::setViewportAnchorX(double value)
 ExceptionOr<void> VTTRegion::setViewportAnchorY(double value)
 {
     if (!(value >= 0 && value <= 100))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     m_viewportAnchor.setY(value);
     return { };
 }
@@ -148,7 +145,7 @@ ExceptionOr<void> VTTRegion::setScroll(const AtomicString& value)
         m_scroll = true;
         return { };
     }
-    return Exception { SYNTAX_ERR };
+    return Exception { SyntaxError };
 }
 
 void VTTRegion::updateParametersFromRegion(const VTTRegion& other)

@@ -5,7 +5,7 @@
 es6id: B.2.1.1
 description: >
   escape.length is 1.
-info: >
+info: |
   escape (string)
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(escape.length, 1);
-
-verifyNotEnumerable(escape, "length");
-verifyNotWritable(escape, "length");
-verifyConfigurable(escape, "length");
+verifyProperty(escape, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 1
+});

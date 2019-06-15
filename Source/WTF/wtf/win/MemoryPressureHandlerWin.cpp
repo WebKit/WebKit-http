@@ -73,7 +73,7 @@ void MemoryPressureHandler::platformReleaseMemory(Critical)
 void MemoryPressureHandler::install()
 {
     m_installed = true;
-    m_windowsMeasurementTimer.startRepeating(60.0);
+    m_windowsMeasurementTimer.startRepeating(60_s);
 }
 
 void MemoryPressureHandler::uninstall()
@@ -85,7 +85,7 @@ void MemoryPressureHandler::uninstall()
     m_installed = false;
 }
 
-void MemoryPressureHandler::holdOff(unsigned seconds)
+void MemoryPressureHandler::holdOff(Seconds seconds)
 {
 }
 

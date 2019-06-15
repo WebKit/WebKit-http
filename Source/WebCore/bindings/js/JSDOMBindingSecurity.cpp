@@ -25,14 +25,15 @@
 #include "DOMWindow.h"
 #include "Document.h"
 #include "Frame.h"
+#include "HTTPParsers.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWindowBase.h"
 #include "SecurityOrigin.h"
 #include <wtf/text/WTFString.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 void printErrorMessageForFrame(Frame* frame, const String& message)
 {
@@ -56,10 +57,10 @@ static inline bool canAccessDocument(JSC::ExecState* state, Document* targetDocu
 
     switch (reportingOption) {
     case ThrowSecurityError:
-        throwSecurityError(*state, scope, targetDocument->domWindow()->crossDomainAccessErrorMessage(active));
+        throwSecurityError(*state, scope, targetDocument->domWindow()->crossDomainAccessErrorMessage(active, IncludeTargetOrigin::No));
         break;
     case LogSecurityError:
-        printErrorMessageForFrame(targetDocument->frame(), targetDocument->domWindow()->crossDomainAccessErrorMessage(active));
+        printErrorMessageForFrame(targetDocument->frame(), targetDocument->domWindow()->crossDomainAccessErrorMessage(active, IncludeTargetOrigin::Yes));
         break;
     case DoNotReportSecurityError:
         break;
@@ -72,7 +73,7 @@ bool BindingSecurity::shouldAllowAccessToFrame(ExecState& state, Frame& frame, S
 {
     if (BindingSecurity::shouldAllowAccessToFrame(&state, &frame, DoNotReportSecurityError))
         return true;
-    message = frame.document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(state));
+    message = frame.document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(state), IncludeTargetOrigin::No);
     return false;
 }
 
@@ -80,7 +81,7 @@ bool BindingSecurity::shouldAllowAccessToDOMWindow(ExecState& state, DOMWindow& 
 {
     if (BindingSecurity::shouldAllowAccessToDOMWindow(&state, globalObject, DoNotReportSecurityError))
         return true;
-    message = globalObject.crossDomainAccessErrorMessage(activeDOMWindow(state));
+    message = globalObject.crossDomainAccessErrorMessage(activeDOMWindow(state), IncludeTargetOrigin::No);
     return false;
 }
 
@@ -97,6 +98,21 @@ bool BindingSecurity::shouldAllowAccessToFrame(JSC::ExecState* state, Frame* tar
 bool BindingSecurity::shouldAllowAccessToNode(JSC::ExecState& state, Node* target)
 {
     return !target || canAccessDocument(&state, &target->document(), LogSecurityError);
+}
+
+bool BindingSecurity::shouldAllowAccessToDOMWindowGivenMinimumCrossOriginWindowPolicy(JSC::ExecState* state, DOMWindow& target, CrossOriginWindowPolicy minimumCrossOriginWindowPolicy, SecurityReportingOption reportingOption)
+{
+    DOMWindow& source = activeDOMWindow(*state);
+    ASSERT(minimumCrossOriginWindowPolicy > CrossOriginWindowPolicy::Deny);
+
+    static_assert(CrossOriginWindowPolicy::Deny < CrossOriginWindowPolicy::AllowPostMessage && CrossOriginWindowPolicy::AllowPostMessage < CrossOriginWindowPolicy::Allow, "More restrictive cross-origin options should have lower values");
+
+    // Fast path.
+    auto effectiveCrossOriginWindowPolicy = std::min(source.crossOriginWindowPolicy(), target.crossOriginWindowPolicy());
+    if (effectiveCrossOriginWindowPolicy >= minimumCrossOriginWindowPolicy)
+        return true;
+
+    return shouldAllowAccessToDOMWindow(state, target, reportingOption);
 }
 
 } // namespace WebCore

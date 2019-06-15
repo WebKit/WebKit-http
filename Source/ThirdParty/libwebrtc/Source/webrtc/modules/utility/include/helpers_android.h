@@ -8,17 +8,28 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_UTILITY_INCLUDE_HELPERS_ANDROID_H_
-#define WEBRTC_MODULES_UTILITY_INCLUDE_HELPERS_ANDROID_H_
+#ifndef MODULES_UTILITY_INCLUDE_HELPERS_ANDROID_H_
+#define MODULES_UTILITY_INCLUDE_HELPERS_ANDROID_H_
 
 #include <jni.h>
 #include <string>
+
+#include "rtc_base/system/arch.h"
 
 // Abort the process if |jni| has a Java exception pending.
 // TODO(henrika): merge with CHECK_JNI_EXCEPTION() in jni_helpers.h.
 #define CHECK_EXCEPTION(jni)        \
   RTC_CHECK(!jni->ExceptionCheck()) \
       << (jni->ExceptionDescribe(), jni->ExceptionClear(), "")
+
+#if defined(WEBRTC_ARCH_X86)
+// Dalvik JIT generated code doesn't guarantee 16-byte stack alignment on
+// x86 - use force_align_arg_pointer to realign the stack at the JNI
+// boundary. bugs.webrtc.org/9050
+#define JNI_FUNCTION_ALIGN __attribute__((force_align_arg_pointer))
+#else
+#define JNI_FUNCTION_ALIGN
+#endif
 
 namespace webrtc {
 
@@ -33,23 +44,21 @@ jlong PointerTojlong(void* ptr);
 // JNIEnv-helper methods that wraps the API which uses the JNI interface
 // pointer (JNIEnv*). It allows us to RTC_CHECK success and that no Java
 // exception is thrown while calling the method.
-jmethodID GetMethodID(
-    JNIEnv* jni, jclass c, const char* name, const char* signature);
+jmethodID GetMethodID(JNIEnv* jni,
+                      jclass c,
+                      const char* name,
+                      const char* signature);
 
-jmethodID GetStaticMethodID(
-    JNIEnv* jni, jclass c, const char* name, const char* signature);
+jmethodID GetStaticMethodID(JNIEnv* jni,
+                            jclass c,
+                            const char* name,
+                            const char* signature);
 
 jclass FindClass(JNIEnv* jni, const char* name);
 
 jobject NewGlobalRef(JNIEnv* jni, jobject o);
 
 void DeleteGlobalRef(JNIEnv* jni, jobject o);
-
-// Return thread ID as a string.
-std::string GetThreadId();
-
-// Return thread ID as string suitable for debug logging.
-std::string GetThreadInfo();
 
 // Attach thread to JVM if necessary and detach at scope end if originally
 // attached.
@@ -65,23 +74,6 @@ class AttachThreadScoped {
   JNIEnv* env_;
 };
 
-// Scoped holder for global Java refs.
-template<class T>  // T is jclass, jobject, jintArray, etc.
-class ScopedGlobalRef {
- public:
-  ScopedGlobalRef(JNIEnv* jni, T obj)
-      : jni_(jni), obj_(static_cast<T>(NewGlobalRef(jni, obj))) {}
-  ~ScopedGlobalRef() {
-    DeleteGlobalRef(jni_, obj_);
-  }
-  T operator*() const {
-    return obj_;
-  }
- private:
-  JNIEnv* jni_;
-  T obj_;
-};
-
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_UTILITY_INCLUDE_HELPERS_ANDROID_H_
+#endif  // MODULES_UTILITY_INCLUDE_HELPERS_ANDROID_H_

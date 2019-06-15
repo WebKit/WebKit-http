@@ -29,7 +29,7 @@
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #include "ScrollingStateTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -57,9 +57,7 @@ ScrollingStateScrollingNode::ScrollingStateScrollingNode(const ScrollingStateScr
         setScrolledContentsLayer(stateNode.scrolledContentsLayer().toRepresentation(adoptiveTree.preferredLayerRepresentation()));
 }
 
-ScrollingStateScrollingNode::~ScrollingStateScrollingNode()
-{
-}
+ScrollingStateScrollingNode::~ScrollingStateScrollingNode() = default;
 
 void ScrollingStateScrollingNode::setScrollableAreaSize(const FloatSize& size)
 {

@@ -43,7 +43,7 @@ class GraphicsLayer;
 class ScrollbarTheme {
     WTF_MAKE_NONCOPYABLE(ScrollbarTheme); WTF_MAKE_FAST_ALLOCATED;
 public:
-    ScrollbarTheme() { }
+    ScrollbarTheme() = default;
     virtual ~ScrollbarTheme() {};
 
     virtual void updateEnabledState(Scrollbar&) { }
@@ -84,7 +84,7 @@ public:
 
     virtual void invalidatePart(Scrollbar&, ScrollbarPart) { }
 
-    virtual void paintScrollCorner(ScrollView*, GraphicsContext& context, const IntRect& cornerRect) { defaultPaintScrollCorner(context, cornerRect); }
+    virtual void paintScrollCorner(GraphicsContext& context, const IntRect& cornerRect) { defaultPaintScrollCorner(context, cornerRect); }
     static void defaultPaintScrollCorner(GraphicsContext& context, const IntRect& cornerRect) { context.fillRect(cornerRect, Color::white); }
 
     virtual void paintTickmarks(GraphicsContext&, Scrollbar&, const IntRect&) { }

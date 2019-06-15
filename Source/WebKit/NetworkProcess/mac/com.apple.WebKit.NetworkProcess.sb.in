@@ -110,6 +110,10 @@
     (subpath (param "WEBKIT2_FRAMEWORK_DIR")))
 (allow system-fsctl (fsctl-command (_IO "h" 47)))
 
+(allow file-read-data
+    (literal "/usr/local/lib/log") ; <rdar://problem/36629495>
+)
+
 ;; Sandbox extensions
 (define (apply-read-and-issue-extension op path-filter)
     (op file-read* path-filter)
@@ -151,21 +155,22 @@
     (global-name "com.apple.cookied")
     (global-name "com.apple.cfnetwork.AuthBrokerAgent")
     (global-name "com.apple.cfnetwork.cfnetworkagent")
+    (global-name "com.apple.ist.ds.appleconnect2.service.kdctunnelcontroller")
     (global-name "com.apple.lsd.mapdb")
     (global-name "com.apple.nesessionmanager.flow-divert-token")
 )
 
 ;; Security framework
 (allow mach-lookup
-       (global-name "com.apple.ctkd.token-client") 
-       (global-name "com.apple.ocspd")
+       (global-name "com.apple.ctkd.token-client")
        (global-name "com.apple.securityd.xpc") 
        (global-name "com.apple.CoreAuthentication.agent.libxpc")
+       (global-name "com.apple.ocspd")
        (global-name "com.apple.SecurityServer"))
 
 ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
 ;; Restrict AppSandboxed processes from creating /Library/Keychains, but allow access to the contents of /Library/Keychains:
-(allow file-read-data file-read-metadata file-write-data
+(allow file-read-data file-read-metadata file-write*
     (subpath "/Library/Keychains")
     (home-subpath "/Library/Keychains"))
 
@@ -187,13 +192,22 @@
        (subpath "/private/var/db/mds")
        (literal "/private/var/db/DetachedSignatures")
 
-       ; The following are needed until <rdar://problem/11134688> is resolved.
+       ; The following are needed until the causes of <rdar://problem/41487786> are resolved.
        (literal "/Library/Preferences/com.apple.security.plist")
        (literal "/Library/Preferences/com.apple.security.common.plist")
        (literal "/Library/Preferences/com.apple.security.revocation.plist")
        (home-literal "/Library/Application Support/SyncServices/Local/ClientsWithChanges/com.apple.Keychain")
        (home-literal "/Library/Preferences/com.apple.security.plist")
-       (home-literal "/Library/Preferences/com.apple.security.revocation.plist"))
+       (home-literal "/Library/Preferences/com.apple.security.revocation.plist")
+
+       ; Likewise for <rdar://problem/43310000>
+       (literal "/Library/Preferences/com.apple.ist.ds.appleconnect2.plist")
+       (literal "/Library/Preferences/com.apple.ist.ds.appleconnect2.production.plist")
+       (home-literal "/Library/Preferences/com.apple.ist.ds.appleconnect2.plist")
+       (home-literal "/Library/Preferences/com.apple.ist.ds.appleconnect2.production.plist")
+       (home-regex (string-append "/Library/Preferences/ByHost/com\.apple\.ist\.ds\.appleconnect2\." (uuid-regex-string) "\.plist$"))
+       (home-regex (string-append "/Library/Preferences/ByHost/com\.apple\.ist\.ds\.appleconnect2\.production\." (uuid-regex-string) "\.plist$"))
+)
 
 (allow ipc-posix-shm-read* ipc-posix-shm-write-data
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))

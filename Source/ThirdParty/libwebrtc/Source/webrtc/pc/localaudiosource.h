@@ -8,26 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_LOCALAUDIOSOURCE_H_
-#define WEBRTC_PC_LOCALAUDIOSOURCE_H_
+#ifndef PC_LOCALAUDIOSOURCE_H_
+#define PC_LOCALAUDIOSOURCE_H_
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/notifier.h"
-#include "webrtc/media/base/mediachannel.h"
+#include "api/mediastreaminterface.h"
+#include "api/notifier.h"
+#include "media/base/mediachannel.h"
 
 // LocalAudioSource implements AudioSourceInterface.
 // This contains settings for switching audio processing on and off.
 
 namespace webrtc {
 
-class MediaConstraintsInterface;
-
 class LocalAudioSource : public Notifier<AudioSourceInterface> {
  public:
   // Creates an instance of LocalAudioSource.
-  static rtc::scoped_refptr<LocalAudioSource> Create(
-      const MediaConstraintsInterface* constraints);
-
   static rtc::scoped_refptr<LocalAudioSource> Create(
       const cricket::AudioOptions* audio_options);
 
@@ -44,7 +39,6 @@ class LocalAudioSource : public Notifier<AudioSourceInterface> {
   ~LocalAudioSource() override {}
 
  private:
-  void Initialize(const MediaConstraintsInterface* constraints);
   void Initialize(const cricket::AudioOptions* audio_options);
 
   cricket::AudioOptions options_;
@@ -52,4 +46,4 @@ class LocalAudioSource : public Notifier<AudioSourceInterface> {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_LOCALAUDIOSOURCE_H_
+#endif  // PC_LOCALAUDIOSOURCE_H_

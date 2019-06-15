@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/vad/vad_circular_buffer.h"
+#include "modules/audio_processing/vad/vad_circular_buffer.h"
 
 #include <stdlib.h>
 
@@ -19,11 +19,9 @@ VadCircularBuffer::VadCircularBuffer(int buffer_size)
       is_full_(false),
       index_(0),
       buffer_size_(buffer_size),
-      sum_(0) {
-}
+      sum_(0) {}
 
-VadCircularBuffer::~VadCircularBuffer() {
-}
+VadCircularBuffer::~VadCircularBuffer() {}
 
 void VadCircularBuffer::Reset() {
   is_full_ = false;

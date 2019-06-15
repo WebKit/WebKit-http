@@ -7,24 +7,23 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  *
-*/
+ */
 
 //  Implementation of Network-Assisted Dynamic Adaptation's (NADA's) proposal
 //  Version according to Draft Document (mentioned in references)
 //  http://tools.ietf.org/html/draft-zhu-rmcat-nada-06
 //  From March 26, 2015.
 
-#ifndef WEBRTC_MODULES_REMOTE_BITRATE_ESTIMATOR_TEST_ESTIMATORS_NADA_H_
-#define WEBRTC_MODULES_REMOTE_BITRATE_ESTIMATOR_TEST_ESTIMATORS_NADA_H_
+#ifndef MODULES_REMOTE_BITRATE_ESTIMATOR_TEST_ESTIMATORS_NADA_H_
+#define MODULES_REMOTE_BITRATE_ESTIMATOR_TEST_ESTIMATORS_NADA_H_
 
 #include <list>
 #include <map>
 #include <memory>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe.h"
-#include "webrtc/voice_engine/channel.h"
+#include "modules/include/module_common_types.h"
+#include "modules/remote_bitrate_estimator/test/bwe.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -36,7 +35,7 @@ namespace bwe {
 class NadaBweReceiver : public BweReceiver {
  public:
   explicit NadaBweReceiver(int flow_id);
-  virtual ~NadaBweReceiver();
+  ~NadaBweReceiver() override;
 
   void ReceivePacket(int64_t arrival_time_ms,
                      const MediaPacket& media_packet) override;
@@ -68,7 +67,7 @@ class NadaBweSender : public BweSender {
 
   NadaBweSender(int kbps, BitrateObserver* observer, Clock* clock);
   NadaBweSender(BitrateObserver* observer, Clock* clock);
-  virtual ~NadaBweSender();
+  ~NadaBweSender() override;
 
   int GetFeedbackIntervalMs() const override;
   // Updates the min_feedback_delay_ms_ and the min_round_trip_time_ms_.
@@ -108,4 +107,4 @@ class NadaBweSender : public BweSender {
 }  // namespace testing
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_REMOTE_BITRATE_ESTIMATOR_TEST_ESTIMATORS_NADA_H_
+#endif  // MODULES_REMOTE_BITRATE_ESTIMATOR_TEST_ESTIMATORS_NADA_H_

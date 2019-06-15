@@ -29,16 +29,22 @@
 
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
 #if PLATFORM(GTK)
 #include <WebCore/GUniquePtrGtk.h>
 #include <gdk/gdk.h>
-#include <wtf/HashSet.h>
-#elif PLATFORM(QT)
+#endif
+
+#if PLATFORM(QT)
 #include <QEvent>
 #include <QTouchEvent>
+#endif
+
+#if PLATFORM(WPE)
+#include <wpe/wpe.h>
 #endif
 
 #if PLATFORM(COCOA)
@@ -122,6 +128,12 @@ private:
     void sendOrQueueEvent(QEvent*);
 #endif
 
+#if PLATFORM(WPE)
+    Vector<struct wpe_input_touch_event_raw> getUpdatedTouchEvents();
+    void removeUpdatedTouchEvents();
+    void prepareAndDispatchTouchEvent(enum wpe_input_touch_event_type);
+#endif
+
     double m_time;
     WKPoint m_position;
     bool m_leftMouseButtonDown;
@@ -133,7 +145,7 @@ private:
     int eventNumber;
 #elif PLATFORM(GTK)
     Deque<WTREventQueueItem> m_eventQueue;
-    unsigned m_mouseButtonCurrentlyDown;
+    unsigned m_mouseButtonsCurrentlyDown { 0 };
     Vector<GUniquePtr<GdkEvent>> m_touchEvents;
     HashSet<int> m_updatedTouchEvents;
 #elif PLATFORM(QT)
@@ -145,6 +157,12 @@ private:
     QPoint m_touchPointRadius;
     bool m_touchActive;
 #endif
+#elif PLATFORM(WPE)
+    struct wpe_view_backend* m_viewBackend;
+    uint32_t m_buttonState;
+    uint32_t m_mouseButtonsCurrentlyDown { 0 };
+    Vector<struct wpe_input_touch_event_raw> m_touchEvents;
+    HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> m_updatedTouchEvents;
 #endif
 };
 

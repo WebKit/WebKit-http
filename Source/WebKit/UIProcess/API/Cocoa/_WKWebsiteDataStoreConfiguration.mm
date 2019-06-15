@@ -41,45 +41,111 @@ static void checkURLArgument(NSURL *url)
     RetainPtr<NSURL> _indexedDBDatabaseDirectoryURL;
     RetainPtr<NSURL> _webSQLDatabaseDirectoryURL;
     RetainPtr<NSURL> _cookieStorageFileURL;
+    RetainPtr<NSURL> _resourceLoadStatisticsDirectoryURL;
+    RetainPtr<NSURL> _cacheStorageDirectoryURL;
+    RetainPtr<NSURL> _serviceWorkerRegistrationDirectoryURL;
+    RetainPtr<NSString> _sourceApplicationBundleIdentifier;
+    RetainPtr<NSString> _sourceApplicationSecondaryIdentifier;
 }
 
--(NSURL *)_webStorageDirectory {
+- (NSURL *)_webStorageDirectory
+{
     return _webStorageDirectoryURL.get();
 }
 
--(void)_setWebStorageDirectory:(NSURL *)url {
+- (void)_setWebStorageDirectory:(NSURL *)url
+{
     checkURLArgument(url);
     _webStorageDirectoryURL = adoptNS([url copy]);
 }
 
--(NSURL *)_indexedDBDatabaseDirectory {
+- (NSURL *)_indexedDBDatabaseDirectory
+{
     return _indexedDBDatabaseDirectoryURL.get();
 }
 
--(void)_setIndexedDBDatabaseDirectory:(NSURL *)url {
+- (void)_setIndexedDBDatabaseDirectory:(NSURL *)url
+{
     checkURLArgument(url);
     _indexedDBDatabaseDirectoryURL = adoptNS([url copy]);
 }
 
--(NSURL *)_webSQLDatabaseDirectory {
+- (NSURL *)_webSQLDatabaseDirectory
+{
     return _webSQLDatabaseDirectoryURL.get();
 }
 
--(void)_setWebSQLDatabaseDirectory:(NSURL *)url {
+- (void)_setWebSQLDatabaseDirectory:(NSURL *)url
+{
     checkURLArgument(url);
     _webSQLDatabaseDirectoryURL = adoptNS([url copy]);
 }
 
--(NSURL *)_cookieStorageFile {
+- (NSURL *)_cookieStorageFile
+{
     return _cookieStorageFileURL.get();
 }
 
--(void)_setCookieStorageFile:(NSURL *)url {
+- (void)_setCookieStorageFile:(NSURL *)url
+{
     checkURLArgument(url);
     if ([url hasDirectoryPath])
         [NSException raise:NSInvalidArgumentException format:@"The cookie storage path must point to a file, not a directory."];
 
     _cookieStorageFileURL = adoptNS([url copy]);
+}
+
+- (NSURL *)_resourceLoadStatisticsDirectory
+{
+    return _resourceLoadStatisticsDirectoryURL.get();
+}
+
+- (void)_setResourceLoadStatisticsDirectory:(NSURL *)url
+{
+    checkURLArgument(url);
+    _resourceLoadStatisticsDirectoryURL = adoptNS([url copy]);
+}
+
+- (NSURL *)_cacheStorageDirectory
+{
+    return _cacheStorageDirectoryURL.get();
+}
+
+- (void)_setCacheStorageDirectory:(NSURL *)url
+{
+    checkURLArgument(url);
+    _cacheStorageDirectoryURL = adoptNS([url copy]);
+}
+
+- (NSURL *)_serviceWorkerRegistrationDirectory
+{
+    return _serviceWorkerRegistrationDirectoryURL.get();
+}
+
+- (void)_setServiceWorkerRegistrationDirectory:(NSURL *)url
+{
+    checkURLArgument(url);
+    _serviceWorkerRegistrationDirectoryURL = adoptNS([url copy]);
+}
+
+- (void)setSourceApplicationBundleIdentifier:(NSString *)identifier
+{
+    _sourceApplicationBundleIdentifier = identifier;
+}
+
+- (NSString *)sourceApplicationBundleIdentifier
+{
+    return _sourceApplicationBundleIdentifier.get();
+}
+
+- (NSString *)sourceApplicationSecondaryIdentifier
+{
+    return _sourceApplicationSecondaryIdentifier.get();
+}
+
+- (void)setSourceApplicationSecondaryIdentifier:(NSString *)identifier
+{
+    _sourceApplicationSecondaryIdentifier = identifier;
 }
 
 @end

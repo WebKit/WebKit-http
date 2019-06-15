@@ -50,7 +50,7 @@ struct SharingResolver::Context {
     const Update& update;
     const StyledElement& element;
     bool elementAffectedByClassRules;
-    EInsideLink elementLinkState;
+    InsideLink elementLinkState;
 };
 
 SharingResolver::SharingResolver(const Document& document, const DocumentRuleSets& ruleSets, const SelectorFilter& selectorFilter)
@@ -340,7 +340,7 @@ bool SharingResolver::sharingCandidateHasIdenticalStyleAffectingAttributes(const
 bool SharingResolver::classNamesAffectedByRules(const SpaceSplitString& classNames) const
 {
     for (unsigned i = 0; i < classNames.size(); ++i) {
-        if (m_ruleSets.features().classesInRules.contains(classNames[i]))
+        if (m_ruleSets.features().classRules.contains(classNames[i]))
             return true;
     }
     return false;

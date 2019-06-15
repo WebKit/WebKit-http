@@ -39,7 +39,6 @@
 #include "JSPromise.h"
 #include "JSPromiseDeferred.h"
 #include "JSString.h"
-#include "JSStringBuilder.h"
 #include "Lexer.h"
 #include "LiteralParser.h"
 #include "Nodes.h"
@@ -49,11 +48,11 @@
 #include "StackVisitor.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <unicode/utf8.h>
 #include <wtf/ASCIICType.h>
 #include <wtf/Assertions.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MathExtras.h>
-#include <wtf/StringExtras.h>
 #include <wtf/dtoa.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/unicode/UTF8.h>
@@ -63,7 +62,7 @@ using namespace Unicode;
 
 namespace JSC {
 
-static const char* const ObjectProtoCalledOnNullOrUndefinedError = "Object.prototype.__proto__ called on null or undefined";
+const ASCIILiteral ObjectProtoCalledOnNullOrUndefinedError { "Object.prototype.__proto__ called on null or undefined"_s };
 
 template<unsigned charactersCount>
 static Bitmap<256> makeCharacterBitmap(const char (&characters)[charactersCount])
@@ -85,7 +84,7 @@ static JSValue encode(ExecState* exec, const Bitmap<256>& doNotEscape, const Cha
     // https://tc39.github.io/ecma262/#sec-encode
 
     auto throwException = [&scope, exec] {
-        return JSC::throwException(exec, scope, createURIError(exec, ASCIILiteral("String contained an illegal UTF-16 sequence.")));
+        return JSC::throwException(exec, scope, createURIError(exec, "String contained an illegal UTF-16 sequence."_s));
     };
 
     StringBuilder builder;
@@ -171,7 +170,7 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSStringBuilder builder;
+    StringBuilder builder;
     int k = 0;
     UChar u = 0;
     while (k < length) {
@@ -211,7 +210,7 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
             }
             if (charLen == 0) {
                 if (strict)
-                    return throwException(exec, scope, createURIError(exec, ASCIILiteral("URI error")));
+                    return throwException(exec, scope, createURIError(exec, "URI error"_s));
                 // The only case where we don't use "strict" mode is the "unescape" function.
                 // For that, it's good to support the wonky "%u" syntax for compatibility with WinIE.
                 if (k <= length - 6 && p[1] == 'u'
@@ -230,7 +229,8 @@ static JSValue decode(ExecState* exec, const CharType* characters, int length, c
         k++;
         builder.append(c);
     }
-    return builder.build(exec);
+    scope.release();
+    return jsString(&vm, builder.toString());
 }
 
 static JSValue decode(ExecState* exec, const Bitmap<256>& doNotUnescape, bool strict)
@@ -485,23 +485,27 @@ EncodedJSValue JSC_HOST_CALL globalFuncEval(ExecState* exec)
     String s = asString(x)->value(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
+    JSValue parsedObject;
     if (s.is8Bit()) {
         LiteralParser<LChar> preparser(exec, s.characters8(), s.length(), NonStrictJSON);
-        if (JSValue parsedObject = preparser.tryLiteralParse())
-            return JSValue::encode(parsedObject);
+        parsedObject = preparser.tryLiteralParse();
     } else {
         LiteralParser<UChar> preparser(exec, s.characters16(), s.length(), NonStrictJSON);
-        if (JSValue parsedObject = preparser.tryLiteralParse())
-            return JSValue::encode(parsedObject);
+        parsedObject = preparser.tryLiteralParse();
     }
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    if (parsedObject)
+        return JSValue::encode(parsedObject);
 
     SourceOrigin sourceOrigin = exec->callerSourceOrigin();
-    JSGlobalObject* calleeGlobalObject = exec->jsCallee()->globalObject();
+    JSGlobalObject* calleeGlobalObject = exec->jsCallee()->globalObject(vm);
     EvalExecutable* eval = IndirectEvalExecutable::create(exec, makeSource(s, sourceOrigin), false, DerivedContextType::None, false, EvalContextType::None);
+    EXCEPTION_ASSERT(!!scope.exception() == !eval);
     if (!eval)
-        return JSValue::encode(jsUndefined());
+        return encodedJSValue();
 
-    return JSValue::encode(exec->interpreter()->execute(eval, exec, calleeGlobalObject->globalThis(), calleeGlobalObject->globalScope()));
+    scope.release();
+    return JSValue::encode(vm.interpreter->execute(eval, exec, calleeGlobalObject->globalThis(), calleeGlobalObject->globalScope()));
 }
 
 EncodedJSValue JSC_HOST_CALL globalFuncParseInt(ExecState* exec)
@@ -587,7 +591,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
     );
 
     return JSValue::encode(toStringView(exec, exec->argument(0), [&] (StringView view) {
-        JSStringBuilder builder;
+        StringBuilder builder;
         if (view.is8Bit()) {
             const LChar* c = view.characters8();
             for (unsigned k = 0; k < view.length(); k++, c++) {
@@ -599,8 +603,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
                     appendByteAsHex(static_cast<LChar>(u), builder);
                 }
             }
-
-            return builder.build(exec);
+            return jsString(exec, builder.toString());
         }
 
         const UChar* c = view.characters16();
@@ -619,7 +622,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncEscape(ExecState* exec)
             }
         }
 
-        return builder.build(exec);
+        return jsString(exec, builder.toString());
     }));
 }
 
@@ -700,16 +703,18 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState* exec)
 
     JSValue thisValue = exec->thisValue().toThis(exec, StrictMode);
     if (thisValue.isUndefinedOrNull())
-        return throwVMTypeError(exec, scope, ASCIILiteral(ObjectProtoCalledOnNullOrUndefinedError));
+        return throwVMError(exec, scope, createNotAnObjectError(exec, thisValue));
 
     JSObject* thisObject = jsDynamicCast<JSObject*>(vm, thisValue);
     if (!thisObject) {
-        JSObject* prototype = exec->thisValue().synthesizePrototype(exec);
+        JSObject* prototype = thisValue.synthesizePrototype(exec);
+        EXCEPTION_ASSERT(!!scope.exception() == !prototype);
         if (UNLIKELY(!prototype))
             return JSValue::encode(JSValue());
         return JSValue::encode(prototype);
     }
 
+    scope.release();
     return JSValue::encode(thisObject->getPrototype(vm, exec));
 }
 
@@ -720,7 +725,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState* exec)
 
     JSValue thisValue = exec->thisValue().toThis(exec, StrictMode);
     if (thisValue.isUndefinedOrNull())
-        return throwVMTypeError(exec, scope, ASCIILiteral(ObjectProtoCalledOnNullOrUndefinedError));
+        return throwVMTypeError(exec, scope, ObjectProtoCalledOnNullOrUndefinedError);
 
     JSValue value = exec->argument(0);
 
@@ -734,6 +739,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState* exec)
     if (!value.isObject() && !value.isNull())
         return JSValue::encode(jsUndefined());
 
+    scope.release();
     bool shouldThrowIfCantSet = true;
     thisObject->setPrototype(vm, exec, value, shouldThrowIfCantSet);
     return JSValue::encode(jsUndefined());
@@ -768,6 +774,11 @@ EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
+EncodedJSValue JSC_HOST_CALL globalFuncBuiltinDescribe(ExecState* exec)
+{
+    return JSValue::encode(jsString(exec, toString(exec->argument(0))));
+}
+
 EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -776,7 +787,7 @@ EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
     auto* globalObject = exec->lexicalGlobalObject();
 
     auto* promise = JSPromiseDeferred::create(exec, globalObject);
-    RETURN_IF_EXCEPTION(catchScope, { });
+    CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
 
     auto sourceOrigin = exec->callerSourceOrigin();
     RELEASE_ASSERT(exec->argumentCount() == 1);
@@ -784,16 +795,22 @@ EncodedJSValue JSC_HOST_CALL globalFuncImportModule(ExecState* exec)
     if (Exception* exception = catchScope.exception()) {
         catchScope.clearException();
         promise->reject(exec, exception->value());
+        CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
         return JSValue::encode(promise->promise());
     }
 
-    auto* internalPromise = globalObject->moduleLoader()->importModule(exec, specifier, sourceOrigin);
+    // We always specify parameters as undefined. Once dynamic import() starts accepting fetching parameters,
+    // we should retrieve this from the arguments.
+    JSValue parameters = jsUndefined();
+    auto* internalPromise = globalObject->moduleLoader()->importModule(exec, specifier, parameters, sourceOrigin);
     if (Exception* exception = catchScope.exception()) {
         catchScope.clearException();
         promise->reject(exec, exception->value());
+        CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
         return JSValue::encode(promise->promise());
     }
     promise->resolve(exec, internalPromise);
+    CLEAR_AND_RETURN_IF_EXCEPTION(catchScope, encodedJSValue());
 
     return JSValue::encode(promise->promise());
 }

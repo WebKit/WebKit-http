@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.fill
-es6id: 22.2.3.8
 description: >
   Return abrupt from ToInteger(start).
-info: >
+info: |
   22.2.3.8 %TypedArray%.prototype.fill (value [ , start [ , end ] ] )
 
   %TypedArray%.prototype.fill is a distinct function that implements the same
@@ -25,6 +24,7 @@ info: >
   3. Let relativeStart be ? ToInteger(start).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var start = {

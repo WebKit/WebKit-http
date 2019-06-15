@@ -23,7 +23,7 @@ function destroyCanvases() {
     contexts = [];
 
     // Force GC to make sure the canvas element is destroyed, otherwise the frontend
-    // does not receive WebInspector.CanvasManager.Event.CanvasWasRemoved events.
+    // does not receive WI.CanvasManager.Event.CanvasRemoved events.
     setTimeout(() => { GCController.collect(); }, 0);
 }
 
@@ -31,18 +31,37 @@ TestPage.registerInitializer(() => {
     let suite = null;
 
     function awaitCanvasAdded(contextType) {
-        return WebInspector.canvasManager.awaitEvent(WebInspector.CanvasManager.Event.CanvasWasAdded)
+        return WI.canvasManager.awaitEvent(WI.CanvasManager.Event.CanvasAdded)
         .then((event) => {
             let canvas = event.data.canvas;
-            let contextDisplayName = WebInspector.Canvas.displayNameForContextType(contextType);
+            let contextDisplayName = WI.Canvas.displayNameForContextType(contextType);
             InspectorTest.expectEqual(canvas.contextType, contextType, `Canvas context should be ${contextDisplayName}.`);
+
+            for (let i = 0; i < canvas.backtrace.length; ++i) {
+                let callFrame = canvas.backtrace[i];
+                let traceText = `  ${i}: `;
+                traceText += callFrame.functionName || "(anonymous function)";
+
+                if (callFrame.nativeCode)
+                    traceText += " - [native code]";
+                else if (callFrame.programCode)
+                    traceText += " - [program code]";
+                else if (callFrame.sourceCodeLocation) {
+                    let location = callFrame.sourceCodeLocation;
+                    traceText += " - " + sanitizeURL(location.sourceCode.url) + `:${location.lineNumber}:${location.columnNumber}`;
+                }
+
+                InspectorTest.log(traceText);
+            }
+
+            InspectorTest.log("");
 
             return canvas;
         });
     }
 
     function awaitCanvasRemoved(canvasIdentifier) {
-        return WebInspector.canvasManager.awaitEvent(WebInspector.CanvasManager.Event.CanvasWasRemoved)
+        return WI.canvasManager.awaitEvent(WI.CanvasManager.Event.CanvasRemoved)
         .then((event) => {
             let canvas = event.data.canvas;
             InspectorTest.expectEqual(canvas.identifier, canvasIdentifier, "Removed canvas has expected ID.");
@@ -56,7 +75,7 @@ TestPage.registerInitializer(() => {
             name: `${suite.name}.NoCanvases`,
             description: "Check that the CanvasManager has no canvases initially.",
             test(resolve, reject) {
-                InspectorTest.expectEqual(WebInspector.canvasManager.canvases.length, 0, "CanvasManager should have no canvases.");
+                InspectorTest.expectEqual(WI.canvasManager.canvases.length, 0, "CanvasManager should have no canvases.");
                 resolve();
             }
         });
@@ -104,7 +123,7 @@ TestPage.registerInitializer(() => {
                 })
                 .then(resolve, reject);
 
-                let contextId = contextType === WebInspector.Canvas.ContextType.Canvas2D ? "2d" : contextType;
+                let contextId = contextType === WI.Canvas.ContextType.Canvas2D ? "2d" : contextType;
                 InspectorTest.log(`Create CSS canvas from -webkit-canvas(css-canvas).`);
                 InspectorTest.evaluateInPage(`createCSSCanvas("${contextId}", "css-canvas")`);
             },

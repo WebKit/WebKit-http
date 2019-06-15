@@ -8,16 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CODING_TEST_TEST_UTIL_H_
-#define WEBRTC_MODULES_VIDEO_CODING_TEST_TEST_UTIL_H_
+#ifndef MODULES_VIDEO_CODING_TEST_TEST_UTIL_H_
+#define MODULES_VIDEO_CODING_TEST_TEST_UTIL_H_
 
-#include "webrtc/system_wrappers/include/event_wrapper.h"
+#include "system_wrappers/include/event_wrapper.h"
 
 class NullEventFactory : public webrtc::EventFactory {
  public:
   virtual ~NullEventFactory() {}
 
   webrtc::EventWrapper* CreateEvent() override { return new NullEvent; }
+
  private:
   // Private class to avoid more dependencies on it in tests.
   class NullEvent : public webrtc::EventWrapper {
@@ -30,4 +31,4 @@ class NullEventFactory : public webrtc::EventFactory {
   };
 };
 
-#endif  // WEBRTC_MODULES_VIDEO_CODING_TEST_TEST_UTIL_H_
+#endif  // MODULES_VIDEO_CODING_TEST_TEST_UTIL_H_

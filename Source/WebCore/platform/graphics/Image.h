@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Image_h
-#define Image_h
+#pragma once
 
 #include "Color.h"
 #include "DecodingOptions.h"
@@ -71,6 +70,7 @@ class AffineTransform;
 class FloatPoint;
 class FloatSize;
 class GraphicsContext;
+class GraphicsContextImpl;
 class SharedBuffer;
 class URL;
 struct Length;
@@ -80,11 +80,15 @@ class ImageObserver;
 
 class Image : public RefCounted<Image> {
     friend class GraphicsContext;
+    friend class GraphicsContextImpl;
 public:
     virtual ~Image();
     
     WEBCORE_EXPORT static Ref<Image> loadPlatformResource(const char* name);
+    WEBCORE_EXPORT static RefPtr<Image> create(ImageObserver&);
     WEBCORE_EXPORT static bool supportsType(const String&);
+    static bool isPDFResource(const String& mimeType, const URL&);
+    static bool isPostScriptResource(const String& mimeType, const URL&);
 
     virtual bool isBitmapImage() const { return false; }
     virtual bool isGeneratedImage() const { return false; }
@@ -137,22 +141,21 @@ public:
     void startAnimationAsynchronously();
     virtual void stopAnimation() {}
     virtual void resetAnimation() {}
-    virtual void imageFrameAvailableAtIndex(size_t) { }
     virtual bool isAnimating() const { return false; }
-    bool animationPending() const { return m_animationStartTimer.isActive(); }
-    
+    bool animationPending() const { return m_animationStartTimer && m_animationStartTimer->isActive(); }
+
     // Typically the CachedImage that owns us.
     ImageObserver* imageObserver() const { return m_imageObserver; }
     void setImageObserver(ImageObserver* observer) { m_imageObserver = observer; }
     URL sourceURL() const;
+    String mimeType() const;
+    long long expectedContentLength() const;
 
     enum TileRule { StretchTile, RoundTile, SpaceTile, RepeatTile };
 
     virtual NativeImagePtr nativeImage(const GraphicsContext* = nullptr) { return nullptr; }
     virtual NativeImagePtr nativeImageOfSize(const IntSize&, const GraphicsContext* = nullptr) { return nullptr; }
     virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) { return nullptr; }
-    virtual ImageOrientation orientationForCurrentFrame() const { return ImageOrientation(); }
-    virtual Vector<NativeImagePtr> framesNativeImages() { return { }; }
 
     // Accessors for native image formats.
 
@@ -179,17 +182,13 @@ public:
 #endif
 
     virtual void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
-        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
-
-#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
-    FloatRect adjustSourceRectForDownSampling(const FloatRect& srcRect, const IntSize& scaledSize) const;
-#endif
+        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendMode::Normal);
 
 #if !ASSERT_DISABLED
     virtual bool notSolidColor() { return true; }
 #endif
 
-    virtual void dump(TextStream&) const;
+    virtual void dump(WTF::TextStream&) const;
 
 protected:
     Image(ImageObserver* = nullptr);
@@ -209,10 +208,10 @@ protected:
 private:
     RefPtr<SharedBuffer> m_encodedImageData;
     ImageObserver* m_imageObserver;
-    Timer m_animationStartTimer;
+    std::unique_ptr<Timer> m_animationStartTimer;
 };
 
-TextStream& operator<<(TextStream&, const Image&);
+WTF::TextStream& operator<<(WTF::TextStream&, const Image&);
 
 } // namespace WebCore
 
@@ -221,4 +220,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToClassName) \
     static bool isType(const WebCore::Image& image) { return image.is##ToClassName(); } \
 SPECIALIZE_TYPE_TRAITS_END()
 
-#endif // Image_h

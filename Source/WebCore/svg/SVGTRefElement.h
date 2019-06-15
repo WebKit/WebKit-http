@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -28,6 +29,7 @@ namespace WebCore {
 class SVGTRefTargetEventListener;
 
 class SVGTRefElement final : public SVGTextPositioningElement, public SVGURIReference {
+    WTF_MAKE_ISO_ALLOCATED(SVGTRefElement);
 public:
     static Ref<SVGTRefElement> create(const QualifiedName&, Document&);
 
@@ -37,6 +39,9 @@ private:
     SVGTRefElement(const QualifiedName&, Document&);
     virtual ~SVGTRefElement();
 
+    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGTRefElement, SVGTextPositioningElement, SVGURIReference>;
+
+    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
     void svgAttributeChanged(const QualifiedName&) override;
 
@@ -44,22 +49,16 @@ private:
     bool childShouldCreateRenderer(const Node&) const override;
     bool rendererIsNeeded(const RenderStyle&) override;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
-    void finishedInsertingSubtree() override;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void removedFromAncestor(RemovalType, ContainerNode&) override;
+    void didFinishInsertingNode() override;
 
     void clearTarget() override;
-
     void updateReferencedText(Element*);
-
     void detachTarget();
-
     void buildPendingResource() override;
 
-    BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGTRefElement)
-        DECLARE_ANIMATED_STRING_OVERRIDE(Href, href)
-    END_DECLARE_ANIMATED_PROPERTIES
-
+    AttributeOwnerProxy m_attributeOwnerProxy { *this };
     Ref<SVGTRefTargetEventListener> m_targetListener;
 };
 

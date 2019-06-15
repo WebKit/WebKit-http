@@ -37,8 +37,6 @@
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/ColorMac.h>
 
-using namespace WebCore;
-
 namespace IPC {
 
 enum class NSType {
@@ -62,6 +60,8 @@ enum class NSType {
 }
 
 namespace IPC {
+using namespace WebCore;
+
 static NSType typeFromObject(id object)
 {
     ASSERT(object);
@@ -243,7 +243,7 @@ static inline bool isSerializableValue(id value)
 #else
     auto fontClass = [UIFont class];
 #endif
-    return ![value isKindOfClass:fontClass] || isSerializableFont(reinterpret_cast<CTFontRef>(value));
+    return ![value isKindOfClass:fontClass] || isSerializableFont((__bridge CTFontRef)value);
 }
 
 static inline RetainPtr<NSDictionary> filterUnserializableValues(NSDictionary *dictionary)
@@ -367,7 +367,6 @@ void encode(Encoder& encoder, NSDictionary *dictionary)
         id key = [keys objectAtIndex:i];
         id value = [values objectAtIndex:i];
         ASSERT(key);
-        ASSERT([key isKindOfClass:[NSString class]]);
         ASSERT(value);
         ASSERT(isSerializableValue(value));
 
@@ -375,7 +374,7 @@ void encode(Encoder& encoder, NSDictionary *dictionary)
         if (typeFromObject(value) == NSType::Unknown)
             continue;
 
-        encode(encoder, (NSString *)key);
+        encode(encoder, key);
         encode(encoder, value);
     }
 }
@@ -389,7 +388,7 @@ bool decode(Decoder& decoder, RetainPtr<NSDictionary>& result)
     RetainPtr<NSMutableDictionary> dictionary = adoptNS([[NSMutableDictionary alloc] initWithCapacity:size]);
     for (uint64_t i = 0; i < size; ++i) {
         // Try to decode the key name.
-        RetainPtr<NSString> key;
+        RetainPtr<id> key;
         if (!decode(decoder, key))
             return false;
 
@@ -426,7 +425,7 @@ bool decode(Decoder& decoder, RetainPtr<NSFont>& result)
 
 void encode(Encoder& encoder, NSNumber *number)
 {
-    encode(encoder, (CFNumberRef)number);
+    encode(encoder, (__bridge CFNumberRef)number);
 }
 
 bool decode(Decoder& decoder, RetainPtr<NSNumber>& result)
@@ -441,7 +440,7 @@ bool decode(Decoder& decoder, RetainPtr<NSNumber>& result)
 
 void encode(Encoder& encoder, NSString *string)
 {
-    encode(encoder, (CFStringRef)string);
+    encode(encoder, (__bridge CFStringRef)string);
 }
 
 bool decode(Decoder& decoder, RetainPtr<NSString>& result)
@@ -493,7 +492,7 @@ bool decode(Decoder& decoder, RetainPtr<NSArray>& result)
 
 void encode(Encoder& encoder, NSDate *date)
 {
-    encode(encoder, (CFDateRef)date);
+    encode(encoder, (__bridge CFDateRef)date);
 }
 
 bool decode(Decoder& decoder, RetainPtr<NSDate>& result)
@@ -508,7 +507,7 @@ bool decode(Decoder& decoder, RetainPtr<NSDate>& result)
 
 void encode(Encoder& encoder, NSData *data)
 {
-    encode(encoder, (CFDataRef)data);
+    encode(encoder, (__bridge CFDataRef)data);
 }
 
 bool decode(Decoder& decoder, RetainPtr<NSData>& result)
@@ -523,7 +522,7 @@ bool decode(Decoder& decoder, RetainPtr<NSData>& result)
 
 void encode(Encoder& encoder, NSURL *URL)
 {
-    encode(encoder, (CFURLRef)URL);
+    encode(encoder, (__bridge CFURLRef)URL);
 }
 
 bool decode(Decoder& decoder, RetainPtr<NSURL>& result)

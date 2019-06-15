@@ -31,16 +31,14 @@
 
 #include "AudioTrack.h"
 
-using namespace WebCore;
+namespace WebCore {
 
 AudioTrackList::AudioTrackList(HTMLMediaElement* element, ScriptExecutionContext* context)
     : TrackListBase(element, context)
 {
 }
 
-AudioTrackList::~AudioTrackList()
-{
-}
+AudioTrackList::~AudioTrackList() = default;
 
 void AudioTrackList::append(Ref<AudioTrack>&& track)
 {
@@ -83,4 +81,10 @@ EventTargetInterface AudioTrackList::eventTargetInterface() const
     return AudioTrackListEventTargetInterfaceType;
 }
 
+const char* AudioTrackList::activeDOMObjectName() const
+{
+    return "AudioTrackList";
+}
+
+} // namespace WebCore
 #endif

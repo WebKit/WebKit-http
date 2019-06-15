@@ -33,15 +33,16 @@
 #include "HWndDC.h"
 #include "IntRect.h"
 #include "NotImplemented.h"
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/TypedArrayInlines.h>
+#include <JavaScriptCore/Uint8ClampedArray.h>
 #include <d2d1.h>
-#include <runtime/JSCInlines.h>
-#include <runtime/TypedArrayInlines.h>
-#include <runtime/Uint8ClampedArray.h>
 #include <wtf/Assertions.h>
+#include <wtf/UniqueArray.h>
 
 namespace WebCore {
 
-RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const IntSize& size, bool /* accelerateRendering */, bool /* unmultiplied */, float /* resolutionScale */) const
+RefPtr<Uint8ClampedArray> ImageBufferData::getData(AlphaPremultiplication, const IntRect& rect, const IntSize& size, bool /* accelerateRendering */, float /* resolutionScale */) const
 {
     auto platformContext = context->platformContext();
 
@@ -84,7 +85,7 @@ RefPtr<Uint8ClampedArray> ImageBufferData::getData(const IntRect& rect, const In
     return result;
 }
 
-void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, const IntSize& size, bool /* accelerateRendering */, bool unmultiplied, float resolutionScale)
+void ImageBufferData::putData(const Uint8ClampedArray& source, AlphaPremultiplication sourceFormat, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, const IntSize& size, bool /* accelerateRendering */, float resolutionScale)
 {
     auto platformContext = context->platformContext();
     COMPtr<ID2D1BitmapRenderTarget> renderTarget(Query, platformContext);
@@ -132,31 +133,29 @@ void ImageBufferData::putData(Uint8ClampedArray*& source, const IntSize& sourceS
         return;
 
     unsigned srcBytesPerRow = 4 * sourceSize.width();
-    unsigned char* srcRows = source->data() + (originy * srcBytesPerRow + originx * 4).unsafeGet();
+    const uint8_t* srcRows = source.data() + (originy * srcBytesPerRow + originx * 4).unsafeGet();
 
-    unsigned char* row = new unsigned char[srcBytesPerRow];
+    auto row = makeUniqueArray<uint8_t>(srcBytesPerRow);
 
     for (int y = 0; y < height.unsafeGet(); ++y) {
         for (int x = 0; x < width.unsafeGet(); x++) {
             int basex = x * 4;
-            unsigned char alpha = srcRows[basex + 3];
-            if (unmultiplied && alpha != 255) {
+            uint8_t alpha = srcRows[basex + 3];
+            if (sourceFormat == AlphaPremultiplication::Unpremultiplied && alpha != 255) {
                 row[basex] = (srcRows[basex] * alpha + 254) / 255;
                 row[basex + 1] = (srcRows[basex + 1] * alpha + 254) / 255;
                 row[basex + 2] = (srcRows[basex + 2] * alpha + 254) / 255;
                 row[basex + 3] = alpha;
             } else
-                reinterpret_cast<uint32_t*>(row + basex)[0] = reinterpret_cast<uint32_t*>(srcRows + basex)[0];
+                reinterpret_cast<uint32_t*>(row.get() + basex)[0] = reinterpret_cast<uint32_t*>(srcRows + basex)[0];
         }
 
         D2D1_RECT_U dstRect = D2D1::RectU(destPoint.x(), destPoint.y() + y, destPoint.x() + size.width(), destPoint.y() + y + 1);
-        hr = bitmap->CopyFromMemory(&dstRect, row, srcBytesPerRow);
+        hr = bitmap->CopyFromMemory(&dstRect, row.get(), srcBytesPerRow);
         ASSERT(SUCCEEDED(hr));
 
         srcRows += srcBytesPerRow;
     }
-
-    delete[] row;
 }
 
 } // namespace WebCore

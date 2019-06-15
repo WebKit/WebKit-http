@@ -39,14 +39,12 @@ Ref<OfflineAudioCompletionEvent> OfflineAudioCompletionEvent::create(RefPtr<Audi
 }
 
 OfflineAudioCompletionEvent::OfflineAudioCompletionEvent(RefPtr<AudioBuffer>&& renderedBuffer)
-    : Event(eventNames().completeEvent, true, false)
+    : Event(eventNames().completeEvent, CanBubble::Yes, IsCancelable::No)
     , m_renderedBuffer(WTFMove(renderedBuffer))
 {
 }
 
-OfflineAudioCompletionEvent::~OfflineAudioCompletionEvent()
-{
-}
+OfflineAudioCompletionEvent::~OfflineAudioCompletionEvent() = default;
 
 EventInterface OfflineAudioCompletionEvent::eventInterface() const
 {

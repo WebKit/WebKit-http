@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,9 +21,9 @@
 
 #pragma once
 
+#include "BlockDirectory.h"
 #include "IterationStatus.h"
 #include "LargeAllocation.h"
-#include "MarkedAllocator.h"
 #include "MarkedBlock.h"
 #include "MarkedBlockSet.h"
 #include <array>
@@ -32,10 +32,12 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/SentinelLinkedList.h>
+#include <wtf/SinglyLinkedListWithTail.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
+class CompleteSubspace;
 class Heap;
 class HeapIterationScope;
 class LLIntOffsetsExtractor;
@@ -48,25 +50,25 @@ class MarkedSpace {
     WTF_MAKE_NONCOPYABLE(MarkedSpace);
 public:
     // sizeStep is really a synonym for atomSize; it's no accident that they are the same.
-    static const size_t sizeStep = MarkedBlock::atomSize;
+    static constexpr size_t sizeStep = MarkedBlock::atomSize;
     
     // Sizes up to this amount get a size class for each size step.
-    static const size_t preciseCutoff = 80;
+    static constexpr size_t preciseCutoff = 80;
     
-    // The amount of available payload in a block is the block's size minus the header. But the
-    // header size might not be atom size aligned, so we round down the result accordingly.
-    static const size_t blockPayload = (MarkedBlock::blockSize - sizeof(MarkedBlock)) & ~(MarkedBlock::atomSize - 1);
+    // The amount of available payload in a block is the block's size minus the footer.
+    static constexpr size_t blockPayload = MarkedBlock::payloadSize;
     
     // The largest cell we're willing to allocate in a MarkedBlock the "normal way" (i.e. using size
     // classes, rather than a large allocation) is half the size of the payload, rounded down. This
     // ensures that we only use the size class approach if it means being able to pack two things
     // into one block.
-    static const size_t largeCutoff = (blockPayload / 2) & ~(sizeStep - 1);
+    static constexpr size_t largeCutoff = (blockPayload / 2) & ~(sizeStep - 1);
 
-    static const size_t numSizeClasses = largeCutoff / sizeStep;
+    // We have an extra size class for size zero.
+    static constexpr size_t numSizeClasses = largeCutoff / sizeStep + 1;
     
-    static const HeapVersion nullVersion = 0; // The version of freshly allocated blocks.
-    static const HeapVersion initialVersion = 2; // The version that the heap starts out with. Set to make sure that nextVersion(nullVersion) != initialVersion.
+    static constexpr HeapVersion nullVersion = 0; // The version of freshly allocated blocks.
+    static constexpr HeapVersion initialVersion = 2; // The version that the heap starts out with. Set to make sure that nextVersion(nullVersion) != initialVersion.
     
     static HeapVersion nextVersion(HeapVersion version)
     {
@@ -78,13 +80,14 @@ public:
     
     static size_t sizeClassToIndex(size_t size)
     {
-        ASSERT(size);
-        return (size + sizeStep - 1) / sizeStep - 1;
+        return (size + sizeStep - 1) / sizeStep;
     }
     
     static size_t indexToSizeClass(size_t index)
     {
-        return (index + 1) * sizeStep;
+        size_t result = index * sizeStep;
+        ASSERT(sizeClassToIndex(result) == index);
+        return result;
     }
     
     MarkedSpace(Heap*);
@@ -92,7 +95,8 @@ public:
     
     Heap* heap() const { return m_heap; }
     
-    void lastChanceToFinalize(); // You must call stopAllocating before you call this.
+    void lastChanceToFinalize(); // Must call stopAllocatingForGood first.
+    void freeMemory();
 
     static size_t optimalSizeFor(size_t);
     
@@ -108,6 +112,7 @@ public:
     void didFinishIterating();
 
     void stopAllocating();
+    void stopAllocatingForGood();
     void resumeAllocating(); // If we just stopped allocation but we didn't do a collection, we need to resume allocation.
     
     void prepareForMarking();
@@ -139,7 +144,7 @@ public:
     size_t size();
     size_t capacity();
 
-    bool isPagedOut(double deadline);
+    bool isPagedOut(MonotonicTime deadline);
     
     HeapVersion markingVersion() const { return m_markingVersion; }
     HeapVersion newlyAllocatedVersion() const { return m_newlyAllocatedVersion; }
@@ -154,31 +159,31 @@ public:
     LargeAllocation** largeAllocationsForThisCollectionEnd() const { return m_largeAllocationsForThisCollectionEnd; }
     unsigned largeAllocationsForThisCollectionSize() const { return m_largeAllocationsForThisCollectionSize; }
     
-    MarkedAllocator* firstAllocator() const { return m_firstAllocator; }
-    MarkedAllocator* allocatorForEmptyAllocation() const { return m_allocatorForEmptyAllocation; }
+    BlockDirectory* firstDirectory() const { return m_directories.first(); }
     
-    MarkedBlock::Handle* findEmptyBlockToSteal();
-    
-    Lock& allocatorLock() { return m_allocatorLock; }
-    MarkedAllocator* addMarkedAllocator(const AbstractLocker&, Subspace*, size_t cellSize);
+    Lock& directoryLock() { return m_directoryLock; }
+    void addBlockDirectory(const AbstractLocker&, BlockDirectory*);
     
     // When this is true it means that we have flipped but the mark bits haven't converged yet.
     bool isMarking() const { return m_isMarking; }
+    
+    WeakSet* activeWeakSetsBegin() { return m_activeWeakSets.begin(); }
+    WeakSet* activeWeakSetsEnd() { return m_activeWeakSets.end(); }
+    WeakSet* newActiveWeakSetsBegin() { return m_newActiveWeakSets.begin(); }
+    WeakSet* newActiveWeakSetsEnd() { return m_newActiveWeakSets.end(); }
     
     void dumpBits(PrintStream& = WTF::dataFile());
     
     JS_EXPORT_PRIVATE static std::array<size_t, numSizeClasses> s_sizeClassForSizeStep;
     
 private:
+    friend class CompleteSubspace;
     friend class LLIntOffsetsExtractor;
     friend class JIT;
     friend class WeakSet;
     friend class Subspace;
     
-    void* allocateSlow(Subspace&, GCDeferralContext*, size_t);
-    void* tryAllocateSlow(Subspace&, GCDeferralContext*, size_t);
-
-    // Use this version when calling from within the GC where we know that the allocators
+    // Use this version when calling from within the GC where we know that the directories
     // have already been stopped.
     template<typename Functor> void forEachLiveCell(const Functor&);
 
@@ -186,7 +191,7 @@ private:
     
     void initializeSubspace(Subspace&);
 
-    template<typename Functor> inline void forEachAllocator(const Functor&);
+    template<typename Functor> inline void forEachDirectory(const Functor&);
     
     void addActiveWeakSet(WeakSet*);
 
@@ -211,29 +216,26 @@ private:
     SentinelLinkedList<WeakSet, BasicRawSentinelNode<WeakSet>> m_activeWeakSets;
     SentinelLinkedList<WeakSet, BasicRawSentinelNode<WeakSet>> m_newActiveWeakSets;
 
-    Lock m_allocatorLock;
-    Bag<MarkedAllocator> m_bagOfAllocators;
-    MarkedAllocator* m_firstAllocator { nullptr };
-    MarkedAllocator* m_lastAllocator { nullptr };
-    MarkedAllocator* m_allocatorForEmptyAllocation { nullptr };
+    Lock m_directoryLock;
+    SinglyLinkedListWithTail<BlockDirectory> m_directories;
 
     friend class HeapVerifier;
 };
 
 template <typename Functor> inline void MarkedSpace::forEachBlock(const Functor& functor)
 {
-    forEachAllocator(
-        [&] (MarkedAllocator& allocator) -> IterationStatus {
-            allocator.forEachBlock(functor);
+    forEachDirectory(
+        [&] (BlockDirectory& directory) -> IterationStatus {
+            directory.forEachBlock(functor);
             return IterationStatus::Continue;
         });
 }
 
 template <typename Functor>
-void MarkedSpace::forEachAllocator(const Functor& functor)
+void MarkedSpace::forEachDirectory(const Functor& functor)
 {
-    for (MarkedAllocator* allocator = m_firstAllocator; allocator; allocator = allocator->nextAllocator()) {
-        if (functor(*allocator) == IterationStatus::Done)
+    for (BlockDirectory* directory = m_directories.first(); directory; directory = directory->nextDirectory()) {
+        if (functor(*directory) == IterationStatus::Done)
             return;
     }
 }

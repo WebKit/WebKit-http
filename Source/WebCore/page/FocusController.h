@@ -51,49 +51,49 @@ struct FocusCandidate;
 class FocusController {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit FocusController(Page&, ActivityState::Flags);
+    explicit FocusController(Page&, OptionSet<ActivityState::Flag>);
 
     WEBCORE_EXPORT void setFocusedFrame(Frame*);
     Frame* focusedFrame() const { return m_focusedFrame.get(); }
     WEBCORE_EXPORT Frame& focusedOrMainFrame() const;
 
     WEBCORE_EXPORT bool setInitialFocus(FocusDirection, KeyboardEvent*);
-    bool advanceFocus(FocusDirection, KeyboardEvent&, bool initialFocus = false);
+    bool advanceFocus(FocusDirection, KeyboardEvent*, bool initialFocus = false);
 
     WEBCORE_EXPORT bool setFocusedElement(Element*, Frame&, FocusDirection = FocusDirectionNone);
 
-    void setActivityState(ActivityState::Flags);
+    void setActivityState(OptionSet<ActivityState::Flag>);
 
     WEBCORE_EXPORT void setActive(bool);
-    bool isActive() const { return m_activityState & ActivityState::WindowIsActive; }
+    bool isActive() const { return m_activityState.contains(ActivityState::WindowIsActive); }
 
     WEBCORE_EXPORT void setFocused(bool);
-    bool isFocused() const { return m_activityState & ActivityState::IsFocused; }
+    bool isFocused() const { return m_activityState.contains(ActivityState::IsFocused); }
 
-    bool contentIsVisible() const { return m_activityState & ActivityState::IsVisible; }
+    bool contentIsVisible() const { return m_activityState.contains(ActivityState::IsVisible); }
 
     // These methods are used in WebCore/bindings/objc/DOM.mm.
     WEBCORE_EXPORT Element* nextFocusableElement(Node&);
     WEBCORE_EXPORT Element* previousFocusableElement(Node&);
 
     void setFocusedElementNeedsRepaint();
-    double timeSinceFocusWasSet() const;
+    Seconds timeSinceFocusWasSet() const;
 
 private:
     void setActiveInternal(bool);
     void setFocusedInternal(bool);
     void setIsVisibleAndActiveInternal(bool);
 
-    bool advanceFocusDirectionally(FocusDirection, KeyboardEvent&);
-    bool advanceFocusInDocumentOrder(FocusDirection, KeyboardEvent&, bool initialFocus);
+    bool advanceFocusDirectionally(FocusDirection, KeyboardEvent*);
+    bool advanceFocusInDocumentOrder(FocusDirection, KeyboardEvent*, bool initialFocus);
 
-    Element* findFocusableElementAcrossFocusScope(FocusDirection, const FocusNavigationScope& startScope, Node* start, KeyboardEvent&);
+    Element* findFocusableElementAcrossFocusScope(FocusDirection, const FocusNavigationScope& startScope, Node* start, KeyboardEvent*);
 
-    Element* findFocusableElementWithinScope(FocusDirection, const FocusNavigationScope&, Node* start, KeyboardEvent&);
-    Element* nextFocusableElementWithinScope(const FocusNavigationScope&, Node* start, KeyboardEvent&);
-    Element* previousFocusableElementWithinScope(const FocusNavigationScope&, Node* start, KeyboardEvent&);
+    Element* findFocusableElementWithinScope(FocusDirection, const FocusNavigationScope&, Node* start, KeyboardEvent*);
+    Element* nextFocusableElementWithinScope(const FocusNavigationScope&, Node* start, KeyboardEvent*);
+    Element* previousFocusableElementWithinScope(const FocusNavigationScope&, Node* start, KeyboardEvent*);
 
-    Element* findFocusableElementDescendingDownIntoFrameDocument(FocusDirection, Element*, KeyboardEvent&);
+    Element* findFocusableElementDescendingIntoSubframes(FocusDirection, Element*, KeyboardEvent*);
 
     // Searches through the given tree scope, starting from start node, for the next/previous selectable element that comes after/before start node.
     // The order followed is as specified in section 17.11.1 of the HTML4 spec, which is elements with tab indexes
@@ -104,25 +104,25 @@ private:
     // @return The focus node that comes after/before start node.
     //
     // See http://www.w3.org/TR/html4/interact/forms.html#h-17.11.1
-    Element* findFocusableElementOrScopeOwner(FocusDirection, const FocusNavigationScope&, Node* start, KeyboardEvent&);
+    Element* findFocusableElementOrScopeOwner(FocusDirection, const FocusNavigationScope&, Node* start, KeyboardEvent*);
 
-    Element* findElementWithExactTabIndex(const FocusNavigationScope&, Node* start, int tabIndex, KeyboardEvent&, FocusDirection);
+    Element* findElementWithExactTabIndex(const FocusNavigationScope&, Node* start, int tabIndex, KeyboardEvent*, FocusDirection);
     
-    Element* nextFocusableElementOrScopeOwner(const FocusNavigationScope&, Node* start, KeyboardEvent&);
-    Element* previousFocusableElementOrScopeOwner(const FocusNavigationScope&, Node* start, KeyboardEvent&);
+    Element* nextFocusableElementOrScopeOwner(const FocusNavigationScope&, Node* start, KeyboardEvent*);
+    Element* previousFocusableElementOrScopeOwner(const FocusNavigationScope&, Node* start, KeyboardEvent*);
 
-    bool advanceFocusDirectionallyInContainer(Node* container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent&);
-    void findFocusCandidateInContainer(Node& container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent&, FocusCandidate& closest);
+    bool advanceFocusDirectionallyInContainer(Node* container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent*);
+    void findFocusCandidateInContainer(Node& container, const LayoutRect& startingRect, FocusDirection, KeyboardEvent*, FocusCandidate& closest);
 
     void focusRepaintTimerFired();
 
     Page& m_page;
     RefPtr<Frame> m_focusedFrame;
     bool m_isChangingFocusedFrame;
-    ActivityState::Flags m_activityState;
+    OptionSet<ActivityState::Flag> m_activityState;
 
     Timer m_focusRepaintTimer;
-    double m_focusSetTime;
+    MonotonicTime m_focusSetTime;
 };
 
 } // namespace WebCore

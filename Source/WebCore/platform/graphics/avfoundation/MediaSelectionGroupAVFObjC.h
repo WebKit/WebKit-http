@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaSelectionGroupAVFObjC_h
-#define MediaSelectionGroupAVFObjC_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -76,8 +75,8 @@ public:
 
     void updateOptions(const Vector<String>& characteristics);
 
-    typedef HashMap<AVMediaSelectionOption*, RefPtr<MediaSelectionOptionAVFObjC>> OptionContainer;
-    WTF::IteratorRange<OptionContainer::iterator::Values> options() { return m_options.values(); }
+    using OptionContainer = HashMap<CFTypeRef, RefPtr<MediaSelectionOptionAVFObjC>>;
+    typename OptionContainer::ValuesIteratorRange options() { return m_options.values(); }
 
     AVMediaSelectionGroup *avMediaSelectionGroup() const { return m_mediaSelectionGroup.get(); }
 
@@ -97,5 +96,3 @@ private:
 }
 
 #endif // ENABLE(VIDEO_TRACK)
-
-#endif // MediaSelectionGroupAVFObjC_h

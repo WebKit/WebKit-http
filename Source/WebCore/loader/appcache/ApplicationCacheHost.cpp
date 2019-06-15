@@ -38,7 +38,6 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "ProgressEvent.h"
 #include "ResourceHandle.h"
@@ -75,7 +74,7 @@ void ApplicationCacheHost::selectCacheWithManifest(const URL& manifestURL)
     ApplicationCacheGroup::selectCache(*m_documentLoader.frame(), manifestURL);
 }
 
-void ApplicationCacheHost::maybeLoadMainResource(ResourceRequest& request, SubstituteData& substituteData)
+void ApplicationCacheHost::maybeLoadMainResource(const ResourceRequest& request, SubstituteData& substituteData)
 {
     // Check if this request should be loaded from the application cache
     if (!substituteData.isValid() && isApplicationCacheEnabled() && !isApplicationCacheBlockedForRequest(request)) {
@@ -104,7 +103,7 @@ void ApplicationCacheHost::maybeLoadMainResource(ResourceRequest& request, Subst
     }
 }
 
-void ApplicationCacheHost::maybeLoadMainResourceForRedirect(ResourceRequest& request, SubstituteData& substituteData)
+void ApplicationCacheHost::maybeLoadMainResourceForRedirect(const ResourceRequest& request, SubstituteData& substituteData)
 {
     ASSERT(status() == UNCACHED);
     maybeLoadMainResource(request, substituteData);
@@ -169,22 +168,36 @@ void ApplicationCacheHost::finishedLoadingMainResource()
 
 bool ApplicationCacheHost::maybeLoadResource(ResourceLoader& loader, const ResourceRequest& request, const URL& originalURL)
 {
+    if (loader.options().applicationCacheMode != ApplicationCacheMode::Use)
+        return false;
+
     if (!isApplicationCacheEnabled() && !isApplicationCacheBlockedForRequest(request))
         return false;
     
     if (request.url() != originalURL)
         return false;
 
+#if ENABLE(SERVICE_WORKER)
+    if (loader.options().serviceWorkerRegistrationIdentifier)
+        return false;
+#endif
+
     ApplicationCacheResource* resource;
     if (!shouldLoadResourceFromApplicationCache(request, resource))
         return false;
 
-    m_documentLoader.scheduleSubstituteResourceLoad(loader, *resource);
+    if (resource)
+        m_documentLoader.scheduleSubstituteResourceLoad(loader, *resource);
+    else
+        m_documentLoader.scheduleCannotShowURLError(loader);
     return true;
 }
 
 bool ApplicationCacheHost::maybeLoadFallbackForRedirect(ResourceLoader* resourceLoader, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
+    if (resourceLoader && resourceLoader->options().applicationCacheMode != ApplicationCacheMode::Use)
+        return false;
+
     if (!redirectResponse.isNull() && !protocolHostAndPortAreEqual(request.url(), redirectResponse.url())) {
         if (scheduleLoadFallbackResourceFromApplicationCache(resourceLoader))
             return true;
@@ -194,6 +207,9 @@ bool ApplicationCacheHost::maybeLoadFallbackForRedirect(ResourceLoader* resource
 
 bool ApplicationCacheHost::maybeLoadFallbackForResponse(ResourceLoader* resourceLoader, const ResourceResponse& response)
 {
+    if (resourceLoader && resourceLoader->options().applicationCacheMode != ApplicationCacheMode::Use)
+        return false;
+
     if (response.httpStatusCode() / 100 == 4 || response.httpStatusCode() / 100 == 5) {
         if (scheduleLoadFallbackResourceFromApplicationCache(resourceLoader))
             return true;
@@ -203,6 +219,9 @@ bool ApplicationCacheHost::maybeLoadFallbackForResponse(ResourceLoader* resource
 
 bool ApplicationCacheHost::maybeLoadFallbackForError(ResourceLoader* resourceLoader, const ResourceError& error)
 {
+    if (resourceLoader && resourceLoader->options().applicationCacheMode != ApplicationCacheMode::Use)
+        return false;
+
     if (!error.isCancellation()) {
         if (resourceLoader == m_documentLoader.mainResourceLoader())
             return maybeLoadFallbackForMainError(resourceLoader->request(), error);
@@ -215,16 +234,11 @@ bool ApplicationCacheHost::maybeLoadFallbackForError(ResourceLoader* resourceLoa
 URL ApplicationCacheHost::createFileURL(const String& path)
 {
     // FIXME: Can we just use fileURLWithFileSystemPath instead?
-
-    // fileURLWithFileSystemPath function is not suitable because URL::setPath uses encodeWithURLEscapeSequences, which it notes
-    // does not correctly escape '#' and '?'. This function works for our purposes because
-    // app cache media files are always created with encodeForFileName(createCanonicalUUIDString()).
-
 #if USE(CF) && PLATFORM(WIN)
     URL url(adoptCF(CFURLCreateWithFileSystemPath(0, path.createCFString().get(), kCFURLWindowsPathStyle, false)).get());
 #else
     URL url;
-    url.setProtocol(ASCIILiteral("file"));
+    url.setProtocol("file"_s);
     url.setPath(path);
 #endif
     return url;
@@ -327,15 +341,11 @@ void ApplicationCacheHost::stopDeferringEvents()
 
 Vector<ApplicationCacheHost::ResourceInfo> ApplicationCacheHost::resourceList()
 {
-    Vector<ResourceInfo> result;
-
     auto* cache = applicationCache();
     if (!cache || !cache->isComplete())
-        return result;
+        return { };
 
-    result.reserveInitialCapacity(cache->resources().size());
-
-    for (auto& urlAndResource : cache->resources()) {
+    return WTF::map(cache->resources(), [] (auto& urlAndResource) -> ApplicationCacheHost::ResourceInfo {
         ASSERT(urlAndResource.value);
         auto& resource = *urlAndResource.value;
 
@@ -346,10 +356,8 @@ Vector<ApplicationCacheHost::ResourceInfo> ApplicationCacheHost::resourceList()
         bool isForeign = type & ApplicationCacheResource::Foreign;
         bool isFallback = type & ApplicationCacheResource::Fallback;
 
-        result.uncheckedAppend({ resource.url(), isMaster, isManifest, isFallback, isForeign, isExplicit, resource.estimatedSizeInStorage() });
-    }
-
-    return result;
+        return { resource.url(), isMaster, isManifest, isFallback, isForeign, isExplicit, resource.estimatedSizeInStorage() };
+    });
 }
 
 ApplicationCacheHost::CacheInfo ApplicationCacheHost::applicationCacheInfo()
@@ -366,7 +374,7 @@ static Ref<Event> createApplicationCacheEvent(const AtomicString& eventType, int
 {
     if (eventType == eventNames().progressEvent)
         return ProgressEvent::create(eventType, true, done, total);
-    return Event::create(eventType, false, false);
+    return Event::create(eventType, Event::CanBubble::No, Event::IsCancelable::No);
 }
 
 void ApplicationCacheHost::dispatchDOMEvent(const AtomicString& eventType, int total, int done)
@@ -449,8 +457,16 @@ bool ApplicationCacheHost::getApplicationCacheFallbackResource(const ResourceReq
 
 bool ApplicationCacheHost::scheduleLoadFallbackResourceFromApplicationCache(ResourceLoader* loader, ApplicationCache* cache)
 {
+    if (!loader)
+        return false;
+
     if (!isApplicationCacheEnabled() && !isApplicationCacheBlockedForRequest(loader->request()))
         return false;
+
+#if ENABLE(SERVICE_WORKER)
+    if (loader->options().serviceWorkerRegistrationIdentifier)
+        return false;
+#endif
 
     ApplicationCacheResource* resource;
     if (!getApplicationCacheFallbackResource(loader->request(), resource, cache))
@@ -508,7 +524,7 @@ bool ApplicationCacheHost::swapCache()
         return true;
     }
 
-    // If there is no newer cache, raise an INVALID_STATE_ERR exception.
+    // If there is no newer cache, raise an InvalidStateError exception.
     auto* newestCache = cache->group()->newestCache();
     if (cache == newestCache)
         return false;

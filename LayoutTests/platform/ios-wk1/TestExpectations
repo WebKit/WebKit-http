@@ -7,10 +7,21 @@ fast/viewport/ios/ipad/width-is-device-width.html [ Pass ]
 
 editing/input/focus-change-with-marked-text.html [ Pass ]
 
+# No service worker implementation for WK1
+imported/w3c/web-platform-tests/service-workers [ Skip ]
+imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
+http/wpt/service-workers [ Skip ]
+http/wpt/cache-storage [ Skip ]
+http/tests/cache-storage [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/request/destination [ Skip ]
+imported/w3c/web-platform-tests/fetch/cross-origin-resource-policy [ Skip ]
+
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
-fast/events/constructors/media-stream-event-constructor.html
+
+# Not supported on WK1
+media/no-fullscreen-when-hidden.html [ Skip ]
 
 # <rdar://problem/6501130> LayoutTests: Enable editing tests after we support editing
 editing/deleting/4922367.html
@@ -98,6 +109,8 @@ fast/zooming/uiscript-zooming.html [ Failure ]
 
 # Not supported on WK1
 accessibility/ios-simulator/speak-selection-content.html [ Skip ]
+accessibility/ios-simulator/accessibility-events-setting.html [ Skip ]
+accessibility/ios-simulator/unobscured-content-rect.html [ Skip ]
 
 # FIXME: Tests that fail due to lack of textInputController <rdar://problem/5106287>
 editing/inserting/insert-composition-whitespace.html [ Failure ]
@@ -118,7 +131,6 @@ editing/style/apple-style-editable-mix.html [ Failure ]
 # Editing tests that time out:
 editing/deleting/delete-button-background-image-none.html
 editing/input/page-up-down-scrolls.html
-editing/input/reveal-contenteditable-on-input-vertically.html
 editing/selection/caret-at-bidi-boundary.html
 editing/spelling/context-menu-suggestions-multiword-selection.html
 editing/spelling/delete-into-misspelled-word.html
@@ -485,7 +497,9 @@ editing/unsupported-content/table-delete-003.html [ Failure Pass ]
 
 # Compositing tests that fail:
 compositing/animation/layer-for-filling-animation.html [ Failure ]
+legacy-animation-engine/compositing/animation/layer-for-filling-animation.html [ Failure ]
 compositing/backing/backface-visibility-flip.html [ Failure ]
+legacy-animation-engine/compositing/backing/backface-visibility-flip.html [ Failure ]
 compositing/backing/child-layer-no-backing.html [ Failure ]
 compositing/backing/inline-block-no-backing.html [ Failure ]
 compositing/backing/no-backing-for-clip-overhang.html [ Failure ]
@@ -519,6 +533,7 @@ compositing/geometry/layer-due-to-layer-children-switch.html [ Failure ]
 compositing/geometry/limit-layer-bounds-fixed-positioned.html [ Failure ]
 compositing/geometry/limit-layer-bounds-fixed.html [ Failure ]
 compositing/geometry/limit-layer-bounds-opacity-transition.html [ Failure ]
+legacy-animation-engine/compositing/geometry/limit-layer-bounds-opacity-transition.html [ Failure ]
 compositing/geometry/limit-layer-bounds-overflow-root.html [ Failure ]
 compositing/geometry/vertical-scroll-composited.html [ Failure ]
 compositing/iframes/composited-parent-iframe.html [ Failure ]
@@ -584,6 +599,7 @@ compositing/tiling/tile-cache-zoomed.html [ Failure ]
 compositing/tiling/tiled-layer-resize.html [ Failure ]
 compositing/visibility/visibility-image-layers-dynamic.html [ Failure ]
 compositing/visible-rect/animated.html [ Failure ]
+legacy-animation-engine/compositing/visible-rect/animated.html [ Failure ]
 compositing/visible-rect/2d-transformed.html [ Failure ]
 compositing/visible-rect/3d-transformed.html [ Failure ]
 compositing/visible-rect/clipped-by-viewport.html [ Failure ]
@@ -595,9 +611,6 @@ compositing/visible-rect/scrolled.html [ Failure ]
 compositing/contents-scale/incremental-change.html [ ImageOnlyFailure ]
 compositing/overlap-blending/nested-overlap-overflow.html [ ImageOnlyFailure ]
 compositing/overlap-blending/reflection-opacity-huge.html [ ImageOnlyFailure ]
-compositing/regions/propagate-region-box-shadow-border-padding.html [ ImageOnlyFailure ]
-compositing/regions/z-index-update.html [ ImageOnlyFailure ]
-compositing/regions/z-index.html [ ImageOnlyFailure ]
 compositing/text-on-scaled-layer.html [ ImageOnlyFailure ]
 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 
@@ -670,11 +683,11 @@ css2.1/t1508-c527-font-09-b.html [ Failure ]
 css2.1/t1508-c527-font-10-c.html [ Failure ]
 css3/blending/blend-mode-isolation-flags-turn-on-stacking-context.html [ Failure ]
 css3/filters/animation-from-initial-values-with-color-matrix.html [ ImageOnlyFailure ]
+legacy-animation-engine/css3/filters/animation-from-initial-values-with-color-matrix.html [ ImageOnlyFailure ]
 css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html [ ImageOnlyFailure ]
 css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection.html [ ImageOnlyFailure ]
 css3/filters/backdrop/backdrop-filter-with-clip-path.html [ ImageOnlyFailure ]
 css3/flexbox/content-height-with-scrollbars.html [ ImageOnlyFailure ]
-css3/masking/mask-repeat-space-border.html [ ImageOnlyFailure ]
 
 # CSS tests that pass:
 css3/flexbox/csswg/ttwf-reftest-flex-wrap-reverse.html [ Pass ]
@@ -778,6 +791,7 @@ fast/block/positioning/vertical-rl/fixed-positioning.html [ Failure ]
 fast/css-grid-layout/grid-container-margin-border-padding-scrollbar.html [ Failure ]
 fast/css-grid-layout/grid-percent-track-scrollbar.html [ Failure ]
 fast/css/animation-pseudo-style-change.html [ ImageOnlyFailure ]
+legacy-animation-engine/fast/css/animation-pseudo-style-change.html [ ImageOnlyFailure ]
 fast/css/nested-rounded-corners.html [ Failure ]
 fast/css/relative-positioned-block-crash.html [ Failure ]
 fast/css/sticky/sticky-overflowing.html [ ImageOnlyFailure ]
@@ -874,9 +888,6 @@ fast/transforms/transformed-focused-text-input.html [ Failure ]
 fast/writing-mode/Kusa-Makura-background-canvas.html [ Failure ]
 http/tests/navigation/page-cache-iframe-no-current-historyItem.html [ Failure ]
 
-# XMLHttpRequest tests that fail
-webkit.org/b/82672 http/tests/xmlhttprequest/range-test.html [ Failure ]
-
 # JavaScripts tests that fail:
 js/dom/deep-recursion-test.html [ Failure ]
 
@@ -927,6 +938,7 @@ fast/forms/number/number-keyoperation.html [ Failure Pass ]
 fast/forms/number/number-l10n-input.html [ Failure Pass ]
 fast/frames/detach-frame-during-focus.html [ Failure Pass ]
 fast/images/crossfade-client-not-removed-crash.html [ Failure Pass ]
+legacy-animation-engine/fast/images/crossfade-client-not-removed-crash.html [ Failure Pass ]
 
 # SVG tests that are flaky:
 imported/mozilla/svg/as-image/img-dyn-1.html [ ImageOnlyFailure ]
@@ -968,18 +980,21 @@ imported/mozilla/svg/text/text-shadow.svg [ ImageOnlyFailure ]
 
 # Misc tests that assert:
 compositing/overflow/overflow-positioning.html
+legacy-animation-engine/compositing/overflow/overflow-positioning.html
 css3/filters/filter-animation-from-none-hw.html
+legacy-animation-engine/css3/filters/filter-animation-from-none-hw.html
 fast/css/image-set-value-not-removed-crash.html
+legacy-animation-engine/fast/css/image-set-value-not-removed-crash.html
 fast/css3-text/css3-text-decoration/text-decoration-unprefix.html
 fast/dom/offset-parent-positioned-and-inline.html
 fast/forms/input-live-pseudo-selectors.html
 fast/inline/inline-box-adjust-position-crash2.html
-fast/regions/animated-image-in-region.html
 fast/ruby/text-emphasis.html
 fast/text/emphasis-height-crash.html
 fast/text/emphasis-vertical.html
 fast/text/emphasis.html
 transitions/cubic-bezier-overflow-transform.html
+legacy-animation-engine/transitions/cubic-bezier-overflow-transform.html
 
 # Misc tests that time out:
 editing/execCommand/enabling-and-selection-2.html
@@ -991,21 +1006,21 @@ security/block-test-no-port.html
 security/block-test.html
 
 # Animation tests that fail:
-animations/combo-transform-translate+scale.html [ Pass Failure ]
 animations/cross-fade-background-image.html [ ImageOnlyFailure ]
+legacy-animation-engine/animations/cross-fade-background-image.html [ ImageOnlyFailure ]
 animations/fill-forwards-auto-height.html [ ImageOnlyFailure ]
+legacy-animation-engine/animations/fill-forwards-auto-height.html [ ImageOnlyFailure ]
 animations/stop-animation-on-suspend.html [ Pass Failure ]
+legacy-animation-engine/animations/stop-animation-on-suspend.html [ Pass Failure ]
 animations/suspend-resume-animation-events.html [ Pass Failure ]
+legacy-animation-engine/animations/suspend-resume-animation-events.html [ Pass Failure ]
 animations/trigger-container-scroll-empty.html [ Failure ]
+legacy-animation-engine/animations/trigger-container-scroll-empty.html [ Failure ]
 
 # IndexedDB is not supported on iOS WK1.
 storage/indexeddb
 imported/w3c/IndexedDB-private-browsing
 imported/w3c/web-platform-tests/IndexedDB
-crypto/webkitSubtle/rsa-indexeddb-non-exportable-private.html
-crypto/webkitSubtle/rsa-indexeddb-non-exportable.html
-crypto/webkitSubtle/rsa-indexeddb-private.html
-crypto/webkitSubtle/rsa-indexeddb.html
 fast/history/page-cache-indexed-closed-db.html
 fast/history/page-cache-indexed-opened-db.html
 crypto/subtle/rsa-indexeddb-non-exportable-private.html
@@ -1100,6 +1115,13 @@ http/tests/security/video-cross-origin-accessfailure.html [ Failure ]
 http/tests/security/video-cross-origin-readback.html [ Failure ]
 http/tests/security/xssAuditor/link-opens-new-window.html [ Failure ]
 
+http/tests/plugins/nounsupported-plugin.html [ Skip ]
+http/tests/plugins/supported-plugin-all-origin-visibility.html [ Skip ]
+http/tests/plugins/supported-plugin-origin-specific-visibility.html [ Skip ]
+http/tests/plugins/supported-plugin-on-specific-origin.html [ Skip ]
+http/tests/plugins/unsupported-plugin-on-specific-origin.html [ Skip ]
+plugins/unsupported-plugin.html [ Skip ]
+
 # HTTP tests that assert:
 http/tests/navigation/metaredirect-basic.html
 http/tests/navigation/metaredirect-goback.html
@@ -1107,40 +1129,67 @@ http/tests/navigation/metaredirect-goback.html
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
 
+# Async image decoding is WK2 only
+fast/images/async-image-background-change.html
+fast/images/async-image-src-change.html
+http/tests/multipart/multipart-async-image.html
+
 # Flaky as of 06/08/2015
 animations/animation-direction-reverse-hardware-opacity.html [ Failure Pass ]
+legacy-animation-engine/animations/animation-direction-reverse-hardware-opacity.html [ Failure Pass ]
 animations/animation-direction-reverse-hardware.html [ Failure Pass ]
+legacy-animation-engine/animations/animation-direction-reverse-hardware.html [ Failure Pass ]
 animations/animation-direction-reverse-timing-functions-hardware.html [ Failure Pass ]
+legacy-animation-engine/animations/animation-direction-reverse-timing-functions-hardware.html [ Failure Pass ]
 animations/animation-direction-reverse.html [ Failure Pass ]
+legacy-animation-engine/animations/animation-direction-reverse.html [ Failure Pass ]
 animations/animation-hit-test-transform.html [ Failure Pass ]
+legacy-animation-engine/animations/animation-hit-test-transform.html [ Failure Pass ]
 compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html [ Failure Pass ]
+legacy-animation-engine/compositing/layer-creation/mismatched-rotated-transform-transition-overlap.html [ Failure Pass ]
 compositing/layer-creation/mismatched-transform-transition-overlap.html [ Failure Pass ]
+legacy-animation-engine/compositing/layer-creation/mismatched-transform-transition-overlap.html [ Failure Pass ]
 compositing/layer-creation/scale-rotation-transition-overlap.html [ Failure Pass ]
+legacy-animation-engine/compositing/layer-creation/scale-rotation-transition-overlap.html [ Failure Pass ]
 compositing/layer-creation/translate-scale-transition-overlap.html [ Failure Pass ]
+legacy-animation-engine/compositing/layer-creation/translate-scale-transition-overlap.html [ Failure Pass ]
 compositing/layer-creation/translate-transition-overlap.html [ Failure Pass ]
+legacy-animation-engine/compositing/layer-creation/translate-transition-overlap.html [ Failure Pass ]
 css3/filters/backdrop/animation.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/backdrop/animation.html [ Failure Pass ]
 css3/filters/composited-during-animation.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/composited-during-animation.html [ Failure Pass ]
 css3/filters/filter-animation-from-none-multi.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/filter-animation-from-none-multi.html [ Failure Pass ]
 css3/filters/filter-animation-from-none.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/filter-animation-from-none.html [ Failure Pass ]
 css3/filters/filter-animation-hw.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/filter-animation-hw.html [ Failure Pass ]
 css3/filters/filter-animation-multi-hw.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/filter-animation-multi-hw.html [ Failure Pass ]
 css3/filters/filter-animation-multi.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/filter-animation-multi.html [ Failure Pass ]
 css3/filters/filter-animation.html [ Failure Pass ]
+legacy-animation-engine/css3/filters/filter-animation.html [ Failure Pass ]
 fast/events/onchange-searchfield.html [ Failure Pass ]
 fast/workers/worker-exception-during-navigation.html [ Failure Pass ]
 fast/workers/worker-finish-crash.html [ Failure Pass ]
 http/tests/cache/partitioned-cache-iframe.html [ Failure Pass ]
 transitions/interrupted-all-transition.html [ Failure Pass ]
+legacy-animation-engine/transitions/interrupted-all-transition.html [ Failure Pass ]
 fast/forms/auto-fill-button/hide-auto-fill-button-when-input-becomes-readonly.html [ ImageOnlyFailure Pass ]
 svg/as-image/svg-image-with-data-uri-background.html [ ImageOnlyFailure Pass ]
 svg/as-image/svg-image-with-data-uri-reloading.html [ ImageOnlyFailure Pass ]
 svg/as-image/svg-image-with-svg-data-uri.html [ ImageOnlyFailure Pass ]
 svg/as-image/svg-no-intrinsic-size-switching.html [ ImageOnlyFailure Pass ]
 animations/animation-iteration-event-destroy-renderer.html [ Timeout Pass ]
+legacy-animation-engine/animations/animation-iteration-event-destroy-renderer.html [ Timeout Pass ]
 transitions/transition-hit-test-transform.html [ Timeout Pass ]
+legacy-animation-engine/transitions/transition-hit-test-transform.html [ Timeout Pass ]
 
 # Failures as of 06/08/2015
 compositing/contents-scale/animating.html [ Failure ]
+legacy-animation-engine/compositing/contents-scale/animating.html [ Failure ]
 compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint.html [ Failure ]
 compositing/repaint/iframes/compositing-iframe-scroll-repaint.html [ Failure ]
 compositing/repaint/iframes/compositing-iframe-with-fixed-background-doc-repaint.html [ Failure ]
@@ -1211,8 +1260,6 @@ fast/borders/dotted-border-on-subpixel-position.html [ ImageOnlyFailure ]
 fast/forms/select/select-painting.html [ ImageOnlyFailure ]
 fast/images/background-image-size-changes-fractional-position.html [ ImageOnlyFailure ]
 fast/masking/clip-path-on-subpixel-position.html [ ImageOnlyFailure ]
-fast/regions/overflow/overflow-scrollable-fit-complex.html [ ImageOnlyFailure ]
-fast/regions/webkit-background-clip-text.html [ ImageOnlyFailure ]
 fast/text/hidpi-text-selection-gap-between-words.html [ ImageOnlyFailure ]
 svg/animations/animate-keytimes-crash.html [ ImageOnlyFailure ]
 svg/filters/feMorphology-radius-cases.svg [ ImageOnlyFailure ]
@@ -1263,9 +1310,6 @@ compositing/reflections/deeply-nested-reflections.html [ Skip ]
 compositing/reflections/direct-image-object-fit-reflected.html [ Skip ]
 compositing/reflections/empty-reflection-with-mask.html [ Skip ]
 compositing/reflections/masked-reflection-on-composited.html [ Skip ]
-compositing/regions/abs-in-named-flow-from-fixed-in-named-flow.html [ Skip ]
-compositing/regions/abs-transformed-dynamic-update.html [ Skip ]
-compositing/regions/crash-transform-inside-region.html [ Skip ]
 compositing/repaint/absolute-painted-into-composited-ancestor.html [ Skip ]
 compositing/repaint/composited-document-element.html [ Skip ]
 compositing/repaint/content-into-overflow.html [ Skip ]
@@ -1286,6 +1330,7 @@ fast/text/international/system-language [ Skip ]
 # Imported Blink tests.
 imported/blink/compositing/layer-creation/iframe-clip-removed.html [ ImageOnlyFailure ]
 imported/blink/compositing/repaint/end-of-opacity-transition.html [ ImageOnlyFailure Pass ]
+legacy-animation-engine/imported/blink/compositing/repaint/end-of-opacity-transition.html [ ImageOnlyFailure Pass ]
 imported/blink/compositing/squashing/invalidate-on-grouped-mapping-reorder.html [ ImageOnlyFailure Pass ]
 imported/blink/compositing/squashing/squash-overflow-hidden-scrolltop.html [ ImageOnlyFailure Pass ]
 imported/blink/css3/blending/mix-blend-mode-has-ancestor-clipping-layer.html [ ImageOnlyFailure Pass ]
@@ -1315,6 +1360,7 @@ imported/blink/storage/indexeddb/blob-basics-metadata.html [ Failure ]
 imported/blink/storage/indexeddb/empty-blob-file.html [ Failure ]
 
 webkit.org/b/155495 compositing/visible-rect/animated-from-none.html [ Failure Pass ]
+webkit.org/b/155495 legacy-animation-engine/compositing/visible-rect/animated-from-none.html [ Failure Pass ]
 
 # <a download> is not supported in WK1 yet.
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
@@ -1324,6 +1370,7 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-include
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-doublequote.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-unicode.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-then-revoke.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -1333,6 +1380,8 @@ webkit.org/b/156069 http/tests/download/anchor-download-no-value.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.html [ Skip ]
+http/tests/download/convert-cached-load-to-download.html [ Skip ]
 
 webkit.org/b/137572 scrollbars/scrollbar-iframe-click-does-not-blur-content.html [ Failure ]
 
@@ -1412,18 +1461,16 @@ compositing/scrolling/touch-scrolling-repaint.html [ ImageOnlyFailure Pass ]
 compositing/tiling/offscreen-tiled-layer.html [ Pass Failure ]
 compositing/visible-rect/backing-change-height-from-zero.html [ Pass Failure ]
 css3/calc/transforms-translate.html [ ImageOnlyFailure Pass ]
-fast/block/inside-inlines/new-model/margin-collapse/003.html [ ImageOnlyFailure Pass ]
 fast/css-generated-content/after-with-inline-continuation.html [ ImageOnlyFailure Pass ]
 fast/css/cascade/background-clip-and-webkit-background-clip-cascade-order.html [ ImageOnlyFailure Pass ]
 fast/css3-text/font-synthesis.html [ ImageOnlyFailure Pass ]
 fast/dom/HTMLImageElement/sizes/image-sizes-2x.html [ Pass Failure ]
 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
-fast/regions/hit-test-region.html [ Pass Failure ]
+legacy-animation-engine/fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ ImageOnlyFailure Pass ]
 fast/replaced/table-percent-height.html [ Pass Failure ]
 fast/ruby/ruby-justification-hittest.html [ Pass Failure ]
 fast/shadow-dom/trusted-event-scoped-flags.html [ Pass Failure ]
 fast/sub-pixel/compositing-layers-on-subpixel-position.html [ ImageOnlyFailure Pass ]
-fast/text/web-font-load-fallback-during-loading.html [ ImageOnlyFailure Pass ]
 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
 fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit.html [ Pass Failure ]
@@ -1447,7 +1494,7 @@ imported/blink/svg/custom/svg-root-with-opacity.html [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/filters/feImage-1.svg [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/text-scale-02.svg [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/text/clipPath-applied.svg [ Pass ImageOnlyFailure ]
-imported/w3c/css/css-multicol-1/multicol-rule-large-001.xht [ Pass ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-large-001.xht [ Pass ImageOnlyFailure ]
 perf/mouse-event.html [ Pass Failure ]
 platform/ios/ios/fast/fixed/auto-position-fixed.html [ Pass Failure ]
 svg/transforms/transformed-text-fill-pattern.html [ Pass ImageOnlyFailure ]
@@ -1555,7 +1602,6 @@ fast/multicol/newmulticol/hide-box-horizontal-bt.html [ Pass ImageOnlyFailure ]
 fast/multicol/newmulticol/hide-box-vertical-lr.html [ Pass ImageOnlyFailure ]
 fast/multicol/newmulticol/hide-box-vertical-rl.html [ Pass ImageOnlyFailure ]
 fast/overflow/scrollbar-restored.html [ Failure Pass ]
-fast/regions/region-styling/region-style-inline-background-color.html [ Pass ImageOnlyFailure ]
 fast/replaced/iframe-with-percentage-height-within-table-with-anonymous-table-cell.html [ Failure Pass ]
 fast/replaced/iframe-with-percentage-height-within-table-with-table-cell-ignore-height.html [ Failure Pass ]
 fast/shapes/shape-outside-floats/shape-outside-rounded-inset.html [ Pass ImageOnlyFailure ]
@@ -1595,7 +1641,7 @@ imported/mozilla/svg/filters/filter-marked-line-06.svg [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/filters/filter-marked-line-07.svg [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/filters/filter-marked-line-08.svg [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/filters/filter-marked-line-09.svg [ Pass ImageOnlyFailure ]
-imported/w3c/css/css-multicol-1/multicol-nested-column-rule-001.xht [ Pass ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-multicol/multicol-nested-column-rule-001.xht [ Pass ImageOnlyFailure ]
 js/large-expressions.html [ Failure Pass ]
 perf/append-text-nodes-without-renderers.html [ Pass Failure ]
 perf/show-hide-table-rows.html [ Pass Failure ]
@@ -1610,6 +1656,7 @@ svg/custom/svg-pending-twice.html [ Pass ImageOnlyFailure ]
 svg/W3C-I18N/g-dirLTR-ubNone.svg [ Pass Failure ]
 tables/hittesting/filltable-stress.html [ Failure Pass ]
 transitions/svg-text-shadow-transition.html [ Failure Pass ]
+legacy-animation-engine/transitions/svg-text-shadow-transition.html [ Failure Pass ]
 
 # Mark editing tests of iOS simulator WK1 release build that have different delegate callback order than those of debug build as failure
 [ Release ] editing/deleting/delete-at-paragraph-boundaries-002.html [ Failure ]
@@ -1686,7 +1733,6 @@ transitions/svg-text-shadow-transition.html [ Failure Pass ]
 [ Release ] editing/undo/undo-delete.html [ Failure ]
 
 # Flaky as of 08/30/2016
-compositing/regions/move-layer-from-one-region-to-another.html [ Pass ImageOnlyFailure ]
 css3/device-adapt/viewport-width-not-affecting-next-page.html [ Pass Failure ]
 editing/execCommand/4641880-1.html [ Pass Failure ]
 editing/execCommand/insertHTML.html [ Pass Failure ]
@@ -1700,10 +1746,6 @@ fast/forms/validation-message-on-listbox.html [ Failure Crash ]
 fast/inline/layout-after-inserting-nested-br.html [ Pass ImageOnlyFailure ]
 fast/masking/parsing-clip-path-shape.html [ Pass Failure ]
 fast/overflow/horizontal-scroll-after-back.html [ Pass Failure ]
-fast/regions/overflow/overflow-size-change-with-stacking-context-rtl.html [ Pass ImageOnlyFailure ]
-fast/regions/region-styling/region-style-block-background-color2.html [ Pass ImageOnlyFailure ]
-fast/regions/shape-outside-floats/regions-shape-outside-floats-inset.html [ Pass ImageOnlyFailure ]
-fast/regions/shape-outside-floats/regions-shape-outside-region-polygon-floats.html [ Pass ImageOnlyFailure ]
 fast/replaced/percent-height-in-anonymous-block.html [ Crash Failure ]
 fast/replaced/table-percent-width.html [ Crash Pass ]
 fast/table/fixed-size-table-with-fixed-size-content.html [ Pass ImageOnlyFailure ]
@@ -1717,6 +1759,7 @@ imported/blink/compositing/ancestor-painted-layer-should-appear.html [ Pass Imag
 imported/blink/compositing/invisible-subtree-compositing-and-preserves-3d.html [ Pass ImageOnlyFailure ]
 imported/blink/compositing/will-change/stacking-context-creation.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/animation/last-child-assert.html [ Crash Pass Failure ]
+legacy-animation-engine/imported/blink/fast/animation/last-child-assert.html [ Crash Pass Failure ]
 imported/blink/fast/multicol/basic-rtl.html [ Crash Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/hit-test-translate-z.html [ Pass Failure ]
 imported/blink/fast/sub-pixel/clip-sub-pixel-composited-layer.html [ Pass ImageOnlyFailure ]
@@ -1734,7 +1777,7 @@ imported/mozilla/svg/tspan-rotate-05.svg [ Pass ImageOnlyFailure ]
 imported/mozilla/svg/tspan-xy-01.svg [ Pass ImageOnlyFailure ]
 platform/ios/ios/plugin/youtube-flash-plugin-iframe.html [ Pass Failure ]
 svg/text/add-tspan-position-bug.html [ Pass ImageOnlyFailure ]
-security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
+security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Skip ]
 svg/text/hidpi-text-selection-rect-position.html [ Pass ImageOnlyFailure ]
 transforms/2d/perspective-not-fixed-container.html [ Pass ImageOnlyFailure ]
 transforms/3d/hit-testing/hover-rotated-negative-z.html [ Pass Failure ]
@@ -1758,7 +1801,6 @@ editing/deleting/pruning-after-merge-1.html [ Pass Failure ]
 editing/inserting/editable-html-element.html [ Pass Failure ]
 fast/css/text-overflow-input-focus-placeholder.html [ Pass ImageOnlyFailure ]
 fast/parser/external-entities-in-xslt.xml [ Pass Failure ]
-fast/regions/multicol/regions-in-multicol-bt.html [ Pass ImageOnlyFailure ]
 fast/scrolling/rtl-scrollbars.html [ Pass ImageOnlyFailure ]
 fast/text/orthogonal-writing-mode-containing-block-frameView-resize-relayout.html [ Pass ImageOnlyFailure ]
 http/tests/loading/post-in-iframe-with-back-navigation.html [ Failure Pass ]
@@ -1767,12 +1809,13 @@ imported/blink/compositing/squashing/attempting-to-squash-into-compositing-conta
 imported/blink/compositing/squashing/attempting-to-squash-into-stacking-ancestor.html [ Pass ImageOnlyFailure ]
 imported/blink/compositing/squashing/squashed-clip-parent.html [ Pass ImageOnlyFailure ]
 imported/blink/editing/style/justify-left-crash.html [ Pass ImageOnlyFailure ]
-imported/w3c/css/css-multicol-1/multicol-fill-auto-block-children-002.xht [ Pass ImageOnlyFailure ]
-imported/w3c/css/css-multicol-1/multicol-nested-margin-002.xht [ Pass ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-multicol/multicol-fill-auto-block-children-002.xht [ Pass ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-multicol/multicol-nested-margin-002.xht [ Pass ImageOnlyFailure ]
 imported/w3c/web-platform-tests/html/browsers/offline/browser-state/navigator_online_online.html [ Failure Pass ]
 svg/animations/reset-animation-crash.html [ Pass ImageOnlyFailure ]
 svg/css/use-window-inactive-crash.html [ Pass ImageOnlyFailure ]
 transitions/cancel-transition.html [ Pass Failure ]
+legacy-animation-engine/transitions/cancel-transition.html [ Pass Failure ]
 
 # Flaky as of 09/14/2016 after migrating bots to iOS 10.
 css3/blending/blend-mode-isolation-flags-turn-off-blending.html [ Pass Failure ]
@@ -1913,3 +1956,18 @@ http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 http/tests/css/filters-on-iframes.html [ Skip ]
 
 webkit.org/b/172092 [ Release ] fast/parser/adoption-agency-unload-iframe-4.html [ Timeout ]
+
+# FIXME: For some reason EventSender.keyDown() does not work.
+webkit.org/b/178490 fast/text/scroll-text-overflow-ellipsis.html [ Skip ]
+
+# User-installed fonts test infrastructure is not present in WK1
+webkit.org/b/180062 fast/text/user-installed-fonts [ ImageOnlyFailure ]
+
+# rdar://problem/34716163 Breaks subsequent tests using response.xml
+http/tests/xmlhttprequest/range-test.html [ Skip ]
+
+# Skip anything related to WebAuthN
+http/tests/webauthn/ [ Skip ]
+http/wpt/credential-management/ [ Skip ]
+http/wpt/webauthn/ [ Skip ]
+imported/w3c/web-platform-tests/credential-management/ [ Skip ]

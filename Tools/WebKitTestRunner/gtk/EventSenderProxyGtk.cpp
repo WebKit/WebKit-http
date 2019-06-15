@@ -33,9 +33,10 @@
 #include "config.h"
 #include "EventSenderProxy.h"
 
-#include "NotImplemented.h"
 #include "PlatformWebView.h"
 #include "TestController.h"
+#include <WebCore/GtkUtilities.h>
+#include <WebCore/NotImplemented.h>
 #include <gdk/gdkkeysyms.h>
 #include <gtk/gtk.h>
 #include <wtf/StdLibExtras.h>
@@ -79,23 +80,11 @@ EventSenderProxy::EventSenderProxy(TestController* testController)
     , m_clickCount(0)
     , m_clickTime(0)
     , m_clickButton(kWKEventMouseButtonNoButton)
-    , m_mouseButtonCurrentlyDown(0)
 {
 }
 
 EventSenderProxy::~EventSenderProxy()
 {
-}
-
-static guint getMouseButtonModifiers(int gdkButton)
-{
-    if (gdkButton == 1)
-        return GDK_BUTTON1_MASK;
-    if (gdkButton == 2)
-        return GDK_BUTTON2_MASK;
-    if (gdkButton == 3)
-        return GDK_BUTTON3_MASK;
-    return 0;
 }
 
 static unsigned eventSenderButtonToGDKButton(unsigned button)
@@ -132,13 +121,13 @@ GdkEvent* EventSenderProxy::createMouseButtonEvent(GdkEventType eventType, unsig
 {
     GdkEvent* mouseEvent = gdk_event_new(eventType);
 
-    mouseEvent->button.button = eventSenderButtonToGDKButton(button);
+    mouseEvent->button.button = button;
     mouseEvent->button.x = m_position.x;
     mouseEvent->button.y = m_position.y;
     mouseEvent->button.window = gtk_widget_get_window(GTK_WIDGET(m_testController->mainWebView()->platformView()));
     g_object_ref(mouseEvent->button.window);
     gdk_event_set_device(mouseEvent, gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gdk_window_get_display(mouseEvent->button.window))));
-    mouseEvent->button.state = webkitModifiersToGDKModifiers(modifiers) | getMouseButtonModifiers(mouseEvent->button.button);
+    mouseEvent->button.state = webkitModifiersToGDKModifiers(modifiers) | m_mouseButtonsCurrentlyDown;
     mouseEvent->button.time = GDK_CURRENT_TIME;
     mouseEvent->button.axes = 0;
 
@@ -315,7 +304,7 @@ void EventSenderProxy::keyDown(WKStringRef keyRef, WKEventModifiers wkModifiers,
 
     GUniqueOutPtr<GdkKeymapKey> keys;
     gint nKeys;
-    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(), gdkKeySym, &keys.outPtr(), &nKeys))
+    if (gdk_keymap_get_entries_for_keyval(gdk_keymap_get_default(), gdkKeySym, &keys.outPtr(), &nKeys) && nKeys)
         pressEvent->key.hardware_keycode = keys.get()[0].keycode;
 
     GdkEvent* releaseEvent = gdk_event_copy(pressEvent);
@@ -326,13 +315,13 @@ void EventSenderProxy::keyDown(WKStringRef keyRef, WKEventModifiers wkModifiers,
 
 void EventSenderProxy::mouseDown(unsigned button, WKEventModifiers wkModifiers)
 {
+    unsigned gdkButton = eventSenderButtonToGDKButton(button);
+    auto modifier = WebCore::stateModifierForGdkButton(gdkButton);
+
     // If the same mouse button is already in the down position don't
     // send another event as it may confuse Xvfb.
-    unsigned gdkButton = eventSenderButtonToGDKButton(button);
-    if (m_mouseButtonCurrentlyDown == gdkButton)
+    if (m_mouseButtonsCurrentlyDown & modifier)
         return;
-
-    m_mouseButtonCurrentlyDown = gdkButton;
 
     // Normally GDK will send both GDK_BUTTON_PRESS and GDK_2BUTTON_PRESS for
     // the second button press during double-clicks. WebKit GTK+ selectively
@@ -352,18 +341,20 @@ void EventSenderProxy::mouseDown(unsigned button, WKEventModifiers wkModifiers)
     else
         eventType = GDK_BUTTON_PRESS;
 
-    GdkEvent* event = createMouseButtonEvent(eventType, button, wkModifiers);
+    GdkEvent* event = createMouseButtonEvent(eventType, gdkButton, wkModifiers);
+    m_mouseButtonsCurrentlyDown |= modifier;
     sendOrQueueEvent(event);
 }
 
 void EventSenderProxy::mouseUp(unsigned button, WKEventModifiers wkModifiers)
 {
     m_clickButton = kWKEventMouseButtonNoButton;
-    GdkEvent* event = createMouseButtonEvent(GDK_BUTTON_RELEASE, button, wkModifiers);
+    unsigned gdkButton = eventSenderButtonToGDKButton(button);
+    GdkEvent* event = createMouseButtonEvent(GDK_BUTTON_RELEASE, gdkButton, wkModifiers);
+    auto modifier = WebCore::stateModifierForGdkButton(gdkButton);
+    m_mouseButtonsCurrentlyDown &= ~modifier;
     sendOrQueueEvent(event);
 
-    if (m_mouseButtonCurrentlyDown == event->button.button)
-        m_mouseButtonCurrentlyDown = 0;
     m_clickPosition = m_position;
     m_clickTime = GDK_CURRENT_TIME;
 }
@@ -381,7 +372,7 @@ void EventSenderProxy::mouseMoveTo(double x, double y)
     event->motion.window = gtk_widget_get_window(GTK_WIDGET(m_testController->mainWebView()->platformView()));
     g_object_ref(event->motion.window);
     gdk_event_set_device(event, gdk_device_manager_get_client_pointer(gdk_display_get_device_manager(gdk_window_get_display(event->motion.window))));
-    event->motion.state = 0 | getMouseButtonModifiers(m_mouseButtonCurrentlyDown);
+    event->motion.state = m_mouseButtonsCurrentlyDown;
     event->motion.axes = 0;
 
     int xRoot, yRoot;
@@ -505,7 +496,7 @@ void EventSenderProxy::addTouchPoint(int x, int y)
 
 void EventSenderProxy::updateTouchPoint(int index, int x, int y)
 {
-    ASSERT(index >= 0 && index < m_touchEvents.size());
+    ASSERT(index >= 0 && static_cast<size_t>(index) < m_touchEvents.size());
 
     const auto& event = m_touchEvents[index];
     ASSERT(event);
@@ -551,7 +542,7 @@ void EventSenderProxy::clearTouchPoints()
 
 void EventSenderProxy::releaseTouchPoint(int index)
 {
-    ASSERT(index >= 0 && index < m_touchEvents.size());
+    ASSERT(index >= 0 && static_cast<size_t>(index) < m_touchEvents.size());
 
     const auto& event = m_touchEvents[index];
     event->type = GDK_TOUCH_END;

@@ -22,7 +22,6 @@
       var attributes = ["method",
                         "url",
                         "headers",
-                        "type",
                         "destination",
                         "referrer",
                         "referrerPolicy",
@@ -56,11 +55,6 @@
             return;
             break;
 
-          case "type":
-            defaultValue = "";
-            newValue = "style";
-            break;
-
           case "destination":
             defaultValue = "";
             newValue = "worker";
@@ -82,7 +76,7 @@
             break;
 
           case "credentials":
-            defaultValue = "omit";
+            defaultValue = "same-origin";
             newValue = "cors";
             break;
 

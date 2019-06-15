@@ -27,7 +27,8 @@
 
 #include "BufferSource.h"
 #include "CryptoAlgorithmParameters.h"
-#include <runtime/JSCJSValue.h>
+#include <JavaScriptCore/JSObject.h>
+#include <JavaScriptCore/Strong.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
@@ -37,12 +38,12 @@ namespace WebCore {
 class CryptoAlgorithmHkdfParams final : public CryptoAlgorithmParameters {
 public:
     // FIXME: Consider merging hash and hashIdentifier.
-    JSC::JSValue hash;
+    Variant<JSC::Strong<JSC::JSObject>, String> hash;
     CryptoAlgorithmIdentifier hashIdentifier;
     BufferSource salt;
     BufferSource info;
 
-    const Vector<uint8_t>& saltVector()
+    const Vector<uint8_t>& saltVector() const
     {
         if (!m_saltVector.isEmpty() || !salt.length())
             return m_saltVector;
@@ -51,7 +52,7 @@ public:
         return m_saltVector;
     }
 
-    const Vector<uint8_t>& infoVector()
+    const Vector<uint8_t>& infoVector() const
     {
         if (!m_infoVector.isEmpty() || !info.length())
             return m_infoVector;
@@ -62,9 +63,20 @@ public:
 
     Class parametersClass() const final { return Class::HkdfParams; }
 
+    CryptoAlgorithmHkdfParams isolatedCopy() const
+    {
+        CryptoAlgorithmHkdfParams result;
+        result.identifier = identifier;
+        result.m_saltVector = saltVector();
+        result.m_infoVector = infoVector();
+        result.hashIdentifier = hashIdentifier;
+
+        return result;
+    }
+
 private:
-    Vector<uint8_t> m_saltVector;
-    Vector<uint8_t> m_infoVector;
+    mutable Vector<uint8_t> m_saltVector;
+    mutable Vector<uint8_t> m_infoVector;
 };
 
 } // namespace WebCore

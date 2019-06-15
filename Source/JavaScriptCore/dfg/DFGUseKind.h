@@ -65,12 +65,18 @@ enum UseKind {
     KnownStringUse,
     KnownPrimitiveUse, // This bizarre type arises for op_strcat, which has a bytecode guarantee that it will only see primitives (i.e. not objects).
     SymbolUse,
+    BigIntUse,
     MapObjectUse,
     SetObjectUse,
+    WeakMapObjectUse,
+    WeakSetObjectUse,
+    DataViewObjectUse,
     StringObjectUse,
     StringOrStringObjectUse,
     NotStringVarUse,
+    NotSymbolUse,
     NotCellUse,
+    KnownOtherUse,
     OtherUse,
     MiscUse,
 
@@ -145,18 +151,29 @@ inline SpeculatedType typeFilterFor(UseKind useKind)
         return SpecHeapTop & ~SpecObject;
     case SymbolUse:
         return SpecSymbol;
+    case BigIntUse:
+        return SpecBigInt;
     case MapObjectUse:
         return SpecMapObject;
     case SetObjectUse:
         return SpecSetObject;
+    case WeakMapObjectUse:
+        return SpecWeakMapObject;
+    case WeakSetObjectUse:
+        return SpecWeakSetObject;
+    case DataViewObjectUse:
+        return SpecDataViewObject;
     case StringObjectUse:
         return SpecStringObject;
     case StringOrStringObjectUse:
         return SpecString | SpecStringObject;
     case NotStringVarUse:
         return ~SpecStringVar;
+    case NotSymbolUse:
+        return ~SpecSymbol;
     case NotCellUse:
         return ~SpecCellCheck;
+    case KnownOtherUse:
     case OtherUse:
         return SpecOther;
     case MiscUse:
@@ -176,6 +193,7 @@ inline bool shouldNotHaveTypeCheck(UseKind kind)
     case KnownStringUse:
     case KnownPrimitiveUse:
     case KnownBooleanUse:
+    case KnownOtherUse:
     case Int52RepUse:
     case DoubleRepUse:
         return true;
@@ -237,10 +255,14 @@ inline bool isCell(UseKind kind)
     case StringUse:
     case KnownStringUse:
     case SymbolUse:
+    case BigIntUse:
     case StringObjectUse:
     case StringOrStringObjectUse:
     case MapObjectUse:
     case SetObjectUse:
+    case WeakMapObjectUse:
+    case WeakSetObjectUse:
+    case DataViewObjectUse:
         return true;
     default:
         return false;
@@ -282,6 +304,34 @@ inline UseKind useKindForResult(NodeFlags result)
     default:
         return UntypedUse;
     }
+}
+
+inline bool checkMayCrashIfInputIsEmpty(UseKind kind)
+{
+#if USE(JSVALUE64)
+    switch (kind) {
+    case UntypedUse:
+    case Int32Use:
+    case KnownInt32Use:
+    case AnyIntUse:
+    case NumberUse:
+    case BooleanUse:
+    case KnownBooleanUse:
+    case CellUse:
+    case KnownCellUse:
+    case CellOrOtherUse:
+    case KnownOtherUse:
+    case OtherUse:
+    case MiscUse:
+    case NotCellUse:
+        return false;
+    default:
+        return true;
+    }
+#else
+    UNUSED_PARAM(kind);
+    return true;
+#endif
 }
 
 } } // namespace JSC::DFG

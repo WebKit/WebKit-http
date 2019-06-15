@@ -33,9 +33,9 @@
 #include "MarkupTokenizerInlines.h"
 #include <wtf/text/StringBuilder.h>
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 using namespace HTMLNames;
 
@@ -159,7 +159,7 @@ bool HTMLTokenizer::commitToPartialEndTag(SegmentedString& source, UChar charact
 {
     ASSERT(source.currentCharacter() == character);
     appendToTemporaryBuffer(character);
-    source.advancePastNonNewline();
+    source.advance();
 
     if (haveBufferedCharacterToken()) {
         // Emit the buffered character token.

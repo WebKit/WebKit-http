@@ -28,34 +28,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FileMetadata_h
-#define FileMetadata_h
-
-#include "FileSystem.h"
-#include <wtf/text/WTFString.h>
+#pragma once
 
 namespace WebCore {
 
 struct FileMetadata {
     // The last modification time of the file, in seconds.
-    // The value 0.0 means that the time is not set.
     double modificationTime;
 
     // The length of the file in bytes.
-    // The value -1 means that the length is not set.
     long long length;
 
-    enum Type {
-        TypeUnknown = 0,
-        TypeFile,
-        TypeDirectory
-    };
+    bool isHidden;
 
+    enum class Type { File, Directory, SymbolicLink };
     Type type;
-
-    FileMetadata() : modificationTime(invalidFileTime()), length(-1), type(TypeUnknown) { }
 };
 
 } // namespace WebCore
-
-#endif // FileMetadata_h

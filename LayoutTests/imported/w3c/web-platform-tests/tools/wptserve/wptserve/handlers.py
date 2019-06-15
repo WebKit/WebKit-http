@@ -1,9 +1,13 @@
 import cgi
 import json
 import os
+import sys
 import traceback
 
 from six.moves.urllib.parse import parse_qs, quote, unquote, urljoin
+from six import iteritems
+
+from h2.events import RequestReceived, DataReceived
 
 from .constants import content_types
 from .pipes import Pipeline, template
@@ -58,7 +62,9 @@ class DirectoryHandler(object):
         url_path = request.url_parts.path
 
         if not url_path.endswith("/"):
-            raise HTTPException(404)
+            response.status = 301
+            response.headers = [("Location", "%s/" % request.url)]
+            return
 
         path = filesystem_path(self.base_path, request, self.url_base)
 
@@ -226,19 +232,74 @@ class PythonScriptHandler(object):
     def __repr__(self):
         return "<%s base_path:%s url_base:%s>" % (self.__class__.__name__, self.base_path, self.url_base)
 
-    def __call__(self, request, response):
+    def _set_path_and_load_file(self, request, response, func):
+        """
+        This modifies the `sys.path` and loads the requested python file as an environ variable.
+
+        Once the environ is loaded, the passed `func` is run with this loaded environ.
+
+        :param request: The request object
+        :param response: The response object
+        :param func: The function to be run with the loaded environ with the modified filepath. Signature: (request, response, environ, path)
+        :return: The return of func
+        """
         path = filesystem_path(self.base_path, request, self.url_base)
 
+        sys_path = sys.path[:]
+        sys_modules = sys.modules.copy()
         try:
             environ = {"__file__": path}
-            execfile(path, environ, environ)
+            sys.path.insert(0, os.path.dirname(path))
+            with open(path, 'rb') as f:
+                exec(compile(f.read(), path, 'exec'), environ, environ)
+
+            if func is not None:
+                return func(request, response, environ, path)
+
+        except IOError:
+            raise HTTPException(404)
+        finally:
+            sys.path = sys_path
+            sys.modules = sys_modules
+
+    def __call__(self, request, response):
+        def func(request, response, environ, path):
             if "main" in environ:
                 handler = FunctionHandler(environ["main"])
                 handler(request, response)
+                wrap_pipeline(path, request, response)
             else:
                 raise HTTPException(500, "No main function in script %s" % path)
-        except IOError:
-            raise HTTPException(404)
+
+        self._set_path_and_load_file(request, response, func)
+
+
+    def frame_handler(self, request):
+        """
+        This creates a FunctionHandler with one or more of the handling functions.
+
+        Used by the H2 server.
+
+        :param request: The request object used to generate the handler.
+        :return: A FunctionHandler object with one or more of these functions: `handle_headers`, `handle_data` or `main`
+        """
+        def func(request, response, environ, path):
+            def _main(req, resp):
+                pass
+
+            handler = FunctionHandler(_main)
+            if "main" in environ:
+                handler.func = environ["main"]
+            if "handle_headers" in environ:
+                handler.handle_headers = environ["handle_headers"]
+            if "handle_data" in environ:
+                handler.handle_data = environ["handle_data"]
+
+            if handler.func is _main and not hasattr(handler, "handle_headers") and not hasattr(handler, "handle_data"):
+                raise HTTPException(500, "No main function or handlers in script %s" % path)
+
+            return handler
+        return self._set_path_and_load_file(request, None, func)
 
 python_script_handler = PythonScriptHandler()
 
@@ -249,6 +310,8 @@ class FunctionHandler(object):
     def __call__(self, request, response):
         try:
             rv = self.func(request, response)
+        except HTTPException:
+            raise
         except Exception:
             msg = traceback.format_exc()
             raise HTTPException(500, message=msg)
@@ -265,12 +328,12 @@ class FunctionHandler(object):
             else:
                 content = rv
             response.content = content
+            wrap_pipeline('', request, response)
 
 
 #The generic name here is so that this can be used as a decorator
 def handler(func):
     return FunctionHandler(func)
-
 
 class JsonHandler(object):
     def __init__(self, func):
@@ -306,7 +369,8 @@ class AsIsHandler(object):
 
         try:
             with open(path) as f:
-                response.writer.write_content(f.read())
+                response.writer.write_raw_content(f.read())
+            wrap_pipeline(path, request, response)
             response.close_connection = True
         except IOError:
             raise HTTPException(404)
@@ -349,21 +413,19 @@ class ErrorHandler(object):
         response.set_error(self.status)
 
 
-class StaticHandler(object):
-    def __init__(self, path, format_args, content_type, **headers):
+class StringHandler(object):
+    def __init__(self, data, content_type, **headers):
         """Hander that reads a file from a path and substitutes some fixed data
 
-        :param path: Path to the template file to use
-        :param format_args: Dictionary of values to substitute into the template file
+        :param data: String to use
         :param content_type: Content type header to server the response with
         :param headers: List of headers to send with responses"""
 
-        with open(path) as f:
-            self.data = f.read() % format_args
+        self.data = data
 
         self.resp_headers = [("Content-Type", content_type)]
-        for k, v in headers.iteritems():
-            resp_headers.append((k.replace("_", "-"), v))
+        for k, v in iteritems(headers):
+            self.resp_headers.append((k.replace("_", "-"), v))
 
         self.handler = handler(self.handle_request)
 
@@ -373,3 +435,18 @@ class StaticHandler(object):
     def __call__(self, request, response):
         rv = self.handler(request, response)
         return rv
+
+
+class StaticHandler(StringHandler):
+    def __init__(self, path, format_args, content_type, **headers):
+        """Hander that reads a file from a path and substitutes some fixed data
+
+        :param path: Path to the template file to use
+        :param format_args: Dictionary of values to substitute into the template file
+        :param content_type: Content type header to server the response with
+        :param headers: List of headers to send with responses"""
+
+        with open(path) as f:
+            data = f.read() % format_args
+
+        return super(StaticHandler, self).__init__(data, content_type, **headers)

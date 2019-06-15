@@ -23,12 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ConsoleTabContentView = class ConsoleTabContentView extends WebInspector.ContentBrowserTabContentView
+WI.ConsoleTabContentView = class ConsoleTabContentView extends WI.ContentBrowserTabContentView
 {
     constructor(identifier)
     {
-        let {image, title} = WebInspector.ConsoleTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
+        let tabBarItem = WI.GeneralTabBarItem.fromTabInfo(WI.ConsoleTabContentView.tabInfo());
 
         super(identifier || "console", "console", tabBarItem, null, null, true);
     }
@@ -37,7 +36,7 @@ WebInspector.ConsoleTabContentView = class ConsoleTabContentView extends WebInsp
     {
         return {
             image: "Images/Console.svg",
-            title: WebInspector.UIString("Console"),
+            title: WI.UIString("Console"),
         };
     }
 
@@ -45,39 +44,34 @@ WebInspector.ConsoleTabContentView = class ConsoleTabContentView extends WebInsp
 
     get type()
     {
-        return WebInspector.ConsoleTabContentView.Type;
+        return WI.ConsoleTabContentView.Type;
     }
 
     shown()
     {
         super.shown();
 
-        WebInspector.consoleContentView.prompt.focus();
+        WI.hideSplitConsole();
 
-        if (this.contentBrowser.currentContentView === WebInspector.consoleContentView)
-            return;
+        this.contentBrowser.showContentView(WI.consoleContentView);
+        WI.consoleContentView.dispatchEventToListeners(WI.ContentView.Event.NavigationItemsDidChange);
 
-        // Be sure to close the view in the split content browser before showing it in the
-        // tab content browser. We can only show a content view in one browser at a time.
-        if (WebInspector.consoleContentView.parentContainer)
-            WebInspector.consoleContentView.parentContainer.closeContentView(WebInspector.consoleContentView);
+        WI.consoleContentView.prompt.focus();
 
-        this.contentBrowser.showContentView(WebInspector.consoleContentView);
-
-        console.assert(this.contentBrowser.currentContentView === WebInspector.consoleContentView);
+        console.assert(this.contentBrowser.currentContentView === WI.consoleContentView);
     }
 
     showRepresentedObject(representedObject, cookie)
     {
         // Do nothing. The shown function will handle things. Calling
         // ContentBrowserTabContentView.shown will cause a new LogContentView
-        // to be created instead of reusing WebInspector.consoleContentView.
-        console.assert(representedObject instanceof WebInspector.LogObject);
+        // to be created instead of reusing WI.consoleContentView.
+        console.assert(representedObject instanceof WI.LogObject);
     }
 
     canShowRepresentedObject(representedObject)
     {
-        return representedObject instanceof WebInspector.LogObject;
+        return representedObject instanceof WI.LogObject;
     }
 
     get supportsSplitContentBrowser()
@@ -86,4 +80,4 @@ WebInspector.ConsoleTabContentView = class ConsoleTabContentView extends WebInsp
     }
 };
 
-WebInspector.ConsoleTabContentView.Type = "console";
+WI.ConsoleTabContentView.Type = "console";

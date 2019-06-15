@@ -5,7 +5,7 @@
 es6id: 25.4.4.1.1
 description: >
   Cannot tamper remainingElementsCount when Promise.all resolve element function is called multiple times.
-info: >
+info: |
   Runtime Semantics: PerformPromiseAll( iteratorRecord, constructor, resultCapability)
 
   ...
@@ -39,7 +39,9 @@ function Constructor(executor) {
   }
   executor(resolve, $ERROR);
 }
-Constructor.resolve = function(v) { return v; };
+Constructor.resolve = function(v) {
+  return v;
+};
 
 var p1OnFulfilled, p2OnFulfilled, p3OnFulfilled;
 

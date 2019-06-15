@@ -22,6 +22,7 @@ info: |
     d. Else,
       i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var calls = 0;
@@ -35,7 +36,7 @@ Number.prototype.toLocaleString = function() {
 
 var arr = [42, 0];
 
-testWithTypedArrayConstructors(function(TA) {
+testWithTypedArrayConstructors(function(TA, N) {
   calls = 0;
   var sample = new TA(arr);
   assert.throws(Test262Error, function() {

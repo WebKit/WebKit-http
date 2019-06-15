@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.Object
+WI.ResourceTimingData = class ResourceTimingData
 {
     constructor(resource, data)
     {
-        super();
-
         data = data || {};
 
         console.assert(isNaN(data.domainLookupStart) === isNaN(data.domainLookupEnd));
@@ -60,8 +58,8 @@ WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.
         payload = payload || {};
 
         // COMPATIBILITY (iOS 10): Resource Timing data was incomplete and incorrect. Do not use it.
-        // iOS 7 sent a requestTime and iOS 8-9.3 sent a navigationStart time.
-        if (typeof payload.requestTime === "number" || typeof payload.navigationStart === "number")
+        // iOS 8-9.3 sent a navigationStart time.
+        if (typeof payload.navigationStart === "number")
             payload = {};
 
         function offsetToTimestamp(offset) {
@@ -84,7 +82,7 @@ WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.
         if (isNaN(data.connectStart) && !isNaN(data.secureConnectionStart))
             data.connectStart = data.secureConnectionStart;
 
-        return new WebInspector.ResourceTimingData(resource, data);
+        return new WI.ResourceTimingData(resource, data);
     }
 
     // Public
@@ -96,7 +94,7 @@ WebInspector.ResourceTimingData = class ResourceTimingData extends WebInspector.
     get connectEnd() { return this._connectEnd; }
     get secureConnectionStart() { return this._secureConnectionStart; }
     get requestStart() { return this._requestStart || this._startTime || this._resource.requestSentTimestamp; }
-    get responseStart() { return this._responseStart || this._startTime || this._resource.responseReceivedTimestamp; }
+    get responseStart() { return this._responseStart || this._startTime || this._resource.responseReceivedTimestamp || this._resource.finishedOrFailedTimestamp; }
     get responseEnd() { return this._responseEnd || this._resource.finishedOrFailedTimestamp; }
 
     markResponseEndTime(responseEnd)

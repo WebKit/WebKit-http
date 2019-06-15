@@ -5,7 +5,7 @@
 es6id: B.2.4.1
 description: >
   Date.prototype.getYear.length is 0.
-info: >
+info: |
   Date.prototype.getYear ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(Date.prototype.getYear.length, 0);
-
-verifyNotEnumerable(Date.prototype.getYear, "length");
-verifyNotWritable(Date.prototype.getYear, "length");
-verifyConfigurable(Date.prototype.getYear, "length");
+verifyProperty(Date.prototype.getYear, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 0
+});

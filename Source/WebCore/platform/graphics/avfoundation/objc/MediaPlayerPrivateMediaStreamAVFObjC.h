@@ -33,6 +33,7 @@
 #include "MediaStreamPrivate.h"
 #include <CoreGraphics/CGAffineTransform.h>
 #include <wtf/Function.h>
+#include <wtf/LoggerHelper.h>
 #include <wtf/MediaTime.h>
 #include <wtf/WeakPtr.h>
 
@@ -42,22 +43,25 @@ OBJC_CLASS AVSampleBufferRenderSynchronizer;
 OBJC_CLASS AVStreamSession;
 OBJC_CLASS NSNumber;
 OBJC_CLASS WebAVSampleBufferStatusChangeListener;
-typedef struct opaqueCMSampleBuffer *CMSampleBufferRef;
+
+namespace PAL {
+class Clock;
+}
 
 namespace WebCore {
 
 class AudioTrackPrivateMediaStreamCocoa;
 class AVVideoCaptureSource;
-class Clock;
 class MediaSourcePrivateClient;
 class PixelBufferConformerCV;
+class VideoFullscreenLayerManagerObjC;
 class VideoTrackPrivateMediaStream;
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-class VideoFullscreenLayerManager;
+class MediaPlayerPrivateMediaStreamAVFObjC final : public CanMakeWeakPtr<MediaPlayerPrivateMediaStreamAVFObjC>, public MediaPlayerPrivateInterface, private MediaStreamPrivate::Observer, private MediaStreamTrackPrivate::Observer
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
 #endif
-
-class MediaPlayerPrivateMediaStreamAVFObjC final : public MediaPlayerPrivateInterface, private MediaStreamPrivate::Observer, private MediaStreamTrackPrivate::Observer {
+{
 public:
     explicit MediaPlayerPrivateMediaStreamAVFObjC(MediaPlayer*);
     virtual ~MediaPlayerPrivateMediaStreamAVFObjC();
@@ -74,8 +78,6 @@ public:
     MediaPlayer::ReadyState readyState() const override;
     void setReadyState(MediaPlayer::ReadyState);
 
-    WeakPtr<MediaPlayerPrivateMediaStreamAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
     void ensureLayers();
     void destroyLayers();
 
@@ -85,6 +87,13 @@ public:
 
     PlatformLayer* displayLayer();
     PlatformLayer* backgroundLayer();
+
+#if !RELEASE_LOG_DISABLED
+    const Logger& logger() const final { return m_logger.get(); }
+    const char* logClassName() const override { return "MediaPlayerPrivateMediaStreamAVFObjC"; }
+    const void* logIdentifier() const final { return reinterpret_cast<const void*>(m_logIdentifier); }
+    WTFLogChannel& logChannel() const final;
+#endif
 
 private:
     // MediaPlayerPrivateInterface
@@ -141,10 +150,10 @@ private:
     void addSampleToPendingQueue(PendingSampleQueue&, MediaSample&);
     void removeOldSamplesFromPendingQueue(PendingSampleQueue&);
 
-    void updateSampleTimes(MediaSample&, const MediaTime&, const char*);
     MediaTime calculateTimelineOffset(const MediaSample&, double);
     
     void enqueueVideoSample(MediaStreamTrackPrivate&, MediaSample&);
+    void enqueueCorrectedVideoSample(MediaSample&);
     void flushAndRemoveVideoSampleBuffers();
     void requestNotificationWhenReadyForVideoData();
 
@@ -209,10 +218,8 @@ private:
     void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) override;
     void readyStateChanged(MediaStreamTrackPrivate&) override;
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     void setVideoFullscreenLayer(PlatformLayer*, WTF::Function<void()>&& completionHandler) override;
     void setVideoFullscreenFrame(FloatRect) override;
-#endif
 
     MediaTime streamTime() const;
 
@@ -220,16 +227,15 @@ private:
 
     CGAffineTransform videoTransformationMatrix(MediaSample&, bool forceUpdate = false);
 
+    void applicationDidBecomeActive() final;
+
     MediaPlayer* m_player { nullptr };
-    WeakPtrFactory<MediaPlayerPrivateMediaStreamAVFObjC> m_weakPtrFactory;
     RefPtr<MediaStreamPrivate> m_mediaStreamPrivate;
-
     RefPtr<MediaStreamTrackPrivate> m_activeVideoTrack;
-
     RetainPtr<WebAVSampleBufferStatusChangeListener> m_statusChangeListener;
     RetainPtr<AVSampleBufferDisplayLayer> m_sampleBufferDisplayLayer;
     RetainPtr<PlatformLayer> m_backgroundLayer;
-    std::unique_ptr<Clock> m_clock;
+    std::unique_ptr<PAL::Clock> m_clock;
 
     MediaTime m_pausedTime;
 
@@ -255,6 +261,13 @@ private:
     PlaybackState m_playbackState { PlaybackState::None };
     MediaSample::VideoRotation m_videoRotation { MediaSample::VideoRotation::None };
     CGAffineTransform m_videoTransform;
+    std::unique_ptr<VideoFullscreenLayerManagerObjC> m_videoFullscreenLayerManager;
+
+#if !RELEASE_LOG_DISABLED
+    Ref<const Logger> m_logger;
+    const void* m_logIdentifier;
+#endif
+
     bool m_videoMirrored { false };
     bool m_playing { false };
     bool m_muted { false };
@@ -265,10 +278,6 @@ private:
     bool m_transformIsValid { false };
     bool m_visible { false };
     bool m_haveSeenMetadata { false };
-
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    std::unique_ptr<VideoFullscreenLayerManager> m_videoFullscreenLayerManager;
-#endif
 };
     
 }

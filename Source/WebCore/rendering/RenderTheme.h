@@ -1,7 +1,5 @@
 /*
- * This file is part of the theme implementation for form controls in WebCore.
- *
- * Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010, 2012 Apple Inc.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,49 +20,45 @@
 
 #pragma once
 
-#include "BorderData.h"
+#include "ColorHash.h"
 #include "ControlStates.h"
-#include "FillLayer.h"
-#if USE(NEW_THEME)
-#include "Theme.h"
-#else
-#include "ThemeTypes.h"
-#endif
+#include "GraphicsContext.h"
 #include "PaintInfo.h"
 #include "PopupMenuStyle.h"
 #include "ScrollTypes.h"
-#include <wtf/RefCounted.h>
+#include "StyleColor.h"
+#include "ThemeTypes.h"
+#include <wtf/HashMap.h>
 
 namespace WebCore {
 
-class CSSStyleSheet;
+class BorderData;
 class Element;
 class FileList;
+class FillLayer;
 class HTMLInputElement;
 class Icon;
 class Page;
-class PopupMenu;
 class RenderAttachment;
 class RenderBox;
-class RenderMenuList;
 class RenderMeter;
 class RenderObject;
 class RenderProgress;
-class RenderSnapshottedPlugIn;
+class RenderStyle;
 class StyleResolver;
 
-class RenderTheme : public RefCounted<RenderTheme> {
+class RenderTheme {
 protected:
     RenderTheme();
 
-public:
-    virtual ~RenderTheme() { }
+    virtual ~RenderTheme() = default;
 
-    // This function is to be implemented in your platform-specific theme implementation to hand back the
+public:
+    // This function is to be implemented in platform-specific theme implementations to hand back the
     // appropriate platform theme.
     WEBCORE_EXPORT static RenderTheme& singleton();
 
-    virtual void purgeCaches() { }
+    virtual void purgeCaches();
 
     // This method is called whenever style has been computed for an element and the appearance
     // property has been set to a value other than "none".  The theme should map in all of the appropriate
@@ -143,25 +137,26 @@ public:
     virtual bool supportsDataListUI(const AtomicString&) const { return false; }
 
     // Text selection colors.
-    Color activeSelectionBackgroundColor() const;
-    Color inactiveSelectionBackgroundColor() const;
-    Color activeSelectionForegroundColor() const;
-    Color inactiveSelectionForegroundColor() const;
+    Color activeSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    Color inactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color transformSelectionBackgroundColor(const Color&, OptionSet<StyleColor::Options>) const;
+    Color activeSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
+    Color inactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
     // List box selection colors
-    Color activeListBoxSelectionBackgroundColor() const;
-    Color activeListBoxSelectionForegroundColor() const;
-    Color inactiveListBoxSelectionBackgroundColor() const;
-    Color inactiveListBoxSelectionForegroundColor() const;
+    Color activeListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    Color activeListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
+    Color inactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    Color inactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
-    // Highlighting colors for TextMatches.
-    virtual Color platformActiveTextSearchHighlightColor() const;
-    virtual Color platformInactiveTextSearchHighlightColor() const;
+    // Highlighting colors for search matches.
+    Color activeTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
+    Color inactiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
 
     virtual Color disabledTextColor(const Color& textColor, const Color& backgroundColor) const;
 
-    static Color focusRingColor();
-    virtual Color platformFocusRingColor() const { return Color(0, 0, 0); }
+    static Color focusRingColor(OptionSet<StyleColor::Options>);
+    virtual Color platformFocusRingColor(OptionSet<StyleColor::Options>) const { return Color(0, 0, 0); }
     static void setCustomFocusRingColor(const Color&);
     static float platformFocusRingWidth() { return 3; }
     static float platformFocusRingOffset(float outlineWidth) { return std::max<float>(outlineWidth - platformFocusRingWidth(), 0); }
@@ -175,7 +170,7 @@ public:
 
     // System fonts and colors for CSS.
     void systemFont(CSSValueID, FontCascadeDescription&) const;
-    virtual Color systemColor(CSSValueID) const;
+    virtual Color systemColor(CSSValueID, OptionSet<StyleColor::Options>) const;
 
     virtual int minimumMenuListSize(const RenderStyle&) const { return 0; }
 
@@ -190,7 +185,7 @@ public:
     // Returns the repeat interval of the animation for the progress bar.
     virtual Seconds animationRepeatIntervalForProgressBar(RenderProgress&) const;
     // Returns the duration of the animation for the progress bar.
-    virtual double animationDurationForProgressBar(RenderProgress&) const;
+    virtual Seconds animationDurationForProgressBar(RenderProgress&) const;
     virtual IntRect progressBarRectForBounds(const RenderObject&, const IntRect&) const;
 
 #if ENABLE(VIDEO)
@@ -256,23 +251,35 @@ public:
     virtual bool shouldMockBoldSystemFontForAccessibility() const { return false; }
     virtual void setShouldMockBoldSystemFontForAccessibility(bool) { }
 
+#if USE(SYSTEM_PREVIEW)
+    virtual void paintSystemPreviewBadge(Image&, const PaintInfo&, const FloatRect&);
+#endif
+
+    virtual void drawLineForDocumentMarker(const RenderText&, GraphicsContext&, const FloatPoint& origin, float width, DocumentMarkerLineStyle);
+
+    virtual bool usingDarkAppearance(const RenderObject&) const { return false; }
+
 protected:
     virtual FontCascadeDescription& cachedSystemFontDescription(CSSValueID systemFontID) const;
     virtual void updateCachedSystemFontDescription(CSSValueID systemFontID, FontCascadeDescription&) const = 0;
 
     // The platform selection color.
-    virtual Color platformActiveSelectionBackgroundColor() const;
-    virtual Color platformInactiveSelectionBackgroundColor() const;
-    virtual Color platformActiveSelectionForegroundColor() const;
-    virtual Color platformInactiveSelectionForegroundColor() const;
+    virtual Color platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
-    virtual Color platformActiveListBoxSelectionBackgroundColor() const;
-    virtual Color platformInactiveListBoxSelectionBackgroundColor() const;
-    virtual Color platformActiveListBoxSelectionForegroundColor() const;
-    virtual Color platformInactiveListBoxSelectionForegroundColor() const;
+    virtual Color platformActiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformInactiveListBoxSelectionBackgroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformActiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformInactiveListBoxSelectionForegroundColor(OptionSet<StyleColor::Options>) const;
 
-    virtual bool supportsSelectionForegroundColors() const { return true; }
-    virtual bool supportsListBoxSelectionForegroundColors() const { return true; }
+    // The platform highlighting colors for search matches.
+    virtual Color platformActiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
+    virtual Color platformInactiveTextSearchHighlightColor(OptionSet<StyleColor::Options>) const;
+
+    virtual bool supportsSelectionForegroundColors(OptionSet<StyleColor::Options>) const { return true; }
+    virtual bool supportsListBoxSelectionForegroundColors(OptionSet<StyleColor::Options>) const { return true; }
 
 #if !USE(NEW_THEME)
     // Methods for each appearance value.
@@ -330,6 +337,10 @@ protected:
 #if ENABLE(ATTACHMENT_ELEMENT)
     virtual void adjustAttachmentStyle(StyleResolver&, RenderStyle&, const Element*) const;
     virtual bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&);
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    virtual void adjustListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const;
 #endif
 
     virtual void adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const;
@@ -397,23 +408,38 @@ public:
     bool isSpinUpButtonPartPressed(const RenderObject&) const;
     bool isHovered(const RenderObject&) const;
     bool isSpinUpButtonPartHovered(const RenderObject&) const;
+    bool isPresenting(const RenderObject&) const;
     bool isReadOnlyControl(const RenderObject&) const;
     bool isDefault(const RenderObject&) const;
 
+protected:
+    struct ColorCache {
+        HashMap<int, Color> systemStyleColors;
+
+        Color systemLinkColor;
+        Color systemActiveLinkColor;
+        Color systemVisitedLinkColor;
+        Color systemFocusRingColor;
+        Color systemControlAccentColor;
+
+        Color activeSelectionBackgroundColor;
+        Color inactiveSelectionBackgroundColor;
+        Color activeSelectionForegroundColor;
+        Color inactiveSelectionForegroundColor;
+
+        Color activeListBoxSelectionBackgroundColor;
+        Color inactiveListBoxSelectionBackgroundColor;
+        Color activeListBoxSelectionForegroundColor;
+        Color inactiveListBoxSelectionForegroundColor;
+
+        Color activeTextSearchHighlightColor;
+        Color inactiveTextSearchHighlightColor;
+    };
+
+    virtual ColorCache& colorCache(OptionSet<StyleColor::Options>) const { return m_colorCache; }
+
 private:
-    mutable Color m_activeSelectionBackgroundColor;
-    mutable Color m_inactiveSelectionBackgroundColor;
-    mutable Color m_activeSelectionForegroundColor;
-    mutable Color m_inactiveSelectionForegroundColor;
-
-    mutable Color m_activeListBoxSelectionBackgroundColor;
-    mutable Color m_inactiveListBoxSelectionBackgroundColor;
-    mutable Color m_activeListBoxSelectionForegroundColor;
-    mutable Color m_inactiveListBoxSelectionForegroundColor;
-
-#if USE(NEW_THEME)
-    Theme* m_theme; // The platform-specific theme.
-#endif
+    mutable ColorCache m_colorCache;
 };
 
 } // namespace WebCore

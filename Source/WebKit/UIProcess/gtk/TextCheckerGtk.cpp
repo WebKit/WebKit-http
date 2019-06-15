@@ -36,17 +36,8 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/TextBreakIterator.h>
 
-using namespace WebCore;
-
 namespace WebKit {
-
-#if ENABLE(SPELLCHECK)
-static WebCore::TextCheckerEnchant& enchantTextChecker()
-{
-    static NeverDestroyed<WebCore::TextCheckerEnchant> checker;
-    return checker;
-}
-#endif
+using namespace WebCore;
 
 TextCheckerState& checkerState()
 {
@@ -136,21 +127,21 @@ void TextChecker::grammarCheckingEnabledStateChanged(bool enabled)
 #endif
 }
 
-int64_t TextChecker::uniqueSpellDocumentTag(WebPageProxy*)
+SpellDocumentTag TextChecker::uniqueSpellDocumentTag(WebPageProxy*)
 {
-    return 0;
+    return { };
 }
 
-void TextChecker::closeSpellDocumentWithTag(int64_t /* tag */)
+void TextChecker::closeSpellDocumentWithTag(SpellDocumentTag)
 {
 }
 
-void TextChecker::checkSpellingOfString(int64_t /* spellDocumentTag */, StringView text, int32_t& misspellingLocation, int32_t& misspellingLength)
+void TextChecker::checkSpellingOfString(SpellDocumentTag, StringView text, int32_t& misspellingLocation, int32_t& misspellingLength)
 {
 #if ENABLE(SPELLCHECK)
     misspellingLocation = -1;
     misspellingLength = 0;
-    enchantTextChecker().checkSpellingOfString(text.toStringWithoutCopying(), misspellingLocation, misspellingLength);
+    TextCheckerEnchant::singleton().checkSpellingOfString(text.toStringWithoutCopying(), misspellingLocation, misspellingLength);
 #else
     UNUSED_PARAM(text);
     UNUSED_PARAM(misspellingLocation);
@@ -158,7 +149,7 @@ void TextChecker::checkSpellingOfString(int64_t /* spellDocumentTag */, StringVi
 #endif
 }
 
-void TextChecker::checkGrammarOfString(int64_t /* spellDocumentTag */, StringView /* text */, Vector<WebCore::GrammarDetail>& /* grammarDetails */, int32_t& /* badGrammarLocation */, int32_t& /* badGrammarLength */)
+void TextChecker::checkGrammarOfString(SpellDocumentTag, StringView /* text */, Vector<WebCore::GrammarDetail>& /* grammarDetails */, int32_t& /* badGrammarLocation */, int32_t& /* badGrammarLength */)
 {
 }
 
@@ -171,37 +162,37 @@ void TextChecker::toggleSpellingUIIsShowing()
 {
 }
 
-void TextChecker::updateSpellingUIWithMisspelledWord(int64_t /* spellDocumentTag */, const String& /* misspelledWord */)
+void TextChecker::updateSpellingUIWithMisspelledWord(SpellDocumentTag, const String& /* misspelledWord */)
 {
 }
 
-void TextChecker::updateSpellingUIWithGrammarString(int64_t /* spellDocumentTag */, const String& /* badGrammarPhrase */, const GrammarDetail& /* grammarDetail */)
+void TextChecker::updateSpellingUIWithGrammarString(SpellDocumentTag, const String& /* badGrammarPhrase */, const GrammarDetail& /* grammarDetail */)
 {
 }
 
-void TextChecker::getGuessesForWord(int64_t /* spellDocumentTag */, const String& word, const String& /* context */, int32_t /* insertionPoint */, Vector<String>& guesses, bool)
+void TextChecker::getGuessesForWord(SpellDocumentTag, const String& word, const String& /* context */, int32_t /* insertionPoint */, Vector<String>& guesses, bool)
 {
 #if ENABLE(SPELLCHECK)
-    guesses = enchantTextChecker().getGuessesForWord(word);
+    guesses = TextCheckerEnchant::singleton().getGuessesForWord(word);
 #else
     UNUSED_PARAM(word);
     UNUSED_PARAM(guesses);
 #endif
 }
 
-void TextChecker::learnWord(int64_t /* spellDocumentTag */, const String& word)
+void TextChecker::learnWord(SpellDocumentTag, const String& word)
 {
 #if ENABLE(SPELLCHECK)
-    enchantTextChecker().learnWord(word);
+    TextCheckerEnchant::singleton().learnWord(word);
 #else
     UNUSED_PARAM(word);
 #endif
 }
 
-void TextChecker::ignoreWord(int64_t /* spellDocumentTag */, const String& word)
+void TextChecker::ignoreWord(SpellDocumentTag, const String& word)
 {
 #if ENABLE(SPELLCHECK)
-    enchantTextChecker().ignoreWord(word);
+    TextCheckerEnchant::singleton().ignoreWord(word);
 #else
     UNUSED_PARAM(word);
 #endif
@@ -212,9 +203,9 @@ void TextChecker::requestCheckingOfString(Ref<TextCheckerCompletion>&& completio
 #if ENABLE(SPELLCHECK)
     TextCheckingRequestData request = completion->textCheckingRequestData();
     ASSERT(request.sequence() != unrequestedTextCheckingSequence);
-    ASSERT(request.mask() != TextCheckingTypeNone);
+    ASSERT(request.checkingTypes());
 
-    completion->didFinishCheckingText(checkTextOfParagraph(completion->spellDocumentTag(), request.text(), insertionPoint, request.mask(), false));
+    completion->didFinishCheckingText(checkTextOfParagraph(completion->spellDocumentTag(), request.text(), insertionPoint, request.checkingTypes(), false));
 #else
     UNUSED_PARAM(completion);
 #endif
@@ -249,16 +240,16 @@ static unsigned nextWordOffset(StringView text, unsigned currentOffset)
 #endif
 
 #if USE(UNIFIED_TEXT_CHECKING)
-Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocumentTag, StringView text, int32_t insertionPoint, uint64_t checkingTypes, bool)
+Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(SpellDocumentTag spellDocumentTag, StringView text, int32_t insertionPoint, OptionSet<TextCheckingType> checkingTypes, bool)
 {
     UNUSED_PARAM(insertionPoint);
 #if ENABLE(SPELLCHECK)
-    if (!(checkingTypes & TextCheckingTypeSpelling))
-        return Vector<TextCheckingResult>();
+    if (!checkingTypes.contains(TextCheckingType::Spelling))
+        return { };
 
     UBreakIterator* textIterator = wordBreakIterator(text);
     if (!textIterator)
-        return Vector<TextCheckingResult>();
+        return { };
 
     // Omit the word separators at the beginning/end of the text to don't unnecessarily
     // involve the client to check spelling for them.
@@ -276,7 +267,7 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocume
             break;
 
         TextCheckingResult misspellingResult;
-        misspellingResult.type = TextCheckingTypeSpelling;
+        misspellingResult.type = TextCheckingType::Spelling;
         misspellingResult.location = offset + misspellingLocation;
         misspellingResult.length = misspellingLength;
         paragraphCheckingResult.append(misspellingResult);
@@ -297,7 +288,7 @@ Vector<TextCheckingResult> TextChecker::checkTextOfParagraph(int64_t spellDocume
 void TextChecker::setSpellCheckingLanguages(const Vector<String>& languages)
 {
 #if ENABLE(SPELLCHECK)
-    enchantTextChecker().updateSpellCheckingLanguages(languages);
+    TextCheckerEnchant::singleton().updateSpellCheckingLanguages(languages);
 #else
     UNUSED_PARAM(languages);
 #endif
@@ -306,7 +297,7 @@ void TextChecker::setSpellCheckingLanguages(const Vector<String>& languages)
 Vector<String> TextChecker::loadedSpellCheckingLanguages()
 {
 #if ENABLE(SPELLCHECK)
-    return enchantTextChecker().loadedSpellCheckingLanguages();
+    return TextCheckerEnchant::singleton().loadedSpellCheckingLanguages();
 #else
     return Vector<String>();
 #endif

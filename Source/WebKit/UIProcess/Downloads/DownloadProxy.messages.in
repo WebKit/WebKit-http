@@ -23,20 +23,11 @@
 messages -> DownloadProxy {
     DidStart(WebCore::ResourceRequest request, AtomicString suggestedFilename)
     DidReceiveAuthenticationChallenge(WebCore::AuthenticationChallenge challenge, uint64_t challengeID)
-#if USE(NETWORK_SESSION)
     WillSendRequest(WebCore::ResourceRequest redirectRequest, WebCore::ResourceResponse redirectResponse))
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    CanAuthenticateAgainstProtectionSpace(WebCore::ProtectionSpace protectionSpace)
-#endif
-#endif
     DecideDestinationWithSuggestedFilenameAsync(WebKit::DownloadID downloadID, String suggestedFilename)
 
     DidReceiveResponse(WebCore::ResourceResponse response)
     DidReceiveData(uint64_t length)
-    ShouldDecodeSourceDataOfMIMEType(String mimeType) -> (bool result)
-#if !USE(NETWORK_SESSION)
-    DecideDestinationWithSuggestedFilename(String filename, String mimeType) -> (String destination, bool allowOverwrite, WebKit::SandboxExtension::Handle sandboxExtensionHandle)
-#endif
     DidCreateDestination(String path)
     DidFinish()
     DidFail(WebCore::ResourceError error, IPC::DataReference resumeData)

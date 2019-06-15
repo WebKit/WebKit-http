@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2012, 2017 Igalia S.L.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,13 +33,18 @@
 #include "WebImage.h"
 #include "WebKitConsoleMessagePrivate.h"
 #include "WebKitContextMenuPrivate.h"
+#include "WebKitDOMDocumentPrivate.h"
+#include "WebKitDOMElementPrivate.h"
+#include "WebKitDOMNodePrivate.h"
 #include "WebKitFramePrivate.h"
 #include "WebKitPrivate.h"
 #include "WebKitScriptWorldPrivate.h"
 #include "WebKitURIRequestPrivate.h"
 #include "WebKitURIResponsePrivate.h"
 #include "WebKitWebEditorPrivate.h"
+#include "WebKitWebHitTestResultPrivate.h"
 #include "WebKitWebPagePrivate.h"
+#include "WebKitWebProcessEnumTypes.h"
 #include "WebProcess.h"
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
@@ -47,18 +52,12 @@
 #include <WebCore/FrameDestructionObserver.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
-#include <WebCore/MainFrame.h>
+#include <WebCore/HTMLFormElement.h>
 #include <glib/gi18n-lib.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/glib/WTFGType.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
-
-#if PLATFORM(GTK)
-#include "WebKitDOMDocumentPrivate.h"
-#include "WebKitDOMElementPrivate.h"
-#include "WebKitWebHitTestResultPrivate.h"
-#endif
 
 using namespace WebKit;
 using namespace WebCore;
@@ -66,13 +65,10 @@ using namespace WebCore;
 enum {
     DOCUMENT_LOADED,
     SEND_REQUEST,
-#if PLATFORM(GTK)
     CONTEXT_MENU,
-#endif
     CONSOLE_MESSAGE_SENT,
-#if PLATFORM(GTK)
     FORM_CONTROLS_ASSOCIATED,
-#endif
+    WILL_SUBMIT_FORM,
 
     LAST_SIGNAL
 };
@@ -332,7 +328,6 @@ public:
 private:
     bool getCustomMenuFromDefaultItems(WebPage&, const WebCore::HitTestResult& hitTestResult, const Vector<WebCore::ContextMenuItem>& defaultMenu, Vector<WebContextMenuItemData>& newMenu, RefPtr<API::Object>& userData) override
     {
-#if PLATFORM(GTK)
         GRefPtr<WebKitContextMenu> contextMenu = adoptGRef(webkitContextMenuCreate(kitItems(defaultMenu)));
         GRefPtr<WebKitWebHitTestResult> webHitTestResult = adoptGRef(webkitWebHitTestResultCreate(hitTestResult));
         gboolean returnValue;
@@ -347,10 +342,6 @@ private:
 
         webkitContextMenuPopulate(contextMenu.get(), newMenu);
         return true;
-#elif PLATFORM(WPE)
-        // FIXME: use a shared WebKitHitTestResult in WPE.
-        return false;
-#endif
     }
 
     WebKitWebPage* m_webPage;
@@ -372,12 +363,21 @@ private:
     WebKitWebPage* m_webPage;
 };
 
-#if PLATFORM(GTK)
 class PageFormClient final : public API::InjectedBundle::FormClient {
 public:
     explicit PageFormClient(WebKitWebPage* webPage)
         : m_webPage(webPage)
     {
+    }
+
+    void willSubmitForm(WebPage*, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values, RefPtr<API::Object>&) override
+    {
+        fireFormSubmissionEvent(WEBKIT_FORM_SUBMISSION_WILL_COMPLETE, formElement, frame, sourceFrame, values);
+    }
+
+    void willSendSubmitEvent(WebPage*, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values) override
+    {
+        fireFormSubmissionEvent(WEBKIT_FORM_SUBMISSION_WILL_SEND_DOM_EVENT, formElement, frame, sourceFrame, values);
     }
 
     void didAssociateFormControls(WebPage*, const Vector<RefPtr<Element>>& elements) override
@@ -392,9 +392,23 @@ public:
     bool shouldNotifyOnFormChanges(WebPage*) override { return true; }
 
 private:
+    void fireFormSubmissionEvent(WebKitFormSubmissionStep step, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values)
+    {
+        WebKitFrame* webkitTargetFrame = webkitFrameGetOrCreate(frame);
+        WebKitFrame* webkitSourceFrame = webkitFrameGetOrCreate(sourceFrame);
+
+        GRefPtr<GPtrArray> textFieldNames = adoptGRef(g_ptr_array_new_full(values.size(), g_free));
+        GRefPtr<GPtrArray> textFieldValues = adoptGRef(g_ptr_array_new_full(values.size(), g_free));
+        for (auto& pair : values) {
+            g_ptr_array_add(textFieldNames.get(), g_strdup(pair.first.utf8().data()));
+            g_ptr_array_add(textFieldValues.get(), g_strdup(pair.second.utf8().data()));
+        }
+
+        g_signal_emit(m_webPage, signals[WILL_SUBMIT_FORM], 0, WEBKIT_DOM_ELEMENT(WebKit::kit(static_cast<Node*>(formElement))), step, webkitSourceFrame, webkitTargetFrame, textFieldNames.get(), textFieldValues.get());
+    }
+
     WebKitWebPage* m_webPage;
 };
-#endif
 
 static void webkitWebPageGetProperty(GObject* object, guint propId, GValue* value, GParamSpec* paramSpec)
 {
@@ -479,7 +493,6 @@ static void webkit_web_page_class_init(WebKitWebPageClass* klass)
         WEBKIT_TYPE_URI_REQUEST,
         WEBKIT_TYPE_URI_RESPONSE);
 
-#if PLATFORM(GTK)
     /**
      * WebKitWebPage::context-menu:
      * @web_page: the #WebKitWebPage on which the signal is emitted
@@ -509,7 +522,6 @@ static void webkit_web_page_class_init(WebKitWebPageClass* klass)
         G_TYPE_BOOLEAN, 2,
         WEBKIT_TYPE_CONTEXT_MENU,
         WEBKIT_TYPE_WEB_HIT_TEST_RESULT);
-#endif
 
     /**
      * WebKitWebPage::console-message-sent:
@@ -532,7 +544,6 @@ static void webkit_web_page_class_init(WebKitWebPageClass* klass)
         G_TYPE_NONE, 1,
         WEBKIT_TYPE_CONSOLE_MESSAGE | G_SIGNAL_TYPE_STATIC_SCOPE);
 
-#if PLATFORM(GTK)
     /**
      * WebKitWebPage::form-controls-associated:
      * @web_page: the #WebKitWebPage on which the signal is emitted
@@ -559,7 +570,65 @@ static void webkit_web_page_class_init(WebKitWebPageClass* klass)
         g_cclosure_marshal_VOID__BOXED,
         G_TYPE_NONE, 1,
         G_TYPE_PTR_ARRAY);
-#endif
+
+    /**
+     * WebKitWebPage::will-submit-form:
+     * @web_page: the #WebKitWebPage on which the signal is emitted
+     * @form: the #WebKitDOMElement to be submitted, which will always correspond to an HTMLFormElement
+     * @step: a #WebKitFormSubmissionEventType indicating the current
+     * stage of form submission
+     * @source_frame: the #WebKitFrame containing the form to be
+     * submitted
+     * @target_frame: the #WebKitFrame containing the form's target,
+     * which may be the same as @source_frame if no target was specified
+     * @text_field_names: (element-type utf8) (transfer none): names of
+     * the form's text fields
+     * @text_field_values: (element-type utf8) (transfer none): values
+     * of the form's text fields
+     *
+     * This signal is emitted to indicate various points during form
+     * submission. @step indicates the current stage of form submission.
+     *
+     * If this signal is emitted with %WEBKIT_FORM_SUBMISSION_WILL_SEND_DOM_EVENT,
+     * then the DOM submit event is about to be emitted. JavaScript code
+     * may rely on the submit event to detect that the user has clicked
+     * on a submit button, and to possibly cancel the form submission
+     * before %WEBKIT_FORM_SUBMISSION_WILL_COMPLETE. However, beware
+     * that, for historical reasons, the submit event is not emitted at
+     * all if the form submission is triggered by JavaScript. For these
+     * reasons, %WEBKIT_FORM_SUBMISSION_WILL_SEND_DOM_EVENT may not
+     * be used to reliably detect whether a form will be submitted.
+     * Instead, use it to detect if a user has clicked on a form's
+     * submit button even if JavaScript later cancels the form
+     * submission, or to read the values of the form's fields even if
+     * JavaScript later clears certain fields before submitting. This
+     * may be needed, for example, to implement a robust browser
+     * password manager, as some misguided websites may use such
+     * techniques to attempt to thwart password managers.
+     *
+     * If this signal is emitted with %WEBKIT_FORM_SUBMISSION_WILL_COMPLETE,
+     * the form will imminently be submitted. It can no longer be
+     * cancelled. This event always occurs immediately before a form is
+     * submitted to its target, so use this event to reliably detect
+     * when a form is submitted. This event occurs after
+     * %WEBKIT_FORM_SUBMISSION_WILL_SEND_DOM_EVENT if that event is
+     * emitted.
+     *
+     * Since: 2.20
+     */
+    signals[WILL_SUBMIT_FORM] = g_signal_new(
+        "will-submit-form",
+        G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_LAST,
+        0, 0, nullptr,
+        g_cclosure_marshal_generic,
+        G_TYPE_NONE, 6,
+        WEBKIT_DOM_TYPE_ELEMENT,
+        WEBKIT_TYPE_FORM_SUBMISSION_STEP,
+        WEBKIT_TYPE_FRAME,
+        WEBKIT_TYPE_FRAME,
+        G_TYPE_PTR_ARRAY,
+        G_TYPE_PTR_ARRAY);
 }
 
 WebPage* webkitWebPageGetPage(WebKitWebPage *webPage)
@@ -576,15 +645,14 @@ WebKitWebPage* webkitWebPageCreate(WebPage* webPage)
     webPage->setInjectedBundlePageLoaderClient(std::make_unique<PageLoaderClient>(page));
     webPage->setInjectedBundleContextMenuClient(std::make_unique<PageContextMenuClient>(page));
     webPage->setInjectedBundleUIClient(std::make_unique<PageUIClient>(page));
-#if PLATFORM(GTK)
     webPage->setInjectedBundleFormClient(std::make_unique<PageFormClient>(page));
-#endif
 
     return page;
 }
 
 void webkitWebPageDidReceiveMessage(WebKitWebPage* page, const String& messageName, API::Dictionary& message)
 {
+#if PLATFORM(GTK)
     if (messageName == String("GetSnapshot")) {
         SnapshotOptions snapshotOptions = static_cast<SnapshotOptions>(static_cast<API::UInt64*>(message.get("SnapshotOptions"))->value());
         uint64_t callbackID = static_cast<API::UInt64*>(message.get("CallbackID"))->value();
@@ -623,10 +691,10 @@ void webkitWebPageDidReceiveMessage(WebKitWebPage* page, const String& messageNa
         messageReply.set("Snapshot", snapshotImage);
         WebProcess::singleton().injectedBundle()->postMessage("WebPage.DidGetSnapshot", API::Dictionary::create(WTFMove(messageReply)).ptr());
     } else
+#endif
         ASSERT_NOT_REACHED();
 }
 
-#if PLATFORM(GTK)
 /**
  * webkit_web_page_get_dom_document:
  * @web_page: a #WebKitWebPage
@@ -638,15 +706,13 @@ void webkitWebPageDidReceiveMessage(WebKitWebPage* page, const String& messageNa
  */
 WebKitDOMDocument* webkit_web_page_get_dom_document(WebKitWebPage* webPage)
 {
-    g_return_val_if_fail(WEBKIT_IS_WEB_PAGE(webPage), 0);
+    g_return_val_if_fail(WEBKIT_IS_WEB_PAGE(webPage), nullptr);
 
-    MainFrame* coreFrame = webPage->priv->webPage->mainFrame();
-    if (!coreFrame)
-        return 0;
+    if (auto* coreFrame = webPage->priv->webPage->mainFrame())
+        return kit(coreFrame->document());
 
-    return kit(coreFrame->document());
+    return nullptr;
 }
-#endif
 
 /**
  * webkit_web_page_get_id:

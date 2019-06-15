@@ -36,10 +36,13 @@
 #include "PaintInfo.h"
 #include "RenderElement.h"
 #include "RenderIterator.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
 using namespace MathMLNames;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMathMLToken);
 
 RenderMathMLToken::RenderMathMLToken(MathMLTokenElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
@@ -591,7 +594,7 @@ void RenderMathMLToken::paint(PaintInfo& info, const LayoutPoint& paintOffset)
     RenderMathMLBlock::paint(info, paintOffset);
 
     // FIXME: Instead of using DrawGlyph, we may consider using the more general TextPainter so that we can apply mathvariant to strings with an arbitrary number of characters and preserve advanced CSS effects (text-shadow, etc).
-    if (info.context().paintingDisabled() || info.phase != PaintPhaseForeground || style().visibility() != VISIBLE || !m_mathVariantCodePoint)
+    if (info.context().paintingDisabled() || info.phase != PaintPhase::Foreground || style().visibility() != Visibility::Visible || !m_mathVariantCodePoint)
         return;
 
     auto mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
@@ -599,12 +602,12 @@ void RenderMathMLToken::paint(PaintInfo& info, const LayoutPoint& paintOffset)
         return;
 
     GraphicsContextStateSaver stateSaver(info.context());
-    info.context().setFillColor(style().visitedDependentColor(CSSPropertyColor));
+    info.context().setFillColor(style().visitedDependentColorWithColorFilter(CSSPropertyColor));
 
     GlyphBuffer buffer;
     buffer.add(mathVariantGlyph.glyph, mathVariantGlyph.font, mathVariantGlyph.font->widthForGlyph(mathVariantGlyph.glyph));
     LayoutUnit glyphAscent = static_cast<int>(lroundf(-mathVariantGlyph.font->boundsForGlyph(mathVariantGlyph.glyph).y()));
-    info.context().drawGlyphs(style().fontCascade(), *mathVariantGlyph.font, buffer, 0, 1, paintOffset + location() + LayoutPoint(0, glyphAscent));
+    info.context().drawGlyphs(*mathVariantGlyph.font, buffer, 0, 1, paintOffset + location() + LayoutPoint(0, glyphAscent), style().fontCascade().fontDescription().fontSmoothing());
 }
 
 void RenderMathMLToken::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintInfo& paintInfoForChild, bool usePrintRect)

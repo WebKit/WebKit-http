@@ -5,7 +5,7 @@
 esid: sec-%typedarray%.prototype.includes
 description: >
   %TypedArray%.prototype.includes.length is 1.
-info: >
+info: |
   %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] )
 
   17 ECMAScript Standard Built-in Objects:
@@ -20,6 +20,7 @@ info: >
     object has the attributes { [[Writable]]: false, [[Enumerable]]: false,
     [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.prototype.includes.length, 1);

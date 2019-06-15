@@ -27,7 +27,6 @@
 #include "GraphicsContext.h"
 
 #include "COMPtr.h"
-#include "CurrentTime.h"
 #include "DisplayListRecorder.h"
 #include "FloatRoundedRect.h"
 #include "GraphicsContextPlatformPrivateDirect2D.h"
@@ -41,9 +40,9 @@
 
 #pragma warning (disable : 4756)
 
-using namespace std;
 
 namespace WebCore {
+using namespace std;
 
 GraphicsContext::GraphicsContext(HDC hdc, bool hasAlpha)
 {
@@ -267,9 +266,9 @@ void GraphicsContext::drawNativeImage(const COMPtr<ID2D1Bitmap>& image, const Fl
         context->SetTransform(ctm);
 }
 
-void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, bool supportAlphaBlend, bool mayCreateBitmap)
+void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, bool supportAlphaBlend)
 {
-    bool createdBitmap = mayCreateBitmap && (!m_data->m_hdc || isInTransparencyLayer());
+    bool createdBitmap = m_impl || !m_data->m_hdc || isInTransparencyLayer();
     if (!createdBitmap) {
         m_data->restore();
         return;
@@ -317,10 +316,6 @@ void GraphicsContext::drawFocusRing(const Path& path, float width, float offset,
 }
 
 void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
-{
-}
-
-void GraphicsContext::updateDocumentMarkerResources()
 {
 }
 
@@ -1242,7 +1237,7 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     WindRule oldFillRule = fillRule();
     Color oldFillColor = fillColor();
 
-    setFillRule(RULE_EVENODD);
+    setFillRule(WindRule::EvenOdd);
     setFillColor(color);
 
     // fillRectWithRoundedHole() assumes that the edges of rect are clipped out, so we only care about shadows cast around inside the hole.
@@ -1313,7 +1308,7 @@ void GraphicsContext::clipOut(const Path& path)
     boundingRect.appendGeometry(path.platformPath());
 
     COMPtr<ID2D1GeometryGroup> pathToClip;
-    boundingRect.createGeometryWithFillMode(RULE_EVENODD, pathToClip);
+    boundingRect.createGeometryWithFillMode(WindRule::EvenOdd, pathToClip);
 
     m_data->clip(pathToClip.get());
 }
@@ -1882,57 +1877,57 @@ void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, Blen
     D2D1_BLEND_MODE targetBlendMode = D2D1_BLEND_MODE_SCREEN;
     D2D1_COMPOSITE_MODE targetCompositeMode = D2D1_COMPOSITE_MODE_SOURCE_ATOP; // ???
 
-    if (blendMode != BlendModeNormal) {
+    if (blendMode != BlendMode::Normal) {
         switch (blendMode) {
-        case BlendModeMultiply:
+        case BlendMode::Multiply:
             targetBlendMode = D2D1_BLEND_MODE_MULTIPLY;
             break;
-        case BlendModeScreen:
+        case BlendMode::Screen:
             targetBlendMode = D2D1_BLEND_MODE_SCREEN;
             break;
-        case BlendModeOverlay:
+        case BlendMode::Overlay:
             targetBlendMode = D2D1_BLEND_MODE_OVERLAY;
             break;
-        case BlendModeDarken:
+        case BlendMode::Darken:
             targetBlendMode = D2D1_BLEND_MODE_DARKEN;
             break;
-        case BlendModeLighten:
+        case BlendMode::Lighten:
             targetBlendMode = D2D1_BLEND_MODE_LIGHTEN;
             break;
-        case BlendModeColorDodge:
+        case BlendMode::ColorDodge:
             targetBlendMode = D2D1_BLEND_MODE_COLOR_DODGE;
             break;
-        case BlendModeColorBurn:
+        case BlendMode::ColorBurn:
             targetBlendMode = D2D1_BLEND_MODE_COLOR_BURN;
             break;
-        case BlendModeHardLight:
+        case BlendMode::HardLight:
             targetBlendMode = D2D1_BLEND_MODE_HARD_LIGHT;
             break;
-        case BlendModeSoftLight:
+        case BlendMode::SoftLight:
             targetBlendMode = D2D1_BLEND_MODE_SOFT_LIGHT;
             break;
-        case BlendModeDifference:
+        case BlendMode::Difference:
             targetBlendMode = D2D1_BLEND_MODE_DIFFERENCE;
             break;
-        case BlendModeExclusion:
+        case BlendMode::Exclusion:
             targetBlendMode = D2D1_BLEND_MODE_EXCLUSION;
             break;
-        case BlendModeHue:
+        case BlendMode::Hue:
             targetBlendMode = D2D1_BLEND_MODE_HUE;
             break;
-        case BlendModeSaturation:
+        case BlendMode::Saturation:
             targetBlendMode = D2D1_BLEND_MODE_SATURATION;
             break;
-        case BlendModeColor:
+        case BlendMode::Color:
             targetBlendMode = D2D1_BLEND_MODE_COLOR;
             break;
-        case BlendModeLuminosity:
+        case BlendMode::Luminosity:
             targetBlendMode = D2D1_BLEND_MODE_LUMINOSITY;
             break;
-        case BlendModePlusDarker:
+        case BlendMode::PlusDarker:
             targetBlendMode = D2D1_BLEND_MODE_DARKER_COLOR;
             break;
-        case BlendModePlusLighter:
+        case BlendMode::PlusLighter:
             targetBlendMode = D2D1_BLEND_MODE_LIGHTER_COLOR;
             break;
         default:

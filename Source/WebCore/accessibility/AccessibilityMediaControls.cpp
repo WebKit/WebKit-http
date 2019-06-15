@@ -142,15 +142,15 @@ void AccessibilityMediaControl::accessibilityText(Vector<AccessibilityText>& tex
 {
     String description = accessibilityDescription();
     if (!description.isEmpty())
-        textOrder.append(AccessibilityText(description, AlternativeText));
+        textOrder.append(AccessibilityText(description, AccessibilityTextSource::Alternative));
 
     String title = this->title();
     if (!title.isEmpty())
-        textOrder.append(AccessibilityText(title, AlternativeText));
+        textOrder.append(AccessibilityText(title, AccessibilityTextSource::Alternative));
 
     String helptext = helpText();
     if (!helptext.isEmpty())
-        textOrder.append(AccessibilityText(helptext, HelpText));
+        textOrder.append(AccessibilityText(helptext, AccessibilityTextSource::Help));
 }
     
 
@@ -176,7 +176,7 @@ String AccessibilityMediaControl::helpText() const
 
 bool AccessibilityMediaControl::computeAccessibilityIsIgnored() const
 {
-    if (!m_renderer || m_renderer->style().visibility() != VISIBLE || controlType() == MediaTimelineContainer)
+    if (!m_renderer || m_renderer->style().visibility() != Visibility::Visible || controlType() == MediaTimelineContainer)
         return true;
 
     return accessibilityIsIgnoredByDefault();
@@ -197,21 +197,20 @@ AccessibilityRole AccessibilityMediaControl::roleValue() const
     case MediaPauseButton:
     case MediaShowClosedCaptionsButton:
     case MediaHideClosedCaptionsButton:
-        return ButtonRole;
+        return AccessibilityRole::Button;
 
     case MediaStatusDisplay:
-        return StaticTextRole;
+        return AccessibilityRole::StaticText;
 
     case MediaTimelineContainer:
-        return GroupRole;
+        return AccessibilityRole::Group;
 
     default:
         break;
     }
 
-    return UnknownRole;
+    return AccessibilityRole::Unknown;
 }
-
 
 
 //
@@ -303,7 +302,7 @@ Ref<AccessibilityObject> AccessibilityMediaTimeDisplay::create(RenderObject* ren
 
 bool AccessibilityMediaTimeDisplay::computeAccessibilityIsIgnored() const
 {
-    if (!m_renderer || m_renderer->style().visibility() != VISIBLE)
+    if (!m_renderer || m_renderer->style().visibility() != Visibility::Visible)
         return true;
 
     if (!m_renderer->style().width().value())
@@ -328,9 +327,8 @@ String AccessibilityMediaTimeDisplay::stringValue() const
     if (!m_renderer || !m_renderer->node())
         return String();
 
-    MediaControlTimeDisplayElement* element = static_cast<MediaControlTimeDisplayElement*>(m_renderer->node());
-    float time = element->currentValue();
-    return localizedMediaTimeDescription(fabsf(time));
+    float time = static_cast<MediaControlTimeDisplayElement*>(m_renderer->node())->currentValue();
+    return localizedMediaTimeDescription(std::abs(time));
 }
 
 } // namespace WebCore

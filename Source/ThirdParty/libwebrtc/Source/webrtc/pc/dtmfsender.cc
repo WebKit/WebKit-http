@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/pc/dtmfsender.h"
+#include "pc/dtmfsender.h"
 
 #include <ctype.h>
 
 #include <string>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/thread.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/thread.h"
 
 namespace webrtc {
 
@@ -41,11 +41,13 @@ static const char kDtmfValidTones[] = ",0123456789*#ABCDabcd";
 static const char kDtmfTonesTable[] = ",0123456789*#ABCD";
 // The duration cannot be more than 6000ms or less than 40ms. The gap between
 // tones must be at least 50 ms.
+// Source for values: W3C WEBRTC specification.
+// https://w3c.github.io/webrtc-pc/#dom-rtcdtmfsender-insertdtmf
 static const int kDtmfDefaultDurationMs = 100;
 static const int kDtmfMinDurationMs = 40;
 static const int kDtmfMaxDurationMs = 6000;
 static const int kDtmfDefaultGapMs = 50;
-static const int kDtmfMinGapMs = 50;
+static const int kDtmfMinGapMs = 30;
 
 // Get DTMF code from the DTMF event character.
 bool GetDtmfCode(char tone, int* code) {
@@ -60,32 +62,28 @@ bool GetDtmfCode(char tone, int* code) {
 }
 
 rtc::scoped_refptr<DtmfSender> DtmfSender::Create(
-    AudioTrackInterface* track,
     rtc::Thread* signaling_thread,
     DtmfProviderInterface* provider) {
   if (!signaling_thread) {
     return nullptr;
   }
   rtc::scoped_refptr<DtmfSender> dtmf_sender(
-      new rtc::RefCountedObject<DtmfSender>(track, signaling_thread,
-                                                  provider));
+      new rtc::RefCountedObject<DtmfSender>(signaling_thread, provider));
   return dtmf_sender;
 }
 
-DtmfSender::DtmfSender(AudioTrackInterface* track,
-                       rtc::Thread* signaling_thread,
+DtmfSender::DtmfSender(rtc::Thread* signaling_thread,
                        DtmfProviderInterface* provider)
-    : track_(track),
-      observer_(NULL),
+    : observer_(nullptr),
       signaling_thread_(signaling_thread),
       provider_(provider),
       duration_(kDtmfDefaultDurationMs),
       inter_tone_gap_(kDtmfDefaultGapMs) {
-  RTC_DCHECK(signaling_thread_ != NULL);
+  RTC_DCHECK(signaling_thread_);
   // TODO(deadbeef): Once we can use shared_ptr and weak_ptr,
   // do that instead of relying on a "destroyed" signal.
   if (provider_) {
-    RTC_DCHECK(provider_->GetOnDestroyedSignal() != NULL);
+    RTC_DCHECK(provider_->GetOnDestroyedSignal());
     provider_->GetOnDestroyedSignal()->connect(
         this, &DtmfSender::OnProviderDestroyed);
   }
@@ -100,7 +98,7 @@ void DtmfSender::RegisterObserver(DtmfSenderObserverInterface* observer) {
 }
 
 void DtmfSender::UnregisterObserver() {
-  observer_ = NULL;
+  observer_ = nullptr;
 }
 
 bool DtmfSender::CanInsertDtmf() {
@@ -111,22 +109,24 @@ bool DtmfSender::CanInsertDtmf() {
   return provider_->CanInsertDtmf();
 }
 
-bool DtmfSender::InsertDtmf(const std::string& tones, int duration,
+bool DtmfSender::InsertDtmf(const std::string& tones,
+                            int duration,
                             int inter_tone_gap) {
   RTC_DCHECK(signaling_thread_->IsCurrent());
 
-  if (duration > kDtmfMaxDurationMs ||
-      duration < kDtmfMinDurationMs ||
+  if (duration > kDtmfMaxDurationMs || duration < kDtmfMinDurationMs ||
       inter_tone_gap < kDtmfMinGapMs) {
-    LOG(LS_ERROR) << "InsertDtmf is called with invalid duration or tones gap. "
-        << "The duration cannot be more than " << kDtmfMaxDurationMs
-        << "ms or less than " << kDtmfMinDurationMs << "ms. "
-        << "The gap between tones must be at least " << kDtmfMinGapMs << "ms.";
+    RTC_LOG(LS_ERROR)
+        << "InsertDtmf is called with invalid duration or tones gap. "
+           "The duration cannot be more than "
+        << kDtmfMaxDurationMs << "ms or less than " << kDtmfMinDurationMs
+        << "ms. The gap between tones must be at least " << kDtmfMinGapMs
+        << "ms.";
     return false;
   }
 
   if (!CanInsertDtmf()) {
-    LOG(LS_ERROR)
+    RTC_LOG(LS_ERROR)
         << "InsertDtmf is called on DtmfSender that can't send DTMF.";
     return false;
   }
@@ -137,12 +137,8 @@ bool DtmfSender::InsertDtmf(const std::string& tones, int duration,
   // Clear the previous queue.
   signaling_thread_->Clear(this, MSG_DO_INSERT_DTMF);
   // Kick off a new DTMF task queue.
-  signaling_thread_->Post(RTC_FROM_HERE, this, MSG_DO_INSERT_DTMF);
+  signaling_thread_->PostDelayed(RTC_FROM_HERE, 1, this, MSG_DO_INSERT_DTMF);
   return true;
-}
-
-const AudioTrackInterface* DtmfSender::track() const {
-  return track_;
 }
 
 std::string DtmfSender::tones() const {
@@ -200,13 +196,13 @@ void DtmfSender::DoInsertDtmf() {
     tone_gap = kDtmfTwoSecondInMs;
   } else {
     if (!provider_) {
-      LOG(LS_ERROR) << "The DtmfProvider has been destroyed.";
+      RTC_LOG(LS_ERROR) << "The DtmfProvider has been destroyed.";
       return;
     }
     // The provider starts playout of the given tone on the
     // associated RTP media stream, using the appropriate codec.
     if (!provider_->InsertDtmf(code, duration_)) {
-      LOG(LS_ERROR) << "The DtmfProvider can no longer send DTMF.";
+      RTC_LOG(LS_ERROR) << "The DtmfProvider can no longer send DTMF.";
       return;
     }
     // Wait for the number of milliseconds specified by |duration_|.
@@ -227,9 +223,9 @@ void DtmfSender::DoInsertDtmf() {
 }
 
 void DtmfSender::OnProviderDestroyed() {
-  LOG(LS_INFO) << "The Dtmf provider is deleted. Clear the sending queue.";
+  RTC_LOG(LS_INFO) << "The Dtmf provider is deleted. Clear the sending queue.";
   StopSending();
-  provider_ = NULL;
+  provider_ = nullptr;
 }
 
 void DtmfSender::StopSending() {

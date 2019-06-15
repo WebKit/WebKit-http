@@ -34,8 +34,6 @@
 #include "JSCInlines.h"
 #include "JSFunction.h"
 
-using namespace std;
-
 namespace JSC {
 
 const ClassInfo JSModuleEnvironment::s_info = { "JSModuleEnvironment", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSModuleEnvironment) };
@@ -43,8 +41,8 @@ const ClassInfo JSModuleEnvironment::s_info = { "JSModuleEnvironment", &Base::s_
 JSModuleEnvironment* JSModuleEnvironment::create(
     VM& vm, Structure* structure, JSScope* currentScope, SymbolTable* symbolTable, JSValue initialValue, AbstractModuleRecord* moduleRecord)
 {
-    // JSLexicalEnvironment (precisely, JSEnvironmentRecord) has the storage to store the variable slots after the its class storage.
-    // Because the offset of the variable slots are fixed in the JSEnvironmentRecord, inheritting these class and adding new member field is not allowed,
+    // JSLexicalEnvironment has the storage to store the variable slots after the its class storage.
+    // Because the offset of the variable slots are fixed in the JSLexicalEnvironment, inheritting these class and adding new member field is not allowed,
     // the new member will overlap the variable slots.
     // To keep the JSModuleEnvironment compatible to the JSLexicalEnvironment but add the new member to store the AbstractModuleRecord, we additionally allocate
     // the storage after the variable slots.
@@ -83,6 +81,7 @@ bool JSModuleEnvironment::getOwnPropertySlot(JSObject* cell, ExecState* exec, Pr
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSModuleEnvironment* thisObject = jsCast<JSModuleEnvironment*>(cell);
     AbstractModuleRecord::Resolution resolution = thisObject->moduleRecord()->resolveImport(exec, Identifier::fromUid(exec, propertyName.uid()));
+    RETURN_IF_EXCEPTION(scope, false);
     if (resolution.type == AbstractModuleRecord::Resolution::Type::Resolved) {
         // When resolveImport resolves the resolution, the imported module environment must have the binding.
         JSModuleEnvironment* importedModuleEnvironment = resolution.moduleRecord->moduleEnvironment();
@@ -104,7 +103,7 @@ void JSModuleEnvironment::getOwnNonIndexPropertyNames(JSObject* cell, ExecState*
     if (propertyNamesArray.includeStringProperties()) {
         for (const auto& pair : thisObject->moduleRecord()->importEntries()) {
             const AbstractModuleRecord::ImportEntry& importEntry = pair.value;
-            if (!importEntry.isNamespace(exec->vm()))
+            if (importEntry.type == AbstractModuleRecord::ImportEntryType::Single)
                 propertyNamesArray.add(importEntry.localName);
         }
     }
@@ -119,18 +118,24 @@ bool JSModuleEnvironment::put(JSCell* cell, ExecState* exec, PropertyName proper
     JSModuleEnvironment* thisObject = jsCast<JSModuleEnvironment*>(cell);
     // All imported bindings are immutable.
     AbstractModuleRecord::Resolution resolution = thisObject->moduleRecord()->resolveImport(exec, Identifier::fromUid(exec, propertyName.uid()));
+    RETURN_IF_EXCEPTION(scope, false);
     if (resolution.type == AbstractModuleRecord::Resolution::Type::Resolved) {
-        throwTypeError(exec, scope, ASCIILiteral(ReadonlyPropertyWriteError));
+        throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
+    scope.release();
     return Base::put(thisObject, exec, propertyName, value, slot);
 }
 
 bool JSModuleEnvironment::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSModuleEnvironment* thisObject = jsCast<JSModuleEnvironment*>(cell);
     // All imported bindings are immutable.
     AbstractModuleRecord::Resolution resolution = thisObject->moduleRecord()->resolveImport(exec, Identifier::fromUid(exec, propertyName.uid()));
+    RETURN_IF_EXCEPTION(scope, false);
     if (resolution.type == AbstractModuleRecord::Resolution::Type::Resolved)
         return false;
     return Base::deleteProperty(thisObject, exec, propertyName);

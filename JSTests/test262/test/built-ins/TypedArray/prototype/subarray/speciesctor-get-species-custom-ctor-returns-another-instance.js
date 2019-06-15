@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.subarray
 description: >
   Custom @@species constructor may return a totally different TypedArray
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
@@ -32,7 +32,7 @@ info: >
     ...
   4. Return newTypedArray.
 includes: [testTypedArray.js, compareArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

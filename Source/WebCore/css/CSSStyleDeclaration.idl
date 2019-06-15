@@ -19,21 +19,16 @@
  */
 
 [
-    CustomGetOwnPropertyNames,
-    CustomGetOwnPropertySlotAndDescriptor,
-    CustomPut,
     ExportMacro=WEBCORE_EXPORT,
+    DefaultDefineOwnProperty,
     GenerateIsReachable,
     JSCustomHeader,
     JSCustomMarkFunction,
     SkipVTableValidation,
 ] interface CSSStyleDeclaration {
-    [CEReactions, SetterMayThrowException] attribute DOMString cssText;
+    [CEReactions] attribute DOMString cssText;
 
     DOMString getPropertyValue(DOMString propertyName);
-
-    // This method is deprecated, and we would like to drop support for it someday
-    [Custom] DeprecatedCSSOMValue? getPropertyCSSValue(DOMString propertyName);
 
     [CEReactions, MayThrowException] DOMString removeProperty(DOMString propertyName);
     DOMString? getPropertyPriority(DOMString propertyName);
@@ -44,7 +39,19 @@
     getter DOMString item(unsigned long index);
     readonly attribute CSSRule? parentRule;
 
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString cssFloat;
+
     // FIXME: Using "undefined" as default parameter value is wrong.
     DOMString? getPropertyShorthand(optional DOMString propertyName = "undefined");
     boolean isPropertyImplicit(optional DOMString propertyName = "undefined");
+
+    // Use named getters/setters for all support CSS property names. The spec says
+    // these should be normal attributes, but there are too many combinations with
+    // prefixes for this to be practical. If we remove legacy aliases, we should
+    // reconsider this decision.
+    getter (DOMString or double) (DOMString name);
+    [CEReactions, MayThrowException, CallNamedSetterOnlyForSupportedProperties] setter void (DOMString name, [TreatNullAs=EmptyString] DOMString value);
+
+    // This method is deprecated, and we would like to drop support for it someday
+    DeprecatedCSSOMValue? getPropertyCSSValue(DOMString propertyName);
 };

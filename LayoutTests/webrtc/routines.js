@@ -31,8 +31,11 @@ function onCreateSessionDescriptionError(error)
 
 function gotDescription1(desc, options)
 {
-    if (options.observeOffer)
-        options.observeOffer(desc);
+    if (options.observeOffer) {
+        const result = options.observeOffer(desc);
+        if (result)
+            desc = result;
+    }
 
     localConnection.setLocalDescription(desc);
     remoteConnection.setRemoteDescription(desc).then(() => {
@@ -160,4 +163,42 @@ async function doHumAnalysis(stream, expected)
     }
     await context.close();
     return false;
+}
+
+function isVideoBlack(canvas, video, startX, startY, grabbedWidth, grabbedHeight)
+{
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    if (!grabbedHeight) {
+        startX = 0;
+        startY = 0;
+        grabbedWidth = canvas.width;
+        grabbedHeight = canvas.height;
+    }
+
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    imageData = canvas.getContext('2d').getImageData(startX, startY, grabbedWidth, grabbedHeight);
+    data = imageData.data;
+    for (var cptr = 0; cptr < grabbedWidth * grabbedHeight; ++cptr) {
+        // Approximatively black pixels.
+        if (data[4 * cptr] > 30 || data[4 * cptr + 1] > 30 || data[4 * cptr + 2] > 30)
+            return false;
+    }
+    return true;
+}
+
+async function checkVideoBlack(expected, canvas, video, errorMessage, counter)
+{
+    if (isVideoBlack(canvas, video) === expected)
+        return Promise.resolve();
+
+    if (counter > 50) {
+        if (!errorMessage)
+            errorMessage = "checkVideoBlack timed out expecting " + expected;
+        return Promise.reject(errorMessage);
+    }
+
+    await waitFor(50);
+    return checkVideoBlack(expected, canvas, video, errorMessage, ++counter);
 }

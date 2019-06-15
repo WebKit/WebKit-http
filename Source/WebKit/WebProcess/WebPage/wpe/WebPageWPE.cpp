@@ -26,15 +26,14 @@
 #include "config.h"
 #include "WebPage.h"
 
-#include "NotImplemented.h"
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
+#include <WebCore/NotImplemented.h>
 #include <WebCore/Settings.h>
 #include <WebCore/SharedBuffer.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebPage::platformInitialize()
 {
@@ -49,45 +48,16 @@ void WebPage::platformEditorState(Frame&, EditorState&, IncludePostLayoutDataHin
     notImplemented();
 }
 
-void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
-{
-    notImplemented();
-}
-
 bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)
 {
     notImplemented();
     return false;
 }
 
-bool WebPage::platformHasLocalDataForURL(const URL&)
-{
-    notImplemented();
-    return false;
-}
-
-String WebPage::cachedResponseMIMETypeForURL(const URL&)
-{
-    notImplemented();
-    return String();
-}
-
 bool WebPage::platformCanHandleRequest(const ResourceRequest&)
 {
     notImplemented();
     return false;
-}
-
-String WebPage::cachedSuggestedFilenameForURL(const URL&)
-{
-    notImplemented();
-    return String();
-}
-
-RefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
-{
-    notImplemented();
-    return nullptr;
 }
 
 String WebPage::platformUserAgent(const URL&) const

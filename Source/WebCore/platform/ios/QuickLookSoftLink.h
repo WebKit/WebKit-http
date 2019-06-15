@@ -24,7 +24,7 @@
 
 #if USE(QUICK_LOOK)
 
-#include "QuickLookSPI.h"
+#include <pal/spi/ios/QuickLookSPI.h>
 #include <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_FOR_HEADER(WebCore, QuickLook)
@@ -37,8 +37,5 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, QuickLook, QLTypeCopyBestMimeTypeForURLAn
 #define QLTypeCopyBestMimeTypeForURLAndMimeType softLink_QuickLook_QLTypeCopyBestMimeTypeForURLAndMimeType
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, QuickLook, QLTypeCopyUTIForURLAndMimeType, NSString *, (NSURL *url, NSString *mimeType), (url, mimeType))
 #define QLTypeCopyUTIForURLAndMimeType softLink_QuickLook_QLTypeCopyUTIForURLAndMimeType
-
-SOFT_LINK_POINTER_FOR_HEADER(WebCore, QuickLook, QLPreviewScheme, NSString *)
-#define QLPreviewScheme get_QuickLook_QLPreviewScheme()
 
 #endif // USE(QUICK_LOOK)

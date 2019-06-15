@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.copywithin
-es6id: 22.2.3.5
 description: >
   Unreachable abrupt from Get(O, "length") as [[ArrayLength]] is returned.
-info: >
+info: |
   22.2.3.5 %TypedArray%.prototype.copyWithin (target, start [ , end ] )
 
   %TypedArray%.prototype.copyWithin is a distinct function that implements the
@@ -23,6 +22,7 @@ info: >
   2. Let len be ? ToLength(? Get(O, "length")).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 Object.defineProperty(TypedArray.prototype, "length", {

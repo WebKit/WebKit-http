@@ -3,9 +3,10 @@
 /*---
 esid: sec-%typedarray%.prototype.slice
 description: -0 values on start and end
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

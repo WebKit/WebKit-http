@@ -29,19 +29,20 @@
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 
 #import "Logging.h"
-#import <WebCore/AVFoundationSPI.h>
-#import <WebCore/AVKitSPI.h>
 #import <WebCore/FloatRect.h>
 #import <WebCore/MediaPlaybackTargetMac.h>
 #import <objc/runtime.h>
+#import <pal/cf/CoreMediaSoftLink.h>
+#import <pal/spi/cocoa/AVKitSPI.h>
+#import <pal/spi/mac/AVFoundationSPI.h>
 #import <wtf/MainThread.h>
-#import <wtf/SoftLinking.h>
 
-typedef AVOutputContext AVOutputContextType;
-typedef AVOutputDeviceMenuController AVOutputDeviceMenuControllerType;
+typedef AVOutputContext AVOutputContextWKType;
+typedef AVOutputDeviceMenuController AVOutputDeviceMenuControllerWKType;
 
+
+SOFTLINK_AVKIT_FRAMEWORK()
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVKit)
 
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVOutputContext)
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVOutputDeviceMenuController)
@@ -86,7 +87,7 @@ Ref<MediaPlaybackTarget> MediaPlaybackTargetPickerMac::playbackTarget()
     return WebCore::MediaPlaybackTargetMac::create(context);
 }
 
-AVOutputDeviceMenuControllerType *MediaPlaybackTargetPickerMac::devicePicker()
+AVOutputDeviceMenuControllerWKType *MediaPlaybackTargetPickerMac::devicePicker()
 {
     if (!getAVOutputDeviceMenuControllerClass())
         return nullptr;
@@ -94,7 +95,7 @@ AVOutputDeviceMenuControllerType *MediaPlaybackTargetPickerMac::devicePicker()
     if (!m_outputDeviceMenuController) {
         LOG(Media, "MediaPlaybackTargetPickerMac::devicePicker - allocating picker");
 
-        RetainPtr<AVOutputContextType> context = adoptNS([allocAVOutputContextInstance() init]);
+        RetainPtr<AVOutputContextWKType> context = adoptNS([allocAVOutputContextInstance() init]);
         m_outputDeviceMenuController = adoptNS([allocAVOutputDeviceMenuControllerInstance() initWithOutputContext:context.get()]);
 
         [m_outputDeviceMenuController.get() addObserver:m_outputDeviceMenuControllerDelegate.get() forKeyPath:externalOutputDeviceAvailableKeyName options:NSKeyValueObservingOptionNew context:nullptr];
@@ -109,7 +110,7 @@ AVOutputDeviceMenuControllerType *MediaPlaybackTargetPickerMac::devicePicker()
     return m_outputDeviceMenuController.get();
 }
 
-void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& location, bool checkActiveRoute)
+void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& location, bool checkActiveRoute, bool useDarkAppearance)
 {
     if (!client() || m_showingMenu)
         return;
@@ -118,7 +119,7 @@ void MediaPlaybackTargetPickerMac::showPlaybackTargetPicker(const FloatRect& loc
 
     m_showingMenu = true;
 
-    if ([devicePicker() showMenuForRect:location appearanceName:NSAppearanceNameVibrantLight allowReselectionOfSelectedOutputDevice:!checkActiveRoute]) {
+    if ([devicePicker() showMenuForRect:location appearanceName:(useDarkAppearance ? NSAppearanceNameVibrantDark : NSAppearanceNameVibrantLight) allowReselectionOfSelectedOutputDevice:!checkActiveRoute]) {
         if (!checkActiveRoute)
             currentDeviceDidChange();
     }

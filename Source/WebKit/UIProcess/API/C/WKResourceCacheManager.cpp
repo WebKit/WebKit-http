@@ -40,12 +40,10 @@ WKTypeID WKResourceCacheManagerGetTypeID()
 
 static OptionSet<WebsiteDataType> toWebsiteDataTypes(WKResourceCachesToClear cachesToClear)
 {
-    OptionSet<WebsiteDataType> websiteDataTypes;
-
-    websiteDataTypes |= WebsiteDataType::MemoryCache;
+    OptionSet<WebsiteDataType> websiteDataTypes { WebsiteDataType::MemoryCache };
 
     if (cachesToClear == WKResourceCachesToClearAll)
-        websiteDataTypes |= WebsiteDataType::DiskCache;
+        websiteDataTypes.add(WebsiteDataType::DiskCache);
 
     return websiteDataTypes;
 }
@@ -72,14 +70,14 @@ void WKResourceCacheManagerClearCacheForOrigin(WKResourceCacheManagerRef cacheMa
 
     {
         WebsiteDataRecord dataRecord;
-        dataRecord.add(WebsiteDataType::MemoryCache, WebCore::SecurityOriginData::fromSecurityOrigin(toImpl(origin)->securityOrigin()));
+        dataRecord.add(WebsiteDataType::MemoryCache, toImpl(origin)->securityOrigin().data());
 
         dataRecords.append(dataRecord);
     }
 
     if (cachesToClear == WKResourceCachesToClearAll) {
         WebsiteDataRecord dataRecord;
-        dataRecord.add(WebsiteDataType::DiskCache, WebCore::SecurityOriginData::fromSecurityOrigin(toImpl(origin)->securityOrigin()));
+        dataRecord.add(WebsiteDataType::DiskCache, toImpl(origin)->securityOrigin().data());
 
         dataRecords.append(dataRecord);
     }
@@ -90,5 +88,5 @@ void WKResourceCacheManagerClearCacheForOrigin(WKResourceCacheManagerRef cacheMa
 void WKResourceCacheManagerClearCacheForAllOrigins(WKResourceCacheManagerRef cacheManager, WKResourceCachesToClear cachesToClear)
 {
     auto& websiteDataStore = toImpl(reinterpret_cast<WKWebsiteDataStoreRef>(cacheManager))->websiteDataStore();
-    websiteDataStore.removeData(toWebsiteDataTypes(cachesToClear), std::chrono::system_clock::time_point::min(), [] { });
+    websiteDataStore.removeData(toWebsiteDataTypes(cachesToClear), -WallTime::infinity(), [] { });
 }

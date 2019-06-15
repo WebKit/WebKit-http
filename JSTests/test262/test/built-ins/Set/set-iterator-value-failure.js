@@ -12,10 +12,12 @@ description: >
       ...
       d. Let nextValue be IteratorValue(next).
       e. ReturnIfAbrupt(nextValue).
+features: [Symbol.iterator]
 ---*/
 
 var count = 0;
 var iterable = {};
+
 function MyError() {}
 iterable[Symbol.iterator] = function() {
   return {

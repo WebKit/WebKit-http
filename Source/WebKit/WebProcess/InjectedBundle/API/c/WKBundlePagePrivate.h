@@ -72,7 +72,7 @@ WK_EXPORT bool WKBundlePageIsTrackingRepaints(WKBundlePageRef page);
 WK_EXPORT void WKBundlePageResetTrackedRepaints(WKBundlePageRef page);
 WK_EXPORT WKArrayRef WKBundlePageCopyTrackedRepaintRects(WKBundlePageRef page);
 
-WK_EXPORT void WKBundlePageSetComposition(WKBundlePageRef page, WKStringRef text, int from, int length);
+WK_EXPORT void WKBundlePageSetComposition(WKBundlePageRef page, WKStringRef text, int from, int length, bool suppressUnderline);
 WK_EXPORT bool WKBundlePageHasComposition(WKBundlePageRef page);
 WK_EXPORT void WKBundlePageConfirmComposition(WKBundlePageRef page);
 WK_EXPORT void WKBundlePageConfirmCompositionWithText(WKBundlePageRef page, WKStringRef text);
@@ -119,6 +119,16 @@ typedef uint32_t WKEventThrottlingBehavior;
 
 // Passing null in the second parameter clears the override.
 WK_EXPORT void WKBundlePageSetEventThrottlingBehaviorOverride(WKBundlePageRef, WKEventThrottlingBehavior*);
+
+enum {
+    kWKCompositingPolicyNormal = 0,
+    kWKCompositingPolicyConservative
+};
+
+typedef uint32_t WKCompositingPolicy;
+
+// Passing null in the second parameter clears the override.
+WK_EXPORT void WKBundlePageSetCompositingPolicyOverride(WKBundlePageRef, WKCompositingPolicy*);
 
 #if TARGET_OS_IPHONE
 WK_EXPORT void WKBundlePageSetUseTestingViewportConfiguration(WKBundlePageRef, bool);

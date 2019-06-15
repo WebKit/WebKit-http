@@ -33,9 +33,8 @@
 #include <wtf/text/StringConcatenate.h>
 #include <wtf/text/WTFString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 typedef HashMap<DOMWrapperWorld*, InjectedBundleScriptWorld*> WorldMap;
 
@@ -48,7 +47,7 @@ static WorldMap& allWorlds()
 static String uniqueWorldName()
 {
     static uint64_t uniqueWorldNameNumber = 0;
-    return makeString(ASCIILiteral("UniqueWorld_"), String::number(uniqueWorldNameNumber++));
+    return makeString("UniqueWorld_"_s, String::number(uniqueWorldNameNumber++));
 }
 
 Ref<InjectedBundleScriptWorld> InjectedBundleScriptWorld::create()
@@ -70,6 +69,15 @@ Ref<InjectedBundleScriptWorld> InjectedBundleScriptWorld::getOrCreate(DOMWrapper
         return *existingWorld;
 
     return adoptRef(*new InjectedBundleScriptWorld(world, uniqueWorldName()));
+}
+
+InjectedBundleScriptWorld* InjectedBundleScriptWorld::find(const String& name)
+{
+    for (auto* world : allWorlds().values()) {
+        if (world->name() == name)
+            return world;
+    }
+    return nullptr;
 }
 
 InjectedBundleScriptWorld& InjectedBundleScriptWorld::normalWorld()
@@ -110,6 +118,11 @@ void InjectedBundleScriptWorld::clearWrappers()
 void InjectedBundleScriptWorld::makeAllShadowRootsOpen()
 {
     m_world->setShadowRootIsAlwaysOpen();
+}
+
+void InjectedBundleScriptWorld::disableOverrideBuiltinsBehavior()
+{
+    m_world->disableOverrideBuiltinsBehavior();
 }
 
 } // namespace WebKit

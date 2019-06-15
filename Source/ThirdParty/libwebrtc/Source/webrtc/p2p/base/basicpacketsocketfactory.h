@@ -8,11 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_BASICPACKETSOCKETFACTORY_H_
-#define WEBRTC_P2P_BASE_BASICPACKETSOCKETFACTORY_H_
+#ifndef P2P_BASE_BASICPACKETSOCKETFACTORY_H_
+#define P2P_BASE_BASICPACKETSOCKETFACTORY_H_
 
-#include "webrtc/base/export.h"
-#include "webrtc/p2p/base/packetsocketfactory.h"
+#include <string>
+
+#include "p2p/base/packetsocketfactory.h"
 
 namespace rtc {
 
@@ -20,7 +21,7 @@ class AsyncSocket;
 class SocketFactory;
 class Thread;
 
-class WEBRTC_DYLIB_EXPORT BasicPacketSocketFactory : public PacketSocketFactory {
+class BasicPacketSocketFactory : public PacketSocketFactory {
  public:
   BasicPacketSocketFactory();
   explicit BasicPacketSocketFactory(Thread* thread);
@@ -39,6 +40,12 @@ class WEBRTC_DYLIB_EXPORT BasicPacketSocketFactory : public PacketSocketFactory 
                                            const ProxyInfo& proxy_info,
                                            const std::string& user_agent,
                                            int opts) override;
+  AsyncPacketSocket* CreateClientTcpSocket(
+      const SocketAddress& local_address,
+      const SocketAddress& remote_address,
+      const ProxyInfo& proxy_info,
+      const std::string& user_agent,
+      const PacketSocketTcpOptions& tcp_options) override;
 
   AsyncResolverInterface* CreateAsyncResolver() override;
 
@@ -56,4 +63,4 @@ class WEBRTC_DYLIB_EXPORT BasicPacketSocketFactory : public PacketSocketFactory 
 
 }  // namespace rtc
 
-#endif  // WEBRTC_P2P_BASE_BASICPACKETSOCKETFACTORY_H_
+#endif  // P2P_BASE_BASICPACKETSOCKETFACTORY_H_

@@ -3,12 +3,13 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Subarray result does not import own property
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
   17. Return ? TypedArraySpeciesCreate(O, argumentsList).
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

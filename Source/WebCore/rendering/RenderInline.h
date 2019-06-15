@@ -29,14 +29,13 @@
 namespace WebCore {
 
 class Position;
-class RenderRegion;
+class RenderFragmentContainer;
 
 class RenderInline : public RenderBoxModelObject {
+    WTF_MAKE_ISO_ALLOCATED(RenderInline);
 public:
     RenderInline(Element&, RenderStyle&&);
     RenderInline(Document&, RenderStyle&&);
-
-    void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
 
     LayoutUnit marginLeft() const final;
     LayoutUnit marginRight() const final;
@@ -59,7 +58,7 @@ public:
 
     WEBCORE_EXPORT IntRect linesBoundingBox() const;
     LayoutRect linesVisualOverflowBoundingBox() const;
-    LayoutRect linesVisualOverflowBoundingBoxInRegion(const RenderRegion*) const;
+    LayoutRect linesVisualOverflowBoundingBoxInFragment(const RenderFragmentContainer*) const;
 
     InlineFlowBox* createAndAppendInlineFlowBox();
 
@@ -78,18 +77,12 @@ public:
     void absoluteQuadsForSelection(Vector<FloatQuad>& quads) const override;
 #endif
 
-    RenderBoxModelObject* virtualContinuation() const final { return continuation(); }
-    RenderInline* inlineElementContinuation() const;
-
     void updateDragState(bool dragOn) final;
     
     LayoutSize offsetForInFlowPositionedInline(const RenderBox* child) const;
 
     void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) final;
     void paintOutline(PaintInfo&, const LayoutPoint&);
-
-    using RenderBoxModelObject::continuation;
-    using RenderBoxModelObject::setContinuation;
 
     bool alwaysCreateLineBoxes() const { return renderInlineAlwaysCreatesLineBoxes(); }
     void setAlwaysCreateLineBoxes() { setRenderInlineAlwaysCreatesLineBoxes(true); }
@@ -121,14 +114,6 @@ private:
     template<typename GeneratorContext>
     void generateCulledLineBoxRects(GeneratorContext& yield, const RenderInline* container) const;
 
-    void addChildToContinuation(RenderObject* newChild, RenderObject* beforeChild);
-    void addChildIgnoringContinuation(RenderObject* newChild, RenderObject* beforeChild = nullptr) final;
-
-    void splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock, RenderBlock* middleBlock,
-                      RenderObject* beforeChild, RenderBoxModelObject* oldCont);
-    void splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox,
-                   RenderObject* newChild, RenderBoxModelObject* oldCont);
-
     void layout() final { ASSERT_NOT_REACHED(); } // Do nothing for layout()
 
     void paint(PaintInfo&, const LayoutPoint&) final;
@@ -149,7 +134,7 @@ private:
     void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
     const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
 
-    VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) final;
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) final;
 
     LayoutRect frameRectForStickyPositioning() const final { return linesBoundingBox(); }
 
@@ -160,8 +145,6 @@ private:
     LayoutUnit lineHeight(bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const final;
     int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const final;
     
-    void childBecameNonInline(RenderElement&) final;
-
     void updateHitTestResult(HitTestResult&, const LayoutPoint&) final;
 
     void imageChanged(WrappedImagePtr, const IntRect* = 0) final;
@@ -169,11 +152,8 @@ private:
 #if ENABLE(DASHBOARD_SUPPORT)
     void addAnnotatedRegions(Vector<AnnotatedRegionValue>&) final;
 #endif
-    
-    RenderPtr<RenderInline> clone() const;
 
     void paintOutlineForLine(GraphicsContext&, const LayoutPoint&, const LayoutRect& prevLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color&);
-    RenderBoxModelObject* continuationBefore(RenderObject* beforeChild);
 
     bool willChangeCreatesStackingContext() const
     {

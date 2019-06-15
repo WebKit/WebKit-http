@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2010, 2013, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,13 +49,50 @@ void ExecutableBase::destroy(JSCell* cell)
     static_cast<ExecutableBase*>(cell)->ExecutableBase::~ExecutableBase();
 }
 
+bool ExecutableBase::hasClearableCode() const
+{
+    VM& vm = *this->vm();
+
+#if ENABLE(JIT)
+    if (m_jitCodeForCall
+        || m_jitCodeForConstruct
+        || m_jitCodeForCallWithArityCheck
+        || m_jitCodeForConstructWithArityCheck)
+        return true;
+#endif
+
+    if (structure(vm)->classInfo() == FunctionExecutable::info()) {
+        auto* executable = static_cast<const FunctionExecutable*>(this);
+        if (executable->m_codeBlockForCall || executable->m_codeBlockForConstruct)
+            return true;
+
+    } else if (structure(vm)->classInfo() == EvalExecutable::info()) {
+        auto* executable = static_cast<const EvalExecutable*>(this);
+        if (executable->m_evalCodeBlock || executable->m_unlinkedEvalCodeBlock)
+            return true;
+
+    } else if (structure(vm)->classInfo() == ProgramExecutable::info()) {
+        auto* executable = static_cast<const ProgramExecutable*>(this);
+        if (executable->m_programCodeBlock || executable->m_unlinkedProgramCodeBlock)
+            return true;
+
+    } else if (structure(vm)->classInfo() == ModuleProgramExecutable::info()) {
+        auto* executable = static_cast<const ModuleProgramExecutable*>(this);
+        if (executable->m_moduleProgramCodeBlock
+            || executable->m_unlinkedModuleProgramCodeBlock
+            || executable->m_moduleEnvironmentSymbolTable)
+            return true;
+    }
+    return false;
+}
+
 void ExecutableBase::clearCode()
 {
 #if ENABLE(JIT)
     m_jitCodeForCall = nullptr;
     m_jitCodeForConstruct = nullptr;
-    m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr();
-    m_jitCodeForConstructWithArityCheck = MacroAssemblerCodePtr();
+    m_jitCodeForCallWithArityCheck = MacroAssemblerCodePtr<JSEntryPtrTag>();
+    m_jitCodeForConstructWithArityCheck = MacroAssemblerCodePtr<JSEntryPtrTag>();
 #endif
     m_numParametersForCall = NUM_PARAMETERS_NOT_COMPILED;
     m_numParametersForConstruct = NUM_PARAMETERS_NOT_COMPILED;

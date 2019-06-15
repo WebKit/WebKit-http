@@ -26,7 +26,7 @@
 
 #include "Filter.h"
 #include "GraphicsContext.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -42,19 +42,9 @@ Ref<FEOffset> FEOffset::create(Filter& filter, float dx, float dy)
     return adoptRef(*new FEOffset(filter, dx, dy));
 }
 
-float FEOffset::dx() const
-{
-    return m_dx;
-}
-
 void FEOffset::setDx(float dx)
 {
     m_dx = dx;
-}
-
-float FEOffset::dy() const
-{
-    return m_dy;
 }
 
 void FEOffset::setDy(float dy)
@@ -66,7 +56,7 @@ void FEOffset::determineAbsolutePaintRect()
 {
     FloatRect paintRect = inputEffect(0)->absolutePaintRect();
     Filter& filter = this->filter();
-    paintRect.move(filter.applyHorizontalScale(m_dx), filter.applyVerticalScale(m_dy));
+    paintRect.move(filter.scaledByFilterResolution({ m_dx, m_dy }));
     if (clipsToBounds())
         paintRect.intersect(maxEffectRect());
     else
@@ -79,7 +69,7 @@ void FEOffset::platformApplySoftware()
     FilterEffect* in = inputEffect(0);
 
     ImageBuffer* resultImage = createImageBufferResult();
-    ImageBuffer* inBuffer = in->asImageBuffer();
+    ImageBuffer* inBuffer = in->imageBufferResult();
     if (!resultImage || !inBuffer)
         return;
 
@@ -87,21 +77,18 @@ void FEOffset::platformApplySoftware()
 
     FloatRect drawingRegion = drawingRegionOfInputImage(in->absolutePaintRect());
     Filter& filter = this->filter();
-    drawingRegion.move(filter.applyHorizontalScale(m_dx), filter.applyVerticalScale(m_dy));
+    drawingRegion.move(filter.scaledByFilterResolution({ m_dx, m_dy }));
     resultImage->context().drawImageBuffer(*inBuffer, drawingRegion);
 }
 
-void FEOffset::dump()
+TextStream& FEOffset::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FEOffset::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feOffset"; 
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feOffset";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << " dx=\"" << dx() << "\" dy=\"" << dy() << "\"]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
     return ts;
 }
 

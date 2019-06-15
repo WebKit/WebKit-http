@@ -1,10 +1,10 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.28
+esid: sec-%typedarray%.prototype.tostring
 description: >
   "toString" property of TypedArrayPrototype
-info: >
+info: |
   22.2.3.28 %TypedArray%.prototype.toString ( )
 
   The initial value of the %TypedArray%.prototype.toString data property is the
@@ -15,6 +15,7 @@ info: >
   and in Annex B.2 has the attributes { [[Writable]]: true,
   [[Enumerable]]: false, [[Configurable]]: true } unless otherwise specified.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

@@ -6,8 +6,13 @@ description: >
     It is a Syntax Error if the ExportedNames of ModuleItemList contains any
     duplicate entries.
 flags: [module]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
+features: [generators]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 export function f() {}
 export function *f() {}

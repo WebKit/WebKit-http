@@ -8,13 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_INCLUDE_CONFIG_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_INCLUDE_CONFIG_H_
+#ifndef MODULES_AUDIO_PROCESSING_INCLUDE_CONFIG_H_
+#define MODULES_AUDIO_PROCESSING_INCLUDE_CONFIG_H_
 
 #include <map>
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/base/constructormagic.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -31,11 +30,11 @@ enum class ConfigOptionID {
   kDelayAgnostic,
   kExperimentalAgc,
   kExperimentalNs,
-  kBeamforming,
+  kBeamforming,  // Deprecated
   kIntelligibility,
   kEchoCanceller3,  // Deprecated
   kAecRefinedAdaptiveFilter,
-  kLevelControl
+  kLevelControl  // Deprecated
 };
 
 // Class Config is designed to ease passing a set of options across webrtc code.
@@ -65,11 +64,13 @@ class Config {
   // Returned references are owned by this.
   //
   // Requires std::is_default_constructible<T>
-  template<typename T> const T& Get() const;
+  template <typename T>
+  const T& Get() const;
 
   // Set the option, deleting any previous instance of the same.
   // This instance gets ownership of the newly set value.
-  template<typename T> void Set(T* value);
+  template <typename T>
+  void Set(T* value);
 
   Config();
   ~Config();
@@ -79,16 +80,14 @@ class Config {
     virtual ~BaseOption() {}
   };
 
-  template<typename T>
+  template <typename T>
   struct Option : BaseOption {
-    explicit Option(T* v): value(v) {}
-    ~Option() {
-      delete value;
-    }
+    explicit Option(T* v) : value(v) {}
+    ~Option() { delete value; }
     T* value;
   };
 
-  template<typename T>
+  template <typename T>
   static ConfigOptionID identifier() {
     return T::identifier;
   }
@@ -96,10 +95,10 @@ class Config {
   // Used to instantiate a default constructed object that doesn't needs to be
   // owned. This allows Get<T> to be implemented without requiring explicitly
   // locks.
-  template<typename T>
+  template <typename T>
   static const T& default_value() {
-    RTC_DEFINE_STATIC_LOCAL(const T, def, ());
-    return def;
+    static const T* const def = new T();
+    return *def;
   }
 
   typedef std::map<ConfigOptionID, BaseOption*> OptionMap;
@@ -110,7 +109,7 @@ class Config {
   void operator=(const Config&);
 };
 
-template<typename T>
+template <typename T>
 const T& Config::Get() const {
   OptionMap::const_iterator it = options_.find(identifier<T>());
   if (it != options_.end()) {
@@ -122,7 +121,7 @@ const T& Config::Get() const {
   return default_value<T>();
 }
 
-template<typename T>
+template <typename T>
 void Config::Set(T* value) {
   BaseOption*& it = options_[identifier<T>()];
   delete it;
@@ -130,4 +129,4 @@ void Config::Set(T* value) {
 }
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_INCLUDE_CONFIG_H_
+#endif  // MODULES_AUDIO_PROCESSING_INCLUDE_CONFIG_H_

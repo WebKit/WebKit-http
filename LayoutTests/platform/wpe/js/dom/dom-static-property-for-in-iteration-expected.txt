@@ -44,7 +44,7 @@ PASS a["innerText"] is nerget
 PASS a["contentEditable"] is inherit
 PASS a["isContentEditable"] is false
 PASS a["offsetParent"] is [object HTMLBodyElement]
-PASS a["offsetTop"] is 697
+PASS a["offsetTop"] is 699
 PASS a["offsetLeft"] is 8
 PASS a["offsetWidth"] is 39
 PASS a["offsetHeight"] is 17
@@ -110,9 +110,13 @@ PASS a["onunhandledrejection"] is null
 PASS a["onvolumechange"] is null
 PASS a["onwaiting"] is null
 PASS a["ontransitionend"] is null
+PASS a["ontransitionrun"] is null
+PASS a["ontransitionstart"] is null
+PASS a["ontransitioncancel"] is null
 PASS a["onanimationend"] is null
 PASS a["onanimationiteration"] is null
 PASS a["onanimationstart"] is null
+PASS a["onanimationcancel"] is null
 PASS a["namespaceURI"] is http://www.w3.org/1999/xhtml
 PASS a["prefix"] is null
 PASS a["localName"] is a
@@ -133,7 +137,15 @@ PASS a["clientWidth"] is 0
 PASS a["clientHeight"] is 0
 PASS a["innerHTML"] is nerget
 PASS a["outerHTML"] is <a id="foo" href="bar">nerget</a>
-PASS a["webkitRegionOverset"] is undefined
+PASS a["onaccessiblecontextmenu"] is null
+PASS a["onaccessibleclick"] is null
+PASS a["onaccessibledecrement"] is null
+PASS a["onaccessibledismiss"] is null
+PASS a["onaccessiblefocus"] is null
+PASS a["onaccessibleincrement"] is null
+PASS a["onaccessiblescrollintoview"] is null
+PASS a["onaccessiblesetvalue"] is null
+PASS a["onaccessibleselect"] is null
 PASS a["oncopy"] is null
 PASS a["oncut"] is null
 PASS a["onpaste"] is null

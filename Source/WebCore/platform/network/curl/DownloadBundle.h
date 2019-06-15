@@ -23,11 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DownloadBundle_h
-#define DownloadBundle_h
+#pragma once
 
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 namespace DownloadBundle {
@@ -38,5 +36,3 @@ const String& fileExtension();
 
 } // namespace DownloadBundle
 } // namespace WebCore
-
-#endif // DownloadBundle_h

@@ -26,9 +26,9 @@
 
 #include "AudioArray.h"
 #include "FFTFrame.h"
+#include <JavaScriptCore/Float32Array.h>
+#include <JavaScriptCore/Uint8Array.h>
 #include <memory>
-#include <runtime/Float32Array.h>
-#include <runtime/Uint8Array.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 
@@ -38,6 +38,7 @@ class AudioBus;
 
 class RealtimeAnalyser {
     WTF_MAKE_NONCOPYABLE(RealtimeAnalyser);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     RealtimeAnalyser();
     virtual ~RealtimeAnalyser();

@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "CSSParserMode.h"
+#include "CSSParserContext.h"
 #include "CSSValue.h"
 #include "WritingMode.h"
 #include <wtf/text/WTFString.h>
@@ -71,14 +71,14 @@ public:
     static RefPtr<CSSValue> parseSingleValue(CSSPropertyID, const String&, const CSSParserContext& = strictCSSParserContext());
 
     WEBCORE_EXPORT bool parseDeclaration(MutableStyleProperties&, const String&);
-    static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
+    static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, const Element*);
 
     void parseSelector(const String&, CSSSelectorList&);
 
     RefPtr<CSSValue> parseValueWithVariableReferences(CSSPropertyID, const CSSValue&, const CustomPropertyValueMap& customProperties, TextDirection, WritingMode);
 
     static Color parseColor(const String&, bool strict = false);
-    static Color parseSystemColor(const String&);
+    static Color parseSystemColor(const String&, const CSSParserContext*);
 
 private:
     ParseResult parseValue(MutableStyleProperties&, CSSPropertyID, const String&, bool important);

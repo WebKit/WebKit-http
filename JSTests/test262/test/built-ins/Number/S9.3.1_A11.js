@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The MV of StrUnsignedDecimalLiteral:::. DecimalDigits ExponentPart
     is the MV of DecimalDigits times 10<sup><small>e-n</small></sup>, where n is
     the number of characters in DecimalDigits and e is the MV of ExponentPart
@@ -13,11 +13,11 @@ description: >
 ---*/
 
 // CHECK#1
-if (Number(".12345e6") !== +("12345")*1e1)  {
+if (Number(".12345e6") !== +("12345") * 1e1) {
   $ERROR('#1: Number(".12345e6") === +("12345")*1e1');
 }
 
 // CHECK#2
-if (Number(".12345e-3") !== Number("12345")*1e-8)  {
+if (Number(".12345e-3") !== Number("12345") * 1e-8) {
   $ERROR('#2: Number(".12345e-3") === Number("12345")*1e-8');
 }

@@ -29,8 +29,8 @@
 #include "FloatRect.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
-#include "TextStream.h"
 #include "Theme.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -46,12 +46,12 @@ ImageDrawResult NamedImageGeneratedImage::draw(GraphicsContext& context, const F
     GraphicsContextStateSaver stateSaver(context);
     context.setCompositeOperation(compositeOp, blendMode);
     context.clip(dstRect);
-    context.translate(dstRect.x(), dstRect.y());
+    context.translate(dstRect.location());
     if (dstRect.size() != srcRect.size())
         context.scale(FloatSize(dstRect.width() / srcRect.width(), dstRect.height() / srcRect.height()));
-    context.translate(-srcRect.x(), -srcRect.y());
+    context.translate(-srcRect.location());
 
-    platformTheme()->drawNamedImage(m_name, context, dstRect);
+    Theme::singleton().drawNamedImage(m_name, context, dstRect);
     return ImageDrawResult::DidDraw;
 #else
     UNUSED_PARAM(context);
@@ -71,7 +71,7 @@ void NamedImageGeneratedImage::drawPattern(GraphicsContext& context, const Float
         return;
 
     GraphicsContext& graphicsContext = imageBuffer->context();
-    platformTheme()->drawNamedImage(m_name, graphicsContext, FloatRect(0, 0, size().width(), size().height()));
+    Theme::singleton().drawNamedImage(m_name, graphicsContext, FloatRect(0, 0, size().width(), size().height()));
 
     // Tile the image buffer into the context.
     imageBuffer->drawPattern(context, dstRect, srcRect, patternTransform, phase, spacing, compositeOp, blendMode);

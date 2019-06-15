@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #if ENABLE(DFG_JIT)
 
+#include "DFGAbstractInterpreterClobberState.h"
 #include "DFGAbstractValue.h"
 #include "DFGBranchDirection.h"
 #include "DFGFlowMap.h"
@@ -46,19 +47,141 @@ public:
     
     void createValueForNode(NodeFlowProjection) { }
     
-    AbstractValue& forNode(NodeFlowProjection node)
+    ALWAYS_INLINE AbstractValue& fastForward(AbstractValue& value)
+    {
+        value.fastForwardTo(m_effectEpoch);
+        return value;
+    }
+    
+    ALWAYS_INLINE void fastForwardAndFilterUnproven(AbstractValue& value, SpeculatedType type)
+    {
+        value.fastForwardToAndFilterUnproven(m_effectEpoch, type);
+    }
+    
+    ALWAYS_INLINE AbstractValue& forNodeWithoutFastForward(NodeFlowProjection node)
     {
         return m_abstractValues.at(node);
     }
     
-    AbstractValue& forNode(Edge edge)
+    ALWAYS_INLINE AbstractValue& forNodeWithoutFastForward(Edge edge)
+    {
+        return forNodeWithoutFastForward(edge.node());
+    }
+    
+    ALWAYS_INLINE AbstractValue& forNode(NodeFlowProjection node)
+    {
+        return fastForward(m_abstractValues.at(node));
+    }
+    
+    ALWAYS_INLINE AbstractValue& forNode(Edge edge)
     {
         return forNode(edge.node());
     }
     
-    Operands<AbstractValue>& variables()
+    ALWAYS_INLINE void clearForNode(NodeFlowProjection node)
     {
-        return m_variables;
+        AbstractValue& value = m_abstractValues.at(node);
+        value.clear();
+        value.m_effectEpoch = m_effectEpoch;
+    }
+    
+    ALWAYS_INLINE void clearForNode(Edge edge)
+    {
+        clearForNode(edge.node());
+    }
+    
+    template<typename... Arguments>
+    ALWAYS_INLINE void setForNode(NodeFlowProjection node, Arguments&&... arguments)
+    {
+        AbstractValue& value = m_abstractValues.at(node);
+        value.set(m_graph, std::forward<Arguments>(arguments)...);
+        value.m_effectEpoch = m_effectEpoch;
+    }
+
+    template<typename... Arguments>
+    ALWAYS_INLINE void setForNode(Edge edge, Arguments&&... arguments)
+    {
+        setForNode(edge.node(), std::forward<Arguments>(arguments)...);
+    }
+    
+    template<typename... Arguments>
+    ALWAYS_INLINE void setTypeForNode(NodeFlowProjection node, Arguments&&... arguments)
+    {
+        AbstractValue& value = m_abstractValues.at(node);
+        value.setType(m_graph, std::forward<Arguments>(arguments)...);
+        value.m_effectEpoch = m_effectEpoch;
+    }
+
+    template<typename... Arguments>
+    ALWAYS_INLINE void setTypeForNode(Edge edge, Arguments&&... arguments)
+    {
+        setTypeForNode(edge.node(), std::forward<Arguments>(arguments)...);
+    }
+    
+    template<typename... Arguments>
+    ALWAYS_INLINE void setNonCellTypeForNode(NodeFlowProjection node, Arguments&&... arguments)
+    {
+        AbstractValue& value = m_abstractValues.at(node);
+        value.setNonCellType(std::forward<Arguments>(arguments)...);
+        value.m_effectEpoch = m_effectEpoch;
+    }
+
+    template<typename... Arguments>
+    ALWAYS_INLINE void setNonCellTypeForNode(Edge edge, Arguments&&... arguments)
+    {
+        setNonCellTypeForNode(edge.node(), std::forward<Arguments>(arguments)...);
+    }
+    
+    ALWAYS_INLINE void makeBytecodeTopForNode(NodeFlowProjection node)
+    {
+        AbstractValue& value = m_abstractValues.at(node);
+        value.makeBytecodeTop();
+        value.m_effectEpoch = m_effectEpoch;
+    }
+    
+    ALWAYS_INLINE void makeBytecodeTopForNode(Edge edge)
+    {
+        makeBytecodeTopForNode(edge.node());
+    }
+    
+    ALWAYS_INLINE void makeHeapTopForNode(NodeFlowProjection node)
+    {
+        AbstractValue& value = m_abstractValues.at(node);
+        value.makeHeapTop();
+        value.m_effectEpoch = m_effectEpoch;
+    }
+    
+    ALWAYS_INLINE void makeHeapTopForNode(Edge edge)
+    {
+        makeHeapTopForNode(edge.node());
+    }
+    
+    Operands<AbstractValue>& variablesForDebugging();
+
+    unsigned numberOfArguments() const { return m_variables.numberOfArguments(); }
+    unsigned numberOfLocals() const { return m_variables.numberOfLocals(); }
+    
+    AbstractValue& variableAt(size_t index)
+    {
+        activateVariableIfNecessary(index);
+        return fastForward(m_variables[index]);
+    }
+
+    AbstractValue& operand(int operand)
+    {
+        return variableAt(m_variables.operandIndex(operand));
+    }
+    
+    AbstractValue& operand(VirtualRegister operand) { return this->operand(operand.offset()); }
+    
+    AbstractValue& local(size_t index)
+    {
+        return variableAt(m_variables.localIndex(index));
+    }
+    
+    AbstractValue& argument(size_t index)
+    {
+        return variableAt(m_variables.argumentIndex(index));
     }
     
     // Call this before beginning CFA to initialize the abstract values of
@@ -90,8 +213,13 @@ public:
     // you can safely call beginBasicBlock() on any basic block.
     void reset();
     
+    AbstractInterpreterClobberState clobberState() const { return m_clobberState; }
+    
+    // Would have the last executed node clobbered things had we not found a way to fold it?
+    bool didClobberOrFolded() const { return clobberState() != AbstractInterpreterClobberState::NotClobbered; }
+    
     // Did the last executed node clobber the world?
-    bool didClobber() const { return m_didClobber; }
+    bool didClobber() const { return clobberState() == AbstractInterpreterClobberState::ClobberedStructures; }
     
     // Are structures currently clobbered?
     StructureClobberState structureClobberState() const { return m_structureClobberState; }
@@ -113,8 +241,13 @@ public:
     // MergeToSuccessors.
     bool mergeToSuccessors(BasicBlock*);
     
+    void clobberStructures() { m_effectEpoch.clobber(); }
+    
+    void observeInvalidationPoint() { m_effectEpoch.observeInvalidationPoint(); }
+    
     // Methods intended to be called from AbstractInterpreter.
-    void setDidClobber(bool didClobber) { m_didClobber = didClobber; }
+    void setClobberState(AbstractInterpreterClobberState state) { m_clobberState = state; }
+    void mergeClobberState(AbstractInterpreterClobberState state) { m_clobberState = mergeClobberStates(m_clobberState, state); }
     void setStructureClobberState(StructureClobberState value) { m_structureClobberState = value; }
     void setIsValid(bool isValid) { m_isValid = isValid; }
     void setBranchDirection(BranchDirection branchDirection) { m_branchDirection = branchDirection; }
@@ -126,22 +259,37 @@ public:
     // So, we should probably keep this method.
     void setFoundConstants(bool foundConstants) { m_foundConstants = foundConstants; }
 
-private:
-    void mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node*);
+    void setProofStatus(Edge& edge, ProofStatus status)
+    {
+        edge.setProofStatus(status);
+    }
 
+private:
+    ALWAYS_INLINE void activateVariableIfNecessary(size_t variableIndex)
+    {
+        if (!m_activeVariables[variableIndex])
+            activateVariable(variableIndex);
+    }
+    
+    void activateVariable(size_t variableIndex);
+    void activateAllVariables();
+    
     static bool mergeVariableBetweenBlocks(AbstractValue& destination, AbstractValue& source, Node* destinationNode, Node* sourceNode);
     
     Graph& m_graph;
 
     FlowMap<AbstractValue>& m_abstractValues;
     Operands<AbstractValue> m_variables;
+    FastBitVector m_activeVariables;
     BasicBlock* m_block;
     
     bool m_foundConstants;
     
     bool m_isValid;
-    bool m_didClobber;
+    AbstractInterpreterClobberState m_clobberState;
     StructureClobberState m_structureClobberState;
+    AbstractValueClobberEpoch m_epochAtHead;
+    AbstractValueClobberEpoch m_effectEpoch;
     
     BranchDirection m_branchDirection; // This is only set for blocks that end in Branch and that execute to completion (i.e. m_isValid == true).
 };

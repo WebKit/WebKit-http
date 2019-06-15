@@ -66,8 +66,8 @@
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 
 #include "TestProtocolTypes.h"
-#include <inspector/InspectorFrontendRouter.h>
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 
 namespace Inspector {
 
@@ -121,7 +121,7 @@ private:
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -167,8 +167,8 @@ typedef String ErrorString;
 #include "config.h"
 #include "TestBackendDispatchers.h"
 
-#include <inspector/InspectorFrontendRouter.h>
-#include <inspector/InspectorValues.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+#include <wtf/JSONValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
@@ -218,7 +218,7 @@ namespace Inspector {
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorValues.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -262,7 +262,7 @@ class FrontendRouter;
 #include "config.h"
 #include "TestFrontendDispatchers.h"
 
-#include "InspectorFrontendRouter.h"
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <wtf/text/CString.h>
 
 namespace Inspector {
@@ -304,7 +304,7 @@ namespace Inspector {
 
 #pragma once
 
-#include <inspector/InspectorProtocolTypes.h>
+#include <JavaScriptCore/InspectorProtocolTypes.h>
 #include <wtf/Assertions.h>
 
 namespace Inspector {
@@ -457,7 +457,7 @@ namespace Inspector {
 
 #include "TestProtocolInternal.h"
 #include "TestProtocolTypeConversions.h"
-#include <JavaScriptCore/InspectorValues.h>
+#include <wtf/JSONValues.h>
 
 namespace Inspector {
 
@@ -606,7 +606,7 @@ using namespace Inspector;
 #import "TestProtocolInternal.h"
 
 #import "TestProtocolTypeConversions.h"
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -703,7 +703,7 @@ typedef NS_ENUM(NSInteger, TestProtocolPlatform) {
 #import "TestProtocol.h"
 #import "TestProtocolJSONObjectPrivate.h"
 #import <JavaScriptCore/AugmentableInspectorController.h>
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 
 
@@ -753,13 +753,13 @@ inline String toProtocolString(TestProtocolPlatform value)
 {
     switch(value) {
     case TestProtocolPlatformAll:
-        return ASCIILiteral("all");
+        return "all"_s;
     case TestProtocolPlatformGeneric:
-        return ASCIILiteral("generic");
+        return "generic"_s;
     case TestProtocolPlatformIOS:
-        return ASCIILiteral("ios");
+        return "ios"_s;
     case TestProtocolPlatformMacOS:
-        return ASCIILiteral("macos");
+        return "macos"_s;
     }
 }
 
@@ -876,8 +876,8 @@ using namespace Inspector;
 
 #import "TestProtocolTypeConversions.h"
 #import <WebInspector/RWIProtocolJSONObjectPrivate.h>
-#import <JavaScriptCore/InspectorValues.h>
 #import <wtf/Assertions.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 

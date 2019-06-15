@@ -29,12 +29,12 @@
 #if WK_API_ENABLED
 
 #import "HTTPCookieAcceptPolicy.h"
-#import "WeakObjCPtr.h"
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Cookie.h>
 #import <WebCore/URL.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/HashMap.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/WeakObjCPtr.h>
 
 static NSArray<NSHTTPCookie *> *coreCookiesToNSCookies(const Vector<WebCore::Cookie>& coreCookies)
 {
@@ -56,14 +56,14 @@ public:
 private:
     void cookiesDidChange(API::HTTPCookieStore& cookieStore) final
     {
-        [m_observer.get() cookiesDidChangeInCookieStore:WebKit::wrapper(cookieStore)];
+        [m_observer cookiesDidChangeInCookieStore:wrapper(cookieStore)];
     }
 
-    WebKit::WeakObjCPtr<id<WKHTTPCookieStoreObserver>> m_observer;
+    WeakObjCPtr<id<WKHTTPCookieStoreObserver>> m_observer;
 };
 
 @implementation WKHTTPCookieStore {
-    HashMap<id<WKHTTPCookieStoreObserver>, std::unique_ptr<WKHTTPCookieStoreObserver>> _observers;
+    HashMap<CFTypeRef, std::unique_ptr<WKHTTPCookieStoreObserver>> _observers;
 }
 
 - (void)dealloc
@@ -84,7 +84,7 @@ private:
     });
 }
 
-- (void)setCookie:(NSHTTPCookie *)cookie completionHandler:(void (^)())completionHandler
+- (void)setCookie:(NSHTTPCookie *)cookie completionHandler:(void (^)(void))completionHandler
 {
     _cookieStore->setCookie(cookie, [handler = adoptNS([completionHandler copy])]() {
         auto rawHandler = (void (^)())handler.get();
@@ -94,7 +94,7 @@ private:
 
 }
 
-- (void)deleteCookie:(NSHTTPCookie *)cookie completionHandler:(void (^)())completionHandler
+- (void)deleteCookie:(NSHTTPCookie *)cookie completionHandler:(void (^)(void))completionHandler
 {
     _cookieStore->deleteCookie(cookie, [handler = adoptNS([completionHandler copy])]() {
         auto rawHandler = (void (^)())handler.get();
@@ -105,7 +105,7 @@ private:
 
 - (void)addObserver:(id<WKHTTPCookieStoreObserver>)observer
 {
-    auto result = _observers.add(observer, nullptr);
+    auto result = _observers.add((__bridge CFTypeRef)observer, nullptr);
     if (!result.isNewEntry)
         return;
 
@@ -115,7 +115,7 @@ private:
 
 - (void)removeObserver:(id<WKHTTPCookieStoreObserver>)observer
 {
-    auto result = _observers.take(observer);
+    auto result = _observers.take((__bridge CFTypeRef)observer);
     if (!result)
         return;
 

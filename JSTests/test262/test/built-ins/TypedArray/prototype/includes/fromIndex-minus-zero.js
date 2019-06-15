@@ -4,7 +4,7 @@
 /*---
 esid: sec-%typedarray%.prototype.includes
 description: -0 fromIndex becomes 0
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.includes is a distinct function that implements the
@@ -21,6 +21,7 @@ info: >
   7. Repeat, while k < len
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

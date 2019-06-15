@@ -36,15 +36,15 @@ namespace WebKit {
 
 class NetworkDataTaskSoup final : public NetworkDataTask {
 public:
-    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentials storedCredentials, WebCore::ContentSniffingPolicy shouldContentSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
+    static Ref<NetworkDataTask> create(NetworkSession& session, NetworkDataTaskClient& client, const WebCore::ResourceRequest& request, WebCore::StoredCredentialsPolicy storedCredentialsPolicy, WebCore::ContentSniffingPolicy shouldContentSniff, WebCore::ContentEncodingSniffingPolicy shouldContentEncodingSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect, bool dataTaskIsForMainFrameNavigation)
     {
-        return adoptRef(*new NetworkDataTaskSoup(session, client, request, storedCredentials, shouldContentSniff, shouldClearReferrerOnHTTPSToHTTPRedirect));
+        return adoptRef(*new NetworkDataTaskSoup(session, client, request, storedCredentialsPolicy, shouldContentSniff, shouldContentEncodingSniff, shouldClearReferrerOnHTTPSToHTTPRedirect, dataTaskIsForMainFrameNavigation));
     }
 
     ~NetworkDataTaskSoup();
 
 private:
-    NetworkDataTaskSoup(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials, WebCore::ContentSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
+    NetworkDataTaskSoup(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentialsPolicy, WebCore::ContentSniffingPolicy, WebCore::ContentEncodingSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect, bool dataTaskIsForMainFrameNavigation);
 
     void suspend() override;
     void cancel() override;
@@ -52,7 +52,7 @@ private:
     void invalidateAndCancel() override;
     NetworkDataTask::State state() const override;
 
-    void setPendingDownloadLocation(const String&, const SandboxExtension::Handle&, bool /*allowOverwrite*/) override;
+    void setPendingDownloadLocation(const String&, SandboxExtension::Handle&&, bool /*allowOverwrite*/) override;
     String suggestedFilename() const override;
 
     void timeoutFired();
@@ -66,8 +66,8 @@ private:
     void dispatchDidReceiveResponse();
     void dispatchDidCompleteWithError(const WebCore::ResourceError&);
 
-    static void tlsErrorsChangedCallback(SoupMessage*, GParamSpec*, NetworkDataTaskSoup*);
-    void tlsErrorsChanged();
+    static gboolean tlsConnectionAcceptCertificateCallback(GTlsConnection*, GTlsCertificate*, GTlsCertificateFlags, NetworkDataTaskSoup*);
+    bool tlsConnectionAcceptCertificate(GTlsCertificate*, GTlsCertificateFlags);
 
     void applyAuthenticationToRequest(WebCore::ResourceRequest&);
     static void authenticateCallback(SoupSession*, SoupMessage*, SoupAuth*, gboolean retrying, NetworkDataTaskSoup*);
@@ -106,9 +106,8 @@ private:
 
     void didFail(const WebCore::ResourceError&);
 
-#if ENABLE(WEB_TIMING)
     static void networkEventCallback(SoupMessage*, GSocketClientEvent, GIOStream*, NetworkDataTaskSoup*);
-    void networkEvent(GSocketClientEvent);
+    void networkEvent(GSocketClientEvent, GIOStream*);
 #if SOUP_CHECK_VERSION(2, 49, 91)
     static void startingCallback(SoupMessage*, NetworkDataTaskSoup*);
 #else
@@ -117,7 +116,6 @@ private:
     void didStartRequest();
     static void restartedCallback(SoupMessage*, NetworkDataTaskSoup*);
     void didRestart();
-#endif // ENABLE(WEB_TIMING)
 
     State m_state { State::Suspended };
     WebCore::ContentSniffingPolicy m_shouldContentSniff;
@@ -138,10 +136,8 @@ private:
     GRefPtr<GFile> m_downloadIntermediateFile;
     GRefPtr<GOutputStream> m_downloadOutputStream;
     bool m_allowOverwriteDownload { false };
-#if ENABLE(WEB_TIMING)
     WebCore::NetworkLoadMetrics m_networkLoadMetrics;
     MonotonicTime m_startTime;
-#endif
     RunLoop::Timer<NetworkDataTaskSoup> m_timeoutSource;
 };
 

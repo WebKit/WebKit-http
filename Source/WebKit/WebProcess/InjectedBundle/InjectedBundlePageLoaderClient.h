@@ -30,7 +30,6 @@
 #include "APIInjectedBundlePageLoaderClient.h"
 #include "WKBundlePageLoaderClient.h"
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace API {
 class Object;
@@ -38,7 +37,7 @@ class String;
 class URL;
 
 template<> struct ClientTraits<WKBundlePageLoaderClientBase> {
-    typedef std::tuple<WKBundlePageLoaderClientV0, WKBundlePageLoaderClientV1, WKBundlePageLoaderClientV2, WKBundlePageLoaderClientV3, WKBundlePageLoaderClientV4, WKBundlePageLoaderClientV5, WKBundlePageLoaderClientV6, WKBundlePageLoaderClientV7, WKBundlePageLoaderClientV8> Versions;
+    typedef std::tuple<WKBundlePageLoaderClientV0, WKBundlePageLoaderClientV1, WKBundlePageLoaderClientV2, WKBundlePageLoaderClientV3, WKBundlePageLoaderClientV4, WKBundlePageLoaderClientV5, WKBundlePageLoaderClientV6, WKBundlePageLoaderClientV7, WKBundlePageLoaderClientV8, WKBundlePageLoaderClientV9> Versions;
 };
 }
 
@@ -74,13 +73,15 @@ public:
 
     void didClearWindowObjectForFrame(WebPage&, WebFrame&, WebCore::DOMWrapperWorld&) override;
     void didCancelClientRedirectForFrame(WebPage&, WebFrame&) override;
-    void willPerformClientRedirectForFrame(WebPage&, WebFrame&, const WTF::String&, double /*delay*/, double /*date*/) override;
+    void willPerformClientRedirectForFrame(WebPage&, WebFrame&, const WTF::String&, double /*delay*/, WallTime /*date*/) override;
     void didHandleOnloadEventsForFrame(WebPage&, WebFrame&) override;
 
     void globalObjectIsAvailableForFrame(WebPage&, WebFrame&, WebCore::DOMWrapperWorld&) override;
     void willDisconnectDOMWindowExtensionFromGlobalObject(WebPage&, WebCore::DOMWindowExtension*) override;
     void didReconnectDOMWindowExtensionToGlobalObject(WebPage&, WebCore::DOMWindowExtension*) override;
     void willDestroyGlobalObjectForDOMWindowExtension(WebPage&, WebCore::DOMWindowExtension*) override;
+
+    void willInjectUserScriptForFrame(WebKit::WebPage&, WebKit::WebFrame&, WebCore::DOMWrapperWorld&) final;
 
     bool shouldForceUniversalAccessFromLocalURL(WebPage&, const WTF::String&) override;
 

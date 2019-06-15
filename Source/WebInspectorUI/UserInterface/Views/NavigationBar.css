@@ -26,6 +26,8 @@
 .navigation-bar {
     display: flex;
     justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
     flex-wrap: wrap;
 
     border-bottom: 1px solid var(--border-color);
@@ -38,11 +40,31 @@
     outline: none;
 }
 
-.navigation-bar .item {
+.navigation-bar .item,
+.sidebar-navigation-bar > .holder .item {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
 
     height: auto;
     outline: none;
+}
+
+.navigation-bar .item.force-hidden {
+    display: none;
+}
+
+.sidebar-navigation-bar {
+    display: block;
+    text-align: center;
+    height: var(--navigation-bar-height);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.sidebar-navigation-bar .holder {
+    display: inline-flex;
+    align-items: center;
+    height: var(--navigation-bar-height);
+    padding: 0 2px;
+    border-bottom: none;
 }

@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/run_test.h"
+#include "test/run_test.h"
 
 #include <stdio.h>
 
 namespace webrtc {
 namespace test {
 
-void RunTest(void(*test)()) {
+void RunTest(void (*test)()) {
   (*test)();
 }
 

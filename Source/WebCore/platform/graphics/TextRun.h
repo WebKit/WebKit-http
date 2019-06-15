@@ -2,7 +2,7 @@
  * Copyright (C) 2000 Lars Knoll (knoll@kde.org)
  *           (C) 2000 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2006, 2007, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -44,19 +44,24 @@ struct WidthIterator;
 class TextRun {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit TextRun(StringView text, float xpos = 0, float expansion = 0, ExpansionBehavior expansionBehavior = DefaultExpansion, TextDirection direction = LTR, bool directionalOverride = false, bool characterScanForCodePath = true)
+    explicit TextRun(const String& text, float xpos = 0, float expansion = 0, ExpansionBehavior expansionBehavior = DefaultExpansion, TextDirection direction = TextDirection::LTR, bool directionalOverride = false, bool characterScanForCodePath = true)
         : m_text(text)
-        , m_charactersLength(text.length())
         , m_tabSize(0)
         , m_xpos(xpos)
         , m_horizontalGlyphStretch(1)
         , m_expansion(expansion)
         , m_expansionBehavior(expansionBehavior)
         , m_allowTabs(false)
-        , m_direction(direction)
+        , m_direction(static_cast<unsigned>(direction))
         , m_directionalOverride(directionalOverride)
         , m_characterScanForCodePath(characterScanForCodePath)
         , m_disableSpacing(false)
+    {
+        ASSERT(!m_text.isNull());
+    }
+
+    explicit TextRun(StringView stringView, float xpos = 0, float expansion = 0, ExpansionBehavior expansionBehavior = DefaultExpansion, TextDirection direction = TextDirection::LTR, bool directionalOverride = false, bool characterScanForCodePath = true)
+        : TextRun(stringView.toStringWithoutCopying(), xpos, expansion, expansionBehavior, direction, directionalOverride, characterScanForCodePath)
     {
     }
 
@@ -64,13 +69,12 @@ public:
     {
         ASSERT_WITH_SECURITY_IMPLICATION(startOffset < m_text.length());
 
-        TextRun result = *this;
+        auto result { *this };
 
-        if (is8Bit()) {
+        if (is8Bit())
             result.setText(data8(startOffset), length);
-            return result;
-        }
-        result.setText(data16(startOffset), length);
+        else
+            result.setText(data16(startOffset), length);
         return result;
     }
 
@@ -83,13 +87,10 @@ public:
 
     bool is8Bit() const { return m_text.is8Bit(); }
     unsigned length() const { return m_text.length(); }
-    unsigned charactersLength() const { return m_charactersLength; }
-    String string() const { return m_text.toString(); }
 
-    void setText(const LChar* c, unsigned len) { m_text = StringView(c, len); }
-    void setText(const UChar* c, unsigned len) { m_text = StringView(c, len); }
-    void setText(StringView stringView) { m_text = stringView; }
-    void setCharactersLength(unsigned charactersLength) { m_charactersLength = charactersLength; }
+    void setText(const LChar* text, unsigned length) { setText({ text, length }); }
+    void setText(const UChar* text, unsigned length) { setText({ text, length }); }
+    void setText(StringView text) { ASSERT(!text.isNull()); m_text = text.toStringWithoutCopying(); }
 
     float horizontalGlyphStretch() const { return m_horizontalGlyphStretch; }
     void setHorizontalGlyphStretch(float scale) { m_horizontalGlyphStretch = scale; }
@@ -103,21 +104,20 @@ public:
     float expansion() const { return m_expansion; }
     ExpansionBehavior expansionBehavior() const { return m_expansionBehavior; }
     TextDirection direction() const { return static_cast<TextDirection>(m_direction); }
-    bool rtl() const { return m_direction == RTL; }
-    bool ltr() const { return m_direction == LTR; }
+    bool rtl() const { return static_cast<TextDirection>(m_direction) == TextDirection::RTL; }
+    bool ltr() const { return static_cast<TextDirection>(m_direction) == TextDirection::LTR; }
     bool directionalOverride() const { return m_directionalOverride; }
     bool characterScanForCodePath() const { return m_characterScanForCodePath; }
     bool spacingDisabled() const { return m_disableSpacing; }
 
     void disableSpacing() { m_disableSpacing = true; }
-    void setDirection(TextDirection direction) { m_direction = direction; }
+    void setDirection(TextDirection direction) { m_direction = static_cast<unsigned>(direction); }
     void setDirectionalOverride(bool override) { m_directionalOverride = override; }
     void setCharacterScanForCodePath(bool scan) { m_characterScanForCodePath = scan; }
     StringView text() const { return m_text; }
 
 private:
-    StringView m_text;
-    unsigned m_charactersLength; // Marks the end of the characters buffer. Default equals to length of m_text.
+    String m_text;
 
     unsigned m_tabSize;
 

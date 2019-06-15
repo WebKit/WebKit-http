@@ -21,11 +21,14 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef LightSource_h
-#define LightSource_h
+#pragma once
 
 #include "FloatPoint3D.h"
 #include <wtf/RefCounted.h>
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
 
@@ -35,24 +38,19 @@ enum LightType {
     LS_SPOT
 };
 
-class TextStream;
+class FilterEffect;
 
 class LightSource : public RefCounted<LightSource> {
 public:
-
-    // Light vectors must be calculated for every pixel during
-    // painting. It is expensive to pass all these arguments to
-    // a frequently called function, especially because not all
-    // light sources require all of them. Instead, we just pass
-    // a reference to the following structure
-    struct PaintingData {
-        // SVGFELighting also use them
+    struct ComputedLightingData {
         FloatPoint3D lightVector;
         FloatPoint3D colorVector;
         float lightVectorLength;
-        // Private members
+    };
+
+    struct PaintingData {
+        ComputedLightingData initialLightingData;
         FloatPoint3D directionVector;
-        FloatPoint3D privateColorVector;
         float coneCutOffLimit;
         float coneFullLight;
         int specularExponent;
@@ -62,24 +60,28 @@ public:
         : m_type(type)
     { }
 
-    virtual ~LightSource() { }
+    virtual ~LightSource() = default;
 
     LightType type() const { return m_type; }
-    virtual TextStream& externalRepresentation(TextStream&) const = 0;
+    virtual WTF::TextStream& externalRepresentation(WTF::TextStream&) const = 0;
 
-    virtual void initPaintingData(PaintingData&) = 0;
+    virtual void initPaintingData(const FilterEffect&, PaintingData&) = 0;
     // z is a float number, since it is the alpha value scaled by a user
-    // specified "surfaceScale" constant, which type is <number> in the SVG standard
-    virtual void updatePaintingData(PaintingData&, int x, int y, float z) = 0;
+    // specified "surfaceScale" constant, which type is <number> in the SVG standard.
+    // x and y are in the coordinates of the FilterEffect's buffer.
+    virtual ComputedLightingData computePixelLightingData(const PaintingData&, int x, int y, float z) const = 0;
 
     virtual bool setAzimuth(float) { return false; }
     virtual bool setElevation(float) { return false; }
+    
+    // These are in user space coordinates.
     virtual bool setX(float) { return false; }
     virtual bool setY(float) { return false; }
     virtual bool setZ(float) { return false; }
     virtual bool setPointsAtX(float) { return false; }
     virtual bool setPointsAtY(float) { return false; }
     virtual bool setPointsAtZ(float) { return false; }
+    
     virtual bool setSpecularExponent(float) { return false; }
     virtual bool setLimitingConeAngle(float) { return false; }
 
@@ -89,4 +91,7 @@ private:
 
 } // namespace WebCore
 
-#endif // LightSource_h
+#define SPECIALIZE_TYPE_TRAITS_LIGHTSOURCE(ClassName, Type) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ClassName) \
+    static bool isType(const WebCore::LightSource& source) { return source.type() == WebCore::Type; } \
+SPECIALIZE_TYPE_TRAITS_END()

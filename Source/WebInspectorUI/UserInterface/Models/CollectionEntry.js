@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CollectionEntry = class CollectionEntry extends WebInspector.Object
+WI.CollectionEntry = class CollectionEntry
 {
     constructor(key, value)
     {
-        super();
-
-        console.assert(value instanceof WebInspector.RemoteObject);
-        console.assert(!key || key instanceof WebInspector.RemoteObject);
+        console.assert(value instanceof WI.RemoteObject);
+        console.assert(!key || key instanceof WI.RemoteObject);
 
         this._key = key;
         this._value = value;
@@ -42,11 +40,11 @@ WebInspector.CollectionEntry = class CollectionEntry extends WebInspector.Object
     static fromPayload(payload, target)
     {
         if (payload.key)
-            payload.key = WebInspector.RemoteObject.fromPayload(payload.key, target);
+            payload.key = WI.RemoteObject.fromPayload(payload.key, target);
         if (payload.value)
-            payload.value = WebInspector.RemoteObject.fromPayload(payload.value, target);
+            payload.value = WI.RemoteObject.fromPayload(payload.value, target);
 
-        return new WebInspector.CollectionEntry(payload.key, payload.value);
+        return new WI.CollectionEntry(payload.key, payload.value);
     }
 
     // Public

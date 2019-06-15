@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.copywithin
-es6id: 22.2.3.5
 description: >
   Set values with negative target argument.
-info: >
+info: |
   22.2.3.5 %TypedArray%.prototype.copyWithin (target, start [ , end ] )
 
   %TypedArray%.prototype.copyWithin is a distinct function that implements the
@@ -24,6 +23,7 @@ info: >
   to be min(relativeTarget, len).
   ...
 includes: [compareArray.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -36,6 +36,7 @@
 #include "WebProcessMessages.h"
 #include <JavaScriptCore/RemoteInspectorServer.h>
 #include <WebCore/FileSystem.h>
+#include <WebCore/GStreamerCommon.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SchemeRegistry.h>
 #include <cstdlib>
@@ -77,68 +78,23 @@ void WebProcessPool::platformInitialize()
 #endif
 }
 
-WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
-{
-    GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "appcache", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(cacheDirectory.get());
-}
-
-WTF::String WebProcessPool::legacyPlatformDefaultMediaCacheDirectory()
-{
-    GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "mediacache", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(cacheDirectory.get());
-}
-
 void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& parameters)
 {
     parameters.memoryCacheDisabled = m_memoryCacheDisabled || cacheModel() == CacheModelDocumentViewer;
+
+    const char* disableMemoryPressureMonitor = getenv("WEBKIT_DISABLE_MEMORY_PRESSURE_MONITOR");
+    if (disableMemoryPressureMonitor && !strcmp(disableMemoryPressureMonitor, "1"))
+        parameters.shouldSuppressMemoryPressureHandler = true;
+
+#if USE(GSTREAMER)
+    parameters.gstreamerOptions = WebCore::extractGStreamerOptionsFromCommandLine();
+#endif
+
 }
 
 void WebProcessPool::platformInvalidateContext()
 {
     notImplemented();
-}
-
-String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
-{
-    GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "databases", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(databaseDirectory.get());
-}
-
-String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
-{
-    GUniquePtr<gchar> indexedDBDatabaseDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "databases", "indexeddb", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(indexedDBDatabaseDirectory.get());
-}
-
-String WebProcessPool::platformDefaultIconDatabasePath() const
-{
-    GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "icondatabase", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(databaseDirectory.get());
-}
-
-String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
-{
-    GUniquePtr<gchar> storageDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "localstorage", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(storageDirectory.get());
-}
-
-String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
-{
-    GUniquePtr<gchar> mediaKeysStorageDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "mediakeys", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(mediaKeysStorageDirectory.get());
-}
-
-String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
-{
-    GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "cache", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(diskCacheDirectory.get());
-}
-
-String WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory()
-{
-    GUniquePtr<gchar> javaScriptCoreConfigDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "JavaScriptCoreDebug", nullptr));
-    return WebCore::stringFromFileSystemRepresentation(javaScriptCoreConfigDirectory.get());
 }
 
 void WebProcessPool::platformResolvePathsForSandboxExtensions()

@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     String.prototype.substring (start, end) can be applied to non String object instance and
     returns a string value(not object)
 es5id: 15.5.4.15_A3_T1
@@ -11,13 +11,13 @@ description: >
     Infinity, end is -Infinity
 ---*/
 
-var __instance = new Array(1,2,3,4,5); 
+var __instance = new Array(1, 2, 3, 4, 5);
 __instance.substring = String.prototype.substring;
 
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
-if (__instance.substring(Infinity,-Infinity) !== "1,2,3,4,5") {
-  $ERROR('#1: __instance = new Array(1,2,3,4,5); __instance.substring = String.prototype.substring; __instance.substring(Infinity,-Infinity) === "1,2,3,4,5". Actual: '+__instance.substring(Infinity,-Infinity) );
+if (__instance.substring(Infinity, -Infinity) !== "1,2,3,4,5") {
+  $ERROR('#1: __instance = new Array(1,2,3,4,5); __instance.substring = String.prototype.substring; __instance.substring(Infinity,-Infinity) === "1,2,3,4,5". Actual: ' + __instance.substring(Infinity, -Infinity));
 }
 //
 //////////////////////////////////////////////////////////////////////////////

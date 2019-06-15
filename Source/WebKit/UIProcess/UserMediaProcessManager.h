@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,6 +21,8 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "UserMediaPermissionRequestManagerProxy.h"
+#include <WebCore/CaptureDevice.h>
+#include <wtf/RunLoop.h>
 
 namespace WebKit {
 
@@ -31,10 +33,12 @@ public:
 
     static UserMediaProcessManager& singleton();
 
+    UserMediaProcessManager();
+
     void addUserMediaPermissionRequestManagerProxy(UserMediaPermissionRequestManagerProxy&);
     void removeUserMediaPermissionRequestManagerProxy(UserMediaPermissionRequestManagerProxy&);
 
-    void willCreateMediaStream(UserMediaPermissionRequestManagerProxy&, bool withAudio, bool withVideo);
+    bool willCreateMediaStream(UserMediaPermissionRequestManagerProxy&, bool withAudio, bool withVideo);
     void muteCaptureMediaStreamsExceptIn(WebPageProxy&);
 
     void startedCaptureSession(UserMediaPermissionRequestManagerProxy&);
@@ -43,8 +47,17 @@ public:
     void setCaptureEnabled(bool);
     bool captureEnabled() const { return m_captureEnabled; }
 
+    void denyNextUserMediaRequest() { m_denyNextRequest = true; }
+
+    void beginMonitoringCaptureDevices();
+
 private:
+    void captureDevicesChanged();
+
+    Vector<WebCore::CaptureDevice> m_captureDevices;
+    RunLoop::Timer<UserMediaProcessManager> m_debounceTimer;
     bool m_captureEnabled { true };
+    bool m_denyNextRequest { false };
 };
 
 } // namespace WebKit

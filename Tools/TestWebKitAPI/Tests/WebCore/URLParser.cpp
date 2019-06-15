@@ -64,7 +64,8 @@ struct ExpectedParts {
     }
 };
 
-static bool eq(const String& s1, const String& s2)
+template<typename T, typename U>
+bool eq(T&& s1, U&& s2)
 {
     EXPECT_STREQ(s1.utf8().data(), s2.utf8().data());
     return s1.utf8() == s2.utf8();
@@ -90,7 +91,7 @@ static void checkURL(const String& urlString, const ExpectedParts& parts, TestTa
 {
     auto url = URL(URL(), urlString);
     
-    EXPECT_TRUE(eq(parts.protocol, url.protocol().toString()));
+    EXPECT_TRUE(eq(parts.protocol, url.protocol()));
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
@@ -117,7 +118,7 @@ static void checkRelativeURL(const String& urlString, const String& baseURLStrin
 {
     auto url = URL(URL(URL(), baseURLString), urlString);
     
-    EXPECT_TRUE(eq(parts.protocol, url.protocol().toString()));
+    EXPECT_TRUE(eq(parts.protocol, url.protocol()));
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
@@ -146,7 +147,7 @@ static void checkURLDifferences(const String& urlString, const ExpectedParts& pa
     UNUSED_PARAM(partsOld); // FIXME: Remove all the old expected parts.
     auto url = URL(URL(), urlString);
     
-    EXPECT_TRUE(eq(partsNew.protocol, url.protocol().toString()));
+    EXPECT_TRUE(eq(partsNew.protocol, url.protocol()));
     EXPECT_TRUE(eq(partsNew.user, url.user()));
     EXPECT_TRUE(eq(partsNew.password, url.pass()));
     EXPECT_TRUE(eq(partsNew.host, url.host()));
@@ -175,7 +176,7 @@ static void checkRelativeURLDifferences(const String& urlString, const String& b
     UNUSED_PARAM(partsOld); // FIXME: Remove all the old expected parts.
     auto url = URL(URL(URL(), baseURLString), urlString);
     
-    EXPECT_TRUE(eq(partsNew.protocol, url.protocol().toString()));
+    EXPECT_TRUE(eq(partsNew.protocol, url.protocol()));
     EXPECT_TRUE(eq(partsNew.user, url.user()));
     EXPECT_TRUE(eq(partsNew.password, url.pass()));
     EXPECT_TRUE(eq(partsNew.host, url.host()));
@@ -213,7 +214,7 @@ static void checkURL(const String& urlString, const TextEncoding& encoding, cons
 {
     URLParser parser(urlString, { }, encoding);
     auto url = parser.result();
-    EXPECT_TRUE(eq(parts.protocol, url.protocol().toString()));
+    EXPECT_TRUE(eq(parts.protocol, url.protocol()));
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
@@ -239,7 +240,7 @@ static void checkURL(const String& urlString, const String& baseURLString, const
     URLParser baseParser(baseURLString, { }, encoding);
     URLParser parser(urlString, baseParser.result(), encoding);
     auto url = parser.result();
-    EXPECT_TRUE(eq(parts.protocol, url.protocol().toString()));
+    EXPECT_TRUE(eq(parts.protocol, url.protocol()));
     EXPECT_TRUE(eq(parts.user, url.user()));
     EXPECT_TRUE(eq(parts.password, url.pass()));
     EXPECT_TRUE(eq(parts.host, url.host()));
@@ -361,6 +362,15 @@ TEST_F(URLParserTest, Basic)
     checkURL("file:///#fragment", {"file", "", "", "", 0, "/", "", "fragment", "file:///#fragment"});
     checkURL("file:////?query", {"file", "", "", "", 0, "//", "query", "", "file:////?query"});
     checkURL("file:////#fragment", {"file", "", "", "", 0, "//", "", "fragment", "file:////#fragment"});
+    checkURL("file://?Q", {"file", "", "", "", 0, "/", "Q", "", "file:///?Q"});
+    checkURL("file://#F", {"file", "", "", "", 0, "/", "", "F", "file:///#F"});
+    checkURL("file://host?Q", {"file", "", "", "host", 0, "/", "Q", "", "file://host/?Q"});
+    checkURL("file://host#F", {"file", "", "", "host", 0, "/", "", "F", "file://host/#F"});
+    checkURL("file://host\\P", {"file", "", "", "host", 0, "/P", "", "", "file://host/P"});
+    checkURL("file://host\\?Q", {"file", "", "", "host", 0, "/", "Q", "", "file://host/?Q"});
+    checkURL("file://host\\../P", {"file", "", "", "host", 0, "/P", "", "", "file://host/P"});
+    checkURL("file://host\\/../P", {"file", "", "", "host", 0, "/P", "", "", "file://host/P"});
+    checkURL("file://host\\/P", {"file", "", "", "host", 0, "//P", "", "", "file://host//P"});
     checkURL("http://host/A b", {"http", "", "", "host", 0, "/A%20b", "", "", "http://host/A%20b"});
     checkURL("http://host/a%20B", {"http", "", "", "host", 0, "/a%20B", "", "", "http://host/a%20B"});
     checkURL("http://host?q=@ <>!#fragment", {"http", "", "", "host", 0, "/", "q=@%20%3C%3E!", "fragment", "http://host/?q=@%20%3C%3E!#fragment"});
@@ -1169,6 +1179,9 @@ TEST_F(URLParserTest, DefaultPort)
     checkURLDifferences("file://:0/path",
         {"", "", "", "", 0, "", "", "", "file://:0/path"},
         {"file", "", "", "", 0, "/path", "", "", "file://:0/path"});
+    
+    checkURL("http://example.com:0000000000000077", {"http", "", "", "example.com", 77, "/", "", "", "http://example.com:77/"});
+    checkURL("http://example.com:0000000000000080", {"http", "", "", "example.com", 0, "/", "", "", "http://example.com/"});
 }
 
 TEST_F(URLParserTest, ParserFailures)

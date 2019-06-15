@@ -28,7 +28,7 @@ struct LengthSize {
     Length height;
 };
 
-inline bool operator==(const LengthSize& a, const LengthSize& b)
+ALWAYS_INLINE bool operator==(const LengthSize& a, const LengthSize& b)
 {
     return a.width == b.width && a.height == b.height;
 }
@@ -38,6 +38,6 @@ inline LengthSize blend(const LengthSize& from, const LengthSize& to, double pro
     return { blend(from.width, to.width, progress), blend(from.height, to.height, progress) };
 }
 
-TextStream& operator<<(TextStream&, const LengthSize&);
+WTF::TextStream& operator<<(WTF::TextStream&, const LengthSize&);
 
 } // namespace WebCore

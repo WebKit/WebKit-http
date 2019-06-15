@@ -28,8 +28,11 @@
 #import "ArgumentCodersCF.h"
 #import "SandboxUtilities.h"
 #import "XPCServiceEntryPoint.h"
+#import <WebCore/Process.h>
+#import <wtf/cocoa/Entitlements.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 XPCServiceInitializerDelegate::~XPCServiceInitializerDelegate()
 {
@@ -81,6 +84,21 @@ bool XPCServiceInitializerDelegate::getClientIdentifier(String& clientIdentifier
     return true;
 }
 
+bool XPCServiceInitializerDelegate::getProcessIdentifier(ProcessIdentifier& identifier)
+{
+    String processIdentifierString = xpc_dictionary_get_string(m_initializerMessage, "process-identifier");
+    if (processIdentifierString.isEmpty())
+        return false;
+
+    bool ok;
+    auto parsedIdentifier = processIdentifierString.toUInt64Strict(&ok);
+    if (!ok)
+        return false;
+
+    identifier = makeObjectIdentifier<ProcessIdentifierType>(parsedIdentifier);
+    return true;
+}
+
 bool XPCServiceInitializerDelegate::getClientProcessName(String& clientProcessName)
 {
     clientProcessName = xpc_dictionary_get_string(m_initializerMessage, "ui-process-name");
@@ -95,28 +113,34 @@ bool XPCServiceInitializerDelegate::getExtraInitializationData(HashMap<String, S
 
     String inspectorProcess = xpc_dictionary_get_string(extraDataInitializationDataObject, "inspector-process");
     if (!inspectorProcess.isEmpty())
-        extraInitializationData.add(ASCIILiteral("inspector-process"), inspectorProcess);
+        extraInitializationData.add("inspector-process"_s, inspectorProcess);
+
+#if ENABLE(SERVICE_WORKER)
+    String serviceWorkerProcess = xpc_dictionary_get_string(extraDataInitializationDataObject, "service-worker-process");
+    if (!serviceWorkerProcess.isEmpty())
+        extraInitializationData.add("service-worker-process"_s, serviceWorkerProcess);
+#endif
+
+    String securityOrigin = xpc_dictionary_get_string(extraDataInitializationDataObject, "security-origin");
+    if (!securityOrigin.isEmpty())
+        extraInitializationData.add("security-origin"_s, securityOrigin);
 
     if (!isClientSandboxed()) {
         String userDirectorySuffix = xpc_dictionary_get_string(extraDataInitializationDataObject, "user-directory-suffix");
         if (!userDirectorySuffix.isEmpty())
-            extraInitializationData.add(ASCIILiteral("user-directory-suffix"), userDirectorySuffix);
+            extraInitializationData.add("user-directory-suffix"_s, userDirectorySuffix);
     }
 
     String alwaysRunsAtBackgroundPriority = xpc_dictionary_get_string(extraDataInitializationDataObject, "always-runs-at-background-priority");
     if (!alwaysRunsAtBackgroundPriority.isEmpty())
-        extraInitializationData.add(ASCIILiteral("always-runs-at-background-priority"), alwaysRunsAtBackgroundPriority);
+        extraInitializationData.add("always-runs-at-background-priority"_s, alwaysRunsAtBackgroundPriority);
 
     return true;
 }
 
 bool XPCServiceInitializerDelegate::hasEntitlement(const char* entitlement)
 {
-    auto value = adoptOSObject(xpc_connection_copy_entitlement_value(m_connection.get(), entitlement));
-    if (!value)
-        return false;
-
-    return xpc_get_type(value.get()) == XPC_TYPE_BOOL && xpc_bool_get_value(value.get());
+    return WTF::hasEntitlement(m_connection.get(), entitlement);
 }
 
 bool XPCServiceInitializerDelegate::isClientSandboxed()

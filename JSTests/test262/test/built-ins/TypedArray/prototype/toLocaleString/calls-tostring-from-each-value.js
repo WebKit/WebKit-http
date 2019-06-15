@@ -29,6 +29,7 @@ info: |
     d. Else,
       i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var separator = ["", ""].toLocaleString();
@@ -49,7 +50,7 @@ Number.prototype.toLocaleString = function() {
 var arr = [42, 0];
 var expected = ["hacks1", "hacks2"].join(separator);
 
-testWithTypedArrayConstructors(function(TA) {
+testWithTypedArrayConstructors(function(TA, N) {
   var sample = new TA(arr);
   calls = 0;
   assert.sameValue(sample.toLocaleString(), expected, "returns expected value");

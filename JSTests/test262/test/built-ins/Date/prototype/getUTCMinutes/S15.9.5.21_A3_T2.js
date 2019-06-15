@@ -2,14 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The Date.prototype.getUTCMinutes property "length" has { ReadOnly, !
     DontDelete, DontEnum } attributes
+esid: sec-date.prototype.getutcminutes
 es5id: 15.9.5.21_A3_T2
 description: Checking DontDelete attribute
 ---*/
 
-if (delete Date.prototype.getUTCMinutes.length  !== true) {
+if (delete Date.prototype.getUTCMinutes.length !== true) {
   $ERROR('#1: The Date.prototype.getUTCMinutes.length property does not have the attributes DontDelete');
 }
 

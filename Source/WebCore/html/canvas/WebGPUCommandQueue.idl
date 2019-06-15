@@ -25,11 +25,12 @@
 
 [
     Conditional=WEBGPU,
-    EnabledAtRuntime=WebGPU
+    EnabledAtRuntime=WebGPU,
+    ImplementationLacksVTable
 ] interface WebGPUCommandQueue {
 
     attribute DOMString label;
 
-    WebGPUCommandBuffer? createCommandBuffer();
+    WebGPUCommandBuffer createCommandBuffer();
 
 };

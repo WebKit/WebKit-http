@@ -1,15 +1,15 @@
+import itertools
 import json
 import os
-import re
 from collections import defaultdict
-from six import iteritems, itervalues, viewkeys
+from six import iteritems, itervalues, viewkeys, string_types
 
 from .item import ManualTest, WebdriverSpecTest, Stub, RefTestNode, RefTest, TestharnessTest, SupportFile, ConformanceCheckerTest, VisualTest
 from .log import get_logger
-from .utils import from_os_path, to_os_path, rel_path_to_url
+from .utils import from_os_path, to_os_path
 
 
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 
 
 class ManifestError(Exception):
@@ -20,12 +20,11 @@ class ManifestVersionMismatch(ManifestError):
     pass
 
 
-def sourcefile_items(args):
-    tests_root, url_base, rel_path, status = args
-    source_file = SourceFile(tests_root,
-                             rel_path,
-                             url_base)
-    return rel_path, source_file.manifest_items()
+def iterfilter(filters, iter):
+    for f in filters:
+        iter = f(iter)
+    for item in iter:
+        yield item
 
 
 class Manifest(object):
@@ -51,11 +50,21 @@ class Manifest(object):
             for test in type_tests.get(path, set()):
                 yield test
 
+    def iterdir(self, dir_name):
+        if not dir_name.endswith(os.path.sep):
+            dir_name = dir_name + os.path.sep
+        for type_tests in self._data.values():
+            for path, tests in type_tests.iteritems():
+                if path.startswith(dir_name):
+                    for test in tests:
+                        yield test
+
     @property
     def reftest_nodes_by_url(self):
         if self._reftest_nodes_by_url is None:
             by_url = {}
-            for path, nodes in iteritems(self._data.get("reftests", {})):
+            for path, nodes in itertools.chain(iteritems(self._data.get("reftest", {})),
+                                               iteritems(self._data.get("reftest_node", {}))):
                 for node in nodes:
                     by_url[node.url] = node
             self._reftest_nodes_by_url = by_url
@@ -89,6 +98,8 @@ class Manifest(object):
                     hash_changed = True
                 else:
                     new_type, manifest_items = old_type, self._data[old_type][rel_path]
+                if old_type in ("reftest", "reftest_node") and new_type != old_type:
+                    reftest_changes = True
             else:
                 new_type, manifest_items = source_file.manifest_items()
 
@@ -140,13 +151,13 @@ class Manifest(object):
                     changed_hashes[item.source_file.rel_path] = (item.source_file.hash,
                                                                  item.item_type)
                 references[item.source_file.rel_path].add(item)
-                self._reftest_nodes_by_url[item.url] = item
             else:
                 if isinstance(item, RefTestNode):
                     item = item.to_RefTest()
                     changed_hashes[item.source_file.rel_path] = (item.source_file.hash,
                                                                  item.item_type)
                 reftests[item.source_file.rel_path].add(item)
+            self._reftest_nodes_by_url[item.url] = item
 
         return reftests, references, changed_hashes
 
@@ -166,7 +177,7 @@ class Manifest(object):
         return rv
 
     @classmethod
-    def from_json(cls, tests_root, obj):
+    def from_json(cls, tests_root, obj, types=None, meta_filters=None):
         version = obj.get("version")
         if version != CURRENT_VERSION:
             raise ManifestVersionMismatch
@@ -187,16 +198,22 @@ class Manifest(object):
                         "visual": VisualTest,
                         "support": SupportFile}
 
+        meta_filters = meta_filters or []
+
         source_files = {}
 
         for test_type, type_paths in iteritems(obj["items"]):
             if test_type not in item_classes:
                 raise ManifestError
+
+            if types and test_type not in types:
+                continue
+
             test_cls = item_classes[test_type]
             tests = defaultdict(set)
             for path, manifest_tests in iteritems(type_paths):
                 path = to_os_path(path)
-                for test in manifest_tests:
+                for test in iterfilter(meta_filters, manifest_tests):
                     manifest_item = test_cls.from_json(self,
                                                        tests_root,
                                                        path,
@@ -208,26 +225,32 @@ class Manifest(object):
         return self
 
 
-def load(tests_root, manifest):
+def load(tests_root, manifest, types=None, meta_filters=None):
     logger = get_logger()
 
     # "manifest" is a path or file-like object.
-    if isinstance(manifest, basestring):
+    if isinstance(manifest, string_types):
         if os.path.exists(manifest):
             logger.debug("Opening manifest at %s" % manifest)
         else:
             logger.debug("Creating new manifest at %s" % manifest)
         try:
             with open(manifest) as f:
-                rv = Manifest.from_json(tests_root, json.load(f))
+                rv = Manifest.from_json(tests_root, json.load(f), types=types, meta_filters=meta_filters)
         except IOError:
+            return None
+        except ValueError:
+            logger.warning("%r may be corrupted", manifest)
             return None
         return rv
 
-    return Manifest.from_json(tests_root, json.load(manifest))
+    return Manifest.from_json(tests_root, json.load(manifest), types=types, meta_filters=meta_filters)
 
 
 def write(manifest, manifest_path):
+    dir_name = os.path.dirname(manifest_path)
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
     with open(manifest_path, "wb") as f:
         json.dump(manifest.to_json(), f, sort_keys=True, indent=1, separators=(',', ': '))
         f.write("\n")

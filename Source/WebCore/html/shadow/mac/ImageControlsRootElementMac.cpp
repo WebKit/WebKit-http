@@ -33,10 +33,14 @@
 #include "RenderBlockFlow.h"
 #include "RenderImage.h"
 #include "RenderStyle.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(ImageControlsRootElementMac);
+
 class RenderImageControls final : public RenderBlockFlow {
+    WTF_MAKE_ISO_ALLOCATED_INLINE(RenderImageControls);
 public:
     RenderImageControls(HTMLElement&, RenderStyle&&);
     virtual ~RenderImageControls();
@@ -53,9 +57,7 @@ RenderImageControls::RenderImageControls(HTMLElement& element, RenderStyle&& sty
 {
 }
 
-RenderImageControls::~RenderImageControls()
-{
-}
+RenderImageControls::~RenderImageControls() = default;
 
 void RenderImageControls::updateLogicalWidth()
 {
@@ -98,9 +100,7 @@ ImageControlsRootElementMac::ImageControlsRootElementMac(Document& document)
 {
 }
 
-ImageControlsRootElementMac::~ImageControlsRootElementMac()
-{
-}
+ImageControlsRootElementMac::~ImageControlsRootElementMac() = default;
 
 RenderPtr<RenderElement> ImageControlsRootElementMac::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {

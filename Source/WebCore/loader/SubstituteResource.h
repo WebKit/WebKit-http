@@ -33,7 +33,7 @@ namespace WebCore {
 
 class SubstituteResource : public RefCounted<SubstituteResource> {
 public:
-    virtual ~SubstituteResource() { }
+    virtual ~SubstituteResource() = default;
 
     const URL& url() const { return m_url; }
     const ResourceResponse& response() const { return m_response; }
@@ -42,9 +42,9 @@ public:
     virtual void deliver(ResourceLoader& loader) { loader.deliverResponseAndData(m_response, m_data->copy()); }
 
 protected:
-    SubstituteResource(const URL& url, const ResourceResponse& response, Ref<SharedBuffer>&& data)
-        : m_url(url)
-        , m_response(response)
+    SubstituteResource(URL&& url, ResourceResponse&& response, Ref<SharedBuffer>&& data)
+        : m_url(WTFMove(url))
+        , m_response(WTFMove(response))
         , m_data(WTFMove(data))
     {
     }

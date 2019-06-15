@@ -30,11 +30,11 @@
 
 #import "WebViewInternal.h"
 #import <WebCore/ChromeClient.h>
-#import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/Frame.h>
 #import <WebCore/IntSize.h>
 #import <WebCore/ScrollingConstraints.h>
 #import <WebCore/WebCoreThreadRun.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 
 #import <wtf/HashMap.h>
 #import <wtf/NeverDestroyed.h>
@@ -49,11 +49,7 @@
 using namespace WebCore;
 using namespace std;
 
-static Lock& WebFixedPositionContentDataLock()
-{
-    static NeverDestroyed<Lock> mutex;
-    return mutex;
-}
+static Lock webFixedPositionContentDataLock;
 
 struct ViewportConstrainedLayerData {
     ViewportConstrainedLayerData()
@@ -104,7 +100,7 @@ WebFixedPositionContentData::~WebFixedPositionContentData()
 
 - (void)scrollOrZoomChanged:(CGRect)positionedObjectsRect
 {
-    LockHolder lock(WebFixedPositionContentDataLock());
+    auto locker = holdLock(webFixedPositionContentDataLock);
 
     LayerInfoMap::const_iterator end = _private->m_viewportConstrainedLayers.end();
     for (LayerInfoMap::const_iterator it = _private->m_viewportConstrainedLayers.begin(); it != end; ++it) {
@@ -143,7 +139,7 @@ WebFixedPositionContentData::~WebFixedPositionContentData()
 
 - (void)overflowScrollPositionForLayer:(CALayer *)scrollLayer changedTo:(CGPoint)scrollPosition
 {
-    LockHolder lock(WebFixedPositionContentDataLock());
+    auto locker = holdLock(webFixedPositionContentDataLock);
 
     LayerInfoMap::const_iterator end = _private->m_viewportConstrainedLayers.end();
     for (LayerInfoMap::const_iterator it = _private->m_viewportConstrainedLayers.begin(); it != end; ++it) {
@@ -176,7 +172,7 @@ WebFixedPositionContentData::~WebFixedPositionContentData()
 
 - (void)setViewportConstrainedLayers:(WTF::HashMap<CALayer *, std::unique_ptr<WebCore::ViewportConstraints>>&)layerMap stickyContainerMap:(WTF::HashMap<CALayer*, CALayer*>&)stickyContainers
 {
-    LockHolder lock(WebFixedPositionContentDataLock());
+    auto locker = holdLock(webFixedPositionContentDataLock);
 
     _private->m_viewportConstrainedLayers.clear();
 
@@ -193,7 +189,7 @@ WebFixedPositionContentData::~WebFixedPositionContentData()
 
 - (BOOL)hasFixedOrStickyPositionLayers
 {
-    LockHolder lock(WebFixedPositionContentDataLock());
+    auto locker = holdLock(webFixedPositionContentDataLock);
     return !_private->m_viewportConstrainedLayers.isEmpty();
 }
 

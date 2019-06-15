@@ -33,108 +33,85 @@
 #include "RenderElement.h"
 #include "RenderImage.h"
 #include "RenderImageResourceStyleImage.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderImageResource);
 
 RenderImageResource::RenderImageResource()
 {
 }
 
-RenderImageResource::~RenderImageResource()
-{
-}
-
-void RenderImageResource::initialize(RenderElement* renderer)
+void RenderImageResource::initialize(RenderElement& renderer, CachedImage* styleCachedImage)
 {
     ASSERT(!m_renderer);
-    ASSERT(renderer);
-    m_renderer = renderer;
+    ASSERT(!m_cachedImage);
+    m_renderer = makeWeakPtr(renderer);
+    m_cachedImage = styleCachedImage;
+    m_cachedImageRemoveClientIsNeeded = !styleCachedImage;
 }
 
 void RenderImageResource::shutdown()
 {
-    if (!m_cachedImage)
-        return;
-
-    ASSERT(m_renderer);
     image()->stopAnimation();
-    m_cachedImage->removeClient(*m_renderer);
+    setCachedImage(nullptr);
 }
 
 void RenderImageResource::setCachedImage(CachedImage* newImage)
 {
-    ASSERT(m_renderer);
-
     if (m_cachedImage == newImage)
         return;
 
-    if (m_cachedImage)
-        m_cachedImage->removeClient(*m_renderer);
+    ASSERT(m_renderer);
+    if (m_cachedImage && m_cachedImageRemoveClientIsNeeded)
+        m_cachedImage->removeClient(*renderer());
     m_cachedImage = newImage;
-    if (m_cachedImage) {
-        m_cachedImage->addClient(*m_renderer);
-        if (m_cachedImage->errorOccurred())
-            m_renderer->imageChanged(m_cachedImage.get());
-    }
+    m_cachedImageRemoveClientIsNeeded = true;
+    if (!m_cachedImage)
+        return;
+
+    m_cachedImage->addClient(*renderer());
+    if (m_cachedImage->errorOccurred())
+        renderer()->imageChanged(m_cachedImage.get());
 }
 
 void RenderImageResource::resetAnimation()
 {
-    ASSERT(m_renderer);
-
     if (!m_cachedImage)
         return;
 
+    ASSERT(m_renderer);
     image()->resetAnimation();
 
-    if (!m_renderer->needsLayout())
-        m_renderer->repaint();
+    if (!renderer()->needsLayout())
+        renderer()->repaint();
 }
 
 RefPtr<Image> RenderImageResource::image(const IntSize&) const
 {
-    return m_cachedImage ? m_cachedImage->imageForRenderer(m_renderer) : &Image::nullImage();
+    if (!m_cachedImage)
+        return &Image::nullImage();
+    if (auto image = m_cachedImage->imageForRenderer(renderer()))
+        return image;
+    return &Image::nullImage();
 }
 
-bool RenderImageResource::errorOccurred() const
+void RenderImageResource::setContainerContext(const IntSize& imageContainerSize, const URL& imageURL)
 {
-    return m_cachedImage && m_cachedImage->errorOccurred();
-}
-
-void RenderImageResource::setContainerSizeForRenderer(const IntSize& imageContainerSize)
-{
+    if (!m_cachedImage)
+        return;
     ASSERT(m_renderer);
-    if (m_cachedImage)
-        m_cachedImage->setContainerSizeForRenderer(m_renderer, imageContainerSize, m_renderer->style().effectiveZoom());
+    m_cachedImage->setContainerContextForClient(*renderer(), imageContainerSize, renderer()->style().effectiveZoom(), imageURL);
 }
 
-bool RenderImageResource::imageHasRelativeWidth() const
-{
-    return m_cachedImage ? m_cachedImage->imageHasRelativeWidth() : false;
-}
-
-bool RenderImageResource::imageHasRelativeHeight() const
-{
-    return m_cachedImage ? m_cachedImage->imageHasRelativeHeight() : false;
-}
-
-LayoutSize RenderImageResource::imageSize(float multiplier) const
-{
-    return getImageSize(multiplier, CachedImage::UsedSize);
-}
-
-LayoutSize RenderImageResource::intrinsicSize(float multiplier) const
-{
-    return getImageSize(multiplier, CachedImage::IntrinsicSize);
-}
-
-LayoutSize RenderImageResource::getImageSize(float multiplier, CachedImage::SizeType type) const
+LayoutSize RenderImageResource::imageSize(float multiplier, CachedImage::SizeType type) const
 {
     if (!m_cachedImage)
         return LayoutSize();
-    LayoutSize size = m_cachedImage->imageSizeForRenderer(m_renderer, multiplier, type);
-    if (is<RenderImage>(m_renderer))
-        size.scale(downcast<RenderImage>(*m_renderer).imageDevicePixelRatio());
+    LayoutSize size = m_cachedImage->imageSizeForRenderer(renderer(), multiplier, type);
+    if (is<RenderImage>(renderer()))
+        size.scale(downcast<RenderImage>(*renderer()).imageDevicePixelRatio());
     return size;
 }
 

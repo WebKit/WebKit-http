@@ -26,7 +26,7 @@ INTERESTING_FILE_NAMES = {
 
 def check_with_files(input_bytes):
     return {
-        filename: (check_file_contents("", filename, six.BytesIO(input_bytes), False), kind)
+        filename: (check_file_contents("", filename, six.BytesIO(input_bytes)), kind)
         for (filename, kind) in
         (
             (os.path.join("html", filename), kind)
@@ -100,6 +100,19 @@ def test_w3c_test_org():
             expected.append(("PARSE-FAILED", "Unable to parse file", filename, None))
         assert errors == expected
 
+def test_web_platform_test():
+    error_map = check_with_files(b"import('http://web-platform.test/')")
+
+    for (filename, (errors, kind)) in error_map.items():
+        check_errors(errors)
+
+        expected = [("WEB-PLATFORM.TEST", "Internal web-platform.test domain used", filename, 1)]
+        if kind == "python":
+            expected.append(("PARSE-FAILED", "Unable to parse file", filename, 1))
+        elif kind == "web-strict":
+            expected.append(("PARSE-FAILED", "Unable to parse file", filename, None))
+        assert errors == expected
+
 
 def test_webidl2_js():
     error_map = check_with_files(b"<script src=/resources/webidl2.js>")
@@ -141,6 +154,51 @@ def test_setTimeout():
         else:
             assert errors == [('SET TIMEOUT',
                                'setTimeout used; step_timeout should typically be used instead',
+                               filename,
+                               1)]
+
+
+def test_eventSender():
+    error_map = check_with_files(b"<script>eventSender.mouseDown()</script>")
+
+    for (filename, (errors, kind)) in error_map.items():
+        check_errors(errors)
+
+        if kind == "python":
+            assert errors == [("PARSE-FAILED", "Unable to parse file", filename, 1)]
+        else:
+            assert errors == [('LAYOUTTESTS APIS',
+                               'eventSender/testRunner/window.internals used; these are LayoutTests-specific APIs (WebKit/Blink)',
+                               filename,
+                               1)]
+
+
+def test_testRunner():
+    error_map = check_with_files(b"<script>if (window.testRunner) { testRunner.waitUntilDone(); }</script>")
+
+    for (filename, (errors, kind)) in error_map.items():
+        check_errors(errors)
+
+        if kind == "python":
+            assert errors == [("PARSE-FAILED", "Unable to parse file", filename, 1)]
+        else:
+            assert errors == [('LAYOUTTESTS APIS',
+                               'eventSender/testRunner/window.internals used; these are LayoutTests-specific APIs (WebKit/Blink)',
+                               filename,
+                               1)]
+
+
+def test_windowDotInternals():
+    error_map = check_with_files(b"<script>if (window.internals) { internals.doAThing(); }</script>")
+
+    for (filename, (errors, kind)) in error_map.items():
+        check_errors(errors)
+
+        if kind == "python":
+            assert errors == [("PARSE-FAILED", "Unable to parse file", filename, 1)]
+        else:
+            assert errors == [('LAYOUTTESTS APIS',
+                               'eventSender/testRunner/window.internals used; these are LayoutTests-specific APIs (WebKit/Blink)',
                                filename,
                                1)]
 
@@ -395,7 +453,7 @@ def fifth():
 def test_open_mode():
     for method in ["open", "file"]:
         code = open_mode_code.format(method).encode("utf-8")
-        errors = check_file_contents("", "test.py", six.BytesIO(code), False)
+        errors = check_file_contents("", "test.py", six.BytesIO(code))
         check_errors(errors)
 
         message = ("File opened without providing an explicit mode (note: " +
@@ -408,15 +466,13 @@ def test_open_mode():
 
 
 @pytest.mark.parametrize(
-    "filename,css_mode,expect_error",
+    "filename,expect_error",
     [
-        ("foo/bar.html", False, False),
-        ("foo/bar.html", True, True),
-        ("css/bar.html", False, True),
-        ("css/bar.html", True, True),
+        ("foo/bar.html", False),
+        ("css/bar.html", True),
     ])
-def test_css_support_file(filename, css_mode, expect_error):
-    errors = check_file_contents("", filename, six.BytesIO(b""), css_mode)
+def test_css_support_file(filename, expect_error):
+    errors = check_file_contents("", filename, six.BytesIO(b""))
     check_errors(errors)
 
     if expect_error:
@@ -430,24 +486,6 @@ def test_css_support_file(filename, css_mode, expect_error):
         assert errors == []
 
 
-def test_css_missing_file_css_mode():
-    code = b"""\
-<html xmlns="http://www.w3.org/1999/xhtml">
-<script src="/resources/testharness.js"></script>
-<script src="/resources/testharnessreport.js"></script>
-</html>
-"""
-    errors = check_file_contents("", "foo/bar.html", six.BytesIO(code), True)
-    check_errors(errors)
-
-    assert errors == [
-        ('MISSING-LINK',
-         'Testcase file must have a link to a spec',
-         "foo/bar.html",
-         None),
-    ]
-
-
 def test_css_missing_file_in_css():
     code = b"""\
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -455,7 +493,7 @@ def test_css_missing_file_in_css():
 <script src="/resources/testharnessreport.js"></script>
 </html>
 """
-    errors = check_file_contents("", "css/foo/bar.html", six.BytesIO(code), False)
+    errors = check_file_contents("", "css/foo/bar.html", six.BytesIO(code))
     check_errors(errors)
 
     assert errors == [
@@ -467,7 +505,7 @@ def test_css_missing_file_in_css():
 
 
 def test_css_missing_file_manual():
-    errors = check_file_contents("", "css/foo/bar-manual.html", six.BytesIO(b""), False)
+    errors = check_file_contents("", "css/foo/bar-manual.html", six.BytesIO(b""))
     check_errors(errors)
 
     assert errors == [
@@ -483,10 +521,13 @@ def test_css_missing_file_manual():
     "foo.any.js",
 ])
 @pytest.mark.parametrize("input,error", [
+    (b"""//META: title=foo\n""", None),
     (b"""//META: timeout=long\n""", None),
     (b"""// META: timeout=long\n""", None),
     (b"""//  META: timeout=long\n""", None),
     (b"""// META: script=foo.js\n""", None),
+    (b"""// META: variant=\n""", None),
+    (b"""// META: variant=?wss\n""", None),
     (b"""# META:\n""", None),
     (b"""\n// META: timeout=long\n""", (2, "STRAY-METADATA")),
     (b""" // META: timeout=long\n""", (1, "INDENTED-METADATA")),
@@ -499,7 +540,7 @@ def test_css_missing_file_manual():
     (b"""// META: timeout=bar\n""", (1, "UNKNOWN-TIMEOUT-METADATA")),
 ])
 def test_script_metadata(filename, input, error):
-    errors = check_file_contents("", filename, six.BytesIO(input), False)
+    errors = check_file_contents("", filename, six.BytesIO(input))
     check_errors(errors)
 
     if error is not None:
@@ -516,6 +557,39 @@ def test_script_metadata(filename, input, error):
              messages[kind],
              filename,
              line),
+        ]
+    else:
+        assert errors == []
+
+
+@pytest.mark.parametrize("globals,error", [
+    (b"", None),
+    (b"default", None),
+    (b"!default", None),
+    (b"window", None),
+    (b"!window", None),
+    (b"!dedicatedworker", None),
+    (b"window, !window", "BROKEN-GLOBAL-METADATA"),
+    (b"!serviceworker", "BROKEN-GLOBAL-METADATA"),
+    (b"serviceworker, !serviceworker", "BROKEN-GLOBAL-METADATA"),
+    (b"worker, !dedicatedworker", None),
+    (b"worker, !serviceworker", None),
+    (b"!worker", None),
+    (b"foo", "UNKNOWN-GLOBAL-METADATA"),
+    (b"!foo", "UNKNOWN-GLOBAL-METADATA"),
+])
+def test_script_globals_metadata(globals, error):
+    filename = "foo.any.js"
+    input = b"""// META: global=%s\n""" % globals
+    errors = check_file_contents("", filename, six.BytesIO(input))
+    check_errors(errors)
+
+    if error is not None:
+        errors = [(k, f, l) for (k, _, f, l) in errors]
+        assert errors == [
+            (error,
+             filename,
+             1),
         ]
     else:
         assert errors == []
@@ -538,7 +612,7 @@ def test_script_metadata(filename, input, error):
 ])
 def test_python_metadata(input, error):
     filename = "test.py"
-    errors = check_file_contents("", filename, six.BytesIO(input), False)
+    errors = check_file_contents("", filename, six.BytesIO(input))
     check_errors(errors)
 
     if error is not None:

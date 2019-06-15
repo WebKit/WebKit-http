@@ -34,7 +34,8 @@
 
 namespace JSC { namespace B3 {
 
-using namespace Air;
+using Arg = Air::Arg;
+using Inst = Air::Inst;
 
 PatchpointSpecial::PatchpointSpecial()
 {
@@ -117,6 +118,7 @@ bool PatchpointSpecial::admitsStack(Inst& inst, unsigned argIndex)
         case ValueRep::StackArgument:
             return true;
         case ValueRep::SomeRegister:
+        case ValueRep::SomeRegisterWithClobber:
         case ValueRep::SomeEarlyRegister:
         case ValueRep::Register:
         case ValueRep::LateRegister:
@@ -135,8 +137,7 @@ bool PatchpointSpecial::admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
     return admitsStack(inst, argIndex);
 }
 
-CCallHelpers::Jump PatchpointSpecial::generate(
-    Inst& inst, CCallHelpers& jit, GenerationContext& context)
+CCallHelpers::Jump PatchpointSpecial::generate(Inst& inst, CCallHelpers& jit, Air::GenerationContext& context)
 {
     PatchpointValue* value = inst.origin->as<PatchpointValue>();
     ASSERT(value);

@@ -22,12 +22,11 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMHTMLElementPrivate.h"
@@ -37,6 +36,8 @@
 #include "WebKitDOMHTMLElementUnstable.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -67,8 +68,8 @@ static gboolean webkit_dom_html_element_dispatch_event(WebKitDOMEventTarget* tar
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -86,31 +87,31 @@ static gboolean webkit_dom_html_element_remove_event_listener(WebKitDOMEventTarg
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLElement, webkit_dom_html_element, WEBKIT_DOM_TYPE_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLElement, webkit_dom_html_element, WEBKIT_DOM_TYPE_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_TITLE,
-    PROP_LANG,
-    PROP_TRANSLATE,
-    PROP_DIR,
-    PROP_TAB_INDEX,
-    PROP_DRAGGABLE,
-    PROP_WEBKITDROPZONE,
-    PROP_HIDDEN,
-    PROP_ACCESS_KEY,
-    PROP_INNER_TEXT,
-    PROP_OUTER_TEXT,
-    PROP_CONTENT_EDITABLE,
-    PROP_IS_CONTENT_EDITABLE,
-    PROP_SPELLCHECK,
+    DOM_HTML_ELEMENT_PROP_0,
+    DOM_HTML_ELEMENT_PROP_TITLE,
+    DOM_HTML_ELEMENT_PROP_LANG,
+    DOM_HTML_ELEMENT_PROP_TRANSLATE,
+    DOM_HTML_ELEMENT_PROP_DIR,
+    DOM_HTML_ELEMENT_PROP_TAB_INDEX,
+    DOM_HTML_ELEMENT_PROP_DRAGGABLE,
+    DOM_HTML_ELEMENT_PROP_WEBKITDROPZONE,
+    DOM_HTML_ELEMENT_PROP_HIDDEN,
+    DOM_HTML_ELEMENT_PROP_ACCESS_KEY,
+    DOM_HTML_ELEMENT_PROP_INNER_TEXT,
+    DOM_HTML_ELEMENT_PROP_OUTER_TEXT,
+    DOM_HTML_ELEMENT_PROP_CONTENT_EDITABLE,
+    DOM_HTML_ELEMENT_PROP_IS_CONTENT_EDITABLE,
+    DOM_HTML_ELEMENT_PROP_SPELLCHECK,
 };
 
 static void webkit_dom_html_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -118,43 +119,43 @@ static void webkit_dom_html_element_set_property(GObject* object, guint property
     WebKitDOMHTMLElement* self = WEBKIT_DOM_HTML_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_TITLE:
+    case DOM_HTML_ELEMENT_PROP_TITLE:
         webkit_dom_html_element_set_title(self, g_value_get_string(value));
         break;
-    case PROP_LANG:
+    case DOM_HTML_ELEMENT_PROP_LANG:
         webkit_dom_html_element_set_lang(self, g_value_get_string(value));
         break;
-    case PROP_TRANSLATE:
+    case DOM_HTML_ELEMENT_PROP_TRANSLATE:
         webkit_dom_html_element_set_translate(self, g_value_get_boolean(value));
         break;
-    case PROP_DIR:
+    case DOM_HTML_ELEMENT_PROP_DIR:
         webkit_dom_html_element_set_dir(self, g_value_get_string(value));
         break;
-    case PROP_TAB_INDEX:
+    case DOM_HTML_ELEMENT_PROP_TAB_INDEX:
         webkit_dom_html_element_set_tab_index(self, g_value_get_long(value));
         break;
-    case PROP_DRAGGABLE:
+    case DOM_HTML_ELEMENT_PROP_DRAGGABLE:
         webkit_dom_html_element_set_draggable(self, g_value_get_boolean(value));
         break;
-    case PROP_WEBKITDROPZONE:
+    case DOM_HTML_ELEMENT_PROP_WEBKITDROPZONE:
         webkit_dom_html_element_set_webkitdropzone(self, g_value_get_string(value));
         break;
-    case PROP_HIDDEN:
+    case DOM_HTML_ELEMENT_PROP_HIDDEN:
         webkit_dom_html_element_set_hidden(self, g_value_get_boolean(value));
         break;
-    case PROP_ACCESS_KEY:
+    case DOM_HTML_ELEMENT_PROP_ACCESS_KEY:
         webkit_dom_html_element_set_access_key(self, g_value_get_string(value));
         break;
-    case PROP_INNER_TEXT:
+    case DOM_HTML_ELEMENT_PROP_INNER_TEXT:
         webkit_dom_html_element_set_inner_text(self, g_value_get_string(value), nullptr);
         break;
-    case PROP_OUTER_TEXT:
+    case DOM_HTML_ELEMENT_PROP_OUTER_TEXT:
         webkit_dom_html_element_set_outer_text(self, g_value_get_string(value), nullptr);
         break;
-    case PROP_CONTENT_EDITABLE:
+    case DOM_HTML_ELEMENT_PROP_CONTENT_EDITABLE:
         webkit_dom_html_element_set_content_editable(self, g_value_get_string(value), nullptr);
         break;
-    case PROP_SPELLCHECK:
+    case DOM_HTML_ELEMENT_PROP_SPELLCHECK:
         webkit_dom_html_element_set_spellcheck(self, g_value_get_boolean(value));
         break;
     default:
@@ -168,46 +169,46 @@ static void webkit_dom_html_element_get_property(GObject* object, guint property
     WebKitDOMHTMLElement* self = WEBKIT_DOM_HTML_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_TITLE:
+    case DOM_HTML_ELEMENT_PROP_TITLE:
         g_value_take_string(value, webkit_dom_html_element_get_title(self));
         break;
-    case PROP_LANG:
+    case DOM_HTML_ELEMENT_PROP_LANG:
         g_value_take_string(value, webkit_dom_html_element_get_lang(self));
         break;
-    case PROP_TRANSLATE:
+    case DOM_HTML_ELEMENT_PROP_TRANSLATE:
         g_value_set_boolean(value, webkit_dom_html_element_get_translate(self));
         break;
-    case PROP_DIR:
+    case DOM_HTML_ELEMENT_PROP_DIR:
         g_value_take_string(value, webkit_dom_html_element_get_dir(self));
         break;
-    case PROP_TAB_INDEX:
+    case DOM_HTML_ELEMENT_PROP_TAB_INDEX:
         g_value_set_long(value, webkit_dom_html_element_get_tab_index(self));
         break;
-    case PROP_DRAGGABLE:
+    case DOM_HTML_ELEMENT_PROP_DRAGGABLE:
         g_value_set_boolean(value, webkit_dom_html_element_get_draggable(self));
         break;
-    case PROP_WEBKITDROPZONE:
+    case DOM_HTML_ELEMENT_PROP_WEBKITDROPZONE:
         g_value_take_string(value, webkit_dom_html_element_get_webkitdropzone(self));
         break;
-    case PROP_HIDDEN:
+    case DOM_HTML_ELEMENT_PROP_HIDDEN:
         g_value_set_boolean(value, webkit_dom_html_element_get_hidden(self));
         break;
-    case PROP_ACCESS_KEY:
+    case DOM_HTML_ELEMENT_PROP_ACCESS_KEY:
         g_value_take_string(value, webkit_dom_html_element_get_access_key(self));
         break;
-    case PROP_INNER_TEXT:
+    case DOM_HTML_ELEMENT_PROP_INNER_TEXT:
         g_value_take_string(value, webkit_dom_html_element_get_inner_text(self));
         break;
-    case PROP_OUTER_TEXT:
+    case DOM_HTML_ELEMENT_PROP_OUTER_TEXT:
         g_value_take_string(value, webkit_dom_html_element_get_outer_text(self));
         break;
-    case PROP_CONTENT_EDITABLE:
+    case DOM_HTML_ELEMENT_PROP_CONTENT_EDITABLE:
         g_value_take_string(value, webkit_dom_html_element_get_content_editable(self));
         break;
-    case PROP_IS_CONTENT_EDITABLE:
+    case DOM_HTML_ELEMENT_PROP_IS_CONTENT_EDITABLE:
         g_value_set_boolean(value, webkit_dom_html_element_get_is_content_editable(self));
         break;
-    case PROP_SPELLCHECK:
+    case DOM_HTML_ELEMENT_PROP_SPELLCHECK:
         g_value_set_boolean(value, webkit_dom_html_element_get_spellcheck(self));
         break;
     default:
@@ -224,7 +225,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TITLE,
+        DOM_HTML_ELEMENT_PROP_TITLE,
         g_param_spec_string(
             "title",
             "HTMLElement:title",
@@ -234,7 +235,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LANG,
+        DOM_HTML_ELEMENT_PROP_LANG,
         g_param_spec_string(
             "lang",
             "HTMLElement:lang",
@@ -244,7 +245,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TRANSLATE,
+        DOM_HTML_ELEMENT_PROP_TRANSLATE,
         g_param_spec_boolean(
             "translate",
             "HTMLElement:translate",
@@ -254,7 +255,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DIR,
+        DOM_HTML_ELEMENT_PROP_DIR,
         g_param_spec_string(
             "dir",
             "HTMLElement:dir",
@@ -264,7 +265,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TAB_INDEX,
+        DOM_HTML_ELEMENT_PROP_TAB_INDEX,
         g_param_spec_long(
             "tab-index",
             "HTMLElement:tab-index",
@@ -274,7 +275,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DRAGGABLE,
+        DOM_HTML_ELEMENT_PROP_DRAGGABLE,
         g_param_spec_boolean(
             "draggable",
             "HTMLElement:draggable",
@@ -284,7 +285,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_WEBKITDROPZONE,
+        DOM_HTML_ELEMENT_PROP_WEBKITDROPZONE,
         g_param_spec_string(
             "webkitdropzone",
             "HTMLElement:webkitdropzone",
@@ -294,7 +295,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_HIDDEN,
+        DOM_HTML_ELEMENT_PROP_HIDDEN,
         g_param_spec_boolean(
             "hidden",
             "HTMLElement:hidden",
@@ -304,7 +305,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ACCESS_KEY,
+        DOM_HTML_ELEMENT_PROP_ACCESS_KEY,
         g_param_spec_string(
             "access-key",
             "HTMLElement:access-key",
@@ -314,7 +315,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_INNER_TEXT,
+        DOM_HTML_ELEMENT_PROP_INNER_TEXT,
         g_param_spec_string(
             "inner-text",
             "HTMLElement:inner-text",
@@ -324,7 +325,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_OUTER_TEXT,
+        DOM_HTML_ELEMENT_PROP_OUTER_TEXT,
         g_param_spec_string(
             "outer-text",
             "HTMLElement:outer-text",
@@ -334,7 +335,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CONTENT_EDITABLE,
+        DOM_HTML_ELEMENT_PROP_CONTENT_EDITABLE,
         g_param_spec_string(
             "content-editable",
             "HTMLElement:content-editable",
@@ -344,7 +345,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_IS_CONTENT_EDITABLE,
+        DOM_HTML_ELEMENT_PROP_IS_CONTENT_EDITABLE,
         g_param_spec_boolean(
             "is-content-editable",
             "HTMLElement:is-content-editable",
@@ -354,7 +355,7 @@ static void webkit_dom_html_element_class_init(WebKitDOMHTMLElementClass* reques
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_SPELLCHECK,
+        DOM_HTML_ELEMENT_PROP_SPELLCHECK,
         g_param_spec_boolean(
             "spellcheck",
             "HTMLElement:spellcheck",
@@ -559,8 +560,8 @@ void webkit_dom_html_element_set_inner_text(WebKitDOMHTMLElement* self, const gc
     WTF::String convertedValue = WTF::String::fromUTF8(value);
     auto result = item->setInnerText(convertedValue);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -583,8 +584,8 @@ void webkit_dom_html_element_set_outer_text(WebKitDOMHTMLElement* self, const gc
     WTF::String convertedValue = WTF::String::fromUTF8(value);
     auto result = item->setOuterText(convertedValue);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -607,8 +608,8 @@ void webkit_dom_html_element_set_content_editable(WebKitDOMHTMLElement* self, co
     WTF::String convertedValue = WTF::String::fromUTF8(value);
     auto result = item->setContentEditable(convertedValue);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -638,3 +639,4 @@ void webkit_dom_html_element_set_spellcheck(WebKitDOMHTMLElement* self, gboolean
     item->setSpellcheck(value);
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

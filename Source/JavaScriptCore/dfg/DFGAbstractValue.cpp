@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,9 +53,9 @@ void AbstractValue::set(Graph& graph, const FrozenValue& value, StructureClobber
     if (!!value && value.value().isCell()) {
         Structure* structure = value.structure();
         StructureRegistrationResult result;
-        RegisteredStructure RegisteredStructure = graph.registerStructure(structure, result);
+        RegisteredStructure registeredStructure = graph.registerStructure(structure, result);
         if (result == StructureRegisteredAndWatched) {
-            m_structure = RegisteredStructure;
+            m_structure = registeredStructure;
             if (clobberState == StructuresAreClobbered) {
                 m_arrayModes = ALL_ARRAY_MODES;
                 m_structure.clobber();
@@ -133,22 +133,25 @@ void AbstractValue::set(Graph& graph, const InferredType::Descriptor& descriptor
         clear();
         return;
     case InferredType::Boolean:
-        setType(SpecBoolean);
+        setNonCellType(SpecBoolean);
         return;
     case InferredType::Other:
-        setType(SpecOther);
+        setNonCellType(SpecOther);
         return;
     case InferredType::Int32:
-        setType(SpecInt32Only);
+        setNonCellType(SpecInt32Only);
         return;
     case InferredType::Number:
-        setType(SpecBytecodeNumber);
+        setNonCellType(SpecBytecodeNumber);
         return;
     case InferredType::String:
         set(graph, graph.m_vm.stringStructure.get());
         return;
     case InferredType::Symbol:
         set(graph, graph.m_vm.symbolStructure.get());
+        return;
+    case InferredType::BigInt:
+        set(graph, graph.m_vm.bigIntStructure.get());
         return;
     case InferredType::ObjectWithStructure:
         set(graph, descriptor.structure());
@@ -236,7 +239,7 @@ bool AbstractValue::mergeOSREntryValue(Graph& graph, JSValue value)
     } else {
         mergeSpeculation(m_type, speculationFromValue(value));
         if (!!value && value.isCell()) {
-            RegisteredStructure structure = graph.registerStructure(value.asCell()->structure());
+            RegisteredStructure structure = graph.registerStructure(value.asCell()->structure(graph.m_vm));
             mergeArrayModes(m_arrayModes, asArrayModes(structure->indexingType()));
             m_structure.merge(RegisteredStructureSet(structure));
         }
@@ -329,24 +332,8 @@ FiltrationResult AbstractValue::filterClassInfo(Graph& graph, const ClassInfo* c
     return normalizeClarity(graph);
 }
 
-FiltrationResult AbstractValue::filter(SpeculatedType type)
+FiltrationResult AbstractValue::filterSlow(SpeculatedType type)
 {
-    if ((m_type & type) == m_type)
-        return FiltrationOK;
-    
-    // Fast path for the case that we don't even have a cell.
-    if (!(m_type & SpecCell)) {
-        m_type &= type;
-        FiltrationResult result;
-        if (m_type == SpecNone) {
-            clear();
-            result = Contradiction;
-        } else
-            result = FiltrationOK;
-        checkConsistency();
-        return result;
-    }
-    
     m_type &= type;
     
     // It's possible that prior to this filter() call we had, say, (Final, TOP), and
@@ -357,6 +344,14 @@ FiltrationResult AbstractValue::filter(SpeculatedType type)
     filterArrayModesByType();
     filterValueByType();
     return normalizeClarity();
+}
+
+FiltrationResult AbstractValue::fastForwardToAndFilterSlow(AbstractValueClobberEpoch newEpoch, SpeculatedType type)
+{
+    if (newEpoch != m_effectEpoch)
+        fastForwardToSlow(newEpoch);
+    
+    return filterSlow(type);
 }
 
 FiltrationResult AbstractValue::filterByValue(const FrozenValue& value)
@@ -553,6 +548,7 @@ void AbstractValue::dumpInContext(PrintStream& out, DumpContext* context) const
     }
     if (!!m_value)
         out.print(", ", inContext(m_value, context));
+    out.print(", ", m_effectEpoch);
     out.print(")");
 }
 
@@ -570,6 +566,20 @@ void AbstractValue::ensureCanInitializeWithZeros()
     ASSERT(*this == *static_cast<AbstractValue*>(static_cast<void*>(&zeroFilledStorage)));
 }
 #endif
+
+void AbstractValue::fastForwardToSlow(AbstractValueClobberEpoch newEpoch)
+{
+    ASSERT(newEpoch != m_effectEpoch);
+    
+    if (newEpoch.clobberEpoch() != m_effectEpoch.clobberEpoch())
+        clobberStructures();
+    if (newEpoch.structureClobberState() == StructuresAreWatched)
+        m_structure.observeInvalidationPoint();
+    
+    m_effectEpoch = newEpoch;
+    
+    checkConsistency();
+}
 
 } } // namespace JSC::DFG
 

@@ -26,9 +26,9 @@
 #include "config.h"
 #include "JSDOMGuardedObject.h"
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 DOMGuardedObject::DOMGuardedObject(JSDOMGlobalObject& globalObject, JSCell& guarded)
     : ActiveDOMCallback(globalObject.scriptExecutionContext())
@@ -53,6 +53,7 @@ void DOMGuardedObject::clear()
         m_globalObject->guardedObjects(locker).remove(this);
     }
     m_guarded.clear();
+    m_globalObject.clear();
 }
 
 void DOMGuardedObject::contextDestroyed()

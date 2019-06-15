@@ -4,7 +4,7 @@
 es6id: 23.1.1.1
 description: >
   The new Map object's prototype is Map.prototype
-info: >
+info: |
   Map ( [ iterable ] )
 
   When the Map function is called with optional argument the following steps
@@ -25,7 +25,10 @@ assert.sameValue(
   "`Object.getPrototypeOf(m1)` returns `Map.prototype`"
 );
 
-var m2 = new Map([[1, 1], [2, 2]]);
+var m2 = new Map([
+  [1, 1],
+  [2, 2]
+]);
 
 assert.sameValue(
   Object.getPrototypeOf(m2),

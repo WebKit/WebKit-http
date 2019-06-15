@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: ToInteger(end)
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
@@ -11,6 +11,7 @@ info: >
   ? ToInteger(end).
   ...
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 var obj = {

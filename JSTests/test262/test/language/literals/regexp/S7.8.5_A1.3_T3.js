@@ -2,12 +2,29 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: "RegularExpressionFirstChar :: LineTerminator is incorrect"
-es5id: 7.8.5_A1.3_T3
-description: Carriage Return, without eval
-negative: SyntaxError
+esid: prod-RegularExpressionNonTerminator
+info: |
+  RegularExpressionBody ::
+    RegularExpressionFirstChar RegularExpressionChars
+
+  RegularExpressionChars ::
+    [empty]
+    RegularExpressionChars RegularExpressionChar
+
+  RegularExpressionFirstChar ::
+    RegularExpressionNonTerminator but not one of * or \ or / or [
+
+  RegularExpressionNonTerminator ::
+    SourceCharacter but not LineTerminator
+
+description: >
+  The first character of a regular expression may not be a <CR>, (\u000D)
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
 
-//CHECK#1
+throw "Test262: This statement should not be evaluated.";
+
 /
 /

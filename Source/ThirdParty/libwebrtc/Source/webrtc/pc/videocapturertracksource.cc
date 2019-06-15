@@ -8,15 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/pc/videocapturertracksource.h"
+#include "pc/videocapturertracksource.h"
 
 #include <cstdlib>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "webrtc/api/mediaconstraintsinterface.h"
-#include "webrtc/base/arraysize.h"
-#include "webrtc/base/checks.h"
+#include "api/mediaconstraintsinterface.h"
+#include "rtc_base/arraysize.h"
+#include "rtc_base/checks.h"
 
 using cricket::CaptureState;
 using webrtc::MediaConstraintsInterface;
@@ -155,8 +156,8 @@ bool NewFormatWithConstraints(
     // regardless of the format.
     return true;
   }
-  LOG(LS_WARNING) << "Found unknown MediaStream constraint. Name:"
-                  << constraint.key << " Value:" << constraint.value;
+  RTC_LOG(LS_WARNING) << "Found unknown MediaStream constraint. Name:"
+                      << constraint.key << " Value:" << constraint.value;
   return false;
 }
 
@@ -241,11 +242,11 @@ const cricket::VideoFormat& GetBestCaptureFormat(
 // Return false if the key is mandatory, and the value is invalid.
 bool ExtractOption(const MediaConstraintsInterface* all_constraints,
                    const std::string& key,
-                   rtc::Optional<bool>* option) {
+                   absl::optional<bool>* option) {
   size_t mandatory = 0;
   bool value;
   if (FindConstraint(all_constraints, key, &value, &mandatory)) {
-    *option = rtc::Optional<bool>(value);
+    *option = value;
     return true;
   }
 
@@ -287,7 +288,7 @@ VideoCapturerTrackSource::VideoCapturerTrackSource(
     rtc::Thread* worker_thread,
     std::unique_ptr<cricket::VideoCapturer> capturer,
     bool remote)
-    : VideoTrackSource(capturer.get(), remote),
+    : VideoTrackSource(remote),
       signaling_thread_(rtc::Thread::Current()),
       worker_thread_(worker_thread),
       video_capturer_(std::move(capturer)),
@@ -337,15 +338,15 @@ void VideoCapturerTrackSource::Initialize(
   }
 
   if (formats.size() == 0) {
-    LOG(LS_WARNING) << "Failed to find a suitable video format.";
+    RTC_LOG(LS_WARNING) << "Failed to find a suitable video format.";
     SetState(kEnded);
     return;
   }
 
   if (!ExtractOption(constraints, MediaConstraintsInterface::kNoiseReduction,
                      &needs_denoising_)) {
-    LOG(LS_WARNING) << "Invalid mandatory value for"
-                    << MediaConstraintsInterface::kNoiseReduction;
+    RTC_LOG(LS_WARNING) << "Invalid mandatory value for"
+                        << MediaConstraintsInterface::kNoiseReduction;
     SetState(kEnded);
     return;
   }

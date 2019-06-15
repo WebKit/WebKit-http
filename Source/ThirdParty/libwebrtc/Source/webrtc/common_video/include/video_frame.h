@@ -8,16 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_VIDEO_INCLUDE_VIDEO_FRAME_H_
-#define WEBRTC_COMMON_VIDEO_INCLUDE_VIDEO_FRAME_H_
+#ifndef COMMON_VIDEO_INCLUDE_VIDEO_FRAME_H_
+#define COMMON_VIDEO_INCLUDE_VIDEO_FRAME_H_
 
 // TODO(nisse): This header file should eventually be deleted. The
 // EncodedImage class stays in this file until we have figured out how
 // to refactor and clean up related interfaces, at which point it
 // should be moved to somewhere under api/.
 
-#include "webrtc/common_types.h"
-#include "webrtc/typedefs.h"
+#include "absl/types/optional.h"
+#include "api/video/video_content_type.h"
+#include "api/video/video_rotation.h"
+#include "api/video/video_timing.h"
+#include "common_types.h"  // NOLINT(build/include)
 
 namespace webrtc {
 
@@ -30,25 +33,23 @@ class EncodedImage {
   // number of additional bytes (due to over-reading byte readers).
   static size_t GetBufferPaddingBytes(VideoCodecType codec_type);
 
-  EncodedImage() : EncodedImage(nullptr, 0, 0) {}
+  EncodedImage();
+  EncodedImage(const EncodedImage&);
+  EncodedImage(uint8_t* buffer, size_t length, size_t size);
 
-  EncodedImage(uint8_t* buffer, size_t length, size_t size)
-      : _buffer(buffer), _length(length), _size(size) {}
+  void SetEncodeTime(int64_t encode_start_ms, int64_t encode_finish_ms);
 
-  void SetEncodeTime(int64_t encode_start_ms, int64_t encode_finish_ms) const {
-    timing_.is_timing_frame = true;
-    timing_.encode_start_ms = encode_start_ms;
-    timing_.encode_finish_ms = encode_finish_ms;
+  absl::optional<int> SpatialIndex() const {
+    if (spatial_index_ < 0)
+      return absl::nullopt;
+    return spatial_index_;
+  }
+  void SetSpatialIndex(absl::optional<int> spatial_index) {
+    RTC_DCHECK_GE(spatial_index.value_or(0), 0);
+    RTC_DCHECK_LT(spatial_index.value_or(0), kMaxSpatialLayers);
+    spatial_index_ = spatial_index.value_or(-1);
   }
 
-  // TODO(kthelgason): get rid of this struct as it only has a single member
-  // remaining.
-  struct AdaptReason {
-    AdaptReason() : bw_resolutions_disabled(-1) {}
-    int bw_resolutions_disabled;  // Number of resolutions that are not sent
-                                  // due to bandwidth for this frame.
-                                  // Or -1 if information is not provided.
-  };
   uint32_t _encodedWidth = 0;
   uint32_t _encodedHeight = 0;
   uint32_t _timeStamp = 0;
@@ -62,7 +63,6 @@ class EncodedImage {
   VideoRotation rotation_ = kVideoRotation_0;
   VideoContentType content_type_ = VideoContentType::UNSPECIFIED;
   bool _completeFrame = false;
-  AdaptReason adapt_reason_;
   int qp_ = -1;  // Quantizer value.
 
   // When an application indicates non-zero values here, it is taken as an
@@ -70,9 +70,8 @@ class EncodedImage {
   // until the application indicates a change again.
   PlayoutDelay playout_delay_ = {-1, -1};
 
-  // Timing information should be updatable on const instances.
-  mutable struct Timing {
-    bool is_timing_frame = false;
+  struct Timing {
+    uint8_t flags = VideoSendTiming::kInvalid;
     int64_t encode_start_ms = 0;
     int64_t encode_finish_ms = 0;
     int64_t packetization_finish_ms = 0;
@@ -82,8 +81,13 @@ class EncodedImage {
     int64_t receive_start_ms = 0;
     int64_t receive_finish_ms = 0;
   } timing_;
+
+ private:
+  // -1 means not set. Use a plain int rather than optional, to keep this class
+  // copyable with memcpy.
+  int spatial_index_ = -1;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_VIDEO_INCLUDE_VIDEO_FRAME_H_
+#endif  // COMMON_VIDEO_INCLUDE_VIDEO_FRAME_H_

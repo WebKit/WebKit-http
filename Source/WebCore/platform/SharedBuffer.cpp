@@ -31,10 +31,6 @@
 #include <algorithm>
 #include <wtf/unicode/UTF8.h>
 
-#if USE(SOUP)
-#include "GUniquePtrSoup.h"
-#endif
-
 namespace WebCore {
 
 SharedBuffer::SharedBuffer(const char* data, size_t size)
@@ -47,7 +43,7 @@ SharedBuffer::SharedBuffer(const unsigned char* data, size_t size)
     append(reinterpret_cast<const char*>(data), size);
 }
 
-SharedBuffer::SharedBuffer(MappedFileData&& fileData)
+SharedBuffer::SharedBuffer(FileSystem::MappedFileData&& fileData)
     : m_size(fileData.size())
 {
     m_segments.append({0, DataSegment::create(WTFMove(fileData))});
@@ -61,7 +57,7 @@ SharedBuffer::SharedBuffer(Vector<char>&& data)
 RefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& filePath)
 {
     bool mappingSuccess;
-    MappedFileData mappedFileData(filePath, mappingSuccess);
+    FileSystem::MappedFileData mappedFileData(filePath, mappingSuccess);
 
     if (!mappingSuccess)
         return SharedBuffer::createFromReadingFile(filePath);
@@ -72,6 +68,12 @@ RefPtr<SharedBuffer> SharedBuffer::createWithContentsOfFile(const String& filePa
 Ref<SharedBuffer> SharedBuffer::create(Vector<char>&& vector)
 {
     return adoptRef(*new SharedBuffer(WTFMove(vector)));
+}
+
+// FIXME: Move the whole class from Vector<char> to Vector<uint8_t> and make this efficient, replacing the Vector<char> version above.
+Ref<SharedBuffer> SharedBuffer::create(Vector<uint8_t>&& vector)
+{
+    return adoptRef(*new SharedBuffer { vector.data(), vector.size() });
 }
 
 void SharedBuffer::combineIntoOneSegment() const
@@ -206,7 +208,10 @@ const char* SharedBuffer::DataSegment::data() const
 #if USE(SOUP)
         [](const GUniquePtr<SoupBuffer>& data) { return data->data; },
 #endif
-        [](const MappedFileData& data) { return reinterpret_cast<const char*>(data.data()); }
+#if USE(GLIB)
+        [](const GRefPtr<GBytes>& data) { return reinterpret_cast<const char*>(g_bytes_get_data(data.get(), nullptr)); },
+#endif
+        [](const FileSystem::MappedFileData& data) { return reinterpret_cast<const char*>(data.data()); }
     );
     return WTF::visit(visitor, m_immutableData);
 }
@@ -227,7 +232,10 @@ size_t SharedBuffer::DataSegment::size() const
 #if USE(SOUP)
         [](const GUniquePtr<SoupBuffer>& data) { return static_cast<size_t>(data->length); },
 #endif
-        [](const MappedFileData& data) { return data.size(); }
+#if USE(GLIB)
+        [](const GRefPtr<GBytes>& data) { return g_bytes_get_size(data.get()); },
+#endif
+        [](const FileSystem::MappedFileData& data) { return data.size(); }
     );
     return WTF::visit(visitor, m_immutableData);
 }

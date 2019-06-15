@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,19 +29,19 @@
 
 #include "NP_jsobject.h"
 
-#include "c_utility.h"
-#include "c_instance.h"
 #include "IdentifierRep.h"
 #include "JSDOMBinding.h"
+#include "c_instance.h"
+#include "c_utility.h"
 #include "npruntime_priv.h"
 #include "runtime_root.h"
-#include <runtime/CatchScope.h>
-#include <runtime/Error.h>
-#include <runtime/JSGlobalObject.h>
-#include <runtime/JSLock.h>
-#include <runtime/PropertyNameArray.h>
-#include <parser/SourceCode.h>
-#include <runtime/Completion.h>
+#include <JavaScriptCore/CatchScope.h>
+#include <JavaScriptCore/Completion.h>
+#include <JavaScriptCore/Error.h>
+#include <JavaScriptCore/JSGlobalObject.h>
+#include <JavaScriptCore/JSLock.h>
+#include <JavaScriptCore/PropertyNameArray.h>
+#include <JavaScriptCore/SourceCode.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
@@ -49,8 +49,8 @@
 #include "npruntime_impl.h"
 #pragma GCC visibility pop
 
-using namespace JSC;
-using namespace JSC::Bindings;
+namespace JSC {
+using namespace Bindings;
 using namespace WebCore;
 
 class ObjectMap {
@@ -139,6 +139,7 @@ static void jsDeallocate(NPObject* npObj)
 static NPClass javascriptClass = { 1, jsAllocate, jsDeallocate, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 static NPClass noScriptClass = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
+extern "C" {
 NPClass* NPScriptObjectClass = &javascriptClass;
 static NPClass* NPNoScriptObjectClass = &noScriptClass;
 
@@ -188,12 +189,13 @@ bool _NPN_InvokeDefault(NPP, NPObject* o, const NPVariant* args, uint32_t argCou
         // Call the function object.
         JSValue function = obj->imp;
         CallData callData;
-        CallType callType = getCallData(function, callData);
+        CallType callType = getCallData(vm, function, callData);
         if (callType == CallType::None)
             return false;
         
         MarkedArgumentBuffer argList;
         getListFromVariantArgs(exec, args, argCount, rootObject, argList);
+        RELEASE_ASSERT(!argList.hasOverflowed());
         JSValue resultV = JSC::call(exec, function, callType, callData, function, argList);
 
         // Convert and return the result of the function call.
@@ -239,13 +241,14 @@ bool _NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVariant*
         ExecState* exec = globalObject->globalExec();
         JSValue function = obj->imp->get(exec, identifierFromNPIdentifier(exec, i->string()));
         CallData callData;
-        CallType callType = getCallData(function, callData);
+        CallType callType = getCallData(vm, function, callData);
         if (callType == CallType::None)
             return false;
 
         // Call the function object.
         MarkedArgumentBuffer argList;
         getListFromVariantArgs(exec, args, argCount, rootObject, argList);
+        RELEASE_ASSERT(!argList.hasOverflowed());
         JSValue resultV = JSC::call(exec, function, callType, callData, obj->imp, argList);
 
         // Convert and return the result of the function call.
@@ -346,9 +349,9 @@ bool _NPN_SetProperty(NPP, NPObject* o, NPIdentifier propertyName, const NPVaria
 
         if (i->isString()) {
             PutPropertySlot slot(obj->imp);
-            obj->imp->methodTable()->put(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()), convertNPVariantToValue(exec, variant, rootObject), slot);
+            obj->imp->methodTable(vm)->put(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()), convertNPVariantToValue(exec, variant, rootObject), slot);
         } else
-            obj->imp->methodTable()->putByIndex(obj->imp, exec, i->number(), convertNPVariantToValue(exec, variant, rootObject), false);
+            obj->imp->methodTable(vm)->putByIndex(obj->imp, exec, i->number(), convertNPVariantToValue(exec, variant, rootObject), false);
         scope.clearException();
         return true;
     }
@@ -389,9 +392,9 @@ bool _NPN_RemoveProperty(NPP, NPObject* o, NPIdentifier propertyName)
         }
 
         if (i->isString())
-            obj->imp->methodTable()->deleteProperty(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()));
+            obj->imp->methodTable(vm)->deleteProperty(obj->imp, exec, identifierFromNPIdentifier(exec, i->string()));
         else
-            obj->imp->methodTable()->deletePropertyByIndex(obj->imp, exec, i->number());
+            obj->imp->methodTable(vm)->deletePropertyByIndex(obj->imp, exec, i->number());
 
         scope.clearException();
         return true;
@@ -484,9 +487,9 @@ bool _NPN_Enumerate(NPP, NPObject* o, NPIdentifier** identifier, uint32_t* count
         auto scope = DECLARE_CATCH_SCOPE(vm);
 
         ExecState* exec = globalObject->globalExec();
-        PropertyNameArray propertyNames(exec, PropertyNameMode::Strings);
+        PropertyNameArray propertyNames(&vm, PropertyNameMode::Strings, PrivateSymbolMode::Exclude);
 
-        obj->imp->methodTable()->getPropertyNames(obj->imp, exec, propertyNames, EnumerationMode());
+        obj->imp->methodTable(vm)->getPropertyNames(obj->imp, exec, propertyNames, EnumerationMode());
         unsigned size = static_cast<unsigned>(propertyNames.size());
         // FIXME: This should really call NPN_MemAlloc but that's in WebKit
         NPIdentifier* identifiers = static_cast<NPIdentifier*>(malloc(sizeof(NPIdentifier) * size));
@@ -529,12 +532,13 @@ bool _NPN_Construct(NPP, NPObject* o, const NPVariant* args, uint32_t argCount, 
         // Call the constructor object.
         JSValue constructor = obj->imp;
         ConstructData constructData;
-        ConstructType constructType = getConstructData(constructor, constructData);
+        ConstructType constructType = getConstructData(vm, constructor, constructData);
         if (constructType == ConstructType::None)
             return false;
         
         MarkedArgumentBuffer argList;
         getListFromVariantArgs(exec, args, argCount, rootObject, argList);
+        RELEASE_ASSERT(!argList.hasOverflowed());
         JSValue resultV = JSC::construct(exec, constructor, constructType, constructData, argList);
         
         // Convert and return the result.
@@ -548,5 +552,9 @@ bool _NPN_Construct(NPP, NPObject* o, const NPVariant* args, uint32_t argCount, 
     
     return false;
 }
+
+} // extern "C"
+
+} // namespace JSC
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)

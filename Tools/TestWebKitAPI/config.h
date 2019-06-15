@@ -27,14 +27,13 @@
 #include "cmakeconfig.h"
 #endif
 
-#include <runtime/JSExportMacros.h>
+#include <JavaScriptCore/JSExportMacros.h>
 #ifndef BUILDING_JSCONLY__
 #include <WebCore/PlatformExportMacros.h>
 #include <pal/ExportMacros.h>
 #endif
 
 #if defined(__APPLE__) && __APPLE__
-
 #ifdef __OBJC__
 #if PLATFORM(IOS)
 #import <Foundation/Foundation.h>
@@ -42,26 +41,11 @@
 #import <Cocoa/Cocoa.h>
 #endif
 #endif
-
-#elif PLATFORM(WIN)
-
-#if PLATFORM(WIN_CAIRO)
-#undef USE_CG
-#define USE_CURL 1
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
 #endif
-#else
-#define USE_CG 1
-#undef USE_CAIRO
-#undef USE_CURL
-#endif
-
-#endif // PLATFORM(WIN)
 
 #include <stdint.h>
 
-#if !PLATFORM(IOS) && !PLATFORM(WIN) && !(PLATFORM(QT) && !defined(BUILDING_JSCONLY__)
+#if !PLATFORM(IOS) && !defined(BUILDING_JSCONLY__) && (!PLATFORM(WIN) || PLATFORM(WIN_CAIRO)) && !(PLATFORM(QT) && !defined(HAVE_WEBKIT2))
 #include <WebKit/WebKit2_C.h>
 #endif
 
@@ -73,7 +57,13 @@
 
 #ifdef __cplusplus
 #include <gtest/gtest.h>
+#include <wtf/Assertions.h>
+#undef new
+#undef delete
+#include <wtf/FastMalloc.h>
 #endif
+
+#include <wtf/DisallowCType.h>
 
 #ifdef __clang__
 // Finish working around the less strict coding standards of the gtest framework.

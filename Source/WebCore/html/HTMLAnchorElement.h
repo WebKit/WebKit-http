@@ -25,7 +25,7 @@
 
 #include "HTMLElement.h"
 #include "HTMLNames.h"
-#include "LinkHash.h"
+#include "SharedStringHash.h"
 #include "URLUtils.h"
 #include <wtf/OptionSet.h>
 
@@ -40,6 +40,7 @@ enum class Relation {
 };
 
 class HTMLAnchorElement : public HTMLElement, public URLUtils<HTMLAnchorElement> {
+    WTF_MAKE_ISO_ALLOCATED(HTMLAnchorElement);
 public:
     static Ref<HTMLAnchorElement> create(Document&);
     static Ref<HTMLAnchorElement> create(const QualifiedName&, Document&);
@@ -62,10 +63,14 @@ public:
 
     bool hasRel(Relation) const;
     
-    LinkHash visitedLinkHash() const;
+    SharedStringHash visitedLinkHash() const;
     void invalidateCachedVisitedLinkHash() { m_cachedVisitedLinkHash = 0; }
 
-    WEBCORE_EXPORT DOMTokenList& relList();
+    WEBCORE_EXPORT DOMTokenList& relList() const;
+
+#if USE(SYSTEM_PREVIEW)
+    WEBCORE_EXPORT bool isSystemPreviewLink() const;
+#endif
 
 protected:
     HTMLAnchorElement(const QualifiedName&, Document&);
@@ -75,7 +80,7 @@ protected:
 private:
     bool supportsFocus() const override;
     bool isMouseFocusable() const override;
-    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    bool isKeyboardFocusable(KeyboardEvent*) const override;
     void defaultEventHandler(Event&) final;
     void setActive(bool active = true, bool pause = false) final;
     void accessKeyAction(bool sendMouseEvents) final;
@@ -104,15 +109,15 @@ private:
     bool m_hasRootEditableElementForSelectionOnMouseDown;
     bool m_wasShiftKeyDownOnMouseDown;
     OptionSet<Relation> m_linkRelations;
-    mutable LinkHash m_cachedVisitedLinkHash;
+    mutable SharedStringHash m_cachedVisitedLinkHash;
 
-    std::unique_ptr<DOMTokenList> m_relList;
+    mutable std::unique_ptr<DOMTokenList> m_relList;
 };
 
-inline LinkHash HTMLAnchorElement::visitedLinkHash() const
+inline SharedStringHash HTMLAnchorElement::visitedLinkHash() const
 {
     if (!m_cachedVisitedLinkHash)
-        m_cachedVisitedLinkHash = WebCore::visitedLinkHash(document().baseURL(), attributeWithoutSynchronization(HTMLNames::hrefAttr));
+        m_cachedVisitedLinkHash = computeVisitedLinkHash(document().baseURL(), attributeWithoutSynchronization(HTMLNames::hrefAttr));
     return m_cachedVisitedLinkHash; 
 }
 

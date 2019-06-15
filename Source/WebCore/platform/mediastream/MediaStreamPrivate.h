@@ -48,21 +48,16 @@
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
-#if USE(GSTREAMER)
-#include "GRefPtrGStreamer.h"
-#include <owr/owr_gst_video_renderer.h>
-#endif
-
 namespace WebCore {
 
 class MediaStream;
 class OrientationNotifier;
 
-class MediaStreamPrivate : public MediaStreamTrackPrivate::Observer, public RefCounted<MediaStreamPrivate> {
+class MediaStreamPrivate : public MediaStreamTrackPrivate::Observer, public RefCounted<MediaStreamPrivate>, public CanMakeWeakPtr<MediaStreamPrivate> {
 public:
     class Observer {
     public:
-        virtual ~Observer() { }
+        virtual ~Observer() = default;
 
         virtual void characteristicsChanged() { }
         virtual void activeStatusChanged() { }
@@ -70,6 +65,7 @@ public:
         virtual void didRemoveTrack(MediaStreamTrackPrivate&) { }
     };
 
+    static Ref<MediaStreamPrivate> create(Ref<RealtimeMediaSource>&&);
     static Ref<MediaStreamPrivate> create(const Vector<Ref<RealtimeMediaSource>>& audioSources, const Vector<Ref<RealtimeMediaSource>>& videoSources);
     static Ref<MediaStreamPrivate> create(const MediaStreamTrackPrivateVector& tracks, String&& id = createCanonicalUUIDString()) { return adoptRef(*new MediaStreamPrivate(tracks, WTFMove(id))); }
 
@@ -95,8 +91,6 @@ public:
     void stopProducingData();
     bool isProducingData() const;
 
-    void endStream();
-
     bool hasVideo() const;
     bool hasAudio() const;
     bool muted() const;
@@ -107,19 +101,7 @@ public:
 
     FloatSize intrinsicSize() const;
 
-    WeakPtr<MediaStreamPrivate> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
-
     void monitorOrientation(OrientationNotifier&);
-
-#if USE(GSTREAMER)
-    void setVideoRenderer(OwrGstVideoRenderer* renderer, GstElement* sink) { m_gstVideoRenderer = renderer; m_gstVideoSinkElement = sink; }
-    GRefPtr<GstElement> getVideoSinkElement() const { return m_gstVideoSinkElement; }
-    GRefPtr<OwrGstVideoRenderer> getVideoRenderer() const { return m_gstVideoRenderer; }
-
-private:
-    GRefPtr<GstElement> m_gstVideoSinkElement;
-    GRefPtr<OwrGstVideoRenderer> m_gstVideoRenderer;
-#endif
 
 private:
     MediaStreamPrivate(const MediaStreamTrackPrivateVector&, String&&);
@@ -136,7 +118,6 @@ private:
 
     void scheduleDeferredTask(Function<void ()>&&);
 
-    WeakPtrFactory<MediaStreamPrivate> m_weakPtrFactory;
     Vector<Observer*> m_observers;
     String m_id;
     MediaStreamTrackPrivate* m_activeVideoTrack { nullptr };

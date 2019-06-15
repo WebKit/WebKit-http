@@ -8,26 +8,30 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_BASE_FAKEMEDIAENGINE_H_
-#define WEBRTC_MEDIA_BASE_FAKEMEDIAENGINE_H_
+#ifndef MEDIA_BASE_FAKEMEDIAENGINE_H_
+#define MEDIA_BASE_FAKEMEDIAENGINE_H_
 
 #include <list>
 #include <map>
 #include <memory>
 #include <set>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
-#include "webrtc/api/call/audio_sink.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/copyonwritebuffer.h"
-#include "webrtc/base/networkroute.h"
-#include "webrtc/base/stringutils.h"
-#include "webrtc/media/base/audiosource.h"
-#include "webrtc/media/base/mediaengine.h"
-#include "webrtc/media/base/rtputils.h"
-#include "webrtc/media/base/streamparams.h"
-#include "webrtc/p2p/base/sessiondescription.h"
+#include "absl/memory/memory.h"
+#include "api/call/audio_sink.h"
+#include "media/base/audiosource.h"
+#include "media/base/mediaengine.h"
+#include "media/base/rtputils.h"
+#include "media/base/streamparams.h"
+#include "media/engine/webrtcvideoengine.h"
+#include "modules/audio_processing/include/audio_processing.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/copyonwritebuffer.h"
+#include "rtc_base/networkroute.h"
+#include "rtc_base/stringutils.h"
 
 using webrtc::RtpExtension;
 
@@ -38,7 +42,8 @@ class FakeVideoEngine;
 class FakeVoiceEngine;
 
 // A common helper class that handles sending and receiving RTP/RTCP packets.
-template <class Base> class RtpHelper : public Base {
+template <class Base>
+class RtpHelper : public Base {
  public:
   RtpHelper()
       : sending_(false),
@@ -46,7 +51,10 @@ template <class Base> class RtpHelper : public Base {
         fail_set_send_codecs_(false),
         fail_set_recv_codecs_(false),
         send_ssrc_(0),
-        ready_to_send_(false) {}
+        ready_to_send_(false),
+        transport_overhead_per_packet_(0),
+        num_network_route_changes_(0) {}
+  virtual ~RtpHelper() = default;
   const std::vector<RtpExtension>& recv_extensions() {
     return recv_extensions_;
   }
@@ -103,7 +111,7 @@ template <class Base> class RtpHelper : public Base {
     }
     send_streams_.push_back(sp);
     rtp_send_parameters_[sp.first_ssrc()] =
-        CreateRtpParametersWithOneEncoding();
+        CreateRtpParametersWithEncodings(sp);
     return true;
   }
   virtual bool RemoveSendStream(uint32_t ssrc) {
@@ -138,16 +146,17 @@ template <class Base> class RtpHelper : public Base {
     }
     return webrtc::RtpParameters();
   }
-  virtual bool SetRtpSendParameters(uint32_t ssrc,
-                                    const webrtc::RtpParameters& parameters) {
+  virtual webrtc::RTCError SetRtpSendParameters(
+      uint32_t ssrc,
+      const webrtc::RtpParameters& parameters) {
     auto parameters_iterator = rtp_send_parameters_.find(ssrc);
     if (parameters_iterator != rtp_send_parameters_.end()) {
       parameters_iterator->second = parameters;
-      return true;
+      return webrtc::RTCError::OK();
     }
     // Replicate the behavior of the real media channel: return false
     // when setting parameters for unknown SSRCs.
-    return false;
+    return webrtc::RTCError(webrtc::RTCErrorType::INTERNAL_ERROR);
   }
 
   virtual webrtc::RtpParameters GetRtpReceiveParameters(uint32_t ssrc) const {
@@ -209,9 +218,7 @@ template <class Base> class RtpHelper : public Base {
   const RtcpParameters& send_rtcp_parameters() { return send_rtcp_parameters_; }
   const RtcpParameters& recv_rtcp_parameters() { return recv_rtcp_parameters_; }
 
-  bool ready_to_send() const {
-    return ready_to_send_;
-  }
+  bool ready_to_send() const { return ready_to_send_; }
 
   int transport_overhead_per_packet() const {
     return transport_overhead_per_packet_;
@@ -262,17 +269,13 @@ template <class Base> class RtpHelper : public Base {
                               const rtc::PacketTime& packet_time) {
     rtcp_packets_.push_back(std::string(packet->data<char>(), packet->size()));
   }
-  virtual void OnReadyToSend(bool ready) {
-    ready_to_send_ = ready;
-  }
-  virtual void OnTransportOverheadChanged(int transport_overhead_per_packet) {
-    transport_overhead_per_packet_ = transport_overhead_per_packet;
-  }
+  virtual void OnReadyToSend(bool ready) { ready_to_send_ = ready; }
 
   virtual void OnNetworkRouteChanged(const std::string& transport_name,
                                      const rtc::NetworkRoute& network_route) {
     last_network_route_ = network_route;
     ++num_network_route_changes_;
+    transport_overhead_per_packet_ = network_route.packet_overhead;
   }
   bool fail_set_send_codecs() const { return fail_set_send_codecs_; }
   bool fail_set_recv_codecs() const { return fail_set_recv_codecs_; }
@@ -298,16 +301,14 @@ template <class Base> class RtpHelper : public Base {
   bool ready_to_send_;
   int transport_overhead_per_packet_;
   rtc::NetworkRoute last_network_route_;
-  int num_network_route_changes_ = 0;
+  int num_network_route_changes_;
 };
 
 class FakeVoiceMediaChannel : public RtpHelper<VoiceMediaChannel> {
  public:
   struct DtmfInfo {
     DtmfInfo(uint32_t ssrc, int event_code, int duration)
-        : ssrc(ssrc),
-          event_code(event_code),
-          duration(duration) {}
+        : ssrc(ssrc), event_code(event_code), duration(duration) {}
     uint32_t ssrc;
     int event_code;
     int duration;
@@ -376,9 +377,6 @@ class FakeVoiceMediaChannel : public RtpHelper<VoiceMediaChannel> {
     return true;
   }
 
-  virtual bool GetActiveStreams(AudioInfo::StreamList* streams) { return true; }
-  virtual int GetOutputLevel() { return 0; }
-
   virtual bool CanInsertDtmf() {
     for (std::vector<AudioCodec>::const_iterator it = send_codecs_.begin();
          it != send_codecs_.end(); ++it) {
@@ -389,9 +387,7 @@ class FakeVoiceMediaChannel : public RtpHelper<VoiceMediaChannel> {
     }
     return false;
   }
-  virtual bool InsertDtmf(uint32_t ssrc,
-                          int event_code,
-                          int duration) {
+  virtual bool InsertDtmf(uint32_t ssrc, int event_code, int duration) {
     dtmf_info_queue_.push_back(DtmfInfo(ssrc, event_code, duration));
     return true;
   }
@@ -482,12 +478,11 @@ class FakeVoiceMediaChannel : public RtpHelper<VoiceMediaChannel> {
       if (it != local_sinks_.end()) {
         RTC_CHECK(it->second->source() == source);
       } else {
-        local_sinks_.insert(
-            std::make_pair(ssrc, new VoiceChannelAudioSink(source)));
+        local_sinks_.insert(std::make_pair(
+            ssrc, absl::make_unique<VoiceChannelAudioSink>(source)));
       }
     } else {
       if (it != local_sinks_.end()) {
-        delete it->second;
         local_sinks_.erase(it);
       }
     }
@@ -500,7 +495,7 @@ class FakeVoiceMediaChannel : public RtpHelper<VoiceMediaChannel> {
   std::map<uint32_t, double> output_scalings_;
   std::vector<DtmfInfo> dtmf_info_queue_;
   AudioOptions options_;
-  std::map<uint32_t, VoiceChannelAudioSink*> local_sinks_;
+  std::map<uint32_t, std::unique_ptr<VoiceChannelAudioSink>> local_sinks_;
   std::unique_ptr<webrtc::AudioSinkInterface> sink_;
   int max_bps_;
 };
@@ -516,8 +511,7 @@ inline bool CompareDtmfInfo(const FakeVoiceMediaChannel::DtmfInfo& info,
 
 class FakeVideoMediaChannel : public RtpHelper<VideoMediaChannel> {
  public:
-  explicit FakeVideoMediaChannel(FakeVideoEngine* engine,
-                                 const VideoOptions& options)
+  FakeVideoMediaChannel(FakeVideoEngine* engine, const VideoOptions& options)
       : engine_(engine), max_bps_(-1) {
     SetOptions(options);
   }
@@ -576,13 +570,9 @@ class FakeVideoMediaChannel : public RtpHelper<VideoMediaChannel> {
   bool SetSend(bool send) override { return set_sending(send); }
   bool SetVideoSend(
       uint32_t ssrc,
-      bool enable,
       const VideoOptions* options,
       rtc::VideoSourceInterface<webrtc::VideoFrame>* source) override {
-    if (!RtpHelper<VideoMediaChannel>::MuteStream(ssrc, !enable)) {
-      return false;
-    }
-    if (enable && options) {
+    if (options) {
       if (!SetOptions(*options)) {
         return false;
       }
@@ -738,9 +728,7 @@ class FakeDataMediaChannel : public RtpHelper<DataMediaChannel> {
 // and FakeVideoEngine.
 class FakeBaseEngine {
  public:
-  FakeBaseEngine()
-      : options_changed_(false),
-        fail_create_channel_(false) {}
+  FakeBaseEngine() : options_changed_(false), fail_create_channel_(false) {}
   void set_fail_create_channel(bool fail) { fail_create_channel_ = fail; }
 
   RtpCapabilities GetCapabilities() const { return capabilities_; }
@@ -769,12 +757,7 @@ class FakeBaseEngine {
 
 class FakeVoiceEngine : public FakeBaseEngine {
  public:
-  FakeVoiceEngine(webrtc::AudioDeviceModule* adm,
-                  const rtc::scoped_refptr<webrtc::AudioEncoderFactory>&
-                      audio_encoder_factory,
-                  const rtc::scoped_refptr<webrtc::AudioDecoderFactory>&
-                      audio_decoder_factory,
-                  rtc::scoped_refptr<webrtc::AudioMixer> audio_mixer) {
+  FakeVoiceEngine() {
     // Add a fake audio codec. Note that the name must not be "" as there are
     // sanity checks against that.
     codecs_.push_back(AudioCodec(101, "fake_audio_codec", 0, 0, 1));
@@ -836,7 +819,7 @@ class FakeVideoEngine : public FakeBaseEngine {
     // sanity checks against that.
     codecs_.push_back(VideoCodec(0, "fake_video_codec"));
   }
-  void Init() {}
+
   bool SetOptions(const VideoOptions& options) {
     options_ = options;
     options_changed_ = true;
@@ -847,21 +830,26 @@ class FakeVideoEngine : public FakeBaseEngine {
                                    const MediaConfig& config,
                                    const VideoOptions& options) {
     if (fail_create_channel_) {
-      return NULL;
+      return nullptr;
     }
 
     FakeVideoMediaChannel* ch = new FakeVideoMediaChannel(this, options);
-    channels_.push_back(ch);
+    channels_.emplace_back(ch);
     return ch;
   }
+
   FakeVideoMediaChannel* GetChannel(size_t index) {
-    return (channels_.size() > index) ? channels_[index] : NULL;
+    return (channels_.size() > index) ? channels_[index] : nullptr;
   }
+
   void UnregisterChannel(VideoMediaChannel* channel) {
-    channels_.erase(std::find(channels_.begin(), channels_.end(), channel));
+    auto it = std::find(channels_.begin(), channels_.end(), channel);
+    RTC_DCHECK(it != channels_.end());
+    channels_.erase(it);
   }
 
   const std::vector<VideoCodec>& codecs() const { return codecs_; }
+
   void SetCodecs(const std::vector<VideoCodec> codecs) { codecs_ = codecs; }
 
   bool SetCapture(bool capture) {
@@ -878,58 +866,54 @@ class FakeVideoEngine : public FakeBaseEngine {
   friend class FakeMediaEngine;
 };
 
-class FakeMediaEngine :
-    public CompositeMediaEngine<FakeVoiceEngine, FakeVideoEngine> {
+class FakeMediaEngine
+    : public CompositeMediaEngine<FakeVoiceEngine, FakeVideoEngine> {
  public:
   FakeMediaEngine()
-      : CompositeMediaEngine<FakeVoiceEngine, FakeVideoEngine>(nullptr,
-                                                               nullptr,
-                                                               nullptr,
-                                                               nullptr) {}
+      : CompositeMediaEngine<FakeVoiceEngine, FakeVideoEngine>(std::tuple<>(),
+                                                               std::tuple<>()) {
+  }
+
   virtual ~FakeMediaEngine() {}
 
   void SetAudioCodecs(const std::vector<AudioCodec>& codecs) {
-    voice_.SetCodecs(codecs);
+    voice().SetCodecs(codecs);
   }
   void SetVideoCodecs(const std::vector<VideoCodec>& codecs) {
-    video_.SetCodecs(codecs);
+    video().SetCodecs(codecs);
   }
 
   void SetAudioRtpHeaderExtensions(
       const std::vector<RtpExtension>& extensions) {
-    voice_.set_rtp_header_extensions(extensions);
+    voice().set_rtp_header_extensions(extensions);
   }
   void SetVideoRtpHeaderExtensions(
       const std::vector<RtpExtension>& extensions) {
-    video_.set_rtp_header_extensions(extensions);
+    video().set_rtp_header_extensions(extensions);
   }
 
   void SetAudioRtpHeaderExtensions(
       const std::vector<cricket::RtpHeaderExtension>& extensions) {
-    voice_.set_rtp_header_extensions(extensions);
+    voice().set_rtp_header_extensions(extensions);
   }
   void SetVideoRtpHeaderExtensions(
       const std::vector<cricket::RtpHeaderExtension>& extensions) {
-    video_.set_rtp_header_extensions(extensions);
+    video().set_rtp_header_extensions(extensions);
   }
 
   FakeVoiceMediaChannel* GetVoiceChannel(size_t index) {
-    return voice_.GetChannel(index);
+    return voice().GetChannel(index);
   }
   FakeVideoMediaChannel* GetVideoChannel(size_t index) {
-    return video_.GetChannel(index);
+    return video().GetChannel(index);
   }
 
-  bool capture() const { return video_.capture_; }
-  bool options_changed() const {
-    return video_.options_changed_;
-  }
-  void clear_options_changed() {
-    video_.options_changed_ = false;
-  }
+  bool capture() const { return video().capture_; }
+  bool options_changed() const { return video().options_changed_; }
+  void clear_options_changed() { video().options_changed_ = false; }
   void set_fail_create_channel(bool fail) {
-    voice_.set_fail_create_channel(fail);
-    video_.set_fail_create_channel(fail);
+    voice().set_fail_create_channel(fail);
+    video().set_fail_create_channel(fail);
   }
 };
 
@@ -948,8 +932,6 @@ inline FakeVideoMediaChannel::~FakeVideoMediaChannel() {
 
 class FakeDataEngine : public DataEngineInterface {
  public:
-  FakeDataEngine(){};
-
   virtual DataMediaChannel* CreateChannel(const MediaConfig& config) {
     FakeDataMediaChannel* ch = new FakeDataMediaChannel(this, DataOptions());
     channels_.push_back(ch);
@@ -977,4 +959,4 @@ class FakeDataEngine : public DataEngineInterface {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_BASE_FAKEMEDIAENGINE_H_
+#endif  // MEDIA_BASE_FAKEMEDIAENGINE_H_

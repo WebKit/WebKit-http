@@ -16,10 +16,13 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef GtkUtilities_h 
-#define GtkUtilities_h 
+#pragma once
 
+#include <gtk/gtk.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -28,10 +31,19 @@ class IntPoint;
 IntPoint convertWidgetPointToScreenPoint(GtkWidget*, const IntPoint&);
 bool widgetIsOnscreenToplevelWindow(GtkWidget*);
 
-#if ENABLE(DEVELOPER_MODE)
-CString webkitBuildDirectory();
-#endif
+template<typename GdkEventType>
+WallTime wallTimeForEvent(const GdkEventType* event)
+{
+    if (event->time == GDK_CURRENT_TIME)
+        return WallTime::now();
+    return MonotonicTime::fromRawSeconds(event->time / 1000.).approximateWallTime();
+}
+
+template<>
+WallTime wallTimeForEvent(const GdkEvent*);
+
+String defaultGtkSystemFont();
+
+unsigned stateModifierForGdkButton(unsigned button);
 
 } // namespace WebCore
-
-#endif // GtkUtilities_h

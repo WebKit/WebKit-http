@@ -57,7 +57,7 @@ void WKApplicationCacheManagerDeleteEntriesForOrigin(WKApplicationCacheManagerRe
     auto& websiteDataStore = toImpl(reinterpret_cast<WKWebsiteDataStoreRef>(applicationCacheManager))->websiteDataStore();
 
     WebsiteDataRecord dataRecord;
-    dataRecord.add(WebsiteDataType::OfflineWebApplicationCache, WebCore::SecurityOriginData::fromSecurityOrigin(toImpl(origin)->securityOrigin()));
+    dataRecord.add(WebsiteDataType::OfflineWebApplicationCache, toImpl(origin)->securityOrigin().data());
 
     websiteDataStore.removeData(WebsiteDataType::OfflineWebApplicationCache, { dataRecord }, [] { });
 }
@@ -65,5 +65,5 @@ void WKApplicationCacheManagerDeleteEntriesForOrigin(WKApplicationCacheManagerRe
 void WKApplicationCacheManagerDeleteAllEntries(WKApplicationCacheManagerRef applicationCacheManager)
 {
     auto& websiteDataStore = toImpl(reinterpret_cast<WKWebsiteDataStoreRef>(applicationCacheManager))->websiteDataStore();
-    websiteDataStore.removeData(WebsiteDataType::OfflineWebApplicationCache, std::chrono::system_clock::time_point::min(), [] { });
+    websiteDataStore.removeData(WebsiteDataType::OfflineWebApplicationCache, -WallTime::infinity(), [] { });
 }

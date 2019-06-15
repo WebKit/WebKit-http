@@ -45,6 +45,7 @@
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/MainThread.h>
 #include <wtf/Ref.h>
 
@@ -74,8 +75,12 @@ class BlobResourceSynchronousLoader : public ResourceHandleClient {
 public:
     BlobResourceSynchronousLoader(ResourceError&, ResourceResponse&, Vector<char>&);
 
-    void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
-    void didFail(ResourceHandle*, const ResourceError&) override;
+    void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&, CompletionHandler<void()>&&) final;
+    void didFail(ResourceHandle*, const ResourceError&) final;
+    void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&) final;
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&&) final;
+#endif
 
 private:
     ResourceError& m_error;
@@ -90,11 +95,26 @@ BlobResourceSynchronousLoader::BlobResourceSynchronousLoader(ResourceError& erro
 {
 }
 
-void BlobResourceSynchronousLoader::didReceiveResponse(ResourceHandle* handle, ResourceResponse&& response)
+void BlobResourceSynchronousLoader::willSendRequestAsync(ResourceHandle*, ResourceRequest&& request, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&& completionHandler)
+{
+    ASSERT_NOT_REACHED();
+    completionHandler(WTFMove(request));
+}
+
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+void BlobResourceSynchronousLoader::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&& completionHandler)
+{
+    ASSERT_NOT_REACHED();
+    completionHandler(false);
+}
+#endif
+
+void BlobResourceSynchronousLoader::didReceiveResponseAsync(ResourceHandle* handle, ResourceResponse&& response, CompletionHandler<void()>&& completionHandler)
 {
     // We cannot handle the size that is more than maximum integer.
     if (response.expectedContentLength() > INT_MAX) {
         m_error = ResourceError(webKitBlobResourceDomain, static_cast<int>(BlobResourceHandle::Error::NotReadableError), response.url(), "File is too large");
+        completionHandler();
         return;
     }
 
@@ -103,6 +123,7 @@ void BlobResourceSynchronousLoader::didReceiveResponse(ResourceHandle* handle, R
     // Read all the data.
     m_data.resize(static_cast<size_t>(response.expectedContentLength()));
     static_cast<BlobResourceHandle*>(handle)->readSync(m_data.data(), static_cast<int>(m_data.size()));
+    completionHandler();
 }
 
 void BlobResourceSynchronousLoader::didFail(ResourceHandle*, const ResourceError& error)
@@ -133,9 +154,9 @@ void BlobResourceHandle::loadResourceSynchronously(BlobData* blobData, const Res
 }
 
 BlobResourceHandle::BlobResourceHandle(BlobData* blobData, const ResourceRequest& request, ResourceHandleClient* client, bool async)
-    : ResourceHandle(nullptr, request, client, false, false)
-    , m_blobData(blobData)
-    , m_async(async)
+    : ResourceHandle { nullptr, request, client, false /* defersLoading */, false /* shouldContentSniff */, true /* shouldContentEncodingSniff */ }
+    , m_blobData { blobData }
+    , m_async { async }
 {
     if (m_async)
         m_asyncStream = std::make_unique<AsyncFileStream>(*this);
@@ -143,9 +164,7 @@ BlobResourceHandle::BlobResourceHandle(BlobData* blobData, const ResourceRequest
         m_stream = std::make_unique<FileStream>();
 }
 
-BlobResourceHandle::~BlobResourceHandle()
-{
-}
+BlobResourceHandle::~BlobResourceHandle() = default;
 
 void BlobResourceHandle::cancel()
 {
@@ -155,15 +174,6 @@ void BlobResourceHandle::cancel()
     m_aborted = true;
 
     ResourceHandle::cancel();
-}
-
-void BlobResourceHandle::continueDidReceiveResponse()
-{
-    ASSERT(m_async);
-    ASSERT(usesAsyncCallbacks());
-
-    m_buffer.resize(bufferSize);
-    readAsync();
 }
 
 void BlobResourceHandle::start()
@@ -228,10 +238,6 @@ void BlobResourceHandle::getSizeForNext()
         if (m_async) {
             Ref<BlobResourceHandle> protectedThis(*this);
             notifyResponse();
-            if (!usesAsyncCallbacks()) {
-                m_buffer.resize(bufferSize);
-                readAsync();
-            }
         }
         return;
     }
@@ -422,7 +428,6 @@ int BlobResourceHandle::readFileSync(const BlobDataItem& item, char* buf, int le
 void BlobResourceHandle::readAsync()
 {
     ASSERT(isMainThread());
-    ASSERT(m_async);
 
     // Do not continue if the request is aborted or an error occurs.
     if (erroredOrAborted())
@@ -446,7 +451,6 @@ void BlobResourceHandle::readAsync()
 void BlobResourceHandle::readDataAsync(const BlobDataItem& item)
 {
     ASSERT(isMainThread());
-    ASSERT(m_async);
     ASSERT(item.data().data());
 
     Ref<BlobResourceHandle> protectedThis(*this);
@@ -461,7 +465,6 @@ void BlobResourceHandle::readDataAsync(const BlobDataItem& item)
 void BlobResourceHandle::readFileAsync(const BlobDataItem& item)
 {
     ASSERT(isMainThread());
-    ASSERT(m_async);
 
     if (m_fileOpened) {
         m_asyncStream->read(m_buffer.data(), m_buffer.size());
@@ -575,7 +578,10 @@ void BlobResourceHandle::notifyResponseOnSuccess()
     // as if the response had a Content-Disposition header with the filename parameter set to the File's name attribute.
     // Notably, this will affect a name suggested in "File Save As".
 
-    didReceiveResponse(WTFMove(response));
+    client()->didReceiveResponseAsync(this, WTFMove(response), [this, protectedThis = makeRef(*this)] {
+        m_buffer.resize(bufferSize);
+        readAsync();
+    });
 }
 
 void BlobResourceHandle::notifyResponseOnError()
@@ -598,7 +604,10 @@ void BlobResourceHandle::notifyResponseOnError()
         break;
     }
 
-    didReceiveResponse(WTFMove(response));
+    client()->didReceiveResponseAsync(this, WTFMove(response), [this, protectedThis = makeRef(*this)] {
+        m_buffer.resize(bufferSize);
+        readAsync();
+    });
 }
 
 void BlobResourceHandle::notifyReceiveData(const char* data, int bytesRead)

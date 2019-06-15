@@ -49,7 +49,7 @@ class WheelEventTestTrigger;
 
 class ScrollControllerClient {
 protected:
-    virtual ~ScrollControllerClient() { }
+    virtual ~ScrollControllerClient() = default;
 
 public:
 #if ENABLE(RUBBER_BANDING)
@@ -61,6 +61,7 @@ public:
     virtual bool canScrollVertically() = 0;
     virtual bool shouldRubberBandInDirection(ScrollDirection) = 0;
 
+    // FIXME: use ScrollClamping to collapse these to one.
     virtual void immediateScrollBy(const FloatSize&) = 0;
     virtual void immediateScrollByWithoutContentEdgeConstraints(const FloatSize&) = 0;
     virtual void startSnapRubberbandTimer()

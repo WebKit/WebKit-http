@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/codecs/isac/fix/include/isacfix.h"
-#include "webrtc/modules/audio_coding/codecs/isac/fix/source/settings.h"
-#include "webrtc/modules/audio_coding/codecs/tools/audio_codec_speed_test.h"
+#include "modules/audio_coding/codecs/isac/fix/include/isacfix.h"
+#include "modules/audio_coding/codecs/isac/fix/source/settings.h"
+#include "modules/audio_coding/codecs/tools/audio_codec_speed_test.h"
 
-using ::std::string;
+using std::string;
 
 namespace webrtc {
 
@@ -25,19 +25,21 @@ class IsacSpeedTest : public AudioCodecSpeedTest {
   IsacSpeedTest();
   void SetUp() override;
   void TearDown() override;
-  float EncodeABlock(int16_t* in_data, uint8_t* bit_stream,
-                     size_t max_bytes, size_t* encoded_bytes) override;
-  float DecodeABlock(const uint8_t* bit_stream, size_t encoded_bytes,
+  float EncodeABlock(int16_t* in_data,
+                     uint8_t* bit_stream,
+                     size_t max_bytes,
+                     size_t* encoded_bytes) override;
+  float DecodeABlock(const uint8_t* bit_stream,
+                     size_t encoded_bytes,
                      int16_t* out_data) override;
-  ISACFIX_MainStruct *ISACFIX_main_inst_;
+  ISACFIX_MainStruct* ISACFIX_main_inst_;
 };
 
 IsacSpeedTest::IsacSpeedTest()
     : AudioCodecSpeedTest(kIsacBlockDurationMs,
                           kIsacInputSamplingKhz,
                           kIsacOutputSamplingKhz),
-      ISACFIX_main_inst_(NULL) {
-}
+      ISACFIX_main_inst_(NULL) {}
 
 void IsacSpeedTest::SetUp() {
   AudioCodecSpeedTest::SetUp();
@@ -60,8 +62,10 @@ void IsacSpeedTest::TearDown() {
   EXPECT_EQ(0, WebRtcIsacfix_Free(ISACFIX_main_inst_));
 }
 
-float IsacSpeedTest::EncodeABlock(int16_t* in_data, uint8_t* bit_stream,
-                                  size_t max_bytes, size_t* encoded_bytes) {
+float IsacSpeedTest::EncodeABlock(int16_t* in_data,
+                                  uint8_t* bit_stream,
+                                  size_t max_bytes,
+                                  size_t* encoded_bytes) {
   // ISAC takes 10 ms everycall
   const int subblocks = block_duration_ms_ / 10;
   const int subblock_length = 10 * input_sampling_khz_;
@@ -70,8 +74,8 @@ float IsacSpeedTest::EncodeABlock(int16_t* in_data, uint8_t* bit_stream,
   clock_t clocks = clock();
   size_t pointer = 0;
   for (int idx = 0; idx < subblocks; idx++, pointer += subblock_length) {
-    value = WebRtcIsacfix_Encode(ISACFIX_main_inst_, &in_data[pointer],
-                                 bit_stream);
+    value =
+        WebRtcIsacfix_Encode(ISACFIX_main_inst_, &in_data[pointer], bit_stream);
     if (idx == subblocks - 1)
       EXPECT_GT(value, 0);
     else
@@ -101,11 +105,13 @@ TEST_P(IsacSpeedTest, IsacEncodeDecodeTest) {
   EncodeDecode(kDurationSec);
 }
 
-const coding_param param_set[] =
-    {::std::tr1::make_tuple(1, 32000, string("audio_coding/speech_mono_16kHz"),
-                            string("pcm"), true)};
+const coding_param param_set[] = {
+    std::make_tuple(1,
+                    32000,
+                    string("audio_coding/speech_mono_16kHz"),
+                    string("pcm"),
+                    true)};
 
-INSTANTIATE_TEST_CASE_P(AllTest, IsacSpeedTest,
-                        ::testing::ValuesIn(param_set));
+INSTANTIATE_TEST_CASE_P(AllTest, IsacSpeedTest, ::testing::ValuesIn(param_set));
 
 }  // namespace webrtc

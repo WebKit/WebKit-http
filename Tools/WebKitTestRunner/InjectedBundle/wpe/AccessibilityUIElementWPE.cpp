@@ -21,7 +21,7 @@
 
 #if HAVE(ACCESSIBILITY)
 
-#include "NotImplemented.h"
+#include <WebCore/NotImplemented.h>
 
 namespace WTR {
 
@@ -435,7 +435,7 @@ int AccessibilityUIElement::hierarchicalLevel() const
     return 0;
 }
 
-JSRetainPtr<JSStringRef> AccessibilityUIElement::speak()
+JSRetainPtr<JSStringRef> AccessibilityUIElement::speakAs()
 {
     notImplemented();
     return nullptr;
@@ -838,6 +838,18 @@ RefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForPoint(int, 
 }
 
 RefPtr<AccessibilityUIElement> AccessibilityUIElement::accessibilityElementForTextMarker(AccessibilityTextMarker*)
+{
+    notImplemented();
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForTextMarkerRange(AccessibilityTextMarkerRange*)
+{
+    notImplemented();
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions(AccessibilityTextMarkerRange*, bool)
 {
     notImplemented();
     return nullptr;

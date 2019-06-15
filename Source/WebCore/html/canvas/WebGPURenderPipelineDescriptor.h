@@ -27,9 +27,10 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WebGPUObject.h"
+#include "GPURenderPipelineDescriptor.h"
 #include "WebGPURenderPipelineColorAttachmentDescriptor.h"
-
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -39,25 +40,25 @@ class GPURenderPipelineDescriptor;
 class WebGPUFunction;
 class WebGPURenderPipelineColorAttachmentDescriptor;
 
-class WebGPURenderPipelineDescriptor : public WebGPUObject {
+class WebGPURenderPipelineDescriptor : public RefCounted<WebGPURenderPipelineDescriptor> {
 public:
-    virtual ~WebGPURenderPipelineDescriptor();
+    ~WebGPURenderPipelineDescriptor();
     static Ref<WebGPURenderPipelineDescriptor> create();
 
-    RefPtr<WebGPUFunction> vertexFunction() const;
-    void setVertexFunction(RefPtr<WebGPUFunction>);
+    WebGPUFunction* vertexFunction() const;
+    void setVertexFunction(RefPtr<WebGPUFunction>&&);
 
-    RefPtr<WebGPUFunction> fragmentFunction() const;
-    void setFragmentFunction(RefPtr<WebGPUFunction>);
+    WebGPUFunction* fragmentFunction() const;
+    void setFragmentFunction(RefPtr<WebGPUFunction>&&);
 
-    Vector<RefPtr<WebGPURenderPipelineColorAttachmentDescriptor>> colorAttachments();
+    const Vector<RefPtr<WebGPURenderPipelineColorAttachmentDescriptor>>& colorAttachments();
 
-    unsigned long depthAttachmentPixelFormat() const;
-    void setDepthAttachmentPixelFormat(unsigned long);
+    unsigned depthAttachmentPixelFormat() const;
+    void setDepthAttachmentPixelFormat(unsigned);
 
     void reset();
 
-    GPURenderPipelineDescriptor* renderPipelineDescriptor() { return m_renderPipelineDescriptor.get(); }
+    const GPURenderPipelineDescriptor& descriptor() { return m_descriptor; }
 
 private:
     WebGPURenderPipelineDescriptor();
@@ -65,9 +66,9 @@ private:
     RefPtr<WebGPUFunction> m_vertexFunction;
     RefPtr<WebGPUFunction> m_fragmentFunction;
 
-    Vector<RefPtr<WebGPURenderPipelineColorAttachmentDescriptor>> m_colorAttachmentDescriptors;
+    Vector<RefPtr<WebGPURenderPipelineColorAttachmentDescriptor>> m_colorAttachments;
 
-    RefPtr<GPURenderPipelineDescriptor> m_renderPipelineDescriptor;
+    GPURenderPipelineDescriptor m_descriptor;
 };
 
 } // namespace WebCore

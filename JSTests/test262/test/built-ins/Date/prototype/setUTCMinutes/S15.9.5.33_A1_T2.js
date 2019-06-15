@@ -3,11 +3,12 @@
 
 /*---
 info: The Date.prototype property "setUTCMinutes" has { DontEnum } attributes
+esid: sec-date.prototype.setutcminutes
 es5id: 15.9.5.33_A1_T2
 description: Checking absence of DontDelete attribute
 ---*/
 
-if (delete Date.prototype.setUTCMinutes  === false) {
+if (delete Date.prototype.setUTCMinutes === false) {
   $ERROR('#1: The Date.prototype.setUTCMinutes property has not the attributes DontDelete');
 }
 

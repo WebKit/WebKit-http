@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 
 # Copyright (C) 2011 Apple Inc. All rights reserved.
 #
@@ -62,6 +62,12 @@ EOF
 
 my $expectedOutput =
 [
+  {
+    'leaksOutput' => 'Process 1602: 86671 nodes malloced for 13261 KB'
+  },
+  {
+    'leaksOutput' => 'Process 1602: 8 leaks for 160 total leaked bytes.'
+  },
   {
     'leaksOutput' => join('', split(/\n/, <<EOF)),
 Leak: 0x114d54708  size=24  zone: JavaScriptCore FastMalloc_0x7fff70a09d20

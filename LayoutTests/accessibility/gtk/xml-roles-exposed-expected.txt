@@ -20,7 +20,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: computed-role:alert, xml-roles:alert, tag:div, toolkit:WebKitGtk
+AXPlatformAttributes: atomic:true, relevant:additions text, live:assertive, container-live-role:alert, container-atomic:true, container-relevant:additions text, container-live:assertive, computed-role:alert, xml-roles:alert, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXDialog
 AXParent: AXWebArea
@@ -39,7 +39,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: computed-role:alertdialog, xml-roles:alertdialog, tag:div, toolkit:WebKitGtk
+AXPlatformAttributes: relevant:additions text, live:assertive, container-live-role:alertdialog, container-relevant:additions text, container-live:assertive, computed-role:alertdialog, xml-roles:alertdialog, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXEmbedded
 AXParent: AXWebArea
@@ -98,6 +98,25 @@ AXRequired: 0
 AXChecked: 0
 AXPlatformAttributes: computed-role:banner, xml-roles:banner, tag:div, toolkit:WebKitGtk
 ------------
+AXRole: AXBlockquote
+AXParent: AXWebArea
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 0.000000, 0.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 0
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: computed-role:blockquote, xml-roles:blockquote, tag:div, toolkit:WebKitGtk
+------------
 AXRole: AXButton
 AXParent: AXWebArea
 AXChildren: 0
@@ -116,6 +135,25 @@ AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
 AXPlatformAttributes: computed-role:button, xml-roles:button, tag:div, toolkit:WebKitGtk
+------------
+AXRole: AXCaption
+AXParent: AXWebArea
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 0.000000, 0.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 0
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: computed-role:caption, xml-roles:caption, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXCheckBox
 AXParent: AXWebArea
@@ -307,7 +345,7 @@ AXRequired: 0
 AXChecked: 0
 AXPlatformAttributes: computed-role:figure, xml-roles:figure, tag:div, toolkit:WebKitGtk
 ------------
-AXRole: AXForm
+AXRole: AXLandmarkForm
 AXParent: AXWebArea
 AXChildren: 0
 AXPosition: { 0.000000, 0.000000 }
@@ -420,7 +458,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: computed-role:log, xml-roles:log, tag:div, toolkit:WebKitGtk
+AXPlatformAttributes: relevant:additions text, live:polite, container-live-role:log, container-relevant:additions text, container-live:polite, computed-role:log, xml-roles:log, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXLandmarkMain
 AXParent: AXWebArea
@@ -458,7 +496,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: computed-role:marquee, xml-roles:marquee, tag:div, toolkit:WebKitGtk
+AXPlatformAttributes: relevant:additions text, live:off, container-live-role:marquee, container-relevant:additions text, container-live:off, computed-role:marquee, xml-roles:marquee, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXMath
 AXParent: AXWebArea
@@ -516,6 +554,25 @@ AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
 AXPlatformAttributes: computed-role:note, xml-roles:note, tag:div, toolkit:WebKitGtk
+------------
+AXRole: AXParagraph
+AXParent: AXWebArea
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 0.000000, 0.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 
+AXFocusable: 1
+AXFocused: 0
+AXSelectable: 0
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: computed-role:paragraph, xml-roles:paragraph, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXProgressIndicator
 AXParent: AXWebArea
@@ -578,7 +635,7 @@ AXRole: AXSection
 AXParent: AXWebArea
 AXChildren: 0
 AXPosition: { 8.000000, 8.000000 }
-AXSize: { 784.000000, 17.000000 }
+AXSize: { 784.000000, 18.000000 }
 AXTitle: 
 AXDescription: 
 AXValue: X
@@ -724,7 +781,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: computed-role:status, xml-roles:status, tag:div, toolkit:WebKitGtk
+AXPlatformAttributes: atomic:true, relevant:additions text, live:polite, container-live-role:status, container-atomic:true, container-relevant:additions text, container-live:polite, computed-role:status, xml-roles:status, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXToggleButton
 AXParent: AXWebArea
@@ -800,7 +857,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: computed-role:timer, xml-roles:timer, tag:div, toolkit:WebKitGtk
+AXPlatformAttributes: relevant:additions text, live:off, container-live-role:timer, container-relevant:additions text, container-live:off, computed-role:timer, xml-roles:timer, tag:div, toolkit:WebKitGtk
 ------------
 AXRole: AXToolbar
 AXParent: AXWebArea
@@ -1585,11 +1642,68 @@ AXRequired: 0
 AXChecked: 0
 AXPlatformAttributes: computed-role:navigation, xml-roles:doc-toc, tag:div, toolkit:WebKitGtk
 ------------
+AXRole: AXDocument
+AXParent: AXWebArea
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 0.000000, 0.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 0
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: computed-role:document, xml-roles:graphics-document, tag:div, toolkit:WebKitGtk
+------------
+AXRole: AXGroup
+AXParent: AXWebArea
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 0.000000, 0.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 0
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: computed-role:group, xml-roles:graphics-object, tag:div, toolkit:WebKitGtk
+------------
+AXRole: AXImage
+AXParent: AXWebArea
+AXChildren: 0
+AXPosition: { 0.000000, 0.000000 }
+AXSize: { 0.000000, 0.000000 }
+AXTitle: 
+AXDescription: 
+AXValue: 
+AXFocusable: 0
+AXFocused: 0
+AXSelectable: 0
+AXSelected: 0
+AXMultiSelectable: 0
+AXEnabled: 1
+AXExpanded: 0
+AXRequired: 0
+AXChecked: 0
+AXPlatformAttributes: computed-role:img, xml-roles:graphics-symbol, tag:div, toolkit:WebKitGtk
+------------
 AXRole: AXParagraph
 AXParent: AXWebArea
 AXChildren: 2
-AXPosition: { 8.000000, 41.000000 }
-AXSize: { 784.000000, 50.000000 }
+AXPosition: { 8.000000, 42.000000 }
+AXSize: { 784.000000, 52.000000 }
 AXTitle: 
 AXDescription: 
 AXValue: Verify exposure of ARIA role values via the 'xml-roles' object attribute.<\n><\n>On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".<\n><\n><\n>
@@ -1602,7 +1716,7 @@ AXEnabled: 1
 AXExpanded: 0
 AXRequired: 0
 AXChecked: 0
-AXPlatformAttributes: html-id:description, tag:p, toolkit:WebKitGtk
+AXPlatformAttributes: computed-role:paragraph, html-id:description, tag:p, toolkit:WebKitGtk
 ------------
 
 PASS successfullyParsed is true

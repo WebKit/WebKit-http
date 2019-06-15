@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_VIDEO_VIDEO_RENDER_FRAMES_H_
-#define WEBRTC_COMMON_VIDEO_VIDEO_RENDER_FRAMES_H_
+#ifndef COMMON_VIDEO_VIDEO_RENDER_FRAMES_H_
+#define COMMON_VIDEO_VIDEO_RENDER_FRAMES_H_
 
 #include <stdint.h>
 
 #include <list>
 
-#include "webrtc/api/video/video_frame.h"
-#include "webrtc/base/optional.h"
+#include "absl/types/optional.h"
+#include "api/video/video_frame.h"
 
 namespace webrtc {
 
@@ -25,12 +25,13 @@ class VideoRenderFrames {
  public:
   explicit VideoRenderFrames(uint32_t render_delay_ms);
   VideoRenderFrames(const VideoRenderFrames&) = delete;
+  ~VideoRenderFrames();
 
   // Add a frame to the render queue
   int32_t AddFrame(VideoFrame&& new_frame);
 
   // Get a frame for rendering, or false if it's not time to render.
-  rtc::Optional<VideoFrame> FrameToRender();
+  absl::optional<VideoFrame> FrameToRender();
 
   // Returns the number of ms to next frame to render
   uint32_t TimeToNextFrameRelease();
@@ -49,4 +50,4 @@ class VideoRenderFrames {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_VIDEO_VIDEO_RENDER_FRAMES_H_
+#endif  // COMMON_VIDEO_VIDEO_RENDER_FRAMES_H_

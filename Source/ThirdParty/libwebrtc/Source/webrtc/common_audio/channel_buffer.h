@@ -8,16 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_AUDIO_CHANNEL_BUFFER_H_
-#define WEBRTC_COMMON_AUDIO_CHANNEL_BUFFER_H_
+#ifndef COMMON_AUDIO_CHANNEL_BUFFER_H_
+#define COMMON_AUDIO_CHANNEL_BUFFER_H_
 
 #include <string.h>
 
 #include <memory>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/gtest_prod_util.h"
-#include "webrtc/common_audio/include/audio_util.h"
+#include "common_audio/include/audio_util.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/gtest_prod_util.h"
 
 namespace webrtc {
 
@@ -40,9 +40,7 @@ namespace webrtc {
 template <typename T>
 class ChannelBuffer {
  public:
-  ChannelBuffer(size_t num_frames,
-                size_t num_channels,
-                size_t num_bands = 1)
+  ChannelBuffer(size_t num_frames, size_t num_channels, size_t num_bands = 1)
       : data_(new T[num_frames * num_channels]()),
         channels_(new T*[num_channels * num_bands]),
         bands_(new T*[num_channels * num_bands]),
@@ -119,7 +117,7 @@ class ChannelBuffer {
   size_t num_frames_per_band() const { return num_frames_per_band_; }
   size_t num_channels() const { return num_channels_; }
   size_t num_bands() const { return num_bands_; }
-  size_t size() const {return num_frames_ * num_allocated_channels_; }
+  size_t size() const { return num_frames_ * num_allocated_channels_; }
 
   void set_num_channels(size_t num_channels) {
     RTC_DCHECK_LE(num_channels, num_allocated_channels_);
@@ -183,4 +181,4 @@ class IFChannelBuffer {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_AUDIO_CHANNEL_BUFFER_H_
+#endif  // COMMON_AUDIO_CHANNEL_BUFFER_H_

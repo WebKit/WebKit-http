@@ -156,7 +156,7 @@ describe('/privileged-api/upload-file', function () {
     it('should pick up at most two file extensions', () => {
         const db = TestServer.database();
         const limitInMB = TestServer.testConfig().uploadFileLimitInMB;
-        return TemporaryFile.makeTemporaryFileOfSizeInMB('some.other.tar.gz', limitInMB).then((stream) => {
+        return TemporaryFile.makeTemporaryFileOfSizeInMB('some.other.tar.gz5', limitInMB).then((stream) => {
             return PrivilegedAPI.sendRequest('upload-file', {newFile: stream}, {useFormData: true});
         }).then(() => {
             return db.selectAll('uploaded_files', 'id');
@@ -164,8 +164,8 @@ describe('/privileged-api/upload-file', function () {
             assert.equal(rows.length, 1);
             assert.equal(rows[0].size, limitInMB * 1024 * 1024);
             assert.equal(rows[0].mime, 'application/octet-stream');
-            assert.equal(rows[0].filename, 'some.other.tar.gz');
-            assert.equal(rows[0].extension, '.tar.gz');
+            assert.equal(rows[0].filename, 'some.other.tar.gz5');
+            assert.equal(rows[0].extension, '.tar.gz5');
             assert.equal(rows[0].sha256, '5256ec18f11624025905d057d6befb03d77b243511ac5f77ed5e0221ce6d84b5');
         });
     });
@@ -212,8 +212,8 @@ describe('/privileged-api/upload-file', function () {
         }).then((result) => {
             const fileB = result.uploadedFile;
             return Promise.all([
-                db.query('UPDATE commit_set_items SET commitset_patch_file = $1 WHERE commitset_set = 402 AND commitset_commit = 87832', [fileA.id]),
-                db.query('UPDATE commit_set_items SET commitset_patch_file = $1 WHERE commitset_set = 402 AND commitset_commit = 96336', [fileB.id])
+                db.query('UPDATE commit_set_items SET (commitset_patch_file, commitset_requires_build) = ($1, TRUE) WHERE commitset_set = 402 AND commitset_commit = 87832', [fileA.id]),
+                db.query('UPDATE commit_set_items SET (commitset_patch_file, commitset_requires_build) = ($1, TRUE) WHERE commitset_set = 402 AND commitset_commit = 96336', [fileB.id])
             ]);
         }).then(() => {
             return TemporaryFile.makeTemporaryFileOfSizeInMB('other.dat', limitInMB, 'c');
@@ -242,8 +242,8 @@ describe('/privileged-api/upload-file', function () {
         }).then((result) => {
             const fileB = result.uploadedFile;
             return Promise.all([
-                db.query('UPDATE commit_set_items SET commitset_patch_file = $1 WHERE commitset_set = 402 AND commitset_commit = 87832', [fileA.id]),
-                db.query('UPDATE commit_set_items SET commitset_patch_file = $1 WHERE commitset_set = 402 AND commitset_commit = 96336', [fileB.id])
+                db.query('UPDATE commit_set_items SET (commitset_patch_file, commitset_requires_build) = ($1, TRUE) WHERE commitset_set = 402 AND commitset_commit = 87832', [fileA.id]),
+                db.query('UPDATE commit_set_items SET (commitset_patch_file, commitset_requires_build) = ($1, TRUE) WHERE commitset_set = 402 AND commitset_commit = 96336', [fileB.id])
             ]);
         }).then(() => {
             return TemporaryFile.makeTemporaryFileOfSizeInMB('another.dat', limitInMB, 'c');
@@ -277,7 +277,7 @@ describe('/privileged-api/upload-file', function () {
             return PrivilegedAPI.sendRequest('upload-file', {newFile: stream}, {useFormData: true});
         }).then((result) => {
             const fileB = result.uploadedFile;
-            return db.query(`UPDATE commit_set_items SET (commitset_patch_file, commitset_root_file) = ($1, $2)
+            return db.query(`UPDATE commit_set_items SET (commitset_patch_file, commitset_root_file, commitset_requires_build) = ($1, $2, TRUE)
                 WHERE commitset_set = 402 AND commitset_commit = 87832`, [fileA.id, fileB.id]);
         }).then(() => {
             return TemporaryFile.makeTemporaryFileOfSizeInMB('another.dat', limitInMB, 'c');

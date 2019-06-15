@@ -2,13 +2,13 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The [[Class]] property of the newly constructed object
     is set to "Date"
+esid: sec-date-value
 es5id: 15.9.3.2_A3_T1.2
 description: Test based on overwriting prototype.toString
-includes:
-    - Date_constants.js
+includes: [dateConstants.js]
 ---*/
 
 Date.prototype.toString = Object.prototype.toString;

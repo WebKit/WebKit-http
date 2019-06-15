@@ -29,18 +29,63 @@
 #pragma once
 
 #include "CodeBlock.h"
-#include "JSEnvironmentRecord.h"
+#include "JSSymbolTableObject.h"
 #include "SymbolTable.h"
 
 namespace JSC {
 
-class JSLexicalEnvironment : public JSEnvironmentRecord {
-protected:
-    JSLexicalEnvironment(VM&, Structure*, JSScope*, SymbolTable*);
-    
+class LLIntOffsetsExtractor;
+
+class JSLexicalEnvironment : public JSSymbolTableObject {
+    friend class JIT;
+    friend class LLIntOffsetsExtractor;
 public:
-    typedef JSEnvironmentRecord Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames | OverridesToThis;
+    template<typename CellType>
+    static CompleteSubspace* subspaceFor(VM& vm)
+    {
+        RELEASE_ASSERT(!CellType::needsDestruction);
+        return &vm.jsValueGigacageCellSpace;
+    }
+
+    using Base = JSSymbolTableObject;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
+
+    WriteBarrierBase<Unknown>* variables()
+    {
+        return bitwise_cast<WriteBarrierBase<Unknown>*>(bitwise_cast<char*>(this) + offsetOfVariables());
+    }
+
+    bool isValidScopeOffset(ScopeOffset offset)
+    {
+        return !!offset && offset.offset() < symbolTable()->scopeSize();
+    }
+
+    WriteBarrierBase<Unknown>& variableAt(ScopeOffset offset)
+    {
+        ASSERT(isValidScopeOffset(offset));
+        return variables()[offset.offset()];
+    }
+
+    static size_t offsetOfVariables()
+    {
+        return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<Unknown>)>(sizeof(JSLexicalEnvironment));
+    }
+
+    static size_t offsetOfVariable(ScopeOffset offset)
+    {
+        Checked<size_t> scopeOffset = offset.offset();
+        return (offsetOfVariables() + scopeOffset * sizeof(WriteBarrier<Unknown>)).unsafeGet();
+    }
+
+    static size_t allocationSizeForScopeSize(Checked<size_t> scopeSize)
+    {
+        return (offsetOfVariables() + scopeSize * sizeof(WriteBarrier<Unknown>)).unsafeGet();
+    }
+
+    static size_t allocationSize(SymbolTable* symbolTable)
+    {
+        return allocationSizeForScopeSize(symbolTable->scopeSize());
+    }
 
     static JSLexicalEnvironment* create(
         VM& vm, Structure* structure, JSScope* currentScope, SymbolTable* symbolTable, JSValue initialValue)
@@ -67,11 +112,30 @@ public:
 
     static bool deleteProperty(JSCell*, ExecState*, PropertyName);
 
-    static JSValue toThis(JSCell*, ExecState*, ECMAMode);
-
     DECLARE_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject) { return Structure::create(vm, globalObject, jsNull(), TypeInfo(LexicalEnvironmentType, StructureFlags), info()); }
+
+protected:
+    JSLexicalEnvironment(VM&, Structure*, JSScope*, SymbolTable*);
+
+    void finishCreationUninitialized(VM& vm)
+    {
+        Base::finishCreation(vm);
+    }
+
+    void finishCreation(VM& vm, JSValue value)
+    {
+        finishCreationUninitialized(vm);
+        ASSERT(value == jsUndefined() || value == jsTDZValue());
+        for (unsigned i = symbolTable()->scopeSize(); i--;) {
+            // Filling this with undefined/TDZEmptyValue is useful because that's what variables start out as.
+            variableAt(ScopeOffset(i)).setStartingValue(value);
+        }
+    }
+
+    static void visitChildren(JSCell*, SlotVisitor&);
+    static void heapSnapshot(JSCell*, HeapSnapshotBuilder&);
 };
 
 inline JSLexicalEnvironment::JSLexicalEnvironment(VM& vm, Structure* structure, JSScope* currentScope, SymbolTable* symbolTable)
@@ -79,10 +143,4 @@ inline JSLexicalEnvironment::JSLexicalEnvironment(VM& vm, Structure* structure, 
 {
 }
 
-inline JSLexicalEnvironment* asActivation(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), JSLexicalEnvironment::info()));
-    return jsCast<JSLexicalEnvironment*>(asObject(value));
-}
-    
 } // namespace JSC

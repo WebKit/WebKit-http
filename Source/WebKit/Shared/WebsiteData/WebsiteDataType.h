@@ -43,11 +43,12 @@ enum class WebsiteDataType {
 #if ENABLE(NETSCAPE_PLUGIN_API)
     PlugInData = 1 << 11,
 #endif
-#if ENABLE(MEDIA_STREAM)
-    MediaDeviceIdentifier = 1 << 12,
+    ResourceLoadStatistics = 1 << 12,
+    Credentials = 1 << 13,
+#if ENABLE(SERVICE_WORKER)
+    ServiceWorkerRegistrations = 1 << 14,
 #endif
-    ResourceLoadStatistics = 1 << 13,
-    Credentials = 1 << 14,
+    DOMCache = 1 << 15,
 };
 
 };

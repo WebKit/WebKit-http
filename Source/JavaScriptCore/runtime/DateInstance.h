@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -20,11 +20,12 @@
 
 #pragma once
 
+#include "JSCPoison.h"
 #include "JSWrapperObject.h"
 
 namespace JSC {
 
-class DateInstance : public JSWrapperObject {
+class DateInstance final : public JSWrapperObject {
 protected:
     JS_EXPORT_PRIVATE DateInstance(VM&, Structure*);
     void finishCreation(VM&);
@@ -76,15 +77,7 @@ private:
     JS_EXPORT_PRIVATE const GregorianDateTime* calculateGregorianDateTime(ExecState*) const;
     JS_EXPORT_PRIVATE const GregorianDateTime* calculateGregorianDateTimeUTC(ExecState*) const;
 
-    mutable RefPtr<DateInstanceData> m_data;
+    mutable PoisonedRefPtr<DateInstancePoison, DateInstanceData> m_data;
 };
-
-DateInstance* asDateInstance(JSValue);
-
-inline DateInstance* asDateInstance(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), DateInstance::info()));
-    return static_cast<DateInstance*>(asObject(value));
-}
 
 } // namespace JSC

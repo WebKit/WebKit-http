@@ -27,6 +27,7 @@
 
 #include "IDLTypes.h"
 #include "JSDOMConvertBase.h"
+#include <JavaScriptCore/StrongInlines.h>
 
 namespace WebCore {
 
@@ -46,6 +47,16 @@ template<> struct Converter<IDLObject> : DefaultConverter<IDLObject> {
         }
         
         return { vm, JSC::asObject(value) };
+    }
+};
+
+template<> struct JSConverter<IDLObject> {
+    static constexpr bool needsState = false;
+    static constexpr bool needsGlobalObject = false;
+
+    static JSC::JSValue convert(const JSC::Strong<JSC::JSObject>& value)
+    {
+        return value.get();
     }
 };
 

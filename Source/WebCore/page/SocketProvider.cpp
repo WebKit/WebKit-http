@@ -26,17 +26,13 @@
 #include "config.h"
 #include "SocketProvider.h"
 
-#if ENABLE(WEB_SOCKETS)
-
 #include "SocketStreamHandleImpl.h"
 
 namespace WebCore {
     
-Ref<SocketStreamHandle> SocketProvider::createSocketStreamHandle(const URL& url, SocketStreamHandleClient& client, SessionID sessionID, const String& credentialPartition)
+Ref<SocketStreamHandle> SocketProvider::createSocketStreamHandle(const URL& url, SocketStreamHandleClient& client, PAL::SessionID sessionID, const String& credentialPartition)
 {
     return SocketStreamHandleImpl::create(url, client, sessionID, credentialPartition, { });
 }
     
 }
-
-#endif // ENABLE(WEB_SOCKETS)

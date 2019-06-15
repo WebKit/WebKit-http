@@ -5,7 +5,7 @@
 es6id: B.2.3.7
 description: >
   String.prototype.fontcolor.length is 1.
-info: >
+info: |
   String.prototype.fontcolor ( color )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.fontcolor.length, 1);
-
-verifyNotEnumerable(String.prototype.fontcolor, "length");
-verifyNotWritable(String.prototype.fontcolor, "length");
-verifyConfigurable(String.prototype.fontcolor, "length");
+verifyProperty(String.prototype.fontcolor, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 1
+});

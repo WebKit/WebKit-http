@@ -51,24 +51,7 @@
 #include <wtf/unicode/UTF8.h>
 
 #if OS(DARWIN) && !PLATFORM(GTK) && !PLATFORM(QT)
-#include <wtf/SoftLinking.h>
-
-SOFT_LINK_LIBRARY(libxslt);
-SOFT_LINK(libxslt, xsltFreeStylesheet, void, (xsltStylesheetPtr sheet), (sheet))
-SOFT_LINK(libxslt, xsltFreeTransformContext, void, (xsltTransformContextPtr ctxt), (ctxt))
-SOFT_LINK(libxslt, xsltNewTransformContext, xsltTransformContextPtr, (xsltStylesheetPtr style, xmlDocPtr doc), (style, doc))
-SOFT_LINK(libxslt, xsltApplyStylesheetUser, xmlDocPtr, (xsltStylesheetPtr style, xmlDocPtr doc, const char** params, const char* output, FILE* profile, xsltTransformContextPtr userCtxt), (style, doc, params, output, profile, userCtxt))
-SOFT_LINK(libxslt, xsltQuoteUserParams, int, (xsltTransformContextPtr ctxt, const char** params), (ctxt, params))
-SOFT_LINK(libxslt, xsltSetCtxtSortFunc, void, (xsltTransformContextPtr ctxt, xsltSortFunc handler), (ctxt, handler))
-SOFT_LINK(libxslt, xsltSetLoaderFunc, void, (xsltDocLoaderFunc f), (f))
-SOFT_LINK(libxslt, xsltSaveResultTo, int, (xmlOutputBufferPtr buf, xmlDocPtr result, xsltStylesheetPtr style), (buf, result, style))
-SOFT_LINK(libxslt, xsltNextImport, xsltStylesheetPtr, (xsltStylesheetPtr style), (style))
-SOFT_LINK(libxslt, xsltNewSecurityPrefs, xsltSecurityPrefsPtr, (), ())
-SOFT_LINK(libxslt, xsltFreeSecurityPrefs, void, (xsltSecurityPrefsPtr sec), (sec))
-SOFT_LINK(libxslt, xsltSetSecurityPrefs, int, (xsltSecurityPrefsPtr sec, xsltSecurityOption option, xsltSecurityCheck func), (sec, option, func))
-SOFT_LINK(libxslt, xsltSetCtxtSecurityPrefs, int, (xsltSecurityPrefsPtr sec, xsltTransformContextPtr ctxt), (sec, ctxt))
-SOFT_LINK(libxslt, xsltSecurityForbid, int, (xsltSecurityPrefsPtr sec, xsltTransformContextPtr ctxt, const char* value), (sec, ctxt, value))
-
+#include "SoftLinkLibxslt.h"
 #endif
 
 namespace WebCore {
@@ -128,7 +111,10 @@ static xmlDocPtr docLoaderFunc(const xmlChar* uri,
 
         bool requestAllowed = globalCachedResourceLoader->frame() && globalCachedResourceLoader->document()->securityOrigin().canRequest(url);
         if (requestAllowed) {
-            globalCachedResourceLoader->frame()->loader().loadResourceSynchronously(url, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, error, response, data);
+            FetchOptions options;
+            options.mode = FetchOptions::Mode::SameOrigin;
+            options.credentials = FetchOptions::Credentials::Include;
+            globalCachedResourceLoader->frame()->loader().loadResourceSynchronously(url, ClientCredentialPolicy::MayAskClientForCredentials, options, { }, error, response, data);
             if (error.isNull())
                 requestAllowed = globalCachedResourceLoader->document()->securityOrigin().canRequest(response.url());
             else if (data)
@@ -317,7 +303,7 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
 
     xmlChar* origMethod = sheet->method;
     if (!origMethod && mimeType == "text/html")
-        sheet->method = (xmlChar*)"html";
+        sheet->method = reinterpret_cast<xmlChar*>(const_cast<char*>("html"));
 
     bool success = false;
     bool shouldFreeSourceDoc = false;
@@ -361,7 +347,7 @@ bool XSLTProcessor::transformToString(Node& sourceNode, String& mimeType, String
 
         if ((success = saveResultToString(resultDoc, sheet, resultString))) {
             mimeType = resultMIMEType(resultDoc, sheet);
-            resultEncoding = (char*)resultDoc->encoding;
+            resultEncoding = reinterpret_cast<const char*>(resultDoc->encoding);
         }
         xmlFreeDoc(resultDoc);
     }

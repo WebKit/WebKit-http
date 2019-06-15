@@ -31,7 +31,6 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Optional.h>
 #include <wtf/RunLoop.h>
 
@@ -70,6 +69,10 @@ public:
 
     WTF_EXPORT_PRIVATE void setShouldUsePeriodicMemoryMonitor(bool);
 
+#if OS(LINUX)
+    WTF_EXPORT_PRIVATE void triggerMemoryPressureEvent(bool isCritical);
+#endif
+
     void setMemoryKillCallback(WTF::Function<void()>&& function) { m_memoryKillCallback = WTFMove(function); }
     void setMemoryPressureStatusChangedCallback(WTF::Function<void(bool)>&& function) { m_memoryPressureStatusChangedCallback = WTFMove(function); }
     void setDidExceedInactiveLimitWhileActiveCallback(WTF::Function<void()>&& function) { m_didExceedInactiveLimitWhileActiveCallback = WTFMove(function); }
@@ -89,9 +92,7 @@ public:
     }
     void setUnderMemoryPressure(bool);
 
-#if OS(LINUX)
-    void setMemoryPressureMonitorHandle(int fd);
-#endif
+    WTF_EXPORT_PRIVATE static MemoryUsagePolicy currentMemoryUsagePolicy();
 
     class ReliefLogger {
     public:
@@ -155,7 +156,7 @@ private:
 
     void uninstall();
 
-    void holdOff(unsigned);
+    void holdOff(Seconds);
 
     MemoryPressureHandler();
     ~MemoryPressureHandler() = delete;
@@ -169,26 +170,6 @@ private:
     void setMemoryUsagePolicyBasedOnFootprint(size_t);
     void doesExceedInactiveLimitWhileActive();
     void doesNotExceedInactiveLimitWhileActive();
-
-#if OS(LINUX)
-    class EventFDPoller {
-        WTF_MAKE_NONCOPYABLE(EventFDPoller); WTF_MAKE_FAST_ALLOCATED;
-    public:
-        EventFDPoller(int fd, WTF::Function<void ()>&& notifyHandler);
-        ~EventFDPoller();
-
-    private:
-        void readAndNotify() const;
-
-        std::optional<int> m_fd;
-        WTF::Function<void ()> m_notifyHandler;
-#if USE(GLIB)
-        GRefPtr<GSource> m_source;
-#else
-        RefPtr<Thread> m_thread;
-#endif
-    };
-#endif
 
     WebsamProcessState m_processState { WebsamProcessState::Inactive };
 
@@ -214,13 +195,8 @@ private:
 #endif
 
 #if OS(LINUX)
-    std::optional<int> m_eventFD;
-    std::optional<int> m_pressureLevelFD;
-    std::unique_ptr<EventFDPoller> m_eventFDPoller;
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();
-    void logErrorAndCloseFDs(const char* error);
-    bool tryEnsureEventFD();
 #endif
 };
 

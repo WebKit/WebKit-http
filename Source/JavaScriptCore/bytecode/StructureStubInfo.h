@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include "Structure.h"
 #include "StructureSet.h"
 #include "StructureStubClearingWatchpoint.h"
+#include "StubInfoSummary.h"
 
 namespace JSC {
 
@@ -47,17 +48,21 @@ class PolymorphicAccess;
 enum class AccessType : int8_t {
     Get,
     GetWithThis,
+    GetDirect,
     TryGet,
     Put,
-    In
+    In,
+    InstanceOf
 };
 
 enum class CacheType : int8_t {
     Unset,
     GetByIdSelf,
     PutByIdReplace,
+    InByIdSelf,
     Stub,
-    ArrayLength
+    ArrayLength,
+    StringLength
 };
 
 class StructureStubInfo {
@@ -69,7 +74,9 @@ public:
 
     void initGetByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
     void initArrayLength();
+    void initStringLength();
     void initPutByIdReplace(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
+    void initInByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
 
     AccessGenerationResult addAccessCase(const GCSafeConcurrentJSLocker&, CodeBlock*, const Identifier&, std::unique_ptr<AccessCase>);
 
@@ -88,8 +95,10 @@ public:
     ALWAYS_INLINE bool considerCaching(CodeBlock* codeBlock, Structure* structure)
     {
         // We never cache non-cells.
-        if (!structure)
+        if (!structure) {
+            sawNonCell = true;
             return false;
+        }
         
         // This method is called from the Optimize variants of IC slow paths. The first part of this
         // method tries to determine if the Optimize variant should really behave like the
@@ -137,6 +146,10 @@ public:
             // we don't already have a case buffered for. Note that if this returns true but the
             // bufferingCountdown is not zero then we will buffer the access case for later without
             // immediately generating code for it.
+            //
+            // NOTE: This will behave oddly for InstanceOf if the user varies the prototype but not
+            // the base's structure. That seems unlikely for the canonical use of instanceof, where
+            // the prototype is fixed.
             bool isNewlyAdded = bufferedStructures.add(structure);
             if (isNewlyAdded) {
                 VM& vm = *codeBlock->vm();
@@ -147,6 +160,10 @@ public:
         countdown--;
         return false;
     }
+
+    StubInfoSummary summary() const;
+    
+    static StubInfoSummary summary(const StructureStubInfo*);
 
     bool containsPC(void* pc) const;
 
@@ -168,38 +185,43 @@ public:
     StructureSet bufferedStructures;
     
     struct {
-        CodeLocationLabel start; // This is either the start of the inline IC for *byId caches, or the location of patchable jump for 'in' caches.
+        CodeLocationLabel<JITStubRoutinePtrTag> start; // This is either the start of the inline IC for *byId caches. or the location of patchable jump for 'instanceof' caches.
         RegisterSet usedRegisters;
         uint32_t inlineSize;
         int32_t deltaFromStartToSlowPathCallLocation;
         int32_t deltaFromStartToSlowPathStart;
 
-        int8_t baseGPR;
-        int8_t valueGPR;
-        int8_t thisGPR;
+        GPRReg baseGPR;
+        GPRReg valueGPR;
+        GPRReg thisGPR;
 #if USE(JSVALUE32_64)
-        int8_t valueTagGPR;
-        int8_t baseTagGPR;
-        int8_t thisTagGPR;
+        GPRReg valueTagGPR;
+        GPRReg baseTagGPR;
+        GPRReg thisTagGPR;
 #endif
     } patch;
 
-    CodeLocationCall slowPathCallLocation() { return patch.start.callAtOffset(patch.deltaFromStartToSlowPathCallLocation); }
-    CodeLocationLabel doneLocation() { return patch.start.labelAtOffset(patch.inlineSize); }
-    CodeLocationLabel slowPathStartLocation() { return patch.start.labelAtOffset(patch.deltaFromStartToSlowPathStart); }
-    CodeLocationJump patchableJumpForIn()
+    GPRReg baseGPR() const
+    {
+        return patch.baseGPR;
+    }
+
+    CodeLocationCall<JSInternalPtrTag> slowPathCallLocation() { return patch.start.callAtOffset<JSInternalPtrTag>(patch.deltaFromStartToSlowPathCallLocation); }
+    CodeLocationLabel<JSInternalPtrTag> doneLocation() { return patch.start.labelAtOffset<JSInternalPtrTag>(patch.inlineSize); }
+    CodeLocationLabel<JITStubRoutinePtrTag> slowPathStartLocation() { return patch.start.labelAtOffset(patch.deltaFromStartToSlowPathStart); }
+    CodeLocationJump<JSInternalPtrTag> patchableJump()
     { 
-        ASSERT(accessType == AccessType::In);
-        return patch.start.jumpAtOffset(0);
+        ASSERT(accessType == AccessType::InstanceOf);
+        return patch.start.jumpAtOffset<JSInternalPtrTag>(0);
     }
 
     JSValueRegs valueRegs() const
     {
         return JSValueRegs(
 #if USE(JSVALUE32_64)
-            static_cast<GPRReg>(patch.valueTagGPR),
+            patch.valueTagGPR,
 #endif
-            static_cast<GPRReg>(patch.valueGPR));
+            patch.valueGPR);
     }
 
 
@@ -212,11 +234,45 @@ public:
     bool resetByGC : 1;
     bool tookSlowPath : 1;
     bool everConsidered : 1;
+    bool prototypeIsKnownObject : 1; // Only relevant for InstanceOf.
+    bool sawNonCell : 1;
 };
 
 inline CodeOrigin getStructureStubInfoCodeOrigin(StructureStubInfo& structureStubInfo)
 {
     return structureStubInfo.codeOrigin;
+}
+
+inline J_JITOperation_ESsiJI appropriateOptimizingGetByIdFunction(AccessType type)
+{
+    switch (type) {
+    case AccessType::Get:
+        return operationGetByIdOptimize;
+    case AccessType::TryGet:
+        return operationTryGetByIdOptimize;
+    case AccessType::GetDirect:
+        return operationGetByIdDirectOptimize;
+    case AccessType::GetWithThis:
+    default:
+        ASSERT_NOT_REACHED();
+        return nullptr;
+    }
+}
+
+inline J_JITOperation_EJI appropriateGenericGetByIdFunction(AccessType type)
+{
+    switch (type) {
+    case AccessType::Get:
+        return operationGetByIdGeneric;
+    case AccessType::TryGet:
+        return operationTryGetByIdGeneric;
+    case AccessType::GetDirect:
+        return operationGetByIdDirectGeneric;
+    case AccessType::GetWithThis:
+    default:
+        ASSERT_NOT_REACHED();
+        return nullptr;
+    }
 }
 
 #else

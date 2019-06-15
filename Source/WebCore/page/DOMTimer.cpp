@@ -35,7 +35,6 @@
 #include "ScheduledAction.h"
 #include "ScriptExecutionContext.h"
 #include "Settings.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/HashMap.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
@@ -212,9 +211,7 @@ DOMTimer::DOMTimer(ScriptExecutionContext& context, std::unique_ptr<ScheduledAct
         startRepeating(m_currentTimerInterval);
 }
 
-DOMTimer::~DOMTimer()
-{
-}
+DOMTimer::~DOMTimer() = default;
 
 int DOMTimer::install(ScriptExecutionContext& context, std::unique_ptr<ScheduledAction> action, Seconds timeout, bool singleShot)
 {
@@ -324,7 +321,7 @@ void DOMTimer::fired()
     // Only the first execution of a multi-shot timer should get an affirmative user gesture indicator.
     m_userGestureTokenToForward = nullptr;
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willFireTimer(context, m_timeoutId);
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willFireTimer(context, m_timeoutId, !repeatInterval());
 
     // Simple case for non-one-shot timers.
     if (isActive()) {

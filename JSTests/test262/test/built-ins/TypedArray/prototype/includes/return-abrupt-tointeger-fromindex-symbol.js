@@ -4,7 +4,7 @@
 /*---
 esid: sec-%typedarray%.prototype.includes
 description: Return abrupt from ToInteger(fromIndex) - using symbol
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.includes is a distinct function that implements the
@@ -19,7 +19,7 @@ info: >
   produces the value 0.)
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var fromIndex = Symbol("1");

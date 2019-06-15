@@ -5,7 +5,7 @@
 esid: sec-%typedarray%.prototype.foreach
 description: >
   Does not interact over non-integer properties
-info: >
+info: |
   22.2.3.12 %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] )
 
   ...
@@ -16,7 +16,7 @@ info: >
       ii. Perform ? Call(callbackfn, T, « kValue, k, O »).
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

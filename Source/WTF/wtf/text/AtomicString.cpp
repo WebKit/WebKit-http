@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004-2008, 2013-2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Patrick Gansterer <paroga@paroga.com>
  * Copyright (C) 2012 Google Inc. All rights reserved.
  *
@@ -23,9 +23,10 @@
 #include "config.h"
 #include "AtomicString.h"
 
-#include "IntegerToStringConversion.h"
-#include "MainThread.h"
-#include "NeverDestroyed.h"
+#include <mutex>
+#include <wtf/MainThread.h>
+#include <wtf/text/IntegerToStringConversion.h>
+
 #include "dtoa.h"
 
 namespace WTF {
@@ -103,7 +104,7 @@ AtomicString AtomicString::number(unsigned long long number)
 AtomicString AtomicString::number(double number)
 {
     NumberToStringBuffer buffer;
-    return String(numberToFixedPrecisionString(number, 6, buffer, true));
+    return numberToString(number, buffer);
 }
 
 AtomicString AtomicString::fromUTF8Internal(const char* charactersStart, const char* charactersEnd)
@@ -121,11 +122,11 @@ void AtomicString::show() const
 }
 #endif
 
-WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> nullAtomData;
-WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> emptyAtomData;
-WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> starAtomData;
-WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> xmlAtomData;
-WTF_EXPORTDATA LazyNeverDestroyed<AtomicString> xmlnsAtomData;
+WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> nullAtomData;
+WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> emptyAtomData;
+WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> starAtomData;
+WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> xmlAtomData;
+WTF_EXPORT_PRIVATE LazyNeverDestroyed<AtomicString> xmlnsAtomData;
 
 void AtomicString::init()
 {

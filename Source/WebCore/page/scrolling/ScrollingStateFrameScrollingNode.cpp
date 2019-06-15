@@ -29,18 +29,19 @@
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
 #include "ScrollingStateTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
-Ref<ScrollingStateFrameScrollingNode> ScrollingStateFrameScrollingNode::create(ScrollingStateTree& stateTree, ScrollingNodeID nodeID)
+Ref<ScrollingStateFrameScrollingNode> ScrollingStateFrameScrollingNode::create(ScrollingStateTree& stateTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
 {
-    return adoptRef(*new ScrollingStateFrameScrollingNode(stateTree, nodeID));
+    return adoptRef(*new ScrollingStateFrameScrollingNode(stateTree, nodeType, nodeID));
 }
 
-ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(ScrollingStateTree& stateTree, ScrollingNodeID nodeID)
-    : ScrollingStateScrollingNode(stateTree, FrameScrollingNode, nodeID)
+ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(ScrollingStateTree& stateTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
+    : ScrollingStateScrollingNode(stateTree, nodeType, nodeID)
 {
+    ASSERT(isFrameScrollingNode());
 }
 
 ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(const ScrollingStateFrameScrollingNode& stateNode, ScrollingStateTree& adoptiveTree)
@@ -80,9 +81,7 @@ ScrollingStateFrameScrollingNode::ScrollingStateFrameScrollingNode(const Scrolli
         setFooterLayer(stateNode.footerLayer().toRepresentation(adoptiveTree.preferredLayerRepresentation()));
 }
 
-ScrollingStateFrameScrollingNode::~ScrollingStateFrameScrollingNode()
-{
-}
+ScrollingStateFrameScrollingNode::~ScrollingStateFrameScrollingNode() = default;
 
 Ref<ScrollingStateNode> ScrollingStateFrameScrollingNode::clone(ScrollingStateTree& adoptiveTree)
 {
@@ -288,8 +287,7 @@ void ScrollingStateFrameScrollingNode::dumpProperties(TextStream& ts, ScrollingS
         ts << "asynchronous event dispatch region";
         for (auto rect : m_eventTrackingRegions.asynchronousDispatchRegion.rects()) {
             ts << "\n";
-            ts.writeIndent();
-            ts << rect;
+            ts << indent << rect;
         }
     }
 
@@ -299,8 +297,7 @@ void ScrollingStateFrameScrollingNode::dumpProperties(TextStream& ts, ScrollingS
             ts << "synchronous event dispatch region for event " << synchronousEventRegion.key;
             for (auto rect : synchronousEventRegion.value.rects()) {
                 ts << "\n";
-                ts.writeIndent();
-                ts << rect;
+                ts << indent << rect;
             }
         }
     }

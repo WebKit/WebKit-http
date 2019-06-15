@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.1.1
+esid: sec-weakmap-iterable
 description: >
   If the iterable argument is undefined, return new WeakMap object.
-info: >
+info: |
   23.3.1.1 WeakMap ( [ iterable ] )
 
   ...

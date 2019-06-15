@@ -5,7 +5,7 @@
 es6id: B.2.3.2
 description: >
   String.prototype.anchor.name is "anchor".
-info: >
+info: |
   String.prototype.anchor ( name )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.anchor.name, "anchor");
-
-verifyNotEnumerable(String.prototype.anchor, "name");
-verifyNotWritable(String.prototype.anchor, "name");
-verifyConfigurable(String.prototype.anchor, "name");
+verifyProperty(String.prototype.anchor, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "anchor"
+});

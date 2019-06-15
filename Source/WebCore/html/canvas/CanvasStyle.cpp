@@ -60,7 +60,7 @@ static Color parseColor(const String& colorString)
     Color color = CSSParser::parseColor(colorString);
     if (color.isValid())
         return color;
-    return CSSParser::parseSystemColor(colorString);
+    return CSSParser::parseSystemColor(colorString, nullptr);
 }
 
 Color currentColor(HTMLCanvasElement* canvas)

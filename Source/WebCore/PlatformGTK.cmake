@@ -1,14 +1,18 @@
 include(platform/Cairo.cmake)
 include(platform/FreeType.cmake)
+include(platform/GCrypt.cmake)
 include(platform/GStreamer.cmake)
 include(platform/ImageDecoders.cmake)
-include(platform/Linux.cmake)
-
-if (USE_TEXTURE_MAPPER)
-    include(platform/TextureMapper.cmake)
-endif ()
+include(platform/TextureMapper.cmake)
 
 set(WebCore_OUTPUT_NAME WebCoreGTK)
+
+list(APPEND WebCore_UNIFIED_SOURCE_LIST_FILES
+    "SourcesGTK.txt"
+
+    "platform/SourcesGLib.txt"
+    "platform/SourcesSoup.txt"
+)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${THIRDPARTY_DIR}/ANGLE/"
@@ -16,146 +20,36 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/accessibility/atk"
     "${WEBCORE_DIR}/editing/atk"
     "${WEBCORE_DIR}/page/gtk"
-    "${WEBCORE_DIR}/platform/gamepad"
-    "${WEBCORE_DIR}/platform/gamepad/deprecated"
-    "${WEBCORE_DIR}/platform/gamepad/glib"
     "${WEBCORE_DIR}/platform/geoclue"
     "${WEBCORE_DIR}/platform/gtk"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/glx"
+    "${WEBCORE_DIR}/platform/graphics/gstreamer"
     "${WEBCORE_DIR}/platform/graphics/gtk"
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/wayland"
     "${WEBCORE_DIR}/platform/graphics/x11"
+    "${WEBCORE_DIR}/platform/mediacapabilities"
     "${WEBCORE_DIR}/platform/mediastream/gtk"
+    "${WEBCORE_DIR}/platform/mediastream/gstreamer"
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/gtk"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/gtk"
 )
 
-list(APPEND WebCore_SOURCES
-    accessibility/atk/AXObjectCacheAtk.cpp
-    accessibility/atk/AccessibilityObjectAtk.cpp
-    accessibility/atk/WebKitAccessibleHyperlink.cpp
-    accessibility/atk/WebKitAccessibleInterfaceAction.cpp
-    accessibility/atk/WebKitAccessibleInterfaceComponent.cpp
-    accessibility/atk/WebKitAccessibleInterfaceDocument.cpp
-    accessibility/atk/WebKitAccessibleInterfaceEditableText.cpp
-    accessibility/atk/WebKitAccessibleInterfaceHyperlinkImpl.cpp
-    accessibility/atk/WebKitAccessibleInterfaceHypertext.cpp
-    accessibility/atk/WebKitAccessibleInterfaceImage.cpp
-    accessibility/atk/WebKitAccessibleInterfaceSelection.cpp
-    accessibility/atk/WebKitAccessibleInterfaceTable.cpp
-    accessibility/atk/WebKitAccessibleInterfaceTableCell.cpp
-    accessibility/atk/WebKitAccessibleInterfaceText.cpp
-    accessibility/atk/WebKitAccessibleInterfaceValue.cpp
-    accessibility/atk/WebKitAccessibleUtil.cpp
-    accessibility/atk/WebKitAccessibleWrapperAtk.cpp
-
-    editing/atk/FrameSelectionAtk.cpp
-
-    loader/soup/CachedRawResourceSoup.cpp
-    loader/soup/SubresourceLoaderSoup.cpp
-
-    page/linux/ResourceUsageOverlayLinux.cpp
-    page/linux/ResourceUsageThreadLinux.cpp
-
-    platform/ScrollAnimationKinetic.cpp
-    platform/StaticPasteboard.cpp
-    platform/UserAgentQuirks.cpp
-
-    platform/audio/glib/AudioBusGLib.cpp
-
-    platform/gamepad/glib/GamepadsGlib.cpp
-
-    platform/geoclue/GeolocationProviderGeoclue1.cpp
-    platform/geoclue/GeolocationProviderGeoclue2.cpp
-
-    platform/glib/EventLoopGlib.cpp
-    platform/glib/FileSystemGlib.cpp
-    platform/glib/KeyedDecoderGlib.cpp
-    platform/glib/KeyedEncoderGlib.cpp
-    platform/glib/MainThreadSharedTimerGLib.cpp
-    platform/glib/SSLKeyGeneratorGLib.cpp
-    platform/glib/SharedBufferGlib.cpp
-
-    platform/graphics/GLContext.cpp
-    platform/graphics/GraphicsContext3DPrivate.cpp
-
-    platform/graphics/cairo/BackingStoreBackendCairoX11.cpp
-
-    platform/graphics/egl/GLContextEGL.cpp
-    platform/graphics/egl/GLContextEGLWayland.cpp
-    platform/graphics/egl/GLContextEGLX11.cpp
-
-    platform/graphics/glx/GLContextGLX.cpp
-
-    platform/graphics/gstreamer/ImageGStreamerCairo.cpp
-
-    platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
-    platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
-    platform/graphics/opengl/TemporaryOpenGLSetting.cpp
-
-    platform/graphics/opentype/OpenTypeVerticalData.cpp
-
-    platform/graphics/wayland/PlatformDisplayWayland.cpp
-
-    platform/graphics/x11/PlatformDisplayX11.cpp
-    platform/graphics/x11/XErrorTrapper.cpp
-    platform/graphics/x11/XUniqueResource.cpp
-
-    platform/gtk/DragDataGtk.cpp
-    platform/gtk/LocalizedStringsGtk.cpp
-    platform/gtk/PasteboardGtk.cpp
-    platform/gtk/ScrollAnimatorGtk.cpp
-    platform/gtk/SelectionData.cpp
-    platform/gtk/UserAgentGtk.cpp
-
-    platform/network/soup/AuthenticationChallengeSoup.cpp
-    platform/network/soup/CertificateInfo.cpp
-    platform/network/soup/CookieJarSoup.cpp
-    platform/network/soup/CookieStorageSoup.cpp
-    platform/network/soup/CredentialStorageSoup.cpp
-    platform/network/soup/DNSSoup.cpp
-    platform/network/soup/GRefPtrSoup.cpp
-    platform/network/soup/NetworkStorageSessionSoup.cpp
-    platform/network/soup/ProxyServerSoup.cpp
-    platform/network/soup/ResourceErrorSoup.cpp
-    platform/network/soup/ResourceHandleSoup.cpp
-    platform/network/soup/ResourceRequestSoup.cpp
-    platform/network/soup/ResourceResponseSoup.cpp
-    platform/network/soup/SocketStreamHandleImplSoup.cpp
-    platform/network/soup/SoupNetworkSession.cpp
-    platform/network/soup/SynchronousLoaderClientSoup.cpp
-    platform/network/soup/WebKitSoupRequestGeneric.cpp
-
-    platform/soup/PublicSuffixSoup.cpp
-    platform/soup/SharedBufferSoup.cpp
-    platform/soup/URLSoup.cpp
-
-    platform/text/Hyphenation.cpp
-    platform/text/LocaleICU.cpp
-
-    platform/text/enchant/TextCheckerEnchant.cpp
-
-    platform/text/hyphen/HyphenationLibHyphen.cpp
-
-    platform/unix/LoggingUnix.cpp
-
-    platform/xdg/MIMETypeRegistryXdg.cpp
-)
-
 list(APPEND WebCorePlatformGTK_SOURCES
     editing/gtk/EditorGtk.cpp
 
     page/gtk/DragControllerGtk.cpp
-    page/gtk/EventHandlerGtk.cpp
+
+    platform/glib/EventHandlerGLib.cpp
 
     platform/graphics/PlatformDisplay.cpp
 
     platform/graphics/gtk/ColorGtk.cpp
+    platform/graphics/gtk/DisplayRefreshMonitorGtk.cpp
     platform/graphics/gtk/GdkCairoUtilities.cpp
     platform/graphics/gtk/IconGtk.cpp
     platform/graphics/gtk/ImageBufferGtk.cpp
@@ -180,11 +74,11 @@ list(APPEND WebCorePlatformGTK_SOURCES
     rendering/RenderThemeGtk.cpp
 )
 
-if (USE_GEOCLUE2)
-    list(APPEND WebCore_DERIVED_SOURCES
+if (ENABLE_GEOLOCATION)
+    list(APPEND WebCore_SOURCES
         ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c
     )
-    execute_process(COMMAND pkg-config --variable dbus_interface geoclue-2.0 OUTPUT_VARIABLE GEOCLUE_DBUS_INTERFACE)
+    execute_process(COMMAND ${PKG_CONFIG_EXECUTABLE} --variable dbus_interface geoclue-2.0 OUTPUT_VARIABLE GEOCLUE_DBUS_INTERFACE)
     add_custom_command(
          OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.h
          COMMAND gdbus-codegen --interface-prefix org.freedesktop.GeoClue2. --c-namespace Geoclue --generate-c-code ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface ${GEOCLUE_DBUS_INTERFACE}
@@ -208,50 +102,37 @@ list(APPEND WebCore_LIBRARIES
     ${ATK_LIBRARIES}
     ${CAIRO_LIBRARIES}
     ${ENCHANT_LIBRARIES}
-    ${GEOCLUE_LIBRARIES}
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
-    ${GUDEV_LIBRARIES}
-    ${LIBGCRYPT_LIBRARIES}
     ${LIBSECRET_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBTASN1_LIBRARIES}
-    ${LIBXML2_LIBRARIES}
-    ${LIBXSLT_LIBRARIES}
     ${HYPHEN_LIBRARIES}
-    ${SQLITE_LIBRARIES}
+    ${UPOWERGLIB_LIBRARIES}
     ${X11_X11_LIB}
     ${X11_Xcomposite_LIB}
     ${X11_Xdamage_LIB}
     ${X11_Xrender_LIB}
     ${X11_Xt_LIB}
     ${ZLIB_LIBRARIES}
-    WTF
 )
-
-list(APPEND WebCoreTestSupport_LIBRARIES WTF)
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ATK_INCLUDE_DIRS}
     ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
-    ${GEOCLUE_INCLUDE_DIRS}
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
-    ${GUDEV_INCLUDE_DIRS}
-    ${LIBGCRYPT_INCLUDE_DIRS}
     ${LIBSECRET_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBTASN1_INCLUDE_DIRS}
-    ${LIBXML2_INCLUDE_DIR}
-    ${LIBXSLT_INCLUDE_DIR}
-    ${SQLITE_INCLUDE_DIR}
+    ${UPOWERGLIB_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
 )
 
-if (USE_OPENGL_ES_2)
+if (USE_OPENGL_ES)
     list(APPEND WebCore_SOURCES
         platform/graphics/opengl/Extensions3DOpenGLES.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
@@ -273,18 +154,17 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
     # for the plugin process.
     add_library(WebCorePlatformGTK2 ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
     add_dependencies(WebCorePlatformGTK2 WebCore)
-    WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK2)
     set_property(TARGET WebCorePlatformGTK2
         APPEND
         PROPERTY COMPILE_DEFINITIONS GTK_API_VERSION_2=1
     )
     target_include_directories(WebCorePlatformGTK2 PRIVATE
         ${WebCore_INCLUDE_DIRECTORIES}
-        ${GTK2_INCLUDE_DIRS}
-        ${GDK2_INCLUDE_DIRS}
     )
     target_include_directories(WebCorePlatformGTK2 SYSTEM PRIVATE
         ${WebCore_SYSTEM_INCLUDE_DIRECTORIES}
+        ${GTK2_INCLUDE_DIRS}
+        ${GDK2_INCLUDE_DIRS}
     )
     target_link_libraries(WebCorePlatformGTK2
          ${WebCore_LIBRARIES}
@@ -304,7 +184,6 @@ endif ()
 
 add_library(WebCorePlatformGTK ${WebCore_LIBRARY_TYPE} ${WebCorePlatformGTK_SOURCES})
 add_dependencies(WebCorePlatformGTK WebCore)
-WEBKIT_SET_EXTRA_COMPILER_FLAGS(WebCorePlatformGTK)
 target_include_directories(WebCorePlatformGTK PRIVATE
     ${WebCore_INCLUDE_DIRECTORIES}
 )
@@ -333,63 +212,5 @@ add_definitions(-DBUILDING_WEBKIT)
 if (ENABLE_SMOOTH_SCROLLING)
     list(APPEND WebCore_SOURCES
         platform/ScrollAnimationSmooth.cpp
-    )
-endif ()
-
-if (ENABLE_SUBTLE_CRYPTO)
-    list(APPEND WebCore_SOURCES
-        crypto/CryptoAlgorithm.cpp
-        crypto/CryptoAlgorithmRegistry.cpp
-        crypto/CryptoKey.cpp
-        crypto/SubtleCrypto.cpp
-        crypto/WebKitSubtleCrypto.cpp
-
-        crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
-        crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
-        crypto/algorithms/CryptoAlgorithmAES_CTR.cpp
-        crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
-        crypto/algorithms/CryptoAlgorithmAES_KW.cpp
-        crypto/algorithms/CryptoAlgorithmECDH.cpp
-        crypto/algorithms/CryptoAlgorithmECDSA.cpp
-        crypto/algorithms/CryptoAlgorithmHKDF.cpp
-        crypto/algorithms/CryptoAlgorithmHMAC.cpp
-        crypto/algorithms/CryptoAlgorithmPBKDF2.cpp
-        crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
-        crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
-        crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
-        crypto/algorithms/CryptoAlgorithmRSA_PSS.cpp
-        crypto/algorithms/CryptoAlgorithmSHA1.cpp
-        crypto/algorithms/CryptoAlgorithmSHA224.cpp
-        crypto/algorithms/CryptoAlgorithmSHA256.cpp
-        crypto/algorithms/CryptoAlgorithmSHA384.cpp
-        crypto/algorithms/CryptoAlgorithmSHA512.cpp
-
-        crypto/gcrypt/CryptoAlgorithmAES_CBCGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmAES_CFBGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmAES_CTRGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmAES_GCMGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmAES_KWGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmECDHGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmECDSAGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmHKDFGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmHMACGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmPBKDF2GCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmRSAES_PKCS1_v1_5GCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmRSASSA_PKCS1_v1_5GCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmRSA_OAEPGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmRSA_PSSGCrypt.cpp
-        crypto/gcrypt/CryptoAlgorithmRegistryGCrypt.cpp
-        crypto/gcrypt/CryptoKeyECGCrypt.cpp
-        crypto/gcrypt/CryptoKeyRSAGCrypt.cpp
-        crypto/gcrypt/SerializedCryptoKeyWrapGCrypt.cpp
-
-        crypto/keys/CryptoKeyAES.cpp
-        crypto/keys/CryptoKeyDataOctetSequence.cpp
-        crypto/keys/CryptoKeyDataRSAComponents.cpp
-        crypto/keys/CryptoKeyEC.cpp
-        crypto/keys/CryptoKeyHMAC.cpp
-        crypto/keys/CryptoKeyRSA.cpp
-        crypto/keys/CryptoKeyRaw.cpp
-        crypto/keys/CryptoKeySerializationRaw.cpp
     )
 endif ()

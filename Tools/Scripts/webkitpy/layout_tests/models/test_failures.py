@@ -59,6 +59,8 @@ def determine_result_type(failure_list):
         return test_expectations.TIMEOUT
     elif FailureEarlyExit in failure_types:
         return test_expectations.SKIP
+    elif FailureDocumentLeak in failure_types:
+        return test_expectations.LEAK
     elif (FailureMissingResult in failure_types or
           FailureMissingImage in failure_types or
           FailureMissingImageHash in failure_types or
@@ -160,6 +162,23 @@ class FailureCrash(TestFailure):
         writer.write_crash_log(crashed_driver_output.crash_log)
 
 
+class FailureLeak(TestFailure):
+    def __init__(self):
+        super(FailureLeak, self).__init__()
+
+    def message(self):
+        return "leak"
+
+
+class FailureDocumentLeak(FailureLeak):
+    def __init__(self, leaked_document_urls=None):
+        super(FailureDocumentLeak, self).__init__()
+        self.leaked_document_urls = leaked_document_urls
+
+    def message(self):
+        return "test leaked document%s %s" % ("s" if len(self.leaked_document_urls) else "", ', '.join(self.leaked_document_urls))
+
+
 class FailureMissingResult(FailureText):
     def message(self):
         return "-expected.txt was missing"
@@ -168,6 +187,7 @@ class FailureMissingResult(FailureText):
 class FailureNotTested(FailureText):
     def message(self):
         return 'test was not run'
+
 
 class FailureTextMismatch(FailureText):
     def message(self):
@@ -275,5 +295,5 @@ ALL_FAILURE_CLASSES = (FailureTimeout, FailureCrash, FailureMissingResult, Failu
                        FailureMissingImage, FailureImageHashMismatch,
                        FailureImageHashIncorrect, FailureReftestMismatch,
                        FailureReftestMismatchDidNotOccur, FailureReftestNoImagesGenerated,
-                       FailureMissingAudio, FailureAudioMismatch,
+                       FailureMissingAudio, FailureAudioMismatch, FailureDocumentLeak,
                        FailureEarlyExit)

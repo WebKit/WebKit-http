@@ -28,8 +28,8 @@
 #include "config.h"
 #include "GraphicsTypes.h"
 
-#include "TextStream.h"
 #include <wtf/Assertions.h>
+#include <wtf/text/TextStream.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -72,13 +72,13 @@ static const char* const blendOperatorNames[] = {
     "plus-lighter"
 };
 const int numCompositeOperatorNames = WTF_ARRAY_LENGTH(compositeOperatorNames);
-const int numBlendOperatorNames = WTF_ARRAY_LENGTH(blendOperatorNames);
+const unsigned numBlendOperatorNames = WTF_ARRAY_LENGTH(blendOperatorNames);
 
 bool parseBlendMode(const String& s, BlendMode& blendMode)
 {
-    for (int i = 0; i < numBlendOperatorNames; i++) {
+    for (unsigned i = 0; i < numBlendOperatorNames; i++) {
         if (s == blendOperatorNames[i]) {
-            blendMode = static_cast<BlendMode>(i + BlendModeNormal);
+            blendMode = static_cast<BlendMode>(i + static_cast<unsigned>(BlendMode::Normal));
             return true;
         }
     }
@@ -91,7 +91,7 @@ bool parseCompositeAndBlendOperator(const String& s, CompositeOperator& op, Blen
     for (int i = 0; i < numCompositeOperatorNames; i++) {
         if (s == compositeOperatorNames[i]) {
             op = static_cast<CompositeOperator>(i);
-            blendOp = BlendModeNormal;
+            blendOp = BlendMode::Normal;
             return true;
         }
     }
@@ -111,143 +111,23 @@ String compositeOperatorName(CompositeOperator op, BlendMode blendOp)
 {
     ASSERT(op >= 0);
     ASSERT(op < numCompositeOperatorNames);
-    ASSERT(blendOp >= BlendModeNormal);
-    ASSERT(blendOp <= numBlendOperatorNames);
-    if (blendOp > BlendModeNormal)
-        return blendOperatorNames[blendOp - BlendModeNormal];
+    ASSERT(blendOp >= BlendMode::Normal);
+    ASSERT(static_cast<unsigned>(blendOp) <= numBlendOperatorNames);
+    if (blendOp > BlendMode::Normal)
+        return blendOperatorNames[static_cast<unsigned>(blendOp) - static_cast<unsigned>(BlendMode::Normal)];
     return compositeOperatorNames[op];
 }
 
-static String blendModeName(BlendMode blendOp)
+String blendModeName(BlendMode blendOp)
 {
-    ASSERT(blendOp >= BlendModeNormal);
-    ASSERT(blendOp <= BlendModePlusLighter);
-    return blendOperatorNames[blendOp - BlendModeNormal];
-}
-
-bool parseLineCap(const String& s, LineCap& cap)
-{
-    if (s == "butt") {
-        cap = ButtCap;
-        return true;
-    }
-    if (s == "round") {
-        cap = RoundCap;
-        return true;
-    }
-    if (s == "square") {
-        cap = SquareCap;
-        return true;
-    }
-    return false;
-}
-
-String lineCapName(LineCap cap)
-{
-    ASSERT(cap >= 0);
-    ASSERT(cap < 3);
-    const char* const names[3] = { "butt", "round", "square" };
-    return names[cap];
-}
-
-bool parseLineJoin(const String& s, LineJoin& join)
-{
-    if (s == "miter") {
-        join = MiterJoin;
-        return true;
-    }
-    if (s == "round") {
-        join = RoundJoin;
-        return true;
-    }
-    if (s == "bevel") {
-        join = BevelJoin;
-        return true;
-    }
-    return false;
-}
-
-String lineJoinName(LineJoin join)
-{
-    ASSERT(join >= 0);
-    ASSERT(join < 3);
-    const char* const names[3] = { "miter", "round", "bevel" };
-    return names[join];
-}
-
-String textAlignName(TextAlign align)
-{
-    ASSERT(align >= 0);
-    ASSERT(align < 5);
-    const char* const names[5] = { "start", "end", "left", "center", "right" };
-    return names[align];
-}
-
-bool parseTextAlign(const String& s, TextAlign& align)
-{
-    if (s == "start") {
-        align = StartTextAlign;
-        return true;
-    }
-    if (s == "end") {
-        align = EndTextAlign;
-        return true;
-    }
-    if (s == "left") {
-        align = LeftTextAlign;
-        return true;
-    }
-    if (s == "center") {
-        align = CenterTextAlign;
-        return true;
-    }
-    if (s == "right") {
-        align = RightTextAlign;
-        return true;
-    }
-    return false;
-}
-
-String textBaselineName(TextBaseline baseline)
-{
-    ASSERT(baseline >= 0);
-    ASSERT(baseline < 6);
-    const char* const names[6] = { "alphabetic", "top", "middle", "bottom", "ideographic", "hanging" };
-    return names[baseline];
-}
-
-bool parseTextBaseline(const String& s, TextBaseline& baseline)
-{
-    if (s == "alphabetic") {
-        baseline = AlphabeticTextBaseline;
-        return true;
-    }
-    if (s == "top") {
-        baseline = TopTextBaseline;
-        return true;
-    }
-    if (s == "middle") {
-        baseline = MiddleTextBaseline;
-        return true;
-    }
-    if (s == "bottom") {
-        baseline = BottomTextBaseline;
-        return true;
-    }
-    if (s == "ideographic") {
-        baseline = IdeographicTextBaseline;
-        return true;
-    }
-    if (s == "hanging") {
-        baseline = HangingTextBaseline;
-        return true;
-    }
-    return false;
+    ASSERT(blendOp >= BlendMode::Normal);
+    ASSERT(blendOp <= BlendMode::PlusLighter);
+    return blendOperatorNames[static_cast<unsigned>(blendOp) - static_cast<unsigned>(BlendMode::Normal)];
 }
 
 TextStream& operator<<(TextStream& ts, CompositeOperator op)
 {
-    return ts << compositeOperatorName(op, BlendModeNormal);
+    return ts << compositeOperatorName(op, BlendMode::Normal);
 }
 
 TextStream& operator<<(TextStream& ts, BlendMode blendMode)
@@ -258,10 +138,10 @@ TextStream& operator<<(TextStream& ts, BlendMode blendMode)
 TextStream& operator<<(TextStream& ts, WindRule rule)
 {
     switch (rule) {
-    case RULE_NONZERO:
+    case WindRule::NonZero:
         ts << "NON-ZERO";
         break;
-    case RULE_EVENODD:
+    case WindRule::EvenOdd:
         ts << "EVEN-ODD";
         break;
     }
@@ -301,5 +181,17 @@ TextStream& operator<<(TextStream& ts, LineJoin joinStyle)
     return ts;
 }
 
-
+TextStream& operator<<(TextStream& ts, AlphaPremultiplication premultiplication)
+{
+    switch (premultiplication) {
+    case AlphaPremultiplication::Premultiplied:
+        ts << "premultiplied";
+        break;
+    case AlphaPremultiplication::Unpremultiplied:
+        ts << "unpremultiplied";
+        break;
+    }
+    return ts;
 }
+
+} // namespace WebCore

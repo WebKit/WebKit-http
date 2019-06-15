@@ -32,7 +32,7 @@ namespace JSC {
 class MapPrototype;
 class GetterSetter;
 
-class MapConstructor : public InternalFunction {
+class MapConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
 
@@ -47,17 +47,18 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
 private:
-    MapConstructor(VM& vm, Structure* structure)
-        : Base(vm, structure)
-    {
-    }
+    MapConstructor(VM&, Structure*);
+
     void finishCreation(VM&, MapPrototype*, GetterSetter* speciesSymbol);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 };
+
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketHead(ExecState*);
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketNext(ExecState*);
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketKey(ExecState*);
+EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketValue(ExecState*);
 
 } // namespace JSC

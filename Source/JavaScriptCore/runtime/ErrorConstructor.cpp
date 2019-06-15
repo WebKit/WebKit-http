@@ -34,20 +34,20 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ErrorConstructor);
 const ClassInfo ErrorConstructor::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ErrorConstructor) };
 
 ErrorConstructor::ErrorConstructor(VM& vm, Structure* structure)
-    : InternalFunction(vm, structure)
+    : InternalFunction(vm, structure, Interpreter::callErrorConstructor, Interpreter::constructWithErrorConstructor)
 {
 }
 
 void ErrorConstructor::finishCreation(VM& vm, ErrorPrototype* errorPrototype)
 {
-    Base::finishCreation(vm, ASCIILiteral("Error"));
+    Base::finishCreation(vm, "Error"_s);
     // ECMA 15.11.3.1 Error.prototype
-    putDirectWithoutTransition(vm, vm.propertyNames->prototype, errorPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), DontEnum | ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->prototype, errorPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
 
     unsigned defaultStackTraceLimit = Options::defaultErrorStackTraceLimit();
     m_stackTraceLimit = defaultStackTraceLimit;
-    putDirectWithoutTransition(vm, vm.propertyNames->stackTraceLimit, jsNumber(defaultStackTraceLimit), None);
+    putDirectWithoutTransition(vm, vm.propertyNames->stackTraceLimit, jsNumber(defaultStackTraceLimit), static_cast<unsigned>(PropertyAttribute::None));
 }
 
 // ECMA 15.9.3
@@ -57,29 +57,17 @@ EncodedJSValue JSC_HOST_CALL Interpreter::constructWithErrorConstructor(ExecStat
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue message = exec->argument(0);
-    Structure* errorStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), asInternalFunction(exec->jsCallee())->globalObject()->errorStructure());
+    Structure* errorStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<InternalFunction*>(exec->jsCallee())->globalObject(vm)->errorStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     scope.release();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }
 
-ConstructType ErrorConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = Interpreter::constructWithErrorConstructor;
-    return ConstructType::Host;
-}
-
 EncodedJSValue JSC_HOST_CALL Interpreter::callErrorConstructor(ExecState* exec)
 {
     JSValue message = exec->argument(0);
-    Structure* errorStructure = asInternalFunction(exec->jsCallee())->globalObject()->errorStructure();
+    Structure* errorStructure = jsCast<InternalFunction*>(exec->jsCallee())->globalObject(exec->vm())->errorStructure();
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
-}
-
-CallType ErrorConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = Interpreter::callErrorConstructor;
-    return CallType::Host;
 }
 
 bool ErrorConstructor::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)

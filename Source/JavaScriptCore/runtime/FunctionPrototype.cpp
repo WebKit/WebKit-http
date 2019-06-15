@@ -25,15 +25,11 @@
 #include "BuiltinNames.h"
 #include "Error.h"
 #include "GetterSetter.h"
-#include "JSArray.h"
 #include "JSAsyncFunction.h"
-#include "JSFunction.h"
-#include "JSGlobalObjectFunctions.h"
-#include "JSString.h"
-#include "JSStringBuilder.h"
-#include "Interpreter.h"
-#include "Lexer.h"
 #include "JSCInlines.h"
+#include "JSFunction.h"
+#include "JSStringInlines.h"
+#include "Lexer.h"
 
 namespace JSC {
 
@@ -43,15 +39,21 @@ const ClassInfo FunctionPrototype::s_info = { "Function", &Base::s_info, nullptr
 
 static EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState*);
 
+// ECMA 15.3.4
+static EncodedJSValue JSC_HOST_CALL callFunctionPrototype(ExecState*)
+{
+    return JSValue::encode(jsUndefined());
+}
+
 FunctionPrototype::FunctionPrototype(VM& vm, Structure* structure)
-    : InternalFunction(vm, structure)
+    : InternalFunction(vm, structure, callFunctionPrototype, nullptr)
 {
 }
 
 void FunctionPrototype::finishCreation(VM& vm, const String& name)
 {
     Base::finishCreation(vm, name);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontDelete | ReadOnly | DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
 void FunctionPrototype::addFunctionProperties(ExecState* exec, JSGlobalObject* globalObject, JSFunction** callFunction, JSFunction** applyFunction, JSFunction** hasInstanceSymbolFunction)
@@ -59,34 +61,22 @@ void FunctionPrototype::addFunctionProperties(ExecState* exec, JSGlobalObject* g
     VM& vm = exec->vm();
 
     JSFunction* toStringFunction = JSFunction::create(vm, globalObject, 0, vm.propertyNames->toString.string(), functionProtoFuncToString);
-    putDirectWithoutTransition(vm, vm.propertyNames->toString, toStringFunction, DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->toString, toStringFunction, static_cast<unsigned>(PropertyAttribute::DontEnum));
 
-    *applyFunction = putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->builtinNames().applyPublicName(), functionPrototypeApplyCodeGenerator(vm), DontEnum);
-    *callFunction = putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->builtinNames().callPublicName(), functionPrototypeCallCodeGenerator(vm), DontEnum);
-    putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->bind, functionPrototypeBindCodeGenerator(vm), DontEnum);
+    *applyFunction = putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->builtinNames().applyPublicName(), functionPrototypeApplyCodeGenerator(vm), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    *callFunction = putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->builtinNames().callPublicName(), functionPrototypeCallCodeGenerator(vm), static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectBuiltinFunctionWithoutTransition(vm, globalObject, vm.propertyNames->bind, functionPrototypeBindCodeGenerator(vm), static_cast<unsigned>(PropertyAttribute::DontEnum));
 
-    *hasInstanceSymbolFunction = JSFunction::createBuiltinFunction(vm, functionPrototypeSymbolHasInstanceCodeGenerator(vm), globalObject, ASCIILiteral("[Symbol.hasInstance]"));
-    putDirectWithoutTransition(vm, vm.propertyNames->hasInstanceSymbol, *hasInstanceSymbolFunction, DontDelete | ReadOnly | DontEnum);
+    *hasInstanceSymbolFunction = JSFunction::create(vm, functionPrototypeSymbolHasInstanceCodeGenerator(vm), globalObject);
+    putDirectWithoutTransition(vm, vm.propertyNames->hasInstanceSymbol, *hasInstanceSymbolFunction, PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
     
 void FunctionPrototype::initRestrictedProperties(ExecState* exec, JSGlobalObject* globalObject)
 {
     VM& vm = exec->vm();
     GetterSetter* errorGetterSetter = globalObject->throwTypeErrorArgumentsCalleeAndCallerGetterSetter();
-    putDirectAccessor(exec, vm.propertyNames->caller, errorGetterSetter, DontEnum | Accessor);
-    putDirectAccessor(exec, vm.propertyNames->arguments, errorGetterSetter, DontEnum | Accessor);
-}
-
-static EncodedJSValue JSC_HOST_CALL callFunctionPrototype(ExecState*)
-{
-    return JSValue::encode(jsUndefined());
-}
-
-// ECMA 15.3.4
-CallType FunctionPrototype::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callFunctionPrototype;
-    return CallType::Host;
+    putDirectAccessor(exec, vm.propertyNames->caller, errorGetterSetter, PropertyAttribute::DontEnum | PropertyAttribute::Accessor);
+    putDirectAccessor(exec, vm.propertyNames->arguments, errorGetterSetter, PropertyAttribute::DontEnum | PropertyAttribute::Accessor);
 }
 
 EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
@@ -95,7 +85,7 @@ EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSValue thisValue = exec->thisValue();
-    if (thisValue.inherits(vm, JSFunction::info())) {
+    if (thisValue.inherits<JSFunction>(vm)) {
         JSFunction* function = jsCast<JSFunction*>(thisValue);
         if (function->isHostOrBuiltinFunction()) {
             scope.release();
@@ -108,17 +98,46 @@ EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
             return JSValue::encode(jsString(exec, classSource.toStringWithoutCopying()));
         }
 
-        if (thisValue.inherits(vm, JSAsyncFunction::info())) {
-            String functionHeader = executable->isArrowFunction() ? "async " : "async function ";
+        String functionHeader;
+        switch (executable->parseMode()) {
+        case SourceParseMode::GeneratorWrapperFunctionMode:
+        case SourceParseMode::GeneratorWrapperMethodMode:
+            functionHeader = "function* ";
+            break;
 
-            StringView source = executable->source().provider()->getRange(
-                executable->parametersStartOffset(),
-                executable->parametersStartOffset() + executable->source().length());
-            return JSValue::encode(jsMakeNontrivialString(exec, functionHeader, function->name(vm), source));
+        case SourceParseMode::NormalFunctionMode:
+        case SourceParseMode::GetterMode:
+        case SourceParseMode::SetterMode:
+        case SourceParseMode::MethodMode:
+        case SourceParseMode::ProgramMode:
+        case SourceParseMode::ModuleAnalyzeMode:
+        case SourceParseMode::ModuleEvaluateMode:
+        case SourceParseMode::GeneratorBodyMode:
+        case SourceParseMode::AsyncGeneratorBodyMode:
+        case SourceParseMode::AsyncFunctionBodyMode:
+        case SourceParseMode::AsyncArrowFunctionBodyMode:
+            functionHeader = "function ";
+            break;
+
+        case SourceParseMode::ArrowFunctionMode:
+            functionHeader = "";
+            break;
+
+        case SourceParseMode::AsyncFunctionMode:
+        case SourceParseMode::AsyncMethodMode:
+            functionHeader = "async function ";
+            break;
+
+        case SourceParseMode::AsyncArrowFunctionMode:
+            functionHeader = "async ";
+            break;
+
+        case SourceParseMode::AsyncGeneratorWrapperFunctionMode:
+        case SourceParseMode::AsyncGeneratorWrapperMethodMode:
+            functionHeader = "async function* ";
+            break;
         }
 
-        String functionHeader = executable->isArrowFunction() ? "" : "function ";
-        
         StringView source = executable->source().provider()->getRange(
             executable->parametersStartOffset(),
             executable->parametersStartOffset() + executable->source().length());
@@ -126,22 +145,17 @@ EncodedJSValue JSC_HOST_CALL functionProtoFuncToString(ExecState* exec)
         return JSValue::encode(jsMakeNontrivialString(exec, functionHeader, function->name(vm), source));
     }
 
-    if (thisValue.inherits(vm, InternalFunction::info())) {
-        InternalFunction* function = asInternalFunction(thisValue);
+    if (thisValue.inherits<InternalFunction>(vm)) {
+        InternalFunction* function = jsCast<InternalFunction*>(thisValue);
         scope.release();
         return JSValue::encode(jsMakeNontrivialString(exec, "function ", function->name(), "() {\n    [native code]\n}"));
     }
 
     if (thisValue.isObject()) {
         JSObject* object = asObject(thisValue);
-        if (object->inlineTypeFlags() & TypeOfShouldCallGetCallData) {
-            CallData callData;
-            if (object->methodTable(vm)->getCallData(object, callData) != CallType::None) {
-                if (auto* classInfo = object->classInfo(vm)) {
-                    scope.release();
-                    return JSValue::encode(jsMakeNontrivialString(exec, "function ", classInfo->className, "() {\n    [native code]\n}"));
-                }
-            }
+        if (object->isFunction(vm)) {
+            scope.release();
+            return JSValue::encode(jsMakeNontrivialString(exec, "function ", object->classInfo(vm)->className, "() {\n    [native code]\n}"));
         }
     }
 

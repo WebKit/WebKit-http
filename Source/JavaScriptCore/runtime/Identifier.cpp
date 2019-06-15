@@ -33,8 +33,6 @@
 #include <wtf/text/ASCIIFastPath.h>
 #include <wtf/text/StringHash.h>
 
-using WTF::ThreadSpecific;
-
 namespace JSC {
 
 Ref<StringImpl> Identifier::add(VM* vm, const char* c)
@@ -110,7 +108,7 @@ void Identifier::checkCurrentAtomicStringTable(VM* vm)
 {
     // Check the identifier table accessible through the threadspecific matches the
     // vm's identifier table.
-    ASSERT_UNUSED(vm, vm->atomicStringTable() == wtfThreadData().atomicStringTable());
+    ASSERT_UNUSED(vm, vm->atomicStringTable() == Thread::current().atomicStringTable());
 }
 
 void Identifier::checkCurrentAtomicStringTable(ExecState* exec)

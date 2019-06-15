@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The push function is intentionally generic.
     It does not require that its this value be an Array object
+esid: sec-array.prototype.push
 es5id: 15.4.4.7_A2_T2
 description: >
     The arguments are appended to the end of the array, in  the order
@@ -34,7 +35,9 @@ if (obj["0"] !== -1) {
 
 //CHECK#4
 obj.length = Number.POSITIVE_INFINITY;
-assert.throws(TypeError, function() { obj.push(-4); });
+assert.throws(TypeError, function() {
+  obj.push(-4);
+});
 
 //CHECK#5
 if (obj.length !== Number.POSITIVE_INFINITY) {
@@ -73,7 +76,7 @@ if (push !== 1) {
 //CHECK#11
 if (obj.length !== 1) {
   $ERROR('#11: var obj = {}; obj.length = 0.5; obj.push = Array.prototype.push; obj.push(-10); obj.length === 1. Actual: ' + (obj.length));
-} 
+}
 
 //CHECK#12
 if (obj["0"] !== -10) {
@@ -90,7 +93,7 @@ if (push !== 2) {
 //CHECK#14
 if (obj.length !== 2) {
   $ERROR('#14: var obj = {}; obj.length = 1.5; obj.push = Array.prototype.push; obj.push(-13); obj.length === 2. Actual: ' + (obj.length));
-} 
+}
 
 //CHECK#15
 if (obj["1"] !== -13) {

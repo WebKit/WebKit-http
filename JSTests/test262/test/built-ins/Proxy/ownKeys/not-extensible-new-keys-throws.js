@@ -1,29 +1,29 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 9.5.12
+esid: sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys
 description: >
     If target is not extensible, the result can't contain keys names not
     contained in the target object.
-info: >
+info: |
     [[OwnPropertyKeys]] ( )
 
     ...
-    24. If uncheckedResultKeys is not empty, throw a TypeError exception.
+    20. If uncheckedResultKeys is not empty, throw a TypeError exception.
 ---*/
 
 var target = {
-    foo: 1
+  foo: 1
 };
 
 var p = new Proxy(target, {
-    ownKeys: function() {
-        return ["foo", "bar"];
-    }
+  ownKeys: function() {
+    return ["foo", "bar"];
+  }
 });
 
 Object.preventExtensions(target);
 
 assert.throws(TypeError, function() {
-    Object.keys(p);
+  Object.keys(p);
 });

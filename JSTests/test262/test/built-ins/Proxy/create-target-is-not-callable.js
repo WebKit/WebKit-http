@@ -4,7 +4,7 @@
 es6id: 9.5.15
 description: >
     A Proxy exotic object is only callable if the given target is callable.
-info: >
+info: |
     Proxy ( target, handler )
 
     7. If IsCallable(target) is true, then
@@ -21,5 +21,5 @@ info: >
 var p = new Proxy({}, {});
 
 assert.throws(TypeError, function() {
-    p.call();
+  p.call();
 });

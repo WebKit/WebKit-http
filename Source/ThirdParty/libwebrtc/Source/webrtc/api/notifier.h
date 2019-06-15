@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_NOTIFIER_H_
-#define WEBRTC_API_NOTIFIER_H_
+#ifndef API_NOTIFIER_H_
+#define API_NOTIFIER_H_
 
 #include <list>
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/base/checks.h"
+#include "api/mediastreaminterface.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
@@ -23,8 +23,7 @@ namespace webrtc {
 template <class T>
 class Notifier : public T {
  public:
-  Notifier() {
-  }
+  Notifier() {}
 
   virtual void RegisterObserver(ObserverInterface* observer) {
     RTC_DCHECK(observer != nullptr);
@@ -58,4 +57,4 @@ class Notifier : public T {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_NOTIFIER_H_
+#endif  // API_NOTIFIER_H_

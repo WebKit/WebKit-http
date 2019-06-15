@@ -9,6 +9,7 @@
  */
 
 #import "RTCMTLI420Renderer.h"
+#import "WebRTC/RTCVideoFrameBuffer.h"
 
 #import <Metal/Metal.h>
 #import <MetalKit/MetalKit.h>
@@ -18,10 +19,10 @@
 
 #import "RTCMTLRenderer+Private.h"
 
-#define MTL_STRINGIFY(s) @ #s
-
 static NSString *const shaderSource = MTL_STRINGIFY(
-    using namespace metal; typedef struct {
+    using namespace metal;
+
+    typedef struct {
       packed_float2 position;
       packed_float2 texcoord;
     } Vertex;
@@ -88,13 +89,32 @@ static NSString *const shaderSource = MTL_STRINGIFY(
   return shaderSource;
 }
 
+- (void)getWidth:(nonnull int *)width
+          height:(nonnull int *)height
+       cropWidth:(nonnull int *)cropWidth
+      cropHeight:(nonnull int *)cropHeight
+           cropX:(nonnull int *)cropX
+           cropY:(nonnull int *)cropY
+         ofFrame:(nonnull RTCVideoFrame *)frame {
+  *width = frame.width;
+  *height = frame.height;
+  *cropWidth = frame.width;
+  *cropHeight = frame.height;
+  *cropX = 0;
+  *cropY = 0;
+}
+
 - (BOOL)setupTexturesForFrame:(nonnull RTCVideoFrame *)frame {
-  [super setupTexturesForFrame:frame];
+  if (![super setupTexturesForFrame:frame]) {
+    return NO;
+  }
 
   id<MTLDevice> device = [self currentMetalDevice];
   if (!device) {
     return NO;
   }
+
+  id<RTCI420Buffer> buffer = [frame.buffer toI420];
 
   // Luma (y) texture.
   if (!_descriptor || (_width != frame.width && _height != frame.height)) {
@@ -111,8 +131,8 @@ static NSString *const shaderSource = MTL_STRINGIFY(
   // Chroma (u,v) textures
   [_yTexture replaceRegion:MTLRegionMake2D(0, 0, _width, _height)
                mipmapLevel:0
-                 withBytes:frame.dataY
-               bytesPerRow:frame.strideY];
+                 withBytes:buffer.dataY
+               bytesPerRow:buffer.strideY];
 
   if (!_chromaDescriptor ||
       (_chromaWidth != frame.width / 2 && _chromaHeight != frame.height / 2)) {
@@ -130,12 +150,12 @@ static NSString *const shaderSource = MTL_STRINGIFY(
 
   [_uTexture replaceRegion:MTLRegionMake2D(0, 0, _chromaWidth, _chromaHeight)
                mipmapLevel:0
-                 withBytes:frame.dataU
-               bytesPerRow:frame.strideU];
+                 withBytes:buffer.dataU
+               bytesPerRow:buffer.strideU];
   [_vTexture replaceRegion:MTLRegionMake2D(0, 0, _chromaWidth, _chromaHeight)
                mipmapLevel:0
-                 withBytes:frame.dataV
-               bytesPerRow:frame.strideV];
+                 withBytes:buffer.dataV
+               bytesPerRow:buffer.strideV];
 
   return (_uTexture != nil) && (_yTexture != nil) && (_vTexture != nil);
 }

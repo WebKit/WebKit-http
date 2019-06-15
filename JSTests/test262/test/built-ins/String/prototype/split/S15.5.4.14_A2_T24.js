@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     String.prototype.split (separator, limit) returns an Array object into which substrings of the result of converting this object to a string have
     been stored. The substrings are determined by searching from left to right for occurrences of
     separator; these occurrences are not part of any substring in the returned array, but serve to divide up
@@ -18,7 +18,7 @@ var __split = __string.split("h");
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if (__split.constructor !== Array) {
-  $ERROR('#1: var __string = new String("hello"); __split = __string.split("h"); __split.constructor === Array. Actual: '+__split.constructor );
+  $ERROR('#1: var __string = new String("hello"); __split = __string.split("h"); __split.constructor === Array. Actual: ' + __split.constructor);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ if (__split.constructor !== Array) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (__split.length !== 2) {
-  $ERROR('#2: var __string = new String("hello"); __split = __string.split("h"); __split.length === 2. Actual: '+__split.length );
+  $ERROR('#2: var __string = new String("hello"); __split = __string.split("h"); __split.length === 2. Actual: ' + __split.length);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -34,7 +34,7 @@ if (__split.length !== 2) {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#3
 if (__split[0] !== "") {
-  $ERROR('#3: var __string = new String("hello"); __split = __string.split("h"); __split[0] === "". Actual: '+__split[0]);
+  $ERROR('#3: var __string = new String("hello"); __split = __string.split("h"); __split[0] === "". Actual: ' + __split[0]);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ if (__split[0] !== "") {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#4
 if (__split[1] !== "ello") {
-  $ERROR('#4: var __string = new String("hello"); __split = __string.split("h"); __split[1] === "ello". Actual: '+__split[1] );
+  $ERROR('#4: var __string = new String("hello"); __split = __string.split("h"); __split[1] === "ello". Actual: ' + __split[1]);
 }
 //
 //////////////////////////////////////////////////////////////////////////////

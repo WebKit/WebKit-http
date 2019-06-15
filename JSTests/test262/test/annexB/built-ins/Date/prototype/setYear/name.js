@@ -5,7 +5,7 @@
 es6id: B.2.4.2
 description: >
   Date.prototype.setYear.name is "setYear".
-info: >
+info: |
   Date.prototype.setYear ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(Date.prototype.setYear.name, "setYear");
-
-verifyNotEnumerable(Date.prototype.setYear, "name");
-verifyNotWritable(Date.prototype.setYear, "name");
-verifyConfigurable(Date.prototype.setYear, "name");
+verifyProperty(Date.prototype.setYear, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "setYear"
+});

@@ -2,20 +2,21 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-5-28
 description: >
     Array.prototype.lastIndexOf - side effects produced by step 1 are
     visible when an exception occurs
 ---*/
 
-        var stepFiveOccurs = false;
-        var fromIndex = {
-            valueOf: function () {
-                stepFiveOccurs = true;
-                return 0;
-            }
-        };
+var stepFiveOccurs = false;
+var fromIndex = {
+  valueOf: function() {
+    stepFiveOccurs = true;
+    return 0;
+  }
+};
 assert.throws(TypeError, function() {
-            Array.prototype.lastIndexOf.call(undefined, undefined, fromIndex);
+  Array.prototype.lastIndexOf.call(undefined, undefined, fromIndex);
 });
 assert.sameValue(stepFiveOccurs, false, 'stepFiveOccurs');

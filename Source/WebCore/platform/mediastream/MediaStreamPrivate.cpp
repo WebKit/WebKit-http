@@ -44,6 +44,11 @@
 
 namespace WebCore {
 
+Ref<MediaStreamPrivate> MediaStreamPrivate::create(Ref<RealtimeMediaSource>&& source)
+{
+    return MediaStreamPrivate::create(MediaStreamTrackPrivateVector::from(MediaStreamTrackPrivate::create(WTFMove(source))));
+}
+
 Ref<MediaStreamPrivate> MediaStreamPrivate::create(const Vector<Ref<RealtimeMediaSource>>& audioSources, const Vector<Ref<RealtimeMediaSource>>& videoSources)
 {
     MediaStreamTrackPrivateVector tracks;
@@ -59,8 +64,7 @@ Ref<MediaStreamPrivate> MediaStreamPrivate::create(const Vector<Ref<RealtimeMedi
 }
 
 MediaStreamPrivate::MediaStreamPrivate(const MediaStreamTrackPrivateVector& tracks, String&& id)
-    : m_weakPtrFactory(this)
-    , m_id(WTFMove(id))
+    : m_id(WTFMove(id))
 {
     ASSERT(!m_id.isEmpty());
 
@@ -92,11 +96,7 @@ void MediaStreamPrivate::removeObserver(MediaStreamPrivate::Observer& observer)
 
 MediaStreamTrackPrivateVector MediaStreamPrivate::tracks() const
 {
-    MediaStreamTrackPrivateVector tracks;
-    tracks.reserveCapacity(m_trackSet.size());
-    copyValuesToVector(m_trackSet, tracks);
-
-    return tracks;
+    return copyToVector(m_trackSet.values());
 }
 
 void MediaStreamPrivate::updateActiveState(NotifyClientOption notifyClientOption)
@@ -299,7 +299,7 @@ void MediaStreamPrivate::trackEnded(MediaStreamTrackPrivate&)
 void MediaStreamPrivate::scheduleDeferredTask(Function<void ()>&& function)
 {
     ASSERT(function);
-    callOnMainThread([weakThis = createWeakPtr(), function = WTFMove(function)] {
+    callOnMainThread([weakThis = makeWeakPtr(*this), function = WTFMove(function)] {
         if (!weakThis)
             return;
 

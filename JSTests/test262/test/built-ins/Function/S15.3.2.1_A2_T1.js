@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     It is permissible but not necessary to have one argument for each formal
     parameter to be specified
 es5id: 15.3.2.1_A2_T1
@@ -19,11 +19,11 @@ try {
 }
 
 //CHECK#2
-if (!(f instanceof Function)){
+if (!(f instanceof Function)) {
   $ERROR('#2: It is permissible but not necessary to have one argument for each formal parameter to be specified');
 }
 
 //CHECK#3
-if (f(1,2,3) !== 6) {
+if (f(1, 2, 3) !== 6) {
   $ERROR('#3: It is permissible but not necessary to have one argument for each formal parameter to be specified');
 }

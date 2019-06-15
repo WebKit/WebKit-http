@@ -10,21 +10,20 @@
 
 #include <iostream>  // NOLINT
 
-#include "webrtc/p2p/base/basicpacketsocketfactory.h"
-#include "webrtc/p2p/base/turnserver.h"
-#include "webrtc/base/asyncudpsocket.h"
-#include "webrtc/base/optionsfile.h"
-#include "webrtc/base/stringencode.h"
-#include "webrtc/base/thread.h"
+#include "p2p/base/basicpacketsocketfactory.h"
+#include "p2p/base/turnserver.h"
+#include "rtc_base/asyncudpsocket.h"
+#include "rtc_base/optionsfile.h"
+#include "rtc_base/stringencode.h"
+#include "rtc_base/thread.h"
 
 static const char kSoftware[] = "libjingle TurnServer";
 
 class TurnFileAuth : public cricket::TurnAuthInterface {
  public:
-  explicit TurnFileAuth(const std::string& path) : file_(path) {
-    file_.Load();
-  }
-  virtual bool GetKey(const std::string& username, const std::string& realm,
+  explicit TurnFileAuth(const std::string& path) : file_(path) { file_.Load(); }
+  virtual bool GetKey(const std::string& username,
+                      const std::string& realm,
                       std::string* key) {
     // File is stored as lines of <username>=<HA1>.
     // Generate HA1 via "echo -n "<username>:<realm>:<password>" | md5sum"
@@ -37,11 +36,12 @@ class TurnFileAuth : public cricket::TurnAuthInterface {
     }
     return ret;
   }
+
  private:
   rtc::OptionsFile file_;
 };
 
-int main(int argc, char **argv) {
+int main(int argc, char* argv[]) {
   if (argc != 5) {
     std::cerr << "usage: turnserver int-addr ext-ip realm auth-file"
               << std::endl;
@@ -64,8 +64,8 @@ int main(int argc, char **argv) {
   rtc::AsyncUDPSocket* int_socket =
       rtc::AsyncUDPSocket::Create(main->socketserver(), int_addr);
   if (!int_socket) {
-    std::cerr << "Failed to create a UDP socket bound at"
-              << int_addr.ToString() << std::endl;
+    std::cerr << "Failed to create a UDP socket bound at" << int_addr.ToString()
+              << std::endl;
     return 1;
   }
 

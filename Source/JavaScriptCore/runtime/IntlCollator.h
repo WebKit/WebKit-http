@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2015 Andy VanWagoner (andy@vanwagoner.family)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,7 +36,7 @@ namespace JSC {
 class IntlCollatorConstructor;
 class JSBoundFunction;
 
-class IntlCollator : public JSDestructibleObject {
+class IntlCollator final : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
@@ -68,9 +68,9 @@ private:
     };
 
     void createCollator(ExecState&);
-    static const char* usageString(Usage);
-    static const char* sensitivityString(Sensitivity);
-    static const char* caseFirstString(CaseFirst);
+    static ASCIILiteral usageString(Usage);
+    static ASCIILiteral sensitivityString(Sensitivity);
+    static ASCIILiteral caseFirstString(CaseFirst);
 
     Usage m_usage;
     String m_locale;

@@ -2,7 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-array.prototype.concat
+info: |
     The concat function is intentionally generic.
     It does not require that its this value be an Array object
 es5id: 15.4.4.4_A2_T1
@@ -12,8 +13,8 @@ description: Checking this for Object object, items are objects and primitives
 var x = {};
 x.concat = Array.prototype.concat;
 var y = new Object();
-var z = new Array(1,2);
-var arr = x.concat(y,z, -1, true, "NaN");
+var z = new Array(1, 2);
+var arr = x.concat(y, z, -1, true, "NaN");
 
 //CHECK#0
 arr.getClass = Object.prototype.toString;

@@ -8,7 +8,6 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-
 /*
  * A wrapper for resampling a numerous amount of sampling combinations.
  */
@@ -16,8 +15,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "webrtc/common_audio/resampler/include/resampler.h"
-#include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
+#include "common_audio/resampler/include/resampler.h"
+#include "common_audio/signal_processing/include/signal_processing_library.h"
+#include "rtc_base/logging.h"
 
 namespace webrtc {
 
@@ -36,8 +36,7 @@ Resampler::Resampler()
       my_mode_(kResamplerMode1To1),
       num_channels_(0),
       slave_left_(nullptr),
-      slave_right_(nullptr) {
-}
+      slave_right_(nullptr) {}
 
 Resampler::Resampler(int inFreq, int outFreq, size_t num_channels)
     : Resampler() {
@@ -72,9 +71,9 @@ int Resampler::ResetIfNeeded(int inFreq, int outFreq, size_t num_channels) {
   int tmpInFreq_kHz = inFreq / 1000;
   int tmpOutFreq_kHz = outFreq / 1000;
 
-  if ((tmpInFreq_kHz != my_in_frequency_khz_)
-      || (tmpOutFreq_kHz != my_out_frequency_khz_)
-      || (num_channels != num_channels_)) {
+  if ((tmpInFreq_kHz != my_in_frequency_khz_) ||
+      (tmpOutFreq_kHz != my_out_frequency_khz_) ||
+      (num_channels != num_channels_)) {
     return Reset(inFreq, outFreq, num_channels);
   } else {
     return 0;
@@ -83,9 +82,21 @@ int Resampler::ResetIfNeeded(int inFreq, int outFreq, size_t num_channels) {
 
 int Resampler::Reset(int inFreq, int outFreq, size_t num_channels) {
   if (num_channels != 1 && num_channels != 2) {
-      return -1;
+    RTC_LOG(LS_WARNING)
+        << "Reset() called with unsupported channel count, num_channels = "
+        << num_channels;
+    return -1;
   }
+  ResamplerMode mode;
+  if (ComputeResamplerMode(inFreq, outFreq, &mode) != 0) {
+    RTC_LOG(LS_WARNING)
+        << "Reset() called with unsupported sample rates, inFreq = " << inFreq
+        << ", outFreq = " << outFreq;
+    return -1;
+  }
+  // Reinitialize internal state for the frequencies and sample rates.
   num_channels_ = num_channels;
+  my_mode_ = mode;
 
   if (state1_) {
     free(state1_);
@@ -121,24 +132,9 @@ int Resampler::Reset(int inFreq, int outFreq, size_t num_channels) {
   in_buffer_size_max_ = 0;
   out_buffer_size_max_ = 0;
 
-  // Start with a math exercise, Euclid's algorithm to find the gcd:
-  int a = inFreq;
-  int b = outFreq;
-  int c = a % b;
-  while (c != 0) {
-    a = b;
-    b = c;
-    c = a % b;
-  }
-  // b is now the gcd;
-
   // We need to track what domain we're in.
   my_in_frequency_khz_ = inFreq / 1000;
   my_out_frequency_khz_ = outFreq / 1000;
-
-  // Scale with GCD
-  inFreq = inFreq / b;
-  outFreq = outFreq / b;
 
   if (num_channels_ == 2) {
     // Create two mono resamplers.
@@ -146,73 +142,7 @@ int Resampler::Reset(int inFreq, int outFreq, size_t num_channels) {
     slave_right_ = new Resampler(inFreq, outFreq, 1);
   }
 
-  if (inFreq == outFreq) {
-    my_mode_ = kResamplerMode1To1;
-  } else if (inFreq == 1) {
-    switch (outFreq) {
-      case 2:
-        my_mode_ = kResamplerMode1To2;
-        break;
-      case 3:
-        my_mode_ = kResamplerMode1To3;
-        break;
-      case 4:
-        my_mode_ = kResamplerMode1To4;
-        break;
-      case 6:
-        my_mode_ = kResamplerMode1To6;
-        break;
-      case 12:
-        my_mode_ = kResamplerMode1To12;
-        break;
-      default:
-        return -1;
-    }
-  } else if (outFreq == 1) {
-    switch (inFreq) {
-      case 2:
-        my_mode_ = kResamplerMode2To1;
-        break;
-      case 3:
-        my_mode_ = kResamplerMode3To1;
-        break;
-      case 4:
-        my_mode_ = kResamplerMode4To1;
-        break;
-      case 6:
-        my_mode_ = kResamplerMode6To1;
-        break;
-      case 12:
-        my_mode_ = kResamplerMode12To1;
-        break;
-      default:
-        return -1;
-    }
-  } else if ((inFreq == 2) && (outFreq == 3)) {
-    my_mode_ = kResamplerMode2To3;
-  } else if ((inFreq == 2) && (outFreq == 11)) {
-    my_mode_ = kResamplerMode2To11;
-  } else if ((inFreq == 4) && (outFreq == 11)) {
-    my_mode_ = kResamplerMode4To11;
-  } else if ((inFreq == 8) && (outFreq == 11)) {
-    my_mode_ = kResamplerMode8To11;
-  } else if ((inFreq == 3) && (outFreq == 2)) {
-    my_mode_ = kResamplerMode3To2;
-  } else if ((inFreq == 11) && (outFreq == 2)) {
-    my_mode_ = kResamplerMode11To2;
-  } else if ((inFreq == 11) && (outFreq == 4)) {
-    my_mode_ = kResamplerMode11To4;
-  } else if ((inFreq == 11) && (outFreq == 16)) {
-    my_mode_ = kResamplerMode11To16;
-  } else if ((inFreq == 11) && (outFreq == 32)) {
-    my_mode_ = kResamplerMode11To32;
-  } else if ((inFreq == 11) && (outFreq == 8)) {
-    my_mode_ = kResamplerMode11To8;
-  } else {
-    return -1;
-  }
-
-  // Now create the states we need
+  // Now create the states we need.
   switch (my_mode_) {
     case kResamplerMode1To1:
       // No state needed;
@@ -259,7 +189,7 @@ int Resampler::Reset(int inFreq, int outFreq, size_t num_channels) {
       // 2:6
       state1_ = malloc(sizeof(WebRtcSpl_State16khzTo48khz));
       WebRtcSpl_ResetResample16khzTo48khz(
-        static_cast<WebRtcSpl_State16khzTo48khz*>(state1_));
+          static_cast<WebRtcSpl_State16khzTo48khz*>(state1_));
       // 6:3
       state2_ = malloc(8 * sizeof(int32_t));
       memset(state2_, 0, 8 * sizeof(int32_t));
@@ -376,9 +306,98 @@ int Resampler::Reset(int inFreq, int outFreq, size_t num_channels) {
   return 0;
 }
 
+int Resampler::ComputeResamplerMode(int in_freq_hz,
+                                    int out_freq_hz,
+                                    ResamplerMode* mode) {
+  // Start with a math exercise, Euclid's algorithm to find the gcd:
+  int a = in_freq_hz;
+  int b = out_freq_hz;
+  int c = a % b;
+  while (c != 0) {
+    a = b;
+    b = c;
+    c = a % b;
+  }
+  // b is now the gcd;
+
+  // Scale with GCD
+  const int reduced_in_freq = in_freq_hz / b;
+  const int reduced_out_freq = out_freq_hz / b;
+
+  if (reduced_in_freq == reduced_out_freq) {
+    *mode = kResamplerMode1To1;
+  } else if (reduced_in_freq == 1) {
+    switch (reduced_out_freq) {
+      case 2:
+        *mode = kResamplerMode1To2;
+        break;
+      case 3:
+        *mode = kResamplerMode1To3;
+        break;
+      case 4:
+        *mode = kResamplerMode1To4;
+        break;
+      case 6:
+        *mode = kResamplerMode1To6;
+        break;
+      case 12:
+        *mode = kResamplerMode1To12;
+        break;
+      default:
+        return -1;
+    }
+  } else if (reduced_out_freq == 1) {
+    switch (reduced_in_freq) {
+      case 2:
+        *mode = kResamplerMode2To1;
+        break;
+      case 3:
+        *mode = kResamplerMode3To1;
+        break;
+      case 4:
+        *mode = kResamplerMode4To1;
+        break;
+      case 6:
+        *mode = kResamplerMode6To1;
+        break;
+      case 12:
+        *mode = kResamplerMode12To1;
+        break;
+      default:
+        return -1;
+    }
+  } else if ((reduced_in_freq == 2) && (reduced_out_freq == 3)) {
+    *mode = kResamplerMode2To3;
+  } else if ((reduced_in_freq == 2) && (reduced_out_freq == 11)) {
+    *mode = kResamplerMode2To11;
+  } else if ((reduced_in_freq == 4) && (reduced_out_freq == 11)) {
+    *mode = kResamplerMode4To11;
+  } else if ((reduced_in_freq == 8) && (reduced_out_freq == 11)) {
+    *mode = kResamplerMode8To11;
+  } else if ((reduced_in_freq == 3) && (reduced_out_freq == 2)) {
+    *mode = kResamplerMode3To2;
+  } else if ((reduced_in_freq == 11) && (reduced_out_freq == 2)) {
+    *mode = kResamplerMode11To2;
+  } else if ((reduced_in_freq == 11) && (reduced_out_freq == 4)) {
+    *mode = kResamplerMode11To4;
+  } else if ((reduced_in_freq == 11) && (reduced_out_freq == 16)) {
+    *mode = kResamplerMode11To16;
+  } else if ((reduced_in_freq == 11) && (reduced_out_freq == 32)) {
+    *mode = kResamplerMode11To32;
+  } else if ((reduced_in_freq == 11) && (reduced_out_freq == 8)) {
+    *mode = kResamplerMode11To8;
+  } else {
+    return -1;
+  }
+  return 0;
+}
+
 // Synchronous resampling, all output samples are written to samplesOut
-int Resampler::Push(const int16_t * samplesIn, size_t lengthIn,
-                    int16_t* samplesOut, size_t maxLen, size_t& outLen) {
+int Resampler::Push(const int16_t* samplesIn,
+                    size_t lengthIn,
+                    int16_t* samplesOut,
+                    size_t maxLen,
+                    size_t& outLen) {
   if (num_channels_ == 2) {
     // Split up the signal and call the slave object for each channel
     int16_t* left =
@@ -557,7 +576,7 @@ int Resampler::Push(const int16_t * samplesIn, size_t lengthIn,
       if ((lengthIn % 160) != 0) {
         return -1;
       }
-      tmp = static_cast<int16_t*> (malloc(sizeof(int16_t) * lengthIn * 3));
+      tmp = static_cast<int16_t*>(malloc(sizeof(int16_t) * lengthIn * 3));
       tmp_mem = static_cast<int32_t*>(malloc(336 * sizeof(int32_t)));
       for (size_t i = 0; i < lengthIn; i += 160) {
         WebRtcSpl_Resample16khzTo48khz(
@@ -809,7 +828,7 @@ int Resampler::Push(const int16_t * samplesIn, size_t lengthIn,
         return -1;
       }
       // 3:6
-      tmp = static_cast<int16_t*> (malloc(sizeof(int16_t) * lengthIn * 2));
+      tmp = static_cast<int16_t*>(malloc(sizeof(int16_t) * lengthIn * 2));
       WebRtcSpl_UpsampleBy2(samplesIn, lengthIn, tmp,
                             static_cast<int32_t*>(state1_));
       lengthIn *= 2;
@@ -840,8 +859,8 @@ int Resampler::Push(const int16_t * samplesIn, size_t lengthIn,
         return -1;
       }
       tmp_mem = static_cast<int32_t*>(malloc(126 * sizeof(int32_t)));
-      tmp = static_cast<int16_t*>(
-          malloc((lengthIn * 4) / 11 * sizeof(int16_t)));
+      tmp =
+          static_cast<int16_t*>(malloc((lengthIn * 4) / 11 * sizeof(int16_t)));
 
       for (size_t i = 0; i < lengthIn; i += 220) {
         WebRtcSpl_Resample22khzTo8khz(

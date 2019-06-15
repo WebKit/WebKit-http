@@ -135,11 +135,11 @@ void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef call
 {
 }
 
-void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
+void UIScriptController::enterText(JSStringRef)
 {
 }
 
-void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
+void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
 {
 }
 
@@ -155,8 +155,31 @@ void UIScriptController::dismissFormAccessoryView()
 {
 }
 
+void UIScriptController::setTimePickerValue(long, long)
+{
+}
+
+void UIScriptController::invokeShareSheetWithResolution(bool)
+{
+}
+
 void UIScriptController::selectFormAccessoryPickerRow(long rowIndex)
 {
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::textContentType() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::selectFormPopoverTitle() const
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::formInputLabel() const
+{
+    return nullptr;
 }
     
 JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
@@ -319,6 +342,10 @@ void UIScriptController::simulateRotationLikeSafari(DeviceOrientation*, JSValueR
 {
 }
 
+void UIScriptController::findString(JSStringRef, unsigned long options, unsigned long maxCount)
+{
+}
+
 void UIScriptController::removeViewFromWindow(JSValueRef)
 {
 }
@@ -329,6 +356,24 @@ void UIScriptController::addViewToWindow(JSValueRef)
 
 void UIScriptController::setSafeAreaInsets(double, double, double, double)
 {
+}
+
+void UIScriptController::beginBackSwipe(JSValueRef callback)
+{
+}
+
+void UIScriptController::completeBackSwipe(JSValueRef callback)
+{
+}
+
+JSObjectRef UIScriptController::selectionStartGrabberViewRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionEndGrabberViewRect() const
+{
+    return nullptr;
 }
 
 }

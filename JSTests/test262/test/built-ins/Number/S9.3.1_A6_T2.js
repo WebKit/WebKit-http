@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The MV of StrUnsignedDecimalLiteral::: Infinity is 10<sup><small>10000</small></sup>
     (a value so large that it will round to <b><tt>+&infin;</tt></b>)
 es5id: 9.3.1_A6_T2
@@ -11,8 +11,8 @@ description: >
     10e10000, 10E10000 and Number("10e10000")
 ---*/
 
-function dynaString(s1, s2){
-  return String(s1)+String(s2);
+function dynaString(s1, s2) {
+  return String(s1) + String(s2);
 }
 
 

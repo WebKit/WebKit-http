@@ -23,7 +23,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// FIXME 169871: remove "new"
 enum MediaStreamTrackState { "live", "ended" };
 
 [
@@ -47,9 +46,9 @@ enum MediaStreamTrackState { "live", "ended" };
     MediaStreamTrack clone();
     [ImplementedAs=stopTrack] void stop();
 
-    MediaTrackCapabilities getCapabilities();
+    [CallWith=Document] MediaTrackCapabilities getCapabilities();
     MediaTrackConstraints getConstraints();
-    MediaTrackSettings getSettings();
+    [CallWith=Document] MediaTrackSettings getSettings();
     Promise<void> applyConstraints(optional MediaTrackConstraints constraints);
 
     attribute EventHandler onoverconstrained;

@@ -48,7 +48,7 @@ enum GraphicsLayerPaintingPhaseFlags {
     GraphicsLayerPaintChildClippingMask     = 1 << 6,
     GraphicsLayerPaintAllWithOverflowClip   = GraphicsLayerPaintBackground | GraphicsLayerPaintForeground
 };
-typedef unsigned GraphicsLayerPaintingPhase;
+typedef uint8_t GraphicsLayerPaintingPhase;
 
 enum AnimatedPropertyID {
     AnimatedPropertyInvalid,
@@ -72,19 +72,25 @@ enum LayerTreeAsTextBehaviorFlags {
     LayerTreeAsTextIncludePageOverlayLayers     = 1 << 6,
     LayerTreeAsTextIncludeAcceleratesDrawing    = 1 << 7,
     LayerTreeAsTextIncludeBackingStoreAttached  = 1 << 8,
+    LayerTreeAsTextShowAll                      = 0xFFFF
 };
 typedef unsigned LayerTreeAsTextBehavior;
 
-enum class GraphicsLayerPaintFlags { None, AllowAsyncImageDecoding };
+enum GraphicsLayerPaintFlags {
+    GraphicsLayerPaintNormal                    = 0,
+    GraphicsLayerPaintSnapshotting              = 1 << 0,
+    GraphicsLayerPaintFirstTilePaint            = 1 << 1,
+};
+typedef unsigned GraphicsLayerPaintBehavior;
     
 class GraphicsLayerClient {
 public:
-    virtual ~GraphicsLayerClient() {}
+    virtual ~GraphicsLayerClient() = default;
 
     virtual void tiledBackingUsageChanged(const GraphicsLayer*, bool /*usingTiledBacking*/) { }
     
     // Callback for when hardware-accelerated animation started.
-    virtual void notifyAnimationStarted(const GraphicsLayer*, const String& /*animationKey*/, double /*time*/) { }
+    virtual void notifyAnimationStarted(const GraphicsLayer*, const String& /*animationKey*/, MonotonicTime /*time*/) { }
     virtual void notifyAnimationEnded(const GraphicsLayer*, const String& /*animationKey*/) { }
 
     // Notification that a layer property changed that requires a subsequent call to flushCompositingState()
@@ -94,7 +100,7 @@ public:
     // Notification that this layer requires a flush before the next display refresh.
     virtual void notifyFlushBeforeDisplayRefresh(const GraphicsLayer*) { }
 
-    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& /* inClip */, GraphicsLayerPaintFlags) { }
+    virtual void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& /* inClip */, GraphicsLayerPaintBehavior) { }
     virtual void didCommitChangesForLayer(const GraphicsLayer*) const { }
 
     // Provides current transform (taking transform-origin and animations into account). Input matrix has been

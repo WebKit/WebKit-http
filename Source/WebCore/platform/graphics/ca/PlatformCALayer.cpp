@@ -28,16 +28,15 @@
 
 #if USE(CA)
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreText/CoreText.h>
 #include "GraphicsContextCG.h"
 #include "LayerPool.h"
 #include "PlatformCALayerClient.h"
-#include "TextStream.h"
-#include <wtf/StringExtras.h>
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreText/CoreText.h>
+#include <wtf/text/TextStream.h>
 
 #if PLATFORM(WIN)
-#include "CoreTextSPIWin.h"
+#include <pal/spi/win/CoreTextSPIWin.h>
 #endif
 
 namespace WebCore {

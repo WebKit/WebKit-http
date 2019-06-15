@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-3-21
 description: >
     Array.prototype.lastIndexOf - 'length' is an object that has an
@@ -9,24 +10,24 @@ description: >
     returns a string
 ---*/
 
-        var toStringAccessed = false;
-        var valueOfAccessed = false;
+var toStringAccessed = false;
+var valueOfAccessed = false;
 
-        var targetObj = this;
-        var obj = {
-            1: targetObj,
-            length: {
-                toString: function () {
-                    toStringAccessed = true;
-                    return '3';
-                },
+var targetObj = this;
+var obj = {
+  1: targetObj,
+  length: {
+    toString: function() {
+      toStringAccessed = true;
+      return '3';
+    },
 
-                valueOf: function () {
-                    valueOfAccessed = true;
-                    return {};
-                }
-            }
-        };
+    valueOf: function() {
+      valueOfAccessed = true;
+      return {};
+    }
+  }
+};
 
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, targetObj), 1, 'Array.prototype.lastIndexOf.call(obj, targetObj)');
 assert(toStringAccessed, 'toStringAccessed !== true');

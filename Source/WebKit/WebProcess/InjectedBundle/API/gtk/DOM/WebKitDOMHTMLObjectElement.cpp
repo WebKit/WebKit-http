@@ -22,12 +22,11 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMDocumentPrivate.h"
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
@@ -38,6 +37,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,8 +69,8 @@ static gboolean webkit_dom_html_object_element_dispatch_event(WebKitDOMEventTarg
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -87,35 +88,35 @@ static gboolean webkit_dom_html_object_element_remove_event_listener(WebKitDOMEv
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_object_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_object_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_object_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_object_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLObjectElement, webkit_dom_html_object_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLObjectElement, webkit_dom_html_object_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_object_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_FORM,
-    PROP_CODE,
-    PROP_ALIGN,
-    PROP_ARCHIVE,
-    PROP_BORDER,
-    PROP_CODE_BASE,
-    PROP_CODE_TYPE,
-    PROP_DATA,
-    PROP_DECLARE,
-    PROP_HEIGHT,
-    PROP_HSPACE,
-    PROP_NAME,
-    PROP_STANDBY,
-    PROP_TYPE,
-    PROP_USE_MAP,
-    PROP_VSPACE,
-    PROP_WIDTH,
-    PROP_CONTENT_DOCUMENT,
+    DOM_HTML_OBJECT_ELEMENT_PROP_0,
+    DOM_HTML_OBJECT_ELEMENT_PROP_FORM,
+    DOM_HTML_OBJECT_ELEMENT_PROP_CODE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_ALIGN,
+    DOM_HTML_OBJECT_ELEMENT_PROP_ARCHIVE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_BORDER,
+    DOM_HTML_OBJECT_ELEMENT_PROP_CODE_BASE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_CODE_TYPE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_DATA,
+    DOM_HTML_OBJECT_ELEMENT_PROP_DECLARE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_HEIGHT,
+    DOM_HTML_OBJECT_ELEMENT_PROP_HSPACE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_NAME,
+    DOM_HTML_OBJECT_ELEMENT_PROP_STANDBY,
+    DOM_HTML_OBJECT_ELEMENT_PROP_TYPE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_USE_MAP,
+    DOM_HTML_OBJECT_ELEMENT_PROP_VSPACE,
+    DOM_HTML_OBJECT_ELEMENT_PROP_WIDTH,
+    DOM_HTML_OBJECT_ELEMENT_PROP_CONTENT_DOCUMENT,
 };
 
 static void webkit_dom_html_object_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -123,52 +124,52 @@ static void webkit_dom_html_object_element_set_property(GObject* object, guint p
     WebKitDOMHTMLObjectElement* self = WEBKIT_DOM_HTML_OBJECT_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_CODE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CODE:
         webkit_dom_html_object_element_set_code(self, g_value_get_string(value));
         break;
-    case PROP_ALIGN:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_ALIGN:
         webkit_dom_html_object_element_set_align(self, g_value_get_string(value));
         break;
-    case PROP_ARCHIVE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_ARCHIVE:
         webkit_dom_html_object_element_set_archive(self, g_value_get_string(value));
         break;
-    case PROP_BORDER:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_BORDER:
         webkit_dom_html_object_element_set_border(self, g_value_get_string(value));
         break;
-    case PROP_CODE_BASE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CODE_BASE:
         webkit_dom_html_object_element_set_code_base(self, g_value_get_string(value));
         break;
-    case PROP_CODE_TYPE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CODE_TYPE:
         webkit_dom_html_object_element_set_code_type(self, g_value_get_string(value));
         break;
-    case PROP_DATA:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_DATA:
         webkit_dom_html_object_element_set_data(self, g_value_get_string(value));
         break;
-    case PROP_DECLARE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_DECLARE:
         webkit_dom_html_object_element_set_declare(self, g_value_get_boolean(value));
         break;
-    case PROP_HEIGHT:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_HEIGHT:
         webkit_dom_html_object_element_set_height(self, g_value_get_string(value));
         break;
-    case PROP_HSPACE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_HSPACE:
         webkit_dom_html_object_element_set_hspace(self, g_value_get_long(value));
         break;
-    case PROP_NAME:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_NAME:
         webkit_dom_html_object_element_set_name(self, g_value_get_string(value));
         break;
-    case PROP_STANDBY:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_STANDBY:
         webkit_dom_html_object_element_set_standby(self, g_value_get_string(value));
         break;
-    case PROP_TYPE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_TYPE:
         webkit_dom_html_object_element_set_type_attr(self, g_value_get_string(value));
         break;
-    case PROP_USE_MAP:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_USE_MAP:
         webkit_dom_html_object_element_set_use_map(self, g_value_get_string(value));
         break;
-    case PROP_VSPACE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_VSPACE:
         webkit_dom_html_object_element_set_vspace(self, g_value_get_long(value));
         break;
-    case PROP_WIDTH:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_WIDTH:
         webkit_dom_html_object_element_set_width(self, g_value_get_string(value));
         break;
     default:
@@ -182,58 +183,58 @@ static void webkit_dom_html_object_element_get_property(GObject* object, guint p
     WebKitDOMHTMLObjectElement* self = WEBKIT_DOM_HTML_OBJECT_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_FORM:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_FORM:
         g_value_set_object(value, webkit_dom_html_object_element_get_form(self));
         break;
-    case PROP_CODE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CODE:
         g_value_take_string(value, webkit_dom_html_object_element_get_code(self));
         break;
-    case PROP_ALIGN:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_ALIGN:
         g_value_take_string(value, webkit_dom_html_object_element_get_align(self));
         break;
-    case PROP_ARCHIVE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_ARCHIVE:
         g_value_take_string(value, webkit_dom_html_object_element_get_archive(self));
         break;
-    case PROP_BORDER:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_BORDER:
         g_value_take_string(value, webkit_dom_html_object_element_get_border(self));
         break;
-    case PROP_CODE_BASE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CODE_BASE:
         g_value_take_string(value, webkit_dom_html_object_element_get_code_base(self));
         break;
-    case PROP_CODE_TYPE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CODE_TYPE:
         g_value_take_string(value, webkit_dom_html_object_element_get_code_type(self));
         break;
-    case PROP_DATA:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_DATA:
         g_value_take_string(value, webkit_dom_html_object_element_get_data(self));
         break;
-    case PROP_DECLARE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_DECLARE:
         g_value_set_boolean(value, webkit_dom_html_object_element_get_declare(self));
         break;
-    case PROP_HEIGHT:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_HEIGHT:
         g_value_take_string(value, webkit_dom_html_object_element_get_height(self));
         break;
-    case PROP_HSPACE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_HSPACE:
         g_value_set_long(value, webkit_dom_html_object_element_get_hspace(self));
         break;
-    case PROP_NAME:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_NAME:
         g_value_take_string(value, webkit_dom_html_object_element_get_name(self));
         break;
-    case PROP_STANDBY:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_STANDBY:
         g_value_take_string(value, webkit_dom_html_object_element_get_standby(self));
         break;
-    case PROP_TYPE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_TYPE:
         g_value_take_string(value, webkit_dom_html_object_element_get_type_attr(self));
         break;
-    case PROP_USE_MAP:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_USE_MAP:
         g_value_take_string(value, webkit_dom_html_object_element_get_use_map(self));
         break;
-    case PROP_VSPACE:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_VSPACE:
         g_value_set_long(value, webkit_dom_html_object_element_get_vspace(self));
         break;
-    case PROP_WIDTH:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_WIDTH:
         g_value_take_string(value, webkit_dom_html_object_element_get_width(self));
         break;
-    case PROP_CONTENT_DOCUMENT:
+    case DOM_HTML_OBJECT_ELEMENT_PROP_CONTENT_DOCUMENT:
         g_value_set_object(value, webkit_dom_html_object_element_get_content_document(self));
         break;
     default:
@@ -250,7 +251,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_FORM,
+        DOM_HTML_OBJECT_ELEMENT_PROP_FORM,
         g_param_spec_object(
             "form",
             "HTMLObjectElement:form",
@@ -260,7 +261,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CODE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_CODE,
         g_param_spec_string(
             "code",
             "HTMLObjectElement:code",
@@ -270,7 +271,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ALIGN,
+        DOM_HTML_OBJECT_ELEMENT_PROP_ALIGN,
         g_param_spec_string(
             "align",
             "HTMLObjectElement:align",
@@ -280,7 +281,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_ARCHIVE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_ARCHIVE,
         g_param_spec_string(
             "archive",
             "HTMLObjectElement:archive",
@@ -290,7 +291,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_BORDER,
+        DOM_HTML_OBJECT_ELEMENT_PROP_BORDER,
         g_param_spec_string(
             "border",
             "HTMLObjectElement:border",
@@ -300,7 +301,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CODE_BASE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_CODE_BASE,
         g_param_spec_string(
             "code-base",
             "HTMLObjectElement:code-base",
@@ -310,7 +311,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CODE_TYPE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_CODE_TYPE,
         g_param_spec_string(
             "code-type",
             "HTMLObjectElement:code-type",
@@ -320,7 +321,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DATA,
+        DOM_HTML_OBJECT_ELEMENT_PROP_DATA,
         g_param_spec_string(
             "data",
             "HTMLObjectElement:data",
@@ -330,7 +331,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DECLARE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_DECLARE,
         g_param_spec_boolean(
             "declare",
             "HTMLObjectElement:declare",
@@ -340,7 +341,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_HEIGHT,
+        DOM_HTML_OBJECT_ELEMENT_PROP_HEIGHT,
         g_param_spec_string(
             "height",
             "HTMLObjectElement:height",
@@ -350,7 +351,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_HSPACE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_HSPACE,
         g_param_spec_long(
             "hspace",
             "HTMLObjectElement:hspace",
@@ -360,7 +361,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_NAME,
+        DOM_HTML_OBJECT_ELEMENT_PROP_NAME,
         g_param_spec_string(
             "name",
             "HTMLObjectElement:name",
@@ -370,7 +371,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_STANDBY,
+        DOM_HTML_OBJECT_ELEMENT_PROP_STANDBY,
         g_param_spec_string(
             "standby",
             "HTMLObjectElement:standby",
@@ -380,7 +381,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_TYPE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_TYPE,
         g_param_spec_string(
             "type",
             "HTMLObjectElement:type",
@@ -390,7 +391,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_USE_MAP,
+        DOM_HTML_OBJECT_ELEMENT_PROP_USE_MAP,
         g_param_spec_string(
             "use-map",
             "HTMLObjectElement:use-map",
@@ -400,7 +401,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_VSPACE,
+        DOM_HTML_OBJECT_ELEMENT_PROP_VSPACE,
         g_param_spec_long(
             "vspace",
             "HTMLObjectElement:vspace",
@@ -410,7 +411,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_WIDTH,
+        DOM_HTML_OBJECT_ELEMENT_PROP_WIDTH,
         g_param_spec_string(
             "width",
             "HTMLObjectElement:width",
@@ -420,7 +421,7 @@ static void webkit_dom_html_object_element_class_init(WebKitDOMHTMLObjectElement
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CONTENT_DOCUMENT,
+        DOM_HTML_OBJECT_ELEMENT_PROP_CONTENT_DOCUMENT,
         g_param_spec_object(
             "content-document",
             "HTMLObjectElement:content-document",
@@ -751,3 +752,4 @@ WebKitDOMDocument* webkit_dom_html_object_element_get_content_document(WebKitDOM
     return WebKit::kit(gobjectResult.get());
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

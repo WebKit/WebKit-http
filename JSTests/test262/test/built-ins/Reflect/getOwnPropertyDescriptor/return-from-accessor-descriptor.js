@@ -4,7 +4,7 @@
 es6id: 26.1.7
 description: >
   Return a property descriptor object as an accessor descriptor.
-info: >
+info: |
   26.1.7 Reflect.getOwnPropertyDescriptor ( target, propertyKey )
 
   ...
@@ -46,8 +46,7 @@ var result = Reflect.getOwnPropertyDescriptor(o1, 'p');
 
 assert(
   compareArray(
-    Object.keys(result),
-    ['get', 'set', 'enumerable', 'configurable']
+    Object.keys(result), ['get', 'set', 'enumerable', 'configurable']
   )
 );
 assert.sameValue(result.enumerable, false);

@@ -202,7 +202,7 @@ class SuggestNominations(AbstractCommitLogCommand):
         counter['count'] = counter.get('count', 0) + 1
 
         if revision.isdigit():
-            revision = "http://trac.webkit.org/changeset/" + revision
+            revision = "https://trac.webkit.org/changeset/" + revision
         counter['commits'] += "  commit: %s on %s by %s (%s)\n" % (revision, commit_date, author_name, author_email)
 
     def _count_recent_patches(self):
@@ -213,7 +213,7 @@ class SuggestNominations(AbstractCommitLogCommand):
         for commit_message in self._recent_commit_messages():
             try:
                 self._count_commit(self._parse_commit_message(commit_message), analysis)
-            except CommitLogError, exception:
+            except CommitLogError as exception:
                 continue
         return analysis['counters_by_email']
 
@@ -255,11 +255,11 @@ class SuggestNominations(AbstractCommitLogCommand):
         for nomination in sorted(nominations, nomination_cmp):
             # This is a little bit of a hack, but its convienent to just pass the nomination dictionary to the formating operator.
             nomination['roles_string'] = grammar.join_with_separators(nomination['roles']).upper()
-            print "%(roles_string)s: %(author_name)s (%(author_email)s) has %(patch_count)s reviewed patches" % nomination
+            print("%(roles_string)s: %(author_name)s (%(author_email)s) has %(patch_count)s reviewed patches" % nomination)
             counter = counters_by_email[nomination['author_email']]
 
             if self.show_commits:
-                print counter['commits']
+                print(counter['commits'])
 
     def _print_counts(self, counters_by_email):
         def counter_cmp(a_tuple, b_tuple):
@@ -288,9 +288,9 @@ class SuggestNominations(AbstractCommitLogCommand):
             for alias in counter['emails']:
                 alias_list.append(alias)
             if alias_list:
-                print "CONTRIBUTOR: %s (%s) has %s %s" % (author_name, author_email, grammar.pluralize(patch_count, "reviewed patch"), "(aliases: " + ", ".join(alias_list) + ")")
+                print("CONTRIBUTOR: %s (%s) has %s %s" % (author_name, author_email, grammar.pluralize(patch_count, "reviewed patch"), "(aliases: " + ", ".join(alias_list) + ")"))
             else:
-                print "CONTRIBUTOR: %s (%s) has %s" % (author_name, author_email, grammar.pluralize(patch_count, "reviewed patch"))
+                print("CONTRIBUTOR: %s (%s) has %s" % (author_name, author_email, grammar.pluralize(patch_count, "reviewed patch")))
         return
 
     def execute(self, options, args, tool):

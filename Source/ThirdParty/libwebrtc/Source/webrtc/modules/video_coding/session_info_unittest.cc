@@ -10,10 +10,10 @@
 
 #include <string.h>
 
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/modules/video_coding/packet.h"
-#include "webrtc/modules/video_coding/session_info.h"
-#include "webrtc/test/gtest.h"
+#include "modules/include/module_common_types.h"
+#include "modules/video_coding/packet.h"
+#include "modules/video_coding/session_info.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -23,7 +23,6 @@ class TestSessionInfo : public ::testing::Test {
     memset(packet_buffer_, 0, sizeof(packet_buffer_));
     memset(frame_buffer_, 0, sizeof(frame_buffer_));
     session_.Reset();
-    packet_.Reset();
     packet_.frameType = kVideoFrameDelta;
     packet_.sizeBytes = packet_buffer_size();
     packet_.dataPtr = packet_buffer_;

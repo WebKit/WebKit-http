@@ -27,8 +27,11 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "TextResourceDecoder.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLBaseElement);
 
 using namespace HTMLNames;
 
@@ -51,18 +54,18 @@ void HTMLBaseElement::parseAttribute(const QualifiedName& name, const AtomicStri
         HTMLElement::parseAttribute(name, value);
 }
 
-Node::InsertionNotificationRequest HTMLBaseElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLBaseElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected())
+    HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
         document().processBaseElement();
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void HTMLBaseElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLBaseElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.isConnected())
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         document().processBaseElement();
 }
 

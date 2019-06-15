@@ -93,6 +93,39 @@ class TestRunResults(object):
         if test_is_slow:
             self.slow_tests.add(test_result.test_name)
 
+    def change_result_to_failure(self, existing_result, new_result, existing_expected, new_expected):
+        assert existing_result.test_name == new_result.test_name
+        if existing_result.type is new_result.type:
+            return
+
+        self.tests_by_expectation[existing_result.type].remove(existing_result.test_name)
+        self.tests_by_expectation[new_result.type].add(new_result.test_name)
+
+        had_failures = len(existing_result.failures) > 0
+
+        existing_result.convert_to_failure(new_result)
+
+        if not had_failures and len(existing_result.failures):
+            self.total_failures += 1
+
+        if len(existing_result.failures):
+            self.failures_by_name[existing_result.test_name] = existing_result.failures
+
+        if not existing_expected and new_expected:
+            # test changed from unexpected to expected
+            self.expected += 1
+            self.unexpected_results_by_name.pop(existing_result.test_name, None)
+            self.unexpected -= 1
+            if had_failures:
+                self.unexpected_failures -= 1
+        elif existing_expected and not new_expected:
+            # test changed from expected to unexpected
+            self.expected -= 1
+            self.unexpected_results_by_name[existing_result.test_name] = existing_result
+            self.unexpected += 1
+            if len(existing_result.failures):
+                self.unexpected_failures += 1
+
     def merge(self, test_run_results):
         if not test_run_results:
             return self
@@ -132,6 +165,7 @@ class RunDetails(object):
 
 def _interpret_test_failures(failures):
     test_dict = {}
+
     failure_types = [type(failure) for failure in failures]
     # FIXME: get rid of all this is_* values once there is a 1:1 map between
     # TestFailure type and test_expectations.EXPECTATION.
@@ -143,6 +177,14 @@ def _interpret_test_failures(failures):
 
     if test_failures.FailureMissingImage in failure_types or test_failures.FailureMissingImageHash in failure_types:
         test_dict['is_missing_image'] = True
+
+    if test_failures.FailureDocumentLeak in failure_types:
+        leaks = []
+        for failure in failures:
+            if isinstance(failure, test_failures.FailureDocumentLeak):
+                for url in failure.leaked_document_urls:
+                    leaks.append({"document": url})
+        test_dict['leaks'] = leaks
 
     if 'image_diff_percent' not in test_dict:
         for failure in failures:
@@ -178,8 +220,8 @@ def summarize_results(port_obj, expectations, initial_results, retry_results, en
     num_missing = 0
     num_regressions = 0
     keywords = {}
-    for expecation_string, expectation_enum in test_expectations.TestExpectations.EXPECTATIONS.iteritems():
-        keywords[expectation_enum] = expecation_string.upper()
+    for expectation_string, expectation_enum in test_expectations.TestExpectations.EXPECTATIONS.iteritems():
+        keywords[expectation_enum] = expectation_string.upper()
 
     for modifier_string, modifier_enum in test_expectations.TestExpectations.MODIFIERS.iteritems():
         keywords[modifier_enum] = modifier_string.upper()
@@ -191,7 +233,10 @@ def summarize_results(port_obj, expectations, initial_results, retry_results, en
         # Note that if a test crashed in the original run, we ignore
         # whether or not it crashed when we retried it (if we retried it),
         # and always consider the result not flaky.
-        expected = expectations.model().get_expectations_string(test_name)
+        pixel_tests_enabled = enabled_pixel_tests_in_retry or port_obj._options.pixel_tests or bool(result.reftest_type)
+        test_expectation = expectations.filtered_expectations_for_test(test_name, pixel_tests_enabled, port_obj._options.world_leaks)
+        expected = expectations.model().expectations_to_string(test_expectation)
+
         result_type = result.type
         actual = [keywords[result_type]]
 
@@ -304,7 +349,7 @@ def summarize_results(port_obj, expectations, initial_results, retry_results, en
         if port_obj.get_option("builder_name"):
             port_obj.host.initialize_scm()
             results['revision'] = port_obj.host.scm().head_svn_revision()
-    except Exception, e:
+    except Exception as e:
         _log.warn("Failed to determine svn revision for checkout (cwd: %s, webkit_base: %s), leaving 'revision' key blank in full_results.json.\n%s" % (port_obj._filesystem.getcwd(), port_obj.path_from_webkit_base(), e))
         # Handle cases where we're running outside of version control.
         import traceback

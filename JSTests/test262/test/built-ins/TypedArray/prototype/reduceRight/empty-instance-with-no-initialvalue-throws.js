@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.reduceright
 description: >
   If len is 0 and initialValue is not present, throw a TypeError exception.
-info: >
+info: |
   22.2.3.21 %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] )
 
   %TypedArray%.prototype.reduceRight is a distinct function that implements the
@@ -18,6 +18,7 @@ info: >
   4. If len is 0 and initialValue is not present, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

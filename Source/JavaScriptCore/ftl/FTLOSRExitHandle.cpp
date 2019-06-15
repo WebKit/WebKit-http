@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,13 +47,13 @@ void OSRExitHandle::emitExitThunk(State& state, CCallHelpers& jit)
     VM& vm = state.vm();
     jit.addLinkTask(
         [self, jump, myLabel, compilation, &vm] (LinkBuffer& linkBuffer) {
-            self->exit.m_patchableJump = CodeLocationJump(linkBuffer.locationOf(jump));
+            self->exit.m_patchableJump = CodeLocationJump<JSInternalPtrTag>(linkBuffer.locationOf<JSInternalPtrTag>(jump));
 
             linkBuffer.link(
                 jump.m_jump,
-                CodeLocationLabel(vm.getCTIStub(osrExitGenerationThunkGenerator).code()));
+                CodeLocationLabel<JITThunkPtrTag>(vm.getCTIStub(osrExitGenerationThunkGenerator).code()));
             if (compilation)
-                compilation->addOSRExitSite({ linkBuffer.locationOf(myLabel).executableAddress() });
+                compilation->addOSRExitSite({ linkBuffer.locationOf<JSInternalPtrTag>(myLabel) });
         });
 }
 

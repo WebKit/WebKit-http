@@ -47,7 +47,6 @@ ALWAYS_INLINE void SlotVisitor::appendUnbarriered(JSCell* cell)
     
     Dependency dependency;
     if (UNLIKELY(cell->isLargeAllocation())) {
-        dependency = nullDependency();
         if (LIKELY(cell->largeAllocation().isMarked())) {
             if (LIKELY(!m_heapSnapshotBuilder))
                 return;
@@ -86,7 +85,6 @@ ALWAYS_INLINE void SlotVisitor::appendHiddenUnbarriered(JSCell* cell)
     
     Dependency dependency;
     if (UNLIKELY(cell->isLargeAllocation())) {
-        dependency = nullDependency();
         if (LIKELY(cell->largeAllocation().isMarked()))
             return;
     } else {
@@ -105,14 +103,14 @@ ALWAYS_INLINE void SlotVisitor::append(const Weak<T>& weak)
     appendUnbarriered(weak.get());
 }
 
-template<typename T>
-ALWAYS_INLINE void SlotVisitor::append(const WriteBarrierBase<T>& slot)
+template<typename T, typename Traits>
+ALWAYS_INLINE void SlotVisitor::append(const WriteBarrierBase<T, Traits>& slot)
 {
     appendUnbarriered(slot.get());
 }
 
-template<typename T>
-ALWAYS_INLINE void SlotVisitor::appendHidden(const WriteBarrierBase<T>& slot)
+template<typename T, typename Traits>
+ALWAYS_INLINE void SlotVisitor::appendHidden(const WriteBarrierBase<T, Traits>& slot)
 {
     appendHiddenUnbarriered(slot.get());
 }
@@ -134,6 +132,23 @@ ALWAYS_INLINE void SlotVisitor::appendValuesHidden(const WriteBarrierBase<Unknow
 {
     for (size_t i = 0; i < count; ++i)
         appendHidden(barriers[i]);
+}
+
+inline bool SlotVisitor::addOpaqueRoot(void* ptr)
+{
+    if (!ptr)
+        return false;
+    if (m_ignoreNewOpaqueRoots)
+        return false;
+    if (!heap()->m_opaqueRoots.add(ptr))
+        return false;
+    m_visitCount++;
+    return true;
+}
+
+inline bool SlotVisitor::containsOpaqueRoot(void* ptr) const
+{
+    return heap()->m_opaqueRoots.contains(ptr);
 }
 
 inline void SlotVisitor::reportExtraMemoryVisited(size_t size)
@@ -159,12 +174,12 @@ inline Heap* SlotVisitor::heap() const
 
 inline VM& SlotVisitor::vm()
 {
-    return *m_heap.m_vm;
+    return *m_heap.vm();
 }
 
 inline const VM& SlotVisitor::vm() const
 {
-    return *m_heap.m_vm;
+    return *m_heap.vm();
 }
 
 template<typename Func>

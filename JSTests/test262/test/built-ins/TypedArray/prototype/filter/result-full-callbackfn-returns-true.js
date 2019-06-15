@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.filter
 description: >
   Returns full length result if every callbackfn returns boolean false
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -13,7 +13,7 @@ info: >
     b. Increment n by 1.
   13. Return A.
 includes: [testTypedArray.js, compareArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

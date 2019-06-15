@@ -29,14 +29,14 @@
 
 #import "NetscapePluginHostProxy.h"
 #import "ProxyRuntimeObject.h"
+#import <JavaScriptCore/Error.h>
+#import <JavaScriptCore/FunctionPrototype.h>
+#import <JavaScriptCore/PropertyNameArray.h>
 #import <WebCore/CommonVM.h>
 #import <WebCore/IdentifierRep.h>
 #import <WebCore/JSDOMWindow.h>
 #import <WebCore/npruntime_impl.h>
 #import <WebCore/runtime_method.h>
-#import <runtime/Error.h>
-#import <runtime/FunctionPrototype.h>
-#import <runtime/PropertyNameArray.h>
 #import <wtf/NeverDestroyed.h>
 
 extern "C" {
@@ -153,8 +153,7 @@ JSValue ProxyInstance::invoke(JSC::ExecState* exec, InvokeType type, uint64_t id
     for (unsigned i = 0; i < args.size(); i++)
         m_instanceProxy->retainLocalObject(args.at(i));
 
-    if (_WKPHNPObjectInvoke(m_instanceProxy->hostProxy()->port(), m_instanceProxy->pluginID(), requestID, m_objectID,
-                            type, identifier, (char*)[arguments.get() bytes], [arguments.get() length]) != KERN_SUCCESS) {
+    if (_WKPHNPObjectInvoke(m_instanceProxy->hostProxy()->port(), m_instanceProxy->pluginID(), requestID, m_objectID, type, identifier, static_cast<char*>(const_cast<void*>([arguments.get() bytes])), [arguments.get() length]) != KERN_SUCCESS) {
         if (m_instanceProxy) {
             for (unsigned i = 0; i < args.size(); i++)
                 m_instanceProxy->releaseLocalObject(args.at(i));
@@ -173,7 +172,7 @@ JSValue ProxyInstance::invoke(JSC::ExecState* exec, InvokeType type, uint64_t id
     if (!reply || !reply->m_returnValue)
         return jsUndefined();
     
-    return m_instanceProxy->demarshalValue(exec, (char*)CFDataGetBytePtr(reply->m_result.get()), CFDataGetLength(reply->m_result.get()));
+    return m_instanceProxy->demarshalValue(exec, reinterpret_cast<char*>(const_cast<unsigned char*>(CFDataGetBytePtr(reply->m_result.get()))), CFDataGetLength(reply->m_result.get()));
 }
 
 class ProxyRuntimeMethod : public RuntimeMethod {
@@ -182,17 +181,18 @@ public:
 
     static ProxyRuntimeMethod* create(ExecState* exec, JSGlobalObject* globalObject, const String& name, Bindings::Method* method)
     {
+        VM& vm = globalObject->vm();
         // FIXME: deprecatedGetDOMStructure uses the prototype off of the wrong global object
         // exec-vm() is also likely wrong.
         Structure* domStructure = deprecatedGetDOMStructure<ProxyRuntimeMethod>(exec);
-        ProxyRuntimeMethod* runtimeMethod = new (allocateCell<ProxyRuntimeMethod>(*exec->heap())) ProxyRuntimeMethod(globalObject, domStructure, method);
-        runtimeMethod->finishCreation(exec->vm(), name);
+        ProxyRuntimeMethod* runtimeMethod = new (allocateCell<ProxyRuntimeMethod>(vm.heap)) ProxyRuntimeMethod(globalObject, domStructure, method);
+        runtimeMethod->finishCreation(vm, name);
         return runtimeMethod;
     }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), &s_info);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), &s_info);
     }
 
     DECLARE_INFO;
@@ -223,8 +223,8 @@ JSValue ProxyInstance::invokeMethod(ExecState* exec, JSC::RuntimeMethod* runtime
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (!asObject(runtimeMethod)->inherits(vm, ProxyRuntimeMethod::info()))
-        return throwTypeError(exec, scope, ASCIILiteral("Attempt to invoke non-plug-in method on plug-in object."));
+    if (!asObject(runtimeMethod)->inherits<ProxyRuntimeMethod>(vm))
+        return throwTypeError(exec, scope, "Attempt to invoke non-plug-in method on plug-in object."_s);
 
     ProxyMethod* method = static_cast<ProxyMethod*>(runtimeMethod->method());
     ASSERT(method);
@@ -317,7 +317,7 @@ void ProxyInstance::getPropertyNames(ExecState* exec, PropertyNameArray& nameArr
     if (!reply || !reply->m_returnValue)
         return;
     
-    NSArray *array = [NSPropertyListSerialization propertyListWithData:(NSData *)reply->m_result.get() options:NSPropertyListImmutable format:nullptr error:nullptr];
+    NSArray *array = [NSPropertyListSerialization propertyListWithData:(__bridge NSData *)reply->m_result.get() options:NSPropertyListImmutable format:nullptr error:nullptr];
     
     for (NSNumber *number in array) {
         IdentifierRep* identifier = reinterpret_cast<IdentifierRep*>([number longLongValue]);
@@ -417,7 +417,7 @@ JSC::JSValue ProxyInstance::fieldValue(ExecState* exec, const Field* field) cons
     if (!reply || !reply->m_returnValue)
         return jsUndefined();
     
-    return m_instanceProxy->demarshalValue(exec, (char*)CFDataGetBytePtr(reply->m_result.get()), CFDataGetLength(reply->m_result.get()));
+    return m_instanceProxy->demarshalValue(exec, reinterpret_cast<char*>(const_cast<unsigned char*>(CFDataGetBytePtr(reply->m_result.get()))), CFDataGetLength(reply->m_result.get()));
 }
     
 bool ProxyInstance::setFieldValue(ExecState* exec, const Field* field, JSValue value) const

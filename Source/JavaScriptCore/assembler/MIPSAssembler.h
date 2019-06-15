@@ -41,7 +41,7 @@ namespace JSC {
 typedef uint32_t MIPSWord;
 
 namespace MIPSRegisters {
-typedef enum {
+typedef enum : int8_t {
     r0 = 0,
     r1,
     r2,
@@ -105,10 +105,20 @@ typedef enum {
     gp = r28,
     sp = r29,
     fp = r30,
-    ra = r31
+    ra = r31,
+    InvalidGPRReg = -1,
 } RegisterID;
 
-typedef enum {
+typedef enum : int8_t {
+    fir = 0,
+    fccr = 25,
+    fexr = 26,
+    fenr = 28,
+    fcsr = 31,
+    pc
+} SPRegisterID;
+
+typedef enum : int8_t {
     f0,
     f1,
     f2,
@@ -140,7 +150,8 @@ typedef enum {
     f28,
     f29,
     f30,
-    f31
+    f31,
+    InvalidFPRReg = -1,
 } FPRegisterID;
 
 } // namespace MIPSRegisters
@@ -148,14 +159,69 @@ typedef enum {
 class MIPSAssembler {
 public:
     typedef MIPSRegisters::RegisterID RegisterID;
+    typedef MIPSRegisters::SPRegisterID SPRegisterID;
     typedef MIPSRegisters::FPRegisterID FPRegisterID;
     typedef SegmentedVector<AssemblerLabel, 64> Jumps;
 
     static constexpr RegisterID firstRegister() { return MIPSRegisters::r0; }
     static constexpr RegisterID lastRegister() { return MIPSRegisters::r31; }
+    static constexpr unsigned numberOfRegisters() { return lastRegister() - firstRegister() + 1; }
+
+    static constexpr SPRegisterID firstSPRegister() { return MIPSRegisters::fir; }
+    static constexpr SPRegisterID lastSPRegister() { return MIPSRegisters::pc; }
+    static constexpr unsigned numberOfSPRegisters() { return lastSPRegister() - firstSPRegister() + 1; }
 
     static constexpr FPRegisterID firstFPRegister() { return MIPSRegisters::f0; }
     static constexpr FPRegisterID lastFPRegister() { return MIPSRegisters::f31; }
+    static constexpr unsigned numberOfFPRegisters() { return lastFPRegister() - firstFPRegister() + 1; }
+    
+    static const char* gprName(RegisterID id)
+    {
+        ASSERT(id >= firstRegister() && id <= lastRegister());
+        static const char* const nameForRegister[numberOfRegisters()] = {
+            "zero", "at", "v0", "v1",
+            "a0", "a1", "a2", "a3",
+            "t0", "t1", "t2", "t3",
+            "t4", "t5", "t6", "t7"
+        };
+        return nameForRegister[id];
+    }
+
+    static const char* sprName(SPRegisterID id)
+    {
+        switch (id) {
+        case MIPSRegisters::fir:
+            return "fir";
+        case MIPSRegisters::fccr:
+            return "fccr";
+        case MIPSRegisters::fexr:
+            return "fexr";
+        case MIPSRegisters::fenr:
+            return "fenr";
+        case MIPSRegisters::fcsr:
+            return "fcsr";
+        case MIPSRegisters::pc:
+            return "pc";
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
+
+    static const char* fprName(FPRegisterID id)
+    {
+        ASSERT(id >= firstFPRegister() && id <= lastFPRegister());
+        static const char* const nameForRegister[numberOfFPRegisters()] = {
+            "f0", "f1", "f2", "f3",
+            "f4", "f5", "f6", "f7",
+            "f8", "f9", "f10", "f11",
+            "f12", "f13", "f14", "f15"
+            "f16", "f17", "f18", "f19"
+            "f20", "f21", "f22", "f23"
+            "f24", "f25", "f26", "f27"
+            "f28", "f29", "f30", "f31"
+        };
+        return nameForRegister[id];
+    }
 
     MIPSAssembler()
         : m_indexOfLastWatchpoint(INT_MIN)
@@ -174,7 +240,14 @@ public:
         OP_SH_CODE = 16,
         OP_SH_FD = 6,
         OP_SH_FS = 11,
-        OP_SH_FT = 16
+        OP_SH_FT = 16,
+        OP_SH_MSB = 11,
+        OP_SH_LSB = 6
+    };
+
+    // FCSR Bits
+    enum {
+        FP_CAUSE_INVALID_OPERATION = 1 << 16
     };
 
     void emitInst(MIPSWord op)
@@ -248,6 +321,17 @@ public:
             if (imm & 0xffff)
                 ori(dest, dest, imm);
         }
+    }
+
+    void ext(RegisterID rt, RegisterID rs, int pos, int size)
+    {
+        int msb = size - 1;
+        emitInst(0x7c000000 | (rt << OP_SH_RT) | (rs << OP_SH_RS) | (pos << OP_SH_LSB) | (msb << OP_SH_MSB));
+    }
+
+    void mfhc1(RegisterID rt, FPRegisterID fs)
+    {
+        emitInst(0x4460000 | (rt << OP_SH_RT) | (fs << OP_SH_FS));
     }
 
     void lui(RegisterID rt, int imm)
@@ -348,6 +432,11 @@ public:
     void sltu(RegisterID rd, RegisterID rs, RegisterID rt)
     {
         emitInst(0x0000002b | (rd << OP_SH_RD) | (rs << OP_SH_RS) | (rt << OP_SH_RT));
+    }
+
+    void slti(RegisterID rt, RegisterID rs, int imm)
+    {
+        emitInst(0x28000000 | (rt << OP_SH_RT) | (rs << OP_SH_RS) | (imm & 0xffff));
     }
 
     void sltiu(RegisterID rt, RegisterID rs, int imm)
@@ -670,6 +759,12 @@ public:
         copDelayNop();
     }
 
+    void cfc1(RegisterID rt, SPRegisterID fs)
+    {
+        emitInst(0x44400000 | (rt << OP_SH_RT) | (fs << OP_SH_FS));
+        copDelayNop();
+    }
+
     // General helpers
 
     AssemblerLabel labelIgnoringWatchpoints()
@@ -864,8 +959,7 @@ public:
         insn++;
         ASSERT((*insn & 0xfc000000) == 0x34000000); // ori
         *insn = (*insn & 0xffff0000) | (to & 0xffff);
-        insn--;
-        cacheFlush(insn, 2 * sizeof(MIPSWord));
+        cacheFlush(from, 2 * sizeof(MIPSWord));
     }
 
     static int32_t readInt32(void* from)
@@ -938,7 +1032,7 @@ public:
             *insn = 0x00000000;
             codeSize += sizeof(MIPSWord);
         }
-        cacheFlush(insn, codeSize);
+        cacheFlush(instructionStart, codeSize);
     }
 
     static void replaceWithJump(void* instructionStart, void* to)

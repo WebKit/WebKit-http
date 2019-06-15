@@ -7,7 +7,7 @@
 //  http://code.google.com/p/google-toolbox-for-mac/
 //
 
-#include "../../../../../../Internal/Configurations/HaveInternalSDK.xcconfig"
+#include? "../../../../../../Internal/Configurations/HaveInternalSDK.xcconfig"
 
 USE_INTERNAL_SDK = $(USE_INTERNAL_SDK_$(CONFIGURATION));
 USE_INTERNAL_SDK_Production = YES;
@@ -18,7 +18,7 @@ GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 
 ARCHS = $(ARCHS_STANDARD_32_64_BIT);
 
-HEADER_SEARCH_PATHS = $(BUILT_PRODUCTS_DIR)/usr/local/include "$(WEBCORE_PRIVATE_HEADERS_DIR)/ForwardingHeaders" ../ ../include/
+HEADER_SEARCH_PATHS = $(BUILT_PRODUCTS_DIR)/usr/local/include ../ ../include/
 
 // Zerolink prevents link warnings so turn it off
 ZERO_LINK = NO
@@ -27,12 +27,13 @@ ZERO_LINK = NO
 PREBINDING = NO
 
 // Strictest warning policy
-WARNING_CFLAGS = -Wall -Werror -Wendif-labels -Wnewline-eof -Wno-sign-compare -Wshadow
+WARNING_CFLAGS = -Wall -Werror -Wendif-labels -Wnewline-eof -Wno-sign-compare -Wshadow;
 CLANG_WARN_BOOL_CONVERSION = YES;
 CLANG_WARN_CONSTANT_CONVERSION = YES;
 CLANG_WARN_EMPTY_BODY = YES;
 CLANG_WARN_ENUM_CONVERSION = YES;
 CLANG_WARN_INT_CONVERSION = YES;
+CLANG_WARN_STRICT_PROTOTYPES = YES;
 CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 ENABLE_STRICT_OBJC_MSGSEND = YES;
 GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -57,8 +58,6 @@ ALWAYS_SEARCH_USER_PATHS = NO
 
 // Turn on position dependent code for most cases (overridden where appropriate)
 GCC_DYNAMIC_NO_PIC = YES
-
-GCC_PREPROCESSOR_DEFINITIONS = $(GCC_PREPROCESSOR_DEFINITIONS) GTEST_HAS_TR1_TUPLE=0 GTEST_HAS_RTTI=0;
 
 CLANG_CXX_LIBRARY = libc++;
 

@@ -3,10 +3,11 @@
 
 /*---
 info: The Date.prototype has the property "getSeconds"
+esid: sec-properties-of-the-date-prototype-object
 es5id: 15.9.5_A22_T1
 description: The Date.prototype has the property "getSeconds"
 ---*/
 
-if(Date.prototype.hasOwnProperty("getSeconds") !== true){
+if (Date.prototype.hasOwnProperty("getSeconds") !== true) {
   $ERROR('#1: The Date.prototype has the property "getSeconds"');
 }

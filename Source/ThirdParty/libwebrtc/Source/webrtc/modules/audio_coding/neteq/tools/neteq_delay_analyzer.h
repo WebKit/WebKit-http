@@ -8,16 +8,17 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_NETEQ_DELAY_ANALYZER_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_NETEQ_DELAY_ANALYZER_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_TOOLS_NETEQ_DELAY_ANALYZER_H_
+#define MODULES_AUDIO_CODING_NETEQ_TOOLS_NETEQ_DELAY_ANALYZER_H_
 
 #include <map>
+#include <set>
+#include <string>
 #include <vector>
 
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/audio_coding/neteq/tools/neteq_input.h"
-#include "webrtc/modules/audio_coding/neteq/tools/neteq_test.h"
-#include "webrtc/typedefs.h"
+#include "absl/types/optional.h"
+#include "modules/audio_coding/neteq/tools/neteq_input.h"
+#include "modules/audio_coding/neteq/tools/neteq_test.h"
 
 namespace webrtc {
 namespace test {
@@ -35,28 +36,40 @@ class NetEqDelayAnalyzer : public test::NetEqPostInsertPacket,
                      bool muted,
                      NetEq* neteq) override;
 
-  void CreateGraphs(std::vector<float>* send_times_s,
-                    std::vector<float>* arrival_delay_ms,
-                    std::vector<float>* corrected_arrival_delay_ms,
-                    std::vector<rtc::Optional<float>>* playout_delay_ms,
-                    std::vector<rtc::Optional<float>>* target_delay_ms) const;
+  using Delays = std::vector<std::pair<int64_t, float>>;
+  void CreateGraphs(Delays* arrival_delay_ms,
+                    Delays* corrected_arrival_delay_ms,
+                    Delays* playout_delay_ms,
+                    Delays* target_delay_ms) const;
+
+  // Creates a matlab script with file name script_name. When executed in
+  // Matlab, the script will generate graphs with the same timing information
+  // as provided by CreateGraphs.
+  void CreateMatlabScript(const std::string& script_name) const;
+
+  // Creates a python script with file name |script_name|. When executed in
+  // Python, the script will generate graphs with the same timing information
+  // as provided by CreateGraphs.
+  void CreatePythonScript(const std::string& script_name) const;
 
  private:
   struct TimingData {
-    explicit TimingData(double at) : arrival_time_ms(at) {}
-    double arrival_time_ms;
-    rtc::Optional<int64_t> decode_get_audio_count;
-    rtc::Optional<int64_t> sync_delay_ms;
-    rtc::Optional<int> target_delay_ms;
-    rtc::Optional<int> current_delay_ms;
+    explicit TimingData(int64_t at) : arrival_time_ms(at) {}
+    int64_t arrival_time_ms;
+    absl::optional<int64_t> decode_get_audio_count;
+    absl::optional<int64_t> sync_delay_ms;
+    absl::optional<int> target_delay_ms;
+    absl::optional<int> current_delay_ms;
   };
   std::map<uint32_t, TimingData> data_;
   std::vector<int64_t> get_audio_time_ms_;
   size_t get_audio_count_ = 0;
   size_t last_sync_buffer_ms_ = 0;
   int last_sample_rate_hz_ = 0;
+  std::set<uint32_t> ssrcs_;
+  std::set<int> payload_types_;
 };
 
 }  // namespace test
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_NETEQ_DELAY_ANALYZER_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_TOOLS_NETEQ_DELAY_ANALYZER_H_

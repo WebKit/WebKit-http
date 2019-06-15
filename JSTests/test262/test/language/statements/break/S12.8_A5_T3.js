@@ -2,15 +2,19 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Identifier must be label in the label set of an enclosing (but not
     crossing function boundaries) IterationStatement
 es5id: 12.8_A5_T3
 description: >
     Checking if using internal loop label as an Identifier appears to
     be invalid
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 (function(){
     LABEL_OUT : var x=0, y=0;

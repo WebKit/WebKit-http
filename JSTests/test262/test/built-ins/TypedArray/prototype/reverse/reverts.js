@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.reverse
 description: Reverts values
-info: >
+info: |
   22.2.3.22 %TypedArray%.prototype.reverse ( )
 
   %TypedArray%.prototype.reverse is a distinct function that implements the same
@@ -16,6 +16,7 @@ info: >
   ...
   6. Return O.
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 var buffer = new ArrayBuffer(64);

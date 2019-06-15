@@ -15,9 +15,9 @@
  *
  */
 
-#include "codec.h"
-#include "settings.h"
-#include "webrtc/base/sanitizer.h"
+#include "modules/audio_coding/codecs/isac/fix/source/codec.h"
+#include "modules/audio_coding/codecs/isac/fix/source/settings.h"
+#include "rtc_base/sanitizer.h"
 
 #define LATTICE_MUL_32_32_RSFT16(a32a, a32b, b32)                  \
   ((int32_t)(WEBRTC_SPL_MUL(a32a, b32) + (WEBRTC_SPL_MUL_16_32_RSFT16(a32b, b32))))
@@ -209,8 +209,8 @@ void WebRtcIsacfix_NormLatticeFilterMa(size_t orderCoef,
 // Left shift of an int32_t that's allowed to overflow. (It's still undefined
 // behavior, so not a good idea; this just makes UBSan ignore the violation, so
 // that our old code can continue to do what it's always been doing.)
-static inline int32_t OverflowingLShiftS32(int32_t x, int shift)
-    RTC_NO_SANITIZE("shift") {
+static inline int32_t RTC_NO_SANITIZE("shift")
+    OverflowingLShiftS32(int32_t x, int shift) {
   return x << shift;
 }
 
@@ -279,8 +279,7 @@ void WebRtcIsacfix_NormLatticeFilterAr(size_t orderCoef,
 
     for (i=0;i<HALF_SUBFRAMELEN;i++)
     {
-
-      tmp32 = lat_inQ25[i + temp1] * (1 << 1);  // Q25->Q26
+      tmp32 = OverflowingLShiftS32(lat_inQ25[i + temp1], 1);  // Q25->Q26
       tmp32 = WEBRTC_SPL_MUL_16_32_RSFT16(inv_gain16, tmp32); //lat_in[]*inv_gain in (Q(18-sh)*Q26)>>16 = Q(28-sh)
       tmp32 = WEBRTC_SPL_SHIFT_W32(tmp32, -(28-sh)); // lat_in[]*inv_gain in Q0
 

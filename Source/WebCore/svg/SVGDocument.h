@@ -28,10 +28,11 @@ namespace WebCore {
 class SVGSVGElement;
 
 class SVGDocument final : public XMLDocument {
+    WTF_MAKE_ISO_ALLOCATED(SVGDocument);
 public:
     static Ref<SVGDocument> create(Frame*, const URL&);
 
-    static SVGSVGElement* rootElement(const Document&);
+    static RefPtr<SVGSVGElement> rootElement(const Document&);
 
     bool zoomAndPanEnabled() const;
     void startPan(const FloatPoint& start);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2015 Andy VanWagoner (andy@vanwagoner.family)
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,8 +38,10 @@ class IntlDateTimeFormatConstructor;
 class IntlDateTimeFormatPrototype;
 class IntlNumberFormatConstructor;
 class IntlNumberFormatPrototype;
+class IntlPluralRulesConstructor;
+class IntlPluralRulesPrototype;
 
-class IntlObject : public JSNonFinalObject {
+class IntlObject final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
     static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot;
@@ -57,10 +59,11 @@ private:
 };
 
 String defaultLocale(ExecState&);
-void convertICULocaleToBCP47LanguageTag(String& locale);
+String convertICULocaleToBCP47LanguageTag(const char* localeID);
 bool intlBooleanOption(ExecState&, JSValue options, PropertyName, bool& usesFallback);
 String intlStringOption(ExecState&, JSValue options, PropertyName, std::initializer_list<const char*> values, const char* notFound, const char* fallback);
 unsigned intlNumberOption(ExecState&, JSValue options, PropertyName, unsigned minimum, unsigned maximum, unsigned fallback);
+unsigned intlDefaultNumberOption(ExecState&, JSValue, PropertyName, unsigned minimum, unsigned maximum, unsigned fallback);
 Vector<String> canonicalizeLocaleList(ExecState&, JSValue locales);
 HashMap<String, String> resolveLocale(ExecState&, const HashSet<String>& availableLocales, const Vector<String>& requestedLocales, const HashMap<String, String>& options, const char* const relevantExtensionKeys[], size_t relevantExtensionKeyCount, Vector<String> (*localeData)(const String&, size_t));
 JSValue supportedLocales(ExecState&, const HashSet<String>& availableLocales, const Vector<String>& requestedLocales, JSValue options);

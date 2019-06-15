@@ -2,9 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.set-overloaded-offset
-description: |
+description: >
   Throws a TypeError exception when `this` is not a TypedArray instance
-info: >
+info: |
   22.2.3.23 %TypedArray%.prototype.set
 
   ...
@@ -14,6 +14,7 @@ info: >
   TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var set = TypedArray.prototype.set;

@@ -29,6 +29,7 @@
 #include "WebPasteboardProxyMessages.h"
 #include "WebProcessProxy.h"
 #include <mutex>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebKit {
 
@@ -59,5 +60,19 @@ void WebPasteboardProxy::removeWebProcessProxy(WebProcessProxy& webProcessProxy)
 {
     m_webProcessProxyList.remove(&webProcessProxy);
 }
+
+#if !PLATFORM(COCOA)
+
+void WebPasteboardProxy::typesSafeForDOMToReadAndWrite(const String&, const String&, Vector<String>& types)
+{
+    types = { };
+}
+
+void WebPasteboardProxy::writeCustomData(const WebCore::PasteboardCustomData&, const String&, uint64_t& newChangeCount)
+{
+    newChangeCount = 0;
+}
+
+#endif
 
 } // namespace WebKit

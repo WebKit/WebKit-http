@@ -33,9 +33,9 @@
 #define MAPVK_VSC_TO_VK_EX 3
 #endif
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 static const unsigned short HIGH_BIT_MASK_SHORT = 0x8000;
 
@@ -220,7 +220,7 @@ static inline String singleCharacterString(UChar c)
 }
 
 PlatformKeyboardEvent::PlatformKeyboardEvent(HWND, WPARAM code, LPARAM keyData, Type type, bool systemKey)
-    : PlatformEvent(type, GetKeyState(VK_SHIFT) & HIGH_BIT_MASK_SHORT, GetKeyState(VK_CONTROL) & HIGH_BIT_MASK_SHORT, GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT, false, ::GetTickCount() * 0.001)
+    : PlatformEvent(type, GetKeyState(VK_SHIFT) & HIGH_BIT_MASK_SHORT, GetKeyState(VK_CONTROL) & HIGH_BIT_MASK_SHORT, GetKeyState(VK_MENU) & HIGH_BIT_MASK_SHORT, false, WallTime::fromRawSeconds(::GetTickCount() * 0.001))
     , m_text((type == PlatformEvent::Char) ? singleCharacterString(code) : String())
     , m_unmodifiedText((type == PlatformEvent::Char) ? singleCharacterString(code) : String())
     , m_keyIdentifier((type == PlatformEvent::Char) ? String() : keyIdentifierForWindowsKeyCode(code))

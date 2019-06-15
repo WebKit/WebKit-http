@@ -33,7 +33,7 @@ class TextResourceDecoder;
 
 class CachedScript final : public CachedResource {
 public:
-    CachedScript(CachedResourceRequest&&, SessionID);
+    CachedScript(CachedResourceRequest&&, PAL::SessionID);
     virtual ~CachedScript();
 
     StringView script();
@@ -64,4 +64,4 @@ private:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedScript, CachedResource::Script)
+SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedScript, CachedResource::Type::Script)

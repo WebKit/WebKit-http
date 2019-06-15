@@ -8,43 +8,49 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_BASE_MEDIACHANNEL_H_
-#define WEBRTC_MEDIA_BASE_MEDIACHANNEL_H_
+#ifndef MEDIA_BASE_MEDIACHANNEL_H_
+#define MEDIA_BASE_MEDIACHANNEL_H_
 
+#include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "webrtc/api/rtpparameters.h"
-#include "webrtc/api/rtpreceiverinterface.h"
-#include "webrtc/base/basictypes.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/base/copyonwritebuffer.h"
-#include "webrtc/base/dscp.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/networkroute.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/base/sigslot.h"
-#include "webrtc/base/socket.h"
-#include "webrtc/base/window.h"
-#include "webrtc/config.h"
-#include "webrtc/media/base/codec.h"
-#include "webrtc/media/base/mediaconstants.h"
-#include "webrtc/media/base/streamparams.h"
-#include "webrtc/media/base/videosinkinterface.h"
-#include "webrtc/media/base/videosourceinterface.h"
-// TODO(juberti): re-evaluate this include
-#include "webrtc/pc/audiomonitor.h"
+#include "absl/types/optional.h"
+#include "api/audio_codecs/audio_encoder.h"
+#include "api/audio_options.h"
+#include "api/rtcerror.h"
+#include "api/rtpparameters.h"
+#include "api/rtpreceiverinterface.h"
+#include "api/video/video_content_type.h"
+#include "api/video/video_sink_interface.h"
+#include "api/video/video_source_interface.h"
+#include "api/video/video_timing.h"
+#include "api/video_codecs/video_encoder_config.h"
+#include "media/base/codec.h"
+#include "media/base/mediaconfig.h"
+#include "media/base/mediaconstants.h"
+#include "media/base/streamparams.h"
+#include "modules/audio_processing/include/audio_processing_statistics.h"
+#include "rtc_base/asyncpacketsocket.h"
+#include "rtc_base/buffer.h"
+#include "rtc_base/copyonwritebuffer.h"
+#include "rtc_base/dscp.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/networkroute.h"
+#include "rtc_base/socket.h"
+#include "rtc_base/stringencode.h"
+#include "rtc_base/third_party/sigslot/sigslot.h"
 
 namespace rtc {
-class RateLimiter;
 class Timing;
 }
 
 namespace webrtc {
 class AudioSinkInterface;
 class VideoFrame;
-}
+}  // namespace webrtc
 
 namespace cricket {
 
@@ -56,7 +62,8 @@ struct VideoFormat;
 const int kScreencastDefaultFps = 5;
 
 template <class T>
-static std::string ToStringIfSet(const char* key, const rtc::Optional<T>& val) {
+static std::string ToStringIfSet(const char* key,
+                                 const absl::optional<T>& val) {
   std::string str;
   if (val) {
     str = key;
@@ -69,244 +76,26 @@ static std::string ToStringIfSet(const char* key, const rtc::Optional<T>& val) {
 
 template <class T>
 static std::string VectorToString(const std::vector<T>& vals) {
-    std::ostringstream ost;
-    ost << "[";
-    for (size_t i = 0; i < vals.size(); ++i) {
-      if (i > 0) {
-        ost << ", ";
-      }
-      ost << vals[i].ToString();
+  std::ostringstream ost;  // no-presubmit-check TODO(webrtc:8982)
+  ost << "[";
+  for (size_t i = 0; i < vals.size(); ++i) {
+    if (i > 0) {
+      ost << ", ";
     }
-    ost << "]";
-    return ost.str();
+    ost << vals[i].ToString();
+  }
+  ost << "]";
+  return ost.str();
 }
-
-// Construction-time settings, passed on when creating
-// MediaChannels.
-struct MediaConfig {
-  // Set DSCP value on packets. This flag comes from the
-  // PeerConnection constraint 'googDscp'.
-  bool enable_dscp = false;
-
-  // Video-specific config.
-  struct Video {
-    // Enable WebRTC CPU Overuse Detection. This flag comes from the
-    // PeerConnection constraint 'googCpuOveruseDetection'.
-    bool enable_cpu_overuse_detection = true;
-
-    // Enable WebRTC suspension of video. No video frames will be sent
-    // when the bitrate is below the configured minimum bitrate. This
-    // flag comes from the PeerConnection constraint
-    // 'googSuspendBelowMinBitrate', and WebRtcVideoChannel copies it
-    // to VideoSendStream::Config::suspend_below_min_bitrate.
-    bool suspend_below_min_bitrate = false;
-
-    // Set to true if the renderer has an algorithm of frame selection.
-    // If the value is true, then WebRTC will hand over a frame as soon as
-    // possible without delay, and rendering smoothness is completely the duty
-    // of the renderer;
-    // If the value is false, then WebRTC is responsible to delay frame release
-    // in order to increase rendering smoothness.
-    //
-    // This flag comes from PeerConnection's RtcConfiguration, but is
-    // currently only set by the command line flag
-    // 'disable-rtc-smoothness-algorithm'.
-    // WebRtcVideoChannel::AddRecvStream copies it to the created
-    // WebRtcVideoReceiveStream, where it is returned by the
-    // SmoothsRenderedFrames method. This method is used by the
-    // VideoReceiveStream, where the value is passed on to the
-    // IncomingVideoStream constructor.
-    bool disable_prerenderer_smoothing = false;
-
-    // Enables periodic bandwidth probing in application-limited region.
-    bool periodic_alr_bandwidth_probing = false;
-  } video;
-
-  bool operator==(const MediaConfig& o) const {
-    return enable_dscp == o.enable_dscp &&
-           video.enable_cpu_overuse_detection ==
-               o.video.enable_cpu_overuse_detection &&
-           video.suspend_below_min_bitrate ==
-               o.video.suspend_below_min_bitrate &&
-           video.disable_prerenderer_smoothing ==
-               o.video.disable_prerenderer_smoothing &&
-           video.periodic_alr_bandwidth_probing ==
-               o.video.periodic_alr_bandwidth_probing;
-  }
-
-  bool operator!=(const MediaConfig& o) const { return !(*this == o); }
-};
-
-// Options that can be applied to a VoiceMediaChannel or a VoiceMediaEngine.
-// Used to be flags, but that makes it hard to selectively apply options.
-// We are moving all of the setting of options to structs like this,
-// but some things currently still use flags.
-struct AudioOptions {
-  void SetAll(const AudioOptions& change) {
-    SetFrom(&echo_cancellation, change.echo_cancellation);
-    SetFrom(&auto_gain_control, change.auto_gain_control);
-    SetFrom(&noise_suppression, change.noise_suppression);
-    SetFrom(&highpass_filter, change.highpass_filter);
-    SetFrom(&stereo_swapping, change.stereo_swapping);
-    SetFrom(&audio_jitter_buffer_max_packets,
-            change.audio_jitter_buffer_max_packets);
-    SetFrom(&audio_jitter_buffer_fast_accelerate,
-            change.audio_jitter_buffer_fast_accelerate);
-    SetFrom(&typing_detection, change.typing_detection);
-    SetFrom(&aecm_generate_comfort_noise, change.aecm_generate_comfort_noise);
-    SetFrom(&adjust_agc_delta, change.adjust_agc_delta);
-    SetFrom(&experimental_agc, change.experimental_agc);
-    SetFrom(&extended_filter_aec, change.extended_filter_aec);
-    SetFrom(&delay_agnostic_aec, change.delay_agnostic_aec);
-    SetFrom(&experimental_ns, change.experimental_ns);
-    SetFrom(&intelligibility_enhancer, change.intelligibility_enhancer);
-    SetFrom(&level_control, change.level_control);
-    SetFrom(&residual_echo_detector, change.residual_echo_detector);
-    SetFrom(&tx_agc_target_dbov, change.tx_agc_target_dbov);
-    SetFrom(&tx_agc_digital_compression_gain,
-            change.tx_agc_digital_compression_gain);
-    SetFrom(&tx_agc_limiter, change.tx_agc_limiter);
-    SetFrom(&recording_sample_rate, change.recording_sample_rate);
-    SetFrom(&playout_sample_rate, change.playout_sample_rate);
-    SetFrom(&combined_audio_video_bwe, change.combined_audio_video_bwe);
-    SetFrom(&audio_network_adaptor, change.audio_network_adaptor);
-    SetFrom(&audio_network_adaptor_config, change.audio_network_adaptor_config);
-    SetFrom(&level_control_initial_peak_level_dbfs,
-            change.level_control_initial_peak_level_dbfs);
-  }
-
-  bool operator==(const AudioOptions& o) const {
-    return echo_cancellation == o.echo_cancellation &&
-           auto_gain_control == o.auto_gain_control &&
-           noise_suppression == o.noise_suppression &&
-           highpass_filter == o.highpass_filter &&
-           stereo_swapping == o.stereo_swapping &&
-           audio_jitter_buffer_max_packets ==
-               o.audio_jitter_buffer_max_packets &&
-           audio_jitter_buffer_fast_accelerate ==
-               o.audio_jitter_buffer_fast_accelerate &&
-           typing_detection == o.typing_detection &&
-           aecm_generate_comfort_noise == o.aecm_generate_comfort_noise &&
-           experimental_agc == o.experimental_agc &&
-           extended_filter_aec == o.extended_filter_aec &&
-           delay_agnostic_aec == o.delay_agnostic_aec &&
-           experimental_ns == o.experimental_ns &&
-           intelligibility_enhancer == o.intelligibility_enhancer &&
-           level_control == o.level_control &&
-           residual_echo_detector == o.residual_echo_detector &&
-           adjust_agc_delta == o.adjust_agc_delta &&
-           tx_agc_target_dbov == o.tx_agc_target_dbov &&
-           tx_agc_digital_compression_gain ==
-               o.tx_agc_digital_compression_gain &&
-           tx_agc_limiter == o.tx_agc_limiter &&
-           recording_sample_rate == o.recording_sample_rate &&
-           playout_sample_rate == o.playout_sample_rate &&
-           combined_audio_video_bwe == o.combined_audio_video_bwe &&
-           audio_network_adaptor == o.audio_network_adaptor &&
-           audio_network_adaptor_config == o.audio_network_adaptor_config &&
-           level_control_initial_peak_level_dbfs ==
-               o.level_control_initial_peak_level_dbfs;
-  }
-  bool operator!=(const AudioOptions& o) const { return !(*this == o); }
-
-  std::string ToString() const {
-    std::ostringstream ost;
-    ost << "AudioOptions {";
-    ost << ToStringIfSet("aec", echo_cancellation);
-    ost << ToStringIfSet("agc", auto_gain_control);
-    ost << ToStringIfSet("ns", noise_suppression);
-    ost << ToStringIfSet("hf", highpass_filter);
-    ost << ToStringIfSet("swap", stereo_swapping);
-    ost << ToStringIfSet("audio_jitter_buffer_max_packets",
-                         audio_jitter_buffer_max_packets);
-    ost << ToStringIfSet("audio_jitter_buffer_fast_accelerate",
-                         audio_jitter_buffer_fast_accelerate);
-    ost << ToStringIfSet("typing", typing_detection);
-    ost << ToStringIfSet("comfort_noise", aecm_generate_comfort_noise);
-    ost << ToStringIfSet("agc_delta", adjust_agc_delta);
-    ost << ToStringIfSet("experimental_agc", experimental_agc);
-    ost << ToStringIfSet("extended_filter_aec", extended_filter_aec);
-    ost << ToStringIfSet("delay_agnostic_aec", delay_agnostic_aec);
-    ost << ToStringIfSet("experimental_ns", experimental_ns);
-    ost << ToStringIfSet("intelligibility_enhancer", intelligibility_enhancer);
-    ost << ToStringIfSet("level_control", level_control);
-    ost << ToStringIfSet("level_control_initial_peak_level_dbfs",
-                         level_control_initial_peak_level_dbfs);
-    ost << ToStringIfSet("residual_echo_detector", residual_echo_detector);
-    ost << ToStringIfSet("tx_agc_target_dbov", tx_agc_target_dbov);
-    ost << ToStringIfSet("tx_agc_digital_compression_gain",
-        tx_agc_digital_compression_gain);
-    ost << ToStringIfSet("tx_agc_limiter", tx_agc_limiter);
-    ost << ToStringIfSet("recording_sample_rate", recording_sample_rate);
-    ost << ToStringIfSet("playout_sample_rate", playout_sample_rate);
-    ost << ToStringIfSet("combined_audio_video_bwe", combined_audio_video_bwe);
-    ost << ToStringIfSet("audio_network_adaptor", audio_network_adaptor);
-    // The adaptor config is a serialized proto buffer and therefore not human
-    // readable. So we comment out the following line.
-    // ost << ToStringIfSet("audio_network_adaptor_config",
-    //     audio_network_adaptor_config);
-    ost << "}";
-    return ost.str();
-  }
-
-  // Audio processing that attempts to filter away the output signal from
-  // later inbound pickup.
-  rtc::Optional<bool> echo_cancellation;
-  // Audio processing to adjust the sensitivity of the local mic dynamically.
-  rtc::Optional<bool> auto_gain_control;
-  // Audio processing to filter out background noise.
-  rtc::Optional<bool> noise_suppression;
-  // Audio processing to remove background noise of lower frequencies.
-  rtc::Optional<bool> highpass_filter;
-  // Audio processing to swap the left and right channels.
-  rtc::Optional<bool> stereo_swapping;
-  // Audio receiver jitter buffer (NetEq) max capacity in number of packets.
-  rtc::Optional<int> audio_jitter_buffer_max_packets;
-  // Audio receiver jitter buffer (NetEq) fast accelerate mode.
-  rtc::Optional<bool> audio_jitter_buffer_fast_accelerate;
-  // Audio processing to detect typing.
-  rtc::Optional<bool> typing_detection;
-  rtc::Optional<bool> aecm_generate_comfort_noise;
-  rtc::Optional<int> adjust_agc_delta;
-  rtc::Optional<bool> experimental_agc;
-  rtc::Optional<bool> extended_filter_aec;
-  rtc::Optional<bool> delay_agnostic_aec;
-  rtc::Optional<bool> experimental_ns;
-  rtc::Optional<bool> intelligibility_enhancer;
-  rtc::Optional<bool> level_control;
-  // Specifies an optional initialization value for the level controller.
-  rtc::Optional<float> level_control_initial_peak_level_dbfs;
-  // Note that tx_agc_* only applies to non-experimental AGC.
-  rtc::Optional<bool> residual_echo_detector;
-  rtc::Optional<uint16_t> tx_agc_target_dbov;
-  rtc::Optional<uint16_t> tx_agc_digital_compression_gain;
-  rtc::Optional<bool> tx_agc_limiter;
-  rtc::Optional<uint32_t> recording_sample_rate;
-  rtc::Optional<uint32_t> playout_sample_rate;
-  // Enable combined audio+bandwidth BWE.
-  // TODO(pthatcher): This flag is set from the
-  // "googCombinedAudioVideoBwe", but not used anywhere. So delete it,
-  // and check if any other AudioOptions members are unused.
-  rtc::Optional<bool> combined_audio_video_bwe;
-  // Enable audio network adaptor.
-  rtc::Optional<bool> audio_network_adaptor;
-  // Config string for audio network adaptor.
-  rtc::Optional<std::string> audio_network_adaptor_config;
-
- private:
-  template <typename T>
-  static void SetFrom(rtc::Optional<T>* s, const rtc::Optional<T>& o) {
-    if (o) {
-      *s = o;
-    }
-  }
-};
 
 // Options that can be applied to a VideoMediaChannel or a VideoMediaEngine.
 // Used to be flags, but that makes it hard to selectively apply options.
 // We are moving all of the setting of options to structs like this,
 // but some things currently still use flags.
 struct VideoOptions {
+  VideoOptions();
+  ~VideoOptions();
+
   void SetAll(const VideoOptions& change) {
     SetFrom(&video_noise_reduction, change.video_noise_reduction);
     SetFrom(&screencast_min_bitrate_kbps, change.screencast_min_bitrate_kbps);
@@ -334,20 +123,20 @@ struct VideoOptions {
   // Enable denoising? This flag comes from the getUserMedia
   // constraint 'googNoiseReduction', and WebRtcVideoEngine passes it
   // on to the codec options. Disabled by default.
-  rtc::Optional<bool> video_noise_reduction;
+  absl::optional<bool> video_noise_reduction;
   // Force screencast to use a minimum bitrate. This flag comes from
   // the PeerConnection constraint 'googScreencastMinBitrate'. It is
   // copied to the encoder config by WebRtcVideoChannel.
-  rtc::Optional<int> screencast_min_bitrate_kbps;
+  absl::optional<int> screencast_min_bitrate_kbps;
   // Set by screencast sources. Implies selection of encoding settings
   // suitable for screencast. Most likely not the right way to do
   // things, e.g., screencast of a text document and screencast of a
   // youtube video have different needs.
-  rtc::Optional<bool> is_screencast;
+  absl::optional<bool> is_screencast;
 
  private:
   template <typename T>
-  static void SetFrom(rtc::Optional<T>* s, const rtc::Optional<T>& o) {
+  static void SetFrom(absl::optional<T>* s, const absl::optional<T>& o) {
     if (o) {
       *s = o;
     }
@@ -381,7 +170,8 @@ class MediaChannel : public sigslot::has_slots<> {
                             const rtc::PacketOptions& options) = 0;
     virtual bool SendRtcp(rtc::CopyOnWriteBuffer* packet,
                           const rtc::PacketOptions& options) = 0;
-    virtual int SetOption(SocketType type, rtc::Socket::Option opt,
+    virtual int SetOption(SocketType type,
+                          rtc::Socket::Option opt,
                           int option) = 0;
     virtual ~NetworkInterface() {}
   };
@@ -389,17 +179,11 @@ class MediaChannel : public sigslot::has_slots<> {
   explicit MediaChannel(const MediaConfig& config)
       : enable_dscp_(config.enable_dscp), network_interface_(NULL) {}
   MediaChannel() : enable_dscp_(false), network_interface_(NULL) {}
-  virtual ~MediaChannel() {}
+  ~MediaChannel() override {}
 
   // Sets the abstract interface class for sending RTP/RTCP data.
-  virtual void SetInterface(NetworkInterface *iface) {
-    rtc::CritScope cs(&network_interface_crit_);
-    network_interface_ = iface;
-    SetDscp(enable_dscp_ ? PreferredDscp() : rtc::DSCP_DEFAULT);
-  }
-  virtual rtc::DiffServCodePoint PreferredDscp() const {
-    return rtc::DSCP_DEFAULT;
-  }
+  virtual void SetInterface(NetworkInterface* iface);
+  virtual rtc::DiffServCodePoint PreferredDscp() const;
   // Called when a RTP packet is received.
   virtual void OnPacketReceived(rtc::CopyOnWriteBuffer* packet,
                                 const rtc::PacketTime& packet_time) = 0;
@@ -412,18 +196,17 @@ class MediaChannel : public sigslot::has_slots<> {
   virtual void OnNetworkRouteChanged(
       const std::string& transport_name,
       const rtc::NetworkRoute& network_route) = 0;
-  // Called when the rtp transport overhead changed.
-  virtual void OnTransportOverheadChanged(
-      int transport_overhead_per_packet) = 0;
   // Creates a new outgoing media stream with SSRCs and CNAME as described
   // by sp.
   virtual bool AddSendStream(const StreamParams& sp) = 0;
   // Removes an outgoing media stream.
-  // ssrc must be the first SSRC of the media stream if the stream uses
-  // multiple SSRCs.
+  // SSRC must be the first SSRC of the media stream if the stream uses
+  // multiple SSRCs. In the case of an ssrc of 0, the possibly cached
+  // StreamParams is removed.
   virtual bool RemoveSendStream(uint32_t ssrc) = 0;
-  // Creates a new incoming media stream with SSRCs and CNAME as described
-  // by sp.
+  // Creates a new incoming media stream with SSRCs, CNAME as described
+  // by sp. In the case of a sp without SSRCs, the unsignaled sp is cached
+  // to be used later for unsignaled streams received.
   virtual bool AddRecvStream(const StreamParams& sp) = 0;
   // Removes an incoming media stream.
   // ssrc must be the first SSRC of the media stream if the stream uses
@@ -431,9 +214,7 @@ class MediaChannel : public sigslot::has_slots<> {
   virtual bool RemoveRecvStream(uint32_t ssrc) = 0;
 
   // Returns the absoulte sendtime extension id value from media channel.
-  virtual int GetRtpSendTimeExtnId() const {
-    return -1;
-  }
+  virtual int GetRtpSendTimeExtnId() const;
 
   // Base method to send packet using NetworkInterface.
   bool SendPacket(rtc::CopyOnWriteBuffer* packet,
@@ -460,13 +241,9 @@ class MediaChannel : public sigslot::has_slots<> {
   // This method sets DSCP |value| on both RTP and RTCP channels.
   int SetDscp(rtc::DiffServCodePoint value) {
     int ret;
-    ret = SetOption(NetworkInterface::ST_RTP,
-                    rtc::Socket::OPT_DSCP,
-                    value);
+    ret = SetOption(NetworkInterface::ST_RTP, rtc::Socket::OPT_DSCP, value);
     if (ret == 0) {
-      ret = SetOption(NetworkInterface::ST_RTCP,
-                      rtc::Socket::OPT_DSCP,
-                      value);
+      ret = SetOption(NetworkInterface::ST_RTCP, rtc::Socket::OPT_DSCP, value);
     }
     return ret;
   }
@@ -498,34 +275,19 @@ class MediaChannel : public sigslot::has_slots<> {
 // Information about an SSRC.
 // This data may be locally recorded, or received in an RTCP SR or RR.
 struct SsrcSenderInfo {
-  SsrcSenderInfo()
-      : ssrc(0),
-    timestamp(0) {
-  }
-  uint32_t ssrc;
-  double timestamp;  // NTP timestamp, represented as seconds since epoch.
+  uint32_t ssrc = 0;
+  double timestamp = 0.0;  // NTP timestamp, represented as seconds since epoch.
 };
 
 struct SsrcReceiverInfo {
-  SsrcReceiverInfo()
-      : ssrc(0),
-        timestamp(0) {
-  }
-  uint32_t ssrc;
-  double timestamp;
+  uint32_t ssrc = 0;
+  double timestamp = 0.0;
 };
 
 struct MediaSenderInfo {
-  MediaSenderInfo()
-      : bytes_sent(0),
-        packets_sent(0),
-        packets_lost(0),
-        fraction_lost(0.0),
-        rtt_ms(0) {
-  }
-  void add_ssrc(const SsrcSenderInfo& stat) {
-    local_stats.push_back(stat);
-  }
+  MediaSenderInfo();
+  ~MediaSenderInfo();
+  void add_ssrc(const SsrcSenderInfo& stat) { local_stats.push_back(stat); }
   // Temporary utility function for call sites that only provide SSRC.
   // As more info is added into SsrcSenderInfo, this function should go away.
   void add_ssrc(uint32_t ssrc) {
@@ -542,37 +304,35 @@ struct MediaSenderInfo {
     }
     return retval;
   }
+  // Returns true if the media has been connected.
+  bool connected() const { return local_stats.size() > 0; }
   // Utility accessor for clients that make the assumption only one ssrc
   // exists per media.
   // This will eventually go away.
+  // Call sites that compare this to zero should use connected() instead.
+  // https://bugs.webrtc.org/8694
   uint32_t ssrc() const {
-    if (local_stats.size() > 0) {
+    if (connected()) {
       return local_stats[0].ssrc;
     } else {
       return 0;
     }
   }
-  int64_t bytes_sent;
-  int packets_sent;
-  int packets_lost;
-  float fraction_lost;
-  int64_t rtt_ms;
+  int64_t bytes_sent = 0;
+  int packets_sent = 0;
+  int packets_lost = 0;
+  float fraction_lost = 0.0f;
+  int64_t rtt_ms = 0;
   std::string codec_name;
-  rtc::Optional<int> codec_payload_type;
+  absl::optional<int> codec_payload_type;
   std::vector<SsrcSenderInfo> local_stats;
   std::vector<SsrcReceiverInfo> remote_stats;
 };
 
 struct MediaReceiverInfo {
-  MediaReceiverInfo()
-      : bytes_rcvd(0),
-        packets_rcvd(0),
-        packets_lost(0),
-        fraction_lost(0.0) {
-  }
-  void add_ssrc(const SsrcReceiverInfo& stat) {
-    local_stats.push_back(stat);
-  }
+  MediaReceiverInfo();
+  ~MediaReceiverInfo();
+  void add_ssrc(const SsrcReceiverInfo& stat) { local_stats.push_back(stat); }
   // Temporary utility function for call sites that only provide SSRC.
   // As more info is added into SsrcSenderInfo, this function should go away.
   void add_ssrc(uint32_t ssrc) {
@@ -588,253 +348,204 @@ struct MediaReceiverInfo {
     }
     return retval;
   }
+  // Returns true if the media has been connected.
+  bool connected() const { return local_stats.size() > 0; }
   // Utility accessor for clients that make the assumption only one ssrc
   // exists per media.
   // This will eventually go away.
+  // Call sites that compare this to zero should use connected();
+  // https://bugs.webrtc.org/8694
   uint32_t ssrc() const {
-    if (local_stats.size() > 0) {
+    if (connected()) {
       return local_stats[0].ssrc;
     } else {
       return 0;
     }
   }
 
-  int64_t bytes_rcvd;
-  int packets_rcvd;
-  int packets_lost;
-  float fraction_lost;
+  int64_t bytes_rcvd = 0;
+  int packets_rcvd = 0;
+  int packets_lost = 0;
+  float fraction_lost = 0.0f;
   std::string codec_name;
-  rtc::Optional<int> codec_payload_type;
+  absl::optional<int> codec_payload_type;
   std::vector<SsrcReceiverInfo> local_stats;
   std::vector<SsrcSenderInfo> remote_stats;
 };
 
 struct VoiceSenderInfo : public MediaSenderInfo {
-  VoiceSenderInfo()
-      : ext_seqnum(0),
-        jitter_ms(0),
-        audio_level(0),
-        aec_quality_min(0.0),
-        echo_delay_median_ms(0),
-        echo_delay_std_ms(0),
-        echo_return_loss(0),
-        echo_return_loss_enhancement(0),
-        residual_echo_likelihood(0.0f),
-        residual_echo_likelihood_recent_max(0.0f),
-        typing_noise_detected(false) {}
-
-  int ext_seqnum;
-  int jitter_ms;
-  int audio_level;
-  float aec_quality_min;
-  int echo_delay_median_ms;
-  int echo_delay_std_ms;
-  int echo_return_loss;
-  int echo_return_loss_enhancement;
-  float residual_echo_likelihood;
-  float residual_echo_likelihood_recent_max;
-  bool typing_noise_detected;
+  VoiceSenderInfo();
+  ~VoiceSenderInfo();
+  int ext_seqnum = 0;
+  int jitter_ms = 0;
+  int audio_level = 0;
+  // See description of "totalAudioEnergy" in the WebRTC stats spec:
+  // https://w3c.github.io/webrtc-stats/#dom-rtcmediastreamtrackstats-totalaudioenergy
+  double total_input_energy = 0.0;
+  double total_input_duration = 0.0;
+  // TODO(bugs.webrtc.org/8572): Remove APM stats from this struct, since they
+  // are no longer needed now that we have apm_statistics.
+  int echo_delay_median_ms = 0;
+  int echo_delay_std_ms = 0;
+  int echo_return_loss = 0;
+  int echo_return_loss_enhancement = 0;
+  float residual_echo_likelihood = 0.0f;
+  float residual_echo_likelihood_recent_max = 0.0f;
+  bool typing_noise_detected = false;
+  webrtc::ANAStats ana_statistics;
+  webrtc::AudioProcessingStats apm_statistics;
 };
 
 struct VoiceReceiverInfo : public MediaReceiverInfo {
-  VoiceReceiverInfo()
-      : ext_seqnum(0),
-        jitter_ms(0),
-        jitter_buffer_ms(0),
-        jitter_buffer_preferred_ms(0),
-        delay_estimate_ms(0),
-        audio_level(0),
-        expand_rate(0),
-        speech_expand_rate(0),
-        secondary_decoded_rate(0),
-        accelerate_rate(0),
-        preemptive_expand_rate(0),
-        decoding_calls_to_silence_generator(0),
-        decoding_calls_to_neteq(0),
-        decoding_normal(0),
-        decoding_plc(0),
-        decoding_cng(0),
-        decoding_plc_cng(0),
-        decoding_muted_output(0),
-        capture_start_ntp_time_ms(-1) {}
-
-  int ext_seqnum;
-  int jitter_ms;
-  int jitter_buffer_ms;
-  int jitter_buffer_preferred_ms;
-  int delay_estimate_ms;
-  int audio_level;
+  VoiceReceiverInfo();
+  ~VoiceReceiverInfo();
+  int ext_seqnum = 0;
+  int jitter_ms = 0;
+  int jitter_buffer_ms = 0;
+  int jitter_buffer_preferred_ms = 0;
+  int delay_estimate_ms = 0;
+  int audio_level = 0;
+  // Stats below correspond to similarly-named fields in the WebRTC stats spec.
+  // https://w3c.github.io/webrtc-stats/#dom-rtcmediastreamtrackstats
+  double total_output_energy = 0.0;
+  uint64_t total_samples_received = 0;
+  double total_output_duration = 0.0;
+  uint64_t concealed_samples = 0;
+  uint64_t concealment_events = 0;
+  double jitter_buffer_delay_seconds = 0;
+  // Stats below DO NOT correspond directly to anything in the WebRTC stats
   // fraction of synthesized audio inserted through expansion.
-  float expand_rate;
+  float expand_rate = 0.0f;
   // fraction of synthesized speech inserted through expansion.
-  float speech_expand_rate;
+  float speech_expand_rate = 0.0f;
   // fraction of data out of secondary decoding, including FEC and RED.
-  float secondary_decoded_rate;
+  float secondary_decoded_rate = 0.0f;
+  // Fraction of secondary data, including FEC and RED, that is discarded.
+  // Discarding of secondary data can be caused by the reception of the primary
+  // data, obsoleting the secondary data. It can also be caused by early
+  // or late arrival of secondary data. This metric is the percentage of
+  // discarded secondary data since last query of receiver info.
+  float secondary_discarded_rate = 0.0f;
   // Fraction of data removed through time compression.
-  float accelerate_rate;
+  float accelerate_rate = 0.0f;
   // Fraction of data inserted through time stretching.
-  float preemptive_expand_rate;
-  int decoding_calls_to_silence_generator;
-  int decoding_calls_to_neteq;
-  int decoding_normal;
-  int decoding_plc;
-  int decoding_cng;
-  int decoding_plc_cng;
-  int decoding_muted_output;
+  float preemptive_expand_rate = 0.0f;
+  int decoding_calls_to_silence_generator = 0;
+  int decoding_calls_to_neteq = 0;
+  int decoding_normal = 0;
+  int decoding_plc = 0;
+  int decoding_cng = 0;
+  int decoding_plc_cng = 0;
+  int decoding_muted_output = 0;
   // Estimated capture start time in NTP time in ms.
-  int64_t capture_start_ntp_time_ms;
+  int64_t capture_start_ntp_time_ms = -1;
 };
 
 struct VideoSenderInfo : public MediaSenderInfo {
-  VideoSenderInfo()
-      : packets_cached(0),
-        firs_rcvd(0),
-        plis_rcvd(0),
-        nacks_rcvd(0),
-        send_frame_width(0),
-        send_frame_height(0),
-        framerate_input(0),
-        framerate_sent(0),
-        nominal_bitrate(0),
-        preferred_bitrate(0),
-        adapt_reason(0),
-        adapt_changes(0),
-        avg_encode_ms(0),
-        encode_usage_percent(0),
-        frames_encoded(0) {}
-
+  VideoSenderInfo();
+  ~VideoSenderInfo();
   std::vector<SsrcGroup> ssrc_groups;
   // TODO(hbos): Move this to |VideoMediaInfo::send_codecs|?
   std::string encoder_implementation_name;
-  int packets_cached;
-  int firs_rcvd;
-  int plis_rcvd;
-  int nacks_rcvd;
-  int send_frame_width;
-  int send_frame_height;
-  int framerate_input;
-  int framerate_sent;
-  int nominal_bitrate;
-  int preferred_bitrate;
-  int adapt_reason;
-  int adapt_changes;
-  int avg_encode_ms;
-  int encode_usage_percent;
-  uint32_t frames_encoded;
-  rtc::Optional<uint64_t> qp_sum;
+  int firs_rcvd = 0;
+  int plis_rcvd = 0;
+  int nacks_rcvd = 0;
+  int send_frame_width = 0;
+  int send_frame_height = 0;
+  int framerate_input = 0;
+  int framerate_sent = 0;
+  int nominal_bitrate = 0;
+  int adapt_reason = 0;
+  int adapt_changes = 0;
+  int avg_encode_ms = 0;
+  int encode_usage_percent = 0;
+  uint32_t frames_encoded = 0;
+  bool has_entered_low_resolution = false;
+  absl::optional<uint64_t> qp_sum;
+  webrtc::VideoContentType content_type = webrtc::VideoContentType::UNSPECIFIED;
+  // https://w3c.github.io/webrtc-stats/#dom-rtcvideosenderstats-hugeframessent
+  uint32_t huge_frames_sent = 0;
 };
 
 struct VideoReceiverInfo : public MediaReceiverInfo {
-  VideoReceiverInfo()
-      : packets_concealed(0),
-        firs_sent(0),
-        plis_sent(0),
-        nacks_sent(0),
-        frame_width(0),
-        frame_height(0),
-        framerate_rcvd(0),
-        framerate_decoded(0),
-        framerate_output(0),
-        framerate_render_input(0),
-        framerate_render_output(0),
-        frames_received(0),
-        frames_decoded(0),
-        frames_rendered(0),
-        decode_ms(0),
-        max_decode_ms(0),
-        jitter_buffer_ms(0),
-        min_playout_delay_ms(0),
-        render_delay_ms(0),
-        target_delay_ms(0),
-        current_delay_ms(0),
-        capture_start_ntp_time_ms(-1) {
-  }
-
+  VideoReceiverInfo();
+  ~VideoReceiverInfo();
   std::vector<SsrcGroup> ssrc_groups;
   // TODO(hbos): Move this to |VideoMediaInfo::receive_codecs|?
   std::string decoder_implementation_name;
-  int packets_concealed;
-  int firs_sent;
-  int plis_sent;
-  int nacks_sent;
-  int frame_width;
-  int frame_height;
-  int framerate_rcvd;
-  int framerate_decoded;
-  int framerate_output;
+  int packets_concealed = 0;
+  int firs_sent = 0;
+  int plis_sent = 0;
+  int nacks_sent = 0;
+  int frame_width = 0;
+  int frame_height = 0;
+  int framerate_rcvd = 0;
+  int framerate_decoded = 0;
+  int framerate_output = 0;
   // Framerate as sent to the renderer.
-  int framerate_render_input;
+  int framerate_render_input = 0;
   // Framerate that the renderer reports.
-  int framerate_render_output;
-  uint32_t frames_received;
-  uint32_t frames_decoded;
-  uint32_t frames_rendered;
-  rtc::Optional<uint64_t> qp_sum;
+  int framerate_render_output = 0;
+  uint32_t frames_received = 0;
+  uint32_t frames_decoded = 0;
+  uint32_t frames_rendered = 0;
+  absl::optional<uint64_t> qp_sum;
+  int64_t interframe_delay_max_ms = -1;
+
+  webrtc::VideoContentType content_type = webrtc::VideoContentType::UNSPECIFIED;
 
   // All stats below are gathered per-VideoReceiver, but some will be correlated
   // across MediaStreamTracks.  NOTE(hta): when sinking stats into per-SSRC
   // structures, reflect this in the new layout.
 
   // Current frame decode latency.
-  int decode_ms;
+  int decode_ms = 0;
   // Maximum observed frame decode latency.
-  int max_decode_ms;
+  int max_decode_ms = 0;
   // Jitter (network-related) latency.
-  int jitter_buffer_ms;
+  int jitter_buffer_ms = 0;
   // Requested minimum playout latency.
-  int min_playout_delay_ms;
+  int min_playout_delay_ms = 0;
   // Requested latency to account for rendering delay.
-  int render_delay_ms;
+  int render_delay_ms = 0;
   // Target overall delay: network+decode+render, accounting for
   // min_playout_delay_ms.
-  int target_delay_ms;
+  int target_delay_ms = 0;
   // Current overall delay, possibly ramping towards target_delay_ms.
-  int current_delay_ms;
+  int current_delay_ms = 0;
 
   // Estimated capture start time in NTP time in ms.
-  int64_t capture_start_ntp_time_ms;
+  int64_t capture_start_ntp_time_ms = -1;
+
+  // Timing frame info: all important timestamps for a full lifetime of a
+  // single 'timing frame'.
+  absl::optional<webrtc::TimingFrameInfo> timing_frame_info;
 };
 
 struct DataSenderInfo : public MediaSenderInfo {
-  DataSenderInfo()
-      : ssrc(0) {
-  }
-
-  uint32_t ssrc;
+  uint32_t ssrc = 0;
 };
 
 struct DataReceiverInfo : public MediaReceiverInfo {
-  DataReceiverInfo()
-      : ssrc(0) {
-  }
-
-  uint32_t ssrc;
+  uint32_t ssrc = 0;
 };
 
 struct BandwidthEstimationInfo {
-  BandwidthEstimationInfo()
-      : available_send_bandwidth(0),
-        available_recv_bandwidth(0),
-        target_enc_bitrate(0),
-        actual_enc_bitrate(0),
-        retransmit_bitrate(0),
-        transmit_bitrate(0),
-        bucket_delay(0) {
-  }
-
-  int available_send_bandwidth;
-  int available_recv_bandwidth;
-  int target_enc_bitrate;
-  int actual_enc_bitrate;
-  int retransmit_bitrate;
-  int transmit_bitrate;
-  int64_t bucket_delay;
+  int available_send_bandwidth = 0;
+  int available_recv_bandwidth = 0;
+  int target_enc_bitrate = 0;
+  int actual_enc_bitrate = 0;
+  int retransmit_bitrate = 0;
+  int transmit_bitrate = 0;
+  int64_t bucket_delay = 0;
 };
 
 // Maps from payload type to |RtpCodecParameters|.
 typedef std::map<int, webrtc::RtpCodecParameters> RtpCodecParametersMap;
 
 struct VoiceMediaInfo {
+  VoiceMediaInfo();
+  ~VoiceMediaInfo();
   void Clear() {
     senders.clear();
     receivers.clear();
@@ -848,6 +559,8 @@ struct VoiceMediaInfo {
 };
 
 struct VideoMediaInfo {
+  VideoMediaInfo();
+  ~VideoMediaInfo();
   void Clear() {
     senders.clear();
     receivers.clear();
@@ -865,6 +578,8 @@ struct VideoMediaInfo {
 };
 
 struct DataMediaInfo {
+  DataMediaInfo();
+  ~DataMediaInfo();
   void Clear() {
     senders.clear();
     receivers.clear();
@@ -879,88 +594,71 @@ struct RtcpParameters {
 
 template <class Codec>
 struct RtpParameters {
-  virtual std::string ToString() const {
-    std::ostringstream ost;
-    ost << "{";
-    ost << "codecs: " << VectorToString(codecs) << ", ";
-    ost << "extensions: " << VectorToString(extensions);
-    ost << "}";
-    return ost.str();
-  }
+  virtual ~RtpParameters() = default;
 
   std::vector<Codec> codecs;
   std::vector<webrtc::RtpExtension> extensions;
   // TODO(pthatcher): Add streams.
   RtcpParameters rtcp;
-  virtual ~RtpParameters() = default;
+
+  std::string ToString() const {
+    std::ostringstream ost;
+    ost << "{";
+    const char* separator = "";
+    for (const auto& entry : ToStringMap()) {
+      ost << separator << entry.first << ": " << entry.second;
+      separator = ", ";
+    }
+    ost << "}";
+    return ost.str();
+  }
+
+ protected:
+  virtual std::map<std::string, std::string> ToStringMap() const {
+    return {{"codecs", VectorToString(codecs)},
+            {"extensions", VectorToString(extensions)}};
+  }
 };
 
 // TODO(deadbeef): Rename to RtpSenderParameters, since they're intended to
 // encapsulate all the parameters needed for an RtpSender.
 template <class Codec>
 struct RtpSendParameters : RtpParameters<Codec> {
-  std::string ToString() const override {
-    std::ostringstream ost;
-    ost << "{";
-    ost << "codecs: " << VectorToString(this->codecs) << ", ";
-    ost << "extensions: " << VectorToString(this->extensions) << ", ";
-    ost << "max_bandwidth_bps: " << max_bandwidth_bps << ", ";
-    ost << "}";
-    return ost.str();
-  }
-
   int max_bandwidth_bps = -1;
+  // This is the value to be sent in the MID RTP header extension (if the header
+  // extension in included in the list of extensions).
+  std::string mid;
+
+ protected:
+  std::map<std::string, std::string> ToStringMap() const override {
+    auto params = RtpParameters<Codec>::ToStringMap();
+    params["max_bandwidth_bps"] = rtc::ToString(max_bandwidth_bps);
+    params["mid"] = (mid.empty() ? "<not set>" : mid);
+    return params;
+  }
 };
 
 struct AudioSendParameters : RtpSendParameters<AudioCodec> {
-  std::string ToString() const override {
-    std::ostringstream ost;
-    ost << "{";
-    ost << "codecs: " << VectorToString(this->codecs) << ", ";
-    ost << "extensions: " << VectorToString(this->extensions) << ", ";
-    ost << "max_bandwidth_bps: " << max_bandwidth_bps << ", ";
-    ost << "options: " << options.ToString();
-    ost << "}";
-    return ost.str();
-  }
-
+  AudioSendParameters();
+  ~AudioSendParameters() override;
   AudioOptions options;
+
+ protected:
+  std::map<std::string, std::string> ToStringMap() const override;
 };
 
-struct AudioRecvParameters : RtpParameters<AudioCodec> {
-};
+struct AudioRecvParameters : RtpParameters<AudioCodec> {};
 
 class VoiceMediaChannel : public MediaChannel {
  public:
-  enum Error {
-    ERROR_NONE = 0,                       // No error.
-    ERROR_OTHER,                          // Other errors.
-    ERROR_REC_DEVICE_OPEN_FAILED = 100,   // Could not open mic.
-    ERROR_REC_DEVICE_MUTED,               // Mic was muted by OS.
-    ERROR_REC_DEVICE_SILENT,              // No background noise picked up.
-    ERROR_REC_DEVICE_SATURATION,          // Mic input is clipping.
-    ERROR_REC_DEVICE_REMOVED,             // Mic was removed while active.
-    ERROR_REC_RUNTIME_ERROR,              // Processing is encountering errors.
-    ERROR_REC_SRTP_ERROR,                 // Generic SRTP failure.
-    ERROR_REC_SRTP_AUTH_FAILED,           // Failed to authenticate packets.
-    ERROR_REC_TYPING_NOISE_DETECTED,      // Typing noise is detected.
-    ERROR_PLAY_DEVICE_OPEN_FAILED = 200,  // Could not open playout.
-    ERROR_PLAY_DEVICE_MUTED,              // Playout muted by OS.
-    ERROR_PLAY_DEVICE_REMOVED,            // Playout removed while active.
-    ERROR_PLAY_RUNTIME_ERROR,             // Errors in voice processing.
-    ERROR_PLAY_SRTP_ERROR,                // Generic SRTP failure.
-    ERROR_PLAY_SRTP_AUTH_FAILED,          // Failed to authenticate packets.
-    ERROR_PLAY_SRTP_REPLAY,               // Packet replay detected.
-  };
-
   VoiceMediaChannel() {}
   explicit VoiceMediaChannel(const MediaConfig& config)
       : MediaChannel(config) {}
-  virtual ~VoiceMediaChannel() {}
+  ~VoiceMediaChannel() override {}
   virtual bool SetSendParameters(const AudioSendParameters& params) = 0;
   virtual bool SetRecvParameters(const AudioRecvParameters& params) = 0;
   virtual webrtc::RtpParameters GetRtpSendParameters(uint32_t ssrc) const = 0;
-  virtual bool SetRtpSendParameters(
+  virtual webrtc::RTCError SetRtpSendParameters(
       uint32_t ssrc,
       const webrtc::RtpParameters& parameters) = 0;
   // Get the receive parameters for the incoming stream identified by |ssrc|.
@@ -982,10 +680,6 @@ class VoiceMediaChannel : public MediaChannel {
                             bool enable,
                             const AudioOptions* options,
                             AudioSource* source) = 0;
-  // Gets current energy levels for all incoming streams.
-  virtual bool GetActiveStreams(AudioInfo::StreamList* actives) = 0;
-  // Get the current energy level of the stream sent to the speaker.
-  virtual int GetOutputLevel() = 0;
   // Set speaker output volume of the specified ssrc.
   virtual bool SetOutputVolume(uint32_t ssrc, double volume) = 0;
   // Returns if the telephone-event has been negotiated.
@@ -1008,6 +702,8 @@ class VoiceMediaChannel : public MediaChannel {
 // TODO(deadbeef): Rename to VideoSenderParameters, since they're intended to
 // encapsulate all the parameters needed for a video RtpSender.
 struct VideoSendParameters : RtpSendParameters<VideoCodec> {
+  VideoSendParameters();
+  ~VideoSendParameters() override;
   // Use conference mode? This flag comes from the remote
   // description's SDP line 'a=x-google-flag:conference', copied over
   // by VideoChannel::SetRemoteContent_w, and ultimately used by
@@ -1015,39 +711,26 @@ struct VideoSendParameters : RtpSendParameters<VideoCodec> {
   // WebRtcVideoChannel::WebRtcVideoSendStream::CreateVideoEncoderConfig.
   // The special screencast behaviour is disabled by default.
   bool conference_mode = false;
+
+ protected:
+  std::map<std::string, std::string> ToStringMap() const override;
 };
 
 // TODO(deadbeef): Rename to VideoReceiverParameters, since they're intended to
 // encapsulate all the parameters needed for a video RtpReceiver.
-struct VideoRecvParameters : RtpParameters<VideoCodec> {
-};
+struct VideoRecvParameters : RtpParameters<VideoCodec> {};
 
 class VideoMediaChannel : public MediaChannel {
  public:
-  enum Error {
-    ERROR_NONE = 0,                       // No error.
-    ERROR_OTHER,                          // Other errors.
-    ERROR_REC_DEVICE_OPEN_FAILED = 100,   // Could not open camera.
-    ERROR_REC_DEVICE_NO_DEVICE,           // No camera.
-    ERROR_REC_DEVICE_IN_USE,              // Device is in already use.
-    ERROR_REC_DEVICE_REMOVED,             // Device is removed.
-    ERROR_REC_SRTP_ERROR,                 // Generic sender SRTP failure.
-    ERROR_REC_SRTP_AUTH_FAILED,           // Failed to authenticate packets.
-    ERROR_REC_CPU_MAX_CANT_DOWNGRADE,     // Can't downgrade capture anymore.
-    ERROR_PLAY_SRTP_ERROR = 200,          // Generic receiver SRTP failure.
-    ERROR_PLAY_SRTP_AUTH_FAILED,          // Failed to authenticate packets.
-    ERROR_PLAY_SRTP_REPLAY,               // Packet replay detected.
-  };
-
   VideoMediaChannel() {}
   explicit VideoMediaChannel(const MediaConfig& config)
       : MediaChannel(config) {}
-  virtual ~VideoMediaChannel() {}
+  ~VideoMediaChannel() override {}
 
   virtual bool SetSendParameters(const VideoSendParameters& params) = 0;
   virtual bool SetRecvParameters(const VideoRecvParameters& params) = 0;
   virtual webrtc::RtpParameters GetRtpSendParameters(uint32_t ssrc) const = 0;
-  virtual bool SetRtpSendParameters(
+  virtual webrtc::RTCError SetRtpSendParameters(
       uint32_t ssrc,
       const webrtc::RtpParameters& parameters) = 0;
   // Get the receive parameters for the incoming stream identified by |ssrc|.
@@ -1068,7 +751,6 @@ class VideoMediaChannel : public MediaChannel {
   // The |ssrc| must correspond to a registered send stream.
   virtual bool SetVideoSend(
       uint32_t ssrc,
-      bool enable,
       const VideoOptions* options,
       rtc::VideoSourceInterface<webrtc::VideoFrame>* source) = 0;
   // Sets the sink object to be used for the specified stream.
@@ -1105,16 +787,14 @@ struct ReceiveDataParams {
   // RTP data channels use SSRCs, SCTP data channels use SIDs.
   union {
     uint32_t ssrc;
-    int sid;
+    int sid = 0;
   };
   // The type of message (binary, text, or control).
-  DataMessageType type;
+  DataMessageType type = DMT_TEXT;
   // A per-stream value incremented per packet in the stream.
-  int seq_num;
+  int seq_num = 0;
   // A per-stream value monotonically increasing with time.
-  int timestamp;
-
-  ReceiveDataParams() : sid(0), type(DMT_TEXT), seq_num(0), timestamp(0) {}
+  int timestamp = 0;
 };
 
 struct SendDataParams {
@@ -1122,89 +802,58 @@ struct SendDataParams {
   // RTP data channels use SSRCs, SCTP data channels use SIDs.
   union {
     uint32_t ssrc;
-    int sid;
+    int sid = 0;
   };
   // The type of message (binary, text, or control).
-  DataMessageType type;
+  DataMessageType type = DMT_TEXT;
 
+  // TODO(pthatcher): Make |ordered| and |reliable| true by default?
   // For SCTP, whether to send messages flagged as ordered or not.
   // If false, messages can be received out of order.
-  bool ordered;
+  bool ordered = false;
   // For SCTP, whether the messages are sent reliably or not.
   // If false, messages may be lost.
-  bool reliable;
+  bool reliable = false;
   // For SCTP, if reliable == false, provide partial reliability by
   // resending up to this many times.  Either count or millis
   // is supported, not both at the same time.
-  int max_rtx_count;
+  int max_rtx_count = 0;
   // For SCTP, if reliable == false, provide partial reliability by
   // resending for up to this many milliseconds.  Either count or millis
   // is supported, not both at the same time.
-  int max_rtx_ms;
-
-  SendDataParams()
-      : sid(0),
-        type(DMT_TEXT),
-        // TODO(pthatcher): Make these true by default?
-        ordered(false),
-        reliable(false),
-        max_rtx_count(0),
-        max_rtx_ms(0) {}
+  int max_rtx_ms = 0;
 };
 
 enum SendDataResult { SDR_SUCCESS, SDR_ERROR, SDR_BLOCK };
 
-struct DataSendParameters : RtpSendParameters<DataCodec> {
-  std::string ToString() const {
-    std::ostringstream ost;
-    // Options and extensions aren't used.
-    ost << "{";
-    ost << "codecs: " << VectorToString(codecs) << ", ";
-    ost << "max_bandwidth_bps: " << max_bandwidth_bps;
-    ost << "}";
-    return ost.str();
-  }
-};
+struct DataSendParameters : RtpSendParameters<DataCodec> {};
 
-struct DataRecvParameters : RtpParameters<DataCodec> {
-};
+struct DataRecvParameters : RtpParameters<DataCodec> {};
 
 class DataMediaChannel : public MediaChannel {
  public:
-  enum Error {
-    ERROR_NONE = 0,                       // No error.
-    ERROR_OTHER,                          // Other errors.
-    ERROR_SEND_SRTP_ERROR = 200,          // Generic SRTP failure.
-    ERROR_SEND_SRTP_AUTH_FAILED,          // Failed to authenticate packets.
-    ERROR_RECV_SRTP_ERROR,                // Generic SRTP failure.
-    ERROR_RECV_SRTP_AUTH_FAILED,          // Failed to authenticate packets.
-    ERROR_RECV_SRTP_REPLAY,               // Packet replay detected.
-  };
-
-  DataMediaChannel() {}
-  DataMediaChannel(const MediaConfig& config) : MediaChannel(config) {}
-  virtual ~DataMediaChannel() {}
+  DataMediaChannel();
+  explicit DataMediaChannel(const MediaConfig& config);
+  ~DataMediaChannel() override;
 
   virtual bool SetSendParameters(const DataSendParameters& params) = 0;
   virtual bool SetRecvParameters(const DataRecvParameters& params) = 0;
 
   // TODO(pthatcher): Implement this.
-  virtual bool GetStats(DataMediaInfo*) { return true; }
+  virtual bool GetStats(DataMediaInfo* info);
 
   virtual bool SetSend(bool send) = 0;
   virtual bool SetReceive(bool receive) = 0;
 
-  virtual void OnNetworkRouteChanged(const std::string&,
-                                     const rtc::NetworkRoute&) {}
+  void OnNetworkRouteChanged(const std::string& transport_name,
+                             const rtc::NetworkRoute& network_route) override {}
 
-  virtual bool SendData(
-      const SendDataParams& params,
-      const rtc::CopyOnWriteBuffer& payload,
-      SendDataResult* result = NULL) = 0;
+  virtual bool SendData(const SendDataParams& params,
+                        const rtc::CopyOnWriteBuffer& payload,
+                        SendDataResult* result = NULL) = 0;
   // Signals when data is received (params, data, len)
-  sigslot::signal3<const ReceiveDataParams&,
-                   const char*,
-                   size_t> SignalDataReceived;
+  sigslot::signal3<const ReceiveDataParams&, const char*, size_t>
+      SignalDataReceived;
   // Signal when the media channel is ready to send the stream. Arguments are:
   //     writable(bool)
   sigslot::signal1<bool> SignalReadyToSend;
@@ -1212,4 +861,4 @@ class DataMediaChannel : public MediaChannel {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_BASE_MEDIACHANNEL_H_
+#endif  // MEDIA_BASE_MEDIACHANNEL_H_

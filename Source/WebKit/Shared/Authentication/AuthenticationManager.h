@@ -30,13 +30,17 @@
 #include "NetworkProcessSupplement.h"
 #include "WebProcessSupplement.h"
 #include <WebCore/AuthenticationChallenge.h>
+#include <wtf/CompletionHandler.h>
 #include <wtf/Forward.h>
-#include <wtf/Function.h>
 #include <wtf/HashMap.h>
+#include <wtf/WeakPtr.h>
+
+namespace IPC {
+class MessageSender;
+}
 
 namespace WebCore {
 class AuthenticationChallenge;
-class CertificateInfo;
 class Credential;
 }
 
@@ -45,7 +49,6 @@ namespace WebKit {
 class ChildProcess;
 class Download;
 class DownloadID;
-class PendingDownload;
 class WebFrame;
 
 enum class AuthenticationChallengeDisposition {
@@ -54,31 +57,19 @@ enum class AuthenticationChallengeDisposition {
     Cancel,
     RejectProtectionSpace
 };
-typedef Function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)> ChallengeCompletionHandler;
+using ChallengeCompletionHandler = CompletionHandler<void(AuthenticationChallengeDisposition, const WebCore::Credential&)>;
 
-class AuthenticationManager : public WebProcessSupplement, public NetworkProcessSupplement, public IPC::MessageReceiver {
+class AuthenticationManager : public NetworkProcessSupplement, public IPC::MessageReceiver, public CanMakeWeakPtr<AuthenticationManager> {
     WTF_MAKE_NONCOPYABLE(AuthenticationManager);
 public:
-    explicit AuthenticationManager(ChildProcess*);
+    explicit AuthenticationManager(ChildProcess&);
 
     static const char* supplementName();
 
-#if USE(NETWORK_SESSION)
     void didReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
-    void didReceiveAuthenticationChallenge(PendingDownload&, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
-#endif
-#endif
-    // Called for resources in the WebProcess (NetworkProcess disabled)
-    void didReceiveAuthenticationChallenge(WebFrame*, const WebCore::AuthenticationChallenge&);
-    // Called for resources in the NetworkProcess (NetworkProcess enabled)
-    void didReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, const WebCore::AuthenticationChallenge&);
-#if !USE(NETWORK_SESSION)
-    void didReceiveAuthenticationChallenge(Download&, const WebCore::AuthenticationChallenge&);
-#endif
+    void didReceiveAuthenticationChallenge(IPC::MessageSender& download, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
 
-    void useCredentialForChallenge(uint64_t challengeID, const WebCore::Credential&, const WebCore::CertificateInfo&);
+    void useCredentialForChallenge(uint64_t challengeID, const WebCore::Credential&);
     void continueWithoutCredentialForChallenge(uint64_t challengeID);
     void cancelChallenge(uint64_t challengeID);
     void performDefaultHandling(uint64_t challengeID);
@@ -86,30 +77,25 @@ public:
 
     uint64_t outstandingAuthenticationChallengeCount() const { return m_challenges.size(); }
 
-    static void receivedCredential(const WebCore::AuthenticationChallenge&, const WebCore::Credential&);
-    static void receivedRequestToContinueWithoutCredential(const WebCore::AuthenticationChallenge&);
-    static void receivedCancellation(const WebCore::AuthenticationChallenge&);
-    static void receivedRequestToPerformDefaultHandling(const WebCore::AuthenticationChallenge&);
-    static void receivedChallengeRejection(const WebCore::AuthenticationChallenge&);
-
 private:
     struct Challenge {
         uint64_t pageID;
         WebCore::AuthenticationChallenge challenge;
-#if USE(NETWORK_SESSION)
         ChallengeCompletionHandler completionHandler;
-#endif
     };
+
+#if HAVE(SEC_KEY_PROXY)
+    // NetworkProcessSupplement
+    void initializeConnection(IPC::Connection*) final;
+#endif
     
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    bool tryUseCertificateInfoForChallenge(const WebCore::AuthenticationChallenge&, const WebCore::CertificateInfo&, const ChallengeCompletionHandler&);
-
     uint64_t addChallengeToChallengeMap(Challenge&&);
     bool shouldCoalesceChallenge(uint64_t pageID, uint64_t challengeID, const WebCore::AuthenticationChallenge&) const;
 
-    void useCredentialForSingleChallenge(uint64_t challengeID, const WebCore::Credential&, const WebCore::CertificateInfo&);
+    void useCredentialForSingleChallenge(uint64_t challengeID, const WebCore::Credential&);
     void continueWithoutCredentialForSingleChallenge(uint64_t challengeID);
     void cancelSingleChallenge(uint64_t challengeID);
     void performDefaultHandlingForSingleChallenge(uint64_t challengeID);
@@ -117,7 +103,7 @@ private:
 
     Vector<uint64_t> coalesceChallengesMatching(uint64_t challengeID) const;
 
-    ChildProcess* m_process;
+    ChildProcess& m_process;
 
     HashMap<uint64_t, Challenge> m_challenges;
 };

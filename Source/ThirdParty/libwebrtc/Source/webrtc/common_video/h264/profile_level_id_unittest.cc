@@ -8,9 +8,9 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_video/h264/profile_level_id.h"
+#include "common_video/h264/profile_level_id.h"
 
-#include "webrtc/test/gtest.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace H264 {
@@ -125,7 +125,7 @@ TEST(H264ProfileLevelId, TestToStringInvalid) {
 }
 
 TEST(H264ProfileLevelId, TestParseSdpProfileLevelIdEmpty) {
-  const rtc::Optional<ProfileLevelId> profile_level_id =
+  const absl::optional<ProfileLevelId> profile_level_id =
       ParseSdpProfileLevelId(CodecParameterMap());
   EXPECT_TRUE(profile_level_id);
   EXPECT_EQ(kProfileConstrainedBaseline, profile_level_id->profile);
@@ -135,7 +135,7 @@ TEST(H264ProfileLevelId, TestParseSdpProfileLevelIdEmpty) {
 TEST(H264ProfileLevelId, TestParseSdpProfileLevelIdConstrainedHigh) {
   CodecParameterMap params;
   params["profile-level-id"] = "640c2a";
-  const rtc::Optional<ProfileLevelId> profile_level_id =
+  const absl::optional<ProfileLevelId> profile_level_id =
       ParseSdpProfileLevelId(params);
   EXPECT_TRUE(profile_level_id);
   EXPECT_EQ(kProfileConstrainedHigh, profile_level_id->profile);

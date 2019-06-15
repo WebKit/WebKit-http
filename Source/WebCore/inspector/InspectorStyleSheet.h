@@ -26,9 +26,9 @@
 
 #include "CSSPropertySourceData.h"
 #include "CSSStyleDeclaration.h"
-#include <inspector/InspectorProtocolObjects.h>
-#include <inspector/InspectorValues.h>
+#include <JavaScriptCore/InspectorProtocolObjects.h>
 #include <wtf/HashMap.h>
+#include <wtf/JSONValues.h>
 #include <wtf/Vector.h>
 
 class ParsedStyleSheet;
@@ -49,14 +49,14 @@ typedef String ErrorString;
 
 class InspectorCSSId {
 public:
-    InspectorCSSId() { }
+    InspectorCSSId() = default;
 
-    explicit InspectorCSSId(const Inspector::InspectorObject& value)
+    explicit InspectorCSSId(const JSON::Object& value)
     {
-        if (!value.getString(ASCIILiteral("styleSheetId"), m_styleSheetId))
+        if (!value.getString("styleSheetId"_s, m_styleSheetId))
             return;
 
-        if (!value.getInteger(ASCIILiteral("ordinal"), m_ordinal))
+        if (!value.getInteger("ordinal"_s, m_ordinal))
             m_styleSheetId = String();
     }
 
@@ -127,7 +127,7 @@ public:
 
     CSSStyleDeclaration& cssStyle() const { return m_style.get(); }
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForStyle() const;
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSComputedStyleProperty>> buildArrayForComputedStyle() const;
+    Ref<JSON::ArrayOf<Inspector::Protocol::CSS::CSSComputedStyleProperty>> buildArrayForComputedStyle() const;
 
     ExceptionOr<String> text() const;
     ExceptionOr<void> setText(const String&);
@@ -151,8 +151,8 @@ class InspectorStyleSheet : public RefCounted<InspectorStyleSheet> {
 public:
     class Listener {
     public:
-        Listener() { }
-        virtual ~Listener() { }
+        Listener() = default;
+        virtual ~Listener() = default;
         virtual void styleSheetChanged(InspectorStyleSheet*) = 0;
     };
 
@@ -198,7 +198,7 @@ protected:
 
     // Also accessed by friend class InspectorStyle.
     virtual ExceptionOr<void> setStyleText(CSSStyleDeclaration*, const String&);
-    virtual std::unique_ptr<Vector<size_t>> lineEndings() const;
+    virtual Vector<size_t> lineEndings() const;
 
 private:
     typedef Vector<RefPtr<CSSStyleRule>> CSSStyleRuleVector;
@@ -213,7 +213,7 @@ private:
     bool originalStyleSheetText(String* result) const;
     bool resourceStyleSheetText(String* result) const;
     bool inlineStyleSheetText(String* result) const;
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
+    Ref<JSON::ArrayOf<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
     Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*, Element*);
     Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*, int& endingLine);
 
@@ -246,7 +246,7 @@ protected:
 
     // Also accessed by friend class InspectorStyle.
     ExceptionOr<void> setStyleText(CSSStyleDeclaration*, const String&) final;
-    std::unique_ptr<Vector<size_t>> lineEndings() const final;
+    Vector<size_t> lineEndings() const final;
 
 private:
     CSSStyleDeclaration& inlineStyle() const;

@@ -120,13 +120,13 @@ private:
 
     struct TileCohortInfo {
         TileCohort cohort;
-        double creationTime; // in monotonicallyIncreasingTime().
-        TileCohortInfo(TileCohort inCohort, double inTime)
+        MonotonicTime creationTime;
+        TileCohortInfo(TileCohort inCohort, MonotonicTime inTime)
             : cohort(inCohort)
             , creationTime(inTime)
         { }
 
-        double timeUntilExpiration();
+        Seconds timeUntilExpiration();
     };
 
     void removeAllTiles();
@@ -143,9 +143,10 @@ private:
     void removeTiles(Vector<TileGrid::TileIndex>& toRemove);
 
     // PlatformCALayerClient
-    void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&, GraphicsLayerPaintFlags) override;
+    void platformCALayerPaintContents(PlatformCALayer*, GraphicsContext&, const FloatRect&, GraphicsLayerPaintBehavior) override;
     bool platformCALayerShowDebugBorders() const override;
     bool platformCALayerShowRepaintCounter(PlatformCALayer*) const override;
+    int platformCALayerRepaintCount(PlatformCALayer*) const override;
     int platformCALayerIncrementRepaintCount(PlatformCALayer*) override;
     bool platformCALayerContentsOpaque() const override;
     bool platformCALayerDrawsContent() const override { return true; }

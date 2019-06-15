@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.reduceright
 description: >
   Does not iterate over non-integer properties
-info: >
+info: |
   22.2.3.21 %TypedArray%.prototype.reduceRight ( callbackfn [ , initialValue ] )
 
   %TypedArray%.prototype.reduceRight is a distinct function that implements the
@@ -24,7 +24,7 @@ info: >
     d. Decrease k by 1.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

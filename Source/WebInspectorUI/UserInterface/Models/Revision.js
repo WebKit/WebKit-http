@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Revision = class Revision extends WebInspector.Object
+WI.Revision = class Revision
 {
     // Public
 

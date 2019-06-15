@@ -29,23 +29,57 @@
 
 #include "VideoTrackPrivateGStreamer.h"
 
+#include "MediaPlayerPrivateGStreamer.h"
 #include <glib-object.h>
 
 namespace WebCore {
 
-VideoTrackPrivateGStreamer::VideoTrackPrivateGStreamer(GRefPtr<GstElement> playbin, gint index, GRefPtr<GstPad> pad)
+VideoTrackPrivateGStreamer::VideoTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstPad> pad)
     : TrackPrivateBaseGStreamer(this, index, pad)
-    , m_playbin(playbin)
+    , m_player(player)
 {
     // FIXME: Get a real ID from the tkhd atom.
     m_id = "V" + String::number(index);
     notifyTrackOfActiveChanged();
 }
 
+#if GST_CHECK_VERSION(1, 10, 0)
+VideoTrackPrivateGStreamer::VideoTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstStream> stream)
+    : TrackPrivateBaseGStreamer(this, index, stream)
+    , m_player(player)
+{
+    gint kind;
+    auto tags = gst_stream_get_tags(m_stream.get());
+
+    if (gst_tag_list_get_int(tags, "webkit-media-stream-kind", &kind) && kind == static_cast<int>(VideoTrackPrivate::Kind::Main)) {
+        GstStreamFlags streamFlags = gst_stream_get_stream_flags(stream.get());
+        gst_stream_set_stream_flags(stream.get(), static_cast<GstStreamFlags>(streamFlags | GST_STREAM_FLAG_SELECT));
+    }
+
+    m_id = gst_stream_get_stream_id(stream.get());
+    if (gst_stream_get_stream_flags(stream.get()) & GST_STREAM_FLAG_SELECT)
+        markAsActive();
+    notifyTrackOfActiveChanged();
+}
+
+VideoTrackPrivate::Kind VideoTrackPrivateGStreamer::kind() const
+{
+    if (m_stream.get() && gst_stream_get_stream_flags(m_stream.get()) & GST_STREAM_FLAG_SELECT)
+        return VideoTrackPrivate::Kind::Main;
+
+    return VideoTrackPrivate::kind();
+}
+#endif
+
 void VideoTrackPrivateGStreamer::disconnect()
 {
-    m_playbin.clear();
+    m_player = nullptr;
     TrackPrivateBaseGStreamer::disconnect();
+}
+
+void VideoTrackPrivateGStreamer::markAsActive()
+{
+    VideoTrackPrivate::setSelected(true);
 }
 
 void VideoTrackPrivateGStreamer::setSelected(bool selected)
@@ -54,8 +88,8 @@ void VideoTrackPrivateGStreamer::setSelected(bool selected)
         return;
     VideoTrackPrivate::setSelected(selected);
 
-    if (selected && m_playbin)
-        g_object_set(m_playbin.get(), "current-video", m_index, nullptr);
+    if (selected && m_player)
+        m_player->enableTrack(TrackPrivateBaseGStreamer::TrackType::Video, m_index);
 }
 
 } // namespace WebCore

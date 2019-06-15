@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.indexof
 es5id: 15.4.4.14-3-22
 description: >
     Array.prototype.indexOf throws TypeError exception when 'length'
@@ -9,25 +10,25 @@ description: >
     primitive values
 ---*/
 
-        var toStringAccessed = false;
-        var valueOfAccessed = false;
+var toStringAccessed = false;
+var valueOfAccessed = false;
 
-        var obj = {
-            length: {
-                toString: function () {
-                    toStringAccessed = true;
-                    return {};
-                },
+var obj = {
+  length: {
+    toString: function() {
+      toStringAccessed = true;
+      return {};
+    },
 
-                valueOf: function () {
-                    valueOfAccessed = true;
-                    return {};
-                }
-            }
-        };
+    valueOf: function() {
+      valueOfAccessed = true;
+      return {};
+    }
+  }
+};
 
 assert.throws(TypeError, function() {
-            Array.prototype.indexOf.call(obj);
+  Array.prototype.indexOf.call(obj);
 });
 
 assert(toStringAccessed, 'toStringAccessed');

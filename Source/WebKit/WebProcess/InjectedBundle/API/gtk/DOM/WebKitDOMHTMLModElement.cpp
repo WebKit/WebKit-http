@@ -22,12 +22,11 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
 #include "GObjectEventListener.h"
 #include <WebCore/HTMLNames.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMEventPrivate.h"
 #include "WebKitDOMEventTarget.h"
 #include "WebKitDOMHTMLModElementPrivate.h"
@@ -36,6 +35,8 @@
 #include "ConvertToUTF8String.h"
 #include <wtf/GetPtr.h>
 #include <wtf/RefPtr.h>
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -66,8 +67,8 @@ static gboolean webkit_dom_html_mod_element_dispatch_event(WebKitDOMEventTarget*
 
     auto result = coreTarget->dispatchEventForBindings(*coreEvent);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription description(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.code, description.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
         return false;
     }
     return result.releaseReturnValue();
@@ -85,19 +86,19 @@ static gboolean webkit_dom_html_mod_element_remove_event_listener(WebKitDOMEvent
     return WebKit::GObjectEventListener::removeEventListener(G_OBJECT(target), coreTarget, eventName, handler, useCapture);
 }
 
-static void webkit_dom_event_target_init(WebKitDOMEventTargetIface* iface)
+static void webkit_dom_html_mod_element_dom_event_target_init(WebKitDOMEventTargetIface* iface)
 {
     iface->dispatch_event = webkit_dom_html_mod_element_dispatch_event;
     iface->add_event_listener = webkit_dom_html_mod_element_add_event_listener;
     iface->remove_event_listener = webkit_dom_html_mod_element_remove_event_listener;
 }
 
-G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLModElement, webkit_dom_html_mod_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_event_target_init))
+G_DEFINE_TYPE_WITH_CODE(WebKitDOMHTMLModElement, webkit_dom_html_mod_element, WEBKIT_DOM_TYPE_HTML_ELEMENT, G_IMPLEMENT_INTERFACE(WEBKIT_DOM_TYPE_EVENT_TARGET, webkit_dom_html_mod_element_dom_event_target_init))
 
 enum {
-    PROP_0,
-    PROP_CITE,
-    PROP_DATE_TIME,
+    DOM_HTML_MOD_ELEMENT_PROP_0,
+    DOM_HTML_MOD_ELEMENT_PROP_CITE,
+    DOM_HTML_MOD_ELEMENT_PROP_DATE_TIME,
 };
 
 static void webkit_dom_html_mod_element_set_property(GObject* object, guint propertyId, const GValue* value, GParamSpec* pspec)
@@ -105,10 +106,10 @@ static void webkit_dom_html_mod_element_set_property(GObject* object, guint prop
     WebKitDOMHTMLModElement* self = WEBKIT_DOM_HTML_MOD_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_CITE:
+    case DOM_HTML_MOD_ELEMENT_PROP_CITE:
         webkit_dom_html_mod_element_set_cite(self, g_value_get_string(value));
         break;
-    case PROP_DATE_TIME:
+    case DOM_HTML_MOD_ELEMENT_PROP_DATE_TIME:
         webkit_dom_html_mod_element_set_date_time(self, g_value_get_string(value));
         break;
     default:
@@ -122,10 +123,10 @@ static void webkit_dom_html_mod_element_get_property(GObject* object, guint prop
     WebKitDOMHTMLModElement* self = WEBKIT_DOM_HTML_MOD_ELEMENT(object);
 
     switch (propertyId) {
-    case PROP_CITE:
+    case DOM_HTML_MOD_ELEMENT_PROP_CITE:
         g_value_take_string(value, webkit_dom_html_mod_element_get_cite(self));
         break;
-    case PROP_DATE_TIME:
+    case DOM_HTML_MOD_ELEMENT_PROP_DATE_TIME:
         g_value_take_string(value, webkit_dom_html_mod_element_get_date_time(self));
         break;
     default:
@@ -142,7 +143,7 @@ static void webkit_dom_html_mod_element_class_init(WebKitDOMHTMLModElementClass*
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_CITE,
+        DOM_HTML_MOD_ELEMENT_PROP_CITE,
         g_param_spec_string(
             "cite",
             "HTMLModElement:cite",
@@ -152,7 +153,7 @@ static void webkit_dom_html_mod_element_class_init(WebKitDOMHTMLModElementClass*
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_DATE_TIME,
+        DOM_HTML_MOD_ELEMENT_PROP_DATE_TIME,
         g_param_spec_string(
             "date-time",
             "HTMLModElement:date-time",
@@ -205,3 +206,4 @@ void webkit_dom_html_mod_element_set_date_time(WebKitDOMHTMLModElement* self, co
     item->setAttributeWithoutSynchronization(WebCore::HTMLNames::datetimeAttr, convertedValue);
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

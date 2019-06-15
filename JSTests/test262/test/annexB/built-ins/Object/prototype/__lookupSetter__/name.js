@@ -3,7 +3,7 @@
 /*---
 esid: sec-additional-properties-of-the-object.prototype-object
 description: Object.prototype.__lookupSetter__ `name` property
-info: >
+info: |
     ES6 Section 17:
 
     Every built-in Function object, including constructors, that is not
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(Object.prototype.__lookupSetter__.name, '__lookupSetter__');
-
-verifyNotEnumerable(Object.prototype.__lookupSetter__, 'name');
-verifyNotWritable(Object.prototype.__lookupSetter__, 'name');
-verifyConfigurable(Object.prototype.__lookupSetter__, 'name');
+verifyProperty(Object.prototype.__lookupSetter__, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "__lookupSetter__"
+});

@@ -16,6 +16,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 RTC_EXPORT
+__attribute__((objc_runtime_name("WK_RTCDataBuffer")))
 @interface RTCDataBuffer : NSObject
 
 /** NSData representation of the underlying buffer. */
@@ -34,7 +35,6 @@ RTC_EXPORT
 
 @end
 
-
 @class RTCDataChannel;
 RTC_EXPORT
 @protocol RTCDataChannelDelegate <NSObject>
@@ -48,11 +48,9 @@ RTC_EXPORT
 
 @optional
 /** The data channel's |bufferedAmount| changed. */
-- (void)dataChannel:(RTCDataChannel *)dataChannel
-    didChangeBufferedAmount:(uint64_t)amount;
+- (void)dataChannel:(RTCDataChannel *)dataChannel didChangeBufferedAmount:(uint64_t)amount;
 
 @end
-
 
 /** Represents the state of the data channel. */
 typedef NS_ENUM(NSInteger, RTCDataChannelState) {
@@ -63,6 +61,7 @@ typedef NS_ENUM(NSInteger, RTCDataChannelState) {
 };
 
 RTC_EXPORT
+__attribute__((objc_runtime_name("WK_RTCDataChannel")))
 @interface RTCDataChannel : NSObject
 
 /**
@@ -78,8 +77,7 @@ RTC_EXPORT
 @property(nonatomic, readonly) BOOL isOrdered;
 
 /** Deprecated. Use maxPacketLifeTime. */
-@property(nonatomic, readonly) NSUInteger maxRetransmitTime
-    DEPRECATED_ATTRIBUTE;
+@property(nonatomic, readonly) NSUInteger maxRetransmitTime DEPRECATED_ATTRIBUTE;
 
 /**
  * The length of the time window (in milliseconds) during which transmissions

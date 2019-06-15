@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.isBeingEdited = function(element)
+WI.isBeingEdited = function(element)
 {
     while (element) {
         if (element.__editing)
@@ -34,50 +34,53 @@ WebInspector.isBeingEdited = function(element)
     return false;
 };
 
-WebInspector.markBeingEdited = function(element, value)
+WI.markBeingEdited = function(element, value)
 {
     if (value) {
         if (element.__editing)
             return false;
         element.__editing = true;
-        WebInspector.__editingCount = (WebInspector.__editingCount || 0) + 1;
+        WI.__editingCount = (WI.__editingCount || 0) + 1;
     } else {
         if (!element.__editing)
             return false;
         delete element.__editing;
-        --WebInspector.__editingCount;
+        --WI.__editingCount;
     }
     return true;
 };
 
-WebInspector.isEditingAnyField = function()
+WI.isEditingAnyField = function()
 {
-    return !!WebInspector.__editingCount;
+    return !!WI.__editingCount;
 };
 
-WebInspector.isEventTargetAnEditableField = function(event)
+WI.isEventTargetAnEditableField = function(event)
 {
-    var textInputTypes = {"text": true, "search": true, "tel": true, "url": true, "email": true, "password": true};
+    let textInputTypes = new Set(["text", "search", "number", "tel", "url", "email", "password"]);
     if (event.target instanceof HTMLInputElement)
-        return event.target.type in textInputTypes;
+        return textInputTypes.has(event.target.type);
 
-    var codeMirrorEditorElement = event.target.enclosingNodeOrSelfWithClass("CodeMirror");
+    let codeMirrorEditorElement = event.target.enclosingNodeOrSelfWithClass("CodeMirror");
     if (codeMirrorEditorElement && codeMirrorEditorElement.CodeMirror)
         return !codeMirrorEditorElement.CodeMirror.getOption("readOnly");
 
     if (event.target instanceof HTMLTextAreaElement)
         return true;
 
+    if (event.target.isContentEditable)
+        return true;
+
     if (event.target.enclosingNodeOrSelfWithClass("text-prompt"))
         return true;
 
-    if (WebInspector.isBeingEdited(event.target))
+    if (WI.isBeingEdited(event.target))
         return true;
 
     return false;
 };
 
-WebInspector.EditingConfig = class EditingConfig
+WI.EditingConfig = class EditingConfig
 {
     constructor(commitHandler, cancelHandler, context)
     {
@@ -108,12 +111,12 @@ WebInspector.EditingConfig = class EditingConfig
     }
 };
 
-WebInspector.startEditing = function(element, config)
+WI.startEditing = function(element, config)
 {
-    if (!WebInspector.markBeingEdited(element, true))
+    if (!WI.markBeingEdited(element, true))
         return null;
 
-    config = config || new WebInspector.EditingConfig(function() {}, function() {});
+    config = config || new WI.EditingConfig(function() {}, function() {});
     var committedCallback = config.commitHandler;
     var cancelledCallback = config.cancelHandler;
     var pasteCallback = config.pasteHandler;
@@ -147,7 +150,7 @@ WebInspector.startEditing = function(element, config)
 
     function cleanUpAfterEditing()
     {
-        WebInspector.markBeingEdited(element, false);
+        WI.markBeingEdited(element, false);
 
         this.classList.remove("editing");
         this.contentEditable = false;
@@ -170,7 +173,7 @@ WebInspector.startEditing = function(element, config)
         if (pasteCallback)
             element.removeEventListener("paste", pasteEventListener, true);
 
-        WebInspector.restoreFocusFromElement(element);
+        WI.restoreFocusFromElement(element);
     }
 
     function editingCancelled()
@@ -197,7 +200,7 @@ WebInspector.startEditing = function(element, config)
         var hasOnlyMetaModifierKey = event.metaKey && !event.shiftKey && !event.ctrlKey && !event.altKey;
         if (isEnterKey(event) && (!config.multiline || hasOnlyMetaModifierKey))
             return "commit";
-        else if (event.keyCode === WebInspector.KeyboardShortcut.Key.Escape.keyCode || event.keyIdentifier === "U+001B")
+        else if (event.keyCode === WI.KeyboardShortcut.Key.Escape.keyCode || event.keyIdentifier === "U+001B")
             return "cancel";
         else if (event.keyIdentifier === "U+0009") // Tab key
             return "move-" + (event.shiftKey ? "backward" : "forward");
@@ -225,72 +228,18 @@ WebInspector.startEditing = function(element, config)
                 blurEventListener();
         } else if (result && result.startsWith("modify-")) {
             let direction = result.substring(7);
-            let modifyValue = direction.startsWith("up") ? 1 : -1;
+            let delta = direction.startsWith("up") ? 1 : -1;
             if (direction.endsWith("big"))
-                modifyValue *= 10;
+                delta *= 10;
 
             if (event.shiftKey)
-                modifyValue *= 10;
+                delta *= 10;
             else if (event.ctrlKey)
-                modifyValue /= 10;
+                delta /= 10;
 
-            let selection = element.ownerDocument.defaultView.getSelection();
-            if (!selection.rangeCount)
+            let modified = WI.incrementElementValue(element, delta);
+            if (!modified)
                 return;
-
-            let range = selection.getRangeAt(0);
-            if (!range.commonAncestorContainer.isSelfOrDescendant(element))
-                return false;
-
-            let wordRange = range.startContainer.rangeOfWord(range.startOffset, WebInspector.EditingSupport.StyleValueDelimiters, element);
-            let word = wordRange.toString();
-            let wordPrefix = "";
-            let wordSuffix = "";
-            let nonNumberInWord = /[^\d-\.]+/.exec(word);
-            if (nonNumberInWord) {
-                let nonNumberEndOffset = nonNumberInWord.index + nonNumberInWord[0].length;
-                if (range.startOffset > wordRange.startOffset + nonNumberInWord.index && nonNumberEndOffset < word.length && range.startOffset !== wordRange.startOffset) {
-                    wordPrefix = word.substring(0, nonNumberEndOffset);
-                    word = word.substring(nonNumberEndOffset);
-                } else {
-                    wordSuffix = word.substring(nonNumberInWord.index);
-                    word = word.substring(0, nonNumberInWord.index);
-                }
-            }
-
-            let matches = WebInspector.EditingSupport.CSSNumberRegex.exec(word);
-            if (!matches || matches.length !== 4)
-                return;
-
-            let replacement = matches[1] + (Math.round((parseFloat(matches[2]) + modifyValue) * 100) / 100) + matches[3];
-
-            selection.removeAllRanges();
-            selection.addRange(wordRange);
-            document.execCommand("insertText", false, wordPrefix + replacement + wordSuffix);
-
-            let container = range.commonAncestorContainer;
-            let startOffset = range.startOffset;
-            // This check is for the situation when the cursor is in the space between the
-            // opening quote of the attribute and the first character. In that spot, the
-            // commonAncestorContainer is actually the entire attribute node since `="` is
-            // added as a simple text node. Since the opening quote is immediately before
-            // the attribute, the node for that attribute must be the next sibling and the
-            // text of the attribute's value must be the first child of that sibling.
-            if (container.parentNode.classList.contains("editing")) {
-                container = container.nextSibling.firstChild;
-                startOffset = 0;
-            }
-            startOffset += wordPrefix.length;
-
-            if (!container)
-                return;
-
-            let replacementSelectionRange = document.createRange();
-            replacementSelectionRange.setStart(container, startOffset);
-            replacementSelectionRange.setEnd(container, startOffset + replacement.length);
-
-            selection.removeAllRanges();
-            selection.addRange(replacementSelectionRange);
 
             if (typeof config.numberCommitHandler === "function")
                 config.numberCommitHandler(element, getContent(element), oldText, context, moveDirection);
@@ -325,7 +274,70 @@ WebInspector.startEditing = function(element, config)
     };
 };
 
-WebInspector.EditingSupport = {
+WI.incrementElementValue = function(element, delta)
+{
+    let selection = element.ownerDocument.defaultView.getSelection();
+    if (!selection.rangeCount)
+        return false;
+
+    let range = selection.getRangeAt(0);
+    if (!element.contains(range.commonAncestorContainer))
+        return false;
+
+    let wordRange = range.startContainer.rangeOfWord(range.startOffset, WI.EditingSupport.StyleValueDelimiters, element);
+    let word = wordRange.toString();
+    let wordPrefix = "";
+    let wordSuffix = "";
+    let nonNumberInWord = /[^\d-\.]+/.exec(word);
+    if (nonNumberInWord) {
+        let nonNumberEndOffset = nonNumberInWord.index + nonNumberInWord[0].length;
+        if (range.startOffset > wordRange.startOffset + nonNumberInWord.index && nonNumberEndOffset < word.length && range.startOffset !== wordRange.startOffset) {
+            wordPrefix = word.substring(0, nonNumberEndOffset);
+            word = word.substring(nonNumberEndOffset);
+        } else {
+            wordSuffix = word.substring(nonNumberInWord.index);
+            word = word.substring(0, nonNumberInWord.index);
+        }
+    }
+
+    let matches = WI.EditingSupport.CSSNumberRegex.exec(word);
+    if (!matches || matches.length !== 4)
+        return false;
+
+    let replacement = matches[1] + (Math.round((parseFloat(matches[2]) + delta) * 100) / 100) + matches[3];
+
+    selection.removeAllRanges();
+    selection.addRange(wordRange);
+    document.execCommand("insertText", false, wordPrefix + replacement + wordSuffix);
+
+    let container = range.commonAncestorContainer;
+    let startOffset = range.startOffset;
+    // This check is for the situation when the cursor is in the space between the
+    // opening quote of the attribute and the first character. In that spot, the
+    // commonAncestorContainer is actually the entire attribute node since `="` is
+    // added as a simple text node. Since the opening quote is immediately before
+    // the attribute, the node for that attribute must be the next sibling and the
+    // text of the attribute's value must be the first child of that sibling.
+    if (container.parentNode.classList.contains("editing") && container.nextSibling) {
+        container = container.nextSibling.firstChild;
+        startOffset = 0;
+    }
+    startOffset += wordPrefix.length;
+
+    if (!container)
+        return false;
+
+    let replacementSelectionRange = document.createRange();
+    replacementSelectionRange.setStart(container, startOffset);
+    replacementSelectionRange.setEnd(container, startOffset + replacement.length);
+
+    selection.removeAllRanges();
+    selection.addRange(replacementSelectionRange);
+
+    return true;
+};
+
+WI.EditingSupport = {
     StyleValueDelimiters: " \xA0\t\n\"':;,/()",
     CSSNumberRegex: /(.*?)(-?(?:\d+(?:\.\d+)?|\.\d+))(.*)/,
     NumberRegex: /^(-?(?:\d+(?:\.\d+)?|\.\d+))$/

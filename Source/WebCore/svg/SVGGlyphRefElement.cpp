@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Leo Yang <leoyang@webkit.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,23 +27,18 @@
 #include "SVGNames.h"
 #include "SVGParserUtilities.h"
 #include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_STRING(SVGGlyphRefElement, XLinkNames::hrefAttr, Href, href)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGGlyphRefElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(href)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGElement)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGGlyphRefElement);
 
 inline SVGGlyphRefElement::SVGGlyphRefElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
+    , SVGURIReference(this)
 {
     ASSERT(hasTagName(SVGNames::glyphRefTag));
-    registerAnimatedPropertiesForSVGGlyphRefElement();
 }
 
 Ref<SVGGlyphRefElement> SVGGlyphRefElement::create(const QualifiedName& tagName, Document& document)
@@ -54,7 +50,7 @@ bool SVGGlyphRefElement::hasValidGlyphElement(String& glyphName) const
 {
     // FIXME: We only support xlink:href so far.
     // https://bugs.webkit.org/show_bug.cgi?id=64787
-    return is<SVGGlyphElement>(targetElementFromIRIString(getAttribute(XLinkNames::hrefAttr), document(), &glyphName));
+    return is<SVGGlyphElement>(targetElementFromIRIString(getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr), document(), &glyphName));
 }
 
 static float parseFloat(const AtomicString& value)

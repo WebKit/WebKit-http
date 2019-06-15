@@ -35,7 +35,7 @@ class TextResourceDecoder;
 
 class CachedXSLStyleSheet final : public CachedResource {
 public:
-    CachedXSLStyleSheet(CachedResourceRequest&&, SessionID);
+    CachedXSLStyleSheet(CachedResourceRequest&&, PAL::SessionID);
     virtual ~CachedXSLStyleSheet();
 
     const String& sheet() const { return m_sheet; }
@@ -55,6 +55,6 @@ private:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedXSLStyleSheet, CachedResource::XSLStyleSheet)
+SPECIALIZE_TYPE_TRAITS_CACHED_RESOURCE(CachedXSLStyleSheet, CachedResource::Type::XSLStyleSheet)
 
 #endif // ENABLE(XSLT)

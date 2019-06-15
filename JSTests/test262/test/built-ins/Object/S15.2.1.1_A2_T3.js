@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Object function is called with one argument value,
     and the value neither is null nor undefined, and is supplied, return ToObject(value)
 es5id: 15.2.1.1_A2_T3
@@ -12,7 +12,7 @@ description: Calling Object function with string argument value
 var str = 'Luke Skywalker';
 
 // CHECK#1
-if (typeof str  !== 'string') {
+if (typeof str !== 'string') {
   $ERROR('#1: "Luke Skywalker" should be a String primitive');
 }
 
@@ -29,6 +29,6 @@ if (typeof obj !== "object") {
 }
 
 //CHECK#4
-if ((obj != "Luke Skywalker")||(obj === "Luke Skywalker")) {
+if ((obj != "Luke Skywalker") || (obj === "Luke Skywalker")) {
   $ERROR('#4: Object("Luke Skywalker") returns ToObject("Luke Skywalker")');
 }

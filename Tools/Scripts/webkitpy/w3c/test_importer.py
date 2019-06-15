@@ -79,6 +79,7 @@ import mimetypes
 from webkitpy.common.host import Host
 from webkitpy.common.system.filesystem import FileSystem
 from webkitpy.common.webkit_finder import WebKitFinder
+from webkitpy.w3c.common import WPT_GH_URL
 from webkitpy.w3c.test_parser import TestParser
 from webkitpy.w3c.test_converter import convert_for_webkit
 from webkitpy.w3c.test_downloader import TestDownloader
@@ -361,6 +362,9 @@ class TestImporter(object):
 
     def write_html_files_for_templated_js_tests(self, orig_filepath, new_filepath):
         content = '<!-- This file is required for WebKit test infrastructure to run the templated test -->'
+        if (orig_filepath.endswith('.window.js')):
+            self.filesystem.write_text_file(new_filepath.replace('.window.js', '.window.html'), content)
+            return
         if (orig_filepath.endswith('.worker.js')):
             self.filesystem.write_text_file(new_filepath.replace('.worker.js', '.worker.html'), content)
             return
@@ -378,6 +382,10 @@ class TestImporter(object):
 
         failed_conversion_files = []
 
+        # We currently need to rewrite css web-platform-tests because they use a separate "reference" folder for
+        # their ref-tests' results.
+        folders_needing_file_rewriting = ['web-platform-tests/css', ]
+
         for dir_to_copy in self.import_list:
             total_imported_tests += dir_to_copy['total_tests']
             total_imported_reftests += dir_to_copy['reftests']
@@ -393,6 +401,12 @@ class TestImporter(object):
 
             subpath = self.filesystem.relpath(orig_path, self.source_directory)
             new_path = self.filesystem.join(self.destination_directory, subpath)
+
+            should_rewrite_files = False
+            for folder_needing_file_rewriting in folders_needing_file_rewriting:
+                if subpath.startswith(folder_needing_file_rewriting):
+                    should_rewrite_files = True
+                    break
 
             if not(self.filesystem.exists(new_path)):
                 self.filesystem.maybe_make_directory(new_path)
@@ -433,7 +447,7 @@ class TestImporter(object):
                 # Only html, xml, or css should be converted
                 # FIXME: Eventually, so should js when support is added for this type of conversion
                 mimetype = mimetypes.guess_type(orig_filepath)
-                if 'html' in str(mimetype[0]) or 'xml' in str(mimetype[0])  or 'css' in str(mimetype[0]):
+                if should_rewrite_files and ('html' in str(mimetype[0]) or 'xml' in str(mimetype[0])  or 'css' in str(mimetype[0])):
                     try:
                         converted_file = convert_for_webkit(new_path, filename=orig_filepath, reference_support_info=reference_support_info, host=self.host, convert_test_harness_links=self.should_convert_test_harness_links(subpath))
                     except:
@@ -519,7 +533,7 @@ class TestImporter(object):
         should_update = self.options.clean_destination_directory
         for full_path in self._slow_tests:
             w3c_test_path = self.filesystem.relpath(full_path, self.source_directory)
-            print w3c_test_path
+            print(w3c_test_path)
             # No need to mark tests as slow if they are in skipped directories
             if self._already_identified_as_resource_file(w3c_test_path):
                 continue
@@ -573,7 +587,7 @@ class TestImporter(object):
         import_log.append('The tests in this directory were imported from the W3C repository.\n')
         import_log.append('Do NOT modify these tests directly in WebKit.\n')
         import_log.append('Instead, create a pull request on the WPT github:\n')
-        import_log.append('\thttps://github.com/w3c/web-platform-tests\n\n')
+        import_log.append('\t%s\n\n' % WPT_GH_URL)
         import_log.append('Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport\n\n')
         import_log.append('Do NOT modify or remove this file.\n\n')
         import_log.append('------------------------------------------------------------------------\n')

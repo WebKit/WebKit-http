@@ -2,7 +2,7 @@
 // See LICENSE for details.
 
 /*---
-info: >
+info: |
     Promise executor has predictable environment
     'this' should be global object in sloppy mode,
     undefined in strict mode
@@ -14,10 +14,10 @@ flags: [async, noStrict]
 
 var expectedThis = this;
 
-var p = new Promise(function (resolve) {
-    if (this !== expectedThis) {
-        $ERROR("'this' must be global object, got " + this);
-    }
+var p = new Promise(function(resolve) {
+  if (this !== expectedThis) {
+    $ERROR("'this' must be global object, got " + this);
+  }
 
-    resolve();
+  resolve();
 }).then($DONE, $DONE);

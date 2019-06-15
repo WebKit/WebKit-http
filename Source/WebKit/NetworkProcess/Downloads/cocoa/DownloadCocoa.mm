@@ -26,23 +26,43 @@
 #import "config.h"
 #import "Download.h"
 
-#if USE(NETWORK_SESSION)
-
 #import "DataReference.h"
-#import <WebCore/NotImplemented.h>
+#import "NetworkSessionCocoa.h"
+#import "SessionTracker.h"
+#import <pal/spi/cf/CFNetworkSPI.h>
 
 namespace WebKit {
 
-void Download::resume(const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle& sandboxExtensionHandle)
+void Download::resume(const IPC::DataReference& resumeData, const String& path, SandboxExtension::Handle&& sandboxExtensionHandle)
 {
-    notImplemented();
+    m_sandboxExtension = SandboxExtension::create(WTFMove(sandboxExtensionHandle));
+    if (m_sandboxExtension)
+        m_sandboxExtension->consume();
+
+    auto* networkSession = SessionTracker::networkSession(m_sessionID);
+    if (!networkSession) {
+        WTFLogAlways("Could not find network session with given session ID");
+        return;
+    }
+    auto& cocoaSession = static_cast<NetworkSessionCocoa&>(*networkSession);
+    auto nsData = adoptNS([[NSData alloc] initWithBytes:resumeData.data() length:resumeData.size()]);
+
+    // FIXME: This is a temporary workaround for <rdar://problem/34745171>.
+    NSMutableDictionary *dictionary = [NSPropertyListSerialization propertyListWithData:nsData.get() options:NSPropertyListImmutable format:0 error:nullptr];
+    [dictionary setObject:static_cast<NSString*>(path) forKey:@"NSURLSessionResumeInfoLocalPath"];
+    NSData *updatedData = [NSPropertyListSerialization dataWithPropertyList:dictionary format:NSPropertyListXMLFormat_v1_0 options:0 error:nullptr];
+
+    m_downloadTask = cocoaSession.downloadTaskWithResumeData(updatedData);
+    cocoaSession.addDownloadID(m_downloadTask.get().taskIdentifier, m_downloadID);
+    m_downloadTask.get()._pathToDownloadTaskFile = path;
+
+    [m_downloadTask resume];
 }
     
 void Download::platformCancelNetworkLoad()
 {
     ASSERT(m_downloadTask);
-    [m_downloadTask cancelByProducingResumeData: ^(NSData * _Nullable resumeData)
-    {
+    [m_downloadTask cancelByProducingResumeData:^(NSData *resumeData) {
         if (resumeData && resumeData.bytes && resumeData.length)
             didCancel(IPC::DataReference(reinterpret_cast<const uint8_t*>(resumeData.bytes), resumeData.length));
         else
@@ -51,5 +71,3 @@ void Download::platformCancelNetworkLoad()
 }
 
 }
-
-#endif // USE(NETWORK_SESSION)

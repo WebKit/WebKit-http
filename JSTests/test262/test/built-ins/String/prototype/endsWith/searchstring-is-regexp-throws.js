@@ -4,7 +4,7 @@
 es6id: 21.1.3.6
 description: >
   Throws a TypeError if searchString is a RegExp.
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   ...
@@ -12,6 +12,7 @@ info: >
   5. ReturnIfAbrupt(isRegExp).
   6. If isRegExp is true, throw a TypeError exception.
   ...
+features: [String.prototype.endsWith]
 ---*/
 
 var searchString = /./;

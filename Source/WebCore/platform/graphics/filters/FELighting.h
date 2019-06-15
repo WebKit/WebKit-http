@@ -24,14 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FELighting_h
-#define FELighting_h
+#pragma once
 
 #include "Color.h"
 #include "Filter.h"
 #include "FilterEffect.h"
 #include "LightSource.h"
-#include <runtime/Uint8ClampedArray.h>
+#include <JavaScriptCore/Uint8ClampedArray.h>
 
 // Common base class for FEDiffuseLighting and FESpecularLighting
 
@@ -41,9 +40,21 @@ struct FELightingPaintingDataForNeon;
 
 class FELighting : public FilterEffect {
 public:
-    void platformApplySoftware() override;
-
     void determineAbsolutePaintRect() override { setAbsolutePaintRect(enclosingIntRect(maxEffectRect())); }
+
+    float surfaceScale() const { return m_surfaceScale; }
+    bool setSurfaceScale(float);
+
+    const Color& lightingColor() const { return m_lightingColor; }
+    bool setLightingColor(const Color&);
+
+    float kernelUnitLengthX() const { return m_kernelUnitLengthX; }
+    bool setKernelUnitLengthX(float);
+
+    float kernelUnitLengthY() const { return m_kernelUnitLengthY; }
+    bool setKernelUnitLengthY(float);
+
+    const LightSource& lightSource() const { return m_lightSource.get(); }
 
 protected:
     static const int s_minimalRectDimension = 100 * 100; // Empirical data limit for parallel jobs
@@ -51,6 +62,40 @@ protected:
     enum LightingType {
         DiffuseLighting,
         SpecularLighting
+    };
+    
+    struct AlphaWindow {
+        uint8_t alpha[3][3] { };
+        
+        // The implementations are lined up to make comparing indices easier.
+        uint8_t topLeft() const             { return alpha[0][0]; }
+        uint8_t left() const                { return alpha[1][0]; }
+        uint8_t bottomLeft() const          { return alpha[2][0]; }
+
+        uint8_t top() const                 { return alpha[0][1]; }
+        uint8_t center() const              { return alpha[1][1]; }
+        uint8_t bottom() const              { return alpha[2][1]; }
+
+        void setTop(uint8_t value)          { alpha[0][1] = value; }
+        void setCenter(uint8_t value)       { alpha[1][1] = value; }
+        void setBottom(uint8_t value)       { alpha[2][1] = value; }
+
+        void setTopRight(uint8_t value)     { alpha[0][2] = value; }
+        void setRight(uint8_t value)        { alpha[1][2] = value; }
+        void setBottomRight(uint8_t value)  { alpha[2][2] = value; }
+
+        static void shiftRow(uint8_t alpha[3])
+        {
+            alpha[0] = alpha[1];
+            alpha[1] = alpha[2];
+        }
+        
+        void shift()
+        {
+            shiftRow(alpha[0]);
+            shiftRow(alpha[1]);
+            shiftRow(alpha[2]);
+        }
     };
 
     struct LightingData {
@@ -61,15 +106,15 @@ protected:
         int widthDecreasedByOne;
         int heightDecreasedByOne;
 
-        inline void topLeft(int offset, IntPoint& normalVector);
-        inline void topRow(int offset, IntPoint& normalVector);
-        inline void topRight(int offset, IntPoint& normalVector);
-        inline void leftColumn(int offset, IntPoint& normalVector);
-        inline void interior(int offset, IntPoint& normalVector);
-        inline void rightColumn(int offset, IntPoint& normalVector);
-        inline void bottomLeft(int offset, IntPoint& normalVector);
-        inline void bottomRow(int offset, IntPoint& normalVector);
-        inline void bottomRight(int offset, IntPoint& normalVector);
+        inline IntSize topLeftNormal(int offset) const;
+        inline IntSize topRowNormal(int offset) const;
+        inline IntSize topRightNormal(int offset) const;
+        inline IntSize leftColumnNormal(int offset) const;
+        inline IntSize interiorNormal(int offset, AlphaWindow&) const;
+        inline IntSize rightColumnNormal(int offset) const;
+        inline IntSize bottomLeftNormal(int offset) const;
+        inline IntSize bottomRowNormal(int offset) const;
+        inline IntSize bottomRightNormal(int offset) const;
     };
 
     template<typename Type>
@@ -88,21 +133,24 @@ protected:
 
     FELighting(Filter&, LightingType, const Color&, float, float, float, float, float, float, Ref<LightSource>&&);
 
-    bool drawLighting(Uint8ClampedArray*, int, int);
-    inline void inlineSetPixel(int offset, LightingData&, LightSource::PaintingData&,
-                               int lightX, int lightY, float factorX, float factorY, IntPoint& normalVector);
+    const char* filterName() const final { return "FELighting"; }
 
-    // Not worth to inline every occurence of setPixel.
-    void setPixel(int offset, LightingData&, LightSource::PaintingData&,
-                  int lightX, int lightY, float factorX, float factorY, IntPoint& normalVector);
+    bool drawLighting(Uint8ClampedArray&, int, int);
 
-    inline void platformApply(LightingData&, LightSource::PaintingData&);
+    void setPixel(int offset, const LightingData&, const LightSource::PaintingData&, int x, int y, float factorX, float factorY, IntSize normalVector);
+    void setPixelInternal(int offset, const LightingData&, const LightSource::PaintingData&, int x, int y, float factorX, float factorY, IntSize normalVector, float alpha);
 
-    inline void platformApplyGenericPaint(LightingData&, LightSource::PaintingData&, int startX, int startY);
-    inline void platformApplyGeneric(LightingData&, LightSource::PaintingData&);
+    void platformApplySoftware() override;
 
+    void platformApply(const LightingData&, const LightSource::PaintingData&);
+
+    void platformApplyGenericPaint(const LightingData&, const LightSource::PaintingData&, int startX, int startY);
+    void platformApplyGeneric(const LightingData&, const LightSource::PaintingData&);
+
+#if CPU(ARM_NEON) && CPU(ARM_TRADITIONAL) && COMPILER(GCC_OR_CLANG)
     static int getPowerCoefficients(float exponent);
-    inline void platformApplyNeon(LightingData&, LightSource::PaintingData&);
+    inline void platformApplyNeon(const LightingData&, const LightSource::PaintingData&);
+#endif
 
     LightingType m_lightingType;
     Ref<LightSource> m_lightSource;
@@ -118,4 +166,3 @@ protected:
 
 } // namespace WebCore
 
-#endif // FELighting_h

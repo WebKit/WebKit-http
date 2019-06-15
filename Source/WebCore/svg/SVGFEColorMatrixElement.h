@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -37,13 +38,13 @@ struct SVGPropertyTraits<ColorMatrixType> {
         case FECOLORMATRIX_TYPE_UNKNOWN:
             return emptyString();
         case FECOLORMATRIX_TYPE_MATRIX:
-            return ASCIILiteral("matrix");
+            return "matrix"_s;
         case FECOLORMATRIX_TYPE_SATURATE:
-            return ASCIILiteral("saturate");
+            return "saturate"_s;
         case FECOLORMATRIX_TYPE_HUEROTATE:
-            return ASCIILiteral("hueRotate");
+            return "hueRotate"_s;
         case FECOLORMATRIX_TYPE_LUMINANCETOALPHA:
-            return ASCIILiteral("luminanceToAlpha");
+            return "luminanceToAlpha"_s;
         }
 
         ASSERT_NOT_REACHED();
@@ -65,22 +66,37 @@ struct SVGPropertyTraits<ColorMatrixType> {
 };
 
 class SVGFEColorMatrixElement final : public SVGFilterPrimitiveStandardAttributes {
+    WTF_MAKE_ISO_ALLOCATED(SVGFEColorMatrixElement);
 public:
     static Ref<SVGFEColorMatrixElement> create(const QualifiedName&, Document&);
+
+    String in1() const { return m_in1.currentValue(attributeOwnerProxy()); }
+    ColorMatrixType type() const { return m_type.currentValue(attributeOwnerProxy()); }
+    const SVGNumberListValues& values() const { return m_values.currentValue(attributeOwnerProxy()); }
+
+    RefPtr<SVGAnimatedString> in1Animated() { return m_in1.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedEnumeration> typeAnimated() { return m_type.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedNumberList> valuesAnimated() { return m_values.animatedProperty(attributeOwnerProxy()); }
 
 private:
     SVGFEColorMatrixElement(const QualifiedName&, Document&);
 
+    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGFEColorMatrixElement, SVGFilterPrimitiveStandardAttributes>;
+    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
+    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
+    static void registerAttributes();
+
+    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
     void svgAttributeChanged(const QualifiedName&) override;
+
+    bool setFilterEffectAttribute(FilterEffect*, const QualifiedName&) override;
     RefPtr<FilterEffect> build(SVGFilterBuilder*, Filter&) override;
 
-    BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGFEColorMatrixElement)
-        DECLARE_ANIMATED_STRING(In1, in1)
-        DECLARE_ANIMATED_ENUMERATION(Type, type, ColorMatrixType)
-        DECLARE_ANIMATED_NUMBER_LIST(Values, values)
-    END_DECLARE_ANIMATED_PROPERTIES
+    AttributeOwnerProxy m_attributeOwnerProxy { *this };
+    SVGAnimatedStringAttribute m_in1;
+    SVGAnimatedEnumerationAttribute<ColorMatrixType> m_type { FECOLORMATRIX_TYPE_MATRIX };
+    SVGAnimatedNumberListAttribute m_values;
 };
 
 } // namespace WebCore

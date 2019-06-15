@@ -7,23 +7,23 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_TEST_WIN_D3D_RENDERER_H_
-#define WEBRTC_TEST_WIN_D3D_RENDERER_H_
+#ifndef TEST_WIN_D3D_RENDERER_H_
+#define TEST_WIN_D3D_RENDERER_H_
 
 #include <Windows.h>
 #include <d3d9.h>
-#pragma comment(lib, "d3d9.lib")       // located in DirectX SDK
+#pragma comment(lib, "d3d9.lib")  // located in DirectX SDK
 
-#include "webrtc/base/scoped_ref_ptr.h"
-#include "webrtc/test/video_renderer.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/scoped_ref_ptr.h"
+#include "test/video_renderer.h"
 
 namespace webrtc {
 namespace test {
 
 class D3dRenderer : public VideoRenderer {
  public:
-  static D3dRenderer* Create(const char* window_title, size_t width,
+  static D3dRenderer* Create(const char* window_title,
+                             size_t width,
                              size_t height);
   virtual ~D3dRenderer();
 
@@ -32,7 +32,9 @@ class D3dRenderer : public VideoRenderer {
  private:
   D3dRenderer(size_t width, size_t height);
 
-  static LRESULT WINAPI WindowProc(HWND hwnd, UINT msg, WPARAM wparam,
+  static LRESULT WINAPI WindowProc(HWND hwnd,
+                                   UINT msg,
+                                   WPARAM wparam,
                                    LPARAM lparam);
   bool Init(const char* window_title);
   void Resize(size_t width, size_t height);
@@ -50,4 +52,4 @@ class D3dRenderer : public VideoRenderer {
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_TEST_WIN_D3D_RENDERER_H_
+#endif  // TEST_WIN_D3D_RENDERER_H_

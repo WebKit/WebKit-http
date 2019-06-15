@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.slice
 description: >
   Use defaultConstructor if @@species is either undefined or null
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
@@ -24,7 +24,7 @@ info: >
   6. If S is either undefined or null, return defaultConstructor.
   ...
 includes: [testTypedArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

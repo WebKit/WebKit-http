@@ -23,7 +23,7 @@ class Triggerable extends LabeledObject {
     isDisabled() { return this._isDisabled; }
     repositoryGroups() { return this._repositoryGroups; }
 
-    acceptsTest(test) { return this._acceptedTests.has(test); }
+    acceptedTests() { return this._acceptedTests; }
 
     static findByTestConfiguration(test, platform)
     {
@@ -58,6 +58,7 @@ class TriggerableRepositoryGroup extends LabeledObject {
     {
         super(id, object);
         this._description = object.description;
+        this._isHidden = !!object.hidden;
         this._acceptsCustomRoots = !!object.acceptsCustomRoots;
         this._repositories = Repository.sortByNamePreferringOnesWithURL(object.repositories.map((item) => item.repository));
         this._patchAcceptingSet = new Set(object.repositories.filter((item) => item.acceptsPatch).map((item) => item.repository));
@@ -65,8 +66,7 @@ class TriggerableRepositoryGroup extends LabeledObject {
 
     accepts(commitSet)
     {
-        // FIXME: Add a check for patch.
-        const commitSetRepositories = Repository.sortByNamePreferringOnesWithURL(commitSet.repositories());
+        const commitSetRepositories = commitSet.topLevelRepositories();
         if (this._repositories.length != commitSetRepositories.length)
             return false;
         for (let i = 0; i < this._repositories.length; i++) {
@@ -87,6 +87,7 @@ class TriggerableRepositoryGroup extends LabeledObject {
     }
 
     description() { return this._description || this.name(); }
+    isHidden() { return this._isHidden; }
     acceptsCustomRoots() { return this._acceptsCustomRoots; }
     repositories() { return this._repositories; }
 

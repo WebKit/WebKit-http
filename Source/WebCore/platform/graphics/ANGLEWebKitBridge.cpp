@@ -45,7 +45,7 @@ static void appendSymbol(const sh::ShaderVariable& variable, ANGLEShaderSymbolTy
     symbols.append(std::make_pair(symbolType, variableToAppend));
     
     if (variable.isArray()) {
-        for (unsigned i = 0; i < variable.elementCount(); i++) {
+        for (unsigned i = 0; i < std::max(1u, variable.arraySizes.back()); i++) {
             std::string arrayBrackets = "[" + std::to_string(i) + "]";
             std::string arrayName = name + arrayBrackets;
             std::string arrayMappedName = mappedName + arrayBrackets;
@@ -75,7 +75,7 @@ static void getSymbolInfo(const sh::ShaderVariable& variable, ANGLEShaderSymbolT
 {
     if (variable.isStruct()) {
         if (variable.isArray()) {
-            for (unsigned i = 0; i < variable.elementCount(); i++) {
+            for (unsigned i = 0; i < std::max(1u, variable.arraySizes.back()); i++) {
                 std::string arrayBrackets = "[" + std::to_string(i) + "]";
                 std::string arrayName = variable.name + arrayBrackets;
                 std::string arrayMappedName = variable.mappedName + arrayBrackets;
@@ -160,7 +160,7 @@ void ANGLEWebKitBridge::setResources(const ShBuiltInResources& resources)
     m_resources = resources;
 }
 
-bool ANGLEWebKitBridge::compileShaderSource(const char* shaderSource, ANGLEShaderType shaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, int extraCompileOptions)
+bool ANGLEWebKitBridge::compileShaderSource(const char* shaderSource, ANGLEShaderType shaderType, String& translatedShaderSource, String& shaderValidationLog, Vector<std::pair<ANGLEShaderSymbolType, sh::ShaderVariable>>& symbols, uint64_t extraCompileOptions)
 {
     if (!builtCompilers) {
         m_fragmentCompiler = sh::ConstructCompiler(GL_FRAGMENT_SHADER, m_shaderSpec, m_shaderOutput, &m_resources);

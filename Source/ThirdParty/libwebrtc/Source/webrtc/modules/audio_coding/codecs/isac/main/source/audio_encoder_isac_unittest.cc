@@ -10,31 +10,35 @@
 
 #include <limits>
 
-#include "webrtc/modules/audio_coding/codecs/isac/main/include/audio_encoder_isac.h"
-#include "webrtc/test/gtest.h"
+#include "modules/audio_coding/codecs/isac/main/include/audio_encoder_isac.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
 namespace {
 
-void TestBadConfig(const AudioEncoderIsac::Config& config) {
+void TestBadConfig(const AudioEncoderIsacFloatImpl::Config& config) {
   EXPECT_FALSE(config.IsOk());
 }
 
-void TestGoodConfig(const AudioEncoderIsac::Config& config) {
+void TestGoodConfig(const AudioEncoderIsacFloatImpl::Config& config) {
   EXPECT_TRUE(config.IsOk());
-  AudioEncoderIsac aei(config);
+  AudioEncoderIsacFloatImpl aei(config);
 }
 
 // Wrap subroutine calls that test things in this, so that the error messages
 // will be accompanied by stack traces that make it possible to tell which
 // subroutine invocation caused the failure.
-#define S(x) do { SCOPED_TRACE(#x); x; } while (0)
+#define S(x)          \
+  do {                \
+    SCOPED_TRACE(#x); \
+    x;                \
+  } while (0)
 
 }  // namespace
 
 TEST(AudioEncoderIsacTest, TestConfigBitrate) {
-  AudioEncoderIsac::Config config;
+  AudioEncoderIsacFloatImpl::Config config;
 
   // The default value is some real, positive value.
   EXPECT_GT(config.bit_rate, 1);

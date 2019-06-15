@@ -27,6 +27,10 @@
 
 #include <cstdlib>
 
+#if USE(GCRYPT)
+#include <pal/crypto/gcrypt/Initialization.h>
+#endif
+
 using namespace WebKit;
 
 int main(int argc, char** argv)
@@ -40,6 +44,10 @@ int main(int argc, char** argv)
     // https://bugzilla.gnome.org/show_bug.cgi?id=738633
     // WARNING: This needs to be KEPT IN SYNC with WebProcessMain.cpp.
     setenv("G_TLS_GNUTLS_PRIORITY", "NORMAL:%COMPAT:!VERS-SSL3.0:!ARCFOUR-128", 0);
+
+#if USE(GCRYPT)
+    PAL::GCrypt::initialize();
+#endif
 
     return NetworkProcessMainUnix(argc, argv);
 }

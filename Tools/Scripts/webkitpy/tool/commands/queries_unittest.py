@@ -118,7 +118,8 @@ class QueryCommandsTest(CommandsTest):
             "Bugs with attachments pending review:\n" \
             "http://webkit.org/b/bugid   Description (age in days)\n" \
             "http://webkit.org/b/50001   Bug with a patch needing review. (0)\n" \
-            "Total: 1\n"
+            "http://webkit.org/b/50007   Security bug with a patch needing review. (0)\n" \
+            "Total: 2\n"
         self.assert_execute_outputs(PatchesToReview(), None, expected_stdout, expected_stderr, options=options)
 
         options.cc_email = None
@@ -187,7 +188,7 @@ class PrintExpectationsTest(unittest.TestCase):
                        'failures/expected/image.html [ ImageOnlyFailure ]\n'
                        'failures/expected/text.html [ Failure ]\n'
                        '\n'
-                       '// For test-win-win7\n'
+                       '// For test-win-7sp0\n'
                        'failures/expected/image.html [ ImageOnlyFailure ]\n'
                        'failures/expected/text.html [ Failure ]\n'
                        '\n'
@@ -281,7 +282,7 @@ class PrintBaselinesTest(unittest.TestCase):
                            'passes/text-expected.png\n'
                            'passes/text-expected.txt\n'
                            '\n'
-                           '// For test-win-win7\n'
+                           '// For test-win-7sp0\n'
                            'passes/text-expected.png\n'
                            'passes/text-expected.txt\n'
                            '\n'

@@ -32,39 +32,30 @@
 #include "SecurityOrigin.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
-
-using namespace WebCore;
+#include <wtf/text/StringConcatenateNumbers.h>
 
 namespace WebCore {
 
-SecurityOriginData SecurityOriginData::fromSecurityOrigin(const SecurityOrigin& securityOrigin)
+String SecurityOriginData::toString() const
 {
-    SecurityOriginData securityOriginData;
+    if (protocol == "file")
+        return "file://"_s;
 
-    securityOriginData.protocol = securityOrigin.protocol();
-    securityOriginData.host = securityOrigin.host();
-    securityOriginData.port = securityOrigin.port();
-
-    return securityOriginData;
+    if (!port)
+        return makeString(protocol, "://", host);
+    return makeString(protocol, "://", host, ':', static_cast<uint32_t>(*port));
 }
-
-#if !LOG_DISABLED
-String SecurityOriginData::debugString() const
-{
-    return makeString(protocol, "://", host, ":", String::number(port.value_or(0)));
-}
-#endif
 
 SecurityOriginData SecurityOriginData::fromFrame(Frame* frame)
 {
     if (!frame)
-        return SecurityOriginData();
+        return SecurityOriginData { };
     
-    Document* document = frame->document();
+    auto* document = frame->document();
     if (!document)
-        return SecurityOriginData();
+        return SecurityOriginData { };
 
-    return SecurityOriginData::fromSecurityOrigin(document->securityOrigin());
+    return document->securityOrigin().data();
 }
 
 Ref<SecurityOrigin> SecurityOriginData::securityOrigin() const
@@ -82,12 +73,12 @@ String SecurityOriginData::databaseIdentifier() const
     // Now that we've fixed that bug, we still need to produce this string
     // to avoid breaking existing persistent state.
     if (equalIgnoringASCIICase(protocol, "file"))
-        return ASCIILiteral("file__0");
+        return "file__0"_s;
     
     StringBuilder stringBuilder;
     stringBuilder.append(protocol);
     stringBuilder.append(separatorCharacter);
-    stringBuilder.append(encodeForFileName(host));
+    stringBuilder.append(FileSystem::encodeForFileName(host));
     stringBuilder.append(separatorCharacter);
     stringBuilder.appendNumber(port.value_or(0));
     
@@ -121,7 +112,12 @@ std::optional<SecurityOriginData> SecurityOriginData::fromDatabaseIdentifier(con
     if (port < 0 || port > std::numeric_limits<uint16_t>::max())
         return std::nullopt;
     
-    return SecurityOriginData {databaseIdentifier.substring(0, separator1), databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1), static_cast<uint16_t>(port)};
+    auto protocol = databaseIdentifier.substring(0, separator1);
+    auto host = databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1);
+    if (!port)
+        return SecurityOriginData { protocol, host, std::nullopt };
+
+    return SecurityOriginData { protocol, host, static_cast<uint16_t>(port) };
 }
 
 SecurityOriginData SecurityOriginData::isolatedCopy() const

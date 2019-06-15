@@ -28,6 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import logging
 import optparse
 import os
@@ -68,9 +69,9 @@ def main(argv, stdout, stderr):
 
     try:
         port = host.port_factory.get(options.platform, options)
-    except NotImplementedError, e:
+    except NotImplementedError as e:
         # FIXME: is this the best way to handle unsupported port names?
-        print >> stderr, str(e)
+        print(str(e), file=stderr)
         return EXCEPTIONAL_EXIT_STATUS
 
     if options.print_expectations:
@@ -92,7 +93,7 @@ def main(argv, stdout, stderr):
         return INTERRUPTED_EXIT_STATUS
     except BaseException as e:
         if isinstance(e, Exception):
-            print >> stderr, '\n%s raised: %s' % (e.__class__.__name__, str(e))
+            print('\n%s raised: %s' % (e.__class__.__name__, str(e)), file=stderr)
             traceback.print_exc(file=stderr)
         return EXCEPTIONAL_EXIT_STATUS
 
@@ -289,13 +290,17 @@ def parse_args(args):
         optparse.make_option('--display-server', choices=['xvfb', 'xorg', 'weston', 'wayland'], default='xvfb',
             help='"xvfb": Use a virtualized X11 server. "xorg": Use the current X11 session. '
                  '"weston": Use a virtualized Weston server. "wayland": Use the current wayland session.'),
+        optparse.make_option("--world-leaks", action="store_true", default=False, help="Check for world leaks (currently, only documents). Differs from --leaks in that this uses internal instrumentation, rather than external tools."),
     ]))
 
-    option_group_definitions.append(("iOS Simulator Options", [
-        optparse.make_option('--runtime', help='iOS Simulator runtime identifier (default: latest runtime)'),
-        optparse.make_option('--device-type', help='iOS Simulator device type identifier (default: i386 -> iPhone 5, x86_64 -> iPhone 5s)'),
+    option_group_definitions.append(("iOS Options", [
+        optparse.make_option('--no-install', action='store_const', const=False, default=True, dest='install',
+            help='Skip install step for device and simulator testing'),
+        optparse.make_option('--version', help='Specify the version of iOS to be used. By default, this will adopt the runtime for iOS Simulator.'),
+        optparse.make_option('--device-type', help='iOS Simulator device type identifier (default: i386 -> iPhone 5, x86_64 -> iPhone SE)'),
         optparse.make_option('--dedicated-simulators', action="store_true", default=False,
             help="If set, dedicated iOS simulators will always be created.  If not set, the script will attempt to use any currently running simulator."),
+        optparse.make_option('--show-touches', action="store_true", default=False, help="If set, a small dot will be shown where the generated touches are. Helpful for debugging touch tests."),
     ]))
 
     option_group_definitions.append(("Miscellaneous Options", [
@@ -322,9 +327,9 @@ def parse_args(args):
             help=("The name of the buildslave used. e.g. apple-macpro-6.")),
         optparse.make_option("--build-number", default="DUMMY_BUILD_NUMBER",
             help=("The build number of the builder running this script.")),
-        optparse.make_option("--test-results-server", default="",
+        optparse.make_option("--test-results-server", action="append", default=[],
             help=("If specified, upload results json files to this appengine server.")),
-        optparse.make_option("--results-server-host", default="",
+        optparse.make_option("--results-server-host", action="append", default=[],
             help=("If specified, upload results JSON file to this results server.")),
         optparse.make_option("--additional-repository-name",
             help=("The name of an additional subversion or git checkout")),
@@ -334,7 +339,7 @@ def parse_args(args):
             help=("If specified, tests are allowed to make requests to the specified hostname."))
     ]))
 
-    option_parser = optparse.OptionParser()
+    option_parser = optparse.OptionParser(usage="%prog [options] [<path>...]")
 
     for group_name, group_options in option_group_definitions:
         option_group = optparse.OptionGroup(option_parser, group_name)
@@ -425,6 +430,9 @@ def _set_up_derived_options(port, options):
     if options.platform in ["gtk", "wpe"]:
         options.webkit_test_runner = True
 
+    if options.leaks:
+        options.additional_env_var.append("JSC_usePoisoning=0")
+        options.additional_env_var.append("__XPC_JSC_usePoisoning=0")
 
 def run(port, options, args, logging_stream):
     logger = logging.getLogger()

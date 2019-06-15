@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,10 @@
 #ifndef AudioSession_h
 #define AudioSession_h
 
-#include "PlatformExportMacros.h"
-
 #if USE(AUDIO_SESSION)
 
 #include <memory>
+#include <wtf/EnumTraits.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
@@ -38,6 +37,12 @@
 namespace WebCore {
 
 class AudioSessionPrivate;
+
+enum class RouteSharingPolicy {
+    Default,
+    LongForm,
+    Independent,
+};
 
 class AudioSession {
     WTF_MAKE_NONCOPYABLE(AudioSession);
@@ -59,18 +64,21 @@ public:
     void setCategoryOverride(CategoryType);
     CategoryType categoryOverride() const;
 
+    RouteSharingPolicy routeSharingPolicy() const;
+    String routingContextUID() const;
+
     float sampleRate() const;
     size_t bufferSize() const;
     size_t numberOfOutputChannels() const;
 
     bool tryToSetActive(bool);
 
-    size_t preferredBufferSize() const;
+    WEBCORE_EXPORT size_t preferredBufferSize() const;
     void setPreferredBufferSize(size_t);
 
     class MutedStateObserver {
     public:
-        virtual ~MutedStateObserver() { }
+        virtual ~MutedStateObserver() = default;
 
         virtual void hardwareMutedStateDidChange(AudioSession*) = 0;
     };
@@ -90,6 +98,17 @@ private:
     HashSet<MutedStateObserver*> m_observers;
 };
 
+}
+
+namespace WTF {
+template<> struct EnumTraits<WebCore::RouteSharingPolicy> {
+    using values = EnumValues<
+    WebCore::RouteSharingPolicy,
+    WebCore::RouteSharingPolicy::Default,
+    WebCore::RouteSharingPolicy::LongForm,
+    WebCore::RouteSharingPolicy::Independent
+    >;
+};
 }
 
 #endif // USE(AUDIO_SESSION)

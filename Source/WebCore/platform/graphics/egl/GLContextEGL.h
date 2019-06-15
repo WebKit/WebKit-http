@@ -49,9 +49,14 @@ public:
     static std::unique_ptr<GLContextEGL> createContext(GLNativeWindowType, PlatformDisplay&);
     static std::unique_ptr<GLContextEGL> createSharingContext(PlatformDisplay&);
 
+    static const char* errorString(int statusCode);
+    static const char* lastErrorString();
+
     virtual ~GLContextEGL();
 
 private:
+    static EGLContext createContextForEGLVersion(PlatformDisplay&, EGLConfig, EGLContext);
+
     bool makeContextCurrent() override;
     void swapBuffers() override;
     void waitNative() override;

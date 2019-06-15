@@ -27,6 +27,7 @@
 #ifndef AsyncRequest_h
 #define AsyncRequest_h
 
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -106,6 +107,8 @@ template<typename... Arguments> void AsyncRequest::completeRequest(Arguments&&..
 
 class AsyncRequestMap {
 public:
+    using RequestMap = HashMap<uint64_t, RefPtr<AsyncRequest>>;
+
     AsyncRequestMap()
 #ifndef NDEBUG
         : m_lastRequestIDTaken(std::numeric_limits<uint64_t>::max())
@@ -135,13 +138,13 @@ public:
         m_requestMap.clear();
     }
 
-    WTF::IteratorRange<HashMap<uint64_t, RefPtr<AsyncRequest>>::iterator::Values> values()
+    typename RequestMap::ValuesIteratorRange values()
     {
         return m_requestMap.values();
     }
 
 private:
-    HashMap<uint64_t, RefPtr<AsyncRequest>> m_requestMap;
+    RequestMap m_requestMap;
 #ifndef NDEBUG
     uint64_t m_lastRequestIDTaken;
 #endif

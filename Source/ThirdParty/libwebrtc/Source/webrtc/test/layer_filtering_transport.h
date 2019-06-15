@@ -7,14 +7,15 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_TEST_LAYER_FILTERING_TRANSPORT_H_
-#define WEBRTC_TEST_LAYER_FILTERING_TRANSPORT_H_
-
-#include "webrtc/call/call.h"
-#include "webrtc/test/direct_transport.h"
-#include "webrtc/test/fake_network_pipe.h"
+#ifndef TEST_LAYER_FILTERING_TRANSPORT_H_
+#define TEST_LAYER_FILTERING_TRANSPORT_H_
 
 #include <map>
+
+#include "call/call.h"
+#include "call/fake_network_pipe.h"
+#include "test/direct_transport.h"
+#include "test/single_threaded_task_queue.h"
 
 namespace webrtc {
 
@@ -22,7 +23,36 @@ namespace test {
 
 class LayerFilteringTransport : public test::DirectTransport {
  public:
-  LayerFilteringTransport(const FakeNetworkPipe::Config& config,
+  LayerFilteringTransport(SingleThreadedTaskQueueForTesting* task_queue,
+                          const FakeNetworkPipe::Config& config,
+                          Call* send_call,
+                          uint8_t vp8_video_payload_type,
+                          uint8_t vp9_video_payload_type,
+                          int selected_tl,
+                          int selected_sl,
+                          const std::map<uint8_t, MediaType>& payload_type_map,
+                          uint32_t ssrc_to_filter_min,
+                          uint32_t ssrc_to_filter_max);
+  LayerFilteringTransport(SingleThreadedTaskQueueForTesting* task_queue,
+                          const FakeNetworkPipe::Config& config,
+                          Call* send_call,
+                          uint8_t vp8_video_payload_type,
+                          uint8_t vp9_video_payload_type,
+                          int selected_tl,
+                          int selected_sl,
+                          const std::map<uint8_t, MediaType>& payload_type_map);
+  LayerFilteringTransport(SingleThreadedTaskQueueForTesting* task_queue,
+                          std::unique_ptr<FakeNetworkPipe> pipe,
+                          Call* send_call,
+                          uint8_t vp8_video_payload_type,
+                          uint8_t vp9_video_payload_type,
+                          int selected_tl,
+                          int selected_sl,
+                          const std::map<uint8_t, MediaType>& payload_type_map,
+                          uint32_t ssrc_to_filter_min,
+                          uint32_t ssrc_to_filter_max);
+  LayerFilteringTransport(SingleThreadedTaskQueueForTesting* task_queue,
+                          std::unique_ptr<FakeNetworkPipe> pipe,
                           Call* send_call,
                           uint8_t vp8_video_payload_type,
                           uint8_t vp9_video_payload_type,
@@ -43,9 +73,12 @@ class LayerFilteringTransport : public test::DirectTransport {
   const int selected_tl_;
   const int selected_sl_;
   bool discarded_last_packet_;
+  int num_active_spatial_layers_;
+  const uint32_t ssrc_to_filter_min_;
+  const uint32_t ssrc_to_filter_max_;
 };
 
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_TEST_LAYER_FILTERING_TRANSPORT_H_
+#endif  // TEST_LAYER_FILTERING_TRANSPORT_H_

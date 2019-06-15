@@ -58,11 +58,11 @@ enum ResourceLoadPriority {
     "previous-track"
 };
 
-// FIXME: Strings in an enum should not have the name of the enum as a prefix.
 enum AutoFillButtonType {
-    "AutoFillButtonTypeNone",
-    "AutoFillButtonTypeContacts",
-    "AutoFillButtonTypeCredentials"
+    "None",
+    "Contacts",
+    "Credentials",
+    "StrongPassword"
 };
 
 enum UserInterfaceLayoutDirection {
@@ -81,6 +81,47 @@ enum EventThrottlingBehavior {
     "unresponsive"
 };
 
+enum CompositingPolicy {
+    "normal",
+    "conservative"
+};
+
+[Conditional=VIDEO] enum PlaybackControlsPurpose {
+    "ControlsManager",
+    "NowPlaying"
+};
+
+[Conditional=VIDEO] enum MediaSessionState {
+    "Idle",
+    "Autoplaying",
+    "Playing",
+    "Paused",
+    "Interrupted"
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    Conditional=VIDEO,
+    JSGenerateToJSObject,
+] dictionary NowPlayingState {
+    boolean hasActiveSession;
+    boolean registeredAsNowPlayingApplication;
+    DOMString title;
+    unrestricted double duration;
+    unrestricted double elapsedTime;
+    unsigned long long uniqueIdentifier;
+};
+
+[
+    ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
+    JSGenerateToJSObject,
+] dictionary FullscreenInsets {
+    double top;
+    double left;
+    double bottom;
+    double right;
+};
+
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
@@ -93,9 +134,14 @@ enum EventThrottlingBehavior {
     // Animated image pausing testing.
     boolean hasPausedImageAnimations(Element element);
 
+    // Must be called on an element whose enclosingLayer() is self-painting.
+    boolean isPaintingFrequently(Element element);
+    void incrementFrequentPaintCounter(Element element);
+
     [MayThrowException] DOMString elementRenderTreeAsText(Element element);
     boolean isPreloaded(DOMString url);
     boolean isLoadingFromMemoryCache(DOMString url);
+    DOMString fetchResponseSource(FetchResponse response);
     DOMString xhrResponseSource(XMLHttpRequest xhr);
     boolean isSharingStyleSheetContents(HTMLLinkElement a, HTMLLinkElement b);
     boolean isStyleSheetLoadingSubresources(HTMLLinkElement link);
@@ -142,6 +188,9 @@ enum EventThrottlingBehavior {
     [MayThrowException] boolean pauseTransitionAtTimeOnElement(DOMString propertyName, unrestricted double pauseTime, Element element);
     [MayThrowException] boolean pauseTransitionAtTimeOnPseudoElement(DOMString property, unrestricted double pauseTime, Element element, DOMString pseudoId);
 
+    // For animations testing, we need a way to get at pseudo elements.
+    [MayThrowException] Element? pseudoElement(Element element, DOMString pseudoId);
+
     DOMString visiblePlaceholder(Element element);
     void selectColorInColorChooser(HTMLInputElement element, DOMString colorValue);
     [MayThrowException] sequence<DOMString> formControlStateOfPreviousHistoryItem();
@@ -166,6 +215,9 @@ enum EventThrottlingBehavior {
 
     [MayThrowException] void setScrollViewPosition(long x, long y);
 
+    // Like Element.scrollTo(), but without constaints, for testing rubber-banding.
+    [MayThrowException] void unconstrainedScrollTo(Element element, unrestricted double x, unrestricted double y);
+
     [MayThrowException] DOMRect layoutViewportRect();
     [MayThrowException] DOMRect visualViewportRect();
 
@@ -181,6 +233,8 @@ enum EventThrottlingBehavior {
     void setEditingValue(HTMLInputElement inputElement, DOMString value);
     void setAutofilled(HTMLInputElement inputElement, boolean enabled);
     void setShowAutoFillButton(HTMLInputElement inputElement, AutoFillButtonType autoFillButtonType);
+    AutoFillButtonType autoFillButtonType(HTMLInputElement inputElement);
+    AutoFillButtonType lastAutoFillButtonType(HTMLInputElement inputElement);
 
     [MayThrowException] Range? rangeOfString(DOMString text, Range? referenceRange, sequence<DOMString> findOptions);
     [MayThrowException] unsigned long countMatchesForText(DOMString text, sequence<DOMString> findOptions, DOMString markMatches);
@@ -188,7 +242,7 @@ enum EventThrottlingBehavior {
 
     [MayThrowException] DOMString autofillFieldName(Element formControlElement);
 
-    [MayThrowException] void paintControlTints();
+    [MayThrowException] void invalidateControlTints();
 
     [MayThrowException] void scrollElementToRect(Element element, long x, long y, long w, long h);
 
@@ -226,6 +280,7 @@ enum EventThrottlingBehavior {
 
     void updateEditorUINowIfScheduled();
 
+    readonly attribute boolean sentenceRetroCorrectionEnabled;
     boolean hasSpellingMarker(long from, long length);
     boolean hasGrammarMarker(long from, long length);
     boolean hasAutocorrectedMarker(long from, long length);
@@ -249,8 +304,11 @@ enum EventThrottlingBehavior {
     void setImageFrameDecodingDuration(HTMLImageElement element, unrestricted float duration);
     void resetImageAnimation(HTMLImageElement element);
     boolean isImageAnimating(HTMLImageElement element);
-    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean value);
+    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean enabled);
     unsigned long imageDecodeCount(HTMLImageElement element);
+    unsigned long pdfDocumentCachingCount(HTMLImageElement element);
+    void setLargeImageAsyncDecodingEnabledForTesting(HTMLImageElement element, boolean enabled);
+    void setForceUpdateImageDataEnabledForTesting(HTMLImageElement element, boolean enabled);
 
     void setGridMaxTracksLimit(unsigned long maxTracksLimit);
 
@@ -298,12 +356,11 @@ enum EventThrottlingBehavior {
     void beginSimulatedMemoryPressure();
     void endSimulatedMemoryPressure();
 
-    [Conditional=PROXIMITY_EVENTS, MayThrowException] void setDeviceProximity(DOMString eventType, unrestricted double value, unrestricted double min, unrestricted double max);
-
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
     unsigned long referencingNodeCount(Document document);
-    DOMWindow? openDummyInspectorFrontend(DOMString url);
+    [Conditional=INTERSECTION_OBSERVER] unsigned long numberOfIntersectionObservers(Document document);
+    WindowProxy? openDummyInspectorFrontend(DOMString url);
     void closeDummyInspectorFrontend();
     [MayThrowException] void setInspectorIsUnderTest(boolean isUnderTest);
 
@@ -335,6 +392,11 @@ enum EventThrottlingBehavior {
     [Conditional=FULLSCREEN_API] void webkitDidEnterFullScreenForElement(Element element);
     [Conditional=FULLSCREEN_API] void webkitWillExitFullScreenForElement(Element element);
     [Conditional=FULLSCREEN_API] void webkitDidExitFullScreenForElement(Element element);
+    [Conditional=FULLSCREEN_API] readonly attribute boolean isAnimatingFullScreen;
+
+    void setFullscreenInsets(FullscreenInsets insets);
+    void setFullscreenAutoHideDuration(double duration);
+    void setFullscreenControlsHidden(boolean hidden);
 
     void setApplicationCacheOriginQuota(unsigned long long quota);
 
@@ -377,6 +439,8 @@ enum EventThrottlingBehavior {
     [MayThrowException] void startTrackingCompositingUpdates();
     [MayThrowException] unsigned long compositingUpdateCount();
 
+    attribute CompositingPolicy? compositingPolicyOverride;
+
     // |node| should be Document, HTMLIFrameElement, or unspecified.
     // If |node| is an HTMLIFrameElement, it assumes node.contentDocument is
     // specified without security checks. Unspecified or null means this document.
@@ -408,9 +472,14 @@ enum EventThrottlingBehavior {
     [Conditional=VIDEO] sequence<DOMString> mediaResponseContentRanges(HTMLMediaElement media);
     [Conditional=VIDEO] void simulateAudioInterruption(HTMLMediaElement element);
     [Conditional=VIDEO, MayThrowException] boolean mediaElementHasCharacteristic(HTMLMediaElement element, DOMString characteristic);
+    [Conditional=VIDEO] void beginSimulatedHDCPError(HTMLMediaElement media);
+    [Conditional=VIDEO] void endSimulatedHDCPError(HTMLMediaElement media);
+
+    [Conditional=VIDEO] boolean elementShouldBufferData(HTMLMediaElement media);
 
     [Conditional=LEGACY_ENCRYPTED_MEDIA] void initializeMockCDM();
     [Conditional=ENCRYPTED_MEDIA] MockCDMFactory registerMockCDM();
+    void enableMockMediaCapabilities();
 
     [Conditional=SPEECH_SYNTHESIS] void enableMockSpeechSynthesizer();
 
@@ -428,6 +497,7 @@ enum EventThrottlingBehavior {
     boolean isSelectPopupVisible(HTMLSelectElement element);
 
     [MayThrowException] boolean isPluginUnavailabilityIndicatorObscured(Element element);
+    [MayThrowException] DOMString unavailablePluginReplacementText(Element element);
     boolean isPluginSnapshotted(Element element);
 
     [MayThrowException] DOMRect selectionBounds();
@@ -474,6 +544,7 @@ enum EventThrottlingBehavior {
     DOMString pageMediaState();
 
     void setPageDefersLoading(boolean defersLoading);
+    [MayThrowException] boolean pageDefersLoading();
 
     File? createFile(DOMString url);
     void queueMicroTask(long testNumber);
@@ -497,7 +568,7 @@ enum EventThrottlingBehavior {
 
     DOMString resourceLoadStatisticsForOrigin(DOMString domain);
     void setResourceLoadStatisticsEnabled(boolean enable);
-    void setResourceLoadStatisticsShouldThrottleObserverNotifications(boolean enable);
+    [EnabledBySetting=StorageAccessAPI] void setUserGrantsStorageAccess(boolean value);
 
     [MayThrowException] void setCanShowModalDialogOverride(boolean allow);
 
@@ -505,6 +576,8 @@ enum EventThrottlingBehavior {
 
     boolean isProcessingUserGesture();
     double lastHandledUserGestureTimestamp();
+
+    void withUserGesture(VoidCallback callback);
 
     GCObservation? observeGC(any observed);
 
@@ -531,6 +604,7 @@ enum EventThrottlingBehavior {
     [Conditional=WEBGL] void failNextGPUStatusCheck(WebGLRenderingContext context);
 
     void setPageVisibility(boolean isVisible);
+    void setPageIsFocusedAndActive(boolean isFocused);
 
     [Conditional=WEB_RTC] void setH264HardwareEncoderAllowed(boolean allowed);
     [Conditional=WEB_RTC] void applyRotationForOutgoingVideoSources(RTCPeerConnection connection);
@@ -545,6 +619,55 @@ enum EventThrottlingBehavior {
     [Conditional=MEDIA_STREAM] void setMediaStreamTrackMuted(MediaStreamTrack track, boolean muted);
     [Conditional=MEDIA_STREAM] void removeMediaStreamTrack(MediaStream stream, MediaStreamTrack track);
     [Conditional=MEDIA_STREAM] void simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack track);
+    [Conditional=MEDIA_STREAM] void setMediaStreamTrackIdentifier(MediaStreamTrack track, DOMString identifier);
+
+    unsigned long long documentIdentifier(Document document);
+    boolean isDocumentAlive(unsigned long long documentIdentifier);
+
+    DOMString serviceWorkerClientIdentifier(Document document);
+
+    Promise<void> clearCacheStorageMemoryRepresentation();
+    Promise<DOMString> cacheStorageEngineRepresentation();
+    void setResponseSizeWithPadding(FetchResponse response, unsigned long long size);
+    unsigned long long responseSizeWithPadding(FetchResponse response);
+
+    void setConsoleMessageListener(StringCallback callback);
 
     DOMString audioSessionCategory();
+    double preferredAudioBufferSize();
+
+    [Conditional=SERVICE_WORKER] Promise<boolean> hasServiceWorkerRegistration(DOMString scopeURL);
+    [Conditional=SERVICE_WORKER] void terminateServiceWorker(ServiceWorker worker);
+    [Conditional=SERVICE_WORKER] boolean hasServiceWorkerConnection();
+
+    void testIncomingSyncIPCMessageWhileWaitingForSyncReply();
+
+    [EnabledAtRuntime=WebAnimations] DOMString timelineDescription(AnimationTimeline timeline);
+    [EnabledAtRuntime=WebAnimations] void pauseTimeline(AnimationTimeline timeline);
+    [EnabledAtRuntime=WebAnimations] void setTimelineCurrentTime(AnimationTimeline timeline, double currentTime);
+    [Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
+    [Conditional=WEB_AUTHN] readonly attribute MockCredentialsMessenger mockCredentialsMessenger;
+
+    boolean isSystemPreviewLink(Element element);
+    boolean isSystemPreviewImage(Element element);
+
+    boolean usingAppleInternalSDK();
+
+    [Conditional=VIDEO, MayThrowException] readonly attribute NowPlayingState nowPlayingState;
+
+    [Conditional=VIDEO] HTMLMediaElement bestMediaElementForShowingPlaybackControlsManager(PlaybackControlsPurpose purpose);
+    [Conditional=VIDEO] MediaSessionState mediaSessionState(HTMLMediaElement element);
+
+    DOMString ongoingLoadsDescriptions();
+    void setCaptureExtraNetworkLoadMetricsEnabled(boolean value);
+
+    void reloadWithoutContentExtensions();
+
+    void setUseSystemAppearance(boolean value);
+
+    unsigned long pluginCount();
+
+    void notifyResourceLoadObserver();
+
+    unsigned long primaryScreenDisplayID();
 };

@@ -8,18 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/examples/peerconnection/client/conductor.h"
-#include "webrtc/examples/peerconnection/client/flagdefs.h"
-#include "webrtc/examples/peerconnection/client/main_wnd.h"
-#include "webrtc/examples/peerconnection/client/peer_connection_client.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/ssladapter.h"
-#include "webrtc/base/win32socketinit.h"
-#include "webrtc/base/win32socketserver.h"
+#include "examples/peerconnection/client/conductor.h"
+#include "examples/peerconnection/client/flagdefs.h"
+#include "examples/peerconnection/client/main_wnd.h"
+#include "examples/peerconnection/client/peer_connection_client.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/ssladapter.h"
+#include "rtc_base/win32socketinit.h"
+#include "rtc_base/win32socketserver.h"
 
-
-int PASCAL wWinMain(HINSTANCE instance, HINSTANCE prev_instance,
-                    wchar_t* cmd_line, int cmd_show) {
+int PASCAL wWinMain(HINSTANCE instance,
+                    HINSTANCE prev_instance,
+                    wchar_t* cmd_line,
+                    int cmd_show) {
   rtc::EnsureWinsockInit();
   rtc::Win32SocketServer w32_ss;
   rtc::Win32Thread w32_thread(&w32_ss);
@@ -27,7 +28,7 @@ int PASCAL wWinMain(HINSTANCE instance, HINSTANCE prev_instance,
 
   rtc::WindowsCommandLineArguments win_args;
   int argc = win_args.argc();
-  char **argv = win_args.argv();
+  char** argv = win_args.argv();
 
   rtc::FlagList::SetFlagsFromCommandLine(&argc, argv, true);
   if (FLAG_help) {
@@ -51,7 +52,7 @@ int PASCAL wWinMain(HINSTANCE instance, HINSTANCE prev_instance,
   rtc::InitializeSSL();
   PeerConnectionClient client;
   rtc::scoped_refptr<Conductor> conductor(
-        new rtc::RefCountedObject<Conductor>(&client, &wnd));
+      new rtc::RefCountedObject<Conductor>(&client, &wnd));
 
   // Main loop.
   MSG msg;

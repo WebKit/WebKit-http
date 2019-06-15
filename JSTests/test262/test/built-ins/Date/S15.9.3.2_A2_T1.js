@@ -2,14 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The [[Prototype]] property of the newly constructed object
     is set to the original Date prototype object, the one that is the
     initial value of Date.prototype
+esid: sec-date-value
 es5id: 15.9.3.2_A2_T1
 description: Checking Date.prototype property of newly constructed objects
-includes:
-    - Date_constants.js
+includes: [dateConstants.js]
 ---*/
 
 var x11 = new Date(date_1899_end);
@@ -23,7 +23,7 @@ if (!Date.prototype.isPrototypeOf(x12)) {
 }
 
 var x13 = new Date(date_1899_end);
-if(Date.prototype !== x13.constructor.prototype){
+if (Date.prototype !== x13.constructor.prototype) {
   $ERROR("#1.3: Date.prototype !== x13.constructor.prototype");
 }
 
@@ -38,7 +38,7 @@ if (!Date.prototype.isPrototypeOf(x22)) {
 }
 
 var x23 = new Date(date_1900_start);
-if(Date.prototype !== x23.constructor.prototype){
+if (Date.prototype !== x23.constructor.prototype) {
   $ERROR("#2.3: Date.prototype !== x23.constructor.prototype");
 }
 
@@ -53,7 +53,7 @@ if (!Date.prototype.isPrototypeOf(x32)) {
 }
 
 var x33 = new Date(date_1969_end);
-if(Date.prototype !== x33.constructor.prototype){
+if (Date.prototype !== x33.constructor.prototype) {
   $ERROR("#3.3: Date.prototype !== x33.constructor.prototype");
 }
 
@@ -68,7 +68,7 @@ if (!Date.prototype.isPrototypeOf(x42)) {
 }
 
 var x43 = new Date(date_1970_start);
-if(Date.prototype !== x43.constructor.prototype){
+if (Date.prototype !== x43.constructor.prototype) {
   $ERROR("#4.3: Date.prototype !== x43.constructor.prototype");
 }
 
@@ -83,7 +83,7 @@ if (!Date.prototype.isPrototypeOf(x52)) {
 }
 
 var x53 = new Date(date_1999_end);
-if(Date.prototype !== x53.constructor.prototype){
+if (Date.prototype !== x53.constructor.prototype) {
   $ERROR("#5.3: Date.prototype !== x53.constructor.prototype");
 }
 
@@ -98,7 +98,7 @@ if (!Date.prototype.isPrototypeOf(x62)) {
 }
 
 var x63 = new Date(date_2000_start);
-if(Date.prototype !== x63.constructor.prototype){
+if (Date.prototype !== x63.constructor.prototype) {
   $ERROR("#6.3: Date.prototype !== x63.constructor.prototype");
 }
 
@@ -113,7 +113,7 @@ if (!Date.prototype.isPrototypeOf(x72)) {
 }
 
 var x73 = new Date(date_2099_end);
-if(Date.prototype !== x73.constructor.prototype){
+if (Date.prototype !== x73.constructor.prototype) {
   $ERROR("#7.3: Date.prototype !== x73.constructor.prototype");
 }
 
@@ -128,6 +128,6 @@ if (!Date.prototype.isPrototypeOf(x82)) {
 }
 
 var x83 = new Date(date_2100_start);
-if(Date.prototype !== x83.constructor.prototype){
+if (Date.prototype !== x83.constructor.prototype) {
   $ERROR("#8.3: Date.prototype !== x83.constructor.prototype");
 }

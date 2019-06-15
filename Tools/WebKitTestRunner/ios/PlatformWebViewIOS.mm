@@ -29,12 +29,12 @@
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
 #import "UIKitTestSPI.h"
-#import <WebCore/QuartzCoreSPI.h>
 #import <WebKit/WKImageCG.h>
 #import <WebKit/WKPreferencesPrivate.h>
 #import <WebKit/WKSnapshotConfiguration.h>
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWebViewPrivate.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/RetainPtr.h>
 
@@ -47,10 +47,10 @@
     CGPoint _fakeOrigin;
     BOOL _initialized;
 }
-@property (nonatomic, assign) WTR::PlatformWebView* platformWebView;
+@property (nonatomic) WTR::PlatformWebView* platformWebView;
 @end
 
-static Vector<WebKitTestRunnerWindow*> allWindows;
+static Vector<WebKitTestRunnerWindow *> allWindows;
 
 @implementation WebKitTestRunnerWindow
 @synthesize platformWebView = _platformWebView;
@@ -69,7 +69,6 @@ static Vector<WebKitTestRunnerWindow*> allWindows;
 {
     allWindows.removeFirst(self);
     ASSERT(!allWindows.contains(self));
-    [super dealloc];
 }
 
 - (BOOL)isKeyWindow
@@ -176,7 +175,6 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 
     UIViewController *viewController = [[PlatformWebViewController alloc] init];
     [m_window setRootViewController:viewController];
-    [viewController release];
 
     m_view = [[TestRunnerWKWebView alloc] initWithFrame:viewRectForWindowRect(rect, WebViewSizingMode::Default) configuration:configuration];
 
@@ -187,8 +185,6 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 PlatformWebView::~PlatformWebView()
 {
     m_window.platformWebView = nil;
-    [m_view release];
-    [m_window release];
 }
 
 PlatformWindow PlatformWebView::keyWindow()
@@ -270,7 +266,6 @@ void PlatformWebView::addChromeInputField()
     UITextField* textField = [[UITextField alloc] initWithFrame:CGRectMake(0, 0, 100, 20)];
     textField.tag = 1;
     [m_window addSubview:textField];
-    [textField release];
 }
 
 void PlatformWebView::removeChromeInputField()
@@ -279,7 +274,6 @@ void PlatformWebView::removeChromeInputField()
     if (textField) {
         [textField removeFromSuperview];
         makeWebViewFirstResponder();
-        [textField release];
     }
 }
 
@@ -294,7 +288,16 @@ void PlatformWebView::changeWindowScaleIfNeeded(float)
     // Retina only surface.
 }
 
-#if !USE(IOSURFACE)
+bool PlatformWebView::drawsBackground() const
+{
+    return false;
+}
+
+void PlatformWebView::setDrawsBackground(bool)
+{
+}
+
+#if !HAVE(IOSURFACE)
 static void releaseDataProviderData(void* info, const void*, size_t)
 {
     CARenderServerDestroyBuffer(static_cast<CARenderServerBufferRef>(info));
@@ -304,7 +307,7 @@ static void releaseDataProviderData(void* info, const void*, size_t)
 RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
     __block bool isDone = false;
     __block RetainPtr<CGImageRef> result;
     
@@ -345,7 +348,7 @@ RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
     size_t rowBytes = CARenderServerGetBufferRowBytes(buffer);
 
     static CGColorSpaceRef sRGBSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
-    RetainPtr<CGDataProviderRef> provider = adoptCF(CGDataProviderCreateWithData(0, data, CARenderServerGetBufferDataSize(buffer), releaseDataProviderData));
+    RetainPtr<CGDataProviderRef> provider = adoptCF(CGDataProviderCreateWithData(buffer, data, CARenderServerGetBufferDataSize(buffer), releaseDataProviderData));
     
     RetainPtr<CGImageRef> cgImage = adoptCF(CGImageCreate(bufferWidth, bufferHeight, 8, 32, rowBytes, sRGBSpace, kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host, provider.get(), 0, false, kCGRenderingIntentDefault));
 
@@ -356,6 +359,9 @@ RetainPtr<CGImageRef> PlatformWebView::windowSnapshotImage()
 
 void PlatformWebView::setNavigationGesturesEnabled(bool enabled)
 {
+#if WK_API_ENABLED
+    [platformView() setAllowsBackForwardNavigationGestures:enabled];
+#endif
 }
 
 } // namespace WTR

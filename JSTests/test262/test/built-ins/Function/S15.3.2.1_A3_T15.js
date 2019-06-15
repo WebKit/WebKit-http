@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Function constructor is called with arguments p, body the following steps are taken:
     i) Let Result(i) be the first argument
     ii) Let P be ToString(Result(i))
@@ -22,7 +22,7 @@ description: >
 try {
   var f = new Function("", "");
 } catch (e) {
-  $ERROR('#1: test failed with error '+e);
+  $ERROR('#1: test failed with error ' + e);
 }
 
 //CHECK#2
@@ -31,6 +31,6 @@ if (f.constructor !== Function) {
 }
 
 //CHECK#3
-if (f()!==undefined) {
+if (f() !== undefined) {
   $ERROR('#3: When the Function constructor is called with arguments p, body the following steps are taken...');
 }

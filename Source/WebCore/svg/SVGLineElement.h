@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2006, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,38 +21,49 @@
 
 #pragma once
 
-#include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedLength.h"
 #include "SVGExternalResourcesRequired.h"
-#include "SVGGraphicsElement.h"
+#include "SVGGeometryElement.h"
+#include "SVGNames.h"
 
 namespace WebCore {
 
-class SVGLineElement final : public SVGGraphicsElement,
-                             public SVGExternalResourcesRequired {
+class SVGLineElement final : public SVGGeometryElement, public SVGExternalResourcesRequired {
+    WTF_MAKE_ISO_ALLOCATED(SVGLineElement);
 public:
     static Ref<SVGLineElement> create(const QualifiedName&, Document&);
 
+    const SVGLengthValue& x1() const { return m_x1.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& y1() const { return m_y1.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& x2() const { return m_x2.currentValue(attributeOwnerProxy()); }
+    const SVGLengthValue& y2() const { return m_y2.currentValue(attributeOwnerProxy()); }
+
+    RefPtr<SVGAnimatedLength> x1Animated() { return m_x1.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedLength> y1Animated() { return m_y1.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedLength> x2Animated() { return m_x2.animatedProperty(attributeOwnerProxy()); }
+    RefPtr<SVGAnimatedLength> y2Animated() { return m_y2.animatedProperty(attributeOwnerProxy()); }
+
 private:
     SVGLineElement(const QualifiedName&, Document&);
-    
-    bool isValid() const final { return SVGTests::isValid(); }
 
-    static bool isSupportedAttribute(const QualifiedName&);
+    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGLineElement, SVGGeometryElement, SVGExternalResourcesRequired>;
+    static AttributeOwnerProxy::AttributeRegistry& attributeRegistry() { return AttributeOwnerProxy::attributeRegistry(); }
+    static bool isKnownAttribute(const QualifiedName& attributeName) { return AttributeOwnerProxy::isKnownAttribute(attributeName); }
+    static void registerAttributes();
+
+    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
+    bool isValid() const final { return SVGTests::isValid(); }
     bool supportsMarkers() const final { return true; }
-
     bool selfHasRelativeLengths() const final;
 
-    BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGLineElement)
-        DECLARE_ANIMATED_LENGTH(X1, x1)
-        DECLARE_ANIMATED_LENGTH(Y1, y1)
-        DECLARE_ANIMATED_LENGTH(X2, x2)
-        DECLARE_ANIMATED_LENGTH(Y2, y2)
-        DECLARE_ANIMATED_BOOLEAN_OVERRIDE(ExternalResourcesRequired, externalResourcesRequired)
-    END_DECLARE_ANIMATED_PROPERTIES
+    AttributeOwnerProxy m_attributeOwnerProxy { *this };
+    SVGAnimatedLengthAttribute m_x1 { LengthModeWidth };
+    SVGAnimatedLengthAttribute m_y1 { LengthModeHeight };
+    SVGAnimatedLengthAttribute m_x2 { LengthModeWidth };
+    SVGAnimatedLengthAttribute m_y2 { LengthModeHeight };
 };
 
 } // namespace WebCore

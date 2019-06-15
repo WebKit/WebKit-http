@@ -1,0 +1,3 @@
+
+PASS Must have a methodName IDL attribute, which is initialized with to the methodName dictionary value 
+

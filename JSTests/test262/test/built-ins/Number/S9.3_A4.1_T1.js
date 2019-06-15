@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Result of number conversion from number value equals to the input
     argument (no conversion)
 es5id: 9.3_A4.1_T1
@@ -17,7 +17,7 @@ if (Number(13) !== 13) {
 }
 
 // CHECK#2
-if (Number(-13) !== -13) { 
+if (Number(-13) !== -13) {
   $ERROR('#2: Number(-13) === -13. Actual: ' + (Number(-13)));
 }
 

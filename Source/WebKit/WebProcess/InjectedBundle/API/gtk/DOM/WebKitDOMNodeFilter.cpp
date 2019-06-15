@@ -20,6 +20,7 @@
 #include "WebKitDOMNodeFilter.h"
 
 #include "GObjectNodeFilterCondition.h"
+#include <WebCore/Document.h>
 #include <WebCore/NativeNodeFilter.h>
 #include "WebKitDOMNode.h"
 #include "WebKitDOMNodeFilterPrivate.h"
@@ -27,6 +28,8 @@
 #include <wtf/NeverDestroyed.h>
 
 typedef WebKitDOMNodeFilterIface WebKitDOMNodeFilterInterface;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 G_DEFINE_INTERFACE(WebKitDOMNodeFilter, webkit_dom_node_filter, G_TYPE_OBJECT)
 
@@ -65,14 +68,14 @@ WebKitDOMNodeFilter* kit(WebCore::NodeFilter* coreNodeFilter)
     return nodeFilterMap().get(coreNodeFilter);
 }
 
-RefPtr<WebCore::NodeFilter> core(WebKitDOMNodeFilter* nodeFilter)
+RefPtr<WebCore::NodeFilter> core(WebCore::Document* document, WebKitDOMNodeFilter* nodeFilter)
 {
     if (!nodeFilter)
         return nullptr;
 
     RefPtr<WebCore::NodeFilter> coreNodeFilter = static_cast<WebCore::NodeFilter*>(g_object_get_data(G_OBJECT(nodeFilter), "webkit-core-node-filter"));
     if (!coreNodeFilter) {
-        coreNodeFilter = WebCore::NativeNodeFilter::create(WebKit::GObjectNodeFilterCondition::create(nodeFilter));
+        coreNodeFilter = WebCore::NativeNodeFilter::create(document, WebKit::GObjectNodeFilterCondition::create(nodeFilter));
         nodeFilterMap().add(coreNodeFilter.get(), nodeFilter);
         g_object_weak_ref(G_OBJECT(nodeFilter), nodeFilterObjectDestroyedCallback, coreNodeFilter.get());
         g_object_set_data(G_OBJECT(nodeFilter), "webkit-core-node-filter", coreNodeFilter.get());
@@ -81,3 +84,4 @@ RefPtr<WebCore::NodeFilter> core(WebKitDOMNodeFilter* nodeFilter)
 }
 
 } // namespace WebKit
+G_GNUC_END_IGNORE_DEPRECATIONS;

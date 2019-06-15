@@ -37,16 +37,16 @@ class SetupGitClone(Command):
 
     def execute(self, options, args, tool):
         if not isinstance(tool.scm(), Git):
-            print "This command only works inside a Git checkout."
+            print("This command only works inside a Git checkout.")
             return
 
         if tool.scm().has_working_directory_changes():
-            print "There are local changes; aborting the command."
+            print("There are local changes; aborting the command.")
             return
 
         username, email = self._get_username_and_email(tool)
 
-        # FIXME: We shouldn't be using a privatd method
+        # FIXME: We shouldn't be using a private method.
         run_git = tool.scm()._run_git
         run_git(["pull"])
         run_git(["svn", "init", "--prefix=origin/", "-T", "trunk", "http://svn.webkit.org/repository/webkit"])
@@ -60,6 +60,8 @@ class SetupGitClone(Command):
         run_git(["config", "diff.objcpp.xfuncname", "^[-+@a-zA-Z_].*$"])
         run_git(["config", "diff.objcppheader.xfuncname", "^[@a-zA-Z_].*$"])
 
+        run_git(["config", "core.editor", "perl Tools/Scripts/commit-log-editor --regenerate-log"])
+
         if tool.user.confirm("Do you want to auto-color status, diff, and branch? (y/n)"):
             run_git(["config", "color.status", "auto"])
             run_git(["config", "color.diff", "auto"])
@@ -72,9 +74,9 @@ class SetupGitClone(Command):
 
         if tool.user.confirm("Do you want to append the git branch name to every build? (e.g. WebKitBuild/mybranch/; y/n)"):
             run_git(["config", "core.webKitBranchBuild", "true"])
-            print "You can override this option via git config branch.$branchName.webKitBranchBuild (true|false)"
+            print("You can override this option via git config branch.$branchName.webKitBranchBuild (true|false)")
 
-        print "Done"
+        print("Done")
 
     def _get_username_and_email(self, tool):
         try:
@@ -95,5 +97,5 @@ class SetupGitClone(Command):
         except ScriptError as error:
             # VCSUtils prints useful error messages on failure, we shouldn't hide these
             if error.output:
-                print error.output
+                print(error.output)
             raise

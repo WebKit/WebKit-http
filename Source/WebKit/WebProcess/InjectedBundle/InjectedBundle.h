@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -44,6 +44,7 @@ typedef struct _GModule GModule;
 #endif
 
 #if USE(FOUNDATION)
+OBJC_CLASS NSSet;
 OBJC_CLASS NSBundle;
 OBJC_CLASS NSMutableDictionary;
 OBJC_CLASS WKWebProcessBundleParameters;
@@ -68,6 +69,8 @@ typedef NSBundle *PlatformBundle;
 typedef QLibrary PlatformBundle;
 #elif USE(GLIB)
 typedef ::GModule* PlatformBundle;
+#else
+typedef void* PlatformBundle;
 #endif
 
 class InjectedBundleScriptWorld;
@@ -80,7 +83,7 @@ struct WebProcessCreationParameters;
 
 class InjectedBundle : public API::ObjectImpl<API::Object::Type::Bundle> {
 public:
-    static RefPtr<InjectedBundle> create(const WebProcessCreationParameters&, API::Object* initializationUserData);
+    static RefPtr<InjectedBundle> create(WebProcessCreationParameters&, API::Object* initializationUserData);
 
     ~InjectedBundle();
 
@@ -93,6 +96,7 @@ public:
     void setClient(std::unique_ptr<API::InjectedBundle::Client>&&);
     void postMessage(const String&, API::Object*);
     void postSynchronousMessage(const String&, API::Object*, RefPtr<API::Object>& returnData);
+    void setServiceWorkerProxyCreationCallback(void (*)(uint64_t));
 
     WebConnection* webConnectionToUIProcess() const;
 
@@ -124,6 +128,9 @@ public:
     void removeAllWebNotificationPermissions(WebPage*);
     uint64_t webNotificationID(JSContextRef, JSValueRef);
     Ref<API::Data> createWebDataFromUint8Array(JSContextRef, JSValueRef);
+    
+    typedef HashMap<uint64_t, String> DocumentIDToURLMap;
+    DocumentIDToURLMap liveDocumentURLs(WebPageGroupProxy*, bool excludeDocumentsInPageGroupPages);
 
     // UserContent API
     void addUserScript(WebPageGroupProxy*, InjectedBundleScriptWorld*, String&& source, String&& url, API::Array* whitelist, API::Array* blacklist, WebCore::UserScriptInjectionTime, WebCore::UserContentInjectedFrames);
@@ -154,10 +161,14 @@ public:
     void setSerialLoadingEnabled(bool);
     void setCSSAnimationTriggersEnabled(bool);
     void setWebAnimationsEnabled(bool);
+    void setWebAnimationsCSSIntegrationEnabled(bool);
     void dispatchPendingLoadRequests();
 
 #if PLATFORM(COCOA) && WK_API_ENABLED
     WKWebProcessBundleParameters *bundleParameters();
+
+    void extendClassesForParameterCoder(API::Array& classes);
+    NSSet* classesForCoder();
 #endif
 
 private:
@@ -172,6 +183,7 @@ private:
 
 #if PLATFORM(COCOA) && WK_API_ENABLED
     RetainPtr<WKWebProcessBundleParameters> m_bundleParameters;
+    RetainPtr<NSSet> m_classesForCoder;
 #endif
 };
 

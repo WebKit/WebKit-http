@@ -5,7 +5,7 @@
 es6id: 19.4.3.2
 description: >
   Symbol.prototype.toString.name is "toString".
-info: >
+info: |
   Symbol.prototype.toString ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol]
 ---*/
 
 assert.sameValue(Symbol.prototype.toString.name, "toString");

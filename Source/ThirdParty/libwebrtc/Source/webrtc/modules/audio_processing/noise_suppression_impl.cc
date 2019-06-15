@@ -8,19 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/noise_suppression_impl.h"
+#include "modules/audio_processing/noise_suppression_impl.h"
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/audio_processing/audio_buffer.h"
+#include "modules/audio_processing/audio_buffer.h"
+#include "rtc_base/constructormagic.h"
 #if defined(WEBRTC_NS_FLOAT)
-#include "webrtc/modules/audio_processing/ns/noise_suppression.h"
+#include "modules/audio_processing/ns/noise_suppression.h"
 #define NS_CREATE WebRtcNs_Create
 #define NS_FREE WebRtcNs_Free
 #define NS_INIT WebRtcNs_Init
 #define NS_SET_POLICY WebRtcNs_set_policy
 typedef NsHandle NsState;
 #elif defined(WEBRTC_NS_FIXED)
-#include "webrtc/modules/audio_processing/ns/noise_suppression_x.h"
+#include "modules/audio_processing/ns/noise_suppression_x.h"
 #define NS_CREATE WebRtcNsx_Create
 #define NS_FREE WebRtcNsx_Free
 #define NS_INIT WebRtcNsx_Init
@@ -37,10 +37,9 @@ class NoiseSuppressionImpl::Suppressor {
     int error = NS_INIT(state_, sample_rate_hz);
     RTC_DCHECK_EQ(0, error);
   }
-  ~Suppressor() {
-    NS_FREE(state_);
-  }
+  ~Suppressor() { NS_FREE(state_); }
   NsState* state() { return state_; }
+
  private:
   NsState* state_ = nullptr;
   RTC_DISALLOW_IMPLICIT_CONSTRUCTORS(Suppressor);
@@ -96,15 +95,11 @@ void NoiseSuppressionImpl::ProcessCaptureAudio(AudioBuffer* audio) {
   RTC_DCHECK_EQ(suppressors_.size(), audio->num_channels());
   for (size_t i = 0; i < suppressors_.size(); i++) {
 #if defined(WEBRTC_NS_FLOAT)
-    WebRtcNs_Process(suppressors_[i]->state(),
-                     audio->split_bands_const_f(i),
-                     audio->num_bands(),
-                     audio->split_bands_f(i));
+    WebRtcNs_Process(suppressors_[i]->state(), audio->split_bands_const_f(i),
+                     audio->num_bands(), audio->split_bands_f(i));
 #elif defined(WEBRTC_NS_FIXED)
-    WebRtcNsx_Process(suppressors_[i]->state(),
-                      audio->split_bands_const(i),
-                      audio->num_bands(),
-                      audio->split_bands(i));
+    WebRtcNsx_Process(suppressors_[i]->state(), audio->split_bands_const(i),
+                      audio->num_bands(), audio->split_bands(i));
 #endif
   }
 }
@@ -190,8 +185,8 @@ std::vector<float> NoiseSuppressionImpl::NoiseEstimate() {
   noise_estimate.assign(WebRtcNsx_num_freq(), 0.f);
   for (auto& suppressor : suppressors_) {
     int q_noise;
-    const uint32_t* noise = WebRtcNsx_noise_estimate(suppressor->state(),
-                                                     &q_noise);
+    const uint32_t* noise =
+        WebRtcNsx_noise_estimate(suppressor->state(), &q_noise);
     const float kNormalizationFactor =
         1.f / ((1 << q_noise) * suppressors_.size());
     for (size_t i = 0; i < noise_estimate.size(); ++i) {

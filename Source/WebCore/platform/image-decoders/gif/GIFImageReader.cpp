@@ -363,6 +363,12 @@ bool GIFImageReader::decode(GIFImageDecoder::GIFQuery query, unsigned haltAtFram
     if (query != GIFImageDecoder::GIFFullQuery)
         return true;
 
+    // Already decoded frames can be deleted from the cache and then they require to be decoded again, so
+    // the haltAtFrame value we receive here may be lower than m_currentDecodingFrame. In this case
+    // we position m_currentDecodingFrame to haltAtFrame - 1 and decode from there.
+    // See bug https://bugs.webkit.org/show_bug.cgi?id=176089.
+    m_currentDecodingFrame = std::min(m_currentDecodingFrame, static_cast<size_t>(haltAtFrame) - 1);
+
     while (m_currentDecodingFrame < std::min(m_frames.size(), static_cast<size_t>(haltAtFrame))) {
         bool frameDecoded = false;
         GIFFrameContext* currentFrame = m_frames[m_currentDecodingFrame].get();
@@ -570,11 +576,11 @@ bool GIFImageReader::parse(size_t dataPosition, size_t len, bool parseSizeOnly)
             // NOTE: This relies on the values in the DisposalMethod enum
             // matching those in the GIF spec!
             int disposalMethod = ((*currentComponent) >> 2) & 0x7;
-            currentFrame->disposalMethod = static_cast<WebCore::ImageFrame::DisposalMethod>(disposalMethod);
+            currentFrame->disposalMethod = static_cast<WebCore::ScalableImageDecoderFrame::DisposalMethod>(disposalMethod);
             // Some specs say that disposal method 3 is "overwrite previous", others that setting
             // the third bit of the field (i.e. method 4) is. We map both to the same value.
             if (disposalMethod == 4)
-                currentFrame->disposalMethod = WebCore::ImageFrame::DisposalMethod::RestoreToPrevious;
+                currentFrame->disposalMethod = WebCore::ScalableImageDecoderFrame::DisposalMethod::RestoreToPrevious;
             currentFrame->delayTime = GETINT16(currentComponent + 1) * 10;
             GETN(1, GIFConsumeBlock);
             break;

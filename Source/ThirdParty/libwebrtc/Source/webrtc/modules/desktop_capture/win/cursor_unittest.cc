@@ -10,13 +10,13 @@
 
 #include <memory>
 
-#include "webrtc/modules/desktop_capture/desktop_frame.h"
-#include "webrtc/modules/desktop_capture/desktop_geometry.h"
-#include "webrtc/modules/desktop_capture/mouse_cursor.h"
-#include "webrtc/modules/desktop_capture/win/cursor.h"
-#include "webrtc/modules/desktop_capture/win/cursor_unittest_resources.h"
-#include "webrtc/modules/desktop_capture/win/scoped_gdi_object.h"
-#include "webrtc/test/gmock.h"
+#include "modules/desktop_capture/desktop_frame.h"
+#include "modules/desktop_capture/desktop_geometry.h"
+#include "modules/desktop_capture/mouse_cursor.h"
+#include "modules/desktop_capture/win/cursor.h"
+#include "modules/desktop_capture/win/cursor_unittest_resources.h"
+#include "modules/desktop_capture/win/scoped_gdi_object.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 
@@ -74,17 +74,17 @@ bool ConvertToMouseShapeAndCompare(unsigned left, unsigned right) {
 }  // namespace
 
 TEST(MouseCursorTest, MatchCursors) {
-  EXPECT_TRUE(ConvertToMouseShapeAndCompare(IDD_CURSOR1_24BPP,
-                                            IDD_CURSOR1_32BPP));
+  EXPECT_TRUE(
+      ConvertToMouseShapeAndCompare(IDD_CURSOR1_24BPP, IDD_CURSOR1_32BPP));
 
-  EXPECT_TRUE(ConvertToMouseShapeAndCompare(IDD_CURSOR1_8BPP,
-                                            IDD_CURSOR1_32BPP));
+  EXPECT_TRUE(
+      ConvertToMouseShapeAndCompare(IDD_CURSOR1_8BPP, IDD_CURSOR1_32BPP));
 
-  EXPECT_TRUE(ConvertToMouseShapeAndCompare(IDD_CURSOR2_1BPP,
-                                            IDD_CURSOR2_32BPP));
+  EXPECT_TRUE(
+      ConvertToMouseShapeAndCompare(IDD_CURSOR2_1BPP, IDD_CURSOR2_32BPP));
 
-  EXPECT_TRUE(ConvertToMouseShapeAndCompare(IDD_CURSOR3_4BPP,
-                                            IDD_CURSOR3_32BPP));
+  EXPECT_TRUE(
+      ConvertToMouseShapeAndCompare(IDD_CURSOR3_4BPP, IDD_CURSOR3_32BPP));
 }
 
 }  // namespace webrtc

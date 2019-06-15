@@ -60,7 +60,7 @@ void NavigatorEME::requestMediaKeySystemAccess(Navigator&, Document& document, c
         // 6.1. If keySystem is not one of the Key Systems supported by the user agent, reject promise with a NotSupportedError.
         //      String comparison is case-sensitive.
         if (!CDM::supportsKeySystem(keySystem)) {
-            promise->reject(NOT_SUPPORTED_ERR);
+            promise->reject(NotSupportedError);
             return;
         }
 
@@ -77,7 +77,7 @@ static void tryNextSupportedConfiguration(RefPtr<CDM>&& implementation, Vector<M
         // 6.3.1. Let candidate configuration be the value.
         // 6.3.2. Let supported configuration be the result of executing the Get Supported Configuration
         //        algorithm on implementation, candidate configuration, and origin.
-        MediaKeySystemConfiguration candidateCofiguration = WTFMove(supportedConfigurations.first());
+        MediaKeySystemConfiguration candidateConfiguration = WTFMove(supportedConfigurations.first());
         supportedConfigurations.remove(0);
 
         CDM::SupportedConfigurationCallback callback = [implementation = implementation, supportedConfigurations = WTFMove(supportedConfigurations), promise] (std::optional<MediaKeySystemConfiguration> supportedConfiguration) mutable {
@@ -99,13 +99,13 @@ static void tryNextSupportedConfiguration(RefPtr<CDM>&& implementation, Vector<M
 
             tryNextSupportedConfiguration(WTFMove(implementation), WTFMove(supportedConfigurations), WTFMove(promise));
         };
-        implementation->getSupportedConfiguration(WTFMove(candidateCofiguration), WTFMove(callback));
+        implementation->getSupportedConfiguration(WTFMove(candidateConfiguration), WTFMove(callback));
         return;
     }
 
 
     // 6.4. Reject promise with a NotSupportedError.
-    promise->reject(NOT_SUPPORTED_ERR);
+    promise->reject(NotSupportedError);
 }
 
 } // namespace WebCore

@@ -4,7 +4,12 @@
 description: Generator declaration not allowed in statement position
 esid: sec-if-statement
 es6id: 13.6
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
+features: [generators]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 if (true) function* g() {  } else function* _g() {}

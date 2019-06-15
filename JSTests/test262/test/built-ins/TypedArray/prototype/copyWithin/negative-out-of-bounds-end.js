@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.copywithin
-es6id: 22.2.3.5
 description: >
   Set values with negative out of bounds end argument.
-info: >
+info: |
   22.2.3.5 %TypedArray%.prototype.copyWithin (target, start [ , end ] )
 
   %TypedArray%.prototype.copyWithin is a distinct function that implements the
@@ -26,6 +25,7 @@ info: >
   final be min(relativeEnd, len).
   ...
 includes: [compareArray.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -39,10 +39,26 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(0, 1, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(0, 1, -Infinity) -> [1, 2, 3, 4, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3]).copyWithin(0, -2, -10),
       [0, 1, 2, 3]
     ),
     '[0, 1, 2, 3].copyWithin(0, -2, -10) -> [0, 1, 2, 3]'
+  );
+
+  assert(
+    compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(0, -2, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(0, -2, -Infinity) -> [1, 2, 3, 4, 5]'
   );
 
   assert(
@@ -55,6 +71,14 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(0, -9, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(0, -9, -Infinity) -> [1, 2, 3, 4, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3]).copyWithin(-3, -2, -10),
       [0, 1, 2, 3]
     ),
@@ -63,9 +87,25 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(-3, -2, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(-3, -2, -Infinity) -> [1, 2, 3, 4, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3]).copyWithin(-7, -8, -9),
       [0, 1, 2, 3]
     ),
     '[0, 1, 2, 3].copyWithin(-7, -8, -9) -> [0, 1, 2, 3]'
+  );
+
+  assert(
+    compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(-7, -8, -Infinity),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(-7, -8, -Infinity) -> [1, 2, 3, 4, 5]'
   );
 });

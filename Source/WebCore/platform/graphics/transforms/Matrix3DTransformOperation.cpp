@@ -26,8 +26,8 @@
 #include "config.h"
 #include "Matrix3DTransformOperation.h"
 
-#include "TextStream.h"
 #include <algorithm>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -59,6 +59,11 @@ Ref<TransformOperation> Matrix3DTransformOperation::blend(const TransformOperati
     if (blendToIdentity)
         return createOperation(fromT, toT, progress);
     return createOperation(toT, fromT, progress);
+}
+
+bool Matrix3DTransformOperation::isRepresentableIn2D() const
+{
+    return m_matrix.isAffine();
 }
 
 void Matrix3DTransformOperation::dump(TextStream& ts) const

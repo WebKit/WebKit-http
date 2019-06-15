@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/fuzzers/audio_decoder_fuzzer.h"
+#include "test/fuzzers/audio_decoder_fuzzer.h"
 
 #include <limits>
 
-#include "webrtc/api/audio_codecs/audio_decoder.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
+#include "absl/types/optional.h"
+#include "api/audio_codecs/audio_decoder.h"
+#include "modules/rtp_rtcp/source/byte_io.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 namespace {
@@ -51,8 +51,13 @@ void FuzzAudioDecoder(DecoderFunctionType decode_type,
   const uint8_t* data_ptr = data;
   size_t remaining_size = size;
   size_t packet_len;
-  while (ParseInt<size_t, 2>(&data_ptr, &remaining_size, &packet_len) &&
-         packet_len <= remaining_size) {
+  constexpr size_t kMaxNumFuzzedPackets = 200;
+  for (size_t num_packets = 0; num_packets < kMaxNumFuzzedPackets;
+       ++num_packets) {
+    if (!(ParseInt<size_t, 2>(&data_ptr, &remaining_size, &packet_len) &&
+          packet_len <= remaining_size)) {
+      break;
+    }
     AudioDecoder::SpeechType speech_type;
     switch (decode_type) {
       case DecoderFunctionType::kNormalDecode:

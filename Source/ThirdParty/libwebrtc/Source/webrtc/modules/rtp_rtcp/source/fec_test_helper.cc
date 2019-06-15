@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/rtp_rtcp/source/fec_test_helper.h"
+#include "modules/rtp_rtcp/source/fec_test_helper.h"
 
 #include <memory>
 #include <utility>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h"
-#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
-#include "webrtc/modules/rtp_rtcp/source/rtp_utility.h"
+#include "modules/rtp_rtcp/include/rtp_rtcp_defines.h"
+#include "modules/rtp_rtcp/source/byte_io.h"
+#include "modules/rtp_rtcp/source/rtp_utility.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 namespace test {
@@ -29,6 +29,17 @@ constexpr uint8_t kVp8PayloadType = 120;
 
 constexpr int kPacketTimestampIncrement = 3000;
 }  // namespace
+
+MediaPacketGenerator::MediaPacketGenerator(uint32_t min_packet_size,
+                                           uint32_t max_packet_size,
+                                           uint32_t ssrc,
+                                           Random* random)
+    : min_packet_size_(min_packet_size),
+      max_packet_size_(max_packet_size),
+      ssrc_(ssrc),
+      random_(random) {}
+
+MediaPacketGenerator::~MediaPacketGenerator() = default;
 
 ForwardErrorCorrection::PacketList MediaPacketGenerator::ConstructMediaPackets(
     int num_media_packets,
@@ -78,7 +89,7 @@ ForwardErrorCorrection::PacketList MediaPacketGenerator::ConstructMediaPackets(
   RTC_DCHECK(media_packet);
   media_packet->data[1] |= 0x80;
 
-  fec_seq_num_ = seq_num;
+  next_seq_num_ = seq_num;
 
   return media_packets;
 }
@@ -88,8 +99,8 @@ ForwardErrorCorrection::PacketList MediaPacketGenerator::ConstructMediaPackets(
   return ConstructMediaPackets(num_media_packets, random_->Rand<uint16_t>());
 }
 
-uint16_t MediaPacketGenerator::GetFecSeqNum() {
-  return fec_seq_num_;
+uint16_t MediaPacketGenerator::GetNextSeqNum() {
+  return next_seq_num_;
 }
 
 AugmentedPacketGenerator::AugmentedPacketGenerator(uint32_t ssrc)
@@ -112,7 +123,6 @@ std::unique_ptr<AugmentedPacket> AugmentedPacketGenerator::NextPacket(
   for (size_t i = 0; i < length; ++i)
     packet->data[i + kRtpHeaderSize] = offset + i;
   packet->length = length + kRtpHeaderSize;
-  memset(&packet->header, 0, sizeof(WebRtcRTPHeader));
   packet->header.frameType = kVideoFrameDelta;
   packet->header.header.headerLength = kRtpHeaderSize;
   packet->header.header.markerBit = (num_packets_ == 1);

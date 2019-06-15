@@ -26,13 +26,13 @@
 #ifndef ResourceLoadDelegate_h
 #define ResourceLoadDelegate_h
 
-#include <WebKit/WebKit.h>
+#include <WebKitLegacy/WebKit.h>
 
-class MiniBrowser;
+class WebKitLegacyBrowserWindow;
 
 class ResourceLoadDelegate : public IWebResourceLoadDelegate {
 public:
-    ResourceLoadDelegate(MiniBrowser* client)
+    ResourceLoadDelegate(WebKitLegacyBrowserWindow* client)
         : m_client(client) { }
 
     // IUnknown
@@ -52,8 +52,7 @@ public:
     virtual HRESULT STDMETHODCALLTYPE plugInFailedWithError(_In_opt_ IWebView*, _In_opt_ IWebError*, _In_opt_ IWebDataSource*);
 
 private:
-    MiniBrowser* m_client;
-    int m_refCount { 1 };
+    WebKitLegacyBrowserWindow* m_client;
 };
 
 #endif // ResourceLoadDelegate

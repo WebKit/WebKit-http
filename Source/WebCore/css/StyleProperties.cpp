@@ -31,6 +31,7 @@
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
+#include "Color.h"
 #include "Document.h"
 #include "PropertySetCSSStyleDeclaration.h"
 #include "StylePropertyShorthand.h"
@@ -83,9 +84,7 @@ MutableStyleProperties::MutableStyleProperties(const CSSProperty* properties, un
         m_propertyVector.uncheckedAppend(properties[i]);
 }
 
-MutableStyleProperties::~MutableStyleProperties()
-{
-}
+MutableStyleProperties::~MutableStyleProperties() = default;
 
 ImmutableStyleProperties::ImmutableStyleProperties(const CSSProperty* properties, unsigned length, CSSParserMode cssParserMode)
     : StyleProperties(cssParserMode, length)
@@ -158,6 +157,14 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
         return getShorthandValue(borderBottomShorthand());
     case CSSPropertyBorderLeft:
         return getShorthandValue(borderLeftShorthand());
+    case CSSPropertyBorderBlockStart:
+        return getShorthandValue(borderBlockStartShorthand());
+    case CSSPropertyBorderBlockEnd:
+        return getShorthandValue(borderBlockEndShorthand());
+    case CSSPropertyBorderInlineStart:
+        return getShorthandValue(borderInlineStartShorthand());
+    case CSSPropertyBorderInlineEnd:
+        return getShorthandValue(borderInlineEndShorthand());
     case CSSPropertyOutline:
         return getShorthandValue(outlineShorthand());
     case CSSPropertyBorderColor:
@@ -237,6 +244,22 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
     default:
         return String();
     }
+}
+
+std::optional<Color> StyleProperties::propertyAsColor(CSSPropertyID property) const
+{
+    auto colorValue = getPropertyCSSValue(property);
+    if (!is<CSSPrimitiveValue>(colorValue))
+        return std::nullopt;
+
+    auto& primitiveColor = downcast<CSSPrimitiveValue>(*colorValue);
+    return primitiveColor.isRGBColor() ? primitiveColor.color() : CSSParser::parseColor(colorValue->cssText());
+}
+
+CSSValueID StyleProperties::propertyAsValueID(CSSPropertyID property) const
+{
+    auto cssValue = getPropertyCSSValue(property);
+    return is<CSSPrimitiveValue>(cssValue) ? downcast<CSSPrimitiveValue>(*cssValue).valueID() : CSSValueInvalid;
 }
 
 String StyleProperties::getCustomPropertyValue(const String& propertyName) const
@@ -351,6 +374,10 @@ String StyleProperties::get4Values(const StylePropertyShorthand& shorthand) cons
     if (!top.value() || !right.value() || !bottom.value() || !left.value())
         return String();
 
+    // Important flags must be the same
+    if (top.isImportant() != right.isImportant() || right.isImportant() != bottom.isImportant() || bottom.isImportant() != left.isImportant())
+        return String();
+
     if (top.isInherited() && right.isInherited() && bottom.isInherited() && left.isInherited())
         return getValueName(CSSValueInherit);
 
@@ -361,8 +388,6 @@ String StyleProperties::get4Values(const StylePropertyShorthand& shorthand) cons
         }
         return String();
     }
-    if (top.isImportant() != right.isImportant() || right.isImportant() != bottom.isImportant() || bottom.isImportant() != left.isImportant())
-        return String();
 
     bool showLeft = !right.value()->equals(*left.value());
     bool showBottom = !top.value()->equals(*bottom.value()) || showLeft;
@@ -1164,6 +1189,7 @@ static const CSSPropertyID blockProperties[] = {
     CSSPropertyWebkitAspectRatio,
     CSSPropertyColumnCount,
     CSSPropertyColumnGap,
+    CSSPropertyRowGap,
     CSSPropertyColumnRuleColor,
     CSSPropertyColumnRuleStyle,
     CSSPropertyColumnRuleWidth,
@@ -1174,11 +1200,6 @@ static const CSSPropertyID blockProperties[] = {
     CSSPropertyPageBreakAfter,
     CSSPropertyPageBreakBefore,
     CSSPropertyPageBreakInside,
-#if ENABLE(CSS_REGIONS)
-    CSSPropertyWebkitRegionBreakAfter,
-    CSSPropertyWebkitRegionBreakBefore,
-    CSSPropertyWebkitRegionBreakInside,
-#endif
     CSSPropertyTextAlign,
 #if ENABLE(CSS3_TEXT)
     CSSPropertyWebkitTextAlignLast,
@@ -1216,8 +1237,7 @@ bool MutableStyleProperties::removePropertiesInSet(const CSSPropertyID* set, uns
         toRemove.add(set[i]);
 
     return m_propertyVector.removeAllMatching([&toRemove] (const CSSProperty& property) {
-        // Not quite sure if the isImportant test is needed but it matches the existing behavior.
-        return !property.isImportant() && toRemove.contains(property.id());
+        return toRemove.contains(property.id());
     }) > 0;
 }
 
@@ -1409,9 +1429,7 @@ DeferredStyleProperties::DeferredStyleProperties(const CSSParserTokenRange& rang
     m_tokens.append(range.begin(), length);
 }
     
-DeferredStyleProperties::~DeferredStyleProperties()
-{
-}
+DeferredStyleProperties::~DeferredStyleProperties() = default;
 
 Ref<ImmutableStyleProperties> DeferredStyleProperties::parseDeferredProperties()
 {

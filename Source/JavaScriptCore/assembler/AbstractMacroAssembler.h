@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,8 @@
 #include "AssemblerCommon.h"
 #include "CPU.h"
 #include "CodeLocation.h"
+#include "JSCJSValue.h"
+#include "JSCPtrTag.h"
 #include "MacroAssemblerCodeRef.h"
 #include "MacroAssemblerHelpers.h"
 #include "Options.h"
@@ -43,11 +45,6 @@ namespace JSC {
 
 #if ENABLE(ASSEMBLER)
 
-#if ENABLE(MASM_PROBE)
-struct ProbeContext;
-typedef void (*ProbeFunction)(struct ProbeContext*);
-#endif
-    
 class AllowMacroScratchRegisterUsage;
 class DisallowMacroScratchRegisterUsage;
 class LinkBuffer;
@@ -82,19 +79,35 @@ public:
     typedef AbstractMacroAssembler<AssemblerType> AbstractMacroAssemblerType;
     typedef AssemblerType AssemblerType_T;
 
-    typedef MacroAssemblerCodePtr CodePtr;
-    typedef MacroAssemblerCodeRef CodeRef;
+    template<PtrTag tag> using CodePtr = MacroAssemblerCodePtr<tag>;
+    template<PtrTag tag> using CodeRef = MacroAssemblerCodeRef<tag>;
+
+    enum class CPUIDCheckState {
+        NotChecked,
+        Clear,
+        Set
+    };
 
     class Jump;
 
     typedef typename AssemblerType::RegisterID RegisterID;
+    typedef typename AssemblerType::SPRegisterID SPRegisterID;
     typedef typename AssemblerType::FPRegisterID FPRegisterID;
     
     static constexpr RegisterID firstRegister() { return AssemblerType::firstRegister(); }
     static constexpr RegisterID lastRegister() { return AssemblerType::lastRegister(); }
+    static constexpr unsigned numberOfRegisters() { return AssemblerType::numberOfRegisters(); }
+    static const char* gprName(RegisterID id) { return AssemblerType::gprName(id); }
+
+    static constexpr SPRegisterID firstSPRegister() { return AssemblerType::firstSPRegister(); }
+    static constexpr SPRegisterID lastSPRegister() { return AssemblerType::lastSPRegister(); }
+    static constexpr unsigned numberOfSPRegisters() { return AssemblerType::numberOfSPRegisters(); }
+    static const char* sprName(SPRegisterID id) { return AssemblerType::sprName(id); }
 
     static constexpr FPRegisterID firstFPRegister() { return AssemblerType::firstFPRegister(); }
     static constexpr FPRegisterID lastFPRegister() { return AssemblerType::lastFPRegister(); }
+    static constexpr unsigned numberOfFPRegisters() { return AssemblerType::numberOfFPRegisters(); }
+    static const char* fprName(FPRegisterID id) { return AssemblerType::fprName(id); }
 
     // Section 1: MacroAssembler operand types
     //
@@ -235,25 +248,33 @@ public:
         const void* m_ptr;
     };
 
+    // TrustedImm:
+    //
+    // An empty super class of each of the TrustedImm types. This class is used for template overloads
+    // on a TrustedImm type via std::is_base_of.
+    struct TrustedImm { };
+
     // TrustedImmPtr:
     //
     // A pointer sized immediate operand to an instruction - this is wrapped
     // in a class requiring explicit construction in order to differentiate
     // from pointers used as absolute addresses to memory operations
-    struct TrustedImmPtr {
+    struct TrustedImmPtr : public TrustedImm {
         TrustedImmPtr() { }
         
         explicit TrustedImmPtr(const void* value)
             : m_value(value)
         {
         }
-        
-        // This is only here so that TrustedImmPtr(0) does not confuse the C++
-        // overload handling rules.
-        explicit TrustedImmPtr(int value)
-            : m_value(0)
+
+        template<typename ReturnType, typename... Arguments>
+        explicit TrustedImmPtr(ReturnType(*value)(Arguments...))
+            : m_value(reinterpret_cast<void*>(value))
         {
-            ASSERT_UNUSED(value, !value);
+        }
+
+        explicit TrustedImmPtr(std::nullptr_t)
+        {
         }
 
         explicit TrustedImmPtr(size_t value)
@@ -266,7 +287,12 @@ public:
             return reinterpret_cast<intptr_t>(m_value);
         }
 
-        const void* m_value;
+        void* asPtr()
+        {
+            return const_cast<void*>(m_value);
+        }
+
+        const void* m_value { 0 };
     };
 
     struct ImmPtr : private TrustedImmPtr
@@ -285,7 +311,7 @@ public:
     // class requiring explicit construction in order to prevent RegisterIDs
     // (which are implemented as an enum) from accidentally being passed as
     // immediate values.
-    struct TrustedImm32 {
+    struct TrustedImm32 : public TrustedImm {
         TrustedImm32() { }
         
         explicit TrustedImm32(int32_t value)
@@ -325,7 +351,7 @@ public:
     // class requiring explicit construction in order to prevent RegisterIDs
     // (which are implemented as an enum) from accidentally being passed as
     // immediate values.
-    struct TrustedImm64 {
+    struct TrustedImm64 : TrustedImm {
         TrustedImm64() { }
         
         explicit TrustedImm64(int64_t value)
@@ -374,7 +400,7 @@ public:
         friend class AbstractMacroAssembler<AssemblerType>;
         friend struct DFG::OSRExit;
         friend class Jump;
-        friend class MacroAssemblerCodeRef;
+        template<PtrTag> friend class MacroAssemblerCodeRef;
         friend class LinkBuffer;
         friend class Watchpoint;
 
@@ -823,9 +849,10 @@ public:
         return AssemblerType::getDifferenceBetweenLabels(from.m_label, to.m_label);
     }
 
-    static ptrdiff_t differenceBetweenCodePtr(const MacroAssemblerCodePtr& a, const MacroAssemblerCodePtr& b)
+    template<PtrTag aTag, PtrTag bTag>
+    static ptrdiff_t differenceBetweenCodePtr(const MacroAssemblerCodePtr<aTag>& a, const MacroAssemblerCodePtr<bTag>& b)
     {
-        return reinterpret_cast<ptrdiff_t>(b.executableAddress()) - reinterpret_cast<ptrdiff_t>(a.executableAddress());
+        return b.template dataLocation<ptrdiff_t>() - a.template dataLocation<ptrdiff_t>();
     }
 
     unsigned debugOffset() { return m_assembler.debugOffset(); }
@@ -837,7 +864,8 @@ public:
 
     AssemblerType m_assembler;
     
-    static void linkJump(void* code, Jump jump, CodeLocationLabel target)
+    template<PtrTag tag>
+    static void linkJump(void* code, Jump jump, CodeLocationLabel<tag> target)
     {
         AssemblerType::linkJump(code, jump.m_label, target.dataLocation());
     }
@@ -847,9 +875,16 @@ public:
         AssemblerType::linkPointer(code, label, value);
     }
 
+    template<PtrTag tag>
+    static void linkPointer(void* code, AssemblerLabel label, MacroAssemblerCodePtr<tag> value)
+    {
+        AssemblerType::linkPointer(code, label, value.executableAddress());
+    }
+
+    template<PtrTag tag>
     static void* getLinkerAddress(void* code, AssemblerLabel label)
     {
-        return AssemblerType::getRelocatedAddress(code, label);
+        return tagCodePtr(AssemblerType::getRelocatedAddress(code, label), tag);
     }
 
     static unsigned getLinkerCallReturnOffset(Call call)
@@ -857,55 +892,64 @@ public:
         return AssemblerType::getCallReturnOffset(call.m_label);
     }
 
-    static void repatchJump(CodeLocationJump jump, CodeLocationLabel destination)
+    template<PtrTag jumpTag, PtrTag destTag>
+    static void repatchJump(CodeLocationJump<jumpTag> jump, CodeLocationLabel<destTag> destination)
     {
         AssemblerType::relinkJump(jump.dataLocation(), destination.dataLocation());
     }
     
-    static void repatchJumpToNop(CodeLocationJump jump)
+    template<PtrTag jumpTag>
+    static void repatchJumpToNop(CodeLocationJump<jumpTag> jump)
     {
         AssemblerType::relinkJumpToNop(jump.dataLocation());
     }
 
-    static void repatchNearCall(CodeLocationNearCall nearCall, CodeLocationLabel destination)
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchNearCall(CodeLocationNearCall<callTag> nearCall, CodeLocationLabel<destTag> destination)
     {
         switch (nearCall.callMode()) {
         case NearCallMode::Tail:
             AssemblerType::relinkJump(nearCall.dataLocation(), destination.dataLocation());
             return;
         case NearCallMode::Regular:
-            AssemblerType::relinkCall(nearCall.dataLocation(), destination.executableAddress());
+            AssemblerType::relinkCall(nearCall.dataLocation(), destination.untaggedExecutableAddress());
             return;
         }
         RELEASE_ASSERT_NOT_REACHED();
     }
 
-    static void repatchCompact(CodeLocationDataLabelCompact dataLabelCompact, int32_t value)
+    template<PtrTag tag>
+    static void repatchCompact(CodeLocationDataLabelCompact<tag> dataLabelCompact, int32_t value)
     {
-        AssemblerType::repatchCompact(dataLabelCompact.dataLocation(), value);
+        AssemblerType::repatchCompact(dataLabelCompact.template dataLocation(), value);
     }
-    
-    static void repatchInt32(CodeLocationDataLabel32 dataLabel32, int32_t value)
+
+    template<PtrTag tag>
+    static void repatchInt32(CodeLocationDataLabel32<tag> dataLabel32, int32_t value)
     {
         AssemblerType::repatchInt32(dataLabel32.dataLocation(), value);
     }
 
-    static void repatchPointer(CodeLocationDataLabelPtr dataLabelPtr, void* value)
+    template<PtrTag tag>
+    static void repatchPointer(CodeLocationDataLabelPtr<tag> dataLabelPtr, void* value)
     {
         AssemblerType::repatchPointer(dataLabelPtr.dataLocation(), value);
     }
-    
-    static void* readPointer(CodeLocationDataLabelPtr dataLabelPtr)
+
+    template<PtrTag tag>
+    static void* readPointer(CodeLocationDataLabelPtr<tag> dataLabelPtr)
     {
         return AssemblerType::readPointer(dataLabelPtr.dataLocation());
     }
     
-    static void replaceWithLoad(CodeLocationConvertibleLoad label)
+    template<PtrTag tag>
+    static void replaceWithLoad(CodeLocationConvertibleLoad<tag> label)
     {
         AssemblerType::replaceWithLoad(label.dataLocation());
     }
-    
-    static void replaceWithAddressComputation(CodeLocationConvertibleLoad label)
+
+    template<PtrTag tag>
+    static void replaceWithAddressComputation(CodeLocationConvertibleLoad<tag> label)
     {
         AssemblerType::replaceWithAddressComputation(label.dataLocation());
     }
@@ -926,6 +970,15 @@ public:
         AssemblerType::fillNops(static_cast<char*>(buffer.data()) + startCodeSize, memoryToFillWithNopsInBytes, isCopyingToExecutableMemory);
         buffer.setCodeSize(targetCodeSize);
     }
+
+    ALWAYS_INLINE void tagReturnAddress() { }
+    ALWAYS_INLINE void untagReturnAddress() { }
+
+    ALWAYS_INLINE void tagPtr(RegisterID, PtrTag) { }
+    ALWAYS_INLINE void tagPtr(RegisterID, RegisterID) { }
+    ALWAYS_INLINE void untagPtr(RegisterID, PtrTag) { }
+    ALWAYS_INLINE void untagPtr(RegisterID, RegisterID) { }
+    ALWAYS_INLINE void removePtrTag(RegisterID) { }
 
 protected:
     AbstractMacroAssembler()

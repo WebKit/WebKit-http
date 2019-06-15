@@ -24,12 +24,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "PluginMessageThrottlerWin.h"
 
 #include "PluginView.h"
 #include <wtf/ASCIICType.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/MonotonicTime.h>
 
 using namespace WTF;
 
@@ -42,14 +41,13 @@ namespace WebCore {
 static const Seconds messageThrottleTimeInterval { 16_ms };
 
 // During a continuous stream of messages, process one every 5ms.
-static const double MessageDirectProcessingInterval = 0.005;
+static const Seconds MessageDirectProcessingInterval { 5_ms };
 
 PluginMessageThrottlerWin::PluginMessageThrottlerWin(PluginView* pluginView)
     : m_pluginView(pluginView)
     , m_back(0)
     , m_front(0)
     , m_messageThrottleTimer(*this, &PluginMessageThrottlerWin::messageThrottleTimerFired)
-    , m_lastMessageTime(0)
 {
     // Initialize the free list with our inline messages
     for (unsigned i = 0; i < NumInlineMessages - 1; i++)
@@ -86,7 +84,7 @@ void PluginMessageThrottlerWin::appendMessage(HWND hWnd, UINT msg, WPARAM wParam
 
     // If it has been more than MessageDirectProcessingInterval between throttled messages,
     // go ahead and process a message directly.
-    double currentTime = monotonicallyIncreasingTime();
+    MonotonicTime currentTime = MonotonicTime::now();
     if (currentTime - m_lastMessageTime > MessageDirectProcessingInterval) {
         processQueuedMessage();
         m_lastMessageTime = currentTime;
@@ -105,10 +103,12 @@ void PluginMessageThrottlerWin::processQueuedMessage()
     if (message == m_back)
         m_back = 0;
 
+#if ENABLE(NETSCAPE_PLUGIN_API)
     // Protect the PluginView from destruction while calling its window proc.
     // <rdar://problem/6930280>
     RefPtr<PluginView> protect(m_pluginView);
     ::CallWindowProc(m_pluginView->pluginWndProc(), message->hWnd, message->msg, message->wParam, message->lParam);
+#endif
 
     freeMessage(message);
 }

@@ -605,7 +605,7 @@ void WebChromeClient::exceededDatabaseQuota(Frame& frame, const String& database
 }
 
 // FIXME: Move this include to the top of the file with the other includes.
-#include "ApplicationCacheStorage.h"
+#include <WebCore/ApplicationCacheStorage.h>
 
 void WebChromeClient::reachedMaxAppCacheSize(int64_t spaceNeeded)
 {
@@ -758,7 +758,7 @@ bool WebChromeClient::supportsVideoFullscreen(HTMLMediaElementEnums::VideoFullsc
     return true;
 }
 
-void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode)
+void WebChromeClient::enterVideoFullscreenForVideoElement(HTMLVideoElement& videoElement, HTMLMediaElementEnums::VideoFullscreenMode, bool)
 {
     m_webView->enterVideoFullscreenForVideoElement(videoElement);
 }
@@ -778,12 +778,6 @@ bool WebChromeClient::selectItemWritingDirectionIsNatural()
 bool WebChromeClient::selectItemAlignmentFollowsMenuWritingDirection()
 {
     return true;
-}
-
-bool WebChromeClient::hasOpenedPopup() const
-{
-    notImplemented();
-    return false;
 }
 
 RefPtr<PopupMenu> WebChromeClient::createPopupMenu(PopupMenuClient& client) const

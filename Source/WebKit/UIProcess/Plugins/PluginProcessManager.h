@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginProcessManager_h
-#define PluginProcessManager_h
+#pragma once
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
@@ -35,7 +34,6 @@
 #include "WebProcessProxyMessages.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounter.h>
 #include <wtf/Vector.h>
@@ -49,21 +47,26 @@ namespace WebKit {
 class PluginInfoStore;
 class PluginProcessProxy;
 class WebProcessProxy;
+enum class WebsiteDataFetchOption;
 
 class PluginProcessManager {
     WTF_MAKE_NONCOPYABLE(PluginProcessManager);
-    friend class NeverDestroyed<PluginProcessManager>;
+    friend NeverDestroyed<PluginProcessManager>;
 public:
     static PluginProcessManager& singleton();
 
     uint64_t pluginProcessToken(const PluginModuleInfo&, PluginProcessType, PluginProcessSandboxPolicy);
 
-    void getPluginProcessConnection(uint64_t pluginProcessToken, Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&&);
+    void getPluginProcessConnection(uint64_t pluginProcessToken, Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply&&);
     void removePluginProcessProxy(PluginProcessProxy*);
 
-    void fetchWebsiteData(const PluginModuleInfo&, WTF::Function<void (Vector<String>)>&& completionHandler);
-    void deleteWebsiteData(const PluginModuleInfo&, std::chrono::system_clock::time_point modifiedSince, WTF::Function<void ()>&& completionHandler);
+    void fetchWebsiteData(const PluginModuleInfo&, OptionSet<WebsiteDataFetchOption>, WTF::Function<void (Vector<String>)>&& completionHandler);
+    void deleteWebsiteData(const PluginModuleInfo&, WallTime modifiedSince, WTF::Function<void ()>&& completionHandler);
     void deleteWebsiteDataForHostNames(const PluginModuleInfo&, const Vector<String>& hostNames, WTF::Function<void ()>&& completionHandler);
+
+#if OS(LINUX)
+    void sendMemoryPressureEvent(bool isCritical);
+#endif
 
 #if PLATFORM(COCOA)
     inline ProcessSuppressionDisabledToken processSuppressionDisabledToken();
@@ -71,9 +74,17 @@ public:
     void updateProcessSuppressionDisabled(RefCounterEvent);
 #endif
 
-    PluginProcessManager();
+    const Vector<RefPtr<PluginProcessProxy>>& pluginProcesses() const { return m_pluginProcesses; }
+
+#if PLATFORM(MAC)
+    void setExperimentalPlugInSandboxProfilesEnabled(bool);
+    bool experimentalPlugInSandboxProfilesEnabled() const { return m_experimentalPlugInSandboxProfilesEnabled; }
+#endif
 
 private:
+    PluginProcessManager();
+
+    PluginProcessProxy* getPluginProcess(uint64_t pluginProcessToken);
     PluginProcessProxy* getOrCreatePluginProcess(uint64_t pluginProcessToken);
 
     Vector<std::pair<PluginProcessAttributes, uint64_t>> m_pluginProcessTokens;
@@ -83,6 +94,9 @@ private:
 
 #if PLATFORM(COCOA)
     ProcessSuppressionDisabledCounter m_processSuppressionDisabledForPageCounter;
+#endif
+#if PLATFORM(MAC)
+    bool m_experimentalPlugInSandboxProfilesEnabled { false };
 #endif
 };
 
@@ -101,5 +115,3 @@ inline bool PluginProcessManager::processSuppressionDisabled() const
 } // namespace WebKit
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-
-#endif // PluginProcessManager_h

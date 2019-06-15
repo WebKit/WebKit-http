@@ -5,7 +5,7 @@
 es6id: B.2.3.1
 description: >
   String.prototype.substr.length is 2.
-info: >
+info: |
   String.prototype.substr (start, length)
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.substr.length, 2);
-
-verifyNotEnumerable(String.prototype.substr, "length");
-verifyNotWritable(String.prototype.substr, "length");
-verifyConfigurable(String.prototype.substr, "length");
+verifyProperty(String.prototype.substr, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 2
+});

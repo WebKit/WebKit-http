@@ -31,7 +31,7 @@
 #import "WebDelegateImplementationCaching.h"
 #import "WebUIDelegate.h"
 #if HAVE(TOUCH_BAR)
-#import <WebCore/AVKitSPI.h>
+#import <pal/spi/cocoa/AVKitSPI.h>
 #endif
 #import <WebCore/AlternativeTextClient.h>
 #import <WebCore/LayerFlushScheduler.h>
@@ -54,8 +54,8 @@ class Page;
 class TextIndicatorWindow;
 class ValidationBubble;
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-class WebPlaybackSessionInterfaceMac;
-class WebPlaybackSessionModelMediaElement;
+class PlaybackSessionInterfaceMac;
+class PlaybackSessionModelMediaElement;
 #endif
 }
 
@@ -76,9 +76,6 @@ class WebPlaybackSessionModelMediaElement;
 #endif
 #if ENABLE(FULLSCREEN_API)
 @class WebFullScreenController;
-#endif
-#if ENABLE(MEDIA_STREAM)
-@protocol WebUserMediaClient;
 #endif
 #if ENABLE(REMOTE_INSPECTOR) && PLATFORM(IOS)
 @class WebIndicateLayer;
@@ -301,7 +298,7 @@ private:
 #if ENABLE(DATA_INTERACTION)
     RetainPtr<WebUITextIndicatorData> textIndicatorData;
     RetainPtr<WebUITextIndicatorData> dataOperationTextIndicator;
-    CGRect draggedElementBounds;
+    CGRect dragPreviewFrameInRootViewCoordinates;
     WebDragSourceAction dragSourceAction;
     RetainPtr<NSURL> draggedLinkURL;
     RetainPtr<NSString> draggedLinkTitle;
@@ -338,8 +335,8 @@ private:
 #endif
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-    RefPtr<WebCore::WebPlaybackSessionModelMediaElement> playbackSessionModel;
-    RefPtr<WebCore::WebPlaybackSessionInterfaceMac> playbackSessionInterface;
+    RefPtr<WebCore::PlaybackSessionModelMediaElement> playbackSessionModel;
+    RefPtr<WebCore::PlaybackSessionInterfaceMac> playbackSessionInterface;
 #endif
     
 #if ENABLE(FULLSCREEN_API)
@@ -355,10 +352,6 @@ private:
     id<WebGeolocationProvider> _geolocationProvider;
     id<WebDeviceOrientationProvider> m_deviceOrientationProvider;
     id<WebNotificationProvider> _notificationProvider;
-
-#if ENABLE(MEDIA_STREAM)
-    id<WebUserMediaClient> m_userMediaClient;
-#endif
 
 #if ENABLE(SERVICE_CONTROLS)
     std::unique_ptr<WebSelectionServiceController> _selectionServiceController;

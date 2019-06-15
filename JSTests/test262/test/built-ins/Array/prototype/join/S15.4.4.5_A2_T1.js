@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The join function is intentionally generic.
     It does not require that its this value be an Array object
+esid: sec-array.prototype.join
 es5id: 15.4.4.5_A2_T1
 description: If ToUint32(length) is zero, return the empty string
 ---*/
@@ -15,21 +16,21 @@ obj.join = Array.prototype.join;
 if (obj.length !== undefined) {
   $ERROR('#0: var obj = {}; obj.length === undefined. Actual: ' + (obj.length));
 } else {
-    //CHECK#1  
-    if (obj.join() !== "") {
-      $ERROR('#1: var obj = {}; obj.join = Array.prototype.join; obj.join() === "". Actual: ' + (obj.join()));
-    }
-    //CHECK#2
-    if (obj.length !== undefined) {
-      $ERROR('#2: var obj = {}; obj.join = Array.prototype.join; obj.join(); obj.length === undefined. Actual: ' + (obj.length));
-    }
-}    
+  //CHECK#1
+  if (obj.join() !== "") {
+    $ERROR('#1: var obj = {}; obj.join = Array.prototype.join; obj.join() === "". Actual: ' + (obj.join()));
+  }
+  //CHECK#2
+  if (obj.length !== undefined) {
+    $ERROR('#2: var obj = {}; obj.join = Array.prototype.join; obj.join(); obj.length === undefined. Actual: ' + (obj.length));
+  }
+}
 
 //CHECK#3
 obj.length = undefined;
 if (obj.join() !== "") {
   $ERROR('#3: var obj = {}; obj.length = undefined; obj.join = Array.prototype.join; obj.join() === ". Actual: ' + (obj.join()));
-} 
+}
 
 //CHECK#4
 if (obj.length !== undefined) {
@@ -40,7 +41,7 @@ if (obj.length !== undefined) {
 obj.length = null
 if (obj.join() !== "") {
   $ERROR('#5: var obj = {}; obj.length = null; obj.join = Array.prototype.join; obj.join() === "". Actual: ' + (obj.join()));
-} 
+}
 
 //CHECK#6
 if (obj.length !== null) {

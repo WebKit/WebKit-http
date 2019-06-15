@@ -5,7 +5,7 @@
 es6id: B.2.3.10
 description: >
   String.prototype.link.length is 1.
-info: >
+info: |
   String.prototype.link ( url )
 
   17 ECMAScript Standard Built-in Objects:
@@ -22,8 +22,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.link.length, 1);
-
-verifyNotEnumerable(String.prototype.link, "length");
-verifyNotWritable(String.prototype.link, "length");
-verifyConfigurable(String.prototype.link, "length");
+verifyProperty(String.prototype.link, "length", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: 1
+});

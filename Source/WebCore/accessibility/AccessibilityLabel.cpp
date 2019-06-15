@@ -41,9 +41,7 @@ AccessibilityLabel::AccessibilityLabel(RenderObject* renderer)
 {
 }
 
-AccessibilityLabel::~AccessibilityLabel()
-{
-}
+AccessibilityLabel::~AccessibilityLabel() = default;
 
 Ref<AccessibilityLabel> AccessibilityLabel::create(RenderObject* renderer)
 {
@@ -67,9 +65,9 @@ static bool childrenContainOnlyStaticText(const AccessibilityObject::Accessibili
     if (!children.size())
         return false;
     for (const auto& child : children) {
-        if (child->roleValue() == StaticTextRole)
+        if (child->roleValue() == AccessibilityRole::StaticText)
             continue;
-        if (child->roleValue() == GroupRole) {
+        if (child->roleValue() == AccessibilityRole::Group) {
             if (!childrenContainOnlyStaticText(child->children()))
                 return false;
         } else
@@ -83,6 +81,33 @@ bool AccessibilityLabel::containsOnlyStaticText() const
     if (m_containsOnlyStaticTextDirty)
         return childrenContainOnlyStaticText(m_children);
     return m_containsOnlyStaticText;
+}
+
+static bool childrenContainUnrelatedControls(const AccessibilityObject::AccessibilityChildrenVector& children, AccessibilityObject* controlForLabel)
+{
+    if (!children.size())
+        return false;
+
+    for (const auto& child : children) {
+        if (child->isControl()) {
+            if (child == controlForLabel)
+                continue;
+            return true;
+        }
+
+        if (childrenContainUnrelatedControls(child->children(), controlForLabel))
+            return true;
+    }
+
+    return false;
+}
+
+bool AccessibilityLabel::containsUnrelatedControls() const
+{
+    if (containsOnlyStaticText())
+        return false;
+
+    return childrenContainUnrelatedControls(m_children, correspondingControlForLabelElement());
 }
 
 void AccessibilityLabel::updateChildrenIfNecessary()

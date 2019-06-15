@@ -31,19 +31,14 @@
 #include "config.h"
 #include "WebSocketProvider.h"
 
-#if ENABLE(WEB_SOCKETS)
-
 #include "WebSocketStream.h"
 
+namespace WebKit {
 using namespace WebCore;
 
-namespace WebKit {
-
-Ref<SocketStreamHandle> WebSocketProvider::createSocketStreamHandle(const URL& url, SocketStreamHandleClient& client, SessionID sessionID, const String& credentialPartition)
+Ref<SocketStreamHandle> WebSocketProvider::createSocketStreamHandle(const URL& url, SocketStreamHandleClient& client, PAL::SessionID sessionID, const String& credentialPartition)
 {
     return WebSocketStream::create(url, client, sessionID, credentialPartition);
 }
 
 } // namespace WebKit
-
-#endif // ENABLE(WEB_SOCKETS)

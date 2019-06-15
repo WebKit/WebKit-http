@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     If ToString([[Get]] ToString(j)) < ToString([[Get]] ToString(k)), return -1.
     If ToString([[Get]] ToString(j)) > ToString([[Get]] ToString(k)), return 1;
     return -1
+esid: sec-array.prototype.sort
 es5id: 15.4.4.11_A2.1_T1
 description: Checking ENGLISH ALPHABET
 ---*/

@@ -26,39 +26,35 @@
 #include "config.h"
 #include "MemoryFootprint.h"
 
-#if OS(LINUX)
+#include "MonotonicTime.h"
 #include <stdio.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringView.h>
-#endif
 
 namespace WTF {
 
-#if OS(LINUX)
+static const Seconds s_memoryFootprintUpdateInterval = 1_s;
+
 template<typename Functor>
 static void forEachLine(FILE* file, Functor functor)
 {
     char* buffer = nullptr;
     size_t size = 0;
     while (getline(&buffer, &size, file) != -1) {
-        functor(buffer, size);
-        free(buffer);
-        buffer = nullptr;
-        size = 0;
+        functor(buffer);
     }
+    free(buffer);
 }
-#endif
 
-std::optional<size_t> memoryFootprint()
+static size_t computeMemoryFootprint()
 {
-#if OS(LINUX)
     FILE* file = fopen("/proc/self/smaps", "r");
     if (!file)
-        return std::nullopt;
+        return 0;
 
     unsigned long totalPrivateDirtyInKB = 0;
     bool isAnonymous = false;
-    forEachLine(file, [&] (char* buffer, size_t) {
+    forEachLine(file, [&] (char* buffer) {
         {
             unsigned long start;
             unsigned long end;
@@ -74,7 +70,7 @@ std::optional<size_t> memoryFootprint()
             }
             if (scannedCount == 7) {
                 StringView pathString(path);
-                isAnonymous = pathString == ASCIILiteral("[heap]") || pathString.startsWith("[stack");
+                isAnonymous = pathString == "[heap]" || pathString.startsWith("[stack");
                 return;
             }
         }
@@ -88,8 +84,19 @@ std::optional<size_t> memoryFootprint()
     });
     fclose(file);
     return totalPrivateDirtyInKB * KB;
-#endif
-    return std::nullopt;
 }
 
+size_t memoryFootprint()
+{
+    static size_t footprint = 0;
+    static MonotonicTime previousUpdateTime = { };
+    Seconds elapsed = MonotonicTime::now() - previousUpdateTime;
+    if (elapsed >= s_memoryFootprintUpdateInterval) {
+        footprint = computeMemoryFootprint();
+        previousUpdateTime = MonotonicTime::now();
+    }
+
+    return footprint;
 }
+
+} // namespace WTF

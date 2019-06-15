@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,8 +29,6 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "B3Compilation.h"
-#include "JSCInlines.h"
-#include "JSGlobalObject.h"
 #include "WasmB3IRGenerator.h"
 #include "WasmBinding.h"
 #include "WasmCallee.h"
@@ -38,6 +36,7 @@
 #include "WasmFaultSignalHandler.h"
 #include "WasmMemory.h"
 #include "WasmModuleParser.h"
+#include "WasmSignatureInlines.h"
 #include "WasmTierUpCount.h"
 #include "WasmValidate.h"
 #include <wtf/DataLog.h>
@@ -49,23 +48,27 @@
 
 namespace JSC { namespace Wasm {
 
+namespace WasmBBQPlanInternal {
 static const bool verbose = false;
+}
 
-BBQPlan::BBQPlan(VM* vm, Ref<ModuleInformation> info, AsyncWork work, CompletionTask&& task)
-    : Base(vm, WTFMove(info), WTFMove(task))
+BBQPlan::BBQPlan(Context* context, Ref<ModuleInformation> info, AsyncWork work, CompletionTask&& task, CreateEmbedderWrapper&& createEmbedderWrapper, ThrowWasmException throwWasmException)
+    : Base(context, WTFMove(info), WTFMove(task), WTFMove(createEmbedderWrapper), throwWasmException)
     , m_state(State::Validated)
     , m_asyncWork(work)
 {
 }
 
-BBQPlan::BBQPlan(VM* vm, Vector<uint8_t>&& source, AsyncWork work, CompletionTask&& task)
-    : BBQPlan(vm, adoptRef(*new ModuleInformation(WTFMove(source))), work, WTFMove(task))
+BBQPlan::BBQPlan(Context* context, Vector<uint8_t>&& source, AsyncWork work, CompletionTask&& task, CreateEmbedderWrapper&& createEmbedderWrapper, ThrowWasmException throwWasmException)
+    : Base(context, ModuleInformation::create(), WTFMove(task), WTFMove(createEmbedderWrapper), throwWasmException)
+    , m_source(WTFMove(source))
+    , m_state(State::Initial)
+    , m_asyncWork(work)
 {
-    m_state = State::Initial;
 }
 
-BBQPlan::BBQPlan(VM* vm, const uint8_t* source, size_t sourceLength, AsyncWork work, CompletionTask&& task)
-    : Base(vm, source, sourceLength, WTFMove(task))
+BBQPlan::BBQPlan(Context* context, AsyncWork work, CompletionTask&& task)
+    : Base(context, WTFMove(task))
     , m_state(State::Initial)
     , m_asyncWork(work)
 {
@@ -86,22 +89,22 @@ const char* BBQPlan::stateString(State state)
 void BBQPlan::moveToState(State state)
 {
     ASSERT(state >= m_state);
-    dataLogLnIf(verbose && state != m_state, "moving to state: ", stateString(state), " from state: ", stateString(m_state));
+    dataLogLnIf(WasmBBQPlanInternal::verbose && state != m_state, "moving to state: ", stateString(state), " from state: ", stateString(m_state));
     m_state = state;
 }
 
-bool BBQPlan::parseAndValidateModule()
+bool BBQPlan::parseAndValidateModule(const uint8_t* source, size_t sourceLength)
 {
     if (m_state != State::Initial)
         return true;
 
-    dataLogLnIf(verbose, "starting validation");
+    dataLogLnIf(WasmBBQPlanInternal::verbose, "starting validation");
     MonotonicTime startTime;
-    if (verbose || Options::reportCompileTimes())
+    if (WasmBBQPlanInternal::verbose || Options::reportCompileTimes())
         startTime = MonotonicTime::now();
 
     {
-        ModuleParser moduleParser(m_source, m_sourceLength, m_moduleInformation);
+        ModuleParser moduleParser(source, sourceLength, m_moduleInformation);
         auto parseResult = moduleParser.parse();
         if (!parseResult) {
             Base::fail(holdLock(m_lock), WTFMove(parseResult.error()));
@@ -109,20 +112,21 @@ bool BBQPlan::parseAndValidateModule()
         }
     }
 
-    const auto& functionLocations = m_moduleInformation->functionLocationInBinary;
-    for (unsigned functionIndex = 0; functionIndex < functionLocations.size(); ++functionIndex) {
-        dataLogLnIf(verbose, "Processing function starting at: ", functionLocations[functionIndex].start, " and ending at: ", functionLocations[functionIndex].end);
-        const uint8_t* functionStart = m_source + functionLocations[functionIndex].start;
-        size_t functionLength = functionLocations[functionIndex].end - functionLocations[functionIndex].start;
-        ASSERT(functionLength <= m_sourceLength);
+    const auto& functions = m_moduleInformation->functions;
+    for (unsigned functionIndex = 0; functionIndex < functions.size(); ++functionIndex) {
+        const auto& function = functions[functionIndex];
+        dataLogLnIf(WasmBBQPlanInternal::verbose, "Processing function starting at: ", function.start, " and ending at: ", function.end);
+        size_t functionLength = function.end - function.start;
+        ASSERT(functionLength <= sourceLength);
+        ASSERT(functionLength == function.data.size());
         SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[functionIndex];
         const Signature& signature = SignatureInformation::get(signatureIndex);
 
-        auto validationResult = validateFunction(functionStart, functionLength, signature, m_moduleInformation.get());
+        auto validationResult = validateFunction(function.data.data(), function.data.size(), signature, m_moduleInformation.get());
         if (!validationResult) {
-            if (verbose) {
+            if (WasmBBQPlanInternal::verbose) {
                 for (unsigned i = 0; i < functionLength; ++i)
-                    dataLog(RawPointer(reinterpret_cast<void*>(functionStart[i])), ", ");
+                    dataLog(RawPointer(reinterpret_cast<void*>(function.data[i])), ", ");
                 dataLogLn();
             }
             Base::fail(holdLock(m_lock), makeString(validationResult.error(), ", in function at index ", String::number(functionIndex))); // FIXME make this an Expected.
@@ -130,7 +134,7 @@ bool BBQPlan::parseAndValidateModule()
         }
     }
 
-    if (verbose || Options::reportCompileTimes())
+    if (WasmBBQPlanInternal::verbose || Options::reportCompileTimes())
         dataLogLn("Took ", (MonotonicTime::now() - startTime).microseconds(), " us to validate module");
 
     moveToState(State::Validated);
@@ -142,7 +146,7 @@ bool BBQPlan::parseAndValidateModule()
 void BBQPlan::prepare()
 {
     ASSERT(m_state == State::Validated);
-    dataLogLnIf(verbose, "Starting preparation");
+    dataLogLnIf(WasmBBQPlanInternal::verbose, "Starting preparation");
 
     auto tryReserveCapacity = [this] (auto& vector, size_t size, const char* what) {
         if (UNLIKELY(!vector.tryReserveCapacity(size))) {
@@ -156,25 +160,25 @@ void BBQPlan::prepare()
         return true;
     };
 
-    const auto& functionLocations = m_moduleInformation->functionLocationInBinary;
+    const auto& functions = m_moduleInformation->functions;
     if (!tryReserveCapacity(m_wasmToWasmExitStubs, m_moduleInformation->importFunctionSignatureIndices.size(), " WebAssembly to JavaScript stubs")
-        || !tryReserveCapacity(m_unlinkedWasmToWasmCalls, functionLocations.size(), " unlinked WebAssembly to WebAssembly calls")
-        || !tryReserveCapacity(m_wasmInternalFunctions, functionLocations.size(), " WebAssembly functions")
-        || !tryReserveCapacity(m_compilationContexts, functionLocations.size(), " compilation contexts")
-        || !tryReserveCapacity(m_tierUpCounts, functionLocations.size(), " tier-up counts"))
+        || !tryReserveCapacity(m_unlinkedWasmToWasmCalls, functions.size(), " unlinked WebAssembly to WebAssembly calls")
+        || !tryReserveCapacity(m_wasmInternalFunctions, functions.size(), " WebAssembly functions")
+        || !tryReserveCapacity(m_compilationContexts, functions.size(), " compilation contexts")
+        || !tryReserveCapacity(m_tierUpCounts, functions.size(), " tier-up counts"))
         return;
 
-    m_unlinkedWasmToWasmCalls.resize(functionLocations.size());
-    m_wasmInternalFunctions.resize(functionLocations.size());
-    m_compilationContexts.resize(functionLocations.size());
-    m_tierUpCounts.resize(functionLocations.size());
+    m_unlinkedWasmToWasmCalls.resize(functions.size());
+    m_wasmInternalFunctions.resize(functions.size());
+    m_compilationContexts.resize(functions.size());
+    m_tierUpCounts.resize(functions.size());
 
     for (unsigned importIndex = 0; importIndex < m_moduleInformation->imports.size(); ++importIndex) {
         Import* import = &m_moduleInformation->imports[importIndex];
         if (import->kind != ExternalKind::Function)
             continue;
         unsigned importFunctionIndex = m_wasmToWasmExitStubs.size();
-        dataLogLnIf(verbose, "Processing import function number ", importFunctionIndex, ": ", makeString(import->module), ": ", makeString(import->field));
+        dataLogLnIf(WasmBBQPlanInternal::verbose, "Processing import function number ", importFunctionIndex, ": ", makeString(import->module), ": ", makeString(import->field));
         auto binding = wasmToWasm(importFunctionIndex);
         if (UNLIKELY(!binding)) {
             switch (binding.error()) {
@@ -230,16 +234,18 @@ public:
 void BBQPlan::compileFunctions(CompilationEffort effort)
 {
     ASSERT(m_state >= State::Prepared);
-    dataLogLnIf(verbose, "Starting compilation");
+    dataLogLnIf(WasmBBQPlanInternal::verbose, "Starting compilation");
 
     if (!hasWork())
         return;
 
-    TraceScope traceScope(WebAssemblyCompileStart, WebAssemblyCompileEnd);
+    std::optional<TraceScope> traceScope;
+    if (Options::useTracePoints())
+        traceScope.emplace(WebAssemblyCompileStart, WebAssemblyCompileEnd);
     ThreadCountHolder holder(*this);
 
     size_t bytesCompiled = 0;
-    const auto& functionLocations = m_moduleInformation->functionLocationInBinary;
+    const auto& functions = m_moduleInformation->functions;
     while (true) {
         if (effort == Partial && bytesCompiled >= Options::webAssemblyPartialCompileLimit())
             return;
@@ -247,7 +253,7 @@ void BBQPlan::compileFunctions(CompilationEffort effort)
         uint32_t functionIndex;
         {
             auto locker = holdLock(m_lock);
-            if (m_currentIndex >= functionLocations.size()) {
+            if (m_currentIndex >= functions.size()) {
                 if (hasWork())
                     moveToState(State::Compiled);
                 return;
@@ -256,18 +262,16 @@ void BBQPlan::compileFunctions(CompilationEffort effort)
             ++m_currentIndex;
         }
 
-        const uint8_t* functionStart = m_source + functionLocations[functionIndex].start;
-        size_t functionLength = functionLocations[functionIndex].end - functionLocations[functionIndex].start;
-        ASSERT(functionLength <= m_sourceLength);
+        const auto& function = functions[functionIndex];
         SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[functionIndex];
         const Signature& signature = SignatureInformation::get(signatureIndex);
         unsigned functionIndexSpace = m_wasmToWasmExitStubs.size() + functionIndex;
         ASSERT_UNUSED(functionIndexSpace, m_moduleInformation->signatureIndexFromFunctionIndexSpace(functionIndexSpace) == signatureIndex);
-        ASSERT(validateFunction(functionStart, functionLength, signature, m_moduleInformation.get()));
+        ASSERT(validateFunction(function.data.data(), function.data.size(), signature, m_moduleInformation.get()));
 
         m_unlinkedWasmToWasmCalls[functionIndex] = Vector<UnlinkedWasmToWasmCall>();
         TierUpCount* tierUp = Options::useBBQTierUpChecks() ? &m_tierUpCounts[functionIndex] : nullptr;
-        auto parseAndCompileResult = parseAndCompile(m_compilationContexts[functionIndex], functionStart, functionLength, signature, m_unlinkedWasmToWasmCalls[functionIndex], m_moduleInformation.get(), m_mode, CompilationMode::BBQMode, functionIndex, tierUp);
+        auto parseAndCompileResult = parseAndCompile(m_compilationContexts[functionIndex], function.data.data(), function.data.size(), signature, m_unlinkedWasmToWasmCalls[functionIndex], m_moduleInformation.get(), m_mode, CompilationMode::BBQMode, functionIndex, tierUp, m_throwWasmException);
 
         if (UNLIKELY(!parseAndCompileResult)) {
             auto locker = holdLock(m_lock);
@@ -275,7 +279,7 @@ void BBQPlan::compileFunctions(CompilationEffort effort)
                 // Multiple compiles could fail simultaneously. We arbitrarily choose the first.
                 fail(locker, makeString(parseAndCompileResult.error(), ", in function at index ", String::number(functionIndex))); // FIXME make this an Expected.
             }
-            m_currentIndex = functionLocations.size();
+            m_currentIndex = functions.size();
             return;
         }
 
@@ -283,23 +287,24 @@ void BBQPlan::compileFunctions(CompilationEffort effort)
 
         if (m_exportedFunctionIndices.contains(functionIndex)) {
             auto locker = holdLock(m_lock);
-            auto result = m_jsToWasmInternalFunctions.add(functionIndex, createJSToWasmWrapper(m_compilationContexts[functionIndex], signature, &m_unlinkedWasmToWasmCalls[functionIndex], m_moduleInformation.get(), m_mode, functionIndex));
+            auto result = m_embedderToWasmInternalFunctions.add(functionIndex, m_createEmbedderWrapper(m_compilationContexts[functionIndex], signature, &m_unlinkedWasmToWasmCalls[functionIndex], m_moduleInformation.get(), m_mode, functionIndex));
             ASSERT_UNUSED(result, result.isNewEntry);
         }
 
-        bytesCompiled += functionLength;
+        bytesCompiled += function.data.size();
     }
 }
 
 void BBQPlan::complete(const AbstractLocker& locker)
 {
-    ASSERT(m_state != State::Compiled || m_currentIndex >= m_moduleInformation->functionLocationInBinary.size());
-    dataLogLnIf(verbose, "Starting Completion");
+    ASSERT(m_state != State::Compiled || m_currentIndex >= m_moduleInformation->functions.size());
+    dataLogLnIf(WasmBBQPlanInternal::verbose, "Starting Completion");
 
     if (!failed() && m_state == State::Compiled) {
-        for (uint32_t functionIndex = 0; functionIndex < m_moduleInformation->functionLocationInBinary.size(); functionIndex++) {
+        for (uint32_t functionIndex = 0; functionIndex < m_moduleInformation->functions.size(); functionIndex++) {
             CompilationContext& context = m_compilationContexts[functionIndex];
             SignatureIndex signatureIndex = m_moduleInformation->internalFunctionSignatureIndices[functionIndex];
+            const Signature& signature = SignatureInformation::get(signatureIndex);
             {
                 LinkBuffer linkBuffer(*context.wasmEntrypointJIT, nullptr, JITCompilationCanFail);
                 if (UNLIKELY(linkBuffer.didFailToAllocate())) {
@@ -308,32 +313,32 @@ void BBQPlan::complete(const AbstractLocker& locker)
                 }
 
                 m_wasmInternalFunctions[functionIndex]->entrypoint.compilation = std::make_unique<B3::Compilation>(
-                    FINALIZE_CODE(linkBuffer, ("WebAssembly function[%i] %s", functionIndex, SignatureInformation::get(signatureIndex).toString().ascii().data())),
+                    FINALIZE_CODE(linkBuffer, B3CompilationPtrTag, "WebAssembly function[%i] %s", functionIndex, signature.toString().ascii().data()),
                     WTFMove(context.wasmEntrypointByproducts));
             }
 
-            if (auto jsToWasmInternalFunction = m_jsToWasmInternalFunctions.get(functionIndex)) {
-                LinkBuffer linkBuffer(*context.jsEntrypointJIT, nullptr, JITCompilationCanFail);
+            if (auto embedderToWasmInternalFunction = m_embedderToWasmInternalFunctions.get(functionIndex)) {
+                LinkBuffer linkBuffer(*context.embedderEntrypointJIT, nullptr, JITCompilationCanFail);
                 if (UNLIKELY(linkBuffer.didFailToAllocate())) {
                     Base::fail(locker, makeString("Out of executable memory in function entrypoint at index ", String::number(functionIndex)));
                     return;
                 }
 
-                jsToWasmInternalFunction->entrypoint.compilation = std::make_unique<B3::Compilation>(
-                    FINALIZE_CODE(linkBuffer, ("JavaScript->WebAssembly entrypoint[%i] %s", functionIndex, SignatureInformation::get(signatureIndex).toString().ascii().data())),
-                    WTFMove(context.jsEntrypointByproducts));
+                embedderToWasmInternalFunction->entrypoint.compilation = std::make_unique<B3::Compilation>(
+                    FINALIZE_CODE(linkBuffer, B3CompilationPtrTag, "Embedder->WebAssembly entrypoint[%i] %s", functionIndex, signature.toString().ascii().data()),
+                    WTFMove(context.embedderEntrypointByproducts));
             }
         }
 
         for (auto& unlinked : m_unlinkedWasmToWasmCalls) {
             for (auto& call : unlinked) {
-                void* executableAddress;
+                MacroAssemblerCodePtr<WasmEntryPtrTag> executableAddress;
                 if (m_moduleInformation->isImportedFunctionFromFunctionIndexSpace(call.functionIndexSpace)) {
                     // FIXME imports could have been linked in B3, instead of generating a patchpoint. This condition should be replaced by a RELEASE_ASSERT. https://bugs.webkit.org/show_bug.cgi?id=166462
-                    executableAddress = m_wasmToWasmExitStubs.at(call.functionIndexSpace).code().executableAddress();
+                    executableAddress = m_wasmToWasmExitStubs.at(call.functionIndexSpace).code();
                 } else
-                    executableAddress = m_wasmInternalFunctions.at(call.functionIndexSpace - m_moduleInformation->importFunctionCount())->entrypoint.compilation->code().executableAddress();
-                MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(executableAddress));
+                    executableAddress = m_wasmInternalFunctions.at(call.functionIndexSpace - m_moduleInformation->importFunctionCount())->entrypoint.compilation->code().retagged<WasmEntryPtrTag>();
+                MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel<WasmEntryPtrTag>(executableAddress));
             }
         }
     }
@@ -348,7 +353,7 @@ void BBQPlan::work(CompilationEffort effort)
 {
     switch (m_state) {
     case State::Initial:
-        parseAndValidateModule();
+        parseAndValidateModule(m_source.data(), m_source.size());
         if (!hasWork()) {
             ASSERT(isComplete());
             return;

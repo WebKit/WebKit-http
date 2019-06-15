@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,12 +32,11 @@
 #include "WebProcessProxy.h"
 
 #if PLATFORM(COCOA)
-#include <WebCore/MachSendRight.h>
+#include <wtf/MachSendRight.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 DrawingAreaProxy::DrawingAreaProxy(DrawingAreaType type, WebPageProxy& webPageProxy)
     : m_type(type)
@@ -55,14 +54,13 @@ DrawingAreaProxy::~DrawingAreaProxy()
     m_webPageProxy.process().removeMessageReceiver(Messages::DrawingAreaProxy::messageReceiverName(), m_webPageProxy.pageID());
 }
 
-bool DrawingAreaProxy::setSize(const IntSize& size, const IntSize& layerPosition, const IntSize& scrollOffset)
+bool DrawingAreaProxy::setSize(const IntSize& size, const IntSize& scrollDelta)
 { 
-    if (m_size == size && m_layerPosition == layerPosition && scrollOffset.isZero())
+    if (m_size == size && scrollDelta.isZero())
         return false;
 
     m_size = size;
-    m_layerPosition = layerPosition;
-    m_scrollOffset += scrollOffset;
+    m_scrollOffset += scrollDelta;
     sizeDidChange();
     return true;
 }

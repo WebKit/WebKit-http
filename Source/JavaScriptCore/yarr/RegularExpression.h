@@ -29,15 +29,14 @@
 
 namespace JSC { namespace Yarr {
 
-enum MultilineMode {
-    MultilineDisabled,
-    MultilineEnabled
-};
+enum MultilineMode { MultilineDisabled, MultilineEnabled };
+enum TextCaseSensitivity { TextCaseSensitive, TextCaseInsensitive };
+enum UnicodeMode { UnicodeUnawareMode, UnicodeAwareMode };
 
 class JS_EXPORT_PRIVATE RegularExpression {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    RegularExpression(const String&, TextCaseSensitivity, MultilineMode = MultilineDisabled);
+    explicit RegularExpression(const String&, TextCaseSensitivity = TextCaseSensitive, MultilineMode = MultilineDisabled, UnicodeMode = UnicodeUnawareMode);
     ~RegularExpression();
 
     RegularExpression(const RegularExpression&);

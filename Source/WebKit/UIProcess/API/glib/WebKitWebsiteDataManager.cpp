@@ -363,13 +363,13 @@ API::WebsiteDataStore& webkitWebsiteDataManagerGetDataStore(WebKitWebsiteDataMan
     if (!priv->websiteDataStore) {
         WebsiteDataStore::Configuration configuration;
         configuration.localStorageDirectory = !priv->localStorageDirectory ?
-            API::WebsiteDataStore::defaultLocalStorageDirectory() : WebCore::stringFromFileSystemRepresentation(priv->localStorageDirectory.get());
+            API::WebsiteDataStore::defaultLocalStorageDirectory() : WebCore::FileSystem::stringFromFileSystemRepresentation(priv->localStorageDirectory.get());
         configuration.networkCacheDirectory = !priv->diskCacheDirectory ?
-            API::WebsiteDataStore::defaultNetworkCacheDirectory() : WebCore::pathByAppendingComponent(WebCore::stringFromFileSystemRepresentation(priv->diskCacheDirectory.get()), networkCacheSubdirectory);
+            API::WebsiteDataStore::defaultNetworkCacheDirectory() : WebCore::FileSystem::pathByAppendingComponent(WebCore::FileSystem::stringFromFileSystemRepresentation(priv->diskCacheDirectory.get()), networkCacheSubdirectory);
         configuration.applicationCacheDirectory = !priv->applicationCacheDirectory ?
-            API::WebsiteDataStore::defaultApplicationCacheDirectory() : WebCore::stringFromFileSystemRepresentation(priv->applicationCacheDirectory.get());
+            API::WebsiteDataStore::defaultApplicationCacheDirectory() : WebCore::FileSystem::stringFromFileSystemRepresentation(priv->applicationCacheDirectory.get());
         configuration.webSQLDatabaseDirectory = !priv->webSQLDirectory ?
-            API::WebsiteDataStore::defaultWebSQLDatabaseDirectory() : WebCore::stringFromFileSystemRepresentation(priv->webSQLDirectory.get());
+            API::WebsiteDataStore::defaultWebSQLDatabaseDirectory() : WebCore::FileSystem::stringFromFileSystemRepresentation(priv->webSQLDirectory.get());
         configuration.mediaKeysStorageDirectory = API::WebsiteDataStore::defaultMediaKeysStorageDirectory();
         priv->websiteDataStore = API::WebsiteDataStore::createLegacy(WTFMove(configuration));
     }
@@ -434,7 +434,7 @@ WebKitWebsiteDataManager* webkit_website_data_manager_new_ephemeral()
  * webkit_website_data_manager_is_ephemeral:
  * @manager: a #WebKitWebsiteDataManager
  *
- * Get whether a #WebKitWebsiteDataManager is ephemeral. See #WebKitWebsiteDataManager::is-ephemerla for more details.
+ * Get whether a #WebKitWebsiteDataManager is ephemeral. See #WebKitWebsiteDataManager:is-ephemeral for more details.
  *
  * Returns: %TRUE if @manager is epheral or %FALSE otherwise.
  *
@@ -532,7 +532,7 @@ const gchar* webkit_website_data_manager_get_disk_cache_directory(WebKitWebsiteD
 
     if (!priv->diskCacheDirectory) {
         // The default directory already has the subdirectory.
-        priv->diskCacheDirectory.reset(g_strdup(WebCore::directoryName(API::WebsiteDataStore::defaultNetworkCacheDirectory()).utf8().data()));
+        priv->diskCacheDirectory.reset(g_strdup(WebCore::FileSystem::directoryName(API::WebsiteDataStore::defaultNetworkCacheDirectory()).utf8().data()));
     }
     return priv->diskCacheDirectory.get();
 }
@@ -630,25 +630,25 @@ static OptionSet<WebsiteDataType> toWebsiteDataTypes(WebKitWebsiteDataTypes type
 {
     OptionSet<WebsiteDataType> returnValue;
     if (types & WEBKIT_WEBSITE_DATA_MEMORY_CACHE)
-        returnValue |= WebsiteDataType::MemoryCache;
+        returnValue.add(WebsiteDataType::MemoryCache);
     if (types & WEBKIT_WEBSITE_DATA_DISK_CACHE)
-        returnValue |= WebsiteDataType::DiskCache;
+        returnValue.add(WebsiteDataType::DiskCache);
     if (types & WEBKIT_WEBSITE_DATA_OFFLINE_APPLICATION_CACHE)
-        returnValue |= WebsiteDataType::OfflineWebApplicationCache;
+        returnValue.add(WebsiteDataType::OfflineWebApplicationCache);
     if (types & WEBKIT_WEBSITE_DATA_SESSION_STORAGE)
-        returnValue |= WebsiteDataType::SessionStorage;
+        returnValue.add(WebsiteDataType::SessionStorage);
     if (types & WEBKIT_WEBSITE_DATA_LOCAL_STORAGE)
-        returnValue |= WebsiteDataType::LocalStorage;
+        returnValue.add(WebsiteDataType::LocalStorage);
     if (types & WEBKIT_WEBSITE_DATA_WEBSQL_DATABASES)
-        returnValue |= WebsiteDataType::WebSQLDatabases;
+        returnValue.add(WebsiteDataType::WebSQLDatabases);
     if (types & WEBKIT_WEBSITE_DATA_INDEXEDDB_DATABASES)
-        returnValue |= WebsiteDataType::IndexedDBDatabases;
+        returnValue.add(WebsiteDataType::IndexedDBDatabases);
 #if ENABLE(NETSCAPE_PLUGIN_API)
     if (types & WEBKIT_WEBSITE_DATA_PLUGIN_DATA)
-        returnValue |= WebsiteDataType::PlugInData;
+        returnValue.add(WebsiteDataType::PlugInData);
 #endif
     if (types & WEBKIT_WEBSITE_DATA_COOKIES)
-        returnValue |= WebsiteDataType::Cookies;
+        returnValue.add(WebsiteDataType::Cookies);
     return returnValue;
 }
 
@@ -792,7 +792,7 @@ void webkit_website_data_manager_clear(WebKitWebsiteDataManager* manager, WebKit
 {
     g_return_if_fail(WEBKIT_IS_WEBSITE_DATA_MANAGER(manager));
 
-    std::chrono::system_clock::time_point timePoint = timeSpan ? std::chrono::system_clock::now() - std::chrono::microseconds(timeSpan) : std::chrono::system_clock::from_time_t(0);
+    WallTime timePoint = timeSpan ? WallTime::now() - Seconds::fromMicroseconds(timeSpan) : WallTime::fromRawSeconds(0);
     GRefPtr<GTask> task = adoptGRef(g_task_new(manager, cancellable, callback, userData));
     manager->priv->websiteDataStore->websiteDataStore().removeData(toWebsiteDataTypes(types), timePoint, [task = WTFMove(task)] {
         g_task_return_boolean(task.get(), TRUE);

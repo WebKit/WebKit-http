@@ -31,6 +31,8 @@
 #import <WebKit/WKDeclarationSpecifiers.h>
 #import <WebKit/WKInspector.h>
 
+@class _WKInspector;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,12 +41,10 @@ const NSInteger WKInspectorViewTag = 1000;
 
 // This class is the Web Inspector window delegate. It can be used to add interface
 // actions that need to work when the Web Inspector window is key.
-WK_EXPORT @interface WKWebInspectorProxyObjCAdapter : NSObject <NSWindowDelegate> {
-@private
-    void* _inspectorProxy;
-}
+WK_EXPORT @interface WKWebInspectorProxyObjCAdapter : NSObject <NSWindowDelegate>
 
 @property (readonly) WKInspectorRef inspectorRef;
+@property (readonly) _WKInspector *inspector;
 
 @end
 

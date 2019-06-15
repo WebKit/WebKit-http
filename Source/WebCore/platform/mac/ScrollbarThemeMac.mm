@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2011 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,45 +23,51 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
-#include "ScrollbarThemeMac.h"
+#import "config.h"
+#import "ScrollbarThemeMac.h"
 
-#include "ColorMac.h"
-#include "GraphicsLayer.h"
-#include "ImageBuffer.h"
-#include "LocalCurrentGraphicsContext.h"
-#include "NSScrollerImpDetails.h"
-#include "NSScrollerImpSPI.h"
-#include "PlatformMouseEvent.h"
-#include "ScrollAnimatorMac.h"
-#include "ScrollView.h"
-#include "WebCoreSystemInterface.h"
-#include <Carbon/Carbon.h>
-#include <wtf/BlockObjCExceptions.h>
-#include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
-#include <wtf/SetForScope.h>
-#include <wtf/StdLibExtras.h>
+#if PLATFORM(MAC)
+
+#import "ColorMac.h"
+#import "GraphicsLayer.h"
+#import "ImageBuffer.h"
+#import "LocalCurrentGraphicsContext.h"
+#import "NSScrollerImpDetails.h"
+#import "PlatformMouseEvent.h"
+#import "ScrollAnimatorMac.h"
+#import "ScrollView.h"
+#import <Carbon/Carbon.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/mac/CoreUISPI.h>
+#import <pal/spi/mac/NSAppearanceSPI.h>
+#import <pal/spi/mac/NSScrollerImpSPI.h>
+#import <wtf/BlockObjCExceptions.h>
+#import <wtf/HashMap.h>
+#import <wtf/NeverDestroyed.h>
+#import <wtf/SetForScope.h>
+#import <wtf/StdLibExtras.h>
 
 // FIXME: There are repainting problems due to Aqua scroll bar buttons' visual overflow.
 
-using namespace WebCore;
+namespace WebCore {
 
+    typedef HashMap<Scrollbar*, RetainPtr<NSScrollerImp>> ScrollerImpMap;
+
+    static ScrollerImpMap* scrollbarMap()
+    {
+        static ScrollerImpMap* map = new ScrollerImpMap;
+        return map;
+    }
+
+}
+
+using WebCore::ScrollbarTheme;
+using WebCore::ScrollbarThemeMac;
+using WebCore::scrollbarMap;
+using WebCore::ScrollerImpMap;
 @interface NSColor (WebNSColorDetails)
 + (NSImage *)_linenPatternImage;
 @end
-
-namespace WebCore {
-
-typedef HashMap<Scrollbar*, RetainPtr<NSScrollerImp>> ScrollerImpMap;
-
-static ScrollerImpMap* scrollbarMap()
-{
-    static ScrollerImpMap* map = new ScrollerImpMap;
-    return map;
-}
-
-}
 
 @interface WebScrollbarPrefsObserver : NSObject
 {
@@ -152,7 +158,7 @@ static NSControlSize scrollbarControlSizeToNSControlSize(ScrollbarControlSize co
 
 void ScrollbarThemeMac::didCreateScrollerImp(Scrollbar& scrollbar)
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
     NSScrollerImp *scrollerImp = painterForScrollbar(scrollbar);
     ASSERT(scrollerImp);
     scrollerImp.userInterfaceLayoutDirection = scrollbar.scrollableArea().shouldPlaceBlockDirectionScrollbarOnLeft() ? NSUserInterfaceLayoutDirectionRightToLeft : NSUserInterfaceLayoutDirectionLeftToRight;
@@ -167,7 +173,7 @@ void ScrollbarThemeMac::registerScrollbar(Scrollbar& scrollbar)
         return;
 
     bool isHorizontal = scrollbar.orientation() == HorizontalScrollbar;
-    NSScrollerImp *scrollerImp = [NSScrollerImp scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(scrollbar.controlSize()) horizontal:isHorizontal replacingScrollerImp:nil];
+    NSScrollerImp *scrollerImp = [NSScrollerImp scrollerImpWithStyle:ScrollerStyle::recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(scrollbar.controlSize()) horizontal:isHorizontal replacingScrollerImp:nil];
     scrollbarMap()->add(&scrollbar, scrollerImp);
     didCreateScrollerImp(scrollbar);
     updateEnabledState(scrollbar);
@@ -193,7 +199,7 @@ NSScrollerImp *ScrollbarThemeMac::painterForScrollbar(Scrollbar& scrollbar)
 
 bool ScrollbarThemeMac::isLayoutDirectionRTL(Scrollbar& scrollbar)
 {
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#if PLATFORM(MAC)
     NSScrollerImp *scrollerImp = painterForScrollbar(scrollbar);
     ASSERT(scrollerImp);
     return scrollerImp.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionRightToLeft;
@@ -243,7 +249,7 @@ void ScrollbarThemeMac::preferencesChanged()
 int ScrollbarThemeMac::scrollbarThickness(ScrollbarControlSize controlSize, ScrollbarExpansionState expansionState)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    NSScrollerImp *scrollerImp = [NSScrollerImp scrollerImpWithStyle:recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(controlSize) horizontal:NO replacingScrollerImp:nil];
+    NSScrollerImp *scrollerImp = [NSScrollerImp scrollerImpWithStyle:ScrollerStyle::recommendedScrollerStyle() controlSize:scrollbarControlSizeToNSControlSize(controlSize) horizontal:NO replacingScrollerImp:nil];
     [scrollerImp setExpanded:(expansionState == ScrollbarExpansionState::Expanded)];
     return [scrollerImp trackBoxWidth];
     END_BLOCK_OBJC_EXCEPTIONS;
@@ -256,7 +262,7 @@ bool ScrollbarThemeMac::usesOverlayScrollbars() const
 
 void ScrollbarThemeMac::usesOverlayScrollbarsChanged()
 {
-    gUsesOverlayScrollbars = recommendedScrollerStyle() == NSScrollerStyleOverlay;
+    gUsesOverlayScrollbars = ScrollerStyle::recommendedScrollerStyle() == NSScrollerStyleOverlay;
 }
 
 void ScrollbarThemeMac::updateScrollbarOverlayStyle(Scrollbar& scrollbar)
@@ -550,14 +556,23 @@ bool ScrollbarThemeMac::paint(Scrollbar& scrollbar, GraphicsContext& context, co
         return true;
 
     SetForScope<bool> isCurrentlyDrawingIntoLayer(g_isCurrentlyDrawingIntoLayer, context.isCALayerContext());
-    
+
     GraphicsContextStateSaver stateSaver(context);
     context.clip(damageRect);
-    context.translate(scrollbar.frameRect().x(), scrollbar.frameRect().y());
+    context.translate(scrollbar.frameRect().location());
     LocalCurrentGraphicsContext localContext(context);
     scrollerImpPaint(scrollbarMap()->get(&scrollbar).get(), scrollbar.enabled());
 
     return true;
+}
+
+void ScrollbarThemeMac::paintScrollCorner(GraphicsContext& context, const IntRect& cornerRect)
+{
+    LocalCurrentGraphicsContext localContext(context);
+
+    auto cornerDrawingOptions = @{ (__bridge NSString *)kCUIWidgetKey: (__bridge NSString *)kCUIWidgetScrollBarTrackCorner,
+        (__bridge NSString *)kCUIIsFlippedKey: (__bridge NSNumber *)kCFBooleanTrue };
+    [[NSAppearance currentAppearance] _drawInRect:cornerRect context:localContext.cgContext() options:cornerDrawingOptions];
 }
 
 #if ENABLE(RUBBER_BANDING)
@@ -573,7 +588,7 @@ static RetainPtr<CGColorRef> linenBackgroundColor()
     if (!cgImage)
         return nullptr;
 
-    RetainPtr<CGPatternRef> pattern = adoptCF(wkCGPatternCreateWithImageAndTransform(cgImage, CGAffineTransformIdentity, wkPatternTilingNoDistortion));
+    RetainPtr<CGPatternRef> pattern = adoptCF(CGPatternCreateWithImage2(cgImage, CGAffineTransformIdentity, kCGPatternTilingNoDistortion));
     RetainPtr<CGColorSpaceRef> colorSpace = adoptCF(CGColorSpaceCreatePattern(0));
 
     const CGFloat alpha = 1.0;
@@ -630,3 +645,5 @@ void ScrollbarThemeMac::setUpContentShadowLayer(GraphicsLayer* graphicsLayer)
 #endif
 
 } // namespace WebCore
+
+#endif // PLATFORM(MAC)

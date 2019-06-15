@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Igalia S.L.
+ * Copyright (C) 2017 Endless Mobile, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,6 +27,7 @@
 
 #include <gio/gio.h>
 #include <glib-object.h>
+#include <libsoup/soup.h>
 #include <wpe/WebKitDefines.h>
 
 G_BEGIN_DECLS
@@ -107,23 +109,41 @@ webkit_cookie_manager_get_accept_policy_finish        (WebKitCookieManager      
                                                        GAsyncResult                 *result,
                                                        GError                      **error);
 
-WEBKIT_DEPRECATED_FOR(webkit_website_data_manager_fetch) void
-webkit_cookie_manager_get_domains_with_cookies        (WebKitCookieManager          *cookie_manager,
+WEBKIT_API void
+webkit_cookie_manager_add_cookie                      (WebKitCookieManager          *cookie_manager,
+                                                       SoupCookie                   *cookie,
                                                        GCancellable                 *cancellable,
                                                        GAsyncReadyCallback           callback,
                                                        gpointer                      user_data);
 
-WEBKIT_DEPRECATED_FOR(webkit_website_data_manager_fetch_finish) gchar **
-webkit_cookie_manager_get_domains_with_cookies_finish (WebKitCookieManager          *cookie_manager,
+WEBKIT_API gboolean
+webkit_cookie_manager_add_cookie_finish               (WebKitCookieManager          *cookie_manager,
                                                        GAsyncResult                 *result,
                                                        GError                      **error);
 
-WEBKIT_DEPRECATED_FOR(webkit_website_data_manager_remove) void
-webkit_cookie_manager_delete_cookies_for_domain       (WebKitCookieManager          *cookie_manager,
-                                                       const gchar                  *domain);
+WEBKIT_API void
+webkit_cookie_manager_get_cookies                     (WebKitCookieManager          *cookie_manager,
+                                                       const gchar                  *uri,
+                                                       GCancellable                 *cancellable,
+                                                       GAsyncReadyCallback           callback,
+                                                       gpointer                      user_data);
 
-WEBKIT_DEPRECATED_FOR(webkit_website_data_manager_clear) void
-webkit_cookie_manager_delete_all_cookies              (WebKitCookieManager          *cookie_manager);
+WEBKIT_API GList *
+webkit_cookie_manager_get_cookies_finish              (WebKitCookieManager          *cookie_manager,
+                                                       GAsyncResult                 *result,
+                                                       GError                      **error);
+
+WEBKIT_API void
+webkit_cookie_manager_delete_cookie                   (WebKitCookieManager          *cookie_manager,
+                                                       SoupCookie                   *cookie,
+                                                       GCancellable                 *cancellable,
+                                                       GAsyncReadyCallback           callback,
+                                                       gpointer                      user_data);
+
+WEBKIT_API gboolean
+webkit_cookie_manager_delete_cookie_finish            (WebKitCookieManager          *cookie_manager,
+                                                       GAsyncResult                 *result,
+                                                       GError                      **error);
 
 G_END_DECLS
 

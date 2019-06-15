@@ -27,6 +27,7 @@
 #include "WebEditorClient.h"
 
 #include "EditorState.h"
+#include "UndoOrRedo.h"
 #include "WKBundlePageEditorClient.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebFrame.h"
@@ -66,10 +67,9 @@
 #include <WebCore/Pasteboard.h>
 #endif
 
+namespace WebKit {
 using namespace WebCore;
 using namespace HTMLNames;
-
-namespace WebKit {
 
 static uint64_t generateTextCheckingRequestID()
 {
@@ -163,9 +163,38 @@ bool WebEditorClient::shouldApplyStyle(StyleProperties* style, Range* range)
     return result;
 }
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void WebEditorClient::registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& preferredFileName, Ref<SharedBuffer>&& data)
+{
+    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromData(identifier, contentType, preferredFileName, IPC::SharedBufferDataReference { data.ptr() }));
+}
+
+void WebEditorClient::registerAttachmentIdentifier(const String& identifier, const String& contentType, const String& filePath)
+{
+    m_page->send(Messages::WebPageProxy::RegisterAttachmentIdentifierFromFilePath(identifier, contentType, filePath));
+}
+
+void WebEditorClient::cloneAttachmentData(const String& fromIdentifier, const String& toIdentifier)
+{
+    m_page->send(Messages::WebPageProxy::CloneAttachmentData(fromIdentifier, toIdentifier));
+}
+
+void WebEditorClient::didInsertAttachmentWithIdentifier(const String& identifier, const String& source)
+{
+    m_page->send(Messages::WebPageProxy::DidInsertAttachmentWithIdentifier(identifier, source));
+}
+
+void WebEditorClient::didRemoveAttachmentWithIdentifier(const String& identifier)
+{
+    m_page->send(Messages::WebPageProxy::DidRemoveAttachmentWithIdentifier(identifier));
+}
+
+#endif
+
 void WebEditorClient::didApplyStyle()
 {
-    notImplemented();
+    m_page->didApplyStyle();
 }
 
 bool WebEditorClient::shouldMoveRangeAfterDelete(Range*, Range*)
@@ -186,7 +215,7 @@ void WebEditorClient::respondToChangedContents()
 {
     static NeverDestroyed<String> WebViewDidChangeNotification(MAKE_STATIC_STRING_IMPL("WebViewDidChangeNotification"));
     m_page->injectedBundleEditorClient().didChange(*m_page, WebViewDidChangeNotification.get().impl());
-    notImplemented();
+    m_page->didChangeContents();
 }
 
 void WebEditorClient::respondToChangedSelection(Frame* frame)
@@ -203,14 +232,19 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
 #endif
 }
 
-void WebEditorClient::didChangeSelectionAndUpdateLayout()
+void WebEditorClient::didEndUserTriggeredSelectionChanges()
 {
-    m_page->sendPostLayoutEditorStateIfNeeded();
+    m_page->didEndUserTriggeredSelectionChanges();
 }
 
 void WebEditorClient::updateEditorStateAfterLayoutIfEditabilityChanged()
 {
     m_page->updateEditorStateAfterLayoutIfEditabilityChanged();
+}
+
+void WebEditorClient::didUpdateComposition()
+{
+    m_page->didUpdateComposition();
 }
 
 void WebEditorClient::discardedComposition(Frame*)
@@ -261,6 +295,11 @@ bool WebEditorClient::performTwoStepDrop(DocumentFragment& fragment, Range& dest
     return m_page->injectedBundleEditorClient().performTwoStepDrop(*m_page, fragment, destination, isMove);
 }
 
+String WebEditorClient::replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType)
+{
+    return m_page->injectedBundleEditorClient().replacementURLForResource(*m_page, WTFMove(resourceData), mimeType);
+}
+
 void WebEditorClient::registerUndoStep(UndoStep& step)
 {
     // FIXME: Add assertion that the command being reapplied is the same command that is
@@ -297,27 +336,25 @@ bool WebEditorClient::canPaste(Frame*, bool defaultValue) const
 bool WebEditorClient::canUndo() const
 {
     bool result = false;
-    m_page->sendSync(Messages::WebPageProxy::CanUndoRedo(static_cast<uint32_t>(WebPageProxy::Undo)), Messages::WebPageProxy::CanUndoRedo::Reply(result));
+    m_page->sendSync(Messages::WebPageProxy::CanUndoRedo(UndoOrRedo::Undo), Messages::WebPageProxy::CanUndoRedo::Reply(result));
     return result;
 }
 
 bool WebEditorClient::canRedo() const
 {
     bool result = false;
-    m_page->sendSync(Messages::WebPageProxy::CanUndoRedo(static_cast<uint32_t>(WebPageProxy::Redo)), Messages::WebPageProxy::CanUndoRedo::Reply(result));
+    m_page->sendSync(Messages::WebPageProxy::CanUndoRedo(UndoOrRedo::Redo), Messages::WebPageProxy::CanUndoRedo::Reply(result));
     return result;
 }
 
 void WebEditorClient::undo()
 {
-    bool result = false;
-    m_page->sendSync(Messages::WebPageProxy::ExecuteUndoRedo(static_cast<uint32_t>(WebPageProxy::Undo)), Messages::WebPageProxy::ExecuteUndoRedo::Reply(result));
+    m_page->sendSync(Messages::WebPageProxy::ExecuteUndoRedo(UndoOrRedo::Undo), Messages::WebPageProxy::ExecuteUndoRedo::Reply());
 }
 
 void WebEditorClient::redo()
 {
-    bool result = false;
-    m_page->sendSync(Messages::WebPageProxy::ExecuteUndoRedo(static_cast<uint32_t>(WebPageProxy::Redo)), Messages::WebPageProxy::ExecuteUndoRedo::Reply(result));
+    m_page->sendSync(Messages::WebPageProxy::ExecuteUndoRedo(UndoOrRedo::Redo), Messages::WebPageProxy::ExecuteUndoRedo::Reply());
 }
 
 #if !PLATFORM(GTK) && !PLATFORM(COCOA) && !PLATFORM(WPE)
@@ -461,7 +498,7 @@ bool WebEditorClient::shouldEraseMarkersAfterChangeSelection(WebCore::TextChecki
 {
     // This prevents erasing spelling markers on OS X Lion or later to match AppKit on these Mac OS X versions.
 #if PLATFORM(COCOA)
-    return type != TextCheckingTypeSpelling;
+    return type != TextCheckingType::Spelling;
 #else
     UNUSED_PARAM(type);
     return true;
@@ -512,12 +549,10 @@ static int32_t insertionPointFromCurrentSelection(const VisibleSelection& curren
 }
 
 #if USE(UNIFIED_TEXT_CHECKING)
-Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stringView, WebCore::TextCheckingTypeMask checkingTypes, const VisibleSelection& currentSelection)
+Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView stringView, OptionSet<WebCore::TextCheckingType> checkingTypes, const VisibleSelection& currentSelection)
 {
     Vector<TextCheckingResult> results;
-
     m_page->sendSync(Messages::WebPageProxy::CheckTextOfParagraph(stringView.toStringWithoutCopying(), checkingTypes, insertionPointFromCurrentSelection(currentSelection)), Messages::WebPageProxy::CheckTextOfParagraph::Reply(results));
-
     return results;
 }
 #endif

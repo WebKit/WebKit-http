@@ -30,7 +30,7 @@
 #include <WebCore/BString.h>
 #include <wtf/RetainPtr.h>
 
-class WebPreferences : public IWebPreferences, public IWebPreferencesPrivate5 {
+class WebPreferences : public IWebPreferences, public IWebPreferencesPrivate7 {
 public:
     static WebPreferences* createInstance();
 protected:
@@ -240,7 +240,9 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setCustomElementsEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE modernMediaControlsEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setModernMediaControlsEnabled(BOOL);
-
+    virtual HRESULT STDMETHODCALLTYPE webAnimationsCSSIntegrationEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setWebAnimationsCSSIntegrationEnabled(BOOL);
+    
     // IWebPreferencesPrivate4
     virtual HRESULT STDMETHODCALLTYPE setApplicationId(BSTR);
     virtual HRESULT STDMETHODCALLTYPE webAnimationsEnabled(_Out_ BOOL*);
@@ -259,6 +261,28 @@ public:
     // IWebPreferencesPrivate5
     virtual HRESULT STDMETHODCALLTYPE isSecureContextAttributeEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setIsSecureContextAttributeEnabled(BOOL);
+
+    // IWebPreferencesPrivate6
+    virtual HRESULT STDMETHODCALLTYPE dataTransferItemsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setDataTransferItemsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE inspectorAdditionsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setInspectorAdditionsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE visualViewportAPIEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setVisualViewportAPIEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE CSSOMViewScrollingAPIEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setCSSOMViewScrollingAPIEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE fetchAPIKeepAliveEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setFetchAPIKeepAliveEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE spatialNavigationEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setSpatialNavigationEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE menuItemElementEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setMenuItemElementEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE serverTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setServerTimingEnabled(BOOL);
+
+    // IWebPreferencesPrivate7
+    virtual HRESULT STDMETHODCALLTYPE crossOriginWindowPolicySupportEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setCrossOriginWindowPolicySupportEnabled(BOOL);
 
     // WebPreferences
 

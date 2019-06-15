@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.Target = class Target extends WebInspector.Object
+WI.Target = class Target extends WI.Object
 {
     constructor(identifier, name, type, connection)
     {
@@ -35,8 +35,8 @@ WebInspector.Target = class Target extends WebInspector.Object
         this._connection = connection;
         this._executionContext = null;
         this._mainResource = null;
-        this._resourceCollection = new WebInspector.ResourceCollection;
-        this._extraScriptCollection = new WebInspector.Collection(WebInspector.Collection.TypeVerifier.Script);
+        this._resourceCollection = new WI.ResourceCollection;
+        this._extraScriptCollection = new WI.ScriptCollection;
 
         this._connection.target = this;
     }
@@ -51,7 +51,11 @@ WebInspector.Target = class Target extends WebInspector.Object
     // Public
 
     get identifier() { return this._identifier; }
+    set identifier(identifier) { this._identifier = identifier; }
+
     get name() { return this._name; }
+    set name(name) { this._name = name; }
+
     get type() { return this._type; }
     get connection() { return this._connection; }
     get executionContext() { return this._executionContext; }
@@ -59,14 +63,27 @@ WebInspector.Target = class Target extends WebInspector.Object
     get resourceCollection() { return this._resourceCollection; }
     get extraScriptCollection() { return this._extraScriptCollection; }
 
-    get mainResource() { return this._mainResource; }
-    set mainResource(resource) { this._mainResource = resource; }
+    get displayName() { return this._name; }
+
+    get mainResource()
+    {
+        return this._mainResource;
+    }
+
+    set mainResource(resource)
+    {
+        console.assert(!this._mainResource);
+
+        this._mainResource = resource;
+
+        this.dispatchEventToListeners(WI.Target.Event.MainResourceAdded, {resource});
+    }
 
     addResource(resource)
     {
         this._resourceCollection.add(resource);
 
-        this.dispatchEventToListeners(WebInspector.Target.Event.ResourceAdded, {resource});
+        this.dispatchEventToListeners(WI.Target.Event.ResourceAdded, {resource});
     }
 
     adoptResource(resource)
@@ -80,16 +97,19 @@ WebInspector.Target = class Target extends WebInspector.Object
     {
         this._extraScriptCollection.add(script);
 
-        this.dispatchEventToListeners(WebInspector.Target.Event.ScriptAdded, {script});
+        this.dispatchEventToListeners(WI.Target.Event.ScriptAdded, {script});
     }
 };
 
-WebInspector.Target.Type = {
-    Main: Symbol("main"),
+WI.Target.Type = {
+    Page: Symbol("page"),
+    JSContext: Symbol("jscontext"),
+    ServiceWorker: Symbol("service-worker"),
     Worker: Symbol("worker"),
 };
 
-WebInspector.Target.Event = {
+WI.Target.Event = {
+    MainResourceAdded: "target-main-resource-added",
     ResourceAdded: "target-resource-added",
     ScriptAdded: "target-script-added",
 };

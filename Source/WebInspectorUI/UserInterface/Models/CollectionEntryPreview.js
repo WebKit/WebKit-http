@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CollectionEntryPreview = class CollectionEntryPreview extends WebInspector.Object
+WI.CollectionEntryPreview = class CollectionEntryPreview
 {
     constructor(keyPreview, valuePreview)
     {
-        super();
-
-        console.assert(valuePreview instanceof WebInspector.ObjectPreview);
-        console.assert(!keyPreview || keyPreview instanceof WebInspector.ObjectPreview);
+        console.assert(valuePreview instanceof WI.ObjectPreview);
+        console.assert(!keyPreview || keyPreview instanceof WI.ObjectPreview);
 
         this._key = keyPreview;
         this._value = valuePreview;
@@ -42,11 +40,11 @@ WebInspector.CollectionEntryPreview = class CollectionEntryPreview extends WebIn
     static fromPayload(payload)
     {
         if (payload.key)
-            payload.key = WebInspector.ObjectPreview.fromPayload(payload.key);
+            payload.key = WI.ObjectPreview.fromPayload(payload.key);
         if (payload.value)
-            payload.value = WebInspector.ObjectPreview.fromPayload(payload.value);
+            payload.value = WI.ObjectPreview.fromPayload(payload.value);
 
-        return new WebInspector.CollectionEntryPreview(payload.key, payload.value);
+        return new WI.CollectionEntryPreview(payload.key, payload.value);
     }
 
     // Public

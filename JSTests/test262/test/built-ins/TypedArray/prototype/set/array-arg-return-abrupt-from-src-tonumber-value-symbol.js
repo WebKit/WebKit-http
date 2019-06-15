@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-array-offset
 description: >
   Return abrupt from ToNumber(src property symbol value)
-info: >
+info: |
   22.2.3.23.1 %TypedArray%.prototype.set (array [ , offset ] )
 
   1. Assert: array is any ECMAScript language value other than an Object with a
@@ -19,18 +19,18 @@ info: >
     kNumber).
   ...
 includes: [testTypedArray.js, compareArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
-var obj = {
-  length: 4,
-  "0": 42,
-  "1": 43,
-  "2": Symbol("1"),
-  "3": 44
-};
-
 testWithTypedArrayConstructors(function(TA) {
+  var obj = {
+      length: 4,
+      "0": 42,
+      "1": 43,
+      "2": Symbol("1"),
+      "3": 44
+  };
+
   var sample = new TA([1, 2, 3, 4]);
 
   assert.throws(TypeError, function() {

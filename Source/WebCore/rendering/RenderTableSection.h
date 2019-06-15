@@ -53,6 +53,7 @@ public:
 };
 
 class RenderTableSection final : public RenderBox {
+    WTF_MAKE_ISO_ALLOCATED(RenderTableSection);
 public:
     RenderTableSection(Element&, RenderStyle&&);
     RenderTableSection(Document&, RenderStyle&&);
@@ -60,8 +61,6 @@ public:
 
     RenderTableRow* firstRow() const;
     RenderTableRow* lastRow() const;
-
-    void addChild(RenderObject* child, RenderObject* beforeChild = 0) override;
 
     std::optional<int> firstLineBaseline() const override;
 
@@ -126,6 +125,7 @@ public:
     unsigned numColumns() const;
     void recalcCells();
     void recalcCellsIfNeeded();
+    void removeRedundantColumns();
 
     bool needsCellRecalc() const { return m_needsCellRecalc; }
     void setNeedsCellRecalc();
@@ -142,16 +142,18 @@ public:
     // FIXME: We may want to introduce a structure holding the in-flux layout information.
     LayoutUnit distributeExtraLogicalHeightToRows(LayoutUnit extraLogicalHeight);
 
-    static std::unique_ptr<RenderTableSection> createAnonymousWithParentRenderer(const RenderTable&);
-    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
+    static RenderPtr<RenderTableSection> createAnonymousWithParentRenderer(const RenderTable&);
+    RenderPtr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
     
     void paint(PaintInfo&, const LayoutPoint&) override;
+
+    void willInsertTableRow(RenderTableRow& child, RenderObject* beforeChild);
 
 protected:
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
 private:
-    static std::unique_ptr<RenderTableSection> createTableSectionWithStyle(Document&, const RenderStyle&);
+    static RenderPtr<RenderTableSection> createTableSectionWithStyle(Document&, const RenderStyle&);
 
     enum ShouldIncludeAllIntersectingCells {
         IncludeAllIntersectingCells,
@@ -170,7 +172,7 @@ private:
 
     void paintCell(RenderTableCell*, PaintInfo&, const LayoutPoint&);
     void paintObject(PaintInfo&, const LayoutPoint&) override;
-    void paintRowGroupBorder(const PaintInfo&, bool antialias, LayoutRect, BoxSide, CSSPropertyID borderColor, EBorderStyle, EBorderStyle tableBorderStyle);
+    void paintRowGroupBorder(const PaintInfo&, bool antialias, LayoutRect, BoxSide, CSSPropertyID borderColor, BorderStyle, BorderStyle tableBorderStyle);
     void paintRowGroupBorderIfRequired(const PaintInfo&, const LayoutPoint& paintOffset, unsigned row, unsigned col, BoxSide, RenderTableCell* = 0);
     LayoutUnit offsetLeftForRowGroupBorder(RenderTableCell*, const LayoutRect& rowGroupRect, unsigned row);
 
@@ -228,19 +230,18 @@ private:
     LayoutUnit m_outerBorderBefore;
     LayoutUnit m_outerBorderAfter;
 
-    bool m_needsCellRecalc  { false };
-
     // This HashSet holds the overflowing cells for faster painting.
     // If we have more than gMaxAllowedOverflowingCellRatio * total cells, it will be empty
     // and m_forceSlowPaintPathWithOverflowingCell will be set to save memory.
     HashSet<RenderTableCell*> m_overflowingCells;
-    bool m_forceSlowPaintPathWithOverflowingCell { false };
-
-    bool m_hasMultipleCellLevels { false };
 
     // This map holds the collapsed border values for cells with collapsed borders.
     // It is held at RenderTableSection level to spare memory consumption by table cells.
     HashMap<std::pair<const RenderTableCell*, int>, CollapsedBorderValue > m_cellsCollapsedBorders;
+
+    bool m_forceSlowPaintPathWithOverflowingCell { false };
+    bool m_hasMultipleCellLevels { false };
+    bool m_needsCellRecalc  { false };
 };
 
 inline const BorderValue& RenderTableSection::borderAdjoiningTableStart() const
@@ -334,7 +335,7 @@ inline CellSpan RenderTableSection::fullTableRowSpan() const
     return CellSpan(0, m_grid.size());
 }
 
-inline std::unique_ptr<RenderBox> RenderTableSection::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+inline RenderPtr<RenderBox> RenderTableSection::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
 {
     return RenderTableSection::createTableSectionWithStyle(renderer.document(), renderer.style());
 }

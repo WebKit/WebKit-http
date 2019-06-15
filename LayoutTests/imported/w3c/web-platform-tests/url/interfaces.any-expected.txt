@@ -1,72 +1,104 @@
 
+PASS Test driver 
 PASS URL interface: existence and properties of interface object 
 PASS URL interface object length 
 PASS URL interface object name 
 PASS URL interface: legacy window alias 
 PASS URL interface: existence and properties of interface prototype object 
 PASS URL interface: existence and properties of interface prototype object's "constructor" property 
+PASS URL interface: existence and properties of interface prototype object's @@unscopables property 
 PASS URL interface: attribute href 
+PASS Unscopable handled correctly for href property on URL 
 PASS URL interface: stringifier 
 PASS URL interface: attribute origin 
+PASS Unscopable handled correctly for origin property on URL 
 PASS URL interface: attribute protocol 
+PASS Unscopable handled correctly for protocol property on URL 
 PASS URL interface: attribute username 
+PASS Unscopable handled correctly for username property on URL 
 PASS URL interface: attribute password 
+PASS Unscopable handled correctly for password property on URL 
 PASS URL interface: attribute host 
+PASS Unscopable handled correctly for host property on URL 
 PASS URL interface: attribute hostname 
+PASS Unscopable handled correctly for hostname property on URL 
 PASS URL interface: attribute port 
+PASS Unscopable handled correctly for port property on URL 
 PASS URL interface: attribute pathname 
+PASS Unscopable handled correctly for pathname property on URL 
 PASS URL interface: attribute search 
+PASS Unscopable handled correctly for search property on URL 
 PASS URL interface: attribute searchParams 
+PASS Unscopable handled correctly for searchParams property on URL 
 PASS URL interface: attribute hash 
+PASS Unscopable handled correctly for hash property on URL 
 PASS URL interface: operation toJSON() 
-PASS URL interface: new URL("http://foo") must inherit property "href" with the proper type (0) 
-PASS URL interface: new URL("http://foo") must inherit property "origin" with the proper type (1) 
-PASS URL interface: new URL("http://foo") must inherit property "protocol" with the proper type (2) 
-PASS URL interface: new URL("http://foo") must inherit property "username" with the proper type (3) 
-PASS URL interface: new URL("http://foo") must inherit property "password" with the proper type (4) 
-PASS URL interface: new URL("http://foo") must inherit property "host" with the proper type (5) 
-PASS URL interface: new URL("http://foo") must inherit property "hostname" with the proper type (6) 
-PASS URL interface: new URL("http://foo") must inherit property "port" with the proper type (7) 
-PASS URL interface: new URL("http://foo") must inherit property "pathname" with the proper type (8) 
-PASS URL interface: new URL("http://foo") must inherit property "search" with the proper type (9) 
-PASS URL interface: new URL("http://foo") must inherit property "searchParams" with the proper type (10) 
-PASS URL interface: new URL("http://foo") must inherit property "hash" with the proper type (11) 
-PASS URL interface: new URL("http://foo") must inherit property "toJSON" with the proper type (12) 
+PASS Unscopable handled correctly for toJSON() on URL 
+PASS URL must be primary interface of new URL("http://foo") 
+PASS Stringification of new URL("http://foo") 
+PASS URL interface: new URL("http://foo") must inherit property "href" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "origin" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "protocol" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "username" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "password" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "host" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "hostname" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "port" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "pathname" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "search" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "searchParams" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "hash" with the proper type 
+PASS URL interface: new URL("http://foo") must inherit property "toJSON()" with the proper type 
+PASS Test toJSON operation of URL 
 PASS URLSearchParams interface: existence and properties of interface object 
 PASS URLSearchParams interface object length 
 PASS URLSearchParams interface object name 
 PASS URLSearchParams interface: existence and properties of interface prototype object 
 PASS URLSearchParams interface: existence and properties of interface prototype object's "constructor" property 
-PASS URLSearchParams interface: operation append(USVString,USVString) 
+PASS URLSearchParams interface: existence and properties of interface prototype object's @@unscopables property 
+PASS URLSearchParams interface: operation append(USVString, USVString) 
+PASS Unscopable handled correctly for append(USVString, USVString) on URLSearchParams 
 PASS URLSearchParams interface: operation delete(USVString) 
+PASS Unscopable handled correctly for delete(USVString) on URLSearchParams 
 PASS URLSearchParams interface: operation get(USVString) 
+PASS Unscopable handled correctly for get(USVString) on URLSearchParams 
 PASS URLSearchParams interface: operation getAll(USVString) 
+PASS Unscopable handled correctly for getAll(USVString) on URLSearchParams 
 PASS URLSearchParams interface: operation has(USVString) 
-PASS URLSearchParams interface: operation set(USVString,USVString) 
+PASS Unscopable handled correctly for has(USVString) on URLSearchParams 
+PASS URLSearchParams interface: operation set(USVString, USVString) 
+PASS Unscopable handled correctly for set(USVString, USVString) on URLSearchParams 
 PASS URLSearchParams interface: operation sort() 
+PASS Unscopable handled correctly for sort() on URLSearchParams 
 PASS Testing Symbol.iterator property of iterable interface URLSearchParams 
 PASS Testing pair iterable interface URLSearchParams 
 PASS URLSearchParams interface: stringifier 
 PASS URLSearchParams interface: operation entries() 
+PASS Unscopable handled correctly for entries() on URLSearchParams 
 PASS URLSearchParams interface: operation keys() 
+PASS Unscopable handled correctly for keys() on URLSearchParams 
 PASS URLSearchParams interface: operation values() 
-PASS URLSearchParams interface: operation forEach(function,any) 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "append" with the proper type (0) 
-PASS URLSearchParams interface: calling append(USVString,USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "delete" with the proper type (1) 
+PASS Unscopable handled correctly for values() on URLSearchParams 
+PASS URLSearchParams interface: operation forEach(function, any) 
+PASS Unscopable handled correctly for forEach(function, any) on URLSearchParams 
+PASS URLSearchParams must be primary interface of new URLSearchParams("hi=there&thank=you") 
+PASS Stringification of new URLSearchParams("hi=there&thank=you") 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "append(USVString, USVString)" with the proper type 
+PASS URLSearchParams interface: calling append(USVString, USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "delete(USVString)" with the proper type 
 PASS URLSearchParams interface: calling delete(USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "get" with the proper type (2) 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "get(USVString)" with the proper type 
 PASS URLSearchParams interface: calling get(USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "getAll" with the proper type (3) 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "getAll(USVString)" with the proper type 
 PASS URLSearchParams interface: calling getAll(USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "has" with the proper type (4) 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "has(USVString)" with the proper type 
 PASS URLSearchParams interface: calling has(USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "set" with the proper type (5) 
-PASS URLSearchParams interface: calling set(USVString,USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "sort" with the proper type (6) 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "entries" with the proper type (9) 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "keys" with the proper type (10) 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "values" with the proper type (11) 
-PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "forEach" with the proper type (12) 
-PASS URLSearchParams interface: calling forEach(function,any) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "set(USVString, USVString)" with the proper type 
+PASS URLSearchParams interface: calling set(USVString, USVString) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "sort()" with the proper type 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "entries()" with the proper type 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "keys()" with the proper type 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "values()" with the proper type 
+PASS URLSearchParams interface: new URLSearchParams("hi=there&thank=you") must inherit property "forEach(function, any)" with the proper type 
+PASS URLSearchParams interface: calling forEach(function, any) on new URLSearchParams("hi=there&thank=you") with too few arguments must throw TypeError 
 

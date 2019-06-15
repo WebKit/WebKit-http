@@ -31,7 +31,6 @@
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
-#include "ExceptionBase.h"
 #include "MediaCanStartListener.h"
 #include "MediaProducer.h"
 #include "MediaStreamPrivate.h"
@@ -60,7 +59,7 @@ class MediaStream final
 public:
     class Observer {
     public:
-        virtual ~Observer() { }
+        virtual ~Observer() = default;
         virtual void didAddOrRemoveTrack() = 0;
     };
 
@@ -152,7 +151,7 @@ private:
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const final { return false; }
     String sourceApplicationIdentifier() const final;
     bool canProduceAudio() const final;
-    const Document* hostingDocument() const final { return document(); }
+    Document* hostingDocument() const final { return document(); }
     bool processingUserGestureForMedia() const final;
 
     // ActiveDOMObject API.
@@ -160,7 +159,7 @@ private:
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
 
-    void scheduleActiveStateChange();
+    void updateActiveState();
     void activityEventTimerFired();
     void setIsActive(bool);
     void statusDidChange();
@@ -170,9 +169,6 @@ private:
     Ref<MediaStreamPrivate> m_private;
 
     HashMap<String, RefPtr<MediaStreamTrack>> m_trackSet;
-
-    Timer m_activityEventTimer;
-    Vector<Ref<Event>> m_scheduledActivityEvents;
 
     Vector<Observer*> m_observers;
     std::unique_ptr<PlatformMediaSession> m_mediaSession;

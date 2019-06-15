@@ -139,7 +139,7 @@ inline void copyLCharsFromUCharSource(LChar* destination, const UChar* source, s
         ASSERT(!(source[i] & 0xff00));
         destination[i] = static_cast<LChar>(source[i]);
     }
-#elif COMPILER(GCC_OR_CLANG) && CPU(ARM64) && defined(NDEBUG)
+#elif COMPILER(GCC_OR_CLANG) && CPU(ARM64) && !defined(__ILP32__) && defined(NDEBUG)
     const LChar* const end = destination + length;
     const uintptr_t memoryAccessSize = 16;
 
@@ -193,5 +193,7 @@ inline void copyLCharsFromUCharSource(LChar* destination, const UChar* source, s
 }
 
 } // namespace WTF
+
+using WTF::charactersAreAllASCII;
 
 #endif // ASCIIFastPath_h

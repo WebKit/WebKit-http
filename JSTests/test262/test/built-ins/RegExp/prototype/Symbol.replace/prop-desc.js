@@ -4,13 +4,14 @@
 /*---
 es6id: 21.2.5.8
 description: RegExp.prototype[Symbol.replace] property descriptor
-info: >
+info: |
     ES6 Section 17
 
     Every other data property described in clauses 18 through 26 and in Annex
     B.2 has the attributes { [[Writable]]: true, [[Enumerable]]: false,
     [[Configurable]]: true } unless otherwise specified.
 includes: [propertyHelper.js]
+features: [Symbol.replace]
 ---*/
 
 verifyNotEnumerable(RegExp.prototype, Symbol.replace);

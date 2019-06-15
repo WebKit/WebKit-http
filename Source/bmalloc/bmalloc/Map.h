@@ -26,7 +26,7 @@
 #ifndef Map_h
 #define Map_h
 
-#include "Inline.h"
+#include "BInline.h"
 #include "Sizes.h"
 #include "Vector.h"
 
@@ -113,7 +113,7 @@ void Map<Key, Value, Hash>::rehash()
     auto oldTable = std::move(m_table);
 
     size_t newCapacity = std::max(minCapacity, m_keyCount * rehashLoad);
-    m_table.resize(newCapacity);
+    m_table.grow(newCapacity);
 
     m_keyCount = 0;
     m_tableMask = newCapacity - 1;

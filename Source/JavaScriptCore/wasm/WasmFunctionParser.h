@@ -28,6 +28,7 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "WasmParser.h"
+#include "WasmSignatureInlines.h"
 #include <wtf/DataLog.h>
 
 namespace JSC { namespace Wasm {
@@ -112,14 +113,14 @@ auto FunctionParser<Context>::parse() -> Result
 
     WASM_PARSER_FAIL_IF(!m_context.addArguments(m_signature), "can't add ", m_signature.argumentCount(), " arguments to Function");
     WASM_PARSER_FAIL_IF(!parseVarUInt32(localCount), "can't get local count");
-    WASM_PARSER_FAIL_IF(localCount == std::numeric_limits<uint32_t>::max(), "Function section's local count is too big ", localCount);
+    WASM_PARSER_FAIL_IF(localCount > maxFunctionLocals, "Function section's local count is too big ", localCount, " maximum ", maxFunctionLocals);
 
     for (uint32_t i = 0; i < localCount; ++i) {
         uint32_t numberOfLocals;
         Type typeOfLocal;
 
         WASM_PARSER_FAIL_IF(!parseVarUInt32(numberOfLocals), "can't get Function's number of locals in group ", i);
-        WASM_PARSER_FAIL_IF(numberOfLocals == std::numeric_limits<uint32_t>::max(), "Function section's ", i, "th local group count is too big ", numberOfLocals);
+        WASM_PARSER_FAIL_IF(numberOfLocals > maxFunctionLocals, "Function section's ", i, "th local group count is too big ", numberOfLocals, " maximum ", maxFunctionLocals);
         WASM_PARSER_FAIL_IF(!parseValueType(typeOfLocal), "can't get Function local's type in group ", i);
         WASM_TRY_ADD_TO_CONTEXT(addLocal(typeOfLocal, numberOfLocals));
     }
@@ -604,8 +605,6 @@ auto FunctionParser<Context>::parseUnreachableExpression() -> PartialResult
     }
 
     // one immediate cases
-    case I32Const:
-    case I64Const:
     case SetLocal:
     case GetLocal:
     case TeeLocal:
@@ -616,6 +615,18 @@ auto FunctionParser<Context>::parseUnreachableExpression() -> PartialResult
     case Call: {
         uint32_t unused;
         WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get immediate for ", m_currentOpcode, " in unreachable context");
+        return { };
+    }
+
+    case I32Const: {
+        int32_t unused;
+        WASM_PARSER_FAIL_IF(!parseVarInt32(unused), "can't get immediate for ", m_currentOpcode, " in unreachable context");
+        return { };
+    }
+
+    case I64Const: {
+        int64_t unused;
+        WASM_PARSER_FAIL_IF(!parseVarInt64(unused), "can't get immediate for ", m_currentOpcode, " in unreachable context");
         return { };
     }
 

@@ -28,7 +28,7 @@
 
 #if PLATFORM(WAYLAND) && USE(EGL)
 
-#include "WebKit2WaylandServerProtocol.h"
+#include "WebKitWaylandServerProtocol.h"
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <WebCore/GLContext.h>
@@ -37,16 +37,17 @@
 #include <wayland-server-protocol.h>
 #include <wtf/UUID.h>
 
-#if USE(OPENGL_ES_2)
+#if USE(OPENGL_ES)
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <WebCore/Extensions3DOpenGLES.h>
 #else
+#include <WebCore/Extensions3DOpenGL.h>
 #include <WebCore/OpenGLShims.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 #if !defined(PFNEGLBINDWAYLANDDISPLAYWL)
 typedef EGLBoolean (*PFNEGLBINDWAYLANDDISPLAYWL) (EGLDisplay, struct wl_display*);
@@ -97,7 +98,6 @@ WaylandCompositor::Buffer* WaylandCompositor::Buffer::getOrCreate(struct wl_reso
 
 WaylandCompositor::Buffer::Buffer(struct wl_resource* resource)
     : m_resource(resource)
-    , m_weakPtrFactory(this)
 {
     wl_list_init(&m_destroyListener.link);
     m_destroyListener.notify = destroyListenerCallback;
@@ -156,7 +156,12 @@ WaylandCompositor::Surface::Surface()
 
 WaylandCompositor::Surface::~Surface()
 {
+    setWebPage(nullptr);
+
     // Destroy pending frame callbacks.
+    auto pendingList = WTFMove(m_pendingFrameCallbackList);
+    for (auto* resource : pendingList)
+        wl_resource_destroy(resource);
     auto list = WTFMove(m_frameCallbackList);
     for (auto* resource : list)
         wl_resource_destroy(resource);
@@ -168,6 +173,26 @@ WaylandCompositor::Surface::~Surface()
         eglDestroyImage(PlatformDisplay::sharedDisplay().eglDisplay(), m_image);
 
     glDeleteTextures(1, &m_texture);
+}
+
+void WaylandCompositor::Surface::setWebPage(WebPageProxy* webPage)
+{
+    if (m_webPage) {
+        flushPendingFrameCallbacks();
+        flushFrameCallbacks();
+        gtk_widget_remove_tick_callback(m_webPage->viewWidget(), m_tickCallbackID);
+        m_tickCallbackID = 0;
+    }
+
+    m_webPage = webPage;
+    if (!m_webPage)
+        return;
+
+    m_tickCallbackID = gtk_widget_add_tick_callback(m_webPage->viewWidget(), [](GtkWidget*, GdkFrameClock*, gpointer userData) -> gboolean {
+        auto* surface = static_cast<Surface*>(userData);
+        surface->flushFrameCallbacks();
+        return G_SOURCE_CONTINUE;
+    }, this, nullptr);
 }
 
 void WaylandCompositor::Surface::makePendingBufferCurrent()
@@ -191,7 +216,7 @@ void WaylandCompositor::Surface::attachBuffer(struct wl_resource* buffer)
 
     if (buffer) {
         auto* compositorBuffer = WaylandCompositor::Buffer::getOrCreate(buffer);
-        m_pendingBuffer = compositorBuffer->createWeakPtr();
+        m_pendingBuffer = makeWeakPtr(*compositorBuffer);
     }
 }
 
@@ -199,10 +224,10 @@ void WaylandCompositor::Surface::requestFrame(struct wl_resource* resource)
 {
     wl_resource_set_implementation(resource, nullptr, this, [](struct wl_resource* resource) {
         auto* surface = static_cast<WaylandCompositor::Surface*>(wl_resource_get_user_data(resource));
-        if (size_t item = surface->m_frameCallbackList.find(resource) != notFound)
-            surface->m_frameCallbackList.remove(item);
+        if (size_t item = surface->m_pendingFrameCallbackList.find(resource) != notFound)
+            surface->m_pendingFrameCallbackList.remove(item);
     });
-    m_frameCallbackList.append(resource);
+    m_pendingFrameCallbackList.append(resource);
 }
 
 bool WaylandCompositor::Surface::prepareTextureForPainting(unsigned& texture, IntSize& textureSize)
@@ -218,8 +243,32 @@ bool WaylandCompositor::Surface::prepareTextureForPainting(unsigned& texture, In
     return true;
 }
 
+void WaylandCompositor::Surface::flushFrameCallbacks()
+{
+    auto list = WTFMove(m_frameCallbackList);
+    for (auto* resource : list) {
+        wl_callback_send_done(resource, 0);
+        wl_resource_destroy(resource);
+    }
+}
+
+void WaylandCompositor::Surface::flushPendingFrameCallbacks()
+{
+    auto list = WTFMove(m_pendingFrameCallbackList);
+    for (auto* resource : list) {
+        wl_callback_send_done(resource, 0);
+        wl_resource_destroy(resource);
+    }
+}
+
 void WaylandCompositor::Surface::commit()
 {
+    if (!m_webPage) {
+        makePendingBufferCurrent();
+        flushPendingFrameCallbacks();
+        return;
+    }
+
     EGLDisplay eglDisplay = PlatformDisplay::sharedDisplay().eglDisplay();
     if (m_image != EGL_NO_IMAGE_KHR)
         eglDestroyImage(eglDisplay, m_image);
@@ -230,18 +279,11 @@ void WaylandCompositor::Surface::commit()
     m_imageSize = m_pendingBuffer->size();
 
     makePendingBufferCurrent();
-    if (m_webPage)
-        m_webPage->setViewNeedsDisplay(IntRect(IntPoint::zero(), m_webPage->viewSize()));
 
-    // From a Wayland point-of-view frame callbacks should be fired where the
-    // compositor knows it has *used* the committed contents, so firing them here
-    // can be surprising but we don't need them as a throttling mechanism because
-    // rendering synchronization is handled elsewhere by WebKit.
-    auto list = WTFMove(m_frameCallbackList);
-    for (auto* resource : list) {
-        wl_callback_send_done(resource, 0);
-        wl_resource_destroy(resource);
-    }
+    m_webPage->setViewNeedsDisplay(IntRect(IntPoint::zero(), m_webPage->viewSize()));
+
+    auto list = WTFMove(m_pendingFrameCallbackList);
+    m_frameCallbackList.appendVector(list);
 }
 
 static const struct wl_surface_interface surfaceInterface = {
@@ -332,11 +374,12 @@ static const struct wl_webkitgtk_interface webkitgtkInterface = {
 
 bool WaylandCompositor::initializeEGL()
 {
+    const char* extensions = eglQueryString(PlatformDisplay::sharedDisplay().eglDisplay(), EGL_EXTENSIONS);
+
     if (PlatformDisplay::sharedDisplay().eglCheckVersion(1, 5)) {
         eglCreateImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImage"));
         eglDestroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImage"));
     } else {
-        const char* extensions = eglQueryString(PlatformDisplay::sharedDisplay().eglDisplay(), EGL_EXTENSIONS);
         if (GLContext::isExtensionSupported(extensions, "EGL_KHR_image_base")) {
             eglCreateImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
             eglDestroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
@@ -347,22 +390,13 @@ bool WaylandCompositor::initializeEGL()
         return false;
     }
 
-    glImageTargetTexture2D = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
-    if (!glImageTargetTexture2D) {
-        WTFLogAlways("WaylandCompositor requires glEGLImageTargetTexture2D.");
-        return false;
+    if (GLContext::isExtensionSupported(extensions, "EGL_WL_bind_wayland_display")) {
+        eglBindWaylandDisplay = reinterpret_cast<PFNEGLBINDWAYLANDDISPLAYWL>(eglGetProcAddress("eglBindWaylandDisplayWL"));
+        eglUnbindWaylandDisplay = reinterpret_cast<PFNEGLUNBINDWAYLANDDISPLAYWL>(eglGetProcAddress("eglUnbindWaylandDisplayWL"));
+        eglQueryWaylandBuffer = reinterpret_cast<PFNEGLQUERYWAYLANDBUFFERWL>(eglGetProcAddress("eglQueryWaylandBufferWL"));
     }
-
-    eglQueryWaylandBuffer = reinterpret_cast<PFNEGLQUERYWAYLANDBUFFERWL>(eglGetProcAddress("eglQueryWaylandBufferWL"));
-    if (!eglQueryWaylandBuffer) {
-        WTFLogAlways("WaylandCompositor requires eglQueryWaylandBuffer.");
-        return false;
-    }
-
-    eglBindWaylandDisplay = reinterpret_cast<PFNEGLBINDWAYLANDDISPLAYWL>(eglGetProcAddress("eglBindWaylandDisplayWL"));
-    eglUnbindWaylandDisplay = reinterpret_cast<PFNEGLUNBINDWAYLANDDISPLAYWL>(eglGetProcAddress("eglUnbindWaylandDisplayWL"));
-    if (!eglBindWaylandDisplay || !eglUnbindWaylandDisplay) {
-        WTFLogAlways("WaylandCompositor requires eglBindWaylandDisplayWL and eglUnbindWaylandDisplayWL.");
+    if (!eglBindWaylandDisplay || !eglUnbindWaylandDisplay || !eglQueryWaylandBuffer) {
+        WTFLogAlways("WaylandCompositor requires eglBindWaylandDisplayWL, eglUnbindWaylandDisplayWL and eglQueryWaylandBuffer.");
         return false;
     }
 
@@ -372,6 +406,19 @@ bool WaylandCompositor::initializeEGL()
 
     if (!m_eglContext->makeContextCurrent())
         return false;
+
+#if USE(OPENGL_ES)
+    std::unique_ptr<Extensions3DOpenGLES> glExtensions = std::make_unique<Extensions3DOpenGLES>(nullptr,  false);
+#else
+    std::unique_ptr<Extensions3DOpenGL> glExtensions = std::make_unique<Extensions3DOpenGL>(nullptr, GLContext::current()->version() >= 320);
+#endif
+    if (glExtensions->supports("GL_OES_EGL_image") || glExtensions->supports("GL_OES_EGL_image_external"))
+        glImageTargetTexture2D = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
+
+    if (!glImageTargetTexture2D) {
+        WTFLogAlways("WaylandCompositor requires glEGLImageTargetTexture2D.");
+        return false;
+    }
 
     return true;
 }
@@ -428,7 +475,7 @@ static GRefPtr<GSource> createWaylandLoopSource(struct wl_display* display)
 
 WaylandCompositor::WaylandCompositor()
 {
-    WlUniquePtr<struct wl_display> display(wl_display_create());
+    std::unique_ptr<struct wl_display, DisplayDeleter> display(wl_display_create());
     if (!display) {
         WTFLogAlways("Nested Wayland compositor could not create display object");
         return;
@@ -483,7 +530,7 @@ WaylandCompositor::WaylandCompositor()
 
 bool WaylandCompositor::getTexture(WebPageProxy& webPage, unsigned& texture, IntSize& textureSize)
 {
-    if (auto* surface = m_pageMap.get(&webPage))
+    if (WeakPtr<Surface> surface = m_pageMap.get(&webPage))
         return surface->prepareTextureForPainting(texture, textureSize);
     return false;
 }
@@ -501,7 +548,7 @@ void WaylandCompositor::bindSurfaceToWebPage(WaylandCompositor::Surface* surface
         return;
 
     surface->setWebPage(webPage);
-    m_pageMap.set(webPage, surface);
+    m_pageMap.set(webPage, makeWeakPtr(*surface));
 }
 
 void WaylandCompositor::registerWebPage(WebPageProxy& webPage)
@@ -511,7 +558,7 @@ void WaylandCompositor::registerWebPage(WebPageProxy& webPage)
 
 void WaylandCompositor::unregisterWebPage(WebPageProxy& webPage)
 {
-    if (auto* surface = m_pageMap.take(&webPage))
+    if (WeakPtr<Surface> surface = m_pageMap.take(&webPage))
         surface->setWebPage(nullptr);
 }
 

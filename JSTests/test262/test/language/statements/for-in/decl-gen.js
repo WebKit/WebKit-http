@@ -4,7 +4,12 @@
 description: Generator declaration not allowed in statement position
 esid: sec-for-in-and-for-of-statements
 es6id: 13.7.5
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
+features: [generators]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 for (var x in {}) function* g() {}

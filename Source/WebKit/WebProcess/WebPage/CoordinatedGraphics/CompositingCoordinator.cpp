@@ -31,10 +31,14 @@
 
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Document.h>
+#include <WebCore/Frame.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/InspectorController.h>
-#include <WebCore/MainFrame.h>
+#include <WebCore/NicosiaBackingStoreTextureMapperImpl.h>
+#include <WebCore/NicosiaContentLayerTextureMapperImpl.h>
+#include <WebCore/NicosiaImageBackingTextureMapperImpl.h>
+#include <WebCore/NicosiaPaintingEngine.h>
 #include <WebCore/Page.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/SetForScope.h>
@@ -43,18 +47,16 @@
 #include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinator::Client& client)
     : m_page(page)
     , m_client(client)
-    , m_releaseInactiveAtlasesTimer(RunLoop::main(), this, &CompositingCoordinator::releaseInactiveAtlasesTimerFired)
+    , m_paintingEngine(Nicosia::PaintingEngine::create())
 {
-#if USE(GLIB_EVENT_LOOP)
-    m_releaseInactiveAtlasesTimer.setPriority(RunLoopSourcePriority::ReleaseUnusedResourcesTimer);
-#endif
+    m_nicosia.scene = Nicosia::Scene::create();
+    m_state.nicosia.scene = m_nicosia.scene;
 }
 
 CompositingCoordinator::~CompositingCoordinator()
@@ -123,24 +125,42 @@ bool CompositingCoordinator::flushPendingLayerChanges()
     coordinatedLayer.updateContentBuffersIncludingSubLayers();
     coordinatedLayer.syncPendingStateChangesIncludingSubLayers();
 
-    flushPendingImageBackingChanges();
-
     if (m_shouldSyncFrame) {
         didSync = true;
 
-        if (m_rootCompositingLayer) {
-            m_state.contentsSize = roundedIntSize(m_rootCompositingLayer->size());
-            if (CoordinatedGraphicsLayer* contentsLayer = mainContentsLayer())
-                m_state.coveredRect = contentsLayer->coverRect();
-        }
-        m_state.scrollPosition = m_visibleContentsRect.location();
+        m_state.nicosia.scene->accessState(
+            [this](Nicosia::Scene::State& state)
+            {
+                bool platformLayerUpdated = false;
+                for (auto& compositionLayer : m_nicosia.state.layers) {
+                    compositionLayer->flushState(
+                        [&platformLayerUpdated]
+                        (const Nicosia::CompositionLayer::LayerState& state)
+                        {
+                            if (state.backingStore) {
+                                auto& impl = downcast<Nicosia::BackingStoreTextureMapperImpl>(state.backingStore->impl());
+                                impl.flushUpdate();
+                            }
+
+                            if (state.imageBacking) {
+                                auto& impl = downcast<Nicosia::ImageBackingTextureMapperImpl>(state.imageBacking->impl());
+                                impl.flushUpdate();
+                            }
+
+                            if (state.contentLayer) {
+                                auto& impl = downcast<Nicosia::ContentLayerTextureMapperImpl>(state.contentLayer->impl());
+                                platformLayerUpdated |= impl.flushUpdate();
+                            }
+                        });
+                }
+
+                ++state.id;
+                state.platformLayerUpdated = platformLayerUpdated;
+                state.layers = m_nicosia.state.layers;
+                state.rootLayer = m_nicosia.state.rootLayer;
+            });
 
         m_client.commitSceneState(m_state);
-
-        if (!m_atlasesToRemove.isEmpty())
-            m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
-
-        clearPendingStateChanges();
         m_shouldSyncFrame = false;
     }
 
@@ -167,26 +187,13 @@ double CompositingCoordinator::nextAnimationServiceTime() const
     return std::max<double>(0., MinimalTimeoutForAnimations - timestamp() + m_lastAnimationServiceTime);
 }
 
-void CompositingCoordinator::clearPendingStateChanges()
-{
-    m_state.layersToCreate.clear();
-    m_state.layersToUpdate.clear();
-    m_state.layersToRemove.clear();
-
-    m_state.imagesToCreate.clear();
-    m_state.imagesToRemove.clear();
-    m_state.imagesToUpdate.clear();
-    m_state.imagesToClear.clear();
-
-    m_state.updateAtlasesToCreate.clear();
-}
-
 void CompositingCoordinator::initializeRootCompositingLayerIfNeeded()
 {
     if (m_didInitializeRootCompositingLayer)
         return;
 
-    m_state.rootCompositingLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer).id();
+    auto& rootLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer);
+    m_nicosia.state.rootLayer = rootLayer.compositionLayer();
     m_didInitializeRootCompositingLayer = true;
     m_shouldSyncFrame = true;
 }
@@ -203,83 +210,15 @@ void CompositingCoordinator::createRootLayer(const IntSize& size)
     m_rootLayer->setSize(size);
 }
 
-void CompositingCoordinator::syncLayerState(CoordinatedLayerID id, CoordinatedGraphicsLayerState& state)
+void CompositingCoordinator::syncLayerState()
 {
     m_shouldSyncFrame = true;
-    m_state.layersToUpdate.append(std::make_pair(id, state));
-}
-
-Ref<CoordinatedImageBacking> CompositingCoordinator::createImageBackingIfNeeded(Image& image)
-{
-    CoordinatedImageBackingID imageID = CoordinatedImageBacking::getCoordinatedImageBackingID(&image);
-    auto addResult = m_imageBackings.ensure(imageID, [this, &image] {
-        return CoordinatedImageBacking::create(*this, image);
-    });
-    return *addResult.iterator->value;
-}
-
-void CompositingCoordinator::createImageBacking(CoordinatedImageBackingID imageID)
-{
-    m_state.imagesToCreate.append(imageID);
-}
-
-void CompositingCoordinator::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<CoordinatedSurface>&& coordinatedSurface)
-{
-    m_shouldSyncFrame = true;
-    m_state.imagesToUpdate.append(std::make_pair(imageID, WTFMove(coordinatedSurface)));
-}
-
-void CompositingCoordinator::clearImageBackingContents(CoordinatedImageBackingID imageID)
-{
-    m_shouldSyncFrame = true;
-    m_state.imagesToClear.append(imageID);
-}
-
-void CompositingCoordinator::removeImageBacking(CoordinatedImageBackingID imageID)
-{
-    if (m_isPurging)
-        return;
-
-    ASSERT(m_imageBackings.contains(imageID));
-    m_imageBackings.remove(imageID);
-
-    m_state.imagesToRemove.append(imageID);
-
-    size_t imageIDPosition = m_state.imagesToClear.find(imageID);
-    if (imageIDPosition != notFound)
-        m_state.imagesToClear.remove(imageIDPosition);
-}
-
-void CompositingCoordinator::flushPendingImageBackingChanges()
-{
-    for (auto& imageBacking : m_imageBackings.values())
-        imageBacking->update();
-}
-
-void CompositingCoordinator::notifyAnimationStarted(const GraphicsLayer*, const String&, double /* time */)
-{
 }
 
 void CompositingCoordinator::notifyFlushRequired(const GraphicsLayer*)
 {
     if (!m_isDestructing && !isFlushingLayerChanges())
         m_client.notifyFlushRequired();
-}
-
-void CompositingCoordinator::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect, GraphicsLayerPaintFlags)
-{
-    m_client.paintLayerContents(graphicsLayer, graphicsContext, enclosingIntRect(clipRect));
-}
-
-std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(GraphicsLayer::Type layerType, GraphicsLayerClient& client)
-{
-    CoordinatedGraphicsLayer* layer = new CoordinatedGraphicsLayer(layerType, client);
-    layer->setCoordinator(this);
-    m_registeredLayers.add(layer->id(), layer);
-    m_state.layersToCreate.append(layer->id());
-    layer->setNeedsVisibleRectAdjustment();
-    notifyFlushRequired(layer);
-    return std::unique_ptr<GraphicsLayer>(layer);
 }
 
 float CompositingCoordinator::deviceScaleFactor() const
@@ -292,16 +231,15 @@ float CompositingCoordinator::pageScaleFactor() const
     return m_page->pageScaleFactor();
 }
 
-void CompositingCoordinator::createUpdateAtlas(uint32_t atlasID, RefPtr<CoordinatedSurface>&& coordinatedSurface)
+std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(GraphicsLayer::Type layerType, GraphicsLayerClient& client)
 {
-    m_state.updateAtlasesToCreate.append(std::make_pair(atlasID, WTFMove(coordinatedSurface)));
-}
-
-void CompositingCoordinator::removeUpdateAtlas(uint32_t atlasID)
-{
-    if (m_isPurging)
-        return;
-    m_atlasesToRemove.append(atlasID);
+    CoordinatedGraphicsLayer* layer = new CoordinatedGraphicsLayer(layerType, client);
+    layer->setCoordinator(this);
+    m_nicosia.state.layers.add(layer->compositionLayer());
+    m_registeredLayers.add(layer->id(), layer);
+    layer->setNeedsVisibleRectAdjustment();
+    notifyFlushRequired(layer);
+    return std::unique_ptr<GraphicsLayer>(layer);
 }
 
 FloatRect CompositingCoordinator::visibleContentsRect() const
@@ -309,20 +247,8 @@ FloatRect CompositingCoordinator::visibleContentsRect() const
     return m_visibleContentsRect;
 }
 
-CoordinatedGraphicsLayer* CompositingCoordinator::mainContentsLayer()
+void CompositingCoordinator::setVisibleContentsRect(const FloatRect& rect)
 {
-    if (!is<CoordinatedGraphicsLayer>(m_rootCompositingLayer))
-        return nullptr;
-
-    return downcast<CoordinatedGraphicsLayer>(*m_rootCompositingLayer).findFirstDescendantWithContentsRecursively();
-}
-
-void CompositingCoordinator::setVisibleContentsRect(const FloatRect& rect, const FloatPoint& trajectoryVector)
-{
-    // A zero trajectoryVector indicates that tiles all around the viewport are requested.
-    if (CoordinatedGraphicsLayer* contentsLayer = mainContentsLayer())
-        contentsLayer->setVisibleContentRectTrajectoryVector(trajectoryVector);
-
     bool contentsRectDidChange = rect != m_visibleContentsRect;
     if (contentsRectDidChange) {
         m_visibleContentsRect = rect;
@@ -349,28 +275,22 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
     if (m_isPurging)
         return;
 
+    m_nicosia.state.layers.remove(layer->compositionLayer());
     m_registeredLayers.remove(layer->id());
-
-    size_t index = m_state.layersToCreate.find(layer->id());
-    if (index != notFound) {
-        m_state.layersToCreate.remove(index);
-        return;
-    }
-
-    m_state.layersToRemove.append(layer->id());
     notifyFlushRequired(layer);
 }
 
-void CompositingCoordinator::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
+void CompositingCoordinator::attachLayer(CoordinatedGraphicsLayer* layer)
 {
-    if (auto* layer = m_registeredLayers.get(layerID))
-        layer->commitScrollOffset(offset);
+    layer->setCoordinator(this);
+    m_nicosia.state.layers.add(layer->compositionLayer());
+    m_registeredLayers.add(layer->id(), layer);
+    layer->setNeedsVisibleRectAdjustment();
+    notifyFlushRequired(layer);
 }
 
 void CompositingCoordinator::renderNextFrame()
 {
-    for (auto& atlas : m_updateAtlases)
-        atlas->didSwapBuffers();
 }
 
 void CompositingCoordinator::purgeBackingStores()
@@ -379,82 +299,11 @@ void CompositingCoordinator::purgeBackingStores()
 
     for (auto& registeredLayer : m_registeredLayers.values())
         registeredLayer->purgeBackingStores();
-
-    m_imageBackings.clear();
-    m_updateAtlases.clear();
 }
 
-bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurface::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client& client)
+Nicosia::PaintingEngine& CompositingCoordinator::paintingEngine()
 {
-    for (auto& updateAtlas : m_updateAtlases) {
-        UpdateAtlas* atlas = updateAtlas.get();
-        if (atlas->supportsAlpha() == (flags & CoordinatedSurface::SupportsAlpha)) {
-            // This will be false if there is no available buffer space.
-            if (atlas->paintOnAvailableBuffer(size, atlasID, offset, client))
-                return true;
-        }
-    }
-
-    static const int ScratchBufferDimension = 1024; // Should be a power of two.
-    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, ScratchBufferDimension, flags));
-    scheduleReleaseInactiveAtlases();
-    return m_updateAtlases.last()->paintOnAvailableBuffer(size, atlasID, offset, client);
-}
-
-const Seconds releaseInactiveAtlasesTimerInterval { 500_ms };
-
-void CompositingCoordinator::scheduleReleaseInactiveAtlases()
-{
-    if (!m_releaseInactiveAtlasesTimer.isActive())
-        m_releaseInactiveAtlasesTimer.startRepeating(releaseInactiveAtlasesTimerInterval);
-}
-
-void CompositingCoordinator::releaseInactiveAtlasesTimerFired()
-{
-    releaseAtlases(MemoryPressureHandler::singleton().isUnderMemoryPressure() ? ReleaseUnused : ReleaseInactive);
-}
-
-void CompositingCoordinator::releaseAtlases(ReleaseAtlasPolicy policy)
-{
-    // We always want to keep one atlas for root contents layer.
-    std::unique_ptr<UpdateAtlas> atlasToKeepAnyway;
-    bool foundActiveAtlasForRootContentsLayer = false;
-    for (int i = m_updateAtlases.size() - 1;  i >= 0; --i) {
-        UpdateAtlas* atlas = m_updateAtlases[i].get();
-        bool inUse = atlas->isInUse();
-        if (!inUse)
-            atlas->addTimeInactive(releaseInactiveAtlasesTimerInterval.value());
-        bool usableForRootContentsLayer = !atlas->supportsAlpha();
-        if (atlas->isInactive() || (!inUse && policy == ReleaseUnused)) {
-            if (!foundActiveAtlasForRootContentsLayer && !atlasToKeepAnyway && usableForRootContentsLayer)
-                atlasToKeepAnyway = WTFMove(m_updateAtlases[i]);
-            m_updateAtlases.remove(i);
-        } else if (usableForRootContentsLayer)
-            foundActiveAtlasForRootContentsLayer = true;
-    }
-
-    if (!foundActiveAtlasForRootContentsLayer && atlasToKeepAnyway)
-        m_updateAtlases.append(atlasToKeepAnyway.release());
-
-    m_updateAtlases.shrinkToFit();
-
-    if (m_updateAtlases.size() <= 1)
-        m_releaseInactiveAtlasesTimer.stop();
-
-    if (!m_atlasesToRemove.isEmpty())
-        m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
-}
-
-void CompositingCoordinator::clearUpdateAtlases()
-{
-    if (m_isPurging)
-        return;
-
-    m_releaseInactiveAtlasesTimer.stop();
-    m_updateAtlases.clear();
-
-    if (!m_atlasesToRemove.isEmpty())
-        m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
+    return *m_paintingEngine;
 }
 
 } // namespace WebKit

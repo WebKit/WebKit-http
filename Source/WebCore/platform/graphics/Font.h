@@ -39,7 +39,6 @@
 #include <wtf/text/StringHash.h>
 
 #if PLATFORM(COCOA)
-#include "WebCoreSystemInterface.h"
 #include <wtf/RetainPtr.h>
 #endif
 
@@ -47,12 +46,8 @@
 #include <usp10.h>
 #endif
 
-#if USE(CAIRO)
-#include <cairo.h>
-#endif
-
 #if USE(CG)
-#include "CoreGraphicsSPI.h"
+#include <pal/spi/cg/CoreGraphicsSPI.h>
 #endif
 
 #if USE(DIRECT2D)
@@ -78,19 +73,19 @@ enum Pitch { UnknownPitch, FixedPitch, VariablePitch };
 class Font : public RefCounted<Font> {
 public:
     // Used to create platform fonts.
-    enum class Origin {
+    enum class Origin : uint8_t {
         Remote,
         Local
     };
-    enum class Interstitial {
+    enum class Interstitial : uint8_t {
         Yes,
         No
     };
-    enum class Visibility {
+    enum class Visibility : uint8_t {
         Visible,
         Invisible
     };
-    enum class OrientationFallback {
+    enum class OrientationFallback : uint8_t {
         Yes,
         No
     };
@@ -180,6 +175,8 @@ public:
 
     GlyphData glyphDataForCharacter(UChar32) const;
     Glyph glyphForCharacter(UChar32) const;
+    bool supportsCodePoint(UChar32) const;
+    bool platformSupportsCodePoint(UChar32) const;
 
     RefPtr<Font> systemFallbackFontForCharacter(UChar32, const FontDescription&, bool isForPlatformFont) const;
 
@@ -208,10 +205,7 @@ public:
     const BitVector& glyphsSupportedByAllPetiteCaps() const;
 #endif
 
-#if PLATFORM(COCOA) || USE(HARFBUZZ)
     bool canRenderCombiningCharacterSequence(const UChar*, size_t) const;
-#endif
-
     bool applyTransforms(GlyphBufferGlyph*, GlyphBufferAdvance*, size_t glyphCount, bool enableKerning, bool requiresShaping) const;
 
 #if PLATFORM(QT)
@@ -258,8 +252,8 @@ private:
 #endif
 
     FontMetrics m_fontMetrics;
-    float m_maxCharWidth;
-    float m_avgCharWidth;
+    float m_maxCharWidth { -1 };
+    float m_avgCharWidth { -1 };
 
     const FontPlatformData m_platformData;
 
@@ -267,18 +261,12 @@ private:
     mutable HashMap<unsigned, RefPtr<GlyphPage>> m_glyphPages;
     mutable std::unique_ptr<GlyphMetricsMap<FloatRect>> m_glyphToBoundsMap;
     mutable GlyphMetricsMap<float> m_glyphToWidthMap;
+    mutable BitVector m_codePointSupport;
 
     mutable RefPtr<OpenTypeMathData> m_mathData;
 #if ENABLE(OPENTYPE_VERTICAL)
     RefPtr<OpenTypeVerticalData> m_verticalData;
 #endif
-
-    Glyph m_spaceGlyph { 0 };
-    float m_spaceWidth { 0 };
-    Glyph m_zeroGlyph { 0 };
-    float m_adjustedSpaceWidth { 0 };
-
-    Glyph m_zeroWidthSpaceGlyph { 0 };
 
     struct DerivedFonts {
 #if !COMPILER(MSVC)
@@ -297,21 +285,13 @@ private:
 
     mutable std::unique_ptr<DerivedFonts> m_derivedFontData;
 
-#if USE(CG) || USE(DIRECT2D) || USE(CAIRO)
-    float m_syntheticBoldOffset;
-#endif
-
 #if PLATFORM(COCOA)
-    mutable RetainPtr<CFDictionaryRef> m_nonKernedCFStringAttributes;
-    mutable RetainPtr<CFDictionaryRef> m_kernedCFStringAttributes;
+    mutable RetainPtr<CFMutableDictionaryRef> m_nonKernedCFStringAttributes;
+    mutable RetainPtr<CFMutableDictionaryRef> m_kernedCFStringAttributes;
     mutable std::optional<BitVector> m_glyphsSupportedBySmallCaps;
     mutable std::optional<BitVector> m_glyphsSupportedByAllSmallCaps;
     mutable std::optional<BitVector> m_glyphsSupportedByPetiteCaps;
     mutable std::optional<BitVector> m_glyphsSupportedByAllPetiteCaps;
-#endif
-
-#if PLATFORM(COCOA) || USE(HARFBUZZ)
-    mutable std::unique_ptr<HashMap<String, bool>> m_combiningCharacterSequenceSupport;
 #endif
 
 #if PLATFORM(WIN)
@@ -319,8 +299,19 @@ private:
     mutable SCRIPT_FONTPROPERTIES* m_scriptFontProperties;
 #endif
 
+    Glyph m_spaceGlyph { 0 };
+    Glyph m_zeroGlyph { 0 };
+    Glyph m_zeroWidthSpaceGlyph { 0 };
+
     Origin m_origin; // Whether or not we are custom font loaded via @font-face
     Visibility m_visibility; // @font-face's internal timer can cause us to show fonts even when a font is being downloaded.
+
+    float m_spaceWidth { 0 };
+    float m_adjustedSpaceWidth { 0 };
+
+#if USE(CG) || USE(DIRECT2D) || USE(CAIRO)
+    float m_syntheticBoldOffset { 0 };
+#endif
 
     unsigned m_treatAsFixedPitch : 1;
     unsigned m_isInterstitial : 1; // Whether or not this custom font is the last resort placeholder for a loading font

@@ -26,28 +26,43 @@
 
 #pragma once
 
-#include "ResourceHandleTypes.h"
+#include "HTTPHeaderNames.h"
+#include "StoredCredentialsPolicy.h"
 #include <wtf/Forward.h>
+#include <wtf/HashSet.h>
 
 namespace WebCore {
 
+class CachedResourceRequest;
+class Document;
 class HTTPHeaderMap;
-enum class HTTPHeaderName;
+class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
 class SecurityOrigin;
 class URL;
 
-bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap&);
-bool isOnAccessControlSimpleRequestMethodWhitelist(const String&);
-bool isOnAccessControlResponseHeaderWhitelist(const String&);
+struct ResourceLoaderOptions;
 
-void updateRequestForAccessControl(ResourceRequest&, SecurityOrigin&, StoredCredentials);
-ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin&, const String&);
+WEBCORE_EXPORT bool isSimpleCrossOriginAccessRequest(const String& method, const HTTPHeaderMap&);
+bool isOnAccessControlSimpleRequestMethodWhitelist(const String&);
+
+void updateRequestReferrer(ResourceRequest&, ReferrerPolicy, const String&);
+    
+WEBCORE_EXPORT void updateRequestForAccessControl(ResourceRequest&, SecurityOrigin&, StoredCredentialsPolicy);
+
+WEBCORE_EXPORT ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin&, const String&);
+CachedResourceRequest createPotentialAccessControlRequest(ResourceRequest&&, Document&, const String& crossOriginAttribute, ResourceLoaderOptions&&);
 
 bool isValidCrossOriginRedirectionURL(const URL&);
-void cleanRedirectedRequestForAccessControl(ResourceRequest&);
 
-bool passesAccessControlCheck(const ResourceResponse&, StoredCredentials, SecurityOrigin&, String& errorDescription);
+using HTTPHeaderNameSet = HashSet<HTTPHeaderName, WTF::IntHash<HTTPHeaderName>, WTF::StrongEnumHashTraits<HTTPHeaderName>>;
+HTTPHeaderNameSet httpHeadersToKeepFromCleaning(const HTTPHeaderMap&);
+WEBCORE_EXPORT void cleanHTTPRequestHeadersForAccessControl(ResourceRequest&, const HTTPHeaderNameSet& = { });
+
+WEBCORE_EXPORT bool passesAccessControlCheck(const ResourceResponse&, StoredCredentialsPolicy, SecurityOrigin&, String& errorDescription);
+WEBCORE_EXPORT bool validatePreflightResponse(const ResourceRequest&, const ResourceResponse&, StoredCredentialsPolicy, SecurityOrigin&, String& errorDescription);
+
+WEBCORE_EXPORT std::optional<ResourceError> validateCrossOriginResourcePolicy(const SecurityOrigin&, const URL&, const ResourceResponse&);
 
 } // namespace WebCore

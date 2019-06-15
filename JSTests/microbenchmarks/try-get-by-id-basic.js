@@ -1,12 +1,14 @@
 // Test tryGetById's value profiling feedback without going too polymorphic.
 
+var createBuiltin = $vm.createBuiltin;
+
 var it = 1e5;
 
 const check = (got, expect) => { if (got != expect) throw "Error: bad result got " + got + " expected " + expect; };
 
 const bench = f => {
     // Re-create the builtin each time, so each benchmark gets its own value prediction.
-    const fooPlusBar = createBuiltin(`(function(o) { return @tryGetById(o, "foo") + @tryGetById(o, "bar"); })`);
+    const fooPlusBar = createBuiltin(`(function (o) { return @tryGetById(o, "foo") + @tryGetById(o, "bar"); })`);
     noInline(fooPlusBar);
     f(fooPlusBar);
 }

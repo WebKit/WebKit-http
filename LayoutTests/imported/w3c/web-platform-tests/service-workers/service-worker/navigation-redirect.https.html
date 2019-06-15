@@ -2,7 +2,7 @@
 <title>Service Worker: Navigation redirection</title>
 <script src="/resources/testharness.js"></script>
 <script src="/resources/testharnessreport.js"></script>
-<script src="resources/get-host-info.sub.js"></script>
+<script src="/common/get-host-info.sub.js"></script>
 <script src="resources/test-helpers.sub.js"></script>
 <body>
 <script>
@@ -17,7 +17,7 @@ var OTHER_BASE_URL = host_info['HTTPS_REMOTE_ORIGIN'] + base_path();
 var SCOPE1 = BASE_URL + 'resources/navigation-redirect-scope1.py?';
 var SCOPE2 = BASE_URL + 'resources/navigation-redirect-scope2.py?';
 var OUT_SCOPE = BASE_URL + 'resources/navigation-redirect-out-scope.py?';
-var SCRIPT = 'resources/navigation-redirect-worker.js';
+var SCRIPT = 'resources/redirect-worker.js';
 
 var OTHER_ORIGIN_IFRAME_URL =
     OTHER_BASE_URL + 'resources/navigation-redirect-other-origin.html';
@@ -176,7 +176,7 @@ promise_test(function(t) {
         return test_redirect(
             SCOPE1 + 'url=' + encodeURIComponent(SCOPE1),
             SCOPE1,
-            [[SCOPE1 + 'url=' + encodeURIComponent(SCOPE1)], [], []]);
+            [[SCOPE1 + 'url=' + encodeURIComponent(SCOPE1), SCOPE1], [], []]);
       });
   }, 'SW-fallbacked redirect to same-origin same-scope.');
 promise_test(function(t) {
@@ -184,7 +184,7 @@ promise_test(function(t) {
         return test_redirect(
             SCOPE1 + 'url=' + encodeURIComponent(SCOPE2),
             SCOPE2,
-            [[SCOPE1 + 'url=' + encodeURIComponent(SCOPE2)], [], []]);
+            [[SCOPE1 + 'url=' + encodeURIComponent(SCOPE2)], [SCOPE2], []]);
       });
   }, 'SW-fallbacked redirect to same-origin other-scope.');
 promise_test(function(t) {
@@ -204,7 +204,7 @@ promise_test(function(t) {
             OTHER_ORIGIN_SCOPE,
             [[SCOPE1 + 'url=' + encodeURIComponent(OTHER_ORIGIN_SCOPE)],
              [],
-             []]);
+             [OTHER_ORIGIN_SCOPE]]);
       });
   }, 'SW-fallbacked redirect to other-origin in-scope.');
 
@@ -322,9 +322,9 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(OUT_SCOPE),
+            SCOPE1 + 'sw=manual&url=' + encodeURIComponent(OUT_SCOPE),
             OUT_SCOPE,
-            [[SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(OUT_SCOPE)],
+            [[SCOPE1 + 'sw=manual&url=' + encodeURIComponent(OUT_SCOPE)],
              [],
              []]);
       });
@@ -332,9 +332,9 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(SCOPE1),
+            SCOPE1 + 'sw=manual&url=' + encodeURIComponent(SCOPE1),
             SCOPE1,
-            [[SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(SCOPE1), SCOPE1],
+            [[SCOPE1 + 'sw=manual&url=' + encodeURIComponent(SCOPE1), SCOPE1],
              [],
              []]);
       });
@@ -342,9 +342,9 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(SCOPE2),
+            SCOPE1 + 'sw=manual&url=' + encodeURIComponent(SCOPE2),
             SCOPE2,
-            [[SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(SCOPE2)],
+            [[SCOPE1 + 'sw=manual&url=' + encodeURIComponent(SCOPE2)],
              [SCOPE2],
              []]);
       });
@@ -352,10 +352,10 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaque&url=' +
+            SCOPE1 + 'sw=manual&url=' +
             encodeURIComponent(OTHER_ORIGIN_OUT_SCOPE),
             OTHER_ORIGIN_OUT_SCOPE,
-            [[SCOPE1 + 'sw=opaque&url=' +
+            [[SCOPE1 + 'sw=manual&url=' +
               encodeURIComponent(OTHER_ORIGIN_OUT_SCOPE)],
              [],
              []]);
@@ -364,24 +364,34 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaque&url=' + encodeURIComponent(OTHER_ORIGIN_SCOPE),
+            SCOPE1 + 'sw=manual&url=' + encodeURIComponent(OTHER_ORIGIN_SCOPE),
             OTHER_ORIGIN_SCOPE,
-            [[SCOPE1 + 'sw=opaque&url=' +
+            [[SCOPE1 + 'sw=manual&url=' +
               encodeURIComponent(OTHER_ORIGIN_SCOPE)],
              [],
              [OTHER_ORIGIN_SCOPE]]);
       });
   }, 'Redirect to other-origin in-scope with opaque redirect response.');
+promise_test(function(t) {
+    return setup_environment(t).then(function() {
+        return test_redirect(
+            SCOPE1 + 'sw=manual&noLocationRedirect',
+            SCOPE1 + 'sw=manual&noLocationRedirect',
+            [[SCOPE1 + 'sw=manual&noLocationRedirect'],
+             [],
+             []]);
+      });
+  }, 'No location redirect response.');
 
 // Opaque redirect passed through Cache.
 // SW responds with an opaque redirectresponse from the Cache API.
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            SCOPE1 + 'sw=manualThroughCache&url=' +
             encodeURIComponent(OUT_SCOPE),
             OUT_SCOPE,
-            [[SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            [[SCOPE1 + 'sw=manualThroughCache&url=' +
               encodeURIComponent(OUT_SCOPE)],
              [],
              []]);
@@ -392,10 +402,10 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            SCOPE1 + 'sw=manualThroughCache&url=' +
             encodeURIComponent(SCOPE1),
             SCOPE1,
-            [[SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            [[SCOPE1 + 'sw=manualThroughCache&url=' +
               encodeURIComponent(SCOPE1), SCOPE1],
              [],
              []]);
@@ -406,10 +416,10 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            SCOPE1 + 'sw=manualThroughCache&url=' +
             encodeURIComponent(SCOPE2),
             SCOPE2,
-            [[SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            [[SCOPE1 + 'sw=manualThroughCache&url=' +
               encodeURIComponent(SCOPE2)],
              [SCOPE2],
              []]);
@@ -420,10 +430,10 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            SCOPE1 + 'sw=manualThroughCache&url=' +
             encodeURIComponent(OTHER_ORIGIN_OUT_SCOPE),
             OTHER_ORIGIN_OUT_SCOPE,
-            [[SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            [[SCOPE1 + 'sw=manualThroughCache&url=' +
               encodeURIComponent(OTHER_ORIGIN_OUT_SCOPE)],
              [],
              []]);
@@ -434,10 +444,10 @@ promise_test(function(t) {
 promise_test(function(t) {
     return setup_environment(t).then(function() {
         return test_redirect(
-            SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            SCOPE1 + 'sw=manualThroughCache&url=' +
             encodeURIComponent(OTHER_ORIGIN_SCOPE),
             OTHER_ORIGIN_SCOPE,
-            [[SCOPE1 + 'sw=opaqueThroughCache&url=' +
+            [[SCOPE1 + 'sw=manualThroughCache&url=' +
               encodeURIComponent(OTHER_ORIGIN_SCOPE)],
              [],
              [OTHER_ORIGIN_SCOPE]]);
@@ -445,5 +455,15 @@ promise_test(function(t) {
   },
   'Redirect to other-origin in-scope with opaque redirect response which ' +
   'is passed through Cache.');
+promise_test(function(t) {
+    return setup_environment(t).then(function() {
+        return test_redirect(
+            SCOPE1 + 'sw=manualThroughCache&noLocationRedirect',
+            SCOPE1 + 'sw=manualThroughCache&noLocationRedirect',
+            [[SCOPE1 + 'sw=manualThroughCache&noLocationRedirect'],
+             [],
+             []]);
+      });
+  }, 'No location redirect response via Cache.');
 </script>
 </body>

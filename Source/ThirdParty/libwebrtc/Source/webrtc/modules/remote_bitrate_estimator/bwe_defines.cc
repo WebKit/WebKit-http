@@ -8,18 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/remote_bitrate_estimator/include/bwe_defines.h"
-#include "webrtc/system_wrappers/include/field_trial.h"
+#include "modules/remote_bitrate_estimator/include/bwe_defines.h"
+#include "system_wrappers/include/field_trial.h"
 
 namespace webrtc {
 
-const char* kBweTypeHistogram = "WebRTC.BWE.Types";
+const char kBweTypeHistogram[] = "WebRTC.BWE.Types";
 
 namespace congestion_controller {
 int GetMinBitrateBps() {
   constexpr int kAudioMinBitrateBps = 5000;
   constexpr int kMinBitrateBps = 10000;
-  if (webrtc::field_trial::IsEnabled("WebRTC-Audio-SendSideBwe")) {
+  if (webrtc::field_trial::IsEnabled("WebRTC-Audio-SendSideBwe") &&
+      !webrtc::field_trial::IsEnabled("WebRTC-Audio-SendSideBwe-For-Video")) {
     return kAudioMinBitrateBps;
   }
   return kMinBitrateBps;
@@ -29,11 +30,8 @@ int GetMinBitrateBps() {
 
 RateControlInput::RateControlInput(
     BandwidthUsage bw_state,
-    const rtc::Optional<uint32_t>& incoming_bitrate,
-    double noise_var)
-    : bw_state(bw_state),
-      incoming_bitrate(incoming_bitrate),
-      noise_var(noise_var) {}
+    const absl::optional<uint32_t>& estimated_throughput_bps)
+    : bw_state(bw_state), estimated_throughput_bps(estimated_throughput_bps) {}
 
 RateControlInput::~RateControlInput() = default;
 

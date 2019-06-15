@@ -151,16 +151,62 @@ static void testWebKitSettings(Test*, gconstpointer)
     webkit_settings_set_minimum_font_size(settings, 7);
     g_assert_cmpuint(webkit_settings_get_minimum_font_size(settings), ==, 7);
 
+    // Test conversion between pixels and points. Use a standard DPI of 96.
+    // Set DPI explicitly to avoid the tests failing for users that use a
+    // different default DPI. This doesn't affect the system's DPI outside
+    // of the tests scope, so we don't need to change it back to the original
+    // value. We can control DPI only on GTK. On WPE, WebCore defaults it to 96.
+#if PLATFORM(GTK)
+    GtkSettings* gtkSettings = gtk_settings_get_default();
+    if (gtkSettings)
+        g_object_set(gtkSettings, "gtk-xft-dpi", 96 * 1024, nullptr);
+
+    // At 96 DPI, 9 points is 12 pixels and 24 points is 32 pixels.
+    g_assert_cmpuint(webkit_settings_font_size_to_pixels(9), ==, 12);
+    g_assert_cmpuint(webkit_settings_font_size_to_pixels(24), ==, 32);
+
+    // At 96 DPI, 8 pixels is 6 points and 24 pixels is 18 points.
+    g_assert_cmpuint(webkit_settings_font_size_to_points(8), ==, 6);
+    g_assert_cmpuint(webkit_settings_font_size_to_points(24), ==, 18);
+
+    // Test font size on DPI change. The font size value in pixels should scale
+    // accordingly, while the font size value in points should remain the same.
+    if (gtkSettings) {
+        // At 96 DPI, 20 pixels is 15 points.
+        webkit_settings_set_default_font_size(settings, 20);
+        g_assert_cmpuint(webkit_settings_font_size_to_points(webkit_settings_get_default_font_size(settings)), ==, 15);
+        // At 96 DPI, 16 pixels is 12 points.
+        webkit_settings_set_default_monospace_font_size(settings, 16);
+        g_assert_cmpuint(webkit_settings_font_size_to_points(webkit_settings_get_default_monospace_font_size(settings)), ==, 12);
+
+        // Set DPI to 120. The scaling factor is 120 / 96 == 1.25.
+        g_object_set(gtkSettings, "gtk-xft-dpi", 120 * 1024, nullptr);
+        g_assert_cmpuint(webkit_settings_get_default_font_size(settings), ==, 25);
+        g_assert_cmpuint(webkit_settings_font_size_to_points(webkit_settings_get_default_font_size(settings)), ==, 15);
+        g_assert_cmpuint(webkit_settings_get_default_monospace_font_size(settings), ==, 20);
+        g_assert_cmpuint(webkit_settings_font_size_to_points(webkit_settings_get_default_monospace_font_size(settings)), ==, 12);
+
+        // Set DPI back to 96. The scaling factor is 96 / 120 == 0.8.
+        g_object_set(gtkSettings, "gtk-xft-dpi", 96 * 1024, nullptr);
+        g_assert_cmpuint(webkit_settings_get_default_font_size(settings), ==, 20);
+        g_assert_cmpuint(webkit_settings_font_size_to_points(webkit_settings_get_default_font_size(settings)), ==, 15);
+        g_assert_cmpuint(webkit_settings_get_default_monospace_font_size(settings), ==, 16);
+        g_assert_cmpuint(webkit_settings_font_size_to_points(webkit_settings_get_default_monospace_font_size(settings)), ==, 12);
+    }
+#endif
+
     // Default charset is "iso-8859-1".
     g_assert_cmpstr(webkit_settings_get_default_charset(settings), ==, "iso-8859-1");
     webkit_settings_set_default_charset(settings, "utf8");
     g_assert_cmpstr(webkit_settings_get_default_charset(settings), ==, "utf8");
 
+#if PLATFORM(GTK)
     G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
     g_assert(!webkit_settings_get_enable_private_browsing(settings));
     webkit_settings_set_enable_private_browsing(settings, TRUE);
     g_assert(webkit_settings_get_enable_private_browsing(settings));
     G_GNUC_END_IGNORE_DEPRECATIONS;
+#endif
 
     g_assert(!webkit_settings_get_enable_developer_extras(settings));
     webkit_settings_set_enable_developer_extras(settings, TRUE);
@@ -273,6 +319,16 @@ static void testWebKitSettings(Test*, gconstpointer)
     webkit_settings_set_enable_mediasource(settings, TRUE);
     g_assert(webkit_settings_get_enable_mediasource(settings));
 
+    // EncryptedMedia is disabled by default
+    g_assert(!webkit_settings_get_enable_encrypted_media(settings));
+    webkit_settings_set_enable_encrypted_media(settings, TRUE);
+    g_assert(webkit_settings_get_enable_encrypted_media(settings));
+
+    // MediaCapabilities is disabled by default
+    g_assert(!webkit_settings_get_enable_media_capabilities(settings));
+    webkit_settings_set_enable_media_capabilities(settings, TRUE);
+    g_assert(webkit_settings_get_enable_media_capabilities(settings));
+
     // File access from file URLs is not allowed by default.
     g_assert(!webkit_settings_get_allow_file_access_from_file_urls(settings));
     webkit_settings_set_allow_file_access_from_file_urls(settings, TRUE);
@@ -310,6 +366,7 @@ void testWebKitSettingsNewWithSettings(Test* test, gconstpointer)
     g_assert(webkit_settings_get_load_icons_ignoring_image_load_setting(settings.get()));
 }
 
+#if PLATFORM(GTK)
 static CString convertWebViewMainResourceDataToCString(WebViewTest* test)
 {
     size_t mainResourceDataSize = 0;
@@ -317,7 +374,6 @@ static CString convertWebViewMainResourceDataToCString(WebViewTest* test)
     return CString(mainResourceData, mainResourceDataSize);
 }
 
-#if PLATFORM(GTK)
 static void assertThatUserAgentIsSentInHeaders(WebViewTest* test, const CString& userAgent)
 {
     test->loadURI(gServer->getURIForPath("/").data());

@@ -3,9 +3,10 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Infinity values on begin and end
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

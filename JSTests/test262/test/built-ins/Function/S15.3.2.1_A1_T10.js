@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Function constructor is called with one argument then body be that argument and the following steps are taken:
     i) Call ToString(body)
     ii) If P is not parsable as a FormalParameterListopt then throw a SyntaxError exception
@@ -18,7 +18,7 @@ description: Value of the function constructor argument is "null"
 try {
   var f = new Function(null);
 } catch (e) {
-  $ERROR('#1: test fails with error '+e);
+  $ERROR('#1: test fails with error ' + e);
 }
 
 //CHECK#2

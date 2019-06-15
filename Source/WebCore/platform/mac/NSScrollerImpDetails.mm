@@ -25,18 +25,32 @@
  */
 
 
-#include "config.h"
-#include "NSScrollerImpDetails.h"
+#import "config.h"
+#import "NSScrollerImpDetails.h"
 
-#include "Settings.h"
+#if USE(APPKIT)
+
+#import "DeprecatedGlobalSettings.h"
 
 namespace WebCore {
 
-NSScrollerStyle recommendedScrollerStyle()
+std::optional<bool> ScrollerStyle::m_useOverlayScrollbars;
+
+NSScrollerStyle ScrollerStyle::recommendedScrollerStyle()
 {
-    if (Settings::usesOverlayScrollbars())
+    if (m_useOverlayScrollbars.has_value())
+        return *m_useOverlayScrollbars ? NSScrollerStyleOverlay : NSScrollerStyleLegacy;
+    
+    if (DeprecatedGlobalSettings::usesOverlayScrollbars())
         return NSScrollerStyleOverlay;
     return [NSScroller preferredScrollerStyle];
 }
 
+void ScrollerStyle::setUseOverlayScrollbars(bool useOverlayScrollbars)
+{
+    m_useOverlayScrollbars = useOverlayScrollbars;
 }
+
+}
+
+#endif // USE(APPKIT)

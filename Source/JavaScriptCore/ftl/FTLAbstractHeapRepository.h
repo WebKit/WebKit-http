@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include "JSFixedArray.h"
 #include "JSMap.h"
 #include "JSSet.h"
+#include "JSWeakMap.h"
 #include "Symbol.h"
 
 namespace JSC { namespace FTL {
@@ -44,6 +45,7 @@ namespace JSC { namespace FTL {
 
 #define FOR_EACH_ABSTRACT_FIELD(macro) \
     macro(ArrayBuffer_data, ArrayBuffer::offsetOfData()) \
+    macro(ArrayStorage_numValuesInVector, ArrayStorage::numValuesInVectorOffset()) \
     macro(Butterfly_arrayBuffer, Butterfly::offsetOfArrayBuffer()) \
     macro(Butterfly_publicLength, Butterfly::offsetOfPublicLength()) \
     macro(Butterfly_vectorLength, Butterfly::offsetOfVectorLength()) \
@@ -54,6 +56,8 @@ namespace JSC { namespace FTL {
     macro(DirectArguments_minCapacity, DirectArguments::offsetOfMinCapacity()) \
     macro(DirectArguments_mappedArguments, DirectArguments::offsetOfMappedArguments()) \
     macro(DirectArguments_modifiedArgumentsDescriptor, DirectArguments::offsetOfModifiedArgumentsDescriptor()) \
+    macro(FunctionRareData_allocator, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()) \
+    macro(FunctionRareData_structure, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()) \
     macro(GetterSetter_getter, GetterSetter::offsetOfGetter()) \
     macro(GetterSetter_setter, GetterSetter::offsetOfSetter()) \
     macro(JSArrayBufferView_length, JSArrayBufferView::offsetOfLength()) \
@@ -66,6 +70,7 @@ namespace JSC { namespace FTL {
     macro(JSCell_typeInfoFlags, JSCell::typeInfoFlagsOffset()) \
     macro(JSCell_typeInfoType, JSCell::typeInfoTypeOffset()) \
     macro(JSCell_usefulBytes, JSCell::indexingTypeAndMiscOffset()) \
+    macro(JSDestructibleObject_classInfo, JSDestructibleObject::classInfoOffset()) \
     macro(JSFunction_executable, JSFunction::offsetOfExecutable()) \
     macro(JSFunction_scope, JSFunction::offsetOfScopeChain()) \
     macro(JSFunction_rareData, JSFunction::offsetOfRareData()) \
@@ -87,6 +92,7 @@ namespace JSC { namespace FTL {
     macro(RegExpConstructor_cachedResult_result_start, RegExpConstructor::offsetOfCachedResult() + RegExpCachedResult::offsetOfResult() + OBJECT_OFFSETOF(MatchResult, start)) \
     macro(RegExpConstructor_cachedResult_result_end, RegExpConstructor::offsetOfCachedResult() + RegExpCachedResult::offsetOfResult() + OBJECT_OFFSETOF(MatchResult, end)) \
     macro(RegExpConstructor_cachedResult_reified, RegExpConstructor::offsetOfCachedResult() + RegExpCachedResult::offsetOfReified()) \
+    macro(RegExpObject_regExp, RegExpObject::offsetOfRegExp()) \
     macro(RegExpObject_lastIndex, RegExpObject::offsetOfLastIndex()) \
     macro(RegExpObject_lastIndexIsWritable, RegExpObject::offsetOfLastIndexIsWritable()) \
     macro(ShadowChicken_Packet_callee, OBJECT_OFFSETOF(ShadowChicken::Packet, callee)) \
@@ -96,10 +102,11 @@ namespace JSC { namespace FTL {
     macro(ShadowChicken_Packet_scope, OBJECT_OFFSETOF(ShadowChicken::Packet, scope)) \
     macro(ShadowChicken_Packet_codeBlock, OBJECT_OFFSETOF(ShadowChicken::Packet, codeBlock)) \
     macro(ShadowChicken_Packet_callSiteIndex, OBJECT_OFFSETOF(ShadowChicken::Packet, callSiteIndex)) \
-    macro(ScopedArguments_overrodeThings, ScopedArguments::offsetOfOverrodeThings()) \
+    macro(ScopedArguments_Storage_overrodeThings, ScopedArguments::offsetOfOverrodeThingsInStorage()) \
+    macro(ScopedArguments_Storage_totalLength, ScopedArguments::offsetOfTotalLengthInStorage()) \
+    macro(ScopedArguments_storage, ScopedArguments::offsetOfStorage()) \
     macro(ScopedArguments_scope, ScopedArguments::offsetOfScope()) \
     macro(ScopedArguments_table, ScopedArguments::offsetOfTable()) \
-    macro(ScopedArguments_totalLength, ScopedArguments::offsetOfTotalLength()) \
     macro(ScopedArgumentsTable_arguments, ScopedArgumentsTable::offsetOfArguments()) \
     macro(ScopedArgumentsTable_length, ScopedArgumentsTable::offsetOfLength()) \
     macro(StringImpl_data, StringImpl::dataOffset()) \
@@ -107,25 +114,31 @@ namespace JSC { namespace FTL {
     macro(StringImpl_length, StringImpl::lengthMemoryOffset()) \
     macro(Structure_classInfo, Structure::classInfoOffset()) \
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
+    macro(Structure_indexingModeIncludingHistory, Structure::indexingModeIncludingHistoryOffset()) \
+    macro(Structure_inlineCapacity, Structure::inlineCapacityOffset()) \
     macro(Structure_prototype, Structure::prototypeOffset()) \
     macro(Structure_structureID, Structure::structureIDOffset()) \
-    macro(Structure_inlineCapacity, Structure::inlineCapacityOffset()) \
-    macro(Structure_indexingTypeIncludingHistory, Structure::indexingTypeIncludingHistoryOffset()) \
     macro(HashMapImpl_capacity, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfCapacity()) \
     macro(HashMapImpl_buffer,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfBuffer()) \
+    macro(HashMapImpl_head,  HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::offsetOfHead()) \
     macro(HashMapBucket_value, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()) \
     macro(HashMapBucket_key, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey()) \
+    macro(HashMapBucket_next, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext()) \
+    macro(WeakMapImpl_capacity, WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfCapacity()) \
+    macro(WeakMapImpl_buffer,  WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfBuffer()) \
+    macro(WeakMapBucket_value, WeakMapBucket<WeakMapBucketDataKeyValue>::offsetOfValue()) \
+    macro(WeakMapBucket_key, WeakMapBucket<WeakMapBucketDataKeyValue>::offsetOfKey()) \
     macro(Symbol_symbolImpl, Symbol::offsetOfSymbolImpl()) \
     macro(JSFixedArray_size, JSFixedArray::offsetOfSize()) \
 
 #define FOR_EACH_INDEXED_ABSTRACT_HEAP(macro) \
     macro(ArrayStorage_vector, ArrayStorage::vectorOffset(), sizeof(WriteBarrier<Unknown>)) \
+    macro(CompleteSubspace_allocatorForSizeStep, CompleteSubspace::offsetOfAllocatorForSizeStep(), sizeof(Allocator)) \
     macro(DirectArguments_storage, DirectArguments::storageOffset(), sizeof(EncodedJSValue)) \
-    macro(JSEnvironmentRecord_variables, JSEnvironmentRecord::offsetOfVariables(), sizeof(EncodedJSValue)) \
+    macro(JSLexicalEnvironment_variables, JSLexicalEnvironment::offsetOfVariables(), sizeof(EncodedJSValue)) \
     macro(JSPropertyNameEnumerator_cachedPropertyNamesVectorContents, 0, sizeof(WriteBarrier<JSString>)) \
     macro(JSRopeString_fibers, JSRopeString::offsetOfFibers(), sizeof(WriteBarrier<JSString>)) \
-    macro(ScopedArguments_overflowStorage, ScopedArguments::overflowStorageOffset(), sizeof(EncodedJSValue)) \
-    macro(Subspace_allocatorForSizeStep, Subspace::offsetOfAllocatorForSizeStep(), sizeof(MarkedAllocator*)) \
+    macro(ScopedArguments_Storage_storage, 0, sizeof(EncodedJSValue)) \
     macro(WriteBarrierBuffer_bufferContents, 0, sizeof(JSCell*)) \
     macro(characters8, 0, sizeof(LChar)) \
     macro(characters16, 0, sizeof(UChar)) \
@@ -162,6 +175,8 @@ public:
 #undef ABSTRACT_FIELD_DECLARATION
     
     AbstractHeap& JSCell_freeListNext;
+    AbstractHeap& ArrayStorage_publicLength;
+    AbstractHeap& ArrayStorage_vectorLength;
     
 #define INDEXED_ABSTRACT_HEAP_DECLARATION(name, offset, size) IndexedAbstractHeap name;
     FOR_EACH_INDEXED_ABSTRACT_HEAP(INDEXED_ABSTRACT_HEAP_DECLARATION)

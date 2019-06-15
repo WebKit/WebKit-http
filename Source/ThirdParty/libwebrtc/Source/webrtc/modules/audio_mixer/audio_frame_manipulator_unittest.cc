@@ -10,9 +10,8 @@
 
 #include <algorithm>
 
-#include "webrtc/modules/audio_mixer/audio_frame_manipulator.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/test/gtest.h"
+#include "modules/audio_mixer/audio_frame_manipulator.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 namespace {
@@ -24,8 +23,8 @@ void FillFrameWithConstants(size_t samples_per_channel,
   frame->num_channels_ = number_of_channels;
   frame->samples_per_channel_ = samples_per_channel;
   int16_t* frame_data = frame->mutable_data();
-  std::fill(frame_data,
-            frame_data + samples_per_channel * number_of_channels, value);
+  std::fill(frame_data, frame_data + samples_per_channel * number_of_channels,
+            value);
 }
 }  // namespace
 

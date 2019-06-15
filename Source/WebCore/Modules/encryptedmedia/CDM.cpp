@@ -28,50 +28,27 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
+#include "CDMFactory.h"
 #include "CDMPrivate.h"
 #include "Document.h"
+#include "FileSystem.h"
 #include "InitDataRegistry.h"
-#include "MediaKeysRestrictions.h"
+#include "MediaKeysRequirement.h"
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
+#include "Page.h"
 #include "ParsedContentType.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
+#include "Settings.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-static Vector<CDMFactory*>& cdmFactories()
-{
-    static NeverDestroyed<Vector<CDMFactory*>> factories;
-    return factories;
-}
-
-static std::unique_ptr<CDMPrivate> createCDMPrivateForKeySystem(const String& keySystem, CDM& cdm)
-{
-    for (auto* factory : cdmFactories()) {
-        if (factory->supportsKeySystem(keySystem))
-            return factory->createCDM(cdm);
-    }
-    ASSERT_NOT_REACHED();
-    return nullptr;
-}
-
-void CDM::registerCDMFactory(CDMFactory& factory)
-{
-    ASSERT(!cdmFactories().contains(&factory));
-    cdmFactories().append(&factory);
-}
-
-void CDM::unregisterCDMFactory(CDMFactory& factory)
-{
-    ASSERT(cdmFactories().contains(&factory));
-    cdmFactories().removeAll(&factory);
-}
-
 bool CDM::supportsKeySystem(const String& keySystem)
 {
-    for (auto* factory : cdmFactories()) {
+    for (auto* factory : CDMFactory::registeredFactories()) {
         if (factory->supportsKeySystem(keySystem))
             return true;
     }
@@ -86,14 +63,13 @@ Ref<CDM> CDM::create(Document& document, const String& keySystem)
 CDM::CDM(Document& document, const String& keySystem)
     : ContextDestructionObserver(&document)
     , m_keySystem(keySystem)
-    , m_private(createCDMPrivateForKeySystem(keySystem, *this))
-    , m_weakPtrFactory(this)
 {
     ASSERT(supportsKeySystem(keySystem));
-    for (auto* factory : cdmFactories()) {
-        if (!factory->supportsKeySystem(keySystem))
-            continue;
-        m_private = factory->createCDM(*this);
+    for (auto* factory : CDMFactory::registeredFactories()) {
+        if (factory->supportsKeySystem(keySystem)) {
+            m_private = factory->createCDM(keySystem);
+            break;
+        }
     }
 }
 
@@ -130,7 +106,7 @@ void CDM::doSupportedConfigurationStep(MediaKeySystemConfiguration&& candidateCo
         return;
     }
 
-    auto consentCallback = [weakThis = createWeakPtr(), callback = WTFMove(callback)] (ConsentStatus status, MediaKeySystemConfiguration&& configuration, MediaKeysRestrictions&& restrictions) mutable {
+    auto consentCallback = [weakThis = makeWeakPtr(*this), callback = WTFMove(callback)] (ConsentStatus status, MediaKeySystemConfiguration&& configuration, MediaKeysRestrictions&& restrictions) mutable {
         if (!weakThis) {
             callback(std::nullopt);
             return;
@@ -492,10 +468,10 @@ std::optional<Vector<MediaKeySystemMediaCapability>> CDM::getSupportedCapabiliti
         //       with restrictions:
         MediaEngineSupportParameters parameters;
         parameters.type = ContentType(contentType.mimeType());
-        if (!MediaPlayer::supportsType(parameters, nullptr)) {
+        if (!MediaPlayer::supportsType(parameters)) {
             // Try with Media Source:
             parameters.isMediaSource = true;
-            if (!MediaPlayer::supportsType(parameters, nullptr))
+            if (!MediaPlayer::supportsType(parameters))
                 continue;
         }
 
@@ -535,7 +511,7 @@ void CDM::getConsentStatus(MediaKeySystemConfiguration&& accumulatedConfiguratio
     // NOTE: In the future, these checks belowe will involve asking the page client, possibly across a process boundary.
     // They will by necessity be asynchronous with callbacks. For now, imply this behavior by performing it in an async task.
 
-    m_scriptExecutionContext->postTask([this, weakThis = createWeakPtr(), accumulatedConfiguration = WTFMove(accumulatedConfiguration), restrictions = WTFMove(restrictions), callback = WTFMove(callback)] (ScriptExecutionContext&) mutable {
+    m_scriptExecutionContext->postTask([this, weakThis = makeWeakPtr(*this), accumulatedConfiguration = WTFMove(accumulatedConfiguration), restrictions = WTFMove(restrictions), callback = WTFMove(callback)] (ScriptExecutionContext&) mutable {
         if (!weakThis || !m_private) {
             callback(ConsentStatus::ConsentDenied, WTFMove(accumulatedConfiguration), WTFMove(restrictions));
             return;
@@ -618,7 +594,9 @@ RefPtr<CDMInstance> CDM::createInstance()
 {
     if (!m_private)
         return nullptr;
-    return m_private->createInstance();
+    auto instance = m_private->createInstance();
+    instance->setStorageDirectory(storageDirectory());
+    return instance;
 }
 
 bool CDM::supportsServerCertificates() const
@@ -658,6 +636,23 @@ std::optional<String> CDM::sanitizeSessionId(const String& sessionId)
     if (!m_private)
         return std::nullopt;
     return m_private->sanitizeSessionId(sessionId);
+}
+
+String CDM::storageDirectory() const
+{
+    auto* document = downcast<Document>(scriptExecutionContext());
+    if (!document)
+        return emptyString();
+
+    auto* page = document->page();
+    if (!page || page->usesEphemeralSession())
+        return emptyString();
+
+    auto storageDirectory = document->settings().mediaKeysStorageDirectory();
+    if (storageDirectory.isEmpty())
+        return emptyString();
+
+    return FileSystem::pathByAppendingComponent(storageDirectory, document->securityOrigin().data().databaseIdentifier());
 }
 
 }

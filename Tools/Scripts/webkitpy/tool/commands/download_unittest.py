@@ -90,6 +90,7 @@ class DownloadCommandsTest(CommandsTest):
         options.architecture = 'MOCK ARCH'
         options.iterate_on_new_tests = 0
         options.group = None
+        options.sort_xcode_project = False
         return options
 
     def test_build(self):
@@ -102,7 +103,6 @@ Building WebKit
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
 """
         self.assert_execute_outputs(BuildAndTest(), [], options=self._default_options(), expected_logs=expected_logs)
@@ -143,9 +143,8 @@ Message2."
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Updating bug 50000
 """
         mock_tool = MockTool()
@@ -163,19 +162,17 @@ MOCK run_command: ['ruby', '-I', '/mock-checkout/Websites/bugs.webkit.org/Pretty
 MOCK: user.open_url: file://...
 Was that diff correct?
 Building WebKit
-MOCK run_and_throw_if_fail: ['mock-build-webkit', 'ARCHS=MOCK ARCH'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'TERM': 'none', 'MOCK_ENVIRON_COPY': '1'}
+MOCK run_and_throw_if_fail: ['mock-build-webkit', 'ARCHS=MOCK ARCH'], cwd=/mock-checkout, env={'TERM': 'dumb', 'MOCK_ENVIRON_COPY': '1'}
 Running Python unit tests
 MOCK run_and_throw_if_fail: ['mock-test-webkitpy'], cwd=/mock-checkout
 Running Perl unit tests
 MOCK run_and_throw_if_fail: ['mock-test-webkitperl'], cwd=/mock-checkout
 Running JavaScriptCore tests
 MOCK run_and_throw_if_fail: ['mock-run-javacriptcore-tests'], cwd=/mock-checkout
-Running bindings generation tests
-MOCK run_and_throw_if_fail: ['mock-run-bindings-tests'], cwd=/mock-checkout
 Running run-webkit-tests
 MOCK run_and_throw_if_fail: ['mock-run-webkit-tests', '--quiet'], cwd=/mock-checkout
-Committed r49824: <http://trac.webkit.org/changeset/49824>
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 No bug id provided.
 """
         mock_tool = MockTool(log_executive=True)
@@ -189,9 +186,8 @@ No bug id provided.
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Updating bug 50000
 """
         mock_tool = MockTool()
@@ -220,9 +216,8 @@ Building WebKit
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Not closing bug 50000 as attachment 10000 has review=+.  Assuming there are more patches to land from this bug.
 """
         self.assert_execute_outputs(LandAttachment(), [10000], options=self._default_options(), expected_logs=expected_logs)
@@ -237,9 +232,8 @@ Building WebKit
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Not closing bug 50000 as attachment 10000 has review=+.  Assuming there are more patches to land from this bug.
 Updating working directory
 Processing patch 10001 from bug 50000.
@@ -247,9 +241,8 @@ Building WebKit
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Not closing bug 50000 as attachment 10000 has review=+.  Assuming there are more patches to land from this bug.
 """
         self.assert_execute_outputs(LandFromBug(), [50000], options=self._default_options(), expected_logs=expected_logs)
@@ -264,9 +257,8 @@ Building WebKit
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Not closing bug 50000 as attachment 10000 has review=+.  Assuming there are more patches to land from this bug.
 Updating working directory
 Processing patch 10001 from bug 50000.
@@ -274,9 +266,8 @@ Building WebKit
 Running Python unit tests
 Running Perl unit tests
 Running JavaScriptCore tests
-Running bindings generation tests
 Running run-webkit-tests
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 Not closing bug 50000 as attachment 10000 has review=+.  Assuming there are more patches to land from this bug.
 """
         self.assert_execute_outputs(LandFromURL(), ["https://bugs.webkit.org/show_bug.cgi?id=50000"], options=self._default_options(), expected_logs=expected_logs)
@@ -290,7 +281,7 @@ Not closing bug 50000 as attachment 10000 has review=+.  Assuming there are more
 Updating working directory
 MOCK create_bug
 bug_title: REGRESSION(r852): Reason
-bug_description: http://trac.webkit.org/changeset/852 broke the build:
+bug_description: https://trac.webkit.org/changeset/852 broke the build:
 Reason
 component: MOCK component
 cc: MOCK cc
@@ -315,7 +306,7 @@ Unable to parse bug number from diff.
 Updating working directory
 MOCK create_bug
 bug_title: REGRESSION(r852): Reason
-bug_description: http://trac.webkit.org/changeset/852 broke the build:
+bug_description: https://trac.webkit.org/changeset/852 broke the build:
 Reason
 component: MOCK component
 cc: MOCK cc
@@ -340,7 +331,7 @@ Preparing rollout for bug 50004.
 Updating working directory
 MOCK create_bug
 bug_title: REGRESSION(r852): Reason
-bug_description: http://trac.webkit.org/changeset/852 broke the build:
+bug_description: https://trac.webkit.org/changeset/852 broke the build:
 Reason
 component: MOCK component
 cc: MOCK cc
@@ -364,7 +355,7 @@ where ATTACHMENT_ID is the ID of this attachment.
 Updating working directory
 MOCK create_bug
 bug_title: REGRESSION(r3001): Reason
-bug_description: http://trac.webkit.org/changeset/3001 broke the build:
+bug_description: https://trac.webkit.org/changeset/3001 broke the build:
 Reason
 component: MOCK component
 cc: MOCK cc
@@ -390,7 +381,7 @@ Preparing rollout for bug 50004.
 Updating working directory
 MOCK create_bug
 bug_title: REGRESSION(r963): Reason
-bug_description: http://trac.webkit.org/changeset/963 broke the build:
+bug_description: https://trac.webkit.org/changeset/963 broke the build:
 Reason
 component: MOCK component
 cc: MOCK cc
@@ -417,12 +408,12 @@ Updating working directory
 MOCK: user.open_url: file://...
 Was that diff correct?
 Building WebKit
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 MOCK reopen_bug 50000 with comment 'Reverted r852 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 """
         self.assert_execute_outputs(Rollout(), [852, "Reason", "Description"], options=self._default_options(), expected_logs=expected_logs)
 
@@ -433,17 +424,17 @@ Updating working directory
 MOCK: user.open_url: file://...
 Was that diff correct?
 Building WebKit
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 MOCK reopen_bug 50000 with comment 'Reverted r852 and r963 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 MOCK reopen_bug 50005 with comment 'Reverted r852 and r963 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 """
         self.assert_execute_outputs(Rollout(), ["852 963", "Reason", "Description"], options=self._default_options(), expected_logs=expected_logs)
 
@@ -455,22 +446,22 @@ Updating working directory
 MOCK: user.open_url: file://...
 Was that diff correct?
 Building WebKit
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 MOCK reopen_bug 50000 with comment 'Reverted r852, r963, and r3001 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 MOCK reopen_bug 50005 with comment 'Reverted r852, r963, and r3001 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 MOCK reopen_bug 50004 with comment 'Reverted r852, r963, and r3001 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 """
         self.assert_execute_outputs(Rollout(), ["852 3001 963", "Reason", "Description"], options=self._default_options(), expected_logs=expected_logs)
 
@@ -482,16 +473,16 @@ Updating working directory
 MOCK: user.open_url: file://...
 Was that diff correct?
 Building WebKit
-Committed r49824: <http://trac.webkit.org/changeset/49824>
+Committed r49824: <https://trac.webkit.org/changeset/49824>
 MOCK reopen_bug 50000 with comment 'Reverted r852, r963, and r999 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 MOCK reopen_bug 50005 with comment 'Reverted r852, r963, and r999 for reason:
 
 Reason
 
-Committed r49824: <http://trac.webkit.org/changeset/49824>'
+Committed r49824: <https://trac.webkit.org/changeset/49824>'
 """
         self.assert_execute_outputs(Rollout(), ["852 999 963", "Reason", "Description"], options=self._default_options(), expected_logs=expected_logs)

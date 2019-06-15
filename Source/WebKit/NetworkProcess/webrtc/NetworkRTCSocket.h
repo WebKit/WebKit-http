@@ -30,8 +30,8 @@
 #include "RTCNetwork.h"
 
 #include <WebCore/LibWebRTCMacros.h>
-#include <webrtc/base/asyncpacketsocket.h>
-#include <webrtc/base/sigslot.h>
+#include <webrtc/rtc_base/asyncpacketsocket.h>
+#include <webrtc/rtc_base/sigslot.h>
 
 namespace IPC {
 class Connection;
@@ -54,13 +54,14 @@ namespace WebKit {
 
 class NetworkConnectionToWebProcess;
 class NetworkRTCProvider;
+struct RTCPacketOptions;
 
 class NetworkRTCSocket {
 public:
     NetworkRTCSocket(uint64_t, NetworkRTCProvider&);
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
 private:
-    void sendTo(const IPC::DataReference&, const RTCNetwork::SocketAddress&, int packetID, int rtpSendtimeExtensionID, String srtpAuth, int64_t srtpPacketIndex, int dscp);
+    void sendTo(const IPC::DataReference&, RTCNetwork::SocketAddress&&, RTCPacketOptions&&);
     void close();
     void setOption(int option, int value);
 

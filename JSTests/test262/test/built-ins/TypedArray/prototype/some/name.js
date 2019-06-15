@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.2.3.24
+esid: sec-%typedarray%.prototype.some
 description: >
   %TypedArray%.prototype.some.name is "some".
-info: >
+info: |
   %TypedArray%.prototype.some ( callbackfn [ , thisArg ] )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.prototype.some.name, "some");

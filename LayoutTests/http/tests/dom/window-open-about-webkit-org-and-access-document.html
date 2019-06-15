@@ -1,38 +1,44 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <title>Tests opening a new about://webkit.org window and accessing its document</title>
-    <script src="../resources/js-test-pre.js"></script>
+<html>
+<body>
+    <script src="/js-test-resources/js-test.js"></script>
     <script>
+        description("Tests opening a new about://webkit.org window and accessing its document");
+        jsTestIsAsync = true;
+
         var newWindow;
 
         if (window.testRunner) {
             testRunner.setCanOpenWindows();
-            testRunner.waitUntilDone();
             testRunner.setPopupBlockingEnabled(false);
         }
 
-        function checkNewWindowDocumentIsUndefined () {
-            shouldThrowErrorName("newWindow.document", "SecurityError");
-            if (window.testRunner)
-                testRunner.notifyDone();
+        function finish()
+        {
+            clearInterval(handle);
+            finishJSTest();
         }
 
-        function run() {
-            newWindow = window.open("about://webkit.org");
+        function checkCannotAccessDocument()
+        {
             try {
-                newWindow.document.write("<scri" + "pt>console.log('Injected script running.')</sc" + "ript>");
-                testFailed("Was able to write to the new window's document.");
-                if (window.testRunner)
-                    testRunner.notifyDone();
-            } catch (e) {
-                console.log(e);
-                setTimeout(checkNewWindowDocumentIsUndefined, 500);
+                newWindow.document;
+                if (newWindow.document.URL != "about:blank") {
+                    testFailed("Managed to access the document at URL " + newWindow.document.URL);
+                    finish();
+                }
+            } catch (_e) {
+                e = _e;
+                shouldBeEqualToString("e.name", "SecurityError");
+                finish();
             }
         }
+
+        onload = function () {
+            newWindow = window.open("about://webkit.org");
+            handle = setInterval(checkCannotAccessDocument, 5);
+
+        }
     </script>
-</head>
-<body onload="run()">
-<div id="console"></div>
 </body>
 </html>

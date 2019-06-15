@@ -45,17 +45,21 @@ class NetworkTransaction(object):
         self._timeout_seconds = timeout_seconds
         self._convert_404_to_None = convert_404_to_None
 
-    def run(self, request):
+    def run(self, request, url=None):
         self._total_sleep = 0
         self._backoff_seconds = self._initial_backoff_seconds
         while True:
             try:
                 return request()
-            except urllib2.HTTPError, e:
+            except urllib2.HTTPError as e:
                 if self._convert_404_to_None and e.code == 404:
                     return None
                 self._check_for_timeout()
                 _log.warn("Received HTTP status %s loading \"%s\".  Retrying in %s seconds..." % (e.code, e.filename, self._backoff_seconds))
+                self._sleep()
+            except urllib2.URLError as e:
+                self._check_for_timeout()
+                _log.warn('Received URLError: "{}" while loading {}. Retrying in {} seconds...'.format(e.reason, url, self._backoff_seconds))
                 self._sleep()
 
     def _check_for_timeout(self):

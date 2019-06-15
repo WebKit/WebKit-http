@@ -7,15 +7,15 @@ function test()
 {
     let suite = InspectorTest.createAsyncSuite("DOM.highlightFrame");
 
-    let mainFrame = WebInspector.frameResourceManager.mainFrame;
-    let childFrames = mainFrame.childFrameCollection.toArray();
+    let mainFrame = WI.frameResourceManager.mainFrame;
+    let childFrames = Array.from(mainFrame.childFrameCollection);
     InspectorTest.expectEqual(childFrames.length, 2, "Page should have subframes.");
 
     function getHighlight(callback) {
-        InspectorTest.evaluateInPage("window.internals.inspectorHighlightObject()", (error, payload, wasThrown) => {
+        InspectorTest.evaluateInPage("window.internals.inspectorHighlightObject()", (error, value, wasThrown) => {
             InspectorTest.assert(!error, "Unexpected error dumping highlight: " + error);
             InspectorTest.assert(!wasThrown, "Unexpected exception when dumping highlight.");
-            callback(JSON.parse(payload.value));
+            callback(JSON.parse(value));
         });
     }
 

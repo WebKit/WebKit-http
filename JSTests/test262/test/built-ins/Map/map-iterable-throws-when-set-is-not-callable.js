@@ -5,7 +5,7 @@ es6id: 23.1.1.1
 description: >
   Throws a TypeError if `set` is not callable on Map constructor with a
   iterable argument.
-info: >
+info: |
   Map ( [ iterable ] )
 
   When the Map function is called with optional argument the following steps are
@@ -23,5 +23,8 @@ info: >
 Map.prototype.set = null;
 
 assert.throws(TypeError, function() {
-  new Map([[1,1], [2,2]]);
+  new Map([
+    [1, 1],
+    [2, 2]
+  ]);
 });

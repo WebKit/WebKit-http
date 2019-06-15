@@ -48,7 +48,6 @@
 #import "WebPDFView.h"
 #import "WebPreferenceKeysPrivate.h"
 #import "WebResourceInternal.h"
-#import "WebSystemInterface.h"
 #import "WebViewInternal.h"
 #import "WebViewPrivate.h"
 #import <Foundation/NSURLRequest.h>
@@ -64,7 +63,6 @@
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/WebCoreFrameView.h>
 #import <WebCore/WebCoreView.h>
-#import <WebKitSystemInterface.h>
 #import <wtf/Assertions.h>
 
 #if PLATFORM(IOS)
@@ -74,7 +72,6 @@
 #import <Foundation/NSURLRequest.h>
 #import <WebCore/GraphicsContext.h>
 #import <WebCore/KeyEventCodesIOS.h>
-#import <WebCore/MainFrame.h>
 #import <WebCore/WAKClipView.h>
 #import <WebCore/WAKScrollView.h>
 #import <WebCore/WAKWindow.h>
@@ -367,7 +364,6 @@ static inline void addTypesFromClass(NSMutableDictionary *allTypes, Class objCCl
     static bool didFirstTimeInitialization;
     if (!didFirstTimeInitialization) {
         didFirstTimeInitialization = true;
-        InitWebCoreSystemInterface();
         
         // Need to tell WebCore what function to call for the "History Item has Changed" notification.
         // Note: We also do this in WebHistoryItem's init method.

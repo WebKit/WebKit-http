@@ -5,7 +5,7 @@
 es6id: 13.3.3
 description: >
   The Binding Property List followed by a single comma is a valid syntax
-info: >
+info: |
   Destructuring Binding Patterns - Syntax
 
   ObjectBindingPattern[Yield] :
@@ -13,6 +13,7 @@ info: >
     { BindingPropertyList[?Yield] }
     { BindingPropertyList[?Yield] , }
 
+features: [destructuring-binding]
 ---*/
 
 function fn1({x,}) {}

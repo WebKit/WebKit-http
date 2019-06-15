@@ -20,44 +20,25 @@
 */
 
 #include "config.h"
-
-#if USE(COORDINATED_GRAPHICS)
 #include "CoordinatedGraphicsScene.h"
 
-#include "CoordinatedBackingStore.h"
+#if USE(COORDINATED_GRAPHICS)
+
+#include <WebCore/CoordinatedBackingStore.h>
+#include <WebCore/NicosiaBackingStoreTextureMapperImpl.h>
+#include <WebCore/NicosiaBuffer.h>
+#include <WebCore/NicosiaCompositionLayerTextureMapperImpl.h>
+#include <WebCore/NicosiaContentLayerTextureMapperImpl.h>
+#include <WebCore/NicosiaImageBackingTextureMapperImpl.h>
+#include <WebCore/NicosiaScene.h>
 #include <WebCore/TextureMapper.h>
 #include <WebCore/TextureMapperBackingStore.h>
 #include <WebCore/TextureMapperGL.h>
 #include <WebCore/TextureMapperLayer.h>
 #include <wtf/Atomics.h>
 
-using namespace WebCore;
-
 namespace WebKit {
-
-void CoordinatedGraphicsScene::dispatchOnMainThread(Function<void()>&& function)
-{
-    if (RunLoop::isMain()) {
-        function();
-        return;
-    }
-
-    RunLoop::main().dispatch([protectedThis = makeRef(*this), function = WTFMove(function)] {
-        function();
-    });
-}
-
-void CoordinatedGraphicsScene::dispatchOnClientRunLoop(Function<void()>&& function)
-{
-    if (&m_clientRunLoop == &RunLoop::current()) {
-        function();
-        return;
-    }
-
-    m_clientRunLoop.dispatch([protectedThis = makeRef(*this), function = WTFMove(function)] {
-        function();
-    });
-}
+using namespace WebCore;
 
 static bool layerShouldHaveBackingStore(TextureMapperLayer* layer)
 {
@@ -66,38 +47,34 @@ static bool layerShouldHaveBackingStore(TextureMapperLayer* layer)
 
 CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClient* client)
     : m_client(client)
-    , m_isActive(false)
-    , m_rootLayerID(InvalidCoordinatedLayerID)
-    , m_viewBackgroundColor(Color::white)
-    , m_clientRunLoop(RunLoop::current())
 {
 }
 
-CoordinatedGraphicsScene::~CoordinatedGraphicsScene()
-{
-}
+CoordinatedGraphicsScene::~CoordinatedGraphicsScene() = default;
 
-void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatrix& matrix, float opacity, const FloatRect& clipRect, const Color& backgroundColor, bool drawsBackground, const FloatPoint& contentPosition, TextureMapper::PaintFlags PaintFlags)
+void CoordinatedGraphicsScene::applyStateChanges(const Vector<CoordinatedGraphicsState>& states)
 {
     if (!m_textureMapper) {
         m_textureMapper = TextureMapper::create(TextureMapper::OpenGLMode);
         static_cast<TextureMapperGL*>(m_textureMapper.get())->setEnableEdgeDistanceAntialiasing(true);
     }
 
-    syncRemoteContent();
+    ensureRootLayer();
 
-    adjustPositionForFixedLayers(contentPosition);
+    for (auto& state : states)
+        commitSceneState(state.nicosia);
+}
+
+void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatrix& matrix, float opacity, const FloatRect& clipRect, const Color& backgroundColor, bool drawsBackground, TextureMapper::PaintFlags PaintFlags)
+{
+    updateSceneState();
+
     TextureMapperLayer* currentRootLayer = rootLayer();
     if (!currentRootLayer)
         return;
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    for (auto& proxy : m_platformLayerProxies.values())
-        proxy->swapBuffer();
-#endif
-
     currentRootLayer->setTextureMapper(m_textureMapper.get());
-    currentRootLayer->applyAnimationsRecursively();
+    bool sceneHasRunningAnimations = currentRootLayer->applyAnimationsRecursively(MonotonicTime::now());
     m_textureMapper->beginPainting(PaintFlags);
     m_textureMapper->beginClip(TransformationMatrix(), clipRect);
 
@@ -106,11 +83,8 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
             backgroundColor.green(), backgroundColor.blue(),
             backgroundColor.alpha() * opacity);
         m_textureMapper->drawSolidColor(clipRect, TransformationMatrix(), Color(rgba));
-    } else {
-        GraphicsContext3D* context = static_cast<TextureMapperGL*>(m_textureMapper.get())->graphicsContext3D();
-        context->clearColor(m_viewBackgroundColor.red() / 255.0f, m_viewBackgroundColor.green() / 255.0f, m_viewBackgroundColor.blue() / 255.0f, m_viewBackgroundColor.alpha() / 255.0f);
-        context->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
-    }
+    } else
+        m_textureMapper->clearColor(m_viewBackgroundColor);
 
     if (currentRootLayer->opacity() != opacity || currentRootLayer->transform() != matrix) {
         currentRootLayer->setOpacity(opacity);
@@ -122,7 +96,7 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations())
+    if (sceneHasRunningAnimations)
         updateViewport();
 }
 
@@ -139,442 +113,312 @@ void CoordinatedGraphicsScene::updateViewport()
         m_client->updateViewport();
 }
 
-void CoordinatedGraphicsScene::adjustPositionForFixedLayers(const FloatPoint& contentPosition)
-{
-    if (m_fixedLayers.isEmpty())
-        return;
-
-    // Fixed layer positions are updated by the web process when we update the visible contents rect / scroll position.
-    // If we want those layers to follow accurately the viewport when we move between the web process updates, we have to offset
-    // them by the delta between the current position and the position of the viewport used for the last layout.
-#if PLATFORM(QT)
-    FloatSize delta = m_scrollPosition - m_renderedContentsScrollPosition;
-#else
-    FloatSize delta = contentPosition - m_renderedContentsScrollPosition;
-#endif
-
-    for (auto& fixedLayer : m_fixedLayers.values())
-        fixedLayer->setScrollPositionDeltaIfNeeded(delta);
-}
-
-void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    if (!state.platformLayerChanged)
-        return;
-
-    if (state.platformLayerProxy) {
-        m_platformLayerProxies.set(layer, state.platformLayerProxy);
-        state.platformLayerProxy->activateOnCompositingThread(this, layer);
-    } else
-        m_platformLayerProxies.remove(layer);
-#else
-    UNUSED_PARAM(layer);
-    UNUSED_PARAM(state);
-#endif
-}
-
 #if USE(COORDINATED_GRAPHICS_THREADED)
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
     updateViewport();
 }
-
-TextureMapperGL* CoordinatedGraphicsScene::texmapGL()
-{
-    if (!m_textureMapper)
-        return nullptr;
-
-    return static_cast<TextureMapperGL*>(m_textureMapper.get());
-}
 #endif
 
-void CoordinatedGraphicsScene::setLayerRepaintCountIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+Nicosia::CompositionLayerTextureMapperImpl& compositionLayerImpl(Nicosia::CompositionLayer& compositionLayer)
 {
-    if (!layer->isShowingRepaintCounter() || !state.repaintCountChanged)
-        return;
-
-    layer->setRepaintCount(state.repaintCount);
+    return downcast<Nicosia::CompositionLayerTextureMapperImpl>(compositionLayer.impl());
 }
 
-void CoordinatedGraphicsScene::setLayerChildrenIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+Nicosia::ContentLayerTextureMapperImpl& contentLayerImpl(Nicosia::ContentLayer& contentLayer)
 {
-    if (!state.childrenChanged)
-        return;
-
-    Vector<TextureMapperLayer*> children;
-    children.reserveCapacity(state.children.size());
-    for (auto& child : state.children)
-        children.append(layerByID(child));
-
-    layer->setChildren(children);
+    return downcast<Nicosia::ContentLayerTextureMapperImpl>(contentLayer.impl());
 }
 
-void CoordinatedGraphicsScene::setLayerFiltersIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
+Nicosia::BackingStoreTextureMapperImpl& backingStoreImpl(Nicosia::BackingStore& backingStore)
 {
-    if (!state.filtersChanged)
-        return;
-
-    layer->setFilters(state.filters);
+    return downcast<Nicosia::BackingStoreTextureMapperImpl>(backingStore.impl());
 }
 
-void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const CoordinatedGraphicsLayerState& layerState)
+Nicosia::ImageBackingTextureMapperImpl& imageBackingImpl(Nicosia::ImageBacking& imageBacking)
 {
-    ASSERT(m_rootLayerID != InvalidCoordinatedLayerID);
-    TextureMapperLayer* layer = layerByID(id);
+    return downcast<Nicosia::ImageBackingTextureMapperImpl>(imageBacking.impl());
+}
 
-    if (layerState.positionChanged)
-        layer->setPosition(layerState.pos);
+TextureMapperLayer& texmapLayer(Nicosia::CompositionLayer& compositionLayer)
+{
+    auto& compositionState = compositionLayerImpl(compositionLayer).compositionState();
+    if (!compositionState.layer) {
+        compositionState.layer = std::make_unique<TextureMapperLayer>();
+        compositionState.layer->setID(compositionLayer.id());
+    }
+    return *compositionState.layer;
+}
 
-    if (layerState.anchorPointChanged)
-        layer->setAnchorPoint(layerState.anchorPoint);
-
-    if (layerState.sizeChanged)
-        layer->setSize(layerState.size);
-
-    if (layerState.transformChanged)
-        layer->setTransform(layerState.transform);
-
-    if (layerState.childrenTransformChanged)
-        layer->setChildrenTransform(layerState.childrenTransform);
-
-    if (layerState.contentsRectChanged)
-        layer->setContentsRect(layerState.contentsRect);
-
-    if (layerState.contentsTilingChanged) {
-        layer->setContentsTilePhase(layerState.contentsTilePhase);
-        layer->setContentsTileSize(layerState.contentsTileSize);
+void updateBackingStore(TextureMapperLayer& layer,
+    Nicosia::BackingStoreTextureMapperImpl::CompositionState& compositionState,
+    const Nicosia::BackingStoreTextureMapperImpl::TileUpdate& update)
+{
+    if (!layerShouldHaveBackingStore(&layer)) {
+        layer.setBackingStore(nullptr);
+        compositionState.backingStore = nullptr;
+        return;
     }
 
-    if (layerState.opacityChanged)
-        layer->setOpacity(layerState.opacity);
+    if (!compositionState.backingStore)
+        compositionState.backingStore = CoordinatedBackingStore::create();
+    auto& backingStore = *compositionState.backingStore;
 
-    if (layerState.solidColorChanged)
-        layer->setSolidColor(layerState.solidColor);
+    layer.setBackingStore(&backingStore);
+    backingStore.setSize(layer.size());
 
-    if (layerState.debugVisualsChanged)
-        layer->setDebugVisuals(layerState.debugVisuals.showDebugBorders, layerState.debugVisuals.debugBorderColor, layerState.debugVisuals.debugBorderWidth, layerState.debugVisuals.showRepaintCounter);
+    for (auto& tile : update.tilesToCreate)
+        backingStore.createTile(tile.tileID, tile.scale);
+    for (auto& tile : update.tilesToRemove)
+        backingStore.removeTile(tile.tileID);
+    for (auto& tile : update.tilesToUpdate) {
+        backingStore.updateTile(tile.tileID, tile.updateInfo.updateRect,
+            tile.tileRect, tile.updateInfo.buffer.copyRef(), { 0, 0 });
+    }
+}
 
-    if (layerState.replicaChanged)
-        layer->setReplicaLayer(getLayerByIDIfExists(layerState.replica));
+void updateImageBacking(TextureMapperLayer& layer,
+    Nicosia::ImageBackingTextureMapperImpl::CompositionState& compositionState,
+    Nicosia::ImageBackingTextureMapperImpl::Update& update)
+{
+    if (!update.isVisible) {
+        layer.setBackingStore(nullptr);
+        return;
+    }
 
-    if (layerState.maskChanged)
-        layer->setMaskLayer(getLayerByIDIfExists(layerState.mask));
+    if (!compositionState.backingStore)
+        compositionState.backingStore = CoordinatedBackingStore::create();
+    auto& backingStore = *compositionState.backingStore;
+    layer.setContentsLayer(&backingStore);
 
-    if (layerState.imageChanged)
-        assignImageBackingToLayer(layer, layerState.imageID);
+    if (!update.buffer)
+        return;
 
-    if (layerState.flagsChanged) {
-        layer->setContentsOpaque(layerState.contentsOpaque);
-        layer->setDrawsContent(layerState.drawsContent);
-        layer->setContentsVisible(layerState.contentsVisible);
-        layer->setBackfaceVisibility(layerState.backfaceVisible);
+    backingStore.createTile(1, 1.0);
+    WebCore::IntRect rect { { }, update.buffer->size() };
+    ASSERT(2000 >= std::max(rect.width(), rect.height()));
+    backingStore.setSize(rect.size());
+    backingStore.updateTile(1, rect, rect, WTFMove(update.buffer), rect.location());
+}
 
-        // Never clip the root layer.
-        layer->setMasksToBounds(id == m_rootLayerID ? false : layerState.masksToBounds);
-        layer->setPreserves3D(layerState.preserves3D);
+void removeLayer(Nicosia::CompositionLayer& layer)
+{
+    layer.accessCommitted(
+        [](const Nicosia::CompositionLayer::LayerState& committed)
+        {
+            if (committed.backingStore) {
+                auto& compositionState = backingStoreImpl(*committed.backingStore).compositionState();
+                compositionState.backingStore = nullptr;
+            }
 
-        bool fixedToViewportChanged = layer->fixedToViewport() != layerState.fixedToViewport;
-        layer->setFixedToViewport(layerState.fixedToViewport);
-        if (fixedToViewportChanged) {
-            if (layerState.fixedToViewport)
-                m_fixedLayers.add(id, layer);
-            else
-                m_fixedLayers.remove(id);
+            if (committed.contentLayer)
+                contentLayerImpl(*committed.contentLayer).proxy().invalidate();
+
+            if (committed.imageBacking) {
+                auto& compositionState = imageBackingImpl(*committed.imageBacking).compositionState();
+                compositionState.backingStore = nullptr;
+            }
+        });
+
+    auto& compositionState = compositionLayerImpl(layer).compositionState();
+    compositionState.layer = nullptr;
+}
+
+void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState::NicosiaState& state)
+{
+    if (!m_client)
+        return;
+
+    m_nicosia.scene = state.scene;
+}
+
+void CoordinatedGraphicsScene::updateSceneState()
+{
+    if (!m_nicosia.scene)
+        return;
+
+    // Store layer and impl references along with the corresponding update
+    // for each type of possible layer backing.
+    struct {
+        struct BackingStore {
+            std::reference_wrapper<TextureMapperLayer> layer;
+            std::reference_wrapper<Nicosia::BackingStoreTextureMapperImpl> backingStore;
+            Nicosia::BackingStoreTextureMapperImpl::TileUpdate update;
+        };
+        Vector<BackingStore> backingStore;
+
+        struct ContentLayer {
+            std::reference_wrapper<TextureMapperLayer> layer;
+            std::reference_wrapper<TextureMapperPlatformLayerProxy> proxy;
+            bool needsActivation { false };
+        };
+        Vector<ContentLayer> contentLayer;
+
+        struct ImageBacking {
+            std::reference_wrapper<TextureMapperLayer> layer;
+            std::reference_wrapper<Nicosia::ImageBackingTextureMapperImpl> imageBacking;
+            Nicosia::ImageBackingTextureMapperImpl::Update update;
+        };
+        Vector<ImageBacking> imageBacking;
+    } layersByBacking;
+
+    // Access the scene state and perform state update for each layer.
+    m_nicosia.scene->accessState(
+        [this, &layersByBacking](Nicosia::Scene::State& state)
+        {
+            // FIXME: try to minimize the amount of work in case the Scene::State object
+            // didn't change (i.e. no layer flush was done), but don't forget to properly
+            // gather and update proxy objects for content layers.
+
+            // Handle the root layer, adding it to the TextureMapperLayer tree
+            // on the first update. No such change is expected later.
+            {
+                auto& rootLayer = texmapLayer(*state.rootLayer);
+                if (rootLayer.id() != m_rootLayerID) {
+                    m_rootLayerID = rootLayer.id();
+                    RELEASE_ASSERT(m_rootLayer->children().isEmpty());
+                    m_rootLayer->addChild(&rootLayer);
+                }
+            }
+
+            // Gather all the to-be-removed layers so that composition-side state
+            // can be properly purged after the current state's set of layers is adopted.
+            HashSet<RefPtr<Nicosia::CompositionLayer>> removedLayers;
+            for (auto& layer : m_nicosia.state.layers) {
+                if (!state.layers.contains(layer))
+                    removedLayers.add(layer);
+            }
+
+            m_nicosia.state = state;
+
+            for (auto& layer : removedLayers)
+                removeLayer(*layer);
+            removedLayers = { };
+
+            // Iterate the current state's set of layers, updating state values according to
+            // the incoming state changes. Layer backings are stored so that the updates
+            // (possibly time-consuming) can be done outside of this scene update.
+            for (auto& compositionLayer : m_nicosia.state.layers) {
+                auto& layer = texmapLayer(*compositionLayer);
+                compositionLayer->commitState(
+                    [this, &layer, &compositionLayer, &layersByBacking]
+                    (const Nicosia::CompositionLayer::LayerState& layerState)
+                    {
+                        if (layerState.delta.positionChanged)
+                            layer.setPosition(layerState.position);
+                        if (layerState.delta.anchorPointChanged)
+                            layer.setAnchorPoint(layerState.anchorPoint);
+                        if (layerState.delta.sizeChanged)
+                            layer.setSize(layerState.size);
+
+                        if (layerState.delta.transformChanged)
+                            layer.setTransform(layerState.transform);
+                        if (layerState.delta.childrenTransformChanged)
+                            layer.setChildrenTransform(layerState.childrenTransform);
+
+                        if (layerState.delta.contentsRectChanged)
+                            layer.setContentsRect(layerState.contentsRect);
+                        if (layerState.delta.contentsTilingChanged) {
+                            layer.setContentsTilePhase(layerState.contentsTilePhase);
+                            layer.setContentsTileSize(layerState.contentsTileSize);
+                        }
+
+                        if (layerState.delta.opacityChanged)
+                            layer.setOpacity(layerState.opacity);
+                        if (layerState.delta.solidColorChanged)
+                            layer.setSolidColor(layerState.solidColor);
+
+                        if (layerState.delta.filtersChanged)
+                            layer.setFilters(layerState.filters);
+                        if (layerState.delta.animationsChanged)
+                            layer.setAnimations(layerState.animations);
+
+                        if (layerState.delta.childrenChanged) {
+                            layer.setChildren(WTF::map(layerState.children,
+                                [](auto& child) { return &texmapLayer(*child); }));
+                        }
+
+                        if (layerState.delta.maskChanged)
+                            layer.setMaskLayer(layerState.mask ? &texmapLayer(*layerState.mask) : nullptr);
+                        if (layerState.delta.replicaChanged)
+                            layer.setReplicaLayer(layerState.replica ? &texmapLayer(*layerState.replica) : nullptr);
+
+                        if (layerState.delta.flagsChanged) {
+                            layer.setContentsOpaque(layerState.flags.contentsOpaque);
+                            layer.setDrawsContent(layerState.flags.drawsContent);
+                            layer.setContentsVisible(layerState.flags.contentsVisible);
+                            layer.setBackfaceVisibility(layerState.flags.backfaceVisible);
+                            layer.setMasksToBounds(layerState.flags.masksToBounds);
+                            layer.setPreserves3D(layerState.flags.preserves3D);
+                        }
+
+                        if (layerState.backingStore) {
+                            auto& impl = backingStoreImpl(*layerState.backingStore);
+                            layersByBacking.backingStore.append(
+                                { std::ref(layer), std::ref(impl), impl.takeUpdate() });
+                        } else
+                            layer.setBackingStore(nullptr);
+
+                        if (layerState.contentLayer) {
+                            auto& impl = contentLayerImpl(*layerState.contentLayer);
+                            layersByBacking.contentLayer.append(
+                                { std::ref(layer), std::ref(impl.proxy()), layerState.delta.contentLayerChanged });
+                        } else if (layerState.imageBacking) {
+                            auto& impl = imageBackingImpl(*layerState.imageBacking);
+                            layersByBacking.imageBacking.append(
+                                { std::ref(layer), std::ref(impl), impl.takeUpdate() });
+                        } else
+                            layer.setContentsLayer(nullptr);
+                    });
+            }
+        });
+
+    // Iterate through each backing type of layers and gather backing store
+    // or proxy objects that need an update.
+    // FIXME: HashSet<std::reference_wrapper<>> would be ideal, but doesn't work (yet).
+    HashSet<Ref<WebCore::CoordinatedBackingStore>> backingStoresWithPendingBuffers;
+    HashSet<Ref<WebCore::TextureMapperPlatformLayerProxy>> proxiesForSwapping;
+
+    {
+        for (auto& entry : layersByBacking.backingStore) {
+            auto& compositionState = entry.backingStore.get().compositionState();
+            updateBackingStore(entry.layer.get(), compositionState, entry.update);
+
+            if (compositionState.backingStore)
+                backingStoresWithPendingBuffers.add(makeRef(*compositionState.backingStore));
         }
 
-        layer->setIsScrollable(layerState.isScrollable);
+        layersByBacking.backingStore = { };
     }
 
-    if (layerState.committedScrollOffsetChanged)
-        layer->didCommitScrollOffset(layerState.committedScrollOffset);
+    {
+        for (auto& entry : layersByBacking.contentLayer) {
+            auto& proxy = entry.proxy.get();
+            if (entry.needsActivation)
+                proxy.activateOnCompositingThread(this, &entry.layer.get());
+            proxiesForSwapping.add(makeRef(proxy));
+        }
 
-    prepareContentBackingStore(layer);
-
-    // Apply Operations.
-    setLayerChildrenIfNeeded(layer, layerState);
-    createTilesIfNeeded(layer, layerState);
-    removeTilesIfNeeded(layer, layerState);
-    updateTilesIfNeeded(layer, layerState);
-    setLayerFiltersIfNeeded(layer, layerState);
-    setLayerAnimationsIfNeeded(layer, layerState);
-    syncPlatformLayerIfNeeded(layer, layerState);
-    setLayerRepaintCountIfNeeded(layer, layerState);
-}
-
-TextureMapperLayer* CoordinatedGraphicsScene::getLayerByIDIfExists(CoordinatedLayerID id)
-{
-    return (id != InvalidCoordinatedLayerID) ? layerByID(id) : 0;
-}
-
-void CoordinatedGraphicsScene::createLayers(const Vector<CoordinatedLayerID>& layerIDs)
-{
-    for (auto& layerID : layerIDs)
-        createLayer(layerID);
-}
-
-void CoordinatedGraphicsScene::createLayer(CoordinatedLayerID id)
-{
-    std::unique_ptr<TextureMapperLayer> newLayer = std::make_unique<TextureMapperLayer>();
-    newLayer->setID(id);
-    newLayer->setScrollClient(this);
-    m_layers.add(id, WTFMove(newLayer));
-}
-
-void CoordinatedGraphicsScene::deleteLayers(const Vector<CoordinatedLayerID>& layerIDs)
-{
-    for (auto& layerID : layerIDs)
-        deleteLayer(layerID);
-}
-
-void CoordinatedGraphicsScene::deleteLayer(CoordinatedLayerID layerID)
-{
-    std::unique_ptr<TextureMapperLayer> layer = m_layers.take(layerID);
-    ASSERT(layer);
-
-    m_backingStores.remove(layer.get());
-    m_fixedLayers.remove(layerID);
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    if (auto platformLayerProxy = m_platformLayerProxies.take(layer.get()))
-        platformLayerProxy->invalidate();
-#endif
-}
-
-void CoordinatedGraphicsScene::setRootLayerID(CoordinatedLayerID layerID)
-{
-    ASSERT(layerID != InvalidCoordinatedLayerID);
-    ASSERT(m_rootLayerID == InvalidCoordinatedLayerID);
-
-    m_rootLayerID = layerID;
-
-    TextureMapperLayer* layer = layerByID(layerID);
-    ASSERT(m_rootLayer->children().isEmpty());
-    m_rootLayer->addChild(layer);
-}
-
-void CoordinatedGraphicsScene::prepareContentBackingStore(TextureMapperLayer* layer)
-{
-    if (!layerShouldHaveBackingStore(layer)) {
-        removeBackingStoreIfNeeded(layer);
-        return;
+        layersByBacking.contentLayer = { };
     }
 
-    createBackingStoreIfNeeded(layer);
-    resetBackingStoreSizeToLayerSize(layer);
-}
+    {
+        for (auto& entry : layersByBacking.imageBacking) {
+            auto& compositionState = entry.imageBacking.get().compositionState();
+            updateImageBacking(entry.layer.get(), compositionState, entry.update);
 
-void CoordinatedGraphicsScene::createBackingStoreIfNeeded(TextureMapperLayer* layer)
-{
-    if (m_backingStores.contains(layer))
-        return;
+            if (compositionState.backingStore)
+                backingStoresWithPendingBuffers.add(makeRef(*compositionState.backingStore));
+        }
 
-    auto backingStore = CoordinatedBackingStore::create();
-    m_backingStores.add(layer, backingStore.copyRef());
-    layer->setBackingStore(WTFMove(backingStore));
-}
-
-void CoordinatedGraphicsScene::removeBackingStoreIfNeeded(TextureMapperLayer* layer)
-{
-    RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.take(layer);
-    if (!backingStore)
-        return;
-
-    layer->setBackingStore(nullptr);
-}
-
-void CoordinatedGraphicsScene::resetBackingStoreSizeToLayerSize(TextureMapperLayer* layer)
-{
-    RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore);
-    backingStore->setSize(layer->size());
-    m_backingStoresWithPendingBuffers.add(backingStore);
-}
-
-void CoordinatedGraphicsScene::createTilesIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (state.tilesToCreate.isEmpty())
-        return;
-
-    RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore || !layerShouldHaveBackingStore(layer));
-    if (!backingStore)
-        return;
-
-    for (auto& tile : state.tilesToCreate)
-        backingStore->createTile(tile.tileID, tile.scale);
-}
-
-void CoordinatedGraphicsScene::removeTilesIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (state.tilesToRemove.isEmpty())
-        return;
-
-    RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    if (!backingStore)
-        return;
-
-    for (auto& tile : state.tilesToRemove)
-        backingStore->removeTile(tile);
-
-    m_backingStoresWithPendingBuffers.add(backingStore);
-}
-
-void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (state.tilesToUpdate.isEmpty())
-        return;
-
-    RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    ASSERT(backingStore || !layerShouldHaveBackingStore(layer));
-    if (!backingStore)
-        return;
-
-    for (auto& tile : state.tilesToUpdate) {
-        const SurfaceUpdateInfo& surfaceUpdateInfo = tile.updateInfo;
-
-        auto surfaceIt = m_surfaces.find(surfaceUpdateInfo.atlasID);
-        ASSERT(surfaceIt != m_surfaces.end());
-
-        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceIt->value.copyRef(), surfaceUpdateInfo.surfaceOffset);
-        m_backingStoresWithPendingBuffers.add(backingStore);
-    }
-}
-
-void CoordinatedGraphicsScene::syncUpdateAtlases(const CoordinatedGraphicsState& state)
-{
-    for (auto& atlas : state.updateAtlasesToCreate)
-        createUpdateAtlas(atlas.first, atlas.second.copyRef());
-}
-
-void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, RefPtr<CoordinatedSurface>&& surface)
-{
-    ASSERT(!m_surfaces.contains(atlasID));
-    m_surfaces.add(atlasID, WTFMove(surface));
-}
-
-void CoordinatedGraphicsScene::removeUpdateAtlas(uint32_t atlasID)
-{
-    ASSERT(m_surfaces.contains(atlasID));
-    m_surfaces.remove(atlasID);
-}
-
-void CoordinatedGraphicsScene::releaseUpdateAtlases(const Vector<uint32_t>& atlasesToRemove)
-{
-    for (auto& atlas : atlasesToRemove)
-        removeUpdateAtlas(atlas);
-}
-
-void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState& state)
-{
-    for (auto& image : state.imagesToRemove)
-        removeImageBacking(image);
-
-    for (auto& image : state.imagesToCreate)
-        createImageBacking(image);
-
-    for (auto& image : state.imagesToUpdate)
-        updateImageBacking(image.first, image.second.copyRef());
-
-    for (auto& image : state.imagesToClear)
-        clearImageBackingContents(image);
-}
-
-void CoordinatedGraphicsScene::createImageBacking(CoordinatedImageBackingID imageID)
-{
-    ASSERT(!m_imageBackings.contains(imageID));
-    m_imageBackings.add(imageID, CoordinatedBackingStore::create());
-}
-
-void CoordinatedGraphicsScene::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<CoordinatedSurface>&& surface)
-{
-    ASSERT(m_imageBackings.contains(imageID));
-    auto it = m_imageBackings.find(imageID);
-    RefPtr<CoordinatedBackingStore> backingStore = it->value;
-
-    // CoordinatedImageBacking is realized to CoordinatedBackingStore with only one tile in UI Process.
-    backingStore->createTile(1 /* id */, 1 /* scale */);
-    IntRect rect(IntPoint::zero(), surface->size());
-    // See CoordinatedGraphicsLayer::shouldDirectlyCompositeImage()
-    ASSERT(2000 >= std::max(rect.width(), rect.height()));
-    backingStore->setSize(rect.size());
-    backingStore->updateTile(1 /* id */, rect, rect, WTFMove(surface), rect.location());
-
-    m_backingStoresWithPendingBuffers.add(backingStore);
-}
-
-void CoordinatedGraphicsScene::clearImageBackingContents(CoordinatedImageBackingID imageID)
-{
-    ASSERT(m_imageBackings.contains(imageID));
-    auto it = m_imageBackings.find(imageID);
-    RefPtr<CoordinatedBackingStore> backingStore = it->value;
-    backingStore->removeAllTiles();
-    m_backingStoresWithPendingBuffers.add(backingStore);
-}
-
-void CoordinatedGraphicsScene::removeImageBacking(CoordinatedImageBackingID imageID)
-{
-    ASSERT(m_imageBackings.contains(imageID));
-
-    // We don't want TextureMapperLayer refers a dangling pointer.
-    m_releasedImageBackings.append(m_imageBackings.take(imageID));
-}
-
-void CoordinatedGraphicsScene::assignImageBackingToLayer(TextureMapperLayer* layer, CoordinatedImageBackingID imageID)
-{
-    if (imageID == InvalidCoordinatedImageBackingID) {
-        layer->setContentsLayer(0);
-        return;
+        layersByBacking.imageBacking = { };
     }
 
-    auto it = m_imageBackings.find(imageID);
-    ASSERT(it != m_imageBackings.end());
-    layer->setContentsLayer(it->value.get());
-}
-
-void CoordinatedGraphicsScene::removeReleasedImageBackingsIfNeeded()
-{
-    m_releasedImageBackings.clear();
-}
-
-void CoordinatedGraphicsScene::commitPendingBackingStoreOperations()
-{
-    for (auto& backingStore : m_backingStoresWithPendingBuffers)
+    for (auto& backingStore : backingStoresWithPendingBuffers)
         backingStore->commitTileOperations(*m_textureMapper);
 
-    m_backingStoresWithPendingBuffers.clear();
-}
-
-void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& state)
-{
-    if (!m_client)
-        return;
-
-    m_renderedContentsScrollPosition = state.scrollPosition;
-
-    createLayers(state.layersToCreate);
-    deleteLayers(state.layersToRemove);
-
-    if (state.rootCompositingLayer != m_rootLayerID)
-        setRootLayerID(state.rootCompositingLayer);
-
-    syncImageBackings(state);
-    syncUpdateAtlases(state);
-
-    for (auto& layer : state.layersToUpdate)
-        setLayerState(layer.first, layer.second);
-
-    commitPendingBackingStoreOperations();
-    removeReleasedImageBackingsIfNeeded();
-}
-
-void CoordinatedGraphicsScene::renderNextFrame()
-{
-    if (!m_client)
-        return;
-    dispatchOnMainThread([this] {
-        if (m_client)
-            m_client->renderNextFrame();
-    });
+    for (auto& proxy : proxiesForSwapping)
+        proxy->swapBuffer();
 }
 
 void CoordinatedGraphicsScene::ensureRootLayer()
@@ -594,61 +438,26 @@ void CoordinatedGraphicsScene::ensureRootLayer()
     m_rootLayer->setTextureMapper(m_textureMapper.get());
 }
 
-void CoordinatedGraphicsScene::syncRemoteContent()
-{
-    // We enqueue messages and execute them during paint, as they require an active GL context.
-    ensureRootLayer();
-
-    Vector<Function<void()>> renderQueue;
-    bool calledOnMainThread = RunLoop::isMain();
-    if (!calledOnMainThread)
-        m_renderQueueMutex.lock();
-    renderQueue = WTFMove(m_renderQueue);
-    if (!calledOnMainThread)
-        m_renderQueueMutex.unlock();
-
-    for (auto& function : renderQueue)
-        function();
-}
-
 void CoordinatedGraphicsScene::purgeGLResources()
 {
     ASSERT(!m_client);
 
-    m_imageBackings.clear();
-    m_releasedImageBackings.clear();
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    for (auto& proxy : m_platformLayerProxies.values())
-        proxy->invalidate();
-    m_platformLayerProxies.clear();
-#endif
-    m_surfaces.clear();
+    if (m_nicosia.scene) {
+        m_nicosia.scene->accessState(
+            [this](const Nicosia::Scene::State& state)
+            {
+                ASSERT(state.id == m_nicosia.state.id);
+                for (auto& layer : m_nicosia.state.layers)
+                    removeLayer(*layer);
+                m_nicosia.state.layers = { };
+                m_nicosia.state.rootLayer = nullptr;
+            });
+        m_nicosia.scene = nullptr;
+    }
 
     m_rootLayer = nullptr;
-    m_rootLayerID = InvalidCoordinatedLayerID;
-    m_layers.clear();
-    m_fixedLayers.clear();
+    m_rootLayerID = 0;
     m_textureMapper = nullptr;
-    m_backingStores.clear();
-    m_backingStoresWithPendingBuffers.clear();
-}
-
-void CoordinatedGraphicsScene::commitScrollOffset(uint32_t layerID, const IntSize& offset)
-{
-    if (!m_client)
-        return;
-    dispatchOnMainThread([this, layerID, offset] {
-        if (m_client)
-            m_client->commitScrollOffset(layerID, offset);
-    });
-}
-
-void CoordinatedGraphicsScene::setLayerAnimationsIfNeeded(TextureMapperLayer* layer, const CoordinatedGraphicsLayerState& state)
-{
-    if (!state.animationsChanged)
-        return;
-
-    layer->setAnimations(state.animations);
 }
 
 void CoordinatedGraphicsScene::detach()
@@ -656,40 +465,6 @@ void CoordinatedGraphicsScene::detach()
     ASSERT(RunLoop::isMain());
     m_isActive = false;
     m_client = nullptr;
-    LockHolder locker(m_renderQueueMutex);
-    m_renderQueue.clear();
-}
-
-void CoordinatedGraphicsScene::appendUpdate(Function<void()>&& function)
-{
-    if (!m_isActive)
-        return;
-
-    ASSERT(RunLoop::isMain());
-    LockHolder locker(m_renderQueueMutex);
-    m_renderQueue.append(WTFMove(function));
-}
-
-void CoordinatedGraphicsScene::setActive(bool active)
-{
-    if (!m_client)
-        return;
-
-    if (m_isActive == active)
-        return;
-
-    // Have to clear render queue in both cases.
-    // If there are some updates in queue during activation then those updates are from previous instance of paint node
-    // and cannot be applied to the newly created instance.
-    m_renderQueue.clear();
-    m_isActive = active;
-    if (m_isActive)
-        renderNextFrame();
-}
-
-TextureMapperLayer* CoordinatedGraphicsScene::findScrollableContentsLayerAt(const FloatPoint& point)
-{
-    return rootLayer() ? rootLayer()->findScrollableContentsLayerAt(point) : 0;
 }
 
 } // namespace WebKit

@@ -26,246 +26,20 @@
  */
 
 #include "config.h"
-
-#if USE(CAIRO)
-
-#if ENABLE(GRAPHICS_CONTEXT_3D)
 #include "GraphicsContext3D.h"
 
+#if ENABLE(GRAPHICS_CONTEXT_3D) && USE(CAIRO)
+
 #include "CairoUtilities.h"
-#include "GraphicsContext3DPrivate.h"
 #include "Image.h"
 #include "ImageSource.h"
-#include "NotImplemented.h"
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
 #include <cairo.h>
 
-#if PLATFORM(WIN)
-#include <GLSLANG/ShaderLang.h>
-#else
-#include <ANGLE/ShaderLang.h>
-#endif
-
-#if USE(LIBEPOXY)
-#include <epoxy/gl.h>
-#elif USE(OPENGL)
-#include "OpenGLShims.h"
-#endif
-
-#if USE(OPENGL_ES_2)
-#include "Extensions3DOpenGLES.h"
-#else
-#include "Extensions3DOpenGL.h"
-#endif
-
-#if USE(TEXTURE_MAPPER)
-#include "TextureMapperGC3DPlatformLayer.h"
-#endif
-
 namespace WebCore {
 
-RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
-{
-    // This implementation doesn't currently support rendering directly to the HostWindow.
-    if (renderStyle == RenderDirectlyToHostWindow)
-        return 0;
-
-    static bool initialized = false;
-    static bool success = true;
-    if (!initialized) {
-#if !USE(OPENGL_ES_2) && !USE(LIBEPOXY)
-        success = initializeOpenGLShims();
-#endif
-        initialized = true;
-    }
-    if (!success)
-        return 0;
-
-    return adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
-}
-
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
-    : m_currentWidth(0)
-    , m_currentHeight(0)
-    , m_attrs(attributes)
-    , m_texture(0)
-    , m_compositorTexture(0)
-    , m_fbo(0)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , m_intermediateTexture(0)
-#endif
-    , m_layerComposited(false)
-    , m_multisampleFBO(0)
-    , m_multisampleDepthStencilBuffer(0)
-    , m_multisampleColorBuffer(0)
-{
-#if USE(TEXTURE_MAPPER)
-    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
-#else
-    m_private = std::make_unique<GraphicsContext3DPrivate>(this, renderStyle);
-#endif
-
-    makeContextCurrent();
-
-    validateAttributes();
-
-    if (renderStyle == RenderOffscreen) {
-        // Create a texture to render into.
-        ::glGenTextures(1, &m_texture);
-        ::glBindTexture(GL_TEXTURE_2D, m_texture);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        ::glBindTexture(GL_TEXTURE_2D, 0);
-
-        // Create an FBO.
-        ::glGenFramebuffers(1, &m_fbo);
-        ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-        ::glGenTextures(1, &m_compositorTexture);
-        ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        ::glGenTextures(1, &m_intermediateTexture);
-        ::glBindTexture(GL_TEXTURE_2D, m_intermediateTexture);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        ::glBindTexture(GL_TEXTURE_2D, 0);
-#endif
-
-
-        // Create a multisample FBO.
-        if (m_attrs.antialias) {
-            ::glGenFramebuffers(1, &m_multisampleFBO);
-            ::glBindFramebuffer(GL_FRAMEBUFFER, m_multisampleFBO);
-            m_state.boundFBO = m_multisampleFBO;
-            ::glGenRenderbuffers(1, &m_multisampleColorBuffer);
-            if (m_attrs.stencil || m_attrs.depth)
-                ::glGenRenderbuffers(1, &m_multisampleDepthStencilBuffer);
-        } else {
-            // Bind canvas FBO.
-            glBindFramebuffer(GraphicsContext3D::FRAMEBUFFER, m_fbo);
-            m_state.boundFBO = m_fbo;
-#if USE(OPENGL_ES_2)
-            if (m_attrs.depth)
-                glGenRenderbuffers(1, &m_depthBuffer);
-            if (m_attrs.stencil)
-                glGenRenderbuffers(1, &m_stencilBuffer);
-#endif
-            if (m_attrs.stencil || m_attrs.depth)
-                glGenRenderbuffers(1, &m_depthStencilBuffer);
-        }
-    }
-
-#if !USE(OPENGL_ES_2)
-    ::glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-
-    if (GLContext::current()->version() >= 320) {
-        m_usingCoreProfile = true;
-
-        // From version 3.2 on we use the OpenGL Core profile, so request that ouput to the shader compiler.
-        // OpenGL version 3.2 uses GLSL version 1.50.
-        m_compiler = ANGLEWebKitBridge(SH_GLSL_150_CORE_OUTPUT);
-
-        // From version 3.2 on we use the OpenGL Core profile, and we need a VAO for rendering.
-        // A VAO could be created and bound by each component using GL rendering (TextureMapper, WebGL, etc). This is
-        // a simpler solution: the first GraphicsContext3D created on a GLContext will create and bind a VAO for that context.
-        GC3Dint currentVAO = 0;
-        getIntegerv(GraphicsContext3D::VERTEX_ARRAY_BINDING, &currentVAO);
-        if (!currentVAO) {
-            m_vao = createVertexArray();
-            bindVertexArray(m_vao);
-        }
-    } else {
-        // For lower versions request the compatibility output to the shader compiler.
-        m_compiler = ANGLEWebKitBridge(SH_GLSL_COMPATIBILITY_OUTPUT);
-
-        // GL_POINT_SPRITE is needed in lower versions.
-        ::glEnable(GL_POINT_SPRITE);
-    }
-#else
-    m_compiler = ANGLEWebKitBridge(SH_ESSL_OUTPUT);
-#endif
-
-    // ANGLE initialization.
-    ShBuiltInResources ANGLEResources;
-    sh::InitBuiltInResources(&ANGLEResources);
-
-    getIntegerv(GraphicsContext3D::MAX_VERTEX_ATTRIBS, &ANGLEResources.MaxVertexAttribs);
-    getIntegerv(GraphicsContext3D::MAX_VERTEX_UNIFORM_VECTORS, &ANGLEResources.MaxVertexUniformVectors);
-    getIntegerv(GraphicsContext3D::MAX_VARYING_VECTORS, &ANGLEResources.MaxVaryingVectors);
-    getIntegerv(GraphicsContext3D::MAX_VERTEX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxVertexTextureImageUnits);
-    getIntegerv(GraphicsContext3D::MAX_COMBINED_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxCombinedTextureImageUnits);
-    getIntegerv(GraphicsContext3D::MAX_TEXTURE_IMAGE_UNITS, &ANGLEResources.MaxTextureImageUnits);
-    getIntegerv(GraphicsContext3D::MAX_FRAGMENT_UNIFORM_VECTORS, &ANGLEResources.MaxFragmentUniformVectors);
-
-    // Always set to 1 for OpenGL ES.
-    ANGLEResources.MaxDrawBuffers = 1;
-
-    GC3Dint range[2], precision;
-    getShaderPrecisionFormat(GraphicsContext3D::FRAGMENT_SHADER, GraphicsContext3D::HIGH_FLOAT, range, &precision);
-    ANGLEResources.FragmentPrecisionHigh = (range[0] || range[1] || precision);
-
-    m_compiler.setResources(ANGLEResources);
-
-    ::glClearColor(0, 0, 0, 0);
-}
-
-GraphicsContext3D::~GraphicsContext3D()
-{
-#if USE(TEXTURE_MAPPER)
-    if (m_texmapLayer->renderStyle() == RenderToCurrentGLContext)
-        return;
-#else
-    if (m_private->renderStyle() == RenderToCurrentGLContext)
-        return;
-#endif
-
-    makeContextCurrent();
-    if (m_texture)
-        ::glDeleteTextures(1, &m_texture);
-    if (m_compositorTexture)
-        ::glDeleteTextures(1, &m_compositorTexture);
-
-    if (m_attrs.antialias) {
-        ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);
-        if (m_attrs.stencil || m_attrs.depth)
-            ::glDeleteRenderbuffers(1, &m_multisampleDepthStencilBuffer);
-        ::glDeleteFramebuffers(1, &m_multisampleFBO);
-    } else if (m_attrs.stencil || m_attrs.depth) {
-#if USE(OPENGL_ES_2)
-        if (m_depthBuffer)
-            glDeleteRenderbuffers(1, &m_depthBuffer);
-
-        if (m_stencilBuffer)
-            glDeleteRenderbuffers(1, &m_stencilBuffer);
-#endif
-        if (m_depthStencilBuffer)
-            ::glDeleteRenderbuffers(1, &m_depthStencilBuffer);
-    }
-    ::glDeleteFramebuffers(1, &m_fbo);
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    ::glDeleteTextures(1, &m_intermediateTexture);
-#endif
-
-    if (m_vao)
-        deleteVertexArray(m_vao);
-}
-
-GraphicsContext3D::ImageExtractor::~ImageExtractor()
-{
-    if (m_decoder)
-        delete m_decoder;
-}
+GraphicsContext3D::ImageExtractor::~ImageExtractor() = default;
 
 bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile)
 {
@@ -274,19 +48,14 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     // We need this to stay in scope because the native image is just a shallow copy of the data.
     AlphaOption alphaOption = premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied;
     GammaAndColorProfileOption gammaAndColorProfileOption = ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied;
-    m_decoder = new ImageSource(nullptr, alphaOption, gammaAndColorProfileOption);
-    
-    if (!m_decoder)
-        return false;
-
-    ImageSource& decoder = *m_decoder;
+    auto source = ImageSource::create(nullptr, alphaOption, gammaAndColorProfileOption);
     m_alphaOp = AlphaDoNothing;
 
     if (m_image->data()) {
-        decoder.setData(m_image->data(), true);
-        if (!decoder.frameCount())
+        source->setData(m_image->data(), true);
+        if (!source->frameCount())
             return false;
-        m_imageSurface = decoder.createFrameImageAtIndex(0);
+        m_imageSurface = source->createFrameImageAtIndex(0);
     } else {
         m_imageSurface = m_image->nativeImageForCurrentFrame();
         // 1. For texImage2D with HTMLVideoElment input, assume no PremultiplyAlpha had been applied and the alpha value is 0xFF for each pixel,
@@ -335,107 +104,37 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     return true;
 }
 
-void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight, int canvasWidth, int canvasHeight, PlatformContextCairo* context)
+void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, const IntSize& imageSize, const IntSize& canvasSize, GraphicsContext& context)
 {
-    if (!imagePixels || imageWidth <= 0 || imageHeight <= 0 || canvasWidth <= 0 || canvasHeight <= 0 || !context)
+    if (!imagePixels || imageSize.isEmpty() || canvasSize.isEmpty())
         return;
 
-    cairo_t *cr = context->cr();
-    context->save();
+    PlatformContextCairo* platformContext = context.platformContext();
+    if (!platformContext)
+        return;
 
-    cairo_rectangle(cr, 0, 0, canvasWidth, canvasHeight);
+    cairo_t* cr = platformContext->cr();
+    platformContext->save();
+
+    cairo_rectangle(cr, 0, 0, canvasSize.width(), canvasSize.height());
     cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
     cairo_paint(cr);
 
     RefPtr<cairo_surface_t> imageSurface = adoptRef(cairo_image_surface_create_for_data(
-        const_cast<unsigned char*>(imagePixels), CAIRO_FORMAT_ARGB32, imageWidth, imageHeight, imageWidth * 4));
+        const_cast<unsigned char*>(imagePixels), CAIRO_FORMAT_ARGB32, imageSize.width(), imageSize.height(), imageSize.width() * 4));
 
     // OpenGL keeps the pixels stored bottom up, so we need to flip the image here.
-    cairo_translate(cr, 0, imageHeight);
+    cairo_translate(cr, 0, imageSize.height());
     cairo_scale(cr, 1, -1);
 
     cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
     cairo_set_source_surface(cr, imageSurface.get(), 0, 0);
-    cairo_rectangle(cr, 0, 0, canvasWidth, -canvasHeight);
+    cairo_rectangle(cr, 0, 0, canvasSize.width(), -canvasSize.height());
 
     cairo_fill(cr);
-    context->restore();
+    platformContext->restore();
 }
-
-void GraphicsContext3D::setContextLostCallback(std::unique_ptr<ContextLostCallback>)
-{
-}
-
-void GraphicsContext3D::setErrorMessageCallback(std::unique_ptr<ErrorMessageCallback>)
-{
-}
-
-bool GraphicsContext3D::makeContextCurrent()
-{
-#if USE(TEXTURE_MAPPER)
-    if (m_texmapLayer)
-        return m_texmapLayer->makeContextCurrent();
-#else
-    if (m_private)
-        return m_private->makeContextCurrent();
-#endif
-    return false;
-}
-
-void GraphicsContext3D::checkGPUStatus()
-{
-}
-
-PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D()
-{
-#if USE(TEXTURE_MAPPER)
-    return m_texmapLayer->platformContext();
-#else
-    return m_private->platformContext();
-#endif
-}
-
-Platform3DObject GraphicsContext3D::platformTexture() const
-{
-    return m_texture;
-}
-
-bool GraphicsContext3D::isGLES2Compliant() const
-{
-#if USE(OPENGL_ES_2)
-    return true;
-#else
-    return false;
-#endif
-}
-
-PlatformLayer* GraphicsContext3D::platformLayer() const
-{
-#if USE(TEXTURE_MAPPER)
-    return m_texmapLayer.get();
-#else
-    return m_private.get();
-#endif
-}
-
-#if PLATFORM(GTK)
-Extensions3D& GraphicsContext3D::getExtensions()
-{
-    if (!m_extensions) {
-#if USE(OPENGL_ES_2)
-        // glGetStringi is not available on GLES2.
-        m_extensions = std::make_unique<Extensions3DOpenGLES>(this,  false);
-#else
-        // From OpenGL 3.2 on we use the Core profile, and there we must use glGetStringi.
-        m_extensions = std::make_unique<Extensions3DOpenGL>(this, GLContext::current()->version() >= 320);
-#endif
-    }
-    return *m_extensions;
-}
-#endif
 
 } // namespace WebCore
 
-#endif // ENABLE(GRAPHICS_CONTEXT_3D)
-
-#endif // USE(CAIRO)
+#endif // ENABLE(GRAPHICS_CONTEXT_3D) && USE(CAIRO)

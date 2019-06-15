@@ -32,6 +32,7 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDM.h"
+#include "CDMClient.h"
 #include "CDMInstance.h"
 #include "MediaKeySession.h"
 #include "SharedBuffer.h"
@@ -57,16 +58,18 @@ ExceptionOr<Ref<MediaKeySession>> MediaKeys::createSession(ScriptExecutionContex
     // When this method is invoked, the user agent must run the following steps:
     // 1. If this object's supported session types value does not contain sessionType, throw [WebIDL] a NotSupportedError.
     if (!m_supportedSessionTypes.contains(sessionType))
-        return Exception(NOT_SUPPORTED_ERR);
+        return Exception(NotSupportedError);
 
     // 2. If the implementation does not support MediaKeySession operations in the current state, throw [WebIDL] an InvalidStateError.
     if (!m_implementation->supportsSessions())
-        return Exception(INVALID_STATE_ERR);
+        return Exception(InvalidStateError);
 
     // 3. Let session be a new MediaKeySession object, and initialize it as follows:
     // NOTE: Continued in MediaKeySession.
     // 4. Return session.
-    return MediaKeySession::create(context, sessionType, m_useDistinctiveIdentifier, m_implementation.copyRef(), m_instance.copyRef());
+    auto session = MediaKeySession::create(context, makeWeakPtr(*this), sessionType, m_useDistinctiveIdentifier, m_implementation.copyRef(), m_instance.copyRef());
+    m_sessions.append(session.copyRef());
+    return WTFMove(session);
 }
 
 void MediaKeys::setServerCertificate(const BufferSource& serverCertificate, Ref<DeferredPromise>&& promise)
@@ -98,7 +101,7 @@ void MediaKeys::setServerCertificate(const BufferSource& serverCertificate, Ref<
         // 5.1. Use this object's cdm instance to process certificate.
         if (m_instance->setServerCertificate(WTFMove(certificate)) == CDMInstance::Failed) {
             // 5.2. If the preceding step failed, resolve promise with a new DOMException whose name is the appropriate error name.
-            promise->reject(INVALID_STATE_ERR);
+            promise->reject(InvalidStateError);
             return;
         }
 
@@ -107,6 +110,32 @@ void MediaKeys::setServerCertificate(const BufferSource& serverCertificate, Ref<
     });
 
     // 6. Return promise.
+}
+
+void MediaKeys::attachCDMClient(CDMClient& client)
+{
+    ASSERT(!m_cdmClients.contains(&client));
+    m_cdmClients.append(&client);
+}
+
+void MediaKeys::detachCDMClient(CDMClient& client)
+{
+    ASSERT(m_cdmClients.contains(&client));
+    m_cdmClients.removeFirst(&client);
+}
+
+void MediaKeys::attemptToResumePlaybackOnClients()
+{
+    for (auto* cdmClient : m_cdmClients)
+        cdmClient->cdmClientAttemptToResumePlaybackIfNecessary();
+}
+
+bool MediaKeys::hasOpenSessions() const
+{
+    return std::any_of(m_sessions.begin(), m_sessions.end(),
+        [](auto& session) {
+            return !session->isClosed();
+        });
 }
 
 } // namespace WebCore

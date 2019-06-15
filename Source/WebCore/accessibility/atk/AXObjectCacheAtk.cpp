@@ -43,7 +43,7 @@ void AXObjectCache::detachWrapper(AccessibilityObject* obj, AccessibilityDetachm
 
     // If an object is being detached NOT because of the AXObjectCache being destroyed,
     // then it's being removed from the accessibility tree and we should emit a signal.
-    if (detachmentType != CacheDestroyed) {
+    if (detachmentType != AccessibilityDetachmentType::CacheDestroyed) {
         if (obj->document()) {
             // Look for the right object to emit the signal from, but using the implementation
             // of atk_object_get_parent from AtkObject class (which uses a cached pointer if set)
@@ -244,7 +244,45 @@ void AXObjectCache::postPlatformNotification(AccessibilityObject* coreObject, AX
         break;
 
     case AXCurrentChanged:
-        atk_object_notify_state_change(axObject, ATK_STATE_ACTIVE, coreObject->ariaCurrentState() != ARIACurrentFalse);
+        atk_object_notify_state_change(axObject, ATK_STATE_ACTIVE, coreObject->currentState() != AccessibilityCurrentState::False);
+        break;
+
+    case AXRowExpanded:
+        atk_object_notify_state_change(axObject, ATK_STATE_EXPANDED, true);
+        break;
+
+    case AXRowCollapsed:
+        atk_object_notify_state_change(axObject, ATK_STATE_EXPANDED, false);
+        break;
+
+    case AXExpandedChanged:
+        atk_object_notify_state_change(axObject, ATK_STATE_EXPANDED, coreObject->isExpanded());
+        break;
+
+    case AXDisabledStateChanged: {
+        bool enabledState = coreObject->isEnabled();
+        atk_object_notify_state_change(axObject, ATK_STATE_ENABLED, enabledState);
+        atk_object_notify_state_change(axObject, ATK_STATE_SENSITIVE, enabledState);
+        break;
+    }
+
+    case AXPressedStateChanged:
+        atk_object_notify_state_change(axObject, ATK_STATE_PRESSED, coreObject->isPressed());
+        break;
+
+    case AXReadOnlyStatusChanged:
+#if ATK_CHECK_VERSION(2,15,3)
+        atk_object_notify_state_change(axObject, ATK_STATE_READ_ONLY, !coreObject->canSetValueAttribute());
+#endif
+        break;
+
+    case AXRequiredStatusChanged:
+        atk_object_notify_state_change(axObject, ATK_STATE_REQUIRED, coreObject->isRequired());
+        break;
+
+    case AXActiveDescendantChanged:
+        if (AccessibilityObject* descendant = coreObject->activeDescendant())
+            platformHandleFocusedUIElementChanged(nullptr, descendant->node());
         break;
 
     default:

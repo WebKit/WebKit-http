@@ -26,6 +26,7 @@
 #include "config.h"
 #include "RemoteWebInspectorProxy.h"
 
+#include "APINavigation.h"
 #include "RemoteWebInspectorProxyMessages.h"
 #include "RemoteWebInspectorUIMessages.h"
 #include "WebInspectorProxy.h"
@@ -33,9 +34,8 @@
 #include "WebPageProxy.h"
 #include <WebCore/NotImplemented.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 RemoteWebInspectorProxy::RemoteWebInspectorProxy()
 {
@@ -82,6 +82,8 @@ void RemoteWebInspectorProxy::sendMessageToFrontend(const String& message)
 
 void RemoteWebInspectorProxy::frontendDidClose()
 {
+    Ref<RemoteWebInspectorProxy> protect(*this);
+
     if (m_client)
         m_client->closeFromFrontend();
 

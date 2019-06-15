@@ -1,8 +1,7 @@
 // Copyright 2009 the Sputnik authors.  All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-esid: sec-date-constructor
-info: >
+info: |
     The [[Value]] property of the newly constructed object
     is set by following steps:
     8. If Result(1) is not NaN and 0 <= ToInteger(Result(1)) <= 99, Result(8) is
@@ -12,6 +11,7 @@ info: >
     11. Compute MakeDate(Result(9), Result(10))
     12. Set the [[Value]] property of the newly constructed object to
     TimeClip(UTC(Result(11)))
+esid: sec-date-year-month-date-hours-minutes-seconds-ms
 es5id: 15.9.3.1_A5_T1
 description: 2 arguments, (year, month)
 includes: [assertRelativeDateMs.js]
@@ -33,7 +33,7 @@ assertRelativeDateMs(new Date(1999, 11), 944006400000);
 
 assertRelativeDateMs(new Date(1999, 12), 946684800000);
 
-assertRelativeDateMs(new Date(2000, 0),  946684800000);
+assertRelativeDateMs(new Date(2000, 0), 946684800000);
 
 assertRelativeDateMs(new Date(2099, 11), 4099766400000);
 

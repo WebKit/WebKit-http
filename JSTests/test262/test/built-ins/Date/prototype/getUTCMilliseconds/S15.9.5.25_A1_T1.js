@@ -2,15 +2,16 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The Date.prototype property "getUTCMilliseconds" has { DontEnum }
     attributes
+esid: sec-date.prototype.getutcmilliseconds
 es5id: 15.9.5.25_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.getUTCMilliseconds;
-if(x === 1)
+if (x === 1)
   Date.prototype.getUTCMilliseconds = 2;
 else
   Date.prototype.getUTCMilliseconds = 1;

@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "toLocaleString" has { DontEnum } attributes
+esid: sec-date.prototype.tolocalestring
 es5id: 15.9.5.5_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.toLocaleString;
-if(x === 1)
+if (x === 1)
   Date.prototype.toLocaleString = 2;
 else
   Date.prototype.toLocaleString = 1;

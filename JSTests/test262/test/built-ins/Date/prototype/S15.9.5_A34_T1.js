@@ -3,10 +3,11 @@
 
 /*---
 info: The Date.prototype has the property "setHours"
+esid: sec-properties-of-the-date-prototype-object
 es5id: 15.9.5_A34_T1
 description: The Date.prototype has the property "setHours"
 ---*/
 
-if(Date.prototype.hasOwnProperty("setHours") !== true){
+if (Date.prototype.hasOwnProperty("setHours") !== true) {
   $ERROR('#1: The Date.prototype has the property "setHours"');
 }

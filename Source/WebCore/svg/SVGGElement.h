@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005, 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,8 +27,8 @@
 
 namespace WebCore {
 
-class SVGGElement final : public SVGGraphicsElement,
-                          public SVGExternalResourcesRequired {
+class SVGGElement final : public SVGGraphicsElement, public SVGExternalResourcesRequired {
+    WTF_MAKE_ISO_ALLOCATED(SVGGElement);
 public:
     static Ref<SVGGElement> create(const QualifiedName&, Document&);
     static Ref<SVGGElement> create(Document&);
@@ -37,17 +38,16 @@ private:
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    bool isValid() const final { return SVGTests::isValid(); }
+    using AttributeOwnerProxy = SVGAttributeOwnerProxyImpl<SVGGElement, SVGGraphicsElement, SVGExternalResourcesRequired>;
 
-    static bool isSupportedAttribute(const QualifiedName&);
+    const SVGAttributeOwnerProxy& attributeOwnerProxy() const final { return m_attributeOwnerProxy; }
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
+    bool isValid() const final { return SVGTests::isValid(); }
     bool rendererIsNeeded(const RenderStyle&) final;
 
-    BEGIN_DECLARE_ANIMATED_PROPERTIES(SVGGElement)
-        DECLARE_ANIMATED_BOOLEAN_OVERRIDE(ExternalResourcesRequired, externalResourcesRequired)
-    END_DECLARE_ANIMATED_PROPERTIES
+    AttributeOwnerProxy m_attributeOwnerProxy { *this };
 };
 
 } // namespace WebCore

@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.indexof
 description: Return abrupt from ToInteger(fromIndex) - using symbol
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.indexOf (searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.indexOf is a distinct function that implements the same
@@ -18,7 +18,7 @@ info: >
   produces the value 0.)
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var fromIndex = Symbol("1");

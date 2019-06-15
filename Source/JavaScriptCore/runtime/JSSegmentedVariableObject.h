@@ -38,11 +38,11 @@ namespace JSC {
 
 class LLIntOffsetsExtractor;
 
-// This is a mostly drop-in replacement for JSEnvironmentRecord, except that it preserves
+// This is a mostly drop-in replacement for JSLexicalEnvironment, except that it preserves
 // the invariant that after a variable is created, its address in memory will not change
 // so long as the JSSegmentedVariableObject is alive. This allows optimizations based
 // on getting the address of the variable and remembering it. As well, unlike a
-// JSEnvironmentRecord, this will manage the memory for the registers itself and neither
+// JSLexicalEnvironment, this will manage the memory for the registers itself and neither
 // requires nor allows for the subclasses to manage that memory. Finally,
 // JSSegmentedVariableObject has its own GC tracing functionality, since it knows the
 // exact dimensions of the variables array at all times.
@@ -54,7 +54,9 @@ class JSSegmentedVariableObject : public JSSymbolTableObject {
     friend class LLIntOffsetsExtractor;
 
 public:
-    typedef JSSymbolTableObject Base;
+    using Base = JSSymbolTableObject;
+
+    DECLARE_INFO;
 
     bool isValidScopeOffset(ScopeOffset offset)
     {
@@ -89,12 +91,12 @@ public:
     static void destroy(JSCell*);
     
     template<typename>
-    static Subspace* subspaceFor(VM& vm)
+    static CompleteSubspace* subspaceFor(VM& vm)
     {
         return &vm.segmentedVariableObjectSpace;
     }
     
-    const ClassInfo* classInfo() const { return m_classInfo; }
+    const ClassInfo* classInfo() const { return m_classInfo.unpoisoned(); }
     
 protected:
     JSSegmentedVariableObject(VM&, Structure*, JSScope*);
@@ -107,7 +109,7 @@ private:
     SegmentedVector<WriteBarrier<Unknown>, 16> m_variables;
     ConcurrentJSLock m_lock;
     bool m_alreadyDestroyed { false }; // We use these assertions to check that we aren't doing ancient hacks that result in this being destroyed more than once.
-    const ClassInfo* m_classInfo;
+    PoisonedClassInfoPtr m_classInfo;
 };
 
 } // namespace JSC

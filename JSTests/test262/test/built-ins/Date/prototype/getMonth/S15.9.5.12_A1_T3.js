@@ -3,6 +3,7 @@
 
 /*---
 info: The Date.prototype property "getMonth" has { DontEnum } attributes
+esid: sec-date.prototype.getmonth
 es5id: 15.9.5.12_A1_T3
 description: Checking DontEnum attribute
 ---*/
@@ -11,8 +12,8 @@ if (Date.prototype.propertyIsEnumerable('getMonth')) {
   $ERROR('#1: The Date.prototype.getMonth property has the attribute DontEnum');
 }
 
-for(var x in Date.prototype) {
-  if(x === "getMonth") {
+for (var x in Date.prototype) {
+  if (x === "getMonth") {
     $ERROR('#2: The Date.prototype.getMonth has the attribute DontEnum');
   }
 }

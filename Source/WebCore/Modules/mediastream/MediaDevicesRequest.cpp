@@ -79,7 +79,7 @@ void MediaDevicesRequest::contextDestroyed()
     ContextDestructionObserver::contextDestroyed();
 }
 
-void MediaDevicesRequest::filterDeviceList(Vector<RefPtr<MediaDeviceInfo>>& devices)
+void MediaDevicesRequest::filterDeviceList(Vector<Ref<MediaDeviceInfo>>& devices)
 {
 #if !PLATFORM(COCOA)
     UNUSED_PARAM(devices);
@@ -95,7 +95,7 @@ void MediaDevicesRequest::filterDeviceList(Vector<RefPtr<MediaDeviceInfo>>& devi
 
     int cameraCount = 0;
     int microphoneCount = 0;
-    devices.removeAllMatching([&](const RefPtr<MediaDeviceInfo>& device) -> bool {
+    devices.removeAllMatching([&](const Ref<MediaDeviceInfo>& device) -> bool {
         if (device->kind() == MediaDeviceInfo::Kind::Videoinput && ++cameraCount > defaultCameraCount)
             return true;
         if (device->kind() == MediaDeviceInfo::Kind::Audioinput && ++microphoneCount > defaultMicrophoneCount)
@@ -120,10 +120,10 @@ void MediaDevicesRequest::start()
         Document& document = downcast<Document>(*scriptExecutionContext());
         document.setDeviceIDHashSalt(deviceIdentifierHashSalt);
 
-        Vector<RefPtr<MediaDeviceInfo>> devices;
+        Vector<Ref<MediaDeviceInfo>> devices;
         for (auto& deviceInfo : captureDevices) {
             auto label = emptyString();
-            if (originHasPersistentAccess || document.hasHadActiveMediaStreamTrack())
+            if (originHasPersistentAccess || document.hasHadCaptureMediaStreamTrack())
                 label = deviceInfo.label();
 
             auto id = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(deviceInfo.persistentId(), deviceIdentifierHashSalt);
@@ -131,11 +131,11 @@ void MediaDevicesRequest::start()
                 continue;
 
             auto groupId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(deviceInfo.groupId(), deviceIdentifierHashSalt);
-            auto deviceType = deviceInfo.type() == CaptureDevice::DeviceType::Audio ? MediaDeviceInfo::Kind::Audioinput : MediaDeviceInfo::Kind::Videoinput;
+            auto deviceType = deviceInfo.type() == CaptureDevice::DeviceType::Microphone ? MediaDeviceInfo::Kind::Audioinput : MediaDeviceInfo::Kind::Videoinput;
             devices.append(MediaDeviceInfo::create(scriptExecutionContext(), label, id, groupId, deviceType));
         }
 
-        if (!originHasPersistentAccess && !document.hasHadActiveMediaStreamTrack())
+        if (!originHasPersistentAccess && !document.hasHadCaptureMediaStreamTrack())
             filterDeviceList(devices);
 
         callOnMainThread([protectedThis = makeRef(*this), devices = WTFMove(devices)]() mutable {

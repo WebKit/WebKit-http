@@ -8,12 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_TRANSIENT_DYADIC_DECIMATOR_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_TRANSIENT_DYADIC_DECIMATOR_H_
+#ifndef MODULES_AUDIO_PROCESSING_TRANSIENT_DYADIC_DECIMATOR_H_
+#define MODULES_AUDIO_PROCESSING_TRANSIENT_DYADIC_DECIMATOR_H_
 
 #include <cstdlib>
-
-#include "webrtc/typedefs.h"
 
 // Provides a set of static methods to perform dyadic decimations.
 
@@ -44,7 +42,7 @@ inline size_t GetOutLengthToDyadicDecimate(size_t in_length,
 //         GetOutLengthToDyadicDecimate().
 //         Must be previously allocated.
 // Returns the number of output samples, -1 on error.
-template<typename T>
+template <typename T>
 static size_t DyadicDecimate(const T* in,
                              size_t in_length,
                              bool odd_sequence,
@@ -67,4 +65,4 @@ static size_t DyadicDecimate(const T* in,
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_TRANSIENT_DYADIC_DECIMATOR_H_
+#endif  // MODULES_AUDIO_PROCESSING_TRANSIENT_DYADIC_DECIMATOR_H_

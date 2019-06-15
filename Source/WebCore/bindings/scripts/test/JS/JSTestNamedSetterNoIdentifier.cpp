@@ -27,13 +27,17 @@
 #include "JSDOMConvertStrings.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
-#include <runtime/FunctionPrototype.h>
-#include <runtime/JSCInlines.h>
+#include "ScriptExecutionContext.h"
+#include "URL.h"
+#include <JavaScriptCore/FunctionPrototype.h>
+#include <JavaScriptCore/HeapSnapshotBuilder.h>
+#include <JavaScriptCore/JSCInlines.h>
 #include <wtf/GetPtr.h>
+#include <wtf/PointerPreparations.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 // Attributes
 
@@ -75,9 +79,9 @@ template<> JSValue JSTestNamedSetterNoIdentifierConstructor::prototypeForStructu
 
 template<> void JSTestNamedSetterNoIdentifierConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    putDirect(vm, vm.propertyNames->prototype, JSTestNamedSetterNoIdentifier::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestNamedSetterNoIdentifier"))), ReadOnly | DontEnum);
-    putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestNamedSetterNoIdentifier::prototype(vm, globalObject), JSC::PropertyAttribute::DontDelete | JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String("TestNamedSetterNoIdentifier"_s)), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
+    putDirect(vm, vm.propertyNames->length, jsNumber(0), JSC::PropertyAttribute::ReadOnly | JSC::PropertyAttribute::DontEnum);
 }
 
 template<> const ClassInfo JSTestNamedSetterNoIdentifierConstructor::s_info = { "TestNamedSetterNoIdentifier", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestNamedSetterNoIdentifierConstructor) };
@@ -86,7 +90,7 @@ template<> const ClassInfo JSTestNamedSetterNoIdentifierConstructor::s_info = { 
 
 static const HashTableValue JSTestNamedSetterNoIdentifierPrototypeTableValues[] =
 {
-    { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNamedSetterNoIdentifierConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestNamedSetterNoIdentifierConstructor) } },
+    { "constructor", static_cast<unsigned>(JSC::PropertyAttribute::DontEnum), NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestNamedSetterNoIdentifierConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestNamedSetterNoIdentifierConstructor) } },
 };
 
 const ClassInfo JSTestNamedSetterNoIdentifierPrototype::s_info = { "TestNamedSetterNoIdentifierPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestNamedSetterNoIdentifierPrototype) };
@@ -94,7 +98,7 @@ const ClassInfo JSTestNamedSetterNoIdentifierPrototype::s_info = { "TestNamedSet
 void JSTestNamedSetterNoIdentifierPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestNamedSetterNoIdentifierPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestNamedSetterNoIdentifier::info(), JSTestNamedSetterNoIdentifierPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestNamedSetterNoIdentifier::s_info = { "TestNamedSetterNoIdentifier", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestNamedSetterNoIdentifier) };
@@ -145,7 +149,7 @@ bool JSTestNamedSetterNoIdentifier::getOwnPropertySlot(JSObject* object, ExecSta
     };
     if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::No>(*state, *thisObject, propertyName, getterFunctor)) {
         auto value = toJS<IDLDOMString>(*state, WTFMove(namedProperty.value()));
-        slot.setValue(thisObject, 0, value);
+        slot.setValue(thisObject, static_cast<unsigned>(0), value);
         return true;
     }
     return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
@@ -165,7 +169,7 @@ bool JSTestNamedSetterNoIdentifier::getOwnPropertySlotByIndex(JSObject* object, 
     };
     if (auto namedProperty = accessVisibleNamedProperty<OverrideBuiltins::No>(*state, *thisObject, propertyName, getterFunctor)) {
         auto value = toJS<IDLDOMString>(*state, WTFMove(namedProperty.value()));
-        slot.setValue(thisObject, 0, value);
+        slot.setValue(thisObject, static_cast<unsigned>(0), value);
         return true;
     }
     return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
@@ -187,7 +191,7 @@ bool JSTestNamedSetterNoIdentifier::put(JSCell* cell, ExecState* state, Property
 
     if (!propertyName.isSymbol()) {
         PropertySlot slot { thisObject, PropertySlot::InternalMethodType::VMInquiry };
-        JSValue prototype = thisObject->getPrototypeDirect();
+        JSValue prototype = thisObject->getPrototypeDirect(state->vm());
         if (!(prototype.isObject() && asObject(prototype)->getPropertySlot(state, propertyName, slot))) {
             auto throwScope = DECLARE_THROW_SCOPE(state->vm());
             auto nativeValue = convert<IDLDOMString>(*state, value);
@@ -207,7 +211,7 @@ bool JSTestNamedSetterNoIdentifier::putByIndex(JSCell* cell, ExecState* state, u
 
     auto propertyName = Identifier::from(state, index);
     PropertySlot slot { thisObject, PropertySlot::InternalMethodType::VMInquiry };
-    JSValue prototype = thisObject->getPrototypeDirect();
+    JSValue prototype = thisObject->getPrototypeDirect(state->vm());
     if (!(prototype.isObject() && asObject(prototype)->getPropertySlot(state, propertyName, slot))) {
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto nativeValue = convert<IDLDOMString>(*state, value);
@@ -246,7 +250,7 @@ EncodedJSValue jsTestNamedSetterNoIdentifierConstructor(ExecState* state, Encode
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestNamedSetterNoIdentifierPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestNamedSetterNoIdentifierPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestNamedSetterNoIdentifier::getConstructor(state->vm(), prototype->globalObject()));
@@ -256,19 +260,29 @@ bool setJSTestNamedSetterNoIdentifierConstructor(ExecState* state, EncodedJSValu
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestNamedSetterNoIdentifierPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestNamedSetterNoIdentifierPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
-    return prototype->putDirect(state->vm(), state->propertyNames().constructor, JSValue::decode(encodedValue));
+    return prototype->putDirect(vm, vm.propertyNames->constructor, JSValue::decode(encodedValue));
 }
 
-bool JSTestNamedSetterNoIdentifierOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+void JSTestNamedSetterNoIdentifier::heapSnapshot(JSCell* cell, HeapSnapshotBuilder& builder)
+{
+    auto* thisObject = jsCast<JSTestNamedSetterNoIdentifier*>(cell);
+    builder.setWrappedObjectForCell(cell, &thisObject->wrapped());
+    if (thisObject->scriptExecutionContext())
+        builder.setLabelForCell(cell, String::format("url %s", thisObject->scriptExecutionContext()->url().string().utf8().data()));
+    Base::heapSnapshot(cell, builder);
+}
+
+bool JSTestNamedSetterNoIdentifierOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor, const char** reason)
 {
     UNUSED_PARAM(handle);
     UNUSED_PARAM(visitor);
+    UNUSED_PARAM(reason);
     return false;
 }
 
@@ -294,9 +308,9 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
 #if ENABLE(BINDING_INTEGRITY)
     void* actualVTablePointer = *(reinterpret_cast<void**>(impl.ptr()));
 #if PLATFORM(WIN)
-    void* expectedVTablePointer = reinterpret_cast<void*>(__identifier("??_7TestNamedSetterNoIdentifier@WebCore@@6B@"));
+    void* expectedVTablePointer = WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION(__identifier("??_7TestNamedSetterNoIdentifier@WebCore@@6B@"));
 #else
-    void* expectedVTablePointer = &_ZTVN7WebCore27TestNamedSetterNoIdentifierE[2];
+    void* expectedVTablePointer = WTF_PREPARE_VTBL_POINTER_FOR_INSPECTION(&_ZTVN7WebCore27TestNamedSetterNoIdentifierE[2]);
 #endif
 
     // If this fails TestNamedSetterNoIdentifier does not have a vtable, so you need to add the
@@ -319,7 +333,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestNa
 
 TestNamedSetterNoIdentifier* JSTestNamedSetterNoIdentifier::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestNamedSetterNoIdentifier*>(vm, value))
+    if (auto* wrapper = jsDynamicCast<JSTestNamedSetterNoIdentifier*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

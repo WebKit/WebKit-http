@@ -3,7 +3,7 @@
 /*---
 description: Resolving with a thenable object value
 es6id: 25.4.4.1
-info: >
+info: |
     [...]
     6. Let promiseCapability be NewPromiseCapability(C).
     [...]
@@ -62,12 +62,12 @@ try {
 }
 
 promise.then(function(val) {
-    if (val !== value) {
-      $DONE('The promise should be resolved with the expected value.');
-      return;
-    }
+  if (val !== value) {
+    $DONE('The promise should be resolved with the expected value.');
+    return;
+  }
 
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});

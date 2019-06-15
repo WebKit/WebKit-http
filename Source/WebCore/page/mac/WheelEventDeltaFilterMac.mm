@@ -26,12 +26,10 @@
 #include "config.h"
 
 #if PLATFORM(MAC)
+#import "WheelEventDeltaFilterMac.h"
 
-#include "WheelEventDeltaFilterMac.h"
-#include "FloatPoint.h"
-
-#import "NSScrollingInputFilterSPI.h"
-#import <wtf/CurrentTime.h>
+#import "FloatPoint.h"
+#import <pal/spi/mac/NSScrollingInputFilterSPI.h>
 
 namespace WebCore {
 
@@ -43,7 +41,7 @@ WheelEventDeltaFilterMac::WheelEventDeltaFilterMac()
 
 void WheelEventDeltaFilterMac::beginFilteringDeltas()
 {
-    m_beginFilteringDeltasTime = monotonicallyIncreasingTime();
+    m_beginFilteringDeltasTime = MonotonicTime::now();
     m_isFilteringDeltas = true;
 }
 
@@ -54,7 +52,7 @@ void WheelEventDeltaFilterMac::updateFromDelta(const FloatSize& delta)
 
     NSPoint filteredDeltaResult;
     NSPoint filteredVelocityResult;
-    [m_predominantAxisFilter filterInputDelta:NSPoint(FloatPoint(delta.width(), delta.height())) timestamp:monotonicallyIncreasingTime() - m_beginFilteringDeltasTime outputDelta:&filteredDeltaResult velocity:&filteredVelocityResult];
+    [m_predominantAxisFilter filterInputDelta:NSPoint(FloatPoint(delta.width(), delta.height())) timestamp:(MonotonicTime::now() - m_beginFilteringDeltasTime).seconds() outputDelta:&filteredDeltaResult velocity:&filteredVelocityResult];
     m_currentFilteredVelocity = FloatSize(filteredVelocityResult.x, filteredVelocityResult.y);
     m_currentFilteredDelta = FloatSize(filteredDeltaResult.x, filteredDeltaResult.y);
 }
@@ -62,7 +60,7 @@ void WheelEventDeltaFilterMac::updateFromDelta(const FloatSize& delta)
 void WheelEventDeltaFilterMac::endFilteringDeltas()
 {
     m_currentFilteredDelta = FloatSize(0, 0);
-    m_beginFilteringDeltasTime = 0;
+    m_beginFilteringDeltasTime = MonotonicTime();
     [m_predominantAxisFilter reset];
     m_isFilteringDeltas = false;
 }

@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.3.3
+esid: sec-weakmap.prototype.get
 description: >
   Returns undefined when key is not on the WeakMap object.
-info: >
+info: |
   WeakMap.prototype.get ( key )
 
   4. Let entries be the List that is the value of M’s [[WeakMapData]] internal
@@ -23,7 +24,7 @@ var key = {};
 
 assert.sameValue(
   map.get(key), undefined,
- 'returns undefined if key is not on the weakmap'
+  'returns undefined if key is not on the weakmap'
 );
 
 map.set(key, 1);

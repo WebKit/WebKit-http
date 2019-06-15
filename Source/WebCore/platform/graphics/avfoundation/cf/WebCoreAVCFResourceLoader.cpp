@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -74,10 +74,22 @@ void WebCoreAVCFResourceLoader::startLoading()
     resourceRequest.setPriority(ResourceLoadPriority::Low);
 
     // ContentSecurityPolicyImposition::DoPolicyCheck is a placeholder value. It does not affect the request since Content Security Policy does not apply to raw resources.
-    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
+    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(
+        SendCallbackPolicy::SendCallbacks,
+        ContentSniffingPolicy::DoNotSniffContent,
+        DataBufferingPolicy::BufferData,
+        StoredCredentialsPolicy::DoNotUse,
+        ClientCredentialPolicy::CannotAskClientForCredentials,
+        FetchOptions::Credentials::Omit,
+        SecurityCheckPolicy::DoSecurityCheck,
+        FetchOptions::Mode::NoCors,
+        CertificateInfoPolicy::DoNotIncludeCertificateInfo,
+        ContentSecurityPolicyImposition::DoPolicyCheck,
+        DefersLoadingPolicy::AllowDefersLoading,
+        CachingPolicy::DisallowCaching));
 
     CachedResourceLoader* loader = m_parent->player()->cachedResourceLoader();
-    m_resource = loader ? loader->requestRawResource(WTFMove(request)) : 0;
+    m_resource = loader ? loader->requestRawResource(WTFMove(request)).value_or(nullptr) : nullptr;
     if (m_resource)
         m_resource->addClient(*this);
     else {
@@ -111,9 +123,10 @@ void WebCoreAVCFResourceLoader::invalidate()
     });
 }
 
-void WebCoreAVCFResourceLoader::responseReceived(CachedResource& resource, const ResourceResponse& response)
+void WebCoreAVCFResourceLoader::responseReceived(CachedResource& resource, const ResourceResponse& response, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT_UNUSED(resource, &resource == m_resource);
+    CompletionHandlerCallingScope completionHandlerCaller(WTFMove(completionHandler));
 
     int status = response.httpStatusCode();
     if (status && (status < 200 || status > 299)) {

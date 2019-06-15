@@ -4,10 +4,12 @@ import tempfile
 
 from mozprocess import ProcessHandler
 
+from serve.serve import make_hosts_file
+
 from .base import Browser, require_arg, get_free_port, browser_command, ExecutorBrowser
 from ..executors import executor_kwargs as base_executor_kwargs
-from ..executors.executorservodriver import (ServoWebDriverTestharnessExecutor,
-                                             ServoWebDriverRefTestExecutor)
+from ..executors.executorservodriver import (ServoWebDriverTestharnessExecutor,  # noqa: F401
+                                             ServoWebDriverRefTestExecutor)  # noqa: F401
 
 here = os.path.join(os.path.split(__file__)[0])
 
@@ -26,30 +28,24 @@ __wptrunner__ = {
     "update_properties": "update_properties",
 }
 
-hosts_text = """127.0.0.1 web-platform.test
-127.0.0.1 www.web-platform.test
-127.0.0.1 www1.web-platform.test
-127.0.0.1 www2.web-platform.test
-127.0.0.1 xn--n8j6ds53lwwkrqhv28a.web-platform.test
-127.0.0.1 xn--lve-6lad.web-platform.test
-"""
-
 
 def check_args(**kwargs):
     require_arg(kwargs, "binary")
 
 
-def browser_kwargs(test_type, run_info_data, **kwargs):
+def browser_kwargs(test_type, run_info_data, config, **kwargs):
     return {
         "binary": kwargs["binary"],
+        "binary_args": kwargs["binary_args"],
         "debug_info": kwargs["debug_info"],
+        "server_config": config,
         "user_stylesheets": kwargs.get("user_stylesheets"),
     }
 
 
 def executor_kwargs(test_type, server_config, cache_manager, run_info_data, **kwargs):
     rv = base_executor_kwargs(test_type, server_config,
-                              cache_manager, **kwargs)
+                              cache_manager, run_info_data, **kwargs)
     return rv
 
 
@@ -58,9 +54,7 @@ def env_extras(**kwargs):
 
 
 def env_options():
-    return {"host": "127.0.0.1",
-            "external_host": "web-platform.test",
-            "bind_hostname": "true",
+    return {"server_host": "127.0.0.1",
             "testharnessreport": "testharnessreport-servodriver.js",
             "supports_debugger": True}
 
@@ -69,25 +63,28 @@ def update_properties():
     return ["debug", "os", "version", "processor", "bits"], None
 
 
-def make_hosts_file():
+def write_hosts_file(config):
     hosts_fd, hosts_path = tempfile.mkstemp()
     with os.fdopen(hosts_fd, "w") as f:
-        f.write(hosts_text)
+        f.write(make_hosts_file(config, "127.0.0.1"))
     return hosts_path
 
 
 class ServoWebDriverBrowser(Browser):
     used_ports = set()
+    init_timeout = 300  # Large timeout for cases where we're booting an Android emulator
 
     def __init__(self, logger, binary, debug_info=None, webdriver_host="127.0.0.1",
-                 user_stylesheets=None):
+                 server_config=None, binary_args=None, user_stylesheets=None):
         Browser.__init__(self, logger)
         self.binary = binary
+        self.binary_args = binary_args or []
         self.webdriver_host = webdriver_host
         self.webdriver_port = None
         self.proc = None
         self.debug_info = debug_info
-        self.hosts_path = make_hosts_file()
+        self.hosts_path = write_hosts_file(server_config)
+        self.server_ports = server_config.ports if server_config else {}
         self.command = None
         self.user_stylesheets = user_stylesheets if user_stylesheets else []
 
@@ -98,10 +95,16 @@ class ServoWebDriverBrowser(Browser):
         env = os.environ.copy()
         env["HOST_FILE"] = self.hosts_path
         env["RUST_BACKTRACE"] = "1"
+        env["EMULATOR_REVERSE_FORWARD_PORTS"] = ",".join(
+            str(port)
+            for _protocol, ports in self.server_ports.items()
+            for port in ports
+            if port
+        )
 
         debug_args, command = browser_command(
             self.binary,
-            [
+            self.binary_args + [
                 "--hard-fail",
                 "--webdriver", str(self.webdriver_port),
                 "about:blank",
@@ -158,8 +161,10 @@ class ServoWebDriverBrowser(Browser):
 
     def cleanup(self):
         self.stop()
+        os.remove(self.hosts_path)
 
     def executor_browser(self):
         assert self.webdriver_port is not None
         return ExecutorBrowser, {"webdriver_host": self.webdriver_host,
-                                 "webdriver_port": self.webdriver_port}
+                                 "webdriver_port": self.webdriver_port,
+                                 "init_timeout": self.init_timeout}

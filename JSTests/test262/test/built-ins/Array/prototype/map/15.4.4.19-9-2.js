@@ -2,18 +2,19 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.map
 es5id: 15.4.4.19-9-2
 description: >
     Array.prototype.map returns new Array with same number of elements
     and values the result of callbackfn
 ---*/
 
-  function callbackfn(val, idx, obj)
-  {
-    return val + 10;
-  }
-  var srcArr = [1,2,3,4,5];
-  var resArr = srcArr.map(callbackfn);
+function callbackfn(val, idx, obj)
+{
+  return val + 10;
+}
+var srcArr = [1, 2, 3, 4, 5];
+var resArr = srcArr.map(callbackfn);
 
 assert.sameValue(resArr[0], 11, 'resArr[0]');
 assert.sameValue(resArr[1], 12, 'resArr[1]');

@@ -67,6 +67,7 @@ WK_EXPORT void WKBundlePageSetFullScreenClient(WKBundlePageRef page, WKBundlePag
 
 WK_EXPORT WKBundlePageGroupRef WKBundlePageGetPageGroup(WKBundlePageRef page);
 WK_EXPORT WKBundleFrameRef WKBundlePageGetMainFrame(WKBundlePageRef page);
+WK_EXPORT WKFrameHandleRef WKBundleFrameCreateFrameHandle(WKBundleFrameRef);
 
 WK_EXPORT WKBundleBackForwardListRef WKBundlePageGetBackForwardList(WKBundlePageRef page);
 
@@ -115,6 +116,9 @@ WK_EXPORT WKStringRef WKBundlePageCopyGroupIdentifier(WKBundlePageRef page);
 
 typedef void (*WKBundlePageTestNotificationCallback)(void* context);
 WK_EXPORT void WKBundlePageRegisterScrollOperationCompletionCallback(WKBundlePageRef, WKBundlePageTestNotificationCallback, void* context);
+
+// Posts a task in the ScriptExecutionContext of the main frame. Used to do work after other tasks have completed.
+WK_EXPORT void WKBundlePagePostTask(WKBundlePageRef, WKBundlePageTestNotificationCallback, void* context);
 
 WK_EXPORT void WKBundlePagePostMessage(WKBundlePageRef page, WKStringRef messageName, WKTypeRef messageBody);
 

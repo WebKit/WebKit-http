@@ -4,7 +4,7 @@
 /*---
 es6id: 25.4.4.1.2
 description: The `name` property of Promise.all Resolve Element functions
-info: >
+info: |
   A promise resolve function is an anonymous built-in function.
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,10 +19,13 @@ var thenable = {
     resolveElementFunction = fulfill;
   }
 };
+
 function NotPromise(executor) {
-  executor(function(){}, function(){});
+  executor(function() {}, function() {});
 }
-NotPromise.resolve = function(v) { return v; };
+NotPromise.resolve = function(v) {
+  return v;
+};
 Promise.all.call(NotPromise, [thenable]);
 
 assert.sameValue(Object.prototype.hasOwnProperty.call(resolveElementFunction, "name"), false);

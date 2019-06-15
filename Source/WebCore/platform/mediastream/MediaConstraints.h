@@ -193,6 +193,19 @@ public:
         return static_cast<double>(std::abs(ideal - m_ideal.value())) / std::max(std::abs(ideal), std::abs(m_ideal.value()));
     }
 
+    double fitnessDistance(const Vector<ValueType>& discreteCapabilityValues) const
+    {
+        double minDistance = std::numeric_limits<double>::infinity();
+
+        for (auto& value : discreteCapabilityValues) {
+            auto distance = fitnessDistance(value, value);
+            if (distance < minDistance)
+                minDistance = distance;
+        }
+
+        return minDistance;
+    }
+
     bool validForRange(ValueType rangeMin, ValueType rangeMax) const
     {
         if (isEmpty())
@@ -240,9 +253,9 @@ public:
 
     ValueType valueForCapabilityRange(ValueType current, ValueType capabilityMin, ValueType capabilityMax) const
     {
-        ValueType value;
-        ValueType min = capabilityMin;
-        ValueType max = capabilityMax;
+        ValueType value { 0 };
+        ValueType min { capabilityMin };
+        ValueType max { capabilityMax };
 
         if (m_exact) {
             ASSERT(validForRange(capabilityMin, capabilityMax));
@@ -254,6 +267,8 @@ public:
             ASSERT(validForRange(value, capabilityMax));
             if (value > min)
                 min = value;
+            if (value < min)
+                value = min;
 
             // If there is no ideal, don't change if minimum is smaller than current.
             if (!m_ideal && value < current)
@@ -265,10 +280,52 @@ public:
             ASSERT(validForRange(capabilityMin, value));
             if (value < max)
                 max = value;
+            if (value > max)
+                value = max;
         }
 
         if (m_ideal)
             value = std::max(min, std::min(max, m_ideal.value()));
+
+        return value;
+    }
+
+    ValueType valueForDiscreteCapabilityValues(ValueType current, const Vector<ValueType>& discreteCapabilityValues) const
+    {
+        ValueType value { 0 };
+        std::optional<ValueType> min;
+        std::optional<ValueType> max;
+
+        if (m_exact) {
+            ASSERT(discreteCapabilityValues.contains(m_exact.value()));
+            return m_exact.value();
+        }
+
+        if (m_min) {
+            auto index = discreteCapabilityValues.findMatching([&](ValueType value) { return m_min.value() >= value; });
+            if (index != notFound) {
+                min = value = discreteCapabilityValues[index];
+
+                // If there is no ideal, don't change if minimum is smaller than current.
+                if (!m_ideal && value < current)
+                    value = current;
+            }
+        }
+
+        if (m_max && m_max.value() >= discreteCapabilityValues[0]) {
+            for (auto& discreteValue : discreteCapabilityValues) {
+                if (m_max.value() <= discreteValue)
+                    max = value = discreteValue;
+            }
+        }
+
+        if (m_ideal && discreteCapabilityValues.contains(m_ideal.value())) {
+            value = m_ideal.value();
+            if (max)
+                value = std::min(max.value(), value);
+            if (min)
+                value = std::max(min.value(), value);
+        }
 
         return value;
     }
@@ -593,6 +650,8 @@ public:
     std::optional<DoubleConstraint> volume() const { return m_volume; }
 
     std::optional<BooleanConstraint> echoCancellation() const { return m_echoCancellation; }
+    std::optional<BooleanConstraint> displaySurface() const { return m_displaySurface; }
+    std::optional<BooleanConstraint> logicalSurface() const { return m_logicalSurface; }
 
     std::optional<StringConstraint> facingMode() const { return m_facingMode; }
     std::optional<StringConstraint> deviceId() const { return m_deviceId; }
@@ -610,41 +669,48 @@ public:
         encoder << m_volume;
 
         encoder << m_echoCancellation;
+        encoder << m_displaySurface;
+        encoder << m_logicalSurface;
 
         encoder << m_facingMode;
         encoder << m_deviceId;
         encoder << m_groupId;
     }
 
-    template <class Decoder> static bool decode(Decoder& decoder, MediaTrackConstraintSetMap& map)
+    template <class Decoder> static std::optional<MediaTrackConstraintSetMap> decode(Decoder& decoder)
     {
+        MediaTrackConstraintSetMap map;
         if (!decoder.decode(map.m_width))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_height))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_sampleRate))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_sampleSize))
-            return false;
+            return std::nullopt;
 
         if (!decoder.decode(map.m_aspectRatio))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_frameRate))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_volume))
-            return false;
+            return std::nullopt;
 
         if (!decoder.decode(map.m_echoCancellation))
-            return false;
+            return std::nullopt;
+        if (!decoder.decode(map.m_displaySurface))
+            return std::nullopt;
+        if (!decoder.decode(map.m_logicalSurface))
+            return std::nullopt;
 
         if (!decoder.decode(map.m_facingMode))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_deviceId))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(map.m_groupId))
-            return false;
+            return std::nullopt;
 
-        return true;
+        return WTFMove(map);
     }
 
 private:
@@ -658,6 +724,8 @@ private:
     std::optional<DoubleConstraint> m_volume;
 
     std::optional<BooleanConstraint> m_echoCancellation;
+    std::optional<BooleanConstraint> m_displaySurface;
+    std::optional<BooleanConstraint> m_logicalSurface;
 
     std::optional<StringConstraint> m_facingMode;
     std::optional<StringConstraint> m_deviceId;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@
 #include "B3EliminateCommonSubexpressions.h"
 #include "B3FixSSA.h"
 #include "B3FoldPathConstants.h"
+#include "B3HoistLoopInvariantValues.h"
 #include "B3InferSwitches.h"
 #include "B3LegalizeMemoryOffsets.h"
 #include "B3LowerMacros.h"
@@ -79,13 +80,16 @@ void generateToAir(Procedure& procedure)
     
     if (shouldValidateIR())
         validate(procedure);
-
+    
     if (procedure.optLevel() >= 2) {
         reduceDoubleToFloat(procedure);
         reduceStrength(procedure);
-        eliminateCommonSubexpressions(procedure);
+        hoistLoopInvariantValues(procedure);
+        if (eliminateCommonSubexpressions(procedure))
+            eliminateCommonSubexpressions(procedure);
         inferSwitches(procedure);
-        duplicateTails(procedure);
+        if (Options::useB3TailDup())
+            duplicateTails(procedure);
         fixSSA(procedure);
         foldPathConstants(procedure);
         

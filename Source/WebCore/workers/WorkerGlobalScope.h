@@ -27,19 +27,24 @@
 #pragma once
 
 #include "Base64Utilities.h"
+#include "CacheStorageConnection.h"
 #include "EventTarget.h"
+#include "ImageBitmap.h"
 #include "ScriptExecutionContext.h"
 #include "Supplementable.h"
 #include "URL.h"
+#include "WorkerCacheStorageConnection.h"
 #include "WorkerEventQueue.h"
 #include "WorkerScriptController.h"
-#include <inspector/ConsoleMessage.h>
+#include <JavaScriptCore/ConsoleMessage.h>
 #include <memory>
+#include <pal/SessionID.h>
 
 namespace WebCore {
 
 class ContentSecurityPolicyResponseHeaders;
 class Crypto;
+class MicrotaskQueue;
 class Performance;
 class ScheduledAction;
 class WorkerInspectorController;
@@ -56,19 +61,24 @@ public:
     virtual ~WorkerGlobalScope();
 
     virtual bool isDedicatedWorkerGlobalScope() const { return false; }
+    virtual bool isServiceWorkerGlobalScope() const { return false; }
 
     const URL& url() const final { return m_url; }
-    String origin() const;
+    String origin() const final;
+    const String& identifier() const { return m_identifier; }
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
-    void stopIndexedDatabase();
 #endif
+
+    WorkerCacheStorageConnection& cacheStorageConnection();
 
     WorkerScriptController* script() { return m_script.get(); }
     void clearScript() { m_script = nullptr; }
 
     WorkerInspectorController& inspectorController() const { return *m_inspectorController; }
+
+    MicrotaskQueue& microtaskQueue() const { return *m_microtaskQueue; }
 
     WorkerThread& thread() const { return m_thread; }
 
@@ -81,11 +91,13 @@ public:
     void close();
 
     virtual ExceptionOr<void> importScripts(const Vector<String>& urls);
-    WorkerNavigator& navigator() const;
+    WorkerNavigator& navigator();
 
-    int setTimeout(std::unique_ptr<ScheduledAction>, int timeout);
+    void setIsOnline(bool);
+
+    ExceptionOr<int> setTimeout(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearTimeout(int timeoutId);
-    int setInterval(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setInterval(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearInterval(int timeoutId);
 
     bool isContextThread() const final;
@@ -102,15 +114,19 @@ public:
     void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
 
     Crypto& crypto();
-
-#if ENABLE(WEB_TIMING)
     Performance& performance() const;
-#endif
+
+    void prepareForTermination();
 
     void removeAllEventListeners() final;
 
+    void createImageBitmap(ImageBitmap::Source&&, ImageBitmapOptions&&, ImageBitmap::Promise&&);
+    void createImageBitmap(ImageBitmap::Source&&, int sx, int sy, int sw, int sh, ImageBitmapOptions&&, ImageBitmap::Promise&&);
+
+    unsigned long createUniqueIdentifier() { return m_uniqueIdentifier++; }
+
 protected:
-    WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*);
+    WorkerGlobalScope(const URL&, Ref<SecurityOrigin>&&, const String& identifier, const String& userAgent, bool isOnline, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);
 
     void applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders&);
 
@@ -132,16 +148,14 @@ private:
 
     ScriptExecutionContext* scriptExecutionContext() const final { return const_cast<WorkerGlobalScope*>(this); }
     URL completeURL(const String&) const final;
+    PAL::SessionID sessionID() const final { return m_sessionID; }
     String userAgent(const URL&) const final;
     void disableEval(const String& errorMessage) final;
     void disableWebAssembly(const String& errorMessage) final;
     EventTarget* errorEventTarget() final;
     WorkerEventQueue& eventQueue() const final;
     String resourceRequestIdentifier() const final { return m_identifier; }
-
-#if ENABLE(WEB_SOCKETS)
     SocketProvider* socketProvider() final;
-#endif
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
     bool isJSExecutionForbidden() const final;
@@ -159,6 +173,10 @@ private:
     bool unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key) final;
 #endif
 
+#if ENABLE(INDEXED_DATABASE)
+    void stopIndexedDatabase();
+#endif
+
     URL m_url;
     String m_identifier;
     String m_userAgent;
@@ -169,8 +187,10 @@ private:
     WorkerThread& m_thread;
     std::unique_ptr<WorkerScriptController> m_script;
     std::unique_ptr<WorkerInspectorController> m_inspectorController;
+    std::unique_ptr<MicrotaskQueue> m_microtaskQueue;
 
     bool m_closing { false };
+    bool m_isOnline;
     bool m_shouldBypassMainWorldContentSecurityPolicy;
 
     mutable WorkerEventQueue m_eventQueue;
@@ -181,15 +201,15 @@ private:
     RefPtr<IDBClient::IDBConnectionProxy> m_connectionProxy;
 #endif
 
-#if ENABLE(WEB_SOCKETS)
     RefPtr<SocketProvider> m_socketProvider;
-#endif
 
-#if ENABLE(WEB_TIMING)
     RefPtr<Performance> m_performance;
-#endif
-
     mutable RefPtr<Crypto> m_crypto;
+
+    PAL::SessionID m_sessionID;
+    RefPtr<WorkerCacheStorageConnection> m_cacheStorageConnection;
+
+    unsigned long m_uniqueIdentifier { 1 };
 };
 
 } // namespace WebCore

@@ -2,7 +2,7 @@
 // See LICENSE for details.
 
 /*---
-info: >
+info: |
     Promise.all expects an iterable argument;
     fails if recieves an abrupt completion
     ref 7.4.1 non-Object fails CheckIterable
@@ -13,10 +13,10 @@ description: Promise.all(new Error()) returns Promise rejected with TypeError
 flags: [async]
 ---*/
 
-Promise.all(new Error("abrupt")).then(function () {
-    $ERROR('Promise unexpectedly resolved: Promise.all(abruptCompletion) should throw TypeError');
-},function (err) {
-    if (!(err instanceof TypeError)) {
-        $ERROR('Expected TypeError, got ' + err);
-    }
-}).then($DONE,$DONE);
+Promise.all(new Error("abrupt")).then(function() {
+  $ERROR('Promise unexpectedly resolved: Promise.all(abruptCompletion) should throw TypeError');
+}, function(err) {
+  if (!(err instanceof TypeError)) {
+    $ERROR('Expected TypeError, got ' + err);
+  }
+}).then($DONE, $DONE);

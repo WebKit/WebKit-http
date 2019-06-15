@@ -23,18 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SandboxExtension_h
-#define SandboxExtension_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
-
-#if ENABLE(SANDBOX_EXTENSIONS)
-typedef struct __WKSandboxExtension* WKSandboxExtensionRef;
-#endif
 
 namespace IPC {
 class Encoder;
@@ -42,10 +38,12 @@ class Decoder;
 }
 
 namespace WebKit {
+    
+class SandboxExtensionImpl;
 
 class SandboxExtension : public RefCounted<SandboxExtension> {
 public:
-    enum Type {
+    enum class Type {
         ReadOnly,
         ReadWrite,
         Generic,
@@ -55,16 +53,22 @@ public:
         WTF_MAKE_NONCOPYABLE(Handle);
     public:
         Handle();
+#if ENABLE(SANDBOX_EXTENSIONS)
+        Handle(Handle&&);
+        Handle& operator=(Handle&&);
+#else
         Handle(Handle&&) = default;
+        Handle& operator=(Handle&&) = default;
+#endif
         ~Handle();
 
         void encode(IPC::Encoder&) const;
-        static bool decode(IPC::Decoder&, Handle&);
+        static std::optional<Handle> decode(IPC::Decoder&);
 
     private:
         friend class SandboxExtension;
 #if ENABLE(SANDBOX_EXTENSIONS)
-        mutable WKSandboxExtensionRef m_sandboxExtension;
+        mutable std::unique_ptr<SandboxExtensionImpl> m_sandboxExtension;
 #endif
     };
 
@@ -83,14 +87,13 @@ public:
        
     private:
 #if ENABLE(SANDBOX_EXTENSIONS)
-        std::unique_ptr<Handle[]> m_data;
-        size_t m_size;
+        Vector<Handle> m_data;
 #else
         Handle m_emptyHandle;
 #endif
     };
     
-    static RefPtr<SandboxExtension> create(const Handle&);
+    static RefPtr<SandboxExtension> create(Handle&&);
     static bool createHandle(const String& path, Type, Handle&);
     static bool createHandleWithoutResolvingPath(const String& path, Type, Handle&);
     static bool createHandleForReadWriteDirectory(const String& path, Handle&); // Will attempt to create the directory.
@@ -108,8 +111,8 @@ private:
     explicit SandboxExtension(const Handle&);
                      
 #if ENABLE(SANDBOX_EXTENSIONS)
-    mutable WKSandboxExtensionRef m_sandboxExtension;
-    size_t m_useCount;
+    mutable std::unique_ptr<SandboxExtensionImpl> m_sandboxExtension;
+    size_t m_useCount { 0 };
 #endif
 };
 
@@ -117,7 +120,7 @@ private:
 inline SandboxExtension::Handle::Handle() { }
 inline SandboxExtension::Handle::~Handle() { }
 inline void SandboxExtension::Handle::encode(IPC::Encoder&) const { }
-inline bool SandboxExtension::Handle::decode(IPC::Decoder&, Handle&) { return true; }
+inline std::optional<SandboxExtension::Handle> SandboxExtension::Handle::decode(IPC::Decoder&) { return SandboxExtension::Handle { }; }
 inline SandboxExtension::HandleArray::HandleArray() { }
 inline SandboxExtension::HandleArray::~HandleArray() { }
 inline void SandboxExtension::HandleArray::allocate(size_t) { }
@@ -126,7 +129,7 @@ inline const SandboxExtension::Handle& SandboxExtension::HandleArray::operator[]
 inline SandboxExtension::Handle& SandboxExtension::HandleArray::operator[](size_t) { return m_emptyHandle; }
 inline void SandboxExtension::HandleArray::encode(IPC::Encoder&) const { }
 inline bool SandboxExtension::HandleArray::decode(IPC::Decoder&, HandleArray&) { return true; }
-inline RefPtr<SandboxExtension> SandboxExtension::create(const Handle&) { return nullptr; }
+inline RefPtr<SandboxExtension> SandboxExtension::create(Handle&&) { return nullptr; }
 inline bool SandboxExtension::createHandle(const String&, Type, Handle&) { return true; }
 inline bool SandboxExtension::createHandleWithoutResolvingPath(const String&, Type, Handle&) { return true; }
 inline bool SandboxExtension::createHandleForReadWriteDirectory(const String&, Handle&) { return true; }
@@ -147,6 +150,3 @@ String resolveAndCreateReadWriteDirectoryForSandboxExtension(const String& path)
 #endif
 
 } // namespace WebKit
-
-
-#endif // SandboxExtension_h

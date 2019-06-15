@@ -9,8 +9,13 @@ description: >
 
     (GeneratorMethod)
 
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
+features: [generators]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 class A {
   * method() {
     super();

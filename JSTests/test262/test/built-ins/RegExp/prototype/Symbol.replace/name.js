@@ -3,7 +3,7 @@
 /*---
 es6id: 21.2.5.8
 description: RegExp.prototype[Symbol.replace] `name` property
-info: >
+info: |
     The value of the name property of this function is "[Symbol.replace]".
 
     ES6 Section 17:
@@ -14,6 +14,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol.replace]
 ---*/
 
 assert.sameValue(RegExp.prototype[Symbol.replace].name, '[Symbol.replace]');

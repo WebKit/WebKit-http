@@ -2,20 +2,21 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.filter
 es5id: 15.4.4.20-9-c-iii-13
 description: >
     Array.prototype.filter return value of callbackfn is a number
     (value is NaN)
 ---*/
 
-        var accessed = false;
+var accessed = false;
 
-        function callbackfn(val, idx, obj) {
-            accessed = true;
-            return NaN;
-        }
+function callbackfn(val, idx, obj) {
+  accessed = true;
+  return NaN;
+}
 
-        var newArr = [11].filter(callbackfn);
+var newArr = [11].filter(callbackfn);
 
 assert.sameValue(newArr.length, 0, 'newArr.length');
 assert(accessed, 'accessed !== true');

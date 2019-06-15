@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.indexof
 description: Returns -1 if length is 0
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.indexOf (searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.indexOf is a distinct function that implements the same
@@ -18,6 +18,7 @@ info: >
   3. If len is 0, return -1.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var fromIndex = {

@@ -36,12 +36,12 @@
 #include "JSDOMWindow.h"
 #include "NP_jsobject.h"
 #include "c_instance.h"
-#include <runtime/JSGlobalObject.h>
-#include <runtime/JSLock.h>
 #include "npruntime_impl.h"
 #include "npruntime_priv.h"
 #include "runtime_object.h"
 #include "runtime_root.h"
+#include <JavaScriptCore/JSGlobalObject.h>
+#include <JavaScriptCore/JSLock.h>
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 
@@ -96,7 +96,7 @@ void convertValueToNPVariant(ExecState* exec, JSValue value, NPVariant* result)
                 OBJECT_TO_NPVARIANT(obj, *result);
             }
         } else {
-            JSGlobalObject* globalObject = exec->vmEntryGlobalObject();
+            JSGlobalObject* globalObject = vm.vmEntryGlobalObject(exec);
 
             RootObject* rootObject = findRootObject(globalObject);
             if (rootObject) {

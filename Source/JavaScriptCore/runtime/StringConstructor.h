@@ -27,7 +27,7 @@ namespace JSC {
 class StringPrototype;
 class GetterSetter;
 
-class StringConstructor : public InternalFunction {
+class StringConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
@@ -43,17 +43,15 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
     }
 
 private:
     StringConstructor(VM&, Structure*);
     void finishCreation(VM&, StringPrototype*);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 };
 
-JSCell* JSC_HOST_CALL stringFromCharCode(ExecState*, int32_t);
-JSCell* stringConstructor(ExecState*, JSValue);
+JSString* JSC_HOST_CALL stringFromCharCode(ExecState*, int32_t);
+JSString* stringConstructor(ExecState*, JSValue);
 
 } // namespace JSC

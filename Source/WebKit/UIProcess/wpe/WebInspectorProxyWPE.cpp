@@ -31,23 +31,18 @@
 
 namespace WebKit {
 
-WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
+WebPageProxy* WebInspectorProxy::platformCreateFrontendPage()
 {
     notImplemented();
     return nullptr;
 }
 
-void WebInspectorProxy::createInspectorWindow()
+void WebInspectorProxy::platformCreateFrontendWindow()
 {
     notImplemented();
 }
 
-void WebInspectorProxy::platformOpen()
-{
-    notImplemented();
-}
-
-void WebInspectorProxy::platformDidClose()
+void WebInspectorProxy::platformCloseFrontendPageAndWindow()
 {
     notImplemented();
 }
@@ -88,17 +83,17 @@ void WebInspectorProxy::platformInspectedURLChanged(const String&)
 
 String WebInspectorProxy::inspectorPageURL()
 {
-    return String("resource:///org/wpe/inspector/UserInterface/Main.html");
+    return String("resource:///org/webkit/inspector/UserInterface/Main.html");
 }
 
 String WebInspectorProxy::inspectorTestPageURL()
 {
-    return String("resource:///org/wpe/inspector/UserInterface/Test.html");
+    return String("resource:///org/webkit/inspector/UserInterface/Test.html");
 }
 
 String WebInspectorProxy::inspectorBaseURL()
 {
-    return String("resource:///org/wpe/inspector/UserInterface/");
+    return String("resource:///org/webkit/inspector/UserInterface/");
 }
 
 unsigned WebInspectorProxy::platformInspectedWindowHeight()

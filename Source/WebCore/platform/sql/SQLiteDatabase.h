@@ -103,7 +103,7 @@ public:
     sqlite3* sqlite3Handle() const
     {
 #if !PLATFORM(IOS)
-        ASSERT(m_sharable || currentThread() == m_openingThread || !m_db);
+        ASSERT(m_sharable || m_openingThread == &Thread::current() || !m_db);
 #endif
         return m_db;
     }
@@ -149,13 +149,15 @@ private:
     int m_pageSize { -1 };
     
     bool m_transactionInProgress { false };
+#ifndef NDEBUG
     bool m_sharable { false };
+#endif
     
     Lock m_authorizerLock;
     RefPtr<DatabaseAuthorizer> m_authorizer;
 
     Lock m_lockingMutex;
-    ThreadIdentifier m_openingThread { 0 };
+    RefPtr<Thread> m_openingThread { nullptr };
 
     Lock m_databaseClosingMutex;
 

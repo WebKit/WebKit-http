@@ -321,30 +321,30 @@ void CompositeEditCommand::apply()
 {
     if (!endingSelection().isContentRichlyEditable()) {
         switch (editingAction()) {
-        case EditActionTypingDeleteSelection:
-        case EditActionTypingDeleteBackward:
-        case EditActionTypingDeleteForward:
-        case EditActionTypingDeleteWordBackward:
-        case EditActionTypingDeleteWordForward:
-        case EditActionTypingDeleteLineBackward:
-        case EditActionTypingDeleteLineForward:
-        case EditActionTypingDeletePendingComposition:
-        case EditActionTypingDeleteFinalComposition:
-        case EditActionTypingInsertText:
-        case EditActionTypingInsertLineBreak:
-        case EditActionTypingInsertParagraph:
-        case EditActionTypingInsertPendingComposition:
-        case EditActionTypingInsertFinalComposition:
-        case EditActionPaste:
-        case EditActionDeleteByDrag:
-        case EditActionSetWritingDirection:
-        case EditActionCut:
-        case EditActionUnspecified:
-        case EditActionInsert:
-        case EditActionInsertReplacement:
-        case EditActionInsertFromDrop:
-        case EditActionDelete:
-        case EditActionDictation:
+        case EditAction::TypingDeleteSelection:
+        case EditAction::TypingDeleteBackward:
+        case EditAction::TypingDeleteForward:
+        case EditAction::TypingDeleteWordBackward:
+        case EditAction::TypingDeleteWordForward:
+        case EditAction::TypingDeleteLineBackward:
+        case EditAction::TypingDeleteLineForward:
+        case EditAction::TypingDeletePendingComposition:
+        case EditAction::TypingDeleteFinalComposition:
+        case EditAction::TypingInsertText:
+        case EditAction::TypingInsertLineBreak:
+        case EditAction::TypingInsertParagraph:
+        case EditAction::TypingInsertPendingComposition:
+        case EditAction::TypingInsertFinalComposition:
+        case EditAction::Paste:
+        case EditAction::DeleteByDrag:
+        case EditAction::SetWritingDirection:
+        case EditAction::Cut:
+        case EditAction::Unspecified:
+        case EditAction::Insert:
+        case EditAction::InsertReplacement:
+        case EditAction::InsertFromDrop:
+        case EditAction::Delete:
+        case EditAction::Dictation:
             break;
         default:
             ASSERT_NOT_REACHED();
@@ -766,15 +766,18 @@ void CompositeEditCommand::replaceTextInNodePreservingMarkers(Text& node, unsign
 {
     Ref<Text> protectedNode(node);
     DocumentMarkerController& markerController = document().markers();
-    auto markers = copyMarkers(markerController.markersInRange(Range::create(document(), &node, offset, &node, offset + count), DocumentMarker::AllMarkers()));
+    auto markers = copyMarkers(markerController.markersInRange(Range::create(document(), &node, offset, &node, offset + count), DocumentMarker::allMarkers()));
     replaceTextInNode(node, offset, count, replacementText);
     RefPtr<Range> newRange = Range::create(document(), &node, offset, &node, offset + replacementText.length());
-    for (const auto& marker : markers)
+    for (const auto& marker : markers) {
 #if PLATFORM(IOS)
-        markerController.addMarker(newRange.get(), marker.type(), marker.description(), marker.alternatives(), marker.metadata());
-#else
+        if (marker.isDictation()) {
+            markerController.addMarker(newRange.get(), marker.type(), marker.description(), marker.alternatives(), marker.metadata());
+            continue;
+        }
+#endif
         markerController.addMarker(newRange.get(), marker.type(), marker.description());
-#endif // PLATFORM(IOS)
+    }
 }
 
 Position CompositeEditCommand::positionOutsideTabSpan(const Position& position)
@@ -816,10 +819,10 @@ void CompositeEditCommand::insertNodeAtTabSpanPosition(Ref<Node>&& node, const P
 static EditAction deleteSelectionEditingActionForEditingAction(EditAction editingAction)
 {
     switch (editingAction) {
-    case EditActionCut:
-        return EditActionCut;
+    case EditAction::Cut:
+        return EditAction::Cut;
     default:
-        return EditActionDelete;
+        return EditAction::Delete;
     }
 }
 
@@ -1477,7 +1480,7 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     // Must recononicalize these two VisiblePositions after the pruning above.
     beforeParagraph = VisiblePosition(beforeParagraph.deepEquivalent());
     afterParagraph = VisiblePosition(afterParagraph.deepEquivalent());
-    if (beforeParagraph.isNotNull() && (!isEndOfParagraph(beforeParagraph) || beforeParagraph == afterParagraph)) {
+    if (beforeParagraph.isNotNull() && ((!isStartOfParagraph(beforeParagraph) && !isEndOfParagraph(beforeParagraph)) || beforeParagraph == afterParagraph)) {
         // FIXME: Trim text between beforeParagraph and afterParagraph if they aren't equal.
         insertNodeAt(HTMLBRElement::create(document()), beforeParagraph.deepEquivalent());
         // Need an updateLayout here in case inserting the br has split a text node.
@@ -1489,9 +1492,9 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
 
     setEndingSelection(VisibleSelection(destination, originalIsDirectional));
     ASSERT(endingSelection().isCaretOrRange());
-    ReplaceSelectionCommand::CommandOptions options = ReplaceSelectionCommand::SelectReplacement | ReplaceSelectionCommand::MovingParagraph;
+    OptionSet<ReplaceSelectionCommand::CommandOption> options { ReplaceSelectionCommand::SelectReplacement, ReplaceSelectionCommand::MovingParagraph };
     if (!preserveStyle)
-        options |= ReplaceSelectionCommand::MatchStyle;
+        options.add(ReplaceSelectionCommand::MatchStyle);
     applyCommandToComposite(ReplaceSelectionCommand::create(document(), WTFMove(fragment), options));
 
     frame().editor().markMisspellingsAndBadGrammar(endingSelection());

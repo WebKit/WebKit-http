@@ -29,8 +29,11 @@
 
 #include "SVGCircleElement.h"
 #include "SVGEllipseElement.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGEllipse);
 
 RenderSVGEllipse::RenderSVGEllipse(SVGGraphicsElement& element, RenderStyle&& style)
     : RenderSVGShape(element, WTFMove(style))
@@ -38,9 +41,7 @@ RenderSVGEllipse::RenderSVGEllipse(SVGGraphicsElement& element, RenderStyle&& st
 {
 }
 
-RenderSVGEllipse::~RenderSVGEllipse()
-{
-}
+RenderSVGEllipse::~RenderSVGEllipse() = default;
 
 void RenderSVGEllipse::updateShapeFromElement()
 {
@@ -112,14 +113,14 @@ void RenderSVGEllipse::strokeShape(GraphicsContext& context) const
     context.strokeEllipse(m_fillBoundingBox);
 }
 
-bool RenderSVGEllipse::shapeDependentStrokeContains(const FloatPoint& point)
+bool RenderSVGEllipse::shapeDependentStrokeContains(const FloatPoint& point, PointCoordinateSpace pointCoordinateSpace)
 {
     // The optimized contains code below does not support non-smooth strokes so we need
     // to fall back to RenderSVGShape::shapeDependentStrokeContains in these cases.
     if (m_usePathFallback || !hasSmoothStroke()) {
         if (!hasPath())
             RenderSVGShape::updateShapeFromElement();
-        return RenderSVGShape::shapeDependentStrokeContains(point);
+        return RenderSVGShape::shapeDependentStrokeContains(point, pointCoordinateSpace);
     }
 
     float halfStrokeWidth = strokeWidth() / 2;

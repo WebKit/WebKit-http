@@ -23,16 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "RenderThemeCocoa.h"
+#import "config.h"
+#import "RenderThemeCocoa.h"
+
+#import "GraphicsContextCG.h"
+#import "RenderText.h"
 
 #if ENABLE(APPLE_PAY)
 
-#include "PassKitSPI.h"
-#include "RenderElement.h"
-#include "RenderStyle.h"
-#include "TranslateTransformOperation.h"
-#include <wtf/SoftLinking.h>
+#import <pal/spi/cocoa/PassKitSPI.h>
+#import <wtf/SoftLinking.h>
 
 #if PLATFORM(MAC)
 SOFT_LINK_PRIVATE_FRAMEWORK(PassKit);
@@ -45,10 +45,38 @@ SOFT_LINK_MAY_FAIL(PassKit, PKDrawApplePayButton, void, (CGContextRef context, C
 #endif // ENABLE(APPLE_PAY)
 
 #if ENABLE(VIDEO)
-#include "LocalizedStrings.h"
+#import "LocalizedStrings.h"
+#import <wtf/BlockObjCExceptions.h>
 #endif
 
 namespace WebCore {
+
+void RenderThemeCocoa::drawLineForDocumentMarker(const RenderText& renderer, GraphicsContext& context, const FloatPoint& origin, float width, DocumentMarkerLineStyle style)
+{
+    if (context.paintingDisabled())
+        return;
+
+    auto circleColor = colorForMarkerLineStyle(style, renderer.page().useSystemAppearance() && renderer.page().useDarkAppearance());
+
+    // Center the underline and ensure we only draw entire dots.
+    FloatPoint offsetPoint = origin;
+    float widthMod = fmodf(width, cMisspellingLinePatternWidth);
+    if (cMisspellingLinePatternWidth - widthMod > cMisspellingLinePatternGapWidth) {
+        float gapIncludeWidth = 0;
+        if (width > cMisspellingLinePatternWidth)
+            gapIncludeWidth = cMisspellingLinePatternGapWidth;
+        offsetPoint.move(floor((widthMod + gapIncludeWidth) / 2), 0);
+        width -= widthMod;
+    }
+
+    CGContextRef platformContext = context.platformContext();
+    CGContextStateSaver stateSaver { platformContext };
+    CGContextSetFillColorWithColor(platformContext, circleColor);
+    for (int x = 0; x < width; x += cMisspellingLinePatternWidth)
+        CGContextAddEllipseInRect(platformContext, CGRectMake(offsetPoint.x() + x, offsetPoint.y(), cMisspellingLineThickness, cMisspellingLineThickness));
+    CGContextSetCompositeOperation(platformContext, kCGCompositeSover);
+    CGContextFillPath(platformContext);
+}
 
 #if ENABLE(APPLE_PAY)
 
@@ -86,9 +114,18 @@ static PKPaymentButtonType toPKPaymentButtonType(ApplePayButtonType type)
         return PKPaymentButtonTypeBuy;
     case ApplePayButtonType::SetUp:
         return PKPaymentButtonTypeSetUp;
+    case ApplePayButtonType::InStore:
+        return PKPaymentButtonTypeInStore;
     case ApplePayButtonType::Donate:
-        // FIXME: Use a named constant here.
-        return (PKPaymentButtonType)4;
+        return PKPaymentButtonTypeDonate;
+#if ENABLE(APPLE_PAY_SESSION_V4)
+    case ApplePayButtonType::CheckOut:
+        return PKPaymentButtonTypeCheckout;
+    case ApplePayButtonType::Book:
+        return PKPaymentButtonTypeBook;
+    case ApplePayButtonType::Subscribe:
+        return PKPaymentButtonTypeSubscribe;
+#endif
     }
 }
 
@@ -117,6 +154,7 @@ String RenderThemeCocoa::mediaControlsFormattedStringForDuration(const double du
     if (!std::isfinite(durationInSeconds))
         return WEB_UI_STRING("indefinite time", "accessibility help text for an indefinite media controller time value");
 
+    BEGIN_BLOCK_OBJC_EXCEPTIONS;
     if (!m_durationFormatter) {
         m_durationFormatter = adoptNS([NSDateComponentsFormatter new]);
         m_durationFormatter.get().unitsStyle = NSDateComponentsFormatterUnitsStyleFull;
@@ -125,6 +163,7 @@ String RenderThemeCocoa::mediaControlsFormattedStringForDuration(const double du
         m_durationFormatter.get().maximumUnitCount = 2;
     }
     return [m_durationFormatter.get() stringFromTimeInterval:durationInSeconds];
+    END_BLOCK_OBJC_EXCEPTIONS;
 #else
     return emptyString();
 #endif

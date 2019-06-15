@@ -121,9 +121,7 @@ HTMLElementStack::ElementRecord::ElementRecord(Ref<HTMLStackItem>&& item, std::u
 {
 }
 
-HTMLElementStack::ElementRecord::~ElementRecord()
-{
-}
+HTMLElementStack::ElementRecord::~ElementRecord() = default;
 
 void HTMLElementStack::ElementRecord::replaceElement(Ref<HTMLStackItem>&& item)
 {
@@ -141,9 +139,7 @@ bool HTMLElementStack::ElementRecord::isAbove(ElementRecord& other) const
     return false;
 }
 
-HTMLElementStack::~HTMLElementStack()
-{
-}
+HTMLElementStack::~HTMLElementStack() = default;
 
 bool HTMLElementStack::hasOnlyOneElement() const
 {
@@ -506,7 +502,7 @@ bool HTMLElementStack::inSelectScope(const QualifiedName& tagName) const
 
 bool HTMLElementStack::hasTemplateInHTMLScope() const
 {
-    return inScopeCommon<isRootNode>(m_top.get(), templateTag.localName());
+    return inScopeCommon<isRootNode>(m_top.get(), templateTag->localName());
 }
 
 Element& HTMLElementStack::htmlElement() const

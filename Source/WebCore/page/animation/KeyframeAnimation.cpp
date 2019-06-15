@@ -45,10 +45,10 @@
 
 namespace WebCore {
 
-KeyframeAnimation::KeyframeAnimation(const Animation& animation, RenderElement* renderer, CompositeAnimation* compositeAnimation, const RenderStyle* unanimatedStyle)
-    : AnimationBase(animation, renderer, compositeAnimation)
+KeyframeAnimation::KeyframeAnimation(const Animation& animation, Element& element, CompositeAnimation& compositeAnimation, const RenderStyle& unanimatedStyle)
+    : AnimationBase(animation, element, compositeAnimation)
     , m_keyframes(animation.name())
-    , m_unanimatedStyle(RenderStyle::clonePtr(*unanimatedStyle))
+    , m_unanimatedStyle(RenderStyle::clonePtr(unanimatedStyle))
 {
     resolveKeyframeStyles();
 
@@ -58,6 +58,8 @@ KeyframeAnimation::KeyframeAnimation(const Animation& animation, RenderElement* 
 #if ENABLE(FILTERS_LEVEL_2)
     checkForMatchingBackdropFilterFunctionLists();
 #endif
+    checkForMatchingColorFilterFunctionLists();
+
     computeStackingContextImpact();
     computeLayoutDependency();
 }
@@ -151,19 +153,19 @@ void KeyframeAnimation::fetchIntervalEndpointsForProperty(CSSPropertyID property
     double offset = prevKeyframe.key();
     double scale = 1.0 / (nextIndex == prevIndex ?  1 : (nextKeyframe.key() - prevKeyframe.key()));
 
-    prog = progress(scale, offset, prevKeyframe.timingFunction(name()));
+    prog = progress(scale, offset, prevKeyframe.timingFunction());
 }
 
-bool KeyframeAnimation::animate(CompositeAnimation& compositeAnimation, RenderElement*, const RenderStyle*, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
+bool KeyframeAnimation::animate(CompositeAnimation& compositeAnimation, const RenderStyle& targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
 {
     // Fire the start timeout if needed
     fireAnimationEventsIfNeeded();
     
     // If we have not yet started, we will not have a valid start time, so just start the animation if needed.
     if (isNew()) {
-        if (m_animation->playState() == AnimPlayStatePlaying && !compositeAnimation.isSuspended())
+        if (m_animation->playState() == AnimationPlayState::Playing && !compositeAnimation.isSuspended())
             updateStateMachine(AnimationStateInput::StartAnimation, -1);
-        else if (m_animation->playState() == AnimPlayStatePaused)
+        else if (m_animation->playState() == AnimationPlayState::Paused)
             updateStateMachine(AnimationStateInput::PlayStatePaused, -1);
     }
 
@@ -223,7 +225,7 @@ void KeyframeAnimation::getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedS
         return;
 
     if (!animatedStyle)
-        animatedStyle = RenderStyle::clonePtr(m_object->style());
+        animatedStyle = RenderStyle::clonePtr(renderer()->style());
 
     for (auto propertyID : m_keyframes.properties()) {
         // Get the from/to styles and progress between
@@ -240,10 +242,10 @@ bool KeyframeAnimation::computeExtentOfTransformAnimation(LayoutRect& bounds) co
 {
     ASSERT(m_keyframes.containsProperty(CSSPropertyTransform));
 
-    if (!is<RenderBox>(m_object))
+    if (!is<RenderBox>(renderer()))
         return true; // Non-boxes don't get transformed;
 
-    RenderBox& box = downcast<RenderBox>(*m_object);
+    RenderBox& box = downcast<RenderBox>(*renderer());
     FloatRect rendererBox = snapRectToDevicePixels(box.borderBoxRect(), box.document().deviceScaleFactor());
 
     FloatRect cumulativeBounds = bounds;
@@ -277,40 +279,40 @@ bool KeyframeAnimation::hasAnimationForProperty(CSSPropertyID property) const
 
 bool KeyframeAnimation::startAnimation(double timeOffset)
 {
-    if (m_object && m_object->isComposited())
-        return downcast<RenderBoxModelObject>(*m_object).startAnimation(timeOffset, m_animation.ptr(), m_keyframes);
+    if (auto* renderer = compositedRenderer())
+        return renderer->startAnimation(timeOffset, m_animation.ptr(), m_keyframes);
     return false;
 }
 
 void KeyframeAnimation::pauseAnimation(double timeOffset)
 {
-    if (!m_object)
+    if (!element())
         return;
 
-    if (m_object->isComposited())
-        downcast<RenderBoxModelObject>(*m_object).animationPaused(timeOffset, m_keyframes.animationName());
+    if (auto* renderer = compositedRenderer())
+        renderer->animationPaused(timeOffset, m_keyframes.animationName());
 
     // Restore the original (unanimated) style
     if (!paused())
-        setNeedsStyleRecalc(m_object->element());
+        setNeedsStyleRecalc(element());
 }
 
-void KeyframeAnimation::endAnimation()
+void KeyframeAnimation::endAnimation(bool fillingForwards)
 {
-    if (!m_object)
+    if (!element())
         return;
 
-    if (m_object->isComposited())
-        downcast<RenderBoxModelObject>(*m_object).animationFinished(m_keyframes.animationName());
+    if (auto* renderer = compositedRenderer())
+        renderer->animationFinished(m_keyframes.animationName());
 
     // Restore the original (unanimated) style
-    if (!paused())
-        setNeedsStyleRecalc(m_object->element());
+    if (!fillingForwards && !paused())
+        setNeedsStyleRecalc(element());
 }
 
 bool KeyframeAnimation::shouldSendEventForListener(Document::ListenerType listenerType) const
 {
-    return m_object->document().hasListenerType(listenerType);
+    return element()->document().hasListenerType(listenerType);
 }
 
 void KeyframeAnimation::onAnimationStart(double elapsedTime)
@@ -326,10 +328,7 @@ void KeyframeAnimation::onAnimationIteration(double elapsedTime)
 void KeyframeAnimation::onAnimationEnd(double elapsedTime)
 {
     sendAnimationEvent(eventNames().animationendEvent, elapsedTime);
-    // End the animation if we don't fill forwards. Forward filling
-    // animations are ended properly in the class destructor.
-    if (!m_animation->fillsForwards())
-        endAnimation();
+    endAnimation(m_animation->fillsForwards());
 }
 
 bool KeyframeAnimation::sendAnimationEvent(const AtomicString& eventType, double elapsedTime)
@@ -349,7 +348,7 @@ bool KeyframeAnimation::sendAnimationEvent(const AtomicString& eventType, double
 
     if (shouldSendEventForListener(listenerType)) {
         // Dispatch the event
-        RefPtr<Element> element = m_object->element();
+        auto element = makeRefPtr(this->element());
 
         ASSERT(!element || element->document().pageCacheState() == Document::NotInPageCache);
         if (!element)
@@ -389,17 +388,16 @@ bool KeyframeAnimation::affectsProperty(CSSPropertyID property) const
 
 void KeyframeAnimation::resolveKeyframeStyles()
 {
-    if (!m_object || !m_object->element())
+    if (!element())
         return;
-    auto& element = *m_object->element();
 
-    if (auto* styleScope = Style::Scope::forOrdinal(element, m_animation->nameStyleScopeOrdinal()))
-        styleScope->resolver().keyframeStylesForAnimation(*m_object->element(), m_unanimatedStyle.get(), m_keyframes);
+    if (auto* styleScope = Style::Scope::forOrdinal(*element(), m_animation->nameStyleScopeOrdinal()))
+        styleScope->resolver().keyframeStylesForAnimation(*element(), m_unanimatedStyle.get(), m_keyframes);
 
     // Ensure resource loads for all the frames.
     for (auto& keyframe : m_keyframes.keyframes()) {
         if (auto* style = const_cast<RenderStyle*>(keyframe.style()))
-            Style::loadPendingResources(*style, element.document(), &element);
+            Style::loadPendingResources(*style, element()->document(), element());
     }
 }
 
@@ -443,81 +441,63 @@ void KeyframeAnimation::validateTransformFunctionList()
     m_transformFunctionListsMatch = true;
 }
 
-void KeyframeAnimation::checkForMatchingFilterFunctionLists()
+bool KeyframeAnimation::checkForMatchingFilterFunctionLists(CSSPropertyID propertyID, const std::function<const FilterOperations& (const RenderStyle&)>& filtersGetter) const
 {
-    m_filterFunctionListsMatch = false;
-
-    if (m_keyframes.size() < 2 || !m_keyframes.containsProperty(CSSPropertyFilter))
-        return;
+    if (m_keyframes.size() < 2 || !m_keyframes.containsProperty(propertyID))
+        return false;
 
     // Empty filters match anything, so find the first non-empty entry as the reference
     size_t numKeyframes = m_keyframes.size();
-    size_t firstNonEmptyFilterKeyframeIndex = numKeyframes;
+    size_t firstNonEmptyKeyframeIndex = numKeyframes;
 
     for (size_t i = 0; i < numKeyframes; ++i) {
-        if (m_keyframes[i].style()->filter().operations().size()) {
-            firstNonEmptyFilterKeyframeIndex = i;
+        if (filtersGetter(*m_keyframes[i].style()).operations().size()) {
+            firstNonEmptyKeyframeIndex = i;
             break;
         }
     }
     
-    if (firstNonEmptyFilterKeyframeIndex == numKeyframes)
-        return;
+    if (firstNonEmptyKeyframeIndex == numKeyframes)
+        return false;
 
-    auto& firstVal = m_keyframes[firstNonEmptyFilterKeyframeIndex].style()->filter();
+    auto& firstVal = filtersGetter(*m_keyframes[firstNonEmptyKeyframeIndex].style());
     
-    for (size_t i = firstNonEmptyFilterKeyframeIndex + 1; i < numKeyframes; ++i) {
-        auto& value = m_keyframes[i].style()->filter();
+    for (size_t i = firstNonEmptyKeyframeIndex + 1; i < numKeyframes; ++i) {
+        auto& value = filtersGetter(*m_keyframes[i].style());
 
         // An emtpy filter list matches anything.
         if (value.operations().isEmpty())
             continue;
 
         if (!firstVal.operationsMatch(value))
-            return;
+            return false;
     }
 
-    m_filterFunctionListsMatch = true;
+    return true;
+}
+
+void KeyframeAnimation::checkForMatchingFilterFunctionLists()
+{
+    m_filterFunctionListsMatch = checkForMatchingFilterFunctionLists(CSSPropertyFilter, [] (const RenderStyle& style) -> const FilterOperations& {
+        return style.filter();
+    });
 }
 
 #if ENABLE(FILTERS_LEVEL_2)
 void KeyframeAnimation::checkForMatchingBackdropFilterFunctionLists()
 {
-    m_backdropFilterFunctionListsMatch = false;
-
-    if (m_keyframes.size() < 2 || !m_keyframes.containsProperty(CSSPropertyWebkitBackdropFilter))
-        return;
-
-    // Empty filters match anything, so find the first non-empty entry as the reference
-    size_t numKeyframes = m_keyframes.size();
-    size_t firstNonEmptyFilterKeyframeIndex = numKeyframes;
-
-    for (size_t i = 0; i < numKeyframes; ++i) {
-        if (m_keyframes[i].style()->backdropFilter().operations().size()) {
-            firstNonEmptyFilterKeyframeIndex = i;
-            break;
-        }
-    }
-
-    if (firstNonEmptyFilterKeyframeIndex == numKeyframes)
-        return;
-
-    auto& firstVal = m_keyframes[firstNonEmptyFilterKeyframeIndex].style()->backdropFilter();
-
-    for (size_t i = firstNonEmptyFilterKeyframeIndex + 1; i < numKeyframes; ++i) {
-        auto& value = m_keyframes[i].style()->backdropFilter();
-
-        // An emtpy filter list matches anything.
-        if (value.operations().isEmpty())
-            continue;
-
-        if (!firstVal.operationsMatch(value))
-            return;
-    }
-
-    m_backdropFilterFunctionListsMatch = true;
+    m_backdropFilterFunctionListsMatch = checkForMatchingFilterFunctionLists(CSSPropertyWebkitBackdropFilter, [] (const RenderStyle& style) -> const FilterOperations& {
+        return style.backdropFilter();
+    });
 }
 #endif
+
+void KeyframeAnimation::checkForMatchingColorFilterFunctionLists()
+{
+    m_colorFilterFunctionListsMatch = checkForMatchingFilterFunctionLists(CSSPropertyAppleColorFilter, [] (const RenderStyle& style) -> const FilterOperations& {
+        return style.appleColorFilter();
+    });
+}
 
 std::optional<Seconds> KeyframeAnimation::timeToNextService()
 {

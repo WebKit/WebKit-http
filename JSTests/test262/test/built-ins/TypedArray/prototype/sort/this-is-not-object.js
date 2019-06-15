@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   1. Let obj be the this value as the argument.
@@ -15,7 +15,7 @@ info: >
   1. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var sort = TypedArray.prototype.sort;

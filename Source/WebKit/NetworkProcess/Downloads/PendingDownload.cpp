@@ -26,21 +26,20 @@
 #include "config.h"
 #include "PendingDownload.h"
 
-#if USE(NETWORK_SESSION)
-
 #include "DataReference.h"
 #include "DownloadProxyMessages.h"
 #include "NetworkLoad.h"
 #include "NetworkProcess.h"
 #include "WebCoreArgumentCoders.h"
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID, NetworkSession& networkSession, const String& suggestedName)
     : m_networkLoad(std::make_unique<NetworkLoad>(*this, WTFMove(parameters), networkSession))
 {
+    m_isAllowedToAskUserForCredentials = parameters.clientCredentialPolicy == ClientCredentialPolicy::MayAskClientForCredentials;
+
     m_networkLoad->setPendingDownloadID(downloadID);
     m_networkLoad->setPendingDownload(*this);
     m_networkLoad->setSuggestedFilename(suggestedName);
@@ -51,6 +50,8 @@ PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID 
 PendingDownload::PendingDownload(std::unique_ptr<NetworkLoad>&& networkLoad, DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
     : m_networkLoad(WTFMove(networkLoad))
 {
+    m_isAllowedToAskUserForCredentials = m_networkLoad->isAllowedToAskUserForCredentials();
+
     m_networkLoad->setPendingDownloadID(downloadID);
     send(Messages::DownloadProxy::DidStart(request, String()));
 
@@ -74,18 +75,6 @@ void PendingDownload::cancel()
     send(Messages::DownloadProxy::DidCancel({ }));
 }
 
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void PendingDownload::canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace& protectionSpace)
-{
-    send(Messages::DownloadProxy::CanAuthenticateAgainstProtectionSpace(protectionSpace));
-}
-
-void PendingDownload::continueCanAuthenticateAgainstProtectionSpace(bool canAuthenticate)
-{
-    m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
-}
-#endif
-
 void PendingDownload::didFailLoading(const WebCore::ResourceError& error)
 {
     send(Messages::DownloadProxy::DidFail(error, { }));
@@ -102,5 +91,3 @@ uint64_t PendingDownload::messageSenderDestinationID()
 }
     
 }
-
-#endif

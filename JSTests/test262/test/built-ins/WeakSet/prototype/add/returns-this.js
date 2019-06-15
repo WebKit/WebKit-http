@@ -2,8 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.4.3.1
+esid: sec-weakset.prototype.add
 description: Returns `this` after adding a new value.
-info: >
+info: |
   WeakSet.prototype.add ( value )
 
   1. Let S be this value.

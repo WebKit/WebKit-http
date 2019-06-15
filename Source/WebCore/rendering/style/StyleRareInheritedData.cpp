@@ -29,6 +29,7 @@
 #include "RenderStyleConstants.h"
 #include "ShadowData.h"
 #include "StyleCustomPropertyData.h"
+#include "StyleFilterData.h"
 #include "StyleImage.h"
 #include <wtf/PointerComparison.h>
 
@@ -38,10 +39,10 @@ struct GreaterThanOrSameSizeAsStyleRareInheritedData : public RefCounted<Greater
     void* styleImage;
     Color firstColor;
     float firstFloat;
-    Color colors[7];
+    Color colors[9];
     void* ownPtrs[1];
     AtomicString atomicStrings[5];
-    void* refPtrs[2];
+    void* refPtrs[3];
     Length lengths[2];
     float secondFloat;
     unsigned bitfields[4];
@@ -50,7 +51,7 @@ struct GreaterThanOrSameSizeAsStyleRareInheritedData : public RefCounted<Greater
     short hyphenationShorts[3];
 
 #if PLATFORM(IOS)
-    Color compositionColor;
+    Color compositionColor; // FIXME: this has gone.
 #endif
 #if ENABLE(TEXT_AUTOSIZING)
     TextSizeAdjustment textSizeAdjust;
@@ -79,18 +80,18 @@ StyleRareInheritedData::StyleRareInheritedData()
     , orphans(RenderStyle::initialOrphans())
     , hasAutoWidows(true)
     , hasAutoOrphans(true)
-    , textSecurity(RenderStyle::initialTextSecurity())
-    , userModify(READ_ONLY)
-    , wordBreak(RenderStyle::initialWordBreak())
-    , overflowWrap(RenderStyle::initialOverflowWrap())
-    , nbspMode(NBNORMAL)
-    , lineBreak(LineBreakAuto)
-    , userSelect(RenderStyle::initialUserSelect())
-    , speak(SpeakNormal)
-    , hyphens(HyphensManual)
-    , textEmphasisFill(TextEmphasisFillFilled)
-    , textEmphasisMark(TextEmphasisMarkNone)
-    , textEmphasisPosition(TextEmphasisPositionOver | TextEmphasisPositionRight)
+    , textSecurity(static_cast<unsigned>(RenderStyle::initialTextSecurity()))
+    , userModify(static_cast<unsigned>(UserModify::ReadOnly))
+    , wordBreak(static_cast<unsigned>(RenderStyle::initialWordBreak()))
+    , overflowWrap(static_cast<unsigned>(RenderStyle::initialOverflowWrap()))
+    , nbspMode(static_cast<unsigned>(NBSPMode::Normal))
+    , lineBreak(static_cast<unsigned>(LineBreak::Auto))
+    , userSelect(static_cast<unsigned>(RenderStyle::initialUserSelect()))
+    , speakAs(RenderStyle::initialSpeakAs().toRaw())
+    , hyphens(static_cast<unsigned>(Hyphens::Manual))
+    , textEmphasisFill(static_cast<unsigned>(TextEmphasisFill::Filled))
+    , textEmphasisMark(static_cast<unsigned>(TextEmphasisMark::None))
+    , textEmphasisPosition(static_cast<unsigned>(RenderStyle::initialTextEmphasisPosition().toRaw()))
     , textOrientation(static_cast<unsigned>(TextOrientation::Mixed))
 #if ENABLE(CSS3_TEXT)
     , textIndentLine(RenderStyle::initialTextIndentLine())
@@ -100,9 +101,9 @@ StyleRareInheritedData::StyleRareInheritedData()
 #if ENABLE(CSS_IMAGE_ORIENTATION)
     , imageOrientation(RenderStyle::initialImageOrientation())
 #endif
-    , imageRendering(RenderStyle::initialImageRendering())
-    , lineSnap(RenderStyle::initialLineSnap())
-    , lineAlign(RenderStyle::initialLineAlign())
+    , imageRendering(static_cast<unsigned>(RenderStyle::initialImageRendering()))
+    , lineSnap(static_cast<unsigned>(RenderStyle::initialLineSnap()))
+    , lineAlign(static_cast<unsigned>(RenderStyle::initialLineAlign()))
 #if ENABLE(ACCELERATED_OVERFLOW_SCROLLING)
     , useTouchOverflowScrolling(RenderStyle::initialUseTouchOverflowScrolling())
 #endif
@@ -114,27 +115,29 @@ StyleRareInheritedData::StyleRareInheritedData()
     , textAlignLast(RenderStyle::initialTextAlignLast())
     , textJustify(RenderStyle::initialTextJustify())
 #endif
-    , textDecorationSkip(RenderStyle::initialTextDecorationSkip())
-    , textUnderlinePosition(RenderStyle::initialTextUnderlinePosition())
-    , rubyPosition(RenderStyle::initialRubyPosition())
-    , textZoom(RenderStyle::initialTextZoom())
+    , textDecorationSkip(RenderStyle::initialTextDecorationSkip().toRaw())
+    , textUnderlinePosition(RenderStyle::initialTextUnderlinePosition().toRaw())
+    , rubyPosition(static_cast<unsigned>(RenderStyle::initialRubyPosition()))
+    , textZoom(static_cast<unsigned>(RenderStyle::initialTextZoom()))
 #if PLATFORM(IOS)
     , touchCalloutEnabled(RenderStyle::initialTouchCalloutEnabled())
 #endif
 #if ENABLE(CSS_TRAILING_WORD)
     , trailingWord(static_cast<unsigned>(RenderStyle::initialTrailingWord()))
 #endif
-    , hangingPunctuation(RenderStyle::initialHangingPunctuation())
+    , hangingPunctuation(RenderStyle::initialHangingPunctuation().toRaw())
     , paintOrder(static_cast<unsigned>(RenderStyle::initialPaintOrder()))
     , capStyle(RenderStyle::initialCapStyle())
     , joinStyle(RenderStyle::initialJoinStyle())
     , hasSetStrokeWidth(false)
     , hasSetStrokeColor(false)
-    , strokeWidth(RenderStyle::initialOneLength())
+    , strokeWidth(RenderStyle::initialStrokeWidth())
+    , strokeColor(RenderStyle::initialStrokeColor())
     , miterLimit(RenderStyle::initialStrokeMiterLimit())
     , hyphenationLimitBefore(-1)
     , hyphenationLimitAfter(-1)
     , hyphenationLimitLines(-1)
+    , appleColorFilter(StyleFilterData::create())
     , lineGrid(RenderStyle::initialLineGrid())
     , tabSize(RenderStyle::initialTabSize())
 #if ENABLE(TEXT_AUTOSIZING)
@@ -159,6 +162,8 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , visitedLinkTextStrokeColor(o.visitedLinkTextStrokeColor)
     , visitedLinkTextFillColor(o.visitedLinkTextFillColor)
     , visitedLinkTextEmphasisColor(o.visitedLinkTextEmphasisColor)
+    , caretColor(o.caretColor)
+    , visitedLinkCaretColor(o.visitedLinkCaretColor)
     , textShadow(o.textShadow ? std::make_unique<ShadowData>(*o.textShadow) : nullptr)
     , cursorData(o.cursorData)
     , indent(o.indent)
@@ -175,7 +180,7 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , nbspMode(o.nbspMode)
     , lineBreak(o.lineBreak)
     , userSelect(o.userSelect)
-    , speak(o.speak)
+    , speakAs(o.speakAs)
     , hyphens(o.hyphens)
     , textEmphasisFill(o.textEmphasisFill)
     , textEmphasisMark(o.textEmphasisMark)
@@ -228,6 +233,7 @@ inline StyleRareInheritedData::StyleRareInheritedData(const StyleRareInheritedDa
     , hyphenationLimitAfter(o.hyphenationLimitAfter)
     , hyphenationLimitLines(o.hyphenationLimitLines)
     , textEmphasisCustomMark(o.textEmphasisCustomMark)
+    , appleColorFilter(o.appleColorFilter)
     , lineGrid(o.lineGrid)
     , tabSize(o.tabSize)
 #if ENABLE(TEXT_AUTOSIZING)
@@ -247,9 +253,7 @@ Ref<StyleRareInheritedData> StyleRareInheritedData::copy() const
     return adoptRef(*new StyleRareInheritedData(*this));
 }
 
-StyleRareInheritedData::~StyleRareInheritedData()
-{
-}
+StyleRareInheritedData::~StyleRareInheritedData() = default;
 
 bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
 {
@@ -260,6 +264,8 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && visitedLinkTextStrokeColor == o.visitedLinkTextStrokeColor
         && visitedLinkTextFillColor == o.visitedLinkTextFillColor
         && visitedLinkTextEmphasisColor == o.visitedLinkTextEmphasisColor
+        && caretColor == o.caretColor
+        && visitedLinkCaretColor == o.visitedLinkCaretColor
 #if ENABLE(TOUCH_EVENTS)
         && tapHighlightColor == o.tapHighlightColor
 #endif
@@ -284,7 +290,7 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && textSizeAdjust == o.textSizeAdjust
 #endif
         && userSelect == o.userSelect
-        && speak == o.speak
+        && speakAs == o.speakAs
         && hyphens == o.hyphens
         && hyphenationLimitBefore == o.hyphenationLimitBefore
         && hyphenationLimitAfter == o.hyphenationLimitAfter
@@ -304,6 +310,7 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && hyphenationString == o.hyphenationString
         && textEmphasisCustomMark == o.textEmphasisCustomMark
         && arePointingToEqualData(quotes, o.quotes)
+        && appleColorFilter == o.appleColorFilter
         && tabSize == o.tabSize
         && lineGrid == o.lineGrid
 #if ENABLE(CSS_IMAGE_ORIENTATION)
@@ -340,6 +347,11 @@ bool StyleRareInheritedData::operator==(const StyleRareInheritedData& o) const
         && miterLimit == o.miterLimit
         && customProperties == o.customProperties
         && arePointingToEqualData(listStyleImage, o.listStyleImage);
+}
+
+bool StyleRareInheritedData::hasColorFilters() const
+{
+    return !appleColorFilter->operations.isEmpty();
 }
 
 } // namespace WebCore

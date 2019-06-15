@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,14 +30,12 @@
 #import "WebResourceLoadScheduler.h"
 #import <WebCore/BlobRegistryImpl.h>
 #import <WebCore/Color.h>
-#import <WebCore/MainFrame.h>
+#import <WebCore/Frame.h>
 #import <WebCore/NetworkStorageSession.h>
-#import <WebCore/PlatformCookieJar.h>
+#import <WebCore/PasteboardItemInfo.h>
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SubframeLoader.h>
-#import <WebKitSystemInterface.h>
-#import <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
@@ -74,40 +72,40 @@ BlobRegistry* WebPlatformStrategies::createBlobRegistry()
     return new WebCore::BlobRegistryImpl;
 }
 
-String WebPlatformStrategies::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+std::pair<String, bool> WebPlatformStrategies::cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies)
 {
-    return WebCore::cookiesForDOM(session, firstParty, url);
+    return session.cookiesForDOM(firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
 }
 
-void WebPlatformStrategies::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& cookieString)
+void WebPlatformStrategies::setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String& cookieString)
 {
-    WebCore::setCookiesFromDOM(session, firstParty, url, cookieString);
+    session.setCookiesFromDOM(firstParty, sameSiteInfo, url, frameID, pageID, cookieString);
 }
 
-bool WebPlatformStrategies::cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+bool WebPlatformStrategies::cookiesEnabled(const NetworkStorageSession& session)
 {
-    return WebCore::cookiesEnabled(session, firstParty, url);
+    return session.cookiesEnabled();
 }
 
-String WebPlatformStrategies::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+std::pair<String, bool> WebPlatformStrategies::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies)
 {
-    return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
+    return session.cookieRequestHeaderFieldValue(firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
 }
 
-String WebPlatformStrategies::cookieRequestHeaderFieldValue(SessionID sessionID, const URL& firstParty, const URL& url)
+std::pair<String, bool> WebPlatformStrategies::cookieRequestHeaderFieldValue(PAL::SessionID sessionID, const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies)
 {
     auto& session = sessionID.isEphemeral() ? WebFrameNetworkingContext::ensurePrivateBrowsingSession() : NetworkStorageSession::defaultStorageSession();
-    return WebCore::cookieRequestHeaderFieldValue(session, firstParty, url);
+    return session.cookieRequestHeaderFieldValue(firstParty, sameSiteInfo, url, frameID, pageID, includeSecureCookies);
 }
 
-bool WebPlatformStrategies::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)
+bool WebPlatformStrategies::getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const SameSiteInfo& sameSiteInfo, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<Cookie>& rawCookies)
 {
-    return WebCore::getRawCookies(session, firstParty, url, rawCookies);
+    return session.getRawCookies(firstParty, sameSiteInfo, url, frameID, pageID, rawCookies);
 }
 
 void WebPlatformStrategies::deleteCookie(const NetworkStorageSession& session, const URL& url, const String& cookieName)
 {
-    WebCore::deleteCookie(session, url, cookieName);
+    session.deleteCookie(url, cookieName);
 }
 
 void WebPlatformStrategies::getTypes(Vector<String>& types, const String& pasteboardName)
@@ -125,14 +123,14 @@ void WebPlatformStrategies::getPathnamesForType(Vector<String>& pathnames, const
     PlatformPasteboard(pasteboardName).getPathnamesForType(pathnames, pasteboardType);
 }
 
+Vector<String> WebPlatformStrategies::allStringsForType(const String& pasteboardType, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).allStringsForType(pasteboardType);
+}
+
 String WebPlatformStrategies::stringForType(const String& pasteboardType, const String& pasteboardName)
 {
     return PlatformPasteboard(pasteboardName).stringForType(pasteboardType);
-}
-
-long WebPlatformStrategies::copy(const String& fromPasteboard, const String& toPasteboard)
-{
-    return PlatformPasteboard(toPasteboard).copy(fromPasteboard);
 }
 
 long WebPlatformStrategies::changeCount(const String &pasteboardName)
@@ -170,9 +168,14 @@ long WebPlatformStrategies::setBufferForType(SharedBuffer* buffer, const String&
     return PlatformPasteboard(pasteboardName).setBufferForType(buffer, pasteboardType);
 }
 
-long WebPlatformStrategies::setPathnamesForType(const Vector<String>& pathnames, const String& pasteboardType, const String& pasteboardName)
+long WebPlatformStrategies::setURL(const PasteboardURL& pasteboardURL, const String& pasteboardName)
 {
-    return PlatformPasteboard(pasteboardName).setPathnamesForType(pathnames, pasteboardType);
+    return PlatformPasteboard(pasteboardName).setURL(pasteboardURL);
+}
+
+long WebPlatformStrategies::setColor(const Color& color, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).setColor(color);
 }
 
 long WebPlatformStrategies::setStringForType(const String& string, const String& pasteboardType, const String& pasteboardName)
@@ -183,6 +186,16 @@ long WebPlatformStrategies::setStringForType(const String& string, const String&
 int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
 {
     return PlatformPasteboard(pasteboardName).numberOfFiles();
+}
+
+Vector<String> WebPlatformStrategies::typesSafeForDOMToReadAndWrite(const String& pasteboardName, const String& origin)
+{
+    return PlatformPasteboard(pasteboardName).typesSafeForDOMToReadAndWrite(origin);
+}
+
+long WebPlatformStrategies::writeCustomData(const WebCore::PasteboardCustomData& data, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).write(data);
 }
 
 #if PLATFORM(IOS)
@@ -226,9 +239,9 @@ RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(in
     return PlatformPasteboard(pasteboardName).readBuffer(index, type);
 }
 
-WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& type, const String& pasteboardName, String& title)
+WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const String& pasteboardName, String& title)
 {
-    return PlatformPasteboard(pasteboardName).readURL(index, type, title);
+    return PlatformPasteboard(pasteboardName).readURL(index, title);
 }
 
 String WebPlatformStrategies::readStringFromPasteboard(int index, const String& type, const String& pasteboardName)
@@ -236,8 +249,13 @@ String WebPlatformStrategies::readStringFromPasteboard(int index, const String& 
     return PlatformPasteboard(pasteboardName).readString(index, type);
 }
 
-void WebPlatformStrategies::getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName)
+Vector<WebCore::PasteboardItemInfo> WebPlatformStrategies::allPasteboardItemInfo(const String& pasteboardName)
 {
-    filenames = PlatformPasteboard(pasteboardName).filenamesForDataInteraction();
+    return PlatformPasteboard(pasteboardName).allPasteboardItemInfo();
+}
+
+WebCore::PasteboardItemInfo WebPlatformStrategies::informationForItemAtIndex(int index, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).informationForItemAtIndex(index);
 }
 #endif // PLATFORM(IOS)

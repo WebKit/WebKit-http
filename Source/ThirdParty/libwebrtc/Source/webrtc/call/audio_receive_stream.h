@@ -8,50 +8,57 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_CALL_AUDIO_RECEIVE_STREAM_H_
-#define WEBRTC_CALL_AUDIO_RECEIVE_STREAM_H_
+#ifndef CALL_AUDIO_RECEIVE_STREAM_H_
+#define CALL_AUDIO_RECEIVE_STREAM_H_
 
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "webrtc/api/audio_codecs/audio_decoder_factory.h"
-#include "webrtc/api/call/transport.h"
-#include "webrtc/api/rtpreceiverinterface.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/base/scoped_ref_ptr.h"
-#include "webrtc/common_types.h"
-#include "webrtc/config.h"
-#include "webrtc/typedefs.h"
+#include "absl/types/optional.h"
+#include "api/audio_codecs/audio_decoder_factory.h"
+#include "api/call/transport.h"
+#include "api/rtpparameters.h"
+#include "api/rtpreceiverinterface.h"
+#include "call/rtp_config.h"
+#include "common_types.h"  // NOLINT(build/include)
+#include "rtc_base/scoped_ref_ptr.h"
 
 namespace webrtc {
 class AudioSinkInterface;
 
-// WORK IN PROGRESS
-// This class is under development and is not yet intended for for use outside
-// of WebRtc/Libjingle. Please use the VoiceEngine API instead.
-// See: https://bugs.chromium.org/p/webrtc/issues/detail?id=4690
-
 class AudioReceiveStream {
  public:
   struct Stats {
+    Stats();
+    ~Stats();
     uint32_t remote_ssrc = 0;
     int64_t bytes_rcvd = 0;
     uint32_t packets_rcvd = 0;
     uint32_t packets_lost = 0;
     float fraction_lost = 0.0f;
     std::string codec_name;
-    rtc::Optional<int> codec_payload_type;
+    absl::optional<int> codec_payload_type;
     uint32_t ext_seqnum = 0;
     uint32_t jitter_ms = 0;
     uint32_t jitter_buffer_ms = 0;
     uint32_t jitter_buffer_preferred_ms = 0;
     uint32_t delay_estimate_ms = 0;
     int32_t audio_level = -1;
+    // Stats below correspond to similarly-named fields in the WebRTC stats
+    // spec. https://w3c.github.io/webrtc-stats/#dom-rtcmediastreamtrackstats
+    double total_output_energy = 0.0;
+    uint64_t total_samples_received = 0;
+    double total_output_duration = 0.0;
+    uint64_t concealed_samples = 0;
+    uint64_t concealment_events = 0;
+    double jitter_buffer_delay_seconds = 0.0;
+    // Stats below DO NOT correspond directly to anything in the WebRTC stats
     float expand_rate = 0.0f;
     float speech_expand_rate = 0.0f;
     float secondary_decoded_rate = 0.0f;
+    float secondary_discarded_rate = 0.0f;
     float accelerate_rate = 0.0f;
     float preemptive_expand_rate = 0.0f;
     int32_t decoding_calls_to_silence_generator = 0;
@@ -65,10 +72,16 @@ class AudioReceiveStream {
   };
 
   struct Config {
+    Config();
+    ~Config();
+
     std::string ToString() const;
 
     // Receive-stream specific RTP settings.
     struct Rtp {
+      Rtp();
+      ~Rtp();
+
       std::string ToString() const;
 
       // Synchronization source (stream identifier) to be received.
@@ -92,11 +105,9 @@ class AudioReceiveStream {
 
     Transport* rtcp_send_transport = nullptr;
 
-    // Underlying VoiceEngine handle, used to map AudioReceiveStream to lower-
-    // level components.
-    // TODO(solenberg): Remove when VoiceEngine channels are created outside
-    // of Call.
-    int voe_channel_id = -1;
+    // NetEq settings.
+    size_t jitter_buffer_max_packets = 50;
+    bool jitter_buffer_fast_accelerate = false;
 
     // Identifier for an A/V synchronization group. Empty string to disable.
     // TODO(pbos): Synchronize streams in a sync group, not just one video
@@ -107,7 +118,12 @@ class AudioReceiveStream {
     std::map<int, SdpAudioFormat> decoder_map;
 
     rtc::scoped_refptr<AudioDecoderFactory> decoder_factory;
+
+    absl::optional<AudioCodecPairId> codec_pair_id;
   };
+
+  // Reconfigure the stream according to the Configuration.
+  virtual void Reconfigure(const Config& config) = 0;
 
   // Starts stream activity.
   // When a stream is active, it can receive, process and deliver packets.
@@ -117,18 +133,15 @@ class AudioReceiveStream {
   virtual void Stop() = 0;
 
   virtual Stats GetStats() const = 0;
-  // TODO(solenberg): Remove, once AudioMonitor is gone.
-  virtual int GetOutputLevel() const = 0;
 
   // Sets an audio sink that receives unmixed audio from the receive stream.
-  // Ownership of the sink is passed to the stream and can be used by the
-  // caller to do lifetime management (i.e. when the sink's dtor is called).
+  // Ownership of the sink is managed by the caller.
   // Only one sink can be set and passing a null sink clears an existing one.
   // NOTE: Audio must still somehow be pulled through AudioTransport for audio
   // to stream through this sink. In practice, this happens if mixed audio
   // is being pulled+rendered and/or if audio is being pulled for the purposes
   // of feeding to the AEC.
-  virtual void SetSink(std::unique_ptr<AudioSinkInterface> sink) = 0;
+  virtual void SetSink(AudioSinkInterface* sink) = 0;
 
   // Sets playback gain of the stream, applied when mixing, and thus after it
   // is potentially forwarded to any attached AudioSinkInterface implementation.
@@ -141,4 +154,4 @@ class AudioReceiveStream {
 };
 }  // namespace webrtc
 
-#endif  // WEBRTC_CALL_AUDIO_RECEIVE_STREAM_H_
+#endif  // CALL_AUDIO_RECEIVE_STREAM_H_

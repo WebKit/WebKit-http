@@ -28,14 +28,14 @@
 #include "TransformationMatrix.h"
 
 #include "AffineTransform.h"
-#include "FloatRect.h"
 #include "FloatQuad.h"
+#include "FloatRect.h"
 #include "IntRect.h"
 #include "LayoutRect.h"
-#include "TextStream.h"
 #include <cmath>
 #include <wtf/Assertions.h>
 #include <wtf/MathExtras.h>
+#include <wtf/text/TextStream.h>
 
 #if CPU(X86_64)
 #include <emmintrin.h>
@@ -69,6 +69,8 @@ typedef double Vector4[4];
 typedef double Vector3[3];
 
 const double SMALL_NUMBER = 1.e-8;
+
+const TransformationMatrix TransformationMatrix::identity { };
 
 // inverse(original_matrix, inverse_matrix)
 //
@@ -1048,7 +1050,7 @@ TransformationMatrix TransformationMatrix::rectToRect(const FloatRect& from, con
 // this = mat * this.
 TransformationMatrix& TransformationMatrix::multiply(const TransformationMatrix& mat)
 {
-#if CPU(ARM64)
+#if CPU(ARM64) && defined(_LP64)
     double* leftMatrix = &(m_matrix[0][0]);
     const double* rightMatrix = &(mat.m_matrix[0][0]);
     asm volatile (
@@ -1416,7 +1418,7 @@ TransformationMatrix& TransformationMatrix::multiply(const TransformationMatrix&
     tmp[3][3] = (mat.m_matrix[3][0] * m_matrix[0][3] + mat.m_matrix[3][1] * m_matrix[1][3]
                + mat.m_matrix[3][2] * m_matrix[2][3] + mat.m_matrix[3][3] * m_matrix[3][3]);
 
-    setMatrix(tmp);
+    memcpy(&m_matrix[0][0], &tmp[0][0], sizeof(Matrix4));
 #endif
     return *this;
 }
@@ -1772,17 +1774,12 @@ bool TransformationMatrix::isBackFaceVisible() const
 
 TextStream& operator<<(TextStream& ts, const TransformationMatrix& transform)
 {
+    TextStream::IndentScope indentScope(ts);
     ts << "\n";
-    ts.increaseIndent();
-    ts.writeIndent();
-    ts << "[" << transform.m11() << " " << transform.m12() << " " << transform.m13() << " " << transform.m14() << "]\n";
-    ts.writeIndent();
-    ts << "[" << transform.m21() << " " << transform.m22() << " " << transform.m23() << " " << transform.m24() << "]\n";
-    ts.writeIndent();
-    ts << "[" << transform.m31() << " " << transform.m32() << " " << transform.m33() << " " << transform.m34() << "]\n";
-    ts.writeIndent();
-    ts << "[" << transform.m41() << " " << transform.m42() << " " << transform.m43() << " " << transform.m44() << "]";
-    ts.decreaseIndent();
+    ts << indent << "[" << transform.m11() << " " << transform.m12() << " " << transform.m13() << " " << transform.m14() << "]\n";
+    ts << indent << "[" << transform.m21() << " " << transform.m22() << " " << transform.m23() << " " << transform.m24() << "]\n";
+    ts << indent << "[" << transform.m31() << " " << transform.m32() << " " << transform.m33() << " " << transform.m34() << "]\n";
+    ts << indent << "[" << transform.m41() << " " << transform.m42() << " " << transform.m43() << " " << transform.m44() << "]";
     return ts;
 }
 

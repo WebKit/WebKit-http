@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NamedImageGeneratedImage_h
-#define NamedImageGeneratedImage_h
+#pragma once
 
 #include "FloatSize.h"
 #include "GeneratedImage.h"
@@ -47,11 +46,11 @@ protected:
 
 private:
     bool isNamedImageGeneratedImage() const override { return true; }
-    void dump(TextStream&) const override;
+    void dump(WTF::TextStream&) const override;
 
     String m_name;
 };
 
 }
 
-#endif
+SPECIALIZE_TYPE_TRAITS_IMAGE(NamedImageGeneratedImage)

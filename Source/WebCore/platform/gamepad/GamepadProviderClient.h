@@ -27,7 +27,7 @@
 
 #if ENABLE(GAMEPAD)
 
-#include <wtf/Vector.h>
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
@@ -35,7 +35,7 @@ class PlatformGamepad;
 
 class GamepadProviderClient {
 public:
-    virtual ~GamepadProviderClient() { }
+    virtual ~GamepadProviderClient() = default;
 
     virtual void setInitialConnectedGamepads(const Vector<PlatformGamepad*>&) { }
     virtual void platformGamepadConnected(PlatformGamepad&) = 0;

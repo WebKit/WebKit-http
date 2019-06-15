@@ -2,7 +2,6 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-html-like-comments
-es6id: B1.3
 description: SingleLineHTMLCloseComment
 info: |
     Comment ::
@@ -17,7 +16,9 @@ info: |
 
     HTMLCloseComment ::
       WhiteSpaceSequence[opt] SingleLineDelimitedCommentSequence[opt] --> SingleLineCommentChars[opt]
-negative: Test262Error
+negative:
+  phase: runtime
+  type: Test262Error
 ---*/
 
 var counter = 0;

@@ -23,9 +23,7 @@
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMBlobPrivate.h"
 #include "WebKitDOMPrivate.h"
 #include "ConvertToUTF8String.h"
@@ -37,6 +35,8 @@
 typedef struct _WebKitDOMBlobPrivate {
     RefPtr<WebCore::Blob> coreObject;
 } WebKitDOMBlobPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -139,3 +139,4 @@ guint64 webkit_dom_blob_get_size(WebKitDOMBlob* self)
     guint64 result = item->size();
     return result;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

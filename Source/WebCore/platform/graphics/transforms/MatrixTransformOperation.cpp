@@ -22,8 +22,8 @@
 #include "config.h"
 #include "MatrixTransformOperation.h"
 
-#include "TextStream.h"
 #include <algorithm>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -35,14 +35,13 @@ bool MatrixTransformOperation::operator==(const TransformOperation& other) const
     return m_a == m.m_a && m_b == m.m_b && m_c == m.m_c && m_d == m.m_d && m_e == m.m_e && m_f == m.m_f;
 }
 
-static Ref<TransformOperation> createOperation(TransformationMatrix& to, TransformationMatrix& from, double progress)
-{
-    to.blend(from, progress);
-    return MatrixTransformOperation::create(to);
-}
-
 Ref<TransformOperation> MatrixTransformOperation::blend(const TransformOperation* from, double progress, bool blendToIdentity)
 {
+    auto createOperation = [] (TransformationMatrix& to, TransformationMatrix& from, double progress) {
+        to.blend(from, progress);
+        return MatrixTransformOperation::create(to);
+    };
+
     if (from && !from->isSameType(*this))
         return *this;
 

@@ -45,8 +45,9 @@ OBJC_CLASS NSURL;
 OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
 OBJC_CLASS WKWebInspectorProxyObjCAdapter;
-OBJC_CLASS WKWebInspectorWKWebView;
-OBJC_CLASS WKWebViewConfiguration;
+OBJC_CLASS WKInspectorViewController;
+#elif PLATFORM(WIN)
+#include "WebView.h"
 #endif
 
 namespace WebCore {
@@ -66,7 +67,13 @@ enum class AttachmentSide {
     Left,
 };
 
-class WebInspectorProxy : public API::ObjectImpl<API::Object::Type::Inspector>, public IPC::MessageReceiver {
+class WebInspectorProxy
+    : public API::ObjectImpl<API::Object::Type::Inspector>
+    , public IPC::MessageReceiver
+#if PLATFORM(WIN)
+    , public WebCore::WindowMessageListener
+#endif
+{
 public:
     static Ref<WebInspectorProxy> create(WebPageProxy* inspectedPage)
     {
@@ -92,10 +99,8 @@ public:
     void closeForCrash();
 
 #if PLATFORM(MAC) && WK_API_ENABLED
-    static RetainPtr<WKWebViewConfiguration> createFrontendConfiguration(WebPageProxy*, bool underTest);
     static RetainPtr<NSWindow> createFrontendWindow(NSRect savedWindowFrame);
 
-    void createInspectorWindow();
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
     void windowFrameDidChange();
@@ -105,7 +110,8 @@ public:
     void setInspectorWindowFrame(WKRect&);
     WKRect inspectorWindowFrame();
 
-    void closeTimerFired();
+    void closeFrontendPage();
+    void closeFrontendAfterInactivityTimerFired();
 
     void attachmentViewDidChange(NSView *oldView, NSView *newView);
 #endif
@@ -139,6 +145,8 @@ public:
     bool isElementSelectionActive() const { return m_elementSelectionActive; }
     void toggleElementSelection();
 
+    bool isUnderTest() const { return m_underTest; }
+
     // Provided by platform WebInspectorProxy implementations.
     static String inspectorPageURL();
     static String inspectorTestPageURL();
@@ -154,14 +162,16 @@ public:
 private:
     explicit WebInspectorProxy(WebPageProxy*);
 
-    void eagerlyCreateInspectorPage();
+    void createFrontendPage();
+    void closeFrontendPageAndWindow();
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    WebPageProxy* platformCreateInspectorPage();
-    void platformOpen();
-    void platformDidClose();
+    WebPageProxy* platformCreateFrontendPage();
+    void platformCreateFrontendWindow();
+    void platformCloseFrontendPageAndWindow();
+
     void platformDidCloseForCrash();
     void platformInvalidate();
     void platformBringToFront();
@@ -201,8 +211,6 @@ private:
     bool canAttach() const { return m_canAttach; }
     bool shouldOpenAttached();
 
-    bool isUnderTest() const { return m_underTest; }
-
     void open();
 
     unsigned inspectionLevel() const;
@@ -210,8 +218,13 @@ private:
     WebPreferences& inspectorPagePreferences() const;
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
-    void createInspectorWindow();
     void updateInspectorWindowTitle() const;
+#endif
+
+#if PLATFORM(WIN)
+    static LRESULT CALLBACK wndProc(HWND, UINT, WPARAM, LPARAM);
+    bool registerWindowClass();
+    void windowReceivedMessage(HWND, UINT, WPARAM, LPARAM) override;
 #endif
 
     WebPageProxy* m_inspectedPage { nullptr };
@@ -226,17 +239,18 @@ private:
     bool m_ignoreFirstBringToFront { false };
     bool m_elementSelectionActive { false };
     bool m_ignoreElementSelectionChange { false };
+    bool m_isOpening { false };
 
     IPC::Attachment m_connectionIdentifier;
 
     AttachmentSide m_attachmentSide {AttachmentSide::Bottom};
 
 #if PLATFORM(MAC) && WK_API_ENABLED
-    RetainPtr<WKWebInspectorWKWebView> m_inspectorView;
+    RetainPtr<WKInspectorViewController> m_inspectorViewController;
     RetainPtr<NSWindow> m_inspectorWindow;
-    RetainPtr<WKWebInspectorProxyObjCAdapter> m_inspectorProxyObjCAdapter;
+    RetainPtr<WKWebInspectorProxyObjCAdapter> m_objCAdapter;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
-    RunLoop::Timer<WebInspectorProxy> m_closeTimer;
+    RunLoop::Timer<WebInspectorProxy> m_closeFrontendAfterInactivityTimer;
     String m_urlString;
 #elif PLATFORM(GTK)
     std::unique_ptr<WebInspectorProxyClient> m_client;
@@ -244,6 +258,12 @@ private:
     GtkWidget* m_inspectorWindow { nullptr };
     GtkWidget* m_headerBar { nullptr };
     String m_inspectedURLString;
+#elif PLATFORM(WIN)
+    HWND m_inspectedViewWindow { nullptr };
+    HWND m_inspectedViewParentWindow { nullptr };
+    HWND m_inspectorViewWindow { nullptr };
+    HWND m_inspectorDetachWindow { nullptr };
+    RefPtr<WebView> m_inspectorView;
 #endif
 };
 

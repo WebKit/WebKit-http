@@ -4,7 +4,7 @@
 description: >
     Resolving with a non-thenable object value after invocation of the executor function
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     8. Let resolvingFunctions be CreateResolvingFunctions(promise).
     9. Let completion be Call(executor, undefined,
@@ -21,21 +21,26 @@ info: >
 flags: [async]
 ---*/
 
-var nonThenable = { then: null };
+var returnValue = null;
+var nonThenable = {
+  then: null
+};
 var resolve;
 var promise = new Promise(function(_resolve) {
   resolve = _resolve;
 });
 
 promise.then(function(value) {
-    if (value !== nonThenable) {
-      $DONE('The promise should be fulfilled with the provided value.');
-      return;
-    }
+  if (value !== nonThenable) {
+    $DONE('The promise should be fulfilled with the provided value.');
+    return;
+  }
 
-    $DONE();
-  }, function() {
-    $DONE('The promise should not be rejected.');
-  });
+  $DONE();
+}, function() {
+  $DONE('The promise should not be rejected.');
+});
 
-resolve(nonThenable);
+returnValue = resolve(nonThenable);
+
+assert.sameValue(returnValue, undefined, '"resolve" return value');

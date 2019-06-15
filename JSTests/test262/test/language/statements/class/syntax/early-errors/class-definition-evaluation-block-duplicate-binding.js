@@ -6,8 +6,12 @@ description: >
     Block : { StatementList }
 
     It is a Syntax Error if the LexicallyDeclaredNames of StatementList contains any duplicate entries.
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 {
   class A {}
   class A {}

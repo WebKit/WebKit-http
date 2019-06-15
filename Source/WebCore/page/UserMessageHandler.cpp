@@ -28,7 +28,6 @@
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "SerializedScriptValue.h"
 
@@ -40,16 +39,14 @@ UserMessageHandler::UserMessageHandler(Frame& frame, UserMessageHandlerDescripto
 {
 }
 
-UserMessageHandler::~UserMessageHandler()
-{
-}
+UserMessageHandler::~UserMessageHandler() = default;
 
 ExceptionOr<void> UserMessageHandler::postMessage(RefPtr<SerializedScriptValue>&& value)
 {
     // Check to see if the descriptor has been removed. This can happen if the host application has
     // removed the named message handler at the WebKit2 API level.
     if (!m_descriptor)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
     m_descriptor->didPostMessage(*this, value.get());
     return { };

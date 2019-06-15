@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: get constructor on SpeciesConstructor
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
@@ -22,6 +22,7 @@ info: >
   3. If C is undefined, return defaultConstructor.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -25,7 +25,6 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
 #include "PluginPackage.h"
 
 #include "PluginDatabase.h"
@@ -121,7 +120,7 @@ PluginPackage::PluginPackage(const String& path, const time_t& lastModified)
     , m_infoIsFromCache(true)
 #endif
 {
-    m_fileName = pathGetFileName(m_path);
+    m_fileName = FileSystem::pathGetFileName(m_path);
     m_parentDirectory = m_path.left(m_path.length() - m_fileName.length() - 1);
 }
 
@@ -353,7 +352,7 @@ static bool NPN_Invoke(NPP npp, NPObject* o, NPIdentifier methodName, const NPVa
         JSC::ExecState* exec = globalObject->globalExec();
         JSC::JSValue function = obj->imp->get(exec, JSC::Bindings::identifierFromNPIdentifier(exec, i->string()));
         JSC::CallData callData;
-        JSC::CallType callType = getCallData(function, callData);
+        JSC::CallType callType = getCallData(vm, function, callData);
         if (callType == JSC::CallType::None)
             return false;
 

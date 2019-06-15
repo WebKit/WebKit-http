@@ -28,12 +28,12 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include "ActiveDOMObject.h"
-#include "LegacyCDMSession.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "GenericEventQueue.h"
+#include "LegacyCDMSession.h"
 #include "Timer.h"
-#include <runtime/Uint8Array.h>
+#include <JavaScriptCore/Uint8Array.h>
 #include <wtf/Deque.h>
 
 namespace WebCore {
@@ -41,18 +41,18 @@ namespace WebCore {
 class WebKitMediaKeyError;
 class WebKitMediaKeys;
 
-class WebKitMediaKeySession final : public RefCounted<WebKitMediaKeySession>, public EventTargetWithInlineData, private ActiveDOMObject, private CDMSessionClient {
+class WebKitMediaKeySession final : public RefCounted<WebKitMediaKeySession>, public EventTargetWithInlineData, private ActiveDOMObject, private LegacyCDMSessionClient {
 public:
     static Ref<WebKitMediaKeySession> create(ScriptExecutionContext&, WebKitMediaKeys&, const String& keySystem);
     ~WebKitMediaKeySession();
 
     WebKitMediaKeyError* error() { return m_error.get(); }
     const String& keySystem() const { return m_keySystem; }
-    const String& sessionId() const;
+    const String& sessionId() const { return m_sessionId; }
     ExceptionOr<void> update(Ref<Uint8Array>&& key);
     void close();
 
-    CDMSession* session() { return m_session.get(); }
+    LegacyCDMSession* session() { return m_session.get(); }
 
     void detachKeys() { m_keys = nullptr; }
 
@@ -76,6 +76,8 @@ private:
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
+    void suspend(ReasonForSuspension) final;
+    void resume() final;
     void stop() final;
     bool canSuspendForDocumentSuspension() const final;
     const char* activeDOMObjectName() const final;
@@ -88,7 +90,7 @@ private:
     String m_sessionId;
     RefPtr<WebKitMediaKeyError> m_error;
     GenericEventQueue m_asyncEventQueue;
-    std::unique_ptr<CDMSession> m_session;
+    std::unique_ptr<LegacyCDMSession> m_session;
 
     struct PendingKeyRequest {
         String mimeType;

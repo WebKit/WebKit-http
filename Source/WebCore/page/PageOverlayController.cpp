@@ -32,7 +32,6 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PageOverlay.h"
 #include "ScrollingCoordinator.h"
@@ -43,16 +42,13 @@
 
 namespace WebCore {
 
-PageOverlayController::PageOverlayController(MainFrame& mainFrame)
+PageOverlayController::PageOverlayController(Page& page)
     : m_initialized(false)
-    , m_mainFrame(mainFrame)
+    , m_page(page)
 {
 }
 
-PageOverlayController::~PageOverlayController()
-{
-
-}
+PageOverlayController::~PageOverlayController() = default;
 
 void PageOverlayController::createRootLayersIfNeeded()
 {
@@ -64,8 +60,8 @@ void PageOverlayController::createRootLayersIfNeeded()
     ASSERT(!m_documentOverlayRootLayer);
     ASSERT(!m_viewOverlayRootLayer);
 
-    m_documentOverlayRootLayer = GraphicsLayer::create(m_mainFrame.page()->chrome().client().graphicsLayerFactory(), *this);
-    m_viewOverlayRootLayer = GraphicsLayer::create(m_mainFrame.page()->chrome().client().graphicsLayerFactory(), *this);
+    m_documentOverlayRootLayer = GraphicsLayer::create(m_page.chrome().client().graphicsLayerFactory(), *this);
+    m_viewOverlayRootLayer = GraphicsLayer::create(m_page.chrome().client().graphicsLayerFactory(), *this);
     m_documentOverlayRootLayer->setName("Document overlay Container");
     m_viewOverlayRootLayer->setName("View overlay container");
 }
@@ -95,7 +91,7 @@ GraphicsLayer& PageOverlayController::layerWithDocumentOverlays()
 {
     createRootLayersIfNeeded();
 
-    bool inWindow = m_mainFrame.page() ? m_mainFrame.page()->isInWindow() : false;
+    bool inWindow = m_page.isInWindow();
 
     for (auto& overlayAndLayer : m_overlayGraphicsLayers) {
         PageOverlay& overlay = *overlayAndLayer.key;
@@ -119,7 +115,7 @@ GraphicsLayer& PageOverlayController::layerWithViewOverlays()
 {
     createRootLayersIfNeeded();
 
-    bool inWindow = m_mainFrame.page() ? m_mainFrame.page()->isInWindow() : false;
+    bool inWindow = m_page.isInWindow();
 
     for (auto& overlayAndLayer : m_overlayGraphicsLayers) {
         PageOverlay& overlay = *overlayAndLayer.key;
@@ -148,7 +144,7 @@ void PageOverlayController::installPageOverlay(PageOverlay& overlay, PageOverlay
 
     m_pageOverlays.append(&overlay);
 
-    std::unique_ptr<GraphicsLayer> layer = GraphicsLayer::create(m_mainFrame.page()->chrome().client().graphicsLayerFactory(), *this);
+    std::unique_ptr<GraphicsLayer> layer = GraphicsLayer::create(m_page.chrome().client().graphicsLayerFactory(), *this);
     layer->setAnchorPoint(FloatPoint3D());
     layer->setBackgroundColor(overlay.backgroundColor());
     layer->setName("Overlay content");
@@ -169,9 +165,9 @@ void PageOverlayController::installPageOverlay(PageOverlay& overlay, PageOverlay
 
     updateForceSynchronousScrollLayerPositionUpdates();
 
-    overlay.setPage(m_mainFrame.page());
+    overlay.setPage(&m_page);
 
-    if (FrameView* frameView = m_mainFrame.view())
+    if (FrameView* frameView = m_page.mainFrame().view())
         frameView->enterCompositingMode();
 
     updateOverlayGeometry(overlay, rawLayer);
@@ -207,7 +203,7 @@ void PageOverlayController::updateForceSynchronousScrollLayerPositionUpdates()
             forceSynchronousScrollLayerPositionUpdates = true;
     }
 
-    if (ScrollingCoordinator* scrollingCoordinator = m_mainFrame.page()->scrollingCoordinator())
+    if (ScrollingCoordinator* scrollingCoordinator = m_page.scrollingCoordinator())
         scrollingCoordinator->setForceSynchronousScrollLayerPositionUpdates(forceSynchronousScrollLayerPositionUpdates);
 #endif
 }
@@ -287,7 +283,7 @@ void PageOverlayController::didChangeDeviceScaleFactor()
 
 void PageOverlayController::didChangeViewExposedRect()
 {
-    m_mainFrame.page()->chrome().client().scheduleCompositingLayerFlush();
+    m_page.chrome().client().scheduleCompositingLayerFlush();
 }
 
 void PageOverlayController::didScrollFrame(Frame& frame)
@@ -301,7 +297,7 @@ void PageOverlayController::didScrollFrame(Frame& frame)
 
 void PageOverlayController::updateSettingsForLayer(GraphicsLayer& layer)
 {
-    Settings& settings = m_mainFrame.settings();
+    Settings& settings = m_page.settings();
     layer.setAcceleratesDrawing(settings.acceleratedDrawingEnabled());
     layer.setShowDebugBorder(settings.showDebugBorders());
     layer.setShowRepaintCounter(settings.showRepaintCounter());
@@ -360,7 +356,7 @@ Vector<String> PageOverlayController::copyAccessibilityAttributesNames(bool para
     return { };
 }
 
-void PageOverlayController::paintContents(const WebCore::GraphicsLayer* graphicsLayer, WebCore::GraphicsContext& graphicsContext, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect, GraphicsLayerPaintFlags)
+void PageOverlayController::paintContents(const WebCore::GraphicsLayer* graphicsLayer, WebCore::GraphicsContext& graphicsContext, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect, GraphicsLayerPaintBehavior)
 {
     for (auto& overlayAndGraphicsLayer : m_overlayGraphicsLayers) {
         if (overlayAndGraphicsLayer.value.get() != graphicsLayer)
@@ -376,15 +372,12 @@ void PageOverlayController::paintContents(const WebCore::GraphicsLayer* graphics
 
 float PageOverlayController::deviceScaleFactor() const
 {
-    if (Page* page = m_mainFrame.page())
-        return page->deviceScaleFactor();
-    return 1;
+    return m_page.deviceScaleFactor();
 }
 
 void PageOverlayController::notifyFlushRequired(const WebCore::GraphicsLayer*)
 {
-    if (Page* page = m_mainFrame.page())
-        page->chrome().client().scheduleCompositingLayerFlush();
+    m_page.chrome().client().scheduleCompositingLayerFlush();
 }
 
 void PageOverlayController::didChangeOverlayFrame(PageOverlay& overlay)
@@ -407,7 +400,7 @@ bool PageOverlayController::shouldSkipLayerInDump(const GraphicsLayer*, LayerTre
 void PageOverlayController::tiledBackingUsageChanged(const GraphicsLayer* graphicsLayer, bool usingTiledBacking)
 {
     if (usingTiledBacking)
-        graphicsLayer->tiledBacking()->setIsInWindow(m_mainFrame.page()->isInWindow());
+        graphicsLayer->tiledBacking()->setIsInWindow(m_page.isInWindow());
 }
 
 } // namespace WebKit

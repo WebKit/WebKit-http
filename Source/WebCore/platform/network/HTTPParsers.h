@@ -28,13 +28,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTTPParsers_h
-#define HTTPParsers_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
 #include <wtf/Optional.h>
-#include <wtf/Vector.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -65,20 +64,34 @@ enum XFrameOptionsDisposition {
     XFrameOptionsConflict
 };
 
+enum class CrossOriginResourcePolicy {
+    None,
+    SameOrigin,
+    SameSite,
+    Invalid
+};
+
+// Should be sorted from most restrictive to most permissive.
+enum class CrossOriginWindowPolicy {
+    Deny,
+    AllowPostMessage,
+    Allow,
+};
+
 bool isValidReasonPhrase(const String&);
 bool isValidHTTPHeaderValue(const String&);
 bool isValidAcceptHeaderValue(const String&);
 bool isValidLanguageHeaderValue(const String&);
 bool isValidHTTPToken(const String&);
 bool parseHTTPRefresh(const String& refresh, double& delay, String& url);
-std::optional<std::chrono::system_clock::time_point> parseHTTPDate(const String&);
+std::optional<WallTime> parseHTTPDate(const String&);
 String filenameFromHTTPContentDisposition(const String&);
 String extractMIMETypeFromMediaType(const String&);
 String extractCharsetFromMediaType(const String&);
 void findCharsetInMediaType(const String& mediaType, unsigned int& charsetPos, unsigned int& charsetLen, unsigned int start = 0);
 XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& failureReason, unsigned& failurePosition, String& reportURL);
 AtomicString extractReasonPhraseFromHTTPStatusLine(const String&);
-XFrameOptionsDisposition parseXFrameOptionsHeader(const String&);
+WEBCORE_EXPORT XFrameOptionsDisposition parseXFrameOptionsHeader(const String&);
 
 // -1 could be set to one of the return parameters to indicate the value is not specified.
 WEBCORE_EXPORT bool parseRange(const String&, long long& rangeOffset, long long& rangeEnd, long long& rangeSuffixLength);
@@ -96,10 +109,16 @@ void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHea
 // HTTP Header routine as per https://fetch.spec.whatwg.org/#terminology-headers
 bool isForbiddenHeaderName(const String&);
 bool isForbiddenResponseHeaderName(const String&);
+bool isForbiddenMethod(const String&);
 bool isSimpleHeader(const String& name, const String& value);
 bool isCrossOriginSafeHeader(HTTPHeaderName, const HTTPHeaderSet&);
 bool isCrossOriginSafeHeader(const String&, const HTTPHeaderSet&);
 bool isCrossOriginSafeRequestHeader(HTTPHeaderName, const String&);
+
+String normalizeHTTPMethod(const String&);
+
+WEBCORE_EXPORT CrossOriginResourcePolicy parseCrossOriginResourcePolicyHeader(StringView);
+CrossOriginWindowPolicy parseCrossOriginWindowPolicyHeader(StringView);
 
 inline bool isHTTPSpace(UChar character)
 {
@@ -109,9 +128,51 @@ inline bool isHTTPSpace(UChar character)
 // Strip leading and trailing whitespace as defined in https://fetch.spec.whatwg.org/#concept-header-value-normalize.
 inline String stripLeadingAndTrailingHTTPSpaces(const String& string)
 {
-    return string.stripWhiteSpace(isHTTPSpace);
+    return string.stripLeadingAndTrailingCharacters(isHTTPSpace);
+}
+
+inline StringView stripLeadingAndTrailingHTTPSpaces(StringView string)
+{
+    return string.stripLeadingAndTrailingMatchedCharacters(isHTTPSpace);
+}
+
+template<class HashType>
+void addToAccessControlAllowList(const String& string, unsigned start, unsigned end, HashSet<String, HashType>& set)
+{
+    StringImpl* stringImpl = string.impl();
+    if (!stringImpl)
+        return;
+
+    // Skip white space from start.
+    while (start <= end && isSpaceOrNewline((*stringImpl)[start]))
+        ++start;
+
+    // only white space
+    if (start > end)
+        return;
+
+    // Skip white space from end.
+    while (end && isSpaceOrNewline((*stringImpl)[end]))
+        --end;
+
+    set.add(string.substring(start, end - start + 1));
+}
+
+template<class HashType = DefaultHash<String>::Hash>
+std::optional<HashSet<String, HashType>> parseAccessControlAllowList(const String& string)
+{
+    HashSet<String, HashType> set;
+    unsigned start = 0;
+    size_t end;
+    while ((end = string.find(',', start)) != notFound) {
+        if (start != end)
+            addToAccessControlAllowList(string, start, end - 1, set);
+        start = end + 1;
+    }
+    if (start != string.length())
+        addToAccessControlAllowList(string, start, string.length() - 1, set);
+
+    return set;
 }
 
 }
-
-#endif

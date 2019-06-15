@@ -23,12 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APIPageConfiguration_h
-#define APIPageConfiguration_h
+#pragma once
 
 #include "APIObject.h"
 #include "WebPreferencesStore.h"
-#include <WebCore/SessionID.h>
+#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/GetPtr.h>
 
@@ -38,11 +37,13 @@ class WebPageGroup;
 class WebPageProxy;
 class WebPreferences;
 class WebProcessPool;
+class WebURLSchemeHandler;
 class WebUserContentControllerProxy;
 }
 
 namespace API {
 
+class ApplicationManifest;
 class WebsiteDataStore;
 
 class PageConfiguration : public ObjectImpl<Object::Type::PageConfiguration> {
@@ -81,8 +82,8 @@ public:
     void setWebsiteDataStore(WebsiteDataStore*);
 
     // FIXME: Once PageConfigurations *always* have a data store, get rid of the separate sessionID.
-    WebCore::SessionID sessionID();
-    void setSessionID(WebCore::SessionID);
+    PAL::SessionID sessionID();
+    void setSessionID(PAL::SessionID);
 
     bool treatsSHA1SignedCertificatesAsInsecure() { return m_treatsSHA1SignedCertificatesAsInsecure; }
     void setTreatsSHA1SignedCertificatesAsInsecure(bool treatsSHA1SignedCertificatesAsInsecure) { m_treatsSHA1SignedCertificatesAsInsecure = treatsSHA1SignedCertificatesAsInsecure; } 
@@ -100,11 +101,23 @@ public:
     bool waitsForPaintAfterViewDidMoveToWindow() const { return m_waitsForPaintAfterViewDidMoveToWindow; }
     void setWaitsForPaintAfterViewDidMoveToWindow(bool shouldSynchronize) { m_waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize; }
 
+    bool drawsBackground() const { return m_drawsBackground; }
+    void setDrawsBackground(bool drawsBackground) { m_drawsBackground = drawsBackground; }
+
     bool isControlledByAutomation() const { return m_controlledByAutomation; }
     void setControlledByAutomation(bool controlledByAutomation) { m_controlledByAutomation = controlledByAutomation; }
 
     const WTF::String& overrideContentSecurityPolicy() const { return m_overrideContentSecurityPolicy; }
     void setOverrideContentSecurityPolicy(const WTF::String& overrideContentSecurityPolicy) { m_overrideContentSecurityPolicy = overrideContentSecurityPolicy; }
+
+#if ENABLE(APPLICATION_MANIFEST)
+    ApplicationManifest* applicationManifest() const;
+    void setApplicationManifest(ApplicationManifest*);
+#endif
+
+    RefPtr<WebKit::WebURLSchemeHandler> urlSchemeHandlerForURLScheme(const WTF::String&);
+    void setURLSchemeHandlerForURLScheme(Ref<WebKit::WebURLSchemeHandler>&&, const WTF::String&);
+    const HashMap<WTF::String, Ref<WebKit::WebURLSchemeHandler>>& urlSchemeHandlers() { return m_urlSchemeHandlers; }
 
 private:
 
@@ -119,21 +132,25 @@ private:
     RefPtr<WebsiteDataStore> m_websiteDataStore;
     // FIXME: We currently have to pass the session ID separately here to support the legacy private browsing session.
     // Once we get rid of it we should get rid of this configuration parameter as well.
-    WebCore::SessionID m_sessionID;
+    PAL::SessionID m_sessionID;
 
-    bool m_treatsSHA1SignedCertificatesAsInsecure = true;
+    bool m_treatsSHA1SignedCertificatesAsInsecure { true };
 #if PLATFORM(IOS)
-    bool m_alwaysRunsAtForegroundPriority = false;
+    bool m_alwaysRunsAtForegroundPriority { false };
 #endif
-    bool m_initialCapitalizationEnabled = true;
-    bool m_waitsForPaintAfterViewDidMoveToWindow = true;
-    bool m_controlledByAutomation = false;
+    bool m_initialCapitalizationEnabled { true };
+    bool m_waitsForPaintAfterViewDidMoveToWindow { true };
+    bool m_drawsBackground { true };
+    bool m_controlledByAutomation { false };
     std::optional<double> m_cpuLimit;
 
     WTF::String m_overrideContentSecurityPolicy;
+
+#if ENABLE(APPLICATION_MANIFEST)
+    RefPtr<ApplicationManifest> m_applicationManifest;
+#endif
+
+    HashMap<WTF::String, Ref<WebKit::WebURLSchemeHandler>> m_urlSchemeHandlers;
 };
 
 } // namespace API
-
-
-#endif // APIPageConfiguration_h

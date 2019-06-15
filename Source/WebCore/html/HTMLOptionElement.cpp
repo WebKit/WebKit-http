@@ -40,9 +40,12 @@
 #include "ScriptElement.h"
 #include "StyleResolver.h"
 #include "Text.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLOptionElement);
 
 using namespace HTMLNames;
 
@@ -90,7 +93,7 @@ bool HTMLOptionElement::isFocusable() const
         return false;
     // Option elements do not have a renderer.
     auto* style = const_cast<HTMLOptionElement&>(*this).computedStyle();
-    return style && style->display() != NONE;
+    return style && style->display() != DisplayType::None;
 }
 
 bool HTMLOptionElement::matchesDefaultPseudoClass() const
@@ -104,7 +107,7 @@ String HTMLOptionElement::text() const
 
     // FIXME: Is displayStringModifiedByEncoding helpful here?
     // If it's correct here, then isn't it needed in the value and label functions too?
-    return document().displayStringModifiedByEncoding(text).stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
+    return stripLeadingAndTrailingHTMLSpaces(document().displayStringModifiedByEncoding(text)).simplifyWhiteSpace(isHTMLSpace);
 }
 
 void HTMLOptionElement::setText(const String &text)
@@ -119,7 +122,7 @@ void HTMLOptionElement::setText(const String &text)
     int oldSelectedIndex = selectIsMenuList ? select->selectedIndex() : -1;
 
     // Handle the common special case where there's exactly 1 child node, and it's a text node.
-    Node* child = firstChild();
+    RefPtr<Node> child = firstChild();
     if (is<Text>(child) && !child->nextSibling())
         downcast<Text>(*child).setData(text);
     else {
@@ -133,7 +136,7 @@ void HTMLOptionElement::setText(const String &text)
 
 void HTMLOptionElement::accessKeyAction(bool)
 {
-    HTMLSelectElement* select = ownerSelectElement();
+    RefPtr<HTMLSelectElement> select = ownerSelectElement();
     if (select)
         select->accessKeySetSelectedIndex(index());
 }
@@ -142,7 +145,7 @@ int HTMLOptionElement::index() const
 {
     // It would be faster to cache the index, but harder to get it right in all cases.
 
-    HTMLSelectElement* selectElement = ownerSelectElement();
+    RefPtr<HTMLSelectElement> selectElement = ownerSelectElement();
     if (!selectElement)
         return 0;
 
@@ -163,7 +166,7 @@ void HTMLOptionElement::parseAttribute(const QualifiedName& name, const AtomicSt
 {
 #if ENABLE(DATALIST_ELEMENT)
     if (name == valueAttr) {
-        if (HTMLDataListElement* dataList = ownerDataListElement())
+        if (RefPtr<HTMLDataListElement> dataList = ownerDataListElement())
             dataList->optionElementChildrenChanged();
     } else
 #endif
@@ -194,7 +197,7 @@ String HTMLOptionElement::value() const
     const AtomicString& value = attributeWithoutSynchronization(valueAttr);
     if (!value.isNull())
         return value;
-    return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
+    return stripLeadingAndTrailingHTMLSpaces(collectOptionInnerText()).simplifyWhiteSpace(isHTMLSpace);
 }
 
 void HTMLOptionElement::setValue(const String& value)
@@ -204,7 +207,7 @@ void HTMLOptionElement::setValue(const String& value)
 
 bool HTMLOptionElement::selected()
 {
-    if (HTMLSelectElement* select = ownerSelectElement())
+    if (RefPtr<HTMLSelectElement> select = ownerSelectElement())
         select->updateListItemSelectedStates();
     return m_isSelected;
 }
@@ -216,7 +219,7 @@ void HTMLOptionElement::setSelected(bool selected)
 
     setSelectedState(selected);
 
-    if (HTMLSelectElement* select = ownerSelectElement())
+    if (RefPtr<HTMLSelectElement> select = ownerSelectElement())
         select->optionSelectionStateChanged(*this, selected);
 }
 
@@ -228,18 +231,18 @@ void HTMLOptionElement::setSelectedState(bool selected)
     m_isSelected = selected;
     invalidateStyleForSubtree();
 
-    if (HTMLSelectElement* select = ownerSelectElement())
+    if (RefPtr<HTMLSelectElement> select = ownerSelectElement())
         select->invalidateSelectedItems();
 }
 
 void HTMLOptionElement::childrenChanged(const ChildChange& change)
 {
 #if ENABLE(DATALIST_ELEMENT)
-    if (HTMLDataListElement* dataList = ownerDataListElement())
+    if (RefPtr<HTMLDataListElement> dataList = ownerDataListElement())
         dataList->optionElementChildrenChanged();
     else
 #endif
-    if (HTMLSelectElement* select = ownerSelectElement())
+    if (RefPtr<HTMLSelectElement> select = ownerSelectElement())
         select->optionElementChildrenChanged();
     HTMLElement::childrenChanged(change);
 }
@@ -247,39 +250,42 @@ void HTMLOptionElement::childrenChanged(const ChildChange& change)
 #if ENABLE(DATALIST_ELEMENT)
 HTMLDataListElement* HTMLOptionElement::ownerDataListElement() const
 {
-    for (ContainerNode* parent = parentNode(); parent ; parent = parent->parentNode()) {
-        if (is<HTMLDataListElement>(*parent))
-            return downcast<HTMLDataListElement>(parent);
-    }
-    return nullptr;
+    RefPtr<ContainerNode> datalist = parentNode();
+    while (datalist && !is<HTMLDataListElement>(*datalist))
+        datalist = datalist->parentNode();
+
+    if (!datalist)
+        return nullptr;
+
+    return downcast<HTMLDataListElement>(datalist.get());
 }
 #endif
 
 HTMLSelectElement* HTMLOptionElement::ownerSelectElement() const
 {
-    ContainerNode* select = parentNode();
+    RefPtr<ContainerNode> select = parentNode();
     while (select && !is<HTMLSelectElement>(*select))
         select = select->parentNode();
 
     if (!select)
         return nullptr;
 
-    return downcast<HTMLSelectElement>(select);
+    return downcast<HTMLSelectElement>(select.get());
 }
 
 String HTMLOptionElement::label() const
 {
     String label = attributeWithoutSynchronization(labelAttr);
     if (!label.isNull())
-        return label.stripWhiteSpace(isHTMLSpace);
-    return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
+        return stripLeadingAndTrailingHTMLSpaces(label);
+    return stripLeadingAndTrailingHTMLSpaces(collectOptionInnerText()).simplifyWhiteSpace(isHTMLSpace);
 }
 
 // Same as label() but ignores the label content attribute in quirks mode for compatibility with other browsers.
 String HTMLOptionElement::displayLabel() const
 {
     if (document().inQuirksMode())
-        return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
+        return stripLeadingAndTrailingHTMLSpaces(collectOptionInnerText()).simplifyWhiteSpace(isHTMLSpace);
     return label();
 }
 
@@ -300,7 +306,7 @@ void HTMLOptionElement::willResetComputedStyle()
 
 String HTMLOptionElement::textIndentedToRespectGroupLabel() const
 {
-    ContainerNode* parent = parentNode();
+    RefPtr<ContainerNode> parent = parentNode();
     if (is<HTMLOptGroupElement>(parent))
         return "    " + displayLabel();
     return displayLabel();
@@ -317,9 +323,9 @@ bool HTMLOptionElement::isDisabledFormControl() const
     return downcast<HTMLOptGroupElement>(*parentNode()).isDisabledFormControl();
 }
 
-Node::InsertionNotificationRequest HTMLOptionElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLOptionElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    if (HTMLSelectElement* select = ownerSelectElement()) {
+    if (RefPtr<HTMLSelectElement> select = ownerSelectElement()) {
         select->setRecalcListItems();
         select->updateValidity();
         // Do not call selected() since calling updateListItemSelectedStates()
@@ -331,13 +337,13 @@ Node::InsertionNotificationRequest HTMLOptionElement::insertedInto(ContainerNode
         select->scrollToSelection();
     }
 
-    return HTMLElement::insertedInto(insertionPoint);
+    return HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 }
 
 String HTMLOptionElement::collectOptionInnerText() const
 {
     StringBuilder text;
-    for (Node* node = firstChild(); node; ) {
+    for (RefPtr<Node> node = firstChild(); node; ) {
         if (is<Text>(*node))
             text.append(node->nodeValue());
         // Text nodes inside script elements are not part of the option text.

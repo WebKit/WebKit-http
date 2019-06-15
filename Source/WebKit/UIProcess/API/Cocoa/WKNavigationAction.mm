@@ -30,6 +30,7 @@
 
 #import "NavigationActionData.h"
 #import "WKFrameInfoInternal.h"
+#import "WKNavigationInternal.h"
 #import "_WKUserInitiatedActionInternal.h"
 #import <WebCore/FloatPoint.h>
 #import <wtf/RetainPtr.h>
@@ -136,16 +137,12 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 
 - (WKFrameInfo *)sourceFrame
 {
-    if (API::FrameInfo* frameInfo = _navigationAction->sourceFrame())
-        return wrapper(*frameInfo);
-    return nil;
+    return wrapper(_navigationAction->sourceFrame());
 }
 
 - (WKFrameInfo *)targetFrame
 {
-    if (API::FrameInfo* frameInfo = _navigationAction->targetFrame())
-        return wrapper(*frameInfo);
-    return nil;
+    return wrapper(_navigationAction->targetFrame());
 }
 
 - (WKNavigationType)navigationType
@@ -155,7 +152,7 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 
 - (NSURLRequest *)request
 {
-    return _navigationAction->request().nsURLRequest(WebCore::DoNotUpdateHTTPBody);
+    return _navigationAction->request().nsURLRequest(WebCore::HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody);
 }
 
 #if PLATFORM(IOS)
@@ -225,10 +222,17 @@ static NSInteger toNSButtonNumber(WebKit::WebMouseEvent::Button mouseButton)
 
 - (_WKUserInitiatedAction *)_userInitiatedAction
 {
-    auto userInitiatedAction = _navigationAction->userInitiatedAction();
-    if (userInitiatedAction)
-        return wrapper(*userInitiatedAction);
-    return nil;
+    return wrapper(_navigationAction->userInitiatedAction());
+}
+
+- (BOOL)_isRedirect
+{
+    return _navigationAction->isRedirect();
+}
+
+- (WKNavigation *)_mainFrameNavigation
+{
+    return wrapper(_navigationAction->mainFrameNavigation());
 }
 
 @end

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,68 +26,103 @@
 #import "config.h"
 #import "AVFoundationMIMETypeCache.h"
 
-#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if PLATFORM(COCOA)
 
+#import "ContentType.h"
 #import <AVFoundation/AVAsset.h>
 #import <wtf/HashSet.h>
-#import <wtf/Locker.h>
-#import <wtf/NeverDestroyed.h>
 
-#import "CoreMediaSoftLink.h"
+#import <pal/cf/CoreMediaSoftLink.h>
 
+#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if !PLATFORM(IOSMAC)
+SOFT_LINK_FRAMEWORK_OPTIONAL_PREFLIGHT(AVFoundation)
+#endif
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVURLAsset)
+#endif
 
 namespace WebCore {
-
-AVFoundationMIMETypeCache::AVFoundationMIMETypeCache()
-{
-    m_loaderQueue = dispatch_queue_create("WebCoreAudioVisualMIMETypes loader queue", DISPATCH_QUEUE_SERIAL);
-}
-
-void AVFoundationMIMETypeCache::loadTypes()
-{
-    {
-        Locker<Lock> lock(m_lock);
-
-        if (m_status != NotLoaded)
-            return;
-
-        if (!AVFoundationLibrary()) {
-            m_status = Loaded;
-            return;
-        }
-
-        m_status = Loading;
-    }
-
-    dispatch_async(m_loaderQueue, [this] {
-        for (NSString *type in [getAVURLAssetClass() audiovisualMIMETypes])
-            m_cache.add(type);
-        m_lock.lock();
-        m_status = Loaded;
-        m_lock.unlock();
-    });
-}
-
-const HashSet<String, ASCIICaseInsensitiveHash>& AVFoundationMIMETypeCache::types()
-{
-    m_lock.lock();
-    MIMETypeLoadStatus status = m_status;
-    m_lock.unlock();
-
-    if (status != Loaded) {
-        loadTypes();
-        dispatch_sync(m_loaderQueue, ^{ });
-    }
-
-    return m_cache;
-}
 
 AVFoundationMIMETypeCache& AVFoundationMIMETypeCache::singleton()
 {
     static NeverDestroyed<AVFoundationMIMETypeCache> cache;
     return cache.get();
+}
+
+void AVFoundationMIMETypeCache::setSupportedTypes(const Vector<String>& types)
+{
+    if (m_cache)
+        return;
+
+    m_cache = HashSet<String, ASCIICaseInsensitiveHash>();
+    for (auto& type : types)
+        m_cache->add(type);
+}
+
+const HashSet<String, ASCIICaseInsensitiveHash>& AVFoundationMIMETypeCache::types()
+{
+    if (!m_cache)
+        loadMIMETypes();
+
+    return *m_cache;
+}
+
+bool AVFoundationMIMETypeCache::supportsContentType(const ContentType& contentType)
+{
+    if (contentType.isEmpty())
+        return false;
+
+    return types().contains(contentType.containerType());
+}
+
+bool AVFoundationMIMETypeCache::canDecodeType(const String& mimeType)
+{
+    if (mimeType.isEmpty())
+        return false;
+
+    if (!isAvailable() || !types().contains(ContentType { mimeType }.containerType()))
+        return false;
+
+#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+    return [getAVURLAssetClass() isPlayableExtendedMIMEType:mimeType];
+#endif
+
+    return false;
+}
+
+bool AVFoundationMIMETypeCache::isAvailable() const
+{
+#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+#if PLATFORM(IOSMAC)
+    // FIXME: This should be using AVFoundationLibraryIsAvailable() instead, but doing so causes soft-linking
+    // to subsequently fail on certain symbols. See <rdar://problem/42224780> for more details.
+    return AVFoundationLibrary();
+#else
+    return AVFoundationLibraryIsAvailable();
+#endif
+#else
+    return false;
+#endif
+}
+
+void AVFoundationMIMETypeCache::loadMIMETypes()
+{
+    m_cache = HashSet<String, ASCIICaseInsensitiveHash>();
+
+#if ENABLE(VIDEO) && USE(AVFOUNDATION)
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [this] {
+        if (!AVFoundationLibrary())
+            return;
+
+        for (NSString* type in [getAVURLAssetClass() audiovisualMIMETypes])
+            m_cache->add(type);
+
+        if (m_cacheTypeCallback)
+            m_cacheTypeCallback(copyToVector(*m_cache));
+    });
+#endif
 }
 
 }

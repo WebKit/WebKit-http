@@ -362,10 +362,10 @@ TextDirection directionOfEnclosingBlock(const Position& position)
 {
     auto block = enclosingBlock(position.containerNode());
     if (!block)
-        return LTR;
+        return TextDirection::LTR;
     auto renderer = block->renderer();
     if (!renderer)
-        return LTR;
+        return TextDirection::LTR;
     return renderer->style().direction();
 }
 
@@ -456,13 +456,13 @@ static bool isSpecialHTMLElement(const Node* node)
     if (!renderer)
         return false;
 
-    if (renderer->style().display() == TABLE || renderer->style().display() == INLINE_TABLE)
+    if (renderer->style().display() == DisplayType::Table || renderer->style().display() == DisplayType::InlineTable)
         return true;
 
     if (renderer->style().isFloating())
         return true;
 
-    if (renderer->style().position() != StaticPosition)
+    if (renderer->style().position() != PositionType::Static)
         return true;
 
     return false;
@@ -927,13 +927,13 @@ Ref<Element> createTabSpanElement(Document& document, const String& tabText)
 
 Ref<Element> createTabSpanElement(Document& document)
 {
-    return createTabSpanElement(document, document.createEditingTextNode(ASCIILiteral("\t")));
+    return createTabSpanElement(document, document.createEditingTextNode("\t"_s));
 }
 
 bool isNodeRendered(const Node& node)
 {
     auto* renderer = node.renderer();
-    return renderer && renderer->style().visibility() == VISIBLE;
+    return renderer && renderer->style().visibility() == Visibility::Visible;
 }
 
 unsigned numEnclosingMailBlockquotes(const Position& position)
@@ -1090,6 +1090,16 @@ int indexForVisiblePosition(Node& node, const VisiblePosition& visiblePosition, 
 {
     auto range = Range::create(node.document(), firstPositionInNode(&node), visiblePosition.deepEquivalent().parentAnchoredEquivalent());
     return TextIterator::rangeLength(range.ptr(), forSelectionPreservation);
+}
+
+VisiblePosition visiblePositionForPositionWithOffset(const VisiblePosition& position, int offset)
+{
+    RefPtr<ContainerNode> root;
+    unsigned startIndex = indexForVisiblePosition(position, root);
+    if (!root)
+        return { };
+
+    return visiblePositionForIndex(startIndex + offset, root.get());
 }
 
 VisiblePosition visiblePositionForIndex(int index, ContainerNode* scope)

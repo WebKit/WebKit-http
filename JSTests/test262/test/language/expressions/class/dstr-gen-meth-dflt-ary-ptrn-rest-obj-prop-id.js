@@ -5,7 +5,7 @@
 description: Rest element containing an object binding pattern (class expression method (default parameter))
 esid: sec-class-definitions-runtime-semantics-evaluation
 es6id: 14.5.16
-features: [destructuring-binding, default-parameters]
+features: [generators, destructuring-binding, default-parameters]
 flags: [generated]
 info: |
     ClassExpression : class BindingIdentifieropt ClassTail
@@ -74,6 +74,7 @@ info: |
              BindingPattern with A and environment as the arguments.
        [...]
 ---*/
+let length = "outer";
 
 var callCount = 0;
 var C = class {
@@ -84,9 +85,7 @@ var C = class {
     assert.sameValue(y, undefined);
     assert.sameValue(z, 3);
 
-    assert.throws(ReferenceError, function() {
-      length;
-    });
+    assert.sameValue(length, "outer", "the length prop is not set as a binding name");
     callCount = callCount + 1;
   }
 };

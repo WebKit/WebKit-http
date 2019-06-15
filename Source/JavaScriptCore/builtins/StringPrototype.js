@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Andy VanWagoner <thetalecrafter@gmail.com>.
+ * Copyright (C) 2015 Andy VanWagoner <andy@vanwagoner.family>.
  * Copyright (C) 2016 Yusuke Suzuki <utatane.tea@gmail.com>
  * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
@@ -191,7 +191,10 @@ function padEnd(maxLength/*, fillString*/)
 }
 
 @globalPrivate
-function hasObservableSideEffectsForStringReplace(regexp, replacer) {
+function hasObservableSideEffectsForStringReplace(regexp, replacer)
+{
+    "use strict";
+
     if (replacer !== @regExpPrototypeSymbolReplace)
         return true;
     
@@ -235,6 +238,8 @@ function replace(search, replace)
 @globalPrivate
 function getDefaultCollator()
 {
+    "use strict";
+
     return @getDefaultCollator.collator || (@getDefaultCollator.collator = new @Collator());
 }
     

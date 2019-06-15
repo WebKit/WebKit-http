@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class RenderAttachment final : public RenderReplaced {
+    WTF_MAKE_ISO_ALLOCATED(RenderAttachment);
 public:
     RenderAttachment(HTMLAttachmentElement&, RenderStyle&&);
 
@@ -49,6 +50,7 @@ private:
     const char* renderName() const override { return "RenderAttachment"; }
 
     bool shouldDrawSelectionTint() const override { return false; }
+    void paintReplaced(PaintInfo&, const LayoutPoint& offset) final;
 
     void layout() override;
 

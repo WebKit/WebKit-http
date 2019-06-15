@@ -30,6 +30,7 @@ namespace WebCore {
 class RenderButton;
 
 class HTMLButtonElement final : public HTMLFormControlElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLButtonElement);
 public:
     static Ref<HTMLButtonElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
@@ -50,14 +51,11 @@ private:
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    // HTMLFormControlElement always creates one, but buttons don't need it.
-    bool alwaysCreateUserAgentShadowRoot() const final { return false; }
-
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
     void defaultEventHandler(Event&) final;
 
-    bool appendFormData(FormDataList&, bool) final;
+    bool appendFormData(DOMFormData&, bool) final;
 
     bool isEnumeratable() const final { return true; }
     bool supportLabels() const final { return true; }

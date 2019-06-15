@@ -2,26 +2,28 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-2-11
 description: >
     Array.prototype.forEach applied to Array-like object, 'length' is
     an own accessor property without a get function
 ---*/
 
-        var accessed = false;
-        function callbackfn(val, idx, obj) {
-            accessed = true;
-        }
+var accessed = false;
 
-        var obj = {
-            0: 11,
-            1: 12
-        };
-        Object.defineProperty(obj, "length", {
-            set: function () { },
-            configurable: true
-        });
+function callbackfn(val, idx, obj) {
+  accessed = true;
+}
 
-        Array.prototype.forEach.call(obj, callbackfn);
+var obj = {
+  0: 11,
+  1: 12
+};
+Object.defineProperty(obj, "length", {
+  set: function() {},
+  configurable: true
+});
+
+Array.prototype.forEach.call(obj, callbackfn);
 
 assert.sameValue(accessed, false, 'accessed');

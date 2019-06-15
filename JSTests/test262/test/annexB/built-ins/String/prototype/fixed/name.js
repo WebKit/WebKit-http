@@ -5,7 +5,7 @@
 es6id: B.2.3.6
 description: >
   String.prototype.fixed.name is "fixed".
-info: >
+info: |
   String.prototype.fixed ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.fixed.name, "fixed");
-
-verifyNotEnumerable(String.prototype.fixed, "name");
-verifyNotWritable(String.prototype.fixed, "name");
-verifyConfigurable(String.prototype.fixed, "name");
+verifyProperty(String.prototype.fixed, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "fixed"
+});

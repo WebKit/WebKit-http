@@ -2,17 +2,19 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-9-c-ii-10
 description: >
     Array.prototype.reduce - callbackfn is called with 1 formal
     parameter
 ---*/
 
-        var result = false;
-        function callbackfn(prevVal) {
-            result = (prevVal === 1);
-        }
+var result = false;
 
-        [11].reduce(callbackfn, 1);
+function callbackfn(prevVal) {
+  result = (prevVal === 1);
+}
+
+[11].reduce(callbackfn, 1);
 
 assert(result, 'result !== true');

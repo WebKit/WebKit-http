@@ -72,8 +72,8 @@ InspectorBackend.activateDomain("Database");
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 
 #include "TestProtocolTypes.h"
-#include <inspector/InspectorFrontendRouter.h>
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 
 namespace Inspector {
 
@@ -127,7 +127,7 @@ private:
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -173,8 +173,8 @@ typedef String ErrorString;
 #include "config.h"
 #include "TestBackendDispatchers.h"
 
-#include <inspector/InspectorFrontendRouter.h>
-#include <inspector/InspectorValues.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+#include <wtf/JSONValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
@@ -224,7 +224,7 @@ namespace Inspector {
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorValues.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -234,8 +234,8 @@ class FrontendRouter;
 class DatabaseFrontendDispatcher {
 public:
     DatabaseFrontendDispatcher(FrontendRouter& frontendRouter) : m_frontendRouter(frontendRouter) { }
-    void didExecuteOptionalParameters(RefPtr<Inspector::Protocol::Array<String>> columnNames, const String* const notes, const double* const timestamp, RefPtr<Inspector::InspectorObject> values, RefPtr<Inspector::InspectorValue> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors* const screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String* const printColor);
-    void didExecuteNoOptionalParameters(RefPtr<Inspector::Protocol::Array<String>> columnNames, const String& notes, double timestamp, RefPtr<Inspector::InspectorObject> values, RefPtr<Inspector::InspectorValue> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors& screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String& printColor);
+    void didExecuteOptionalParameters(RefPtr<JSON::ArrayOf<String>> columnNames, const String* notes, const double* timestamp, RefPtr<JSON::Object> values, RefPtr<JSON::Value> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const String* screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String* printColor);
+    void didExecuteNoOptionalParameters(RefPtr<JSON::ArrayOf<String>> columnNames, const String& notes, double timestamp, RefPtr<JSON::Object> values, RefPtr<JSON::Value> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const String& screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String& printColor);
 private:
     FrontendRouter& m_frontendRouter;
 };
@@ -277,54 +277,54 @@ private:
 #include "config.h"
 #include "TestFrontendDispatchers.h"
 
-#include "InspectorFrontendRouter.h"
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <wtf/text/CString.h>
 
 namespace Inspector {
 
-void DatabaseFrontendDispatcher::didExecuteOptionalParameters(RefPtr<Inspector::Protocol::Array<String>> columnNames, const String* const notes, const double* const timestamp, RefPtr<Inspector::InspectorObject> values, RefPtr<Inspector::InspectorValue> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors* const screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String* const printColor)
+void DatabaseFrontendDispatcher::didExecuteOptionalParameters(RefPtr<JSON::ArrayOf<String>> columnNames, const String* notes, const double* timestamp, RefPtr<JSON::Object> values, RefPtr<JSON::Value> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const String* screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String* printColor)
 {
-    Ref<InspectorObject> jsonMessage = InspectorObject::create();
-    jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteOptionalParameters"));
-    Ref<InspectorObject> paramsObject = InspectorObject::create();
+    Ref<JSON::Object> jsonMessage = JSON::Object::create();
+    jsonMessage->setString("method"_s, "Database.didExecuteOptionalParameters"_s);
+    Ref<JSON::Object> paramsObject = JSON::Object::create();
     if (columnNames)
-        paramsObject->setArray(ASCIILiteral("columnNames"), columnNames);
+        paramsObject->setArray("columnNames"_s, columnNames);
     if (notes)
-        paramsObject->setString(ASCIILiteral("notes"), *notes);
+        paramsObject->setString("notes"_s, *notes);
     if (timestamp)
-        paramsObject->setDouble(ASCIILiteral("timestamp"), *timestamp);
+        paramsObject->setDouble("timestamp"_s, *timestamp);
     if (values)
-        paramsObject->setObject(ASCIILiteral("values"), values);
+        paramsObject->setObject("values"_s, values);
     if (payload)
-        paramsObject->setValue(ASCIILiteral("payload"), *payload);
+        paramsObject->setValue("payload"_s, *payload);
     if (sqlError)
-        paramsObject->setObject(ASCIILiteral("sqlError"), sqlError);
+        paramsObject->setObject("sqlError"_s, sqlError);
     if (screenColor)
-        paramsObject->setString(ASCIILiteral("screenColor"), *screenColor);
+        paramsObject->setString("screenColor"_s, *screenColor);
     if (alternateColors)
-        paramsObject->setArray(ASCIILiteral("alternateColors"), alternateColors);
+        paramsObject->setArray("alternateColors"_s, alternateColors);
     if (printColor)
-        paramsObject->setString(ASCIILiteral("printColor"), *printColor);
-    jsonMessage->setObject(ASCIILiteral("params"), WTFMove(paramsObject));
+        paramsObject->setString("printColor"_s, *printColor);
+    jsonMessage->setObject("params"_s, WTFMove(paramsObject));
 
     m_frontendRouter.sendEvent(jsonMessage->toJSONString());
 }
 
-void DatabaseFrontendDispatcher::didExecuteNoOptionalParameters(RefPtr<Inspector::Protocol::Array<String>> columnNames, const String& notes, double timestamp, RefPtr<Inspector::InspectorObject> values, RefPtr<Inspector::InspectorValue> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const Inspector::Protocol::Database::PrimaryColors& screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String& printColor)
+void DatabaseFrontendDispatcher::didExecuteNoOptionalParameters(RefPtr<JSON::ArrayOf<String>> columnNames, const String& notes, double timestamp, RefPtr<JSON::Object> values, RefPtr<JSON::Value> payload, RefPtr<Inspector::Protocol::Database::Error> sqlError, const String& screenColor, RefPtr<Inspector::Protocol::Database::ColorList> alternateColors, const String& printColor)
 {
-    Ref<InspectorObject> jsonMessage = InspectorObject::create();
-    jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteNoOptionalParameters"));
-    Ref<InspectorObject> paramsObject = InspectorObject::create();
-    paramsObject->setArray(ASCIILiteral("columnNames"), columnNames);
-    paramsObject->setString(ASCIILiteral("notes"), notes);
-    paramsObject->setDouble(ASCIILiteral("timestamp"), timestamp);
-    paramsObject->setObject(ASCIILiteral("values"), values);
-    paramsObject->setValue(ASCIILiteral("payload"), payload);
-    paramsObject->setObject(ASCIILiteral("sqlError"), sqlError);
-    paramsObject->setString(ASCIILiteral("screenColor"), screenColor);
-    paramsObject->setArray(ASCIILiteral("alternateColors"), alternateColors);
-    paramsObject->setString(ASCIILiteral("printColor"), printColor);
-    jsonMessage->setObject(ASCIILiteral("params"), WTFMove(paramsObject));
+    Ref<JSON::Object> jsonMessage = JSON::Object::create();
+    jsonMessage->setString("method"_s, "Database.didExecuteNoOptionalParameters"_s);
+    Ref<JSON::Object> paramsObject = JSON::Object::create();
+    paramsObject->setArray("columnNames"_s, columnNames);
+    paramsObject->setString("notes"_s, notes);
+    paramsObject->setDouble("timestamp"_s, timestamp);
+    paramsObject->setObject("values"_s, values);
+    paramsObject->setValue("payload"_s, payload);
+    paramsObject->setObject("sqlError"_s, sqlError);
+    paramsObject->setString("screenColor"_s, screenColor);
+    paramsObject->setArray("alternateColors"_s, alternateColors);
+    paramsObject->setString("printColor"_s, printColor);
+    jsonMessage->setObject("params"_s, WTFMove(paramsObject));
 
     m_frontendRouter.sendEvent(jsonMessage->toJSONString());
 }
@@ -366,7 +366,7 @@ void DatabaseFrontendDispatcher::didExecuteNoOptionalParameters(RefPtr<Inspector
 
 #pragma once
 
-#include <inspector/InspectorProtocolTypes.h>
+#include <JavaScriptCore/InspectorProtocolTypes.h>
 #include <wtf/Assertions.h>
 
 namespace Inspector {
@@ -387,13 +387,13 @@ namespace Database {
 /* Unique identifier of Database object. */
 typedef String DatabaseId;
 typedef String PrimaryColors;
-typedef Inspector::Protocol::Array<Inspector::Protocol::Database::PrimaryColors> ColorList;
+typedef JSON::ArrayOf<String> ColorList;
 } // Database
 // End of typedefs.
 
 namespace Database {
 /* Database error. */
-class Error : public Inspector::InspectorObjectBase {
+class Error : public JSON::ObjectBase {
 public:
     enum {
         NoFieldsSet = 0,
@@ -405,14 +405,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*Error*/InspectorObject>&& object)
+        Builder(Ref</*Error*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -423,23 +423,23 @@ public:
         Builder<STATE | MessageSet>& setMessage(const String& value)
         {
             COMPILE_ASSERT(!(STATE & MessageSet), property_message_already_set);
-            m_result->setString(ASCIILiteral("message"), value);
+            m_result->setString("message"_s, value);
             return castState<MessageSet>();
         }
 
         Builder<STATE | CodeSet>& setCode(int value)
         {
             COMPILE_ASSERT(!(STATE & CodeSet), property_code_already_set);
-            m_result->setInteger(ASCIILiteral("code"), value);
+            m_result->setInteger("code"_s, value);
             return castState<CodeSet>();
         }
 
         Ref<Error> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(Error) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(Error) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<Error>*>(&result));
         }
     };
@@ -453,7 +453,7 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 };
 
@@ -594,7 +594,7 @@ namespace Inspector {
 
 #include "TestProtocolInternal.h"
 #include "TestProtocolTypeConversions.h"
-#include <JavaScriptCore/InspectorValues.h>
+#include <wtf/JSONValues.h>
 
 namespace Inspector {
 
@@ -753,7 +753,7 @@ using namespace Inspector;
 #import "TestProtocolInternal.h"
 
 #import "TestProtocolTypeConversions.h"
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -785,28 +785,28 @@ using namespace Inspector;
     THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(alternateColors, @"alternateColors");
     THROW_EXCEPTION_FOR_BAD_OPTIONAL_PARAMETER(printColor, @"printColor");
 
-    Ref<InspectorObject> jsonMessage = InspectorObject::create();
-    jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteOptionalParameters"));
-    Ref<InspectorObject> paramsObject = InspectorObject::create();
+    Ref<JSON::Object> jsonMessage = JSON::Object::create();
+    jsonMessage->setString("method"_s, "Database.didExecuteOptionalParameters"_s);
+    Ref<JSON::Object> paramsObject = JSON::Object::create();
     if (columnNames)
-        paramsObject->setArray(ASCIILiteral("columnNames"), inspectorStringArray((*columnNames)));
+        paramsObject->setArray("columnNames"_s, toJSONStringArray((*columnNames)));
     if (notes)
-        paramsObject->setString(ASCIILiteral("notes"), (*notes));
+        paramsObject->setString("notes"_s, (*notes));
     if (timestamp)
-        paramsObject->setDouble(ASCIILiteral("timestamp"), (*timestamp));
+        paramsObject->setDouble("timestamp"_s, (*timestamp));
     if (values)
-        paramsObject->setObject(ASCIILiteral("values"), [(*values) toInspectorObject]);
+        paramsObject->setObject("values"_s, [(*values) toJSONObject]);
     if (payload)
-        paramsObject->setValue(ASCIILiteral("payload"), [(*payload) toInspectorObject]);
+        paramsObject->setValue("payload"_s, [(*payload) toJSONObject]);
     if (sqlError)
-        paramsObject->setObject(ASCIILiteral("sqlError"), [(*sqlError) toInspectorObject]);
+        paramsObject->setObject("sqlError"_s, [(*sqlError) toJSONObject]);
     if (screenColor)
-        paramsObject->setString(ASCIILiteral("screenColor"), (*screenColor));
+        paramsObject->setString("screenColor"_s, (*screenColor));
     if (alternateColors)
-        paramsObject->setArray(ASCIILiteral("alternateColors"), inspectorStringArray((*alternateColors)));
+        paramsObject->setArray("alternateColors"_s, toJSONStringArray((*alternateColors)));
     if (printColor)
-        paramsObject->setString(ASCIILiteral("printColor"), (*printColor));
-    jsonMessage->setObject(ASCIILiteral("params"), WTFMove(paramsObject));
+        paramsObject->setString("printColor"_s, (*printColor));
+    jsonMessage->setObject("params"_s, WTFMove(paramsObject));
     router.sendEvent(jsonMessage->toJSONString());
 }
 
@@ -823,19 +823,19 @@ using namespace Inspector;
     THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(alternateColors, @"alternateColors");
     THROW_EXCEPTION_FOR_REQUIRED_PARAMETER(printColor, @"printColor");
 
-    Ref<InspectorObject> jsonMessage = InspectorObject::create();
-    jsonMessage->setString(ASCIILiteral("method"), ASCIILiteral("Database.didExecuteNoOptionalParameters"));
-    Ref<InspectorObject> paramsObject = InspectorObject::create();
-    paramsObject->setArray(ASCIILiteral("columnNames"), inspectorStringArray(columnNames));
-    paramsObject->setString(ASCIILiteral("notes"), notes);
-    paramsObject->setDouble(ASCIILiteral("timestamp"), timestamp);
-    paramsObject->setObject(ASCIILiteral("values"), [values toInspectorObject]);
-    paramsObject->setValue(ASCIILiteral("payload"), [payload toInspectorObject]);
-    paramsObject->setObject(ASCIILiteral("sqlError"), [sqlError toInspectorObject]);
-    paramsObject->setString(ASCIILiteral("screenColor"), screenColor);
-    paramsObject->setArray(ASCIILiteral("alternateColors"), inspectorStringArray(alternateColors));
-    paramsObject->setString(ASCIILiteral("printColor"), printColor);
-    jsonMessage->setObject(ASCIILiteral("params"), WTFMove(paramsObject));
+    Ref<JSON::Object> jsonMessage = JSON::Object::create();
+    jsonMessage->setString("method"_s, "Database.didExecuteNoOptionalParameters"_s);
+    Ref<JSON::Object> paramsObject = JSON::Object::create();
+    paramsObject->setArray("columnNames"_s, toJSONStringArray(columnNames));
+    paramsObject->setString("notes"_s, notes);
+    paramsObject->setDouble("timestamp"_s, timestamp);
+    paramsObject->setObject("values"_s, [values toJSONObject]);
+    paramsObject->setValue("payload"_s, [payload toJSONObject]);
+    paramsObject->setObject("sqlError"_s, [sqlError toJSONObject]);
+    paramsObject->setString("screenColor"_s, screenColor);
+    paramsObject->setArray("alternateColors"_s, toJSONStringArray(alternateColors));
+    paramsObject->setString("printColor"_s, printColor);
+    jsonMessage->setObject("params"_s, WTFMove(paramsObject));
     router.sendEvent(jsonMessage->toJSONString());
 }
 
@@ -895,7 +895,7 @@ typedef NS_ENUM(NSInteger, TestProtocolPlatform) {
 __attribute__((visibility ("default")))
 @interface TestProtocolDatabaseError : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithMessage:(NSString *)message code:(int)code;
 /* required */ @property (nonatomic, copy) NSString *message;
 /* required */ @property (nonatomic, assign) int code;
@@ -946,7 +946,7 @@ __attribute__((visibility ("default")))
 #import "TestProtocol.h"
 #import "TestProtocolJSONObjectPrivate.h"
 #import <JavaScriptCore/AugmentableInspectorController.h>
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 @interface TestProtocolDatabaseDomainEventDispatcher (Private)
 - (instancetype)initWithController:(Inspector::AugmentableInspectorController*)controller;
@@ -998,13 +998,13 @@ inline String toProtocolString(TestProtocolPlatform value)
 {
     switch(value) {
     case TestProtocolPlatformAll:
-        return ASCIILiteral("all");
+        return "all"_s;
     case TestProtocolPlatformGeneric:
-        return ASCIILiteral("generic");
+        return "generic"_s;
     case TestProtocolPlatformIOS:
-        return ASCIILiteral("ios");
+        return "ios"_s;
     case TestProtocolPlatformMacOS:
-        return ASCIILiteral("macos");
+        return "macos"_s;
     }
 }
 
@@ -1142,8 +1142,8 @@ using namespace Inspector;
 
 #import "TestProtocolTypeConversions.h"
 #import <WebInspector/RWIProtocolJSONObjectPrivate.h>
-#import <JavaScriptCore/InspectorValues.h>
 #import <wtf/Assertions.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -1163,9 +1163,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;

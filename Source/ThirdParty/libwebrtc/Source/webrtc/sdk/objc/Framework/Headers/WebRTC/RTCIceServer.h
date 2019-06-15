@@ -20,6 +20,7 @@ typedef NS_ENUM(NSUInteger, RTCTlsCertPolicy) {
 NS_ASSUME_NONNULL_BEGIN
 
 RTC_EXPORT
+__attribute__((objc_runtime_name("WK_RTCIceServer")))
 @interface RTCIceServer : NSObject
 
 /** URI(s) for this server represented as NSStrings. */
@@ -42,6 +43,15 @@ RTC_EXPORT
   extension). If |urls| itself contains the hostname, this isn't necessary.
  */
 @property(nonatomic, readonly, nullable) NSString *hostname;
+
+/** List of protocols to be used in the TLS ALPN extension. */
+@property(nonatomic, readonly) NSArray<NSString *> *tlsAlpnProtocols;
+
+/**
+  List elliptic curves to be used in the TLS elliptic curves extension.
+  Only curve names supported by OpenSSL should be used (eg. "P-256","X25519").
+  */
+@property(nonatomic, readonly) NSArray<NSString *> *tlsEllipticCurves;
 
 - (nonnull instancetype)init NS_UNAVAILABLE;
 
@@ -73,7 +83,32 @@ RTC_EXPORT
                           username:(nullable NSString *)username
                         credential:(nullable NSString *)credential
                      tlsCertPolicy:(RTCTlsCertPolicy)tlsCertPolicy
-                          hostname:(nullable NSString *)hostname NS_DESIGNATED_INITIALIZER;
+                          hostname:(nullable NSString *)hostname;
+
+/**
+ * Initialize an RTCIceServer with its associated URLs, optional username,
+ * optional credential, TLS cert policy, hostname and ALPN protocols.
+ */
+- (instancetype)initWithURLStrings:(NSArray<NSString *> *)urlStrings
+                          username:(nullable NSString *)username
+                        credential:(nullable NSString *)credential
+                     tlsCertPolicy:(RTCTlsCertPolicy)tlsCertPolicy
+                          hostname:(nullable NSString *)hostname
+                  tlsAlpnProtocols:(NSArray<NSString *> *)tlsAlpnProtocols;
+
+/**
+ * Initialize an RTCIceServer with its associated URLs, optional username,
+ * optional credential, TLS cert policy, hostname, ALPN protocols and
+ * elliptic curves.
+ */
+- (instancetype)initWithURLStrings:(NSArray<NSString *> *)urlStrings
+                          username:(nullable NSString *)username
+                        credential:(nullable NSString *)credential
+                     tlsCertPolicy:(RTCTlsCertPolicy)tlsCertPolicy
+                          hostname:(nullable NSString *)hostname
+                  tlsAlpnProtocols:(nullable NSArray<NSString *> *)tlsAlpnProtocols
+                 tlsEllipticCurves:(nullable NSArray<NSString *> *)tlsEllipticCurves
+    NS_DESIGNATED_INITIALIZER;
 
 @end
 

@@ -62,7 +62,7 @@ public:
     WTF_EXPORT_PRIVATE void wakeUp();
 
 #if USE(COCOA_EVENT_LOOP)
-    WTF_EXPORT_PRIVATE void runForDuration(double duration);
+    WTF_EXPORT_PRIVATE void runForDuration(Seconds duration);
 #endif
 
 #if USE(GLIB_EVENT_LOOP)
@@ -79,17 +79,14 @@ public:
 #endif
 
     class TimerBase {
+        WTF_MAKE_FAST_ALLOCATED;
         friend class RunLoop;
     public:
         WTF_EXPORT_PRIVATE explicit TimerBase(RunLoop&);
         WTF_EXPORT_PRIVATE virtual ~TimerBase();
 
-        void startRepeating(double repeatInterval) { startInternal(repeatInterval, true); }
-        void startRepeating(std::chrono::milliseconds repeatInterval) { startRepeating(repeatInterval.count() * 0.001); }
-        void startRepeating(Seconds repeatInterval) { startRepeating(repeatInterval.value()); }
-        void startOneShot(double interval) { startInternal(interval, false); }
-        void startOneShot(std::chrono::milliseconds interval) { startOneShot(interval.count() * 0.001); }
-        void startOneShot(Seconds interval) { startOneShot(interval.value()); }
+        void startRepeating(Seconds repeatInterval) { startInternal(repeatInterval, true); }
+        void startOneShot(Seconds interval) { startInternal(interval, false); }
 
         WTF_EXPORT_PRIVATE void stop();
         WTF_EXPORT_PRIVATE bool isActive() const;
@@ -103,12 +100,12 @@ public:
 #endif
 
     private:
-        void startInternal(double nextFireInterval, bool repeat)
+        void startInternal(Seconds nextFireInterval, bool repeat)
         {
-            start(std::max(nextFireInterval, 0.0), repeat);
+            start(std::max(nextFireInterval, 0_s), repeat);
         }
 
-        WTF_EXPORT_PRIVATE void start(double nextFireInterval, bool repeat);
+        WTF_EXPORT_PRIVATE void start(Seconds nextFireInterval, bool repeat);
 
         Ref<RunLoop> m_runLoop;
 
@@ -166,7 +163,7 @@ private:
 
     void performWork();
 
-    Mutex m_functionQueueLock;
+    Lock m_functionQueueLock;
     Deque<Function<void()>> m_functionQueue;
 
 #if USE(WINDOWS_EVENT_LOOP)

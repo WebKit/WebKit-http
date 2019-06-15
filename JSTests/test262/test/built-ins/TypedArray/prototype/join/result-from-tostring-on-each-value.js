@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.join
 description: Concatenates the result of toString for each value
-info: >
+info: |
   22.2.3.15 %TypedArray%.prototype.join ( separator )
 
   %TypedArray%.prototype.join is a distinct function that implements the same
@@ -25,6 +25,7 @@ info: >
     d. Let R be a String value produced by concatenating S and next.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var arr = [-2, Infinity, NaN, -Infinity, 0.6, 9007199254740992];

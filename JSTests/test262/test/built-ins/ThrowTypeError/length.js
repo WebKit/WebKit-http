@@ -5,7 +5,7 @@
 esid: sec-%throwtypeerror%
 description: >
   %ThrowTypeError%.length is 0.
-info: >
+info: |
   %ThrowTypeError% ( )
 
   The length property of a %ThrowTypeError% function has the attributes
@@ -13,7 +13,10 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-var ThrowTypeError = Object.getOwnPropertyDescriptor(function(){ "use strict"; return arguments; }(), "callee").get;
+var ThrowTypeError = Object.getOwnPropertyDescriptor(function() {
+  "use strict";
+  return arguments;
+}(), "callee").get;
 
 assert.sameValue(ThrowTypeError.length, 0);
 

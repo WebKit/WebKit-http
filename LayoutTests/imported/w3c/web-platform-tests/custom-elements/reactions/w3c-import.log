@@ -1,7 +1,7 @@
 The tests in this directory were imported from the W3C repository.
 Do NOT modify these tests directly in WebKit.
 Instead, create a pull request on the WPT github:
-	https://github.com/w3c/web-platform-tests
+	https://github.com/web-platform-tests/wpt
 
 Then run the Tools/Scripts/import-w3c-tests in WebKit to reimport
 
@@ -24,6 +24,7 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/ElementContentEditable.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLAnchorElement.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLElement.html
+/LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLInputElement.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLOptionElement.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLOptionsCollection.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/HTMLOutputElement.html
@@ -38,3 +39,4 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/Range.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/Selection.html
 /LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/ShadowRoot.html
+/LayoutTests/imported/w3c/web-platform-tests/custom-elements/reactions/with-exceptions.html

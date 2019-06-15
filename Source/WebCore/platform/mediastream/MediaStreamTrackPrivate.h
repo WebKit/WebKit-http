@@ -42,7 +42,7 @@ class MediaStreamTrackPrivate : public RefCounted<MediaStreamTrackPrivate>, publ
 public:
     class Observer {
     public:
-        virtual ~Observer() { }
+        virtual ~Observer() = default;
 
         virtual void trackStarted(MediaStreamTrackPrivate&) { };
         virtual void trackEnded(MediaStreamTrackPrivate&) = 0;
@@ -50,8 +50,10 @@ public:
         virtual void trackSettingsChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackEnabledChanged(MediaStreamTrackPrivate&) = 0;
         virtual void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) { };
-        virtual void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) { };
         virtual void readyStateChanged(MediaStreamTrackPrivate&) { };
+
+        // May get called on a background thread.
+        virtual void audioSamplesAvailable(MediaStreamTrackPrivate&, const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t) { };
     };
 
     static Ref<MediaStreamTrackPrivate> create(Ref<RealtimeMediaSource>&&);
@@ -100,6 +102,8 @@ public:
     enum class ReadyState { None, Live, Ended };
     ReadyState readyState() const { return m_readyState; }
 
+    void setIdForTesting(String&& id) { m_id = WTFMove(id); }
+
 private:
     MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&&, String&& id);
 
@@ -114,7 +118,10 @@ private:
 
     void updateReadyState();
 
-    Vector<Observer*> m_observers;
+    void forEachObserver(const WTF::Function<void(Observer&)>&) const;
+
+    mutable RecursiveLock m_observersLock;
+    HashSet<Observer*> m_observers;
     Ref<RealtimeMediaSource> m_source;
 
     String m_id;

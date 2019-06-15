@@ -30,7 +30,7 @@
 
 namespace JSC {
 
-class JSDataView : public JSArrayBufferView {
+class JSDataView final : public JSArrayBufferView {
 public:
     typedef JSArrayBufferView Base;
     static const unsigned elementSize = 1;
@@ -70,9 +70,6 @@ protected:
 
     static void getOwnNonIndexPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
 
-    static ArrayBuffer* slowDownAndWasteMemory(JSArrayBufferView*);
-    static RefPtr<ArrayBufferView> getTypedArrayImpl(JSArrayBufferView*);
-    
 public:
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
     

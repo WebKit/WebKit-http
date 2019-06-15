@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.indexof
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.indexOf (searchElement [ , fromIndex ] )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -15,7 +15,7 @@ info: >
   1. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var indexOf = TypedArray.prototype.indexOf;

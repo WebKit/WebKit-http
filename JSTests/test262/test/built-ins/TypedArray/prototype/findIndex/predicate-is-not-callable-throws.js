@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.findindex
-es6id: 22.2.3.11
 description: >
   Throws a TypeError exception if predicate is not callable.
-info: >
+info: |
   22.2.3.11 %TypedArray%.prototype.findIndex ( predicate [ , thisArg ] )
 
   %TypedArray%.prototype.findIndex is a distinct function that implements the
@@ -21,6 +20,7 @@ info: >
   3. If IsCallable(predicate) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

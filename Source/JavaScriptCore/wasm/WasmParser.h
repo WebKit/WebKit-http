@@ -45,7 +45,7 @@ namespace JSC { namespace Wasm {
 
 namespace FailureHelper {
 // FIXME We should move this to makeString. It's in its own namespace to enable C++ Argument Dependent Lookup à la std::swap: user code can deblare its own "boxFailure" and the fail() helper will find it.
-static inline auto makeString(const char *failure) { return ASCIILiteral(failure); }
+static inline auto makeString(const char *failure) { return failure; }
 template <typename Int, typename = typename std::enable_if<std::is_integral<Int>::value>::type>
 static inline auto makeString(Int failure) { return String::number(failure); }
 }
@@ -54,9 +54,13 @@ template<typename SuccessType>
 class Parser {
 public:
     typedef String ErrorType;
-    typedef UnexpectedType<ErrorType> UnexpectedResult;
+    typedef Unexpected<ErrorType> UnexpectedResult;
     typedef Expected<void, ErrorType> PartialResult;
     typedef Expected<SuccessType, ErrorType> Result;
+
+    const uint8_t* source() const { return m_source; }
+    size_t length() const { return m_sourceLength; }
+    size_t offset() const { return m_offset; }
 
 protected:
     Parser(const uint8_t*, size_t);
@@ -81,26 +85,23 @@ protected:
     bool WARN_UNUSED_RETURN parseValueType(Type&);
     bool WARN_UNUSED_RETURN parseExternalKind(ExternalKind&);
 
-    const uint8_t* source() const { return m_source; }
-    size_t length() const { return m_sourceLength; }
-
     size_t m_offset = 0;
 
     template <typename ...Args>
     NEVER_INLINE UnexpectedResult WARN_UNUSED_RETURN fail(Args... args) const
     {
         using namespace FailureHelper; // See ADL comment in namespace above.
-        return UnexpectedResult(makeString(ASCIILiteral("WebAssembly.Module doesn't parse at byte "), String::number(m_offset), ASCIILiteral(" / "), String::number(m_sourceLength), ASCIILiteral(": "), makeString(args)...));
+        return UnexpectedResult(makeString("WebAssembly.Module doesn't parse at byte "_s, String::number(m_offset), ": "_s, makeString(args)...));
     }
 #define WASM_PARSER_FAIL_IF(condition, ...) do { \
     if (UNLIKELY(condition))                     \
         return fail(__VA_ARGS__);                \
     } while (0)
 
-#define WASM_FAIL_IF_HELPER_FAILS(helper) do {   \
-        auto helperResult = helper;              \
-        if (UNLIKELY(!helperResult))             \
-            return helperResult.getUnexpected(); \
+#define WASM_FAIL_IF_HELPER_FAILS(helper) do {                      \
+        auto helperResult = helper;                                 \
+        if (UNLIKELY(!helperResult))                                \
+            return makeUnexpected(WTFMove(helperResult.error()));   \
     } while (0)
 
 private:
@@ -283,6 +284,14 @@ ALWAYS_INLINE bool Parser<SuccessType>::parseExternalKind(ExternalKind& result)
         return false;
     result = static_cast<ExternalKind>(value);
     return true;
+}
+
+ALWAYS_INLINE I32InitExpr makeI32InitExpr(uint8_t opcode, uint32_t bits)
+{
+    RELEASE_ASSERT(opcode == I32Const || opcode == GetGlobal);
+    if (opcode == I32Const)
+        return I32InitExpr::constValue(bits);
+    return I32InitExpr::globalImport(bits);
 }
 
 } } // namespace JSC::Wasm

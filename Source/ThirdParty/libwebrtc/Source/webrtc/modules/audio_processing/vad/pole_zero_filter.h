@@ -8,12 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_VAD_POLE_ZERO_FILTER_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_VAD_POLE_ZERO_FILTER_H_
+#ifndef MODULES_AUDIO_PROCESSING_VAD_POLE_ZERO_FILTER_H_
+#define MODULES_AUDIO_PROCESSING_VAD_POLE_ZERO_FILTER_H_
 
-#include <cstddef>
-
-#include "webrtc/typedefs.h"
+#include <stddef.h>
+#include <stdint.h>
 
 namespace webrtc {
 
@@ -49,4 +48,4 @@ class PoleZeroFilter {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_VAD_POLE_ZERO_FILTER_H_
+#endif  // MODULES_AUDIO_PROCESSING_VAD_POLE_ZERO_FILTER_H_

@@ -76,9 +76,7 @@ Ref<InbandGenericTextTrack> InbandGenericTextTrack::create(ScriptExecutionContex
     return adoptRef(*new InbandGenericTextTrack(context, client, trackPrivate));
 }
 
-InbandGenericTextTrack::~InbandGenericTextTrack()
-{
-}
+InbandGenericTextTrack::~InbandGenericTextTrack() = default;
 
 void InbandGenericTextTrack::updateCueFromCueData(TextTrackCueGeneric& cue, GenericCueData& cueData)
 {
@@ -109,11 +107,11 @@ void InbandGenericTextTrack::updateCueFromCueData(TextTrackCueGeneric& cue, Gene
         cue.setHighlightColor(cueData.highlightColor().rgb());
 
     if (cueData.align() == GenericCueData::Start)
-        cue.setAlign(ASCIILiteral("start"));
+        cue.setAlign("start"_s);
     else if (cueData.align() == GenericCueData::Middle)
-        cue.setAlign(ASCIILiteral("middle"));
+        cue.setAlign("middle"_s);
     else if (cueData.align() == GenericCueData::End)
-        cue.setAlign(ASCIILiteral("end"));
+        cue.setAlign("end"_s);
     cue.setSnapToLines(false);
 
     cue.didChange();
@@ -127,11 +125,11 @@ void InbandGenericTextTrack::addGenericCue(GenericCueData& cueData)
     auto cue = TextTrackCueGeneric::create(*scriptExecutionContext(), cueData.startTime(), cueData.endTime(), cueData.content());
     updateCueFromCueData(cue.get(), cueData);
     if (hasCue(cue.ptr(), TextTrackCue::IgnoreDuration)) {
-        LOG(Media, "InbandGenericTextTrack::addGenericCue ignoring already added cue: start=%s, end=%s, content=\"%s\"\n", toString(cueData.startTime()).utf8().data(), toString(cueData.endTime()).utf8().data(), cueData.content().utf8().data());
+        DEBUG_LOG(LOGIDENTIFIER, "ignoring already added cue: ", cue.get());
         return;
     }
 
-    LOG(Media, "InbandGenericTextTrack::addGenericCue added cue: start=%.2f, end=%.2f, content=\"%s\"\n", cueData.startTime().toDouble(), cueData.endTime().toDouble(), cueData.content().utf8().data());
+    DEBUG_LOG(LOGIDENTIFIER, "added cue: ", cue.get());
 
     if (cueData.status() != GenericCueData::Complete)
         m_cueMap.add(cueData, cue);
@@ -141,7 +139,7 @@ void InbandGenericTextTrack::addGenericCue(GenericCueData& cueData)
 
 void InbandGenericTextTrack::updateGenericCue(GenericCueData& cueData)
 {
-    auto* cue = m_cueMap.find(cueData);
+    auto cue = makeRefPtr(m_cueMap.find(cueData));
     if (!cue)
         return;
 
@@ -153,13 +151,13 @@ void InbandGenericTextTrack::updateGenericCue(GenericCueData& cueData)
 
 void InbandGenericTextTrack::removeGenericCue(GenericCueData& cueData)
 {
-    auto* cue = m_cueMap.find(cueData);
+    auto cue = makeRefPtr(m_cueMap.find(cueData));
     if (cue) {
-        LOG(Media, "InbandGenericTextTrack::removeGenericCue removing cue: start=%s, end=%s, content=\"%s\"\n",  toString(cueData.startTime()).utf8().data(), toString(cueData.endTime()).utf8().data(), cueData.content().utf8().data());
+        DEBUG_LOG(LOGIDENTIFIER, *cue);
         removeCue(*cue);
-    } else {
-        LOG(Media, "InbandGenericTextTrack::removeGenericCue UNABLE to find cue: start=%.2f, end=%.2f, content=\"%s\"\n", cueData.startTime().toDouble(), cueData.endTime().toDouble(), cueData.content().utf8().data());
-    }
+    } else
+        DEBUG_LOG(LOGIDENTIFIER, "UNABLE to find cue: ", cueData);
+
 }
 
 ExceptionOr<void> InbandGenericTextTrack::removeCue(TextTrackCue& cue)
@@ -196,9 +194,12 @@ void InbandGenericTextTrack::newCuesParsed()
         auto vttCue = VTTCue::create(*scriptExecutionContext(), *cueData);
 
         if (hasCue(vttCue.ptr(), TextTrackCue::IgnoreDuration)) {
-            LOG(Media, "InbandGenericTextTrack::newCuesParsed ignoring already added cue: start=%.2f, end=%.2f, content=\"%s\"\n", vttCue->startTime(), vttCue->endTime(), vttCue->text().utf8().data());
+            DEBUG_LOG(LOGIDENTIFIER, "ignoring already added cue: ", vttCue.get());
             return;
         }
+
+        DEBUG_LOG(LOGIDENTIFIER, vttCue.get());
+
         addCue(WTFMove(vttCue));
     }
 }
@@ -216,7 +217,7 @@ void InbandGenericTextTrack::newRegionsParsed()
 
 void InbandGenericTextTrack::fileFailedToParse()
 {
-    LOG(Media, "Error parsing WebVTT stream.");
+    ERROR_LOG(LOGIDENTIFIER);
 }
 
 } // namespace WebCore

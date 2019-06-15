@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.every
 description: >
   callbackfn `this` value
-info: >
+info: |
   22.2.3.7 %TypedArray%.prototype.every ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.every is a distinct function that implements the same
@@ -24,6 +24,7 @@ info: >
       ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var expected = (function() { return this; })();

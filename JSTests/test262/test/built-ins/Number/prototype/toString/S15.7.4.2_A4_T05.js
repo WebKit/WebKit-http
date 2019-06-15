@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The toString function is not generic, it cannot be transferred
     to other kinds of objects for use as a method and there is should be
     a TypeError exception if its this value is not a Number object
@@ -11,27 +11,31 @@ description: transferring to the other objects
 ---*/
 
 //CHECK#1
-try{
-  var s1 = {x: 1};
+try {
+  var s1 = {
+    x: 1
+  };
   s1.toString = Number.prototype.toString;
-  var v1 = s1.toString(); 
+  var v1 = s1.toString();
   $ERROR('#1: Number.prototype.toString on not a Number object should throw TypeError');
 }
-catch(e){
-  if(!(e instanceof TypeError)){
-    $ERROR('#1: Number.prototype.toString on not a Number object should throw TypeError, not '+e);
+catch (e) {
+  if (!(e instanceof TypeError)) {
+    $ERROR('#1: Number.prototype.toString on not a Number object should throw TypeError, not ' + e);
   }
 }
 
 //CHECK#2
-try{
-  var s2 = {x: 1};
+try {
+  var s2 = {
+    x: 1
+  };
   s2.myToString = Number.prototype.toString;
-  var v2 = s2.myToString(); 
+  var v2 = s2.myToString();
   $ERROR('#2: Number.prototype.toString on not a Number object should throw TypeError');
 }
-catch(e){
-  if(!(e instanceof TypeError)){
-    $ERROR('#2: Number.prototype.toString on not a Number object should throw TypeError, not '+e);
+catch (e) {
+  if (!(e instanceof TypeError)) {
+    $ERROR('#2: Number.prototype.toString on not a Number object should throw TypeError, not ' + e);
   }
 }

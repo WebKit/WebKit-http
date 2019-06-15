@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.2.3.17
+esid: sec-get-%typedarray%.prototype.length
 description: >
   get %TypedArray%.prototype.length.name is "get length".
-info: >
+info: |
   get %TypedArray%.prototype.length
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var desc = Object.getOwnPropertyDescriptor(TypedArray.prototype, "length");

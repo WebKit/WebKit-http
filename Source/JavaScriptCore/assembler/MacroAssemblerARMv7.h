@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2010 University of Szeged
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,9 @@
 
 namespace JSC {
 
-class MacroAssemblerARMv7 : public AbstractMacroAssembler<ARMv7Assembler> {
+using Assembler = TARGET_ASSEMBLER;
+
+class MacroAssemblerARMv7 : public AbstractMacroAssembler<Assembler> {
     static const RegisterID dataTempRegister = ARMRegisters::ip;
     static const RegisterID addressTempRegister = ARMRegisters::r6;
 
@@ -232,6 +234,14 @@ public:
         store32(dataTempRegister, address.m_ptr);
     }
 
+    void getEffectiveAddress(BaseIndex address, RegisterID dest)
+    {
+        m_assembler.lsl(addressTempRegister, address.index, static_cast<int>(address.scale));
+        m_assembler.add(dest, address.base, addressTempRegister);
+        if (address.offset)
+            add32(TrustedImm32(address.offset), dest);
+    }
+
     void addPtrNoFlags(TrustedImm32 imm, RegisterID srcDest)
     {
         add32(imm, srcDest);
@@ -255,6 +265,12 @@ public:
         m_assembler.ldr(dataTempRegister, addressTempRegister, ARMThumbImmediate::makeUInt12(4));
         m_assembler.adc(dataTempRegister, dataTempRegister, ARMThumbImmediate::makeEncodedImm(imm.m_value >> 31));
         m_assembler.str(dataTempRegister, addressTempRegister, ARMThumbImmediate::makeUInt12(4));
+    }
+
+    void and16(Address src, RegisterID dest)
+    {
+        load16(src, dataTempRegister);
+        and32(dataTempRegister, dest);
     }
 
     void and32(RegisterID op1, RegisterID op2, RegisterID dest)
@@ -338,6 +354,11 @@ public:
     void neg32(RegisterID srcDest)
     {
         m_assembler.neg(srcDest, srcDest);
+    }
+
+    void neg32(RegisterID src, RegisterID dest)
+    {
+        m_assembler.neg(dest, src);
     }
 
     void or32(RegisterID src, RegisterID dest)
@@ -853,7 +874,12 @@ public:
         move(imm8, dataTempRegister);
         store8(dataTempRegister, address);
     }
-    
+
+    void store16(RegisterID src, ImplicitAddress address)
+    {
+        store16(src, setupArmAddress(address));
+    }
+
     void store16(RegisterID src, BaseIndex address)
     {
         store16(src, setupArmAddress(address));
@@ -947,6 +973,11 @@ public:
     {
         if (src != dest)
             m_assembler.vmov(dest, src);
+    }
+
+    void moveDouble(FPRegisterID src, RegisterID dest)
+    {
+        m_assembler.vmov(dest, RegisterID(dest + 1), src);
     }
 
     void moveZeroToDouble(FPRegisterID reg)
@@ -1324,6 +1355,13 @@ public:
         move(dataTempRegister, reg2);
     }
 
+    void swap(FPRegisterID fr1, FPRegisterID fr2)
+    {
+        moveDouble(fr1, fpTempRegister);
+        moveDouble(fr2, fr1);
+        moveDouble(fpTempRegister, fr2);
+    }
+
     void signExtend32ToPtr(RegisterID src, RegisterID dest)
     {
         move(src, dest);
@@ -1355,7 +1393,8 @@ public:
         m_assembler.dmbISHST();
     }
 
-    static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
+    template<PtrTag startTag, PtrTag destTag>
+    static void replaceWithJump(CodeLocationLabel<startTag> instructionStart, CodeLocationLabel<destTag> destination)
     {
         ARMv7Assembler::replaceWithJump(instructionStart.dataLocation(), destination.dataLocation());
     }
@@ -1584,25 +1623,28 @@ public:
         return branchTest32(cond, addressTempRegister, mask8);
     }
 
-    void jump(RegisterID target)
+    void jump(RegisterID target, PtrTag)
     {
         m_assembler.bx(target);
     }
 
     // Address is a memory location containing the address to jump to
-    void jump(Address address)
+    void jump(Address address, PtrTag)
     {
         load32(address, dataTempRegister);
         m_assembler.bx(dataTempRegister);
     }
     
-    void jump(AbsoluteAddress address)
+    void jump(AbsoluteAddress address, PtrTag)
     {
         move(TrustedImmPtr(address.m_ptr), dataTempRegister);
         load32(Address(dataTempRegister), dataTempRegister);
         m_assembler.bx(dataTempRegister);
     }
 
+    ALWAYS_INLINE void jump(RegisterID target, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(target, NoPtrTag); }
+    ALWAYS_INLINE void jump(Address address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
+    ALWAYS_INLINE void jump(AbsoluteAddress address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
 
     // Arithmetic control flow operations:
     //
@@ -1748,7 +1790,7 @@ public:
 
         ShiftTypeAndAmount shift(SRType_LSL, scale);
         m_assembler.add(dataTempRegister, dataTempRegister, index, shift);
-        jump(dataTempRegister);
+        jump(dataTempRegister, NoPtrTag);
     }
 
     // Miscellaneous operations:
@@ -1772,22 +1814,26 @@ public:
         return Call(m_assembler.bx(dataTempRegister), Call::LinkableNearTail);
     }
 
-    ALWAYS_INLINE Call call()
+    ALWAYS_INLINE Call call(PtrTag)
     {
         moveFixedWidthEncoding(TrustedImm32(0), dataTempRegister);
         return Call(m_assembler.blx(dataTempRegister), Call::Linkable);
     }
 
-    ALWAYS_INLINE Call call(RegisterID target)
+    ALWAYS_INLINE Call call(RegisterID target, PtrTag)
     {
         return Call(m_assembler.blx(target), Call::None);
     }
 
-    ALWAYS_INLINE Call call(Address address)
+    ALWAYS_INLINE Call call(Address address, PtrTag)
     {
         load32(address, dataTempRegister);
         return Call(m_assembler.blx(dataTempRegister), Call::None);
     }
+
+    ALWAYS_INLINE Call call(RegisterID callTag) { return UNUSED_PARAM(callTag), call(NoPtrTag); }
+    ALWAYS_INLINE Call call(RegisterID target, RegisterID callTag) { return UNUSED_PARAM(callTag), call(target, NoPtrTag); }
+    ALWAYS_INLINE Call call(Address address, RegisterID callTag) { return UNUSED_PARAM(callTag), call(address, NoPtrTag); }
 
     ALWAYS_INLINE void ret()
     {
@@ -1860,13 +1906,13 @@ public:
         return DataLabelPtr(this);
     }
 
-    ALWAYS_INLINE Jump branchPtrWithPatch(RelationalCondition cond, RegisterID left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
+    ALWAYS_INLINE Jump branchPtrWithPatch(RelationalCondition cond, RegisterID left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(nullptr))
     {
         dataLabel = moveWithPatch(initialRightValue, dataTempRegister);
         return branch32(cond, left, dataTempRegister);
     }
 
-    ALWAYS_INLINE Jump branchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
+    ALWAYS_INLINE Jump branchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(nullptr))
     {
         load32(left, addressTempRegister);
         dataLabel = moveWithPatch(initialRightValue, dataTempRegister);
@@ -1880,7 +1926,7 @@ public:
         return branch32(cond, addressTempRegister, dataTempRegister);
     }
     
-    PatchableJump patchableBranchPtr(RelationalCondition cond, Address left, TrustedImmPtr right = TrustedImmPtr(0))
+    PatchableJump patchableBranchPtr(RelationalCondition cond, Address left, TrustedImmPtr right = TrustedImmPtr(nullptr))
     {
         m_makeJumpPatchable = true;
         Jump result = branch32(cond, left, TrustedImm32(right));
@@ -1892,6 +1938,14 @@ public:
     {
         m_makeJumpPatchable = true;
         Jump result = branchTest32(cond, reg, mask);
+        m_makeJumpPatchable = false;
+        return PatchableJump(result);
+    }
+
+    PatchableJump patchableBranch8(RelationalCondition cond, Address left, TrustedImm32 imm)
+    {
+        m_makeJumpPatchable = true;
+        Jump result = branch8(cond, left, imm);
         m_makeJumpPatchable = false;
         return PatchableJump(result);
     }
@@ -1912,7 +1966,7 @@ public:
         return PatchableJump(result);
     }
 
-    PatchableJump patchableBranchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
+    PatchableJump patchableBranchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(nullptr))
     {
         m_makeJumpPatchable = true;
         Jump result = branchPtrWithPatch(cond, left, dataLabel, initialRightValue);
@@ -1943,7 +1997,7 @@ public:
         store32(dataTempRegister, address);
         return label;
     }
-    ALWAYS_INLINE DataLabelPtr storePtrWithPatch(ImplicitAddress address) { return storePtrWithPatch(TrustedImmPtr(0), address); }
+    ALWAYS_INLINE DataLabelPtr storePtrWithPatch(ImplicitAddress address) { return storePtrWithPatch(TrustedImmPtr(nullptr), address); }
 
 
     ALWAYS_INLINE Call tailRecursiveCall()
@@ -1959,22 +2013,24 @@ public:
         return tailRecursiveCall();
     }
 
-    
-    static FunctionPtr readCallTarget(CodeLocationCall call)
+    template<PtrTag resultTag, PtrTag locationTag>
+    static FunctionPtr<resultTag> readCallTarget(CodeLocationCall<locationTag> call)
     {
-        return FunctionPtr(reinterpret_cast<void(*)()>(ARMv7Assembler::readCallTarget(call.dataLocation())));
+        return FunctionPtr<resultTag>(reinterpret_cast<void(*)()>(ARMv7Assembler::readCallTarget(call.dataLocation())));
     }
     
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
     static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
     
-    static CodeLocationLabel startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr label)
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfBranchPtrWithPatchOnRegister(CodeLocationDataLabelPtr<tag> label)
     {
         const unsigned twoWordOpSize = 4;
         return label.labelAtOffset(-twoWordOpSize * 2);
     }
     
-    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel instructionStart, RegisterID rd, void* initialValue)
+    template<PtrTag tag>
+    static void revertJumpReplacementToBranchPtrWithPatch(CodeLocationLabel<tag> instructionStart, RegisterID rd, void* initialValue)
     {
 #if OS(LINUX)
         ARMv7Assembler::revertJumpTo_movT3movtcmpT2(instructionStart.dataLocation(), rd, dataTempRegister, reinterpret_cast<uintptr_t>(initialValue));
@@ -1983,35 +2039,41 @@ public:
         ARMv7Assembler::revertJumpTo_movT3(instructionStart.dataLocation(), dataTempRegister, ARMThumbImmediate::makeUInt16(reinterpret_cast<uintptr_t>(initialValue) & 0xffff));
 #endif
     }
-    
-    static CodeLocationLabel startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr)
+
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfPatchableBranchPtrWithPatchOnAddress(CodeLocationDataLabelPtr<tag>)
     {
         UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
+        return CodeLocationLabel<tag>();
     }
-    
-    static CodeLocationLabel startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32)
+
+    template<PtrTag tag>
+    static CodeLocationLabel<tag> startOfPatchableBranch32WithPatchOnAddress(CodeLocationDataLabel32<tag>)
     {
         UNREACHABLE_FOR_PLATFORM();
-        return CodeLocationLabel();
+        return CodeLocationLabel<tag>();
     }
-    
-    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel, Address, void*)
+
+    template<PtrTag tag>
+    static void revertJumpReplacementToPatchableBranchPtrWithPatch(CodeLocationLabel<tag>, Address, void*)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
-    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel, Address, int32_t)
+    template<PtrTag tag>
+    static void revertJumpReplacementToPatchableBranch32WithPatch(CodeLocationLabel<tag>, Address, int32_t)
     {
         UNREACHABLE_FOR_PLATFORM();
     }
 
-    static void repatchCall(CodeLocationCall call, CodeLocationLabel destination)
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchCall(CodeLocationCall<callTag> call, CodeLocationLabel<destTag> destination)
     {
         ARMv7Assembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
-    static void repatchCall(CodeLocationCall call, FunctionPtr destination)
+    template<PtrTag callTag, PtrTag destTag>
+    static void repatchCall(CodeLocationCall<callTag> call, FunctionPtr<destTag> destination)
     {
         ARMv7Assembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
@@ -2106,33 +2168,17 @@ protected:
     {
         return static_cast<ARMv7Assembler::Condition>(cond);
     }
-    
-#if ENABLE(MASM_PROBE)
-    inline TrustedImm32 trustedImm32FromPtr(void* ptr)
-    {
-        return TrustedImm32(TrustedImmPtr(ptr));
-    }
-
-    inline TrustedImm32 trustedImm32FromPtr(ProbeFunction function)
-    {
-        return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
-    }
-
-    inline TrustedImm32 trustedImm32FromPtr(void (*function)())
-    {
-        return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
-    }
-#endif
 
 private:
     friend class LinkBuffer;
 
-    static void linkCall(void* code, Call call, FunctionPtr function)
+    template<PtrTag tag>
+    static void linkCall(void* code, Call call, FunctionPtr<tag> function)
     {
         if (call.isFlagSet(Call::Tail))
-            ARMv7Assembler::linkJump(code, call.m_label, function.value());
+            ARMv7Assembler::linkJump(code, call.m_label, function.executableAddress());
         else
-            ARMv7Assembler::linkCall(code, call.m_label, function.value());
+            ARMv7Assembler::linkCall(code, call.m_label, function.executableAddress());
     }
 
     bool m_makeJumpPatchable;

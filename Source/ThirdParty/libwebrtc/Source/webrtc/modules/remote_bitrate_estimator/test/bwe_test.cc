@@ -8,20 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe_test.h"
+#include "modules/remote_bitrate_estimator/test/bwe_test.h"
 
 #include <memory>
 #include <sstream>
 
-#include "webrtc/base/arraysize.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/modules/remote_bitrate_estimator/test/bwe_test_framework.h"
-#include "webrtc/modules/remote_bitrate_estimator/test/metric_recorder.h"
-#include "webrtc/modules/remote_bitrate_estimator/test/packet_receiver.h"
-#include "webrtc/modules/remote_bitrate_estimator/test/packet_sender.h"
-#include "webrtc/system_wrappers/include/clock.h"
-#include "webrtc/system_wrappers/include/field_trial.h"
-#include "webrtc/test/testsupport/perf_test.h"
+#include "modules/include/module_common_types.h"
+#include "modules/remote_bitrate_estimator/test/bwe_test_framework.h"
+#include "modules/remote_bitrate_estimator/test/metric_recorder.h"
+#include "modules/remote_bitrate_estimator/test/packet_receiver.h"
+#include "modules/remote_bitrate_estimator/test/packet_sender.h"
+#include "rtc_base/arraysize.h"
+#include "system_wrappers/include/clock.h"
+#include "system_wrappers/include/field_trial.h"
+#include "test/testsupport/perf_test.h"
 
 using std::vector;
 
@@ -34,8 +34,10 @@ namespace testing {
 namespace bwe {
 
 PacketProcessorRunner::PacketProcessorRunner(PacketProcessor* processor)
-    : processor_(processor) {
-}
+    : processor_(processor) {}
+
+PacketProcessorRunner::PacketProcessorRunner(
+    const PacketProcessorRunner& runner) = default;
 
 PacketProcessorRunner::~PacketProcessorRunner() {
   for (Packet* packet : queue_)
@@ -97,8 +99,7 @@ void PacketProcessorRunner::QueuePackets(Packets* batch,
 }
 
 // Plot link capacity by default.
-BweTest::BweTest() : BweTest(true) {
-}
+BweTest::BweTest() : BweTest(true) {}
 
 BweTest::BweTest(bool plot_capacity)
     : run_time_ms_(0),
@@ -117,12 +118,14 @@ BweTest::~BweTest() {
 void BweTest::SetUp() {
   const ::testing::TestInfo* const test_info =
       ::testing::UnitTest::GetInstance()->current_test_info();
-  std::string test_name =
-      std::string(test_info->test_case_name()) + "_" +
-      std::string(test_info->name());
+  std::string test_name = std::string(test_info->test_case_name()) + "_" +
+                          std::string(test_info->name());
   BWE_TEST_LOGGING_GLOBAL_CONTEXT(test_name);
   BWE_TEST_LOGGING_GLOBAL_ENABLE(false);
 }
+
+Link::Link() = default;
+Link::~Link() = default;
 
 void Link::AddPacketProcessor(PacketProcessor* processor,
                               ProcessorType processor_type) {
@@ -217,23 +220,23 @@ void BweTest::PrintResults(double max_throughput_kbps,
   double utilization = throughput_kbps.GetMean() / max_throughput_kbps;
   webrtc::test::PrintResult("BwePerformance", GetTestName(), "Utilization",
                             utilization * 100.0, "%", false);
+  webrtc::test::PrintResult(
+      "BwePerformance", GetTestName(), "Utilization var coeff",
+      throughput_kbps.GetStdDev() / throughput_kbps.GetMean(), "", false);
   std::stringstream ss;
-  ss << throughput_kbps.GetStdDev() / throughput_kbps.GetMean();
-  webrtc::test::PrintResult("BwePerformance", GetTestName(),
-                            "Utilization var coeff", ss.str(), "", false);
   for (auto& kv : flow_throughput_kbps) {
     ss.str("");
     ss << "Throughput flow " << kv.first;
     webrtc::test::PrintResultMeanAndError("BwePerformance", GetTestName(),
-                                          ss.str(), kv.second.AsString(),
-                                          "kbps", false);
+                                          ss.str(), kv.second.GetMean(),
+                                          kv.second.GetStdDev(), "kbps", false);
   }
   for (auto& kv : flow_delay_ms) {
     ss.str("");
     ss << "Delay flow " << kv.first;
     webrtc::test::PrintResultMeanAndError("BwePerformance", GetTestName(),
-                                          ss.str(), kv.second.AsString(), "ms",
-                                          false);
+                                          ss.str(), kv.second.GetMean(),
+                                          kv.second.GetStdDev(), "ms", false);
   }
   double fairness_index = 1.0;
   if (!flow_throughput_kbps.empty()) {
@@ -769,8 +772,8 @@ void BweTest::RunLongTcpFairness(BandwidthEstimatorType bwe_type) {
   // max_delay_ms = 1000;
 
   std::string title("5.6_Long_TCP_Fairness");
-  std::string flow_name = std::string() +
-      bwe_names[bwe_type] + 'x' + bwe_names[kTcpEstimator];
+  std::string flow_name =
+      std::string() + bwe_names[bwe_type] + 'x' + bwe_names[kTcpEstimator];
 
   RunFairnessTest(bwe_type, kNumRmcatFlows, kNumTcpFlows, kRunTimeS,
                   kCapacityKbps, max_delay_ms, rtt_ms, kMaxJitterMs, kOffSetsMs,

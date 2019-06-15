@@ -32,6 +32,7 @@
 #import "SandboxUtilities.h"
 #import "UIKitSPI.h"
 #import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/cocoa/Entitlements.h>
 #import <wtf/spi/cocoa/SecuritySPI.h>
 
 @interface UIWindow (WKDetails)
@@ -39,7 +40,6 @@
 @end
 
 namespace WebKit {
-
 
 enum class ApplicationType {
     Application,
@@ -54,7 +54,7 @@ static ApplicationType applicationType(UIWindow *window)
     if (_UIApplicationIsExtension())
         return ApplicationType::Extension;
 
-    if (processHasEntitlement(@"com.apple.UIKit.vends-view-services") && window._isHostedInAnotherProcess)
+    if (WTF::processHasEntitlement("com.apple.UIKit.vends-view-services") && window._isHostedInAnotherProcess)
         return ApplicationType::ViewService;
 
     return ApplicationType::Application;
@@ -72,21 +72,17 @@ static bool isBackgroundState(BKSApplicationState state)
     }
 }
 
-ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackgroundSelector, SEL didCreateWindowContextSelector, SEL didFinishSnapshottingAfterEnteringBackgroundSelector, SEL willEnterForegroundSelector)
+ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackgroundSelector, SEL didFinishSnapshottingAfterEnteringBackgroundSelector, SEL willEnterForegroundSelector)
     : m_view(view)
     , m_didEnterBackgroundSelector(didEnterBackgroundSelector)
-    , m_didCreateWindowContextSelector(didCreateWindowContextSelector)
     , m_didFinishSnapshottingAfterEnteringBackgroundSelector(didFinishSnapshottingAfterEnteringBackgroundSelector)
     , m_willEnterForegroundSelector(willEnterForegroundSelector)
     , m_isInBackground(true)
-    , m_weakPtrFactory(this)
     , m_didEnterBackgroundObserver(nullptr)
-    , m_didCreateWindowContextObserver(nullptr)
     , m_didFinishSnapshottingAfterEnteringBackgroundObserver(nullptr)
     , m_willEnterForegroundObserver(nullptr)
 {
     ASSERT([m_view.get() respondsToSelector:m_didEnterBackgroundSelector]);
-    ASSERT([m_view.get() respondsToSelector:m_didCreateWindowContextSelector]);
     ASSERT([m_view.get() respondsToSelector:m_didFinishSnapshottingAfterEnteringBackgroundSelector]);
     ASSERT([m_view.get() respondsToSelector:m_willEnterForegroundSelector]);
 
@@ -94,15 +90,11 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
     ASSERT(window);
 
     NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
-    auto weakThis = m_weakPtrFactory.createWeakPtr();
-    m_didCreateWindowContextObserver = [notificationCenter addObserverForName:@"_UIWindowDidCreateWindowContextNotification" object:window queue:nil usingBlock:[weakThis](NSNotification *) {
-        auto applicationStateTracker = weakThis.get();
-        if (!applicationStateTracker)
-            return;
-        applicationStateTracker->applicationDidCreateWindowContext();
-    }];
+    UIApplication *application = [UIApplication sharedApplication];
 
-    m_didFinishSnapshottingAfterEnteringBackgroundObserver = [notificationCenter addObserverForName:@"_UIWindowWillDestroyWindowContextNotification" object:window queue:nil usingBlock:[weakThis](NSNotification *) {
+    auto weakThis = makeWeakPtr(*this);
+
+    m_didFinishSnapshottingAfterEnteringBackgroundObserver = [notificationCenter addObserverForName:@"_UIApplicationDidFinishSuspensionSnapshotNotification" object:application queue:nil usingBlock:[weakThis](NSNotification *) {
         auto applicationStateTracker = weakThis.get();
         if (!applicationStateTracker)
             return;
@@ -111,8 +103,6 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
 
     switch (applicationType(window)) {
     case ApplicationType::Application: {
-        UIApplication *application = [UIApplication sharedApplication];
-
         m_isInBackground = application.applicationState == UIApplicationStateBackground;
 
         m_didEnterBackgroundObserver = [notificationCenter addObserverForName:UIApplicationDidEnterBackgroundNotification object:application queue:nil usingBlock:[this](NSNotification *) {
@@ -145,6 +135,12 @@ ApplicationStateTracker::ApplicationStateTracker(UIView *view, SEL didEnterBackg
         auto applicationStateMonitor = adoptNS([[BKSApplicationStateMonitor alloc] init]);
         m_isInBackground = isBackgroundState([applicationStateMonitor mostElevatedApplicationStateForPID:applicationPID]);
         [applicationStateMonitor invalidate];
+
+        // Workaround for <rdar://problem/34028921>. If the host application is StoreKitUIService then it is also a ViewService
+        // and is always in the background. We need to treat StoreKitUIService as foreground for the purpose of process suspension
+        // or its ViewServices will get suspended.
+        if ([serviceViewController._hostApplicationBundleIdentifier isEqualToString:@"com.apple.ios.StoreKitUIService"])
+            m_isInBackground = false;
 
         m_didEnterBackgroundObserver = [notificationCenter addObserverForName:@"_UIViewServiceHostDidEnterBackgroundNotification" object:serviceViewController queue:nil usingBlock:[this](NSNotification *) {
             applicationDidEnterBackground();
@@ -193,7 +189,6 @@ ApplicationStateTracker::~ApplicationStateTracker()
 
     NSNotificationCenter *notificationCenter = [NSNotificationCenter defaultCenter];
     [notificationCenter removeObserver:m_didEnterBackgroundObserver];
-    [notificationCenter removeObserver:m_didCreateWindowContextObserver];
     [notificationCenter removeObserver:m_didFinishSnapshottingAfterEnteringBackgroundObserver];
     [notificationCenter removeObserver:m_willEnterForegroundObserver];
 }
@@ -204,12 +199,6 @@ void ApplicationStateTracker::applicationDidEnterBackground()
 
     if (auto view = m_view.get())
         wtfObjcMsgSend<void>(view.get(), m_didEnterBackgroundSelector);
-}
-
-void ApplicationStateTracker::applicationDidCreateWindowContext()
-{
-    if (auto view = m_view.get())
-        wtfObjcMsgSend<void>(view.get(), m_didCreateWindowContextSelector);
 }
 
 void ApplicationStateTracker::applicationDidFinishSnapshottingAfterEnteringBackground()

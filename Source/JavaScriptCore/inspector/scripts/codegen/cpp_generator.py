@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014, 2016 Apple Inc. All rights reserved.
+# Copyright (c) 2014-2018 Apple Inc. All rights reserved.
 # Copyright (c) 2014 University of Washington. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -38,9 +38,9 @@ _PRIMITIVE_TO_CPP_NAME_MAP = {
     'integer': 'int',
     'number': 'double',
     'string': 'String',
-    'object': 'Inspector::InspectorObject',
-    'array': 'Inspector::InspectorArray',
-    'any': 'Inspector::InspectorValue'
+    'object': 'JSON::Object',
+    'array': 'JSON::Array',
+    'any': 'JSON::Value'
 }
 
 class CppGenerator(Generator):
@@ -97,12 +97,15 @@ class CppGenerator(Generator):
     # Generate type representations for various situations.
     @staticmethod
     def cpp_protocol_type_for_type(_type):
+        if isinstance(_type, AliasedType):
+            _type = _type.aliased_type  # Fall through to enum or primitive.
+
         if isinstance(_type, ObjectType) and len(_type.members) == 0:
-            return 'Inspector::InspectorObject'
+            return 'JSON::Object'
         if isinstance(_type, ArrayType):
             if _type.raw_name() is None:  # Otherwise, fall through and use typedef'd name.
-                return 'Inspector::Protocol::Array<%s>' % CppGenerator.cpp_protocol_type_for_type(_type.element_type)
-        if isinstance(_type, (ObjectType, AliasedType, EnumType, ArrayType)):
+                return 'JSON::ArrayOf<%s>' % CppGenerator.cpp_protocol_type_for_type(_type.element_type)
+        if isinstance(_type, (ObjectType, EnumType, ArrayType)):
             return 'Inspector::Protocol::%s::%s' % (_type.type_domain().domain_name, _type.raw_name())
         if isinstance(_type, PrimitiveType):
             return CppGenerator.cpp_name_for_primitive_type(_type)
@@ -125,13 +128,13 @@ class CppGenerator(Generator):
 
         # This handles the 'any' type and objects with defined properties.
         if isinstance(_type, ObjectType) or _type.qualified_name() is 'object':
-            cpp_name = 'Inspector::InspectorObject'
+            cpp_name = 'JSON::Object'
             if parameter.is_optional:
                 return 'const %s*' % cpp_name
             else:
                 return 'const %s&' % cpp_name
         if isinstance(_type, ArrayType):
-            cpp_name = 'Inspector::InspectorArray'
+            cpp_name = 'JSON::Array'
             if parameter.is_optional:
                 return 'const %s*' % cpp_name
             else:
@@ -139,7 +142,7 @@ class CppGenerator(Generator):
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return 'const %s* const' % cpp_name
+                return 'const %s*' % cpp_name
             elif _type.raw_name() in ['string']:
                 return 'const %s&' % cpp_name
             else:
@@ -162,7 +165,7 @@ class CppGenerator(Generator):
         if isinstance(_type, AliasedType):
             builder_type = CppGenerator.cpp_protocol_type_for_type(_type)
             if is_optional:
-                return 'const %s* const' % builder_type
+                return 'const %s*' % builder_type
             elif _type.aliased_type.qualified_name() in ['integer', 'number']:
                 return CppGenerator.cpp_name_for_primitive_type(_type.aliased_type)
             elif _type.aliased_type.qualified_name() in ['string']:
@@ -172,11 +175,11 @@ class CppGenerator(Generator):
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if _type.qualified_name() in ['object']:
-                return 'RefPtr<Inspector::InspectorObject>'
+                return 'RefPtr<JSON::Object>'
             elif _type.qualified_name() in ['any']:
-                return 'RefPtr<Inspector::InspectorValue>'
+                return 'RefPtr<JSON::Value>'
             elif is_optional:
-                return 'const %s* const' % cpp_name
+                return 'const %s*' % cpp_name
             elif _type.qualified_name() in ['string']:
                 return 'const %s&' % cpp_name
             else:
@@ -204,7 +207,7 @@ class CppGenerator(Generator):
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return "Inspector::Protocol::OptOutput<%s>*" % cpp_name
+                return "std::optional<%s>&" % cpp_name
             else:
                 return '%s*' % cpp_name
         if isinstance(_type, EnumType):
@@ -230,7 +233,7 @@ class CppGenerator(Generator):
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return "Inspector::Protocol::OptOutput<%s>*" % cpp_name
+                return "std::optional<%s>&" % cpp_name
             elif _type.qualified_name() in ['integer', 'number']:
                 return CppGenerator.cpp_name_for_primitive_type(_type)
             elif _type.qualified_name() in ['string']:
@@ -254,15 +257,15 @@ class CppGenerator(Generator):
             _type = _type.primitive_type  # Fall through.
 
         if isinstance(_type, ObjectType):
-            return "RefPtr<Inspector::InspectorObject>"
+            return "RefPtr<JSON::Object>"
         if isinstance(_type, ArrayType):
-            return "RefPtr<Inspector::InspectorArray>"
+            return "RefPtr<JSON::Array>"
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if _type.qualified_name() in ['any', 'object']:
                 return "RefPtr<%s>" % CppGenerator.cpp_name_for_primitive_type(_type)
             elif parameter.is_optional and _type.qualified_name() not in ['boolean', 'string', 'integer']:
-                return "Inspector::Protocol::OptOutput<%s>" % cpp_name
+                return "std::optional<%s>" % cpp_name
             else:
                 return cpp_name
 
@@ -274,12 +277,12 @@ class CppGenerator(Generator):
         if isinstance(_type, AliasedType):
             builder_type = CppGenerator.cpp_protocol_type_for_type(_type)
             if parameter.is_optional:
-                return "Inspector::Protocol::OptOutput<%s>" % builder_type
+                return "std::optional<%s>" % builder_type
             return '%s' % builder_type
         if isinstance(_type, PrimitiveType):
             cpp_name = CppGenerator.cpp_name_for_primitive_type(_type)
             if parameter.is_optional:
-                return "Inspector::Protocol::OptOutput<%s>" % cpp_name
+                return "std::optional<%s>" % cpp_name
             else:
                 return cpp_name
         if isinstance(_type, EnumType):

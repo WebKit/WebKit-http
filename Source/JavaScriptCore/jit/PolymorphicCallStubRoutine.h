@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #include "CallVariant.h"
 #include "GCAwareJITStubRoutine.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/UniqueArray.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -82,13 +83,14 @@ private:
 class PolymorphicCallStubRoutine : public GCAwareJITStubRoutine {
 public:
     PolymorphicCallStubRoutine(
-        const MacroAssemblerCodeRef&, VM&, const JSCell* owner,
+        const MacroAssemblerCodeRef<JITStubRoutinePtrTag>&, VM&, const JSCell* owner,
         ExecState* callerFrame, CallLinkInfo&, const Vector<PolymorphicCallCase>&,
-        std::unique_ptr<uint32_t[]> fastCounts);
+        UniqueArray<uint32_t>&& fastCounts);
     
     virtual ~PolymorphicCallStubRoutine();
     
     CallVariantList variants() const;
+    bool hasEdges() const;
     CallEdgeList edges() const;
 
     void clearCallNodesFor(CallLinkInfo*);
@@ -100,7 +102,7 @@ protected:
 
 private:
     Vector<WriteBarrier<JSCell>, 2> m_variants;
-    std::unique_ptr<uint32_t[]> m_fastCounts;
+    UniqueArray<uint32_t> m_fastCounts;
     Bag<PolymorphicCallNode> m_callNodes;
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,16 +32,14 @@
 #include "NetworkSocketStreamMessages.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebProcess.h"
-#include <WebCore/SessionID.h>
+#include <WebCore/CookieRequestHeaderFieldProxy.h>
 #include <WebCore/SocketStreamError.h>
 #include <WebCore/SocketStreamHandleClient.h>
+#include <pal/SessionID.h>
 #include <wtf/NeverDestroyed.h>
 
-using namespace WebCore;
-
 namespace WebKit {
-
-static uint64_t nextAvailableIdentifier = 1;
+using namespace WebCore;
 
 static HashMap<uint64_t, WebSocketStream*>& globalWebSocketStreamMap()
 {
@@ -59,51 +57,61 @@ void WebSocketStream::networkProcessCrashed()
     for (auto& stream : globalWebSocketStreamMap().values()) {
         for (auto& callback : stream->m_sendDataCallbacks.values())
             callback(false);
+        for (auto& callback : stream->m_sendHandshakeCallbacks.values())
+            callback(false, false);
         stream->m_client.didFailSocketStream(*stream, SocketStreamError(0, { }, "Network process crashed."));
     }
 
     globalWebSocketStreamMap().clear();
 }
 
-Ref<WebSocketStream> WebSocketStream::create(const URL& url, SocketStreamHandleClient& client, SessionID sessionID, const String& credentialPartition)
+Ref<WebSocketStream> WebSocketStream::create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID sessionID, const String& credentialPartition)
 {
     return adoptRef(*new WebSocketStream(url, client, sessionID, credentialPartition));
 }
 
-WebSocketStream::WebSocketStream(const WebCore::URL& url, WebCore::SocketStreamHandleClient& client, WebCore::SessionID sessionID, const String& cachePartition)
+WebSocketStream::WebSocketStream(const WebCore::URL& url, WebCore::SocketStreamHandleClient& client, PAL::SessionID sessionID, const String& cachePartition)
     : SocketStreamHandle(url, client)
-    , m_identifier(nextAvailableIdentifier++)
     , m_client(client)
 {
-    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::CreateSocketStream(url, sessionID, cachePartition, m_identifier), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::CreateSocketStream(url, sessionID, cachePartition, identifier()), 0);
 
-    ASSERT(!globalWebSocketStreamMap().contains(m_identifier));
-    globalWebSocketStreamMap().set(m_identifier, this);
+    ASSERT(!globalWebSocketStreamMap().contains(identifier()));
+    globalWebSocketStreamMap().set(identifier(), this);
 }
 
 WebSocketStream::~WebSocketStream()
 {
-    ASSERT(globalWebSocketStreamMap().contains(m_identifier));
-    globalWebSocketStreamMap().remove(m_identifier);
+    ASSERT(globalWebSocketStreamMap().contains(identifier()));
+    globalWebSocketStreamMap().remove(identifier());
 }
 
 IPC::Connection* WebSocketStream::messageSenderConnection()
 {
-    return &WebProcess::singleton().networkConnection().connection();
+    return &WebProcess::singleton().ensureNetworkProcessConnection().connection();
 }
 
 uint64_t WebSocketStream::messageSenderDestinationID()
 {
-    return m_identifier;
+    return identifier();
 }
 
-void WebSocketStream::platformSend(const char* data, size_t length, Function<void(bool)>&& completionHandler)
+void WebSocketStream::platformSend(const uint8_t* data, size_t length, Function<void(bool)>&& completionHandler)
 {
     static uint64_t nextDataIdentifier = 1;
     uint64_t dataIdentifier = nextDataIdentifier++;
-    send(Messages::NetworkSocketStream::SendData(IPC::DataReference(reinterpret_cast<const uint8_t *>(data), length), dataIdentifier));
+    send(Messages::NetworkSocketStream::SendData(IPC::DataReference(data, length), dataIdentifier));
     ASSERT(!m_sendDataCallbacks.contains(dataIdentifier));
-    m_sendDataCallbacks.set(dataIdentifier, WTFMove(completionHandler));
+    m_sendDataCallbacks.add(dataIdentifier, WTFMove(completionHandler));
+}
+
+void WebSocketStream::platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>& headerFieldProxy, Function<void(bool, bool)>&& completionHandler)
+{
+    static uint64_t nextDataIdentifier = 1;
+    uint64_t dataIdentifier = nextDataIdentifier++;
+    send(Messages::NetworkSocketStream::SendHandshake(IPC::DataReference(data, length), headerFieldProxy, dataIdentifier));
+    ASSERT(!m_sendHandshakeCallbacks.contains(dataIdentifier));
+    m_sendHandshakeCallbacks.add(dataIdentifier, WTFMove(completionHandler));
 }
 
 void WebSocketStream::didSendData(uint64_t identifier, bool success)
@@ -111,7 +119,13 @@ void WebSocketStream::didSendData(uint64_t identifier, bool success)
     ASSERT(m_sendDataCallbacks.contains(identifier));
     m_sendDataCallbacks.take(identifier)(success);
 }
-    
+
+void WebSocketStream::didSendHandshake(uint64_t identifier, bool success, bool didAccessSecureCookies)
+{
+    ASSERT(m_sendHandshakeCallbacks.contains(identifier));
+    m_sendHandshakeCallbacks.take(identifier)(success, didAccessSecureCookies);
+}
+
 void WebSocketStream::platformClose()
 {
     send(Messages::NetworkSocketStream::Close());

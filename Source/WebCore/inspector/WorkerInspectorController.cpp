@@ -28,26 +28,33 @@
 
 #include "CommandLineAPIHost.h"
 #include "InstrumentingAgents.h"
-#include "JSMainThreadExecState.h"
+#include "JSExecState.h"
 #include "WebHeapAgent.h"
 #include "WebInjectedScriptHost.h"
 #include "WebInjectedScriptManager.h"
 #include "WorkerConsoleAgent.h"
 #include "WorkerDebuggerAgent.h"
 #include "WorkerGlobalScope.h"
+#include "WorkerNetworkAgent.h"
 #include "WorkerRuntimeAgent.h"
 #include "WorkerThread.h"
 #include "WorkerToPageFrontendChannel.h"
-#include <inspector/InspectorAgentBase.h>
-#include <inspector/InspectorBackendDispatcher.h>
-#include <inspector/InspectorFrontendChannel.h>
-#include <inspector/InspectorFrontendDispatchers.h>
-#include <inspector/InspectorFrontendRouter.h>
+#include <JavaScriptCore/InspectorAgent.h>
+#include <JavaScriptCore/InspectorAgentBase.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendChannel.h>
+#include <JavaScriptCore/InspectorFrontendDispatchers.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+
+#if ENABLE(SERVICE_WORKER)
+#include "ServiceWorkerAgent.h"
+#include "ServiceWorkerGlobalScope.h"
+#endif
+
+namespace WebCore {
 
 using namespace JSC;
 using namespace Inspector;
-
-namespace WebCore {
 
 WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGlobalScope)
     : m_instrumentingAgents(InstrumentingAgents::create(*this))
@@ -58,43 +65,25 @@ WorkerInspectorController::WorkerInspectorController(WorkerGlobalScope& workerGl
     , m_scriptDebugServer(workerGlobalScope)
     , m_workerGlobalScope(workerGlobalScope)
 {
-    AgentContext baseContext = {
-        *this,
-        *m_injectedScriptManager,
-        m_frontendRouter.get(),
-        m_backendDispatcher.get(),
-    };
+    ASSERT(workerGlobalScope.isContextThread());
 
-    WebAgentContext webContext = {
-        baseContext,
-        m_instrumentingAgents.get(),
-    };
+    auto workerContext = workerAgentContext();
 
-    WorkerAgentContext workerContext = {
-        webContext,
-        workerGlobalScope,
-    };
-
+    auto inspectorAgent = std::make_unique<InspectorAgent>(workerContext);
     auto heapAgent = std::make_unique<WebHeapAgent>(workerContext);
+    auto consoleAgent = std::make_unique<WorkerConsoleAgent>(workerContext, heapAgent.get());
 
+    m_instrumentingAgents->setInspectorAgent(inspectorAgent.get());
+    m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
+
+    m_agents.append(WTFMove(inspectorAgent));
     m_agents.append(std::make_unique<WorkerRuntimeAgent>(workerContext));
     m_agents.append(std::make_unique<WorkerDebuggerAgent>(workerContext));
-
-    auto consoleAgent = std::make_unique<WorkerConsoleAgent>(workerContext, heapAgent.get());
-    m_instrumentingAgents->setWebConsoleAgent(consoleAgent.get());
     m_agents.append(WTFMove(consoleAgent));
-
     m_agents.append(WTFMove(heapAgent));
 
-    if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost()) {
-        commandLineAPIHost->init(
-              nullptr // InspectorAgent
-            , m_instrumentingAgents->webConsoleAgent()
-            , nullptr // InspectorDOMAgent
-            , nullptr // InspectorDOMStorageAgent
-            , nullptr // InspectorDatabaseAgent
-        );
-    }
+    if (CommandLineAPIHost* commandLineAPIHost = m_injectedScriptManager->commandLineAPIHost())
+        commandLineAPIHost->init(m_instrumentingAgents->inspectorAgent(), m_instrumentingAgents->webConsoleAgent(), nullptr, nullptr, nullptr);
 }
 
 WorkerInspectorController::~WorkerInspectorController()
@@ -119,6 +108,15 @@ void WorkerInspectorController::connectFrontend()
     ASSERT(!m_frontendRouter->hasFrontends());
     ASSERT(!m_forwardingChannel);
 
+    createLazyAgents();
+
+    callOnMainThread([] {
+        InspectorInstrumentation::frontendCreated();
+    });
+
+    m_executionStopwatch->reset();
+    m_executionStopwatch->start();
+
     m_forwardingChannel = std::make_unique<WorkerToPageFrontendChannel>(m_workerGlobalScope);
     m_frontendRouter->connectFrontend(m_forwardingChannel.get());
     m_agents.didCreateFrontendAndBackend(&m_frontendRouter.get(), &m_backendDispatcher.get());
@@ -131,6 +129,10 @@ void WorkerInspectorController::disconnectFrontend(Inspector::DisconnectReason r
 
     ASSERT(m_forwardingChannel);
 
+    callOnMainThread([] {
+        InspectorInstrumentation::frontendDeleted();
+    });
+
     m_agents.willDestroyFrontendAndBackend(reason);
     m_frontendRouter->disconnectFrontend(m_forwardingChannel.get());
     m_forwardingChannel = nullptr;
@@ -139,6 +141,44 @@ void WorkerInspectorController::disconnectFrontend(Inspector::DisconnectReason r
 void WorkerInspectorController::dispatchMessageFromFrontend(const String& message)
 {
     m_backendDispatcher->dispatch(message);
+}
+
+WorkerAgentContext WorkerInspectorController::workerAgentContext()
+{
+    AgentContext baseContext = {
+        *this,
+        *m_injectedScriptManager,
+        m_frontendRouter.get(),
+        m_backendDispatcher.get(),
+    };
+
+    WebAgentContext webContext = {
+        baseContext,
+        m_instrumentingAgents.get(),
+    };
+
+    WorkerAgentContext workerContext = {
+        webContext,
+        m_workerGlobalScope,
+    };
+
+    return workerContext;
+}
+
+void WorkerInspectorController::createLazyAgents()
+{
+    if (m_didCreateLazyAgents)
+        return;
+
+    m_didCreateLazyAgents = true;
+
+#if ENABLE(SERVICE_WORKER)
+    auto workerContext = workerAgentContext();
+    if (is<ServiceWorkerGlobalScope>(m_workerGlobalScope)) {
+        m_agents.append(std::make_unique<ServiceWorkerAgent>(workerContext));
+        m_agents.append(std::make_unique<WorkerNetworkAgent>(workerContext));
+    }
+#endif
 }
 
 InspectorFunctionCallHandler WorkerInspectorController::functionCallHandler() const

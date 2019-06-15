@@ -1,5 +1,5 @@
 # Copyright (c) 2011 Google Inc. All rights reserved.
-# Copyright (c) 2015 Apple Inc. All rights reserved.
+# Copyright (c) 2015-2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -30,6 +30,8 @@
 import re
 import sys
 
+from webkitpy.common.version import Version
+from webkitpy.common.version_name_map import PUBLIC_TABLE, INTERNAL_TABLE, VersionNameMap
 from webkitpy.common.system.executive import Executive
 
 
@@ -50,15 +52,19 @@ class PlatformInfo(object):
         self._executive = executive
         self._platform_module = platform_module
         self.os_name = self._determine_os_name(sys_module.platform)
-        if self.os_name == 'linux':
-            self.os_version = self._determine_linux_version()
-        if self.os_name == 'freebsd' or self.os_name == 'openbsd' or self.os_name == 'netbsd' or self.os_name == 'ios':
-            self.os_version = platform_module.release()
-        if self.os_name.startswith('mac'):
-            self.os_version = self._determine_mac_version(platform_module.mac_ver()[0])
-        if self.os_name.startswith('win'):
-            self.os_version = self._determine_win_version(self._win_version_tuple(sys_module))
+        self.os_version = None
+
         self._is_cygwin = sys_module.platform == 'cygwin'
+
+        if self.os_name.startswith('mac'):
+            self.os_version = Version.from_string(platform_module.mac_ver()[0])
+        elif self.os_name.startswith('win'):
+            self.os_version = self._win_version()
+        elif self.os_name == 'linux' or self.os_name == 'freebsd' or self.os_name == 'openbsd' or self.os_name == 'netbsd':
+            return
+        else:
+            # Most other platforms (namely iOS) return conforming version strings.
+            self.os_version = Version.from_string(platform_module.release())
 
     def is_mac(self):
         return self.os_name == 'mac'
@@ -68,6 +74,9 @@ class PlatformInfo(object):
 
     def is_win(self):
         return self.os_name == 'win'
+
+    def is_native_win(self):
+        return self.is_win() and not self.is_cygwin()
 
     def is_cygwin(self):
         return self._is_cygwin
@@ -93,6 +102,16 @@ class PlatformInfo(object):
         # Linux-2.6.18-194.3.1.el5-i686-with-redhat-5.5-Final
         # Windows-2008ServerR2-6.1.7600
         return self._platform_module.platform()
+
+    def os_version_name(self, table=None):
+        if not self.os_version:
+            return None
+        if table:
+            return VersionNameMap.map(self).to_name(self.os_version, table=table)
+        version_name = VersionNameMap.map(self).to_name(self.os_version, table=PUBLIC_TABLE)
+        if not version_name:
+            version_name = VersionNameMap.map(self).to_name(self.os_version, table=INTERNAL_TABLE)
+        return version_name
 
     def total_bytes_memory(self):
         if self.is_mac():
@@ -127,8 +146,10 @@ class PlatformInfo(object):
     def xcode_sdk_version(self, sdk_name):
         if self.is_mac():
             # Assumes that xcrun does not write to standard output on failure (e.g. SDK does not exist).
-            return self._executive.run_command(["xcrun", "--sdk", sdk_name, "--show-sdk-version"], return_stderr=False, error_handler=Executive.ignore_error).rstrip()
-        return ''
+            xcrun_output = self._executive.run_command(['xcrun', '--sdk', sdk_name, '--show-sdk-version'], return_stderr=False, ignore_errors=True).rstrip()
+            if xcrun_output:
+                return Version.from_string(xcrun_output)
+        return None
 
     def xcode_simctl_list(self):
         if not self.is_mac():
@@ -139,7 +160,7 @@ class PlatformInfo(object):
     def xcode_version(self):
         if not self.is_mac():
             raise NotImplementedError
-        return self._executive.run_command(['xcodebuild', '-version']).split()[1]
+        return Version.from_string(self._executive.run_command(['xcodebuild', '-version']).split()[1])
 
     def _determine_os_name(self, sys_platform):
         if sys_platform == 'darwin':
@@ -158,47 +179,15 @@ class PlatformInfo(object):
             return 'haiku'
         raise AssertionError('unrecognized platform string "%s"' % sys_platform)
 
-    def _determine_mac_version(self, mac_version_string):
-        release_version = int(mac_version_string.split('.')[1])
-        version_strings = {
-            5: 'leopard',
-            6: 'snowleopard',
-            7: 'lion',
-            8: 'mountainlion',
-            9: 'mavericks',
-            10: 'yosemite',
-            11: 'elcapitan',
-            12: 'sierra',
-            13: 'highsierra',
-        }
-        assert release_version >= min(version_strings.keys())
-        return version_strings.get(release_version, 'future')
+    def _win_version(self):
+        version = self._win_version_str()
+        match_object = re.search(r'(?P<major>\d+)\.(?P<minor>\d+)\.(?P<build>\d+)', version)
+        assert match_object, 'cmd returned an unexpected version string: ' + version
+        return Version.from_iterable(match_object.groups())
 
-    def _determine_linux_version(self):
-        # FIXME: we ignore whatever the real version is and pretend it's lucid for now.
-        return 'lucid'
-
-    def _determine_win_version(self, win_version_tuple):
-        if win_version_tuple[:2] == (0, 0):
-            if win_version_tuple[2] > 10000:
-                return 'win10'
-        if win_version_tuple[:3] == (6, 1, 7600):
-            return '7sp0'
-        if win_version_tuple[:2] == (6, 0):
-            return 'vista'
-        if win_version_tuple[:2] == (5, 1):
-            return 'xp'
-        assert win_version_tuple[0] > 6 or win_version_tuple[1] >= 1, 'Unrecognized Windows version tuple: "%s"' % (win_version_tuple,)
-        return 'future'
-
-    def _win_version_tuple(self, sys_module):
-        if hasattr(sys_module, 'getwindowsversion'):
-            return sys_module.getwindowsversion()
-        return self._win_version_tuple_from_cmd()
-
-    def _win_version_tuple_from_cmd(self):
+    def _win_version_str(self):
+        version = self._platform_module.win32_ver()[1]
+        if version:
+            return version
         # Note that this should only ever be called on windows, so this should always work.
-        ver_output = self._executive.run_command(['cmd', '/c', 'ver'], decode_output=False)
-        match_object = re.search(r'(?P<major>\d)\.(?P<minor>\d)\.(?P<build>\d+)', ver_output)
-        assert match_object, 'cmd returned an unexpected version string: ' + ver_output
-        return tuple(map(int, match_object.groups()))
+        return self._executive.run_command(['cmd', '/c', 'ver'], decode_output=False)

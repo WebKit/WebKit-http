@@ -42,16 +42,15 @@
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static std::optional<int> s_damageEventBase;
 static std::optional<int> s_damageErrorBase;
 
 class XDamageNotifier {
     WTF_MAKE_NONCOPYABLE(XDamageNotifier);
-    friend class NeverDestroyed<XDamageNotifier>;
+    friend NeverDestroyed<XDamageNotifier>;
 public:
     static XDamageNotifier& singleton()
     {

@@ -22,6 +22,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #import "config.h"
 #import "GameControllerGamepadProvider.h"
 
@@ -31,6 +32,7 @@
 #import "GamepadProviderClient.h"
 #import "Logging.h"
 #import <GameController/GameController.h>
+#import <wtf/NeverDestroyed.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(GameController)
@@ -62,10 +64,10 @@ void GameControllerGamepadProvider::controllerDidConnect(GCController *controlle
     auto gamepad = std::make_unique<GameControllerGamepad>(controller, index);
 
     if (m_gamepadVector.size() <= index)
-        m_gamepadVector.resize(index + 1);
+        m_gamepadVector.grow(index + 1);
 
     m_gamepadVector[index] = gamepad.get();
-    m_gamepadMap.set(controller, WTFMove(gamepad));
+    m_gamepadMap.set((__bridge CFTypeRef)controller, WTFMove(gamepad));
 
 
     if (visibility == ConnectionVisibility::Invisible) {
@@ -83,7 +85,7 @@ void GameControllerGamepadProvider::controllerDidDisconnect(GCController *contro
 {
     LOG(Gamepad, "GameControllerGamepadProvider controller %p removed", controller);
 
-    auto removedGamepad = m_gamepadMap.take(controller);
+    auto removedGamepad = m_gamepadMap.take((__bridge CFTypeRef)controller);
     ASSERT(removedGamepad);
 
     auto i = m_gamepadVector.find(removedGamepad.get());

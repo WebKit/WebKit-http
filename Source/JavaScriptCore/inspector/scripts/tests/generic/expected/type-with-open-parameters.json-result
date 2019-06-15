@@ -66,8 +66,8 @@
 #if ENABLE(INSPECTOR_ALTERNATE_DISPATCHERS)
 
 #include "TestProtocolTypes.h"
-#include <inspector/InspectorFrontendRouter.h>
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 
 namespace Inspector {
 
@@ -121,7 +121,7 @@ private:
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorBackendDispatcher.h>
+#include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -167,8 +167,8 @@ typedef String ErrorString;
 #include "config.h"
 #include "TestBackendDispatchers.h"
 
-#include <inspector/InspectorFrontendRouter.h>
-#include <inspector/InspectorValues.h>
+#include <JavaScriptCore/InspectorFrontendRouter.h>
+#include <wtf/JSONValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
@@ -218,7 +218,7 @@ namespace Inspector {
 #pragma once
 
 #include "TestProtocolObjects.h"
-#include <inspector/InspectorValues.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -262,7 +262,7 @@ class FrontendRouter;
 #include "config.h"
 #include "TestFrontendDispatchers.h"
 
-#include "InspectorFrontendRouter.h"
+#include <JavaScriptCore/InspectorFrontendRouter.h>
 #include <wtf/text/CString.h>
 
 namespace Inspector {
@@ -304,7 +304,7 @@ namespace Inspector {
 
 #pragma once
 
-#include <inspector/InspectorProtocolTypes.h>
+#include <JavaScriptCore/InspectorProtocolTypes.h>
 #include <wtf/Assertions.h>
 
 namespace Inspector {
@@ -324,7 +324,7 @@ class OpenParameters;
 
 
 namespace Test {
-class NoOpenParameters : public Inspector::InspectorObjectBase {
+class NoOpenParameters : public JSON::ObjectBase {
 public:
     enum {
         NoFieldsSet = 0,
@@ -336,14 +336,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*NoOpenParameters*/InspectorObject>&& object)
+        Builder(Ref</*NoOpenParameters*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -354,23 +354,23 @@ public:
         Builder<STATE | OneSet>& setOne(double value)
         {
             COMPILE_ASSERT(!(STATE & OneSet), property_one_already_set);
-            m_result->setDouble(ASCIILiteral("one"), value);
+            m_result->setDouble("one"_s, value);
             return castState<OneSet>();
         }
 
         Builder<STATE | TwoSet>& setTwo(double value)
         {
             COMPILE_ASSERT(!(STATE & TwoSet), property_two_already_set);
-            m_result->setDouble(ASCIILiteral("two"), value);
+            m_result->setDouble("two"_s, value);
             return castState<TwoSet>();
         }
 
         Ref<NoOpenParameters> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(NoOpenParameters) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(NoOpenParameters) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<NoOpenParameters>*>(&result));
         }
     };
@@ -384,11 +384,11 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 };
 
-class OpenParameters : public Inspector::InspectorObject {
+class OpenParameters : public JSON::Object {
 public:
     enum {
         NoFieldsSet = 0,
@@ -400,14 +400,14 @@ public:
     template<int STATE>
     class Builder {
     private:
-        RefPtr<InspectorObject> m_result;
+        RefPtr<JSON::Object> m_result;
 
         template<int STEP> Builder<STATE | STEP>& castState()
         {
             return *reinterpret_cast<Builder<STATE | STEP>*>(this);
         }
 
-        Builder(Ref</*OpenParameters*/InspectorObject>&& object)
+        Builder(Ref</*OpenParameters*/JSON::Object>&& object)
             : m_result(WTFMove(object))
         {
             COMPILE_ASSERT(STATE == NoFieldsSet, builder_created_in_non_init_state);
@@ -418,23 +418,23 @@ public:
         Builder<STATE | AlphaSet>& setAlpha(double value)
         {
             COMPILE_ASSERT(!(STATE & AlphaSet), property_alpha_already_set);
-            m_result->setDouble(ASCIILiteral("alpha"), value);
+            m_result->setDouble("alpha"_s, value);
             return castState<AlphaSet>();
         }
 
         Builder<STATE | BetaSet>& setBeta(double value)
         {
             COMPILE_ASSERT(!(STATE & BetaSet), property_beta_already_set);
-            m_result->setDouble(ASCIILiteral("beta"), value);
+            m_result->setDouble("beta"_s, value);
             return castState<BetaSet>();
         }
 
         Ref<OpenParameters> release()
         {
             COMPILE_ASSERT(STATE == AllFieldsSet, result_is_not_ready);
-            COMPILE_ASSERT(sizeof(OpenParameters) == sizeof(InspectorObject), cannot_cast);
+            COMPILE_ASSERT(sizeof(OpenParameters) == sizeof(JSON::Object), cannot_cast);
 
-            Ref<InspectorObject> result = m_result.releaseNonNull();
+            Ref<JSON::Object> result = m_result.releaseNonNull();
             return WTFMove(*reinterpret_cast<Ref<OpenParameters>*>(&result));
         }
     };
@@ -448,7 +448,7 @@ public:
      */
     static Builder<NoFieldsSet> create()
     {
-        return Builder<NoFieldsSet>(InspectorObject::create());
+        return Builder<NoFieldsSet>(JSON::Object::create());
     }
 
     // Property names for type generated as open.
@@ -592,7 +592,7 @@ namespace Inspector {
 
 #include "TestProtocolInternal.h"
 #include "TestProtocolTypeConversions.h"
-#include <JavaScriptCore/InspectorValues.h>
+#include <wtf/JSONValues.h>
 
 namespace Inspector {
 
@@ -741,7 +741,7 @@ using namespace Inspector;
 #import "TestProtocolInternal.h"
 
 #import "TestProtocolTypeConversions.h"
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -800,7 +800,7 @@ typedef NS_ENUM(NSInteger, TestProtocolPlatform) {
 __attribute__((visibility ("default")))
 @interface TestProtocolTestNoOpenParameters : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithOne:(double)one two:(double)two;
 /* required */ @property (nonatomic, assign) double one;
 /* required */ @property (nonatomic, assign) double two;
@@ -809,7 +809,7 @@ __attribute__((visibility ("default")))
 __attribute__((visibility ("default")))
 @interface TestProtocolTestOpenParameters : RWIProtocolJSONObject
 - (instancetype)initWithPayload:(NSDictionary<NSString *, id> *)payload;
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject;
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)jsonObject;
 - (instancetype)initWithAlpha:(double)alpha beta:(double)beta;
 /* required */ @property (nonatomic, assign) double alpha;
 /* required */ @property (nonatomic, assign) double beta;
@@ -856,7 +856,7 @@ __attribute__((visibility ("default")))
 #import "TestProtocol.h"
 #import "TestProtocolJSONObjectPrivate.h"
 #import <JavaScriptCore/AugmentableInspectorController.h>
-#import <JavaScriptCore/InspectorValues.h>
+#import <wtf/JSONValues.h>
 
 
 
@@ -906,13 +906,13 @@ inline String toProtocolString(TestProtocolPlatform value)
 {
     switch(value) {
     case TestProtocolPlatformAll:
-        return ASCIILiteral("all");
+        return "all"_s;
     case TestProtocolPlatformGeneric:
-        return ASCIILiteral("generic");
+        return "generic"_s;
     case TestProtocolPlatformIOS:
-        return ASCIILiteral("ios");
+        return "ios"_s;
     case TestProtocolPlatformMacOS:
-        return ASCIILiteral("macos");
+        return "macos"_s;
     }
 }
 
@@ -1036,8 +1036,8 @@ using namespace Inspector;
 
 #import "TestProtocolTypeConversions.h"
 #import <WebInspector/RWIProtocolJSONObjectPrivate.h>
-#import <JavaScriptCore/InspectorValues.h>
 #import <wtf/Assertions.h>
+#import <wtf/JSONValues.h>
 
 using namespace Inspector;
 
@@ -1057,9 +1057,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;
@@ -1113,9 +1113,9 @@ using namespace Inspector;
 
     return self;
 }
-- (instancetype)initWithJSONObject:(RWIProtocolJSONObject *)jsonObject
+- (instancetype)initWithProtocolObject:(RWIProtocolJSONObject *)object
 {
-    if (!(self = [super initWithInspectorObject:[jsonObject toInspectorObject].get()]))
+    if (!(self = [super initWithJSONObject:[object toJSONObject].get()]))
         return nil;
 
     return self;

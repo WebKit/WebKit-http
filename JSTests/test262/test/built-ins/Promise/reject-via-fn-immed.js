@@ -3,7 +3,7 @@
 /*---
 description: Rejecting through immediate invocation of the provided resolving function
 es6id: 25.4.3.1
-info: >
+info: |
     [...]
     9. Let completion be Call(executor, undefined,
        «resolvingFunctions.[[Resolve]], resolvingFunctions.[[Reject]]»).
@@ -18,17 +18,20 @@ flags: [async]
 ---*/
 
 var thenable = new Promise(function() {});
+var returnValue = null;
 var p = new Promise(function(_, reject) {
-  reject(thenable);
+  returnValue = reject(thenable);
 });
 
-p.then(function() {
-    $DONE('The promise should not be fulfilled.');
-  }, function(x) {
-    if (x !== thenable) {
-      $DONE('The promise should be rejected with the resolution value.');
-      return;
-    }
+assert.sameValue(returnValue, undefined, '"reject" function return value');
 
-    $DONE();
-  });
+p.then(function() {
+  $DONE('The promise should not be fulfilled.');
+}, function(x) {
+  if (x !== thenable) {
+    $DONE('The promise should be rejected with the resolution value.');
+    return;
+  }
+
+  $DONE();
+});

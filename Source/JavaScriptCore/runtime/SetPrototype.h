@@ -29,7 +29,7 @@
 
 namespace JSC {
 
-class SetPrototype : public JSNonFinalObject {
+class SetPrototype final : public JSNonFinalObject {
 public:
     typedef JSNonFinalObject Base;
 
@@ -56,8 +56,5 @@ private:
     }
     void finishCreation(VM&, JSGlobalObject*);
 };
-
-EncodedJSValue JSC_HOST_CALL privateFuncSetIterator(ExecState*);
-EncodedJSValue JSC_HOST_CALL privateFuncSetIteratorNext(ExecState*);
 
 } // namespace JSC

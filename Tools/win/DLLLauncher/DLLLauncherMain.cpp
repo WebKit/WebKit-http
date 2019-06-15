@@ -121,16 +121,18 @@ static bool modifyPath(const wstring& programName)
 {
 #ifdef WIN_CAIRO
 
+    wstring pathWinCairo = copyEnvironmentVariable(L"WEBKIT_LIBRARIES");
+    if (!directoryExists(pathWinCairo))
+        return true;
 #if defined(_M_X64)
-    wstring pathGStreamer = copyEnvironmentVariable(L"GSTREAMER_1_0_ROOT_X86_64") + L"bin";
-    wstring pathWinCairo = copyEnvironmentVariable(L"WEBKIT_LIBRARIES") + L"\\bin64";
+    pathWinCairo += L"\\bin64";
 #else
-    wstring pathGStreamer = copyEnvironmentVariable(L"GSTREAMER_1_0_ROOT_X86") + L"bin";
-    wstring pathWinCairo = copyEnvironmentVariable(L"WEBKIT_LIBRARIES") + L"\\bin32";
+    pathWinCairo += L"\\bin32";
 #endif
-    prependPath(pathWinCairo);
-    if (directoryExists(pathGStreamer))
-        prependPath(pathGStreamer);
+    if (!SetDllDirectory(pathWinCairo.c_str())) {
+        fatalError(programName, L"Failed to SetDllDirectory");
+        return false;
+    }
     return true;
 
 #else
@@ -165,33 +167,12 @@ static wstring getLastErrorString(HRESULT hr)
     return errorMessage;
 }
 
-static bool shouldUseHighDPI()
-{
-#ifdef WIN_CAIRO
-    return true;
-#else
-    int argc = 0;
-    WCHAR** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    for (int i = 1; i < argc; ++i) {
-        if (!wcsicmp(argv[i], L"--highDPI"))
-            return true;
-    }
-
-    return false;
-#endif
-}
-
 #if USE_CONSOLE_ENTRY_POINT
 int main(int argc, const char* argv[])
 #else
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpstrCmdLine, _In_ int nCmdShow)
 #endif
 {
-    if (shouldUseHighDPI()) {
-        BOOL didIt = SetProcessDPIAware();
-        _ASSERT(didIt);
-    }
-
 #ifdef _CRTDBG_MAP_ALLOC
     _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDERR);
     _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);

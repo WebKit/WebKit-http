@@ -31,6 +31,7 @@
 namespace WebCore {
 
 class RenderSVGEllipse final : public RenderSVGShape {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGEllipse);
 public:
     RenderSVGEllipse(SVGGraphicsElement&, RenderStyle&&);
     virtual ~RenderSVGEllipse();
@@ -43,7 +44,7 @@ private:
     bool isRenderingDisabled() const override;
     void fillShape(GraphicsContext&) const override;
     void strokeShape(GraphicsContext&) const override;
-    bool shapeDependentStrokeContains(const FloatPoint&) override;
+    bool shapeDependentStrokeContains(const FloatPoint&, PointCoordinateSpace = GlobalCoordinateSpace) override;
     bool shapeDependentFillContains(const FloatPoint&, const WindRule) const override;
     void calculateRadiiAndCenter();
 

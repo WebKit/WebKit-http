@@ -29,7 +29,7 @@
 // Use `install()` and `uninstall()` to enable or disable all listeners
 // in the set at once.
 
-WebInspector.EventListenerSet = class EventListenerSet
+WI.EventListenerSet = class EventListenerSet
 {
     constructor(defaultThisObject, name)
     {
@@ -44,15 +44,16 @@ WebInspector.EventListenerSet = class EventListenerSet
 
     register(emitter, type, callback, thisObject, usesCapture)
     {
-        console.assert(callback, "Missing callback for event: " + type);
-        console.assert(type, "Tried to register listener for unknown event: " + type);
-        var emitterIsValid = emitter && (emitter instanceof WebInspector.Object || emitter instanceof Node || (typeof emitter.addEventListener === "function"));
-        console.assert(emitterIsValid, "Event emitter ", emitter, " (type:" + type + ") is null or does not implement Node or WebInspector.Object!");
+        console.assert(emitter, `Missing event emitter for event: ${type}.`);
+        console.assert(type, "Missing event type.");
+        console.assert(callback, `Missing callback for event: ${type}.`);
+        var emitterIsValid = emitter && (emitter instanceof WI.Object || emitter instanceof Node || (typeof emitter.addEventListener === "function"));
+        console.assert(emitterIsValid, "Event emitter ", emitter, ` (type: ${type}) is null or does not implement Node or WI.Object.`);
 
         if (!emitterIsValid || !type || !callback)
             return;
 
-        this._listeners.push({listener: new WebInspector.EventListener(thisObject || this._defaultThisObject), emitter, type, callback, usesCapture});
+        this._listeners.push({listener: new WI.EventListener(thisObject || this._defaultThisObject), emitter, type, callback, usesCapture});
     }
 
     unregister()

@@ -8,22 +8,22 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_DEVICE_ANDROID_AUDIO_MANAGER_H_
-#define WEBRTC_MODULES_AUDIO_DEVICE_ANDROID_AUDIO_MANAGER_H_
+#ifndef MODULES_AUDIO_DEVICE_ANDROID_AUDIO_MANAGER_H_
+#define MODULES_AUDIO_DEVICE_ANDROID_AUDIO_MANAGER_H_
+
+#include <SLES/OpenSLES.h>
+#include <jni.h>
 
 #include <memory>
 
-#include <jni.h>
-#include <SLES/OpenSLES.h>
-
-#include "webrtc/base/thread_checker.h"
-#include "webrtc/modules/audio_device/android/audio_common.h"
-#include "webrtc/modules/audio_device/audio_device_config.h"
-#include "webrtc/modules/audio_device/include/audio_device_defines.h"
-#include "webrtc/modules/audio_device/android/opensles_common.h"
-#include "webrtc/modules/audio_device/audio_device_generic.h"
-#include "webrtc/modules/utility/include/helpers_android.h"
-#include "webrtc/modules/utility/include/jvm_android.h"
+#include "modules/audio_device/android/audio_common.h"
+#include "modules/audio_device/android/opensles_common.h"
+#include "modules/audio_device/audio_device_config.h"
+#include "modules/audio_device/audio_device_generic.h"
+#include "modules/audio_device/include/audio_device_defines.h"
+#include "modules/utility/include/helpers_android.h"
+#include "modules/utility/include/jvm_android.h"
+#include "rtc_base/thread_checker.h"
 
 namespace webrtc {
 
@@ -103,9 +103,20 @@ class AudioManager {
   bool IsLowLatencyPlayoutSupported() const;
   bool IsLowLatencyRecordSupported() const;
 
+  // Returns true if the device supports (and has been configured for) stereo.
+  // Call the Java API WebRtcAudioManager.setStereoOutput/Input() with true as
+  // paramter to enable stereo. Default is mono in both directions and the
+  // setting is set once and for all when the audio manager object is created.
+  // TODO(henrika): stereo is not supported in combination with OpenSL ES.
+  bool IsStereoPlayoutSupported() const;
+  bool IsStereoRecordSupported() const;
+
   // Returns true if the device supports pro-audio features in combination with
   // OpenSL ES.
   bool IsProAudioSupported() const;
+
+  // Returns true if the device supports AAudio.
+  bool IsAAudioSupported() const;
 
   // Returns the estimated total delay of this device. Unit is in milliseconds.
   // The vaule is set once at construction and never changes after that.
@@ -128,6 +139,7 @@ class AudioManager {
                                            jboolean low_latency_output,
                                            jboolean low_latency_input,
                                            jboolean pro_audio,
+                                           jboolean a_audio,
                                            jint output_buffer_size,
                                            jint input_buffer_size,
                                            jlong native_audio_manager);
@@ -141,6 +153,7 @@ class AudioManager {
                               jboolean low_latency_output,
                               jboolean low_latency_input,
                               jboolean pro_audio,
+                              jboolean a_audio,
                               jint output_buffer_size,
                               jint input_buffer_size);
 
@@ -192,6 +205,9 @@ class AudioManager {
   // True if device supports the low-latency OpenSL ES pro-audio path.
   bool pro_audio_;
 
+  // True if device supports the low-latency AAudio audio path.
+  bool a_audio_;
+
   // The delay estimate can take one of two fixed values depending on if the
   // device supports low-latency output or not.
   int delay_estimate_in_milliseconds_;
@@ -205,4 +221,4 @@ class AudioManager {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_DEVICE_ANDROID_AUDIO_MANAGER_H_
+#endif  // MODULES_AUDIO_DEVICE_ANDROID_AUDIO_MANAGER_H_

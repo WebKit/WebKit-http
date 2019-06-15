@@ -30,6 +30,7 @@ class TextControlInnerTextElement;
 class HTMLTextFormControlElement;
 
 class RenderTextControl : public RenderBlockFlow {
+    WTF_MAKE_ISO_ALLOCATED(RenderTextControl);
 public:
     virtual ~RenderTextControl();
 
@@ -46,7 +47,7 @@ protected:
     RenderTextControl(HTMLTextFormControlElement&, RenderStyle&&);
 
     // This convenience function should not be made public because innerTextElement may outlive the render tree.
-    TextControlInnerTextElement* innerTextElement() const;
+    RefPtr<TextControlInnerTextElement> innerTextElement() const;
 
     int scrollbarThickness() const;
 
@@ -73,7 +74,6 @@ private:
     bool isTextControl() const final { return true; }
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
     void computePreferredLogicalWidths() override;
-    void removeLeftoverAnonymousBlock(RenderBlock*) override { }
     bool avoidsFloats() const override { return true; }
     bool canHaveGeneratedChildren() const override { return false; }
     
@@ -87,11 +87,12 @@ private:
 // baseline definition, and then inputs of different types wouldn't line up
 // anymore.
 class RenderTextControlInnerContainer final : public RenderFlexibleBox {
+    WTF_MAKE_ISO_ALLOCATED(RenderTextControlInnerContainer);
 public:
     explicit RenderTextControlInnerContainer(Element& element, RenderStyle&& style)
         : RenderFlexibleBox(element, WTFMove(style))
     { }
-    virtual ~RenderTextControlInnerContainer() { }
+    virtual ~RenderTextControlInnerContainer() = default;
 
     int baselinePosition(FontBaseline baseline, bool firstLine, LineDirectionMode direction, LinePositionMode position) const override
     {

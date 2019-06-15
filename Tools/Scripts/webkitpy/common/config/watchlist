@@ -22,7 +22,7 @@
                         r"|Source/WebCore/page/GeolocationClient.h"
                         r"|Source/WebCore/bindings/js/JSGeolocationCustom.cpp"
                         r"|Source/WebCore/platform/mock/GeolocationClientMock.(h|cpp)"
-                        r"|Source/WebKit2/WebProcess/Geolocation/",
+                        r"|Source/WebKit/WebProcess/Geolocation/",
         },
         "GStreamerGraphics": {
             "filename": r"Source/WebCore/platform/graphics/gstreamer/",
@@ -70,16 +70,16 @@
             "filename": r"Source/WebCore/page/animation/",
         },
         "GtkWebKit2PublicAPI": {
-            "filename": r"Source/WebKit2/UIProcess/API/gtk/"
-                        r"|Source/WebKit2/UIProcess/API/glib/"
-                        r"|Source/WebKit2/Shared/API/glib/"
-                        r"|Source/WebKit2/WebProcess/InjectedBundle/API/gtk/"
-                        r"|Source/WebKit2/WebProcess/InjectedBundle/API/glib/",
+            "filename": r"Source/WebKit/UIProcess/API/gtk/"
+                        r"|Source/WebKit/UIProcess/API/glib/"
+                        r"|Source/WebKit/Shared/API/glib/"
+                        r"|Source/WebKit/WebProcess/InjectedBundle/API/gtk/"
+                        r"|Source/WebKit/WebProcess/InjectedBundle/API/glib/",
         },
         "CoordinatedGraphics": {
-            "filename": r"Source/WebKit2/WebProcess/WebPage/CoordinatedGraphics/"
-                        r"|Source/WebKit2/UIProcess/CoordinatedGraphics/"
-                        r"|Source/WebKit2/Shared/CoordinatedGraphics/"
+            "filename": r"Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/"
+                        r"|Source/WebKit/UIProcess/CoordinatedGraphics/"
+                        r"|Source/WebKit/Shared/CoordinatedGraphics/"
                         r"|Source/WebCore/platform/graphics/surfaces/",
         },
         "TextureMapper": {
@@ -121,6 +121,14 @@
         },
         "ScrollingCoordinator": {
             "filename": r"Source/WebCore/page/scrolling/",
+        },
+        "WPEDependencies": {
+            "filename": r"Tools/wpe/install-dependencies"
+                        r"|Tools/wpe/jhbuild*",
+        },
+        "WebKitGTKDependencies": {
+            "filename": r"Tools/gtk/install-dependencies"
+                        r"|Tools/gtk/jhbuild*",
         },
         "WebKitGTKTranslations": {
             "filename": r"Source/WebCore/platform/gtk/po/",
@@ -174,23 +182,33 @@
             "filename": r"Source/WebCore/svg"
                         r"|Source/WebCore/rendering/svg",
         },
-        "WebInspectorAPI": {
-            "filename": r"Source/WebCore/inspector/InjectedScriptSource.js"
-                        r"|Source/WebCore/inspector/.+\.json"
-                        r"|Source/WebCore/inspector/.+\.idl"
-                        r"|Source/WebCore/page/Console.idl",
+        "WebInspectorBackend": {
+            "filename": r"Source/JavaScriptCore/inspector"
+                        r"|Source/WebCore/inspector",
         },
         "WebInspectorGenerator": {
             "filename": r"Source/JavaScriptCore/inspector/scripts/codegen"
                         r"|Tools/Scripts/generate-inspector-protocol-bindings.py"
                         r"|Tools/Scripts/webkitpy/inspector",
         },
-        "WebInspectorUIImages": {
-            "filename": r"Source/WebInspectorUI/UserInterface/Images",
+        "WebInspectorRecording": {
+            "filename": r"Source/JavaScriptCore/inspector/Protocol/Recording\.json"
+                        r"|Source/WebCore/bindings/js/CallTracer.*"
+                        r"|Source/WebCore/inspector/Recording.*"
+                        r"|Source/WebInspectorUI/UserInterface/\w*/Recording.*\.js"
+                        # Canvas
+                        r"|Source/WebCore/inspector/InspectorCanvas.*"
+                        r"|Source/WebCore/html/canvas/Canvas.*\.idl"
+                        r"|Source/WebCore/html/canvas/WebGLRenderingContext\.idl"
+                        r"|Source/WebCore/html/canvas/WebGLRenderingContextBase\.idl",
         },
         "WebSocket": {
             "filename": r"Source/WebCore/Modules/websockets"
                         r"|Source/WebCore/platform/network/(|.+/)SocketStream.*",
+        },
+        "JSBuiltins": {
+            "filename": r"Source/JavaScriptCore/builtins/.*\.js"
+                        r"|Source/WebCore/(?!modern-media-controls)(?!mediacontrols).*\.js",
         },
         "JSBuiltinsGenerator": {
             "filename": r"Source/JavaScriptCore/Scripts/builtins"
@@ -203,7 +221,11 @@
         "MediaStream": {
             "filename": r"Source/WebCore/Modules/mediastream"
                         r"|Source/WebCore/platform/mediastream"
-                        r"|LayoutTests/fast/mediastream",
+                        r"|LayoutTests/fast/mediastream"
+                        r"|Source/WebKit/WebProcess/MediaStream/"
+                        r"|LayoutTests/http/tests/media/media-stream/"
+                        r"|LayoutTests/fast/mediastream/"
+                        r"|LayoutTests/imported/w3c/web-platform-tests/mediacapture-streams/",
         },
         "Accessibility": {
             "filename": r"Source/WebCore/accessibility"
@@ -319,7 +341,7 @@
                         r"|Source/WebCore/platform/text/BidiResolver.h",
         },
         "NetworkCache": {
-            "filename": r"Source/WebKit2/NetworkProcess/cache/",
+            "filename": r"Source/WebKit/NetworkProcess/cache/",
         },
         "WebCryptoAPI": {
             "filename": r"Source/WebCore/crypto/"
@@ -328,6 +350,14 @@
                         r"|Source/WebCore/PAL/pal/crypto/"
                         r"|LayoutTests/crypto/"
                         r"|LayoutTests/imported/w3c/web-platform-tests/WebCryptoAPI/",
+        },
+        "WebRTC": {
+            "filename": r"Source/ThirdParty/libwebrtc/"
+                        r"|Source/WebKit/Shared/*RTC*"
+                        r"|Source/WebKit/NetworkProcess/webrtc/"
+                        r"|Source/WebKit/WebProcess/Network/webrtc/"
+                        r"|LayoutTests/webrtc/"
+                        r"|LayoutTests/imported/w3c/web-platform-tests/webrtc/",
         },
     },
     "CC_RULES": {
@@ -355,8 +385,8 @@
         "FrameLoader": [ "japhet@chromium.org", "cdumez@apple.com", "dbates@webkit.org" ],
         "Geolocation": [ "benjamin@webkit.org" ],
         "GraphicsLayer": [ "simon.fraser@apple.com", "kondapallykalyan@gmail.com", "sergio.correia@openbossa.org" ],
-        "GStreamerGraphics": [ "alexis@webkit.org", "pnormand@igalia.com", "gns@gnome.org", "cgarcia@igalia.com", "calvaris@igalia.com", "vjaquez@igalia.com", "agomez@igalia.com" ],
-        "GStreamerAudio": [ "pnormand@igalia.com", "sergio.correia@openbossa.org", "calvaris@igalia.com", "vjaquez@igalia.com", "agomez@igalia.com" ],
+        "GStreamerGraphics": [ "alexis@webkit.org", "pnormand@igalia.com", "gns@gnome.org", "cgarcia@igalia.com", "calvaris@igalia.com", "vjaquez@igalia.com" ],
+        "GStreamerAudio": [ "pnormand@igalia.com", "sergio.correia@openbossa.org", "calvaris@igalia.com", "vjaquez@igalia.com" ],
         "GtkWebKit2PublicAPI": [ "cgarcia@igalia.com", "gns@gnome.org", "berto@igalia.com", "mcatanzaro@igalia.com" ],
         "HTML": [ "esprehn+autocc@chromium.org", "gyuyoung.kim@webkit.org", "cdumez@apple.com" ],
         "History": [ "cdumez@apple.com" ],
@@ -370,32 +400,36 @@
         "NetworkCache": [ "cgarcia@igalia.com", "cdumez@apple.com" ],
         "StreamsAPI": [ "benjamin@webkit.org", "calvaris@igalia.com", "youennf@gmail.com" ],
         "Track": [ "eric.carlson@apple.com", "philipj@opera.com", "calvaris@igalia.com" ],
-        "MediaStream": [ "tommyw@google.com", "hta@google.com", "sergio.correia@openbossa.org" ],
+        "MediaStream": [ "tommyw@google.com", "hta@google.com", "sergio.correia@openbossa.org", "eric.carlson@apple.com" ],
         "OpenGL" : [ "noam@webkit.org", "dino@apple.com", "kondapallykalyan@gmail.com" ],
         "PerformanceTests": [ "rniwa@webkit.org", "cdumez@apple.com" ],
         "RegionsDevelopment|RegionsExpectationsMore|RegionsExpectationsLess|RegionsUsage": [ "WebkitBugTracker@adobe.com" ],
         "Rendering": [ "esprehn+autocc@chromium.org", "glenn@skynav.com", "kondapallykalyan@gmail.com", "pdr+autocc@chromium.org" ],
-        "RenderLayers" : [ "simon.fraser@apple.com", "kondapallykalyan@gmail.com" ],
+        "RenderLayers" : [ "simon.fraser@apple.com", "kondapallykalyan@gmail.com", "fred.wang@free.fr" ],
         "SVG": ["schenney@chromium.org", "pdr+autocc@chromium.org", "fmalita@chromium.org", "gyuyoung.kim@webkit.org", "sergio.correia@openbossa.org", "sabouhallawa@apple.com", "dino@apple.com" ],
         "SVNScripts": [ "dbates@webkit.org" ],
-        "ScrollingCoordinator": [ "jamesr@chromium.org", "tonikitoo@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org" ],
+        "ScrollingCoordinator": [ "jamesr@chromium.org", "tonikitoo@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "fred.wang@free.fr" ],
         "Selectors": [ "allan.jensen@digia.com" ],
-        "SoupNetwork": [ "gns@gnome.org", "danw@gnome.org", "cgarcia@igalia.com", "berto@igalia.com", "mcatanzaro@igalia.com" ],
+        "SoupNetwork": [ "gns@gnome.org", "cgarcia@igalia.com", "berto@igalia.com", "mcatanzaro@igalia.com" ],
         "TextureMapper" : [ "noam@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "kondapallykalyan@gmail.com" ],
         "TouchAdjustment" : [ "allan.jensen@digia.com" ],
         "WTF": [ "benjamin@webkit.org", "cmarcelo@webkit.org", "cdumez@apple.com", "dbates@webkit.org" ],
         "WebGL": [ "dino@apple.com", "kondapallykalyan@gmail.com", "graouts@webkit.org" ],
         "WebIDL": [ "esprehn+autocc@chromium.org", "cdumez@apple.com", "kondapallykalyan@gmail.com" ],
-        "WebInspectorAPI": [ "joepeck@webkit.org" ],
+        "WebInspectorBackend": [ "joepeck@webkit.org" ],
         "WebInspectorGenerator": [ "bburg@apple.com", "joepeck@webkit.org" ],
-        "WebInspectorUIImages": [ "agomez@igalia.com" ],
+        "WebInspectorRecording": [ "drousso@apple.com" ],
+        "JSBuiltins": [ "joepeck@webkit.org" ],
         "JSBuiltinsGenerator": [ "bburg@apple.com" ],
+        "WPEDependencies": [ "aperez@igalia.com", "clopez@igalia.com" ],
+        "WebKitGTKDependencies": [ "agomez@igalia.com", "ltilve@igalia.com", "clopez@igalia.com" ],
         "WebKitGTKTranslations": [ "gns@gnome.org", "berto@igalia.com", "cgarcia@igalia.com", "mcatanzaro@igalia.com" ],
         "WebSocket": [ "yutak@chromium.org", "toyoshim+watchlist@chromium.org" ],
         "XSS": [ "dbates@webkit.org" ],
         "webkitperl": [ "dbates@webkit.org" ],
         "webkitpy": [ "glenn@skynav.com" ],
         "WebCryptoAPI": [ "jiewen_tan@apple.com" ],
+        "WebRTC": [ "eric.carlson@apple.com" ],
     },
     "MESSAGE_RULES": {
         "GtkWebKit2PublicAPI": [ "Thanks for the patch. If this patch contains new public API "

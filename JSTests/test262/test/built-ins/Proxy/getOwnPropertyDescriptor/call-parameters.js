@@ -4,7 +4,7 @@
 es6id: 9.5.5
 description: >
     Trap is called with hander context and parameters are target and P
-info: >
+info: |
     [[GetOwnProperty]] (P)
 
     ...
@@ -13,15 +13,17 @@ info: >
 ---*/
 
 var _target, _handler, _prop;
-var target = {attr: 1};
+var target = {
+  attr: 1
+};
 var handler = {
-    getOwnPropertyDescriptor: function(t, prop) {
-        _target = t;
-        _handler = this;
-        _prop = prop;
+  getOwnPropertyDescriptor: function(t, prop) {
+    _target = t;
+    _handler = this;
+    _prop = prop;
 
-        return Object.getOwnPropertyDescriptor(t);
-    }
+    return Object.getOwnPropertyDescriptor(t);
+  }
 };
 var p = new Proxy(target, handler);
 

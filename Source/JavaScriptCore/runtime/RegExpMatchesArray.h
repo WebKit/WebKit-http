@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2008-2018 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -31,6 +31,7 @@ namespace JSC {
 
 static const PropertyOffset RegExpMatchesArrayIndexPropertyOffset = 100;
 static const PropertyOffset RegExpMatchesArrayInputPropertyOffset = 101;
+static const PropertyOffset RegExpMatchesArrayGroupsPropertyOffset = 102;
 
 ALWAYS_INLINE JSArray* tryCreateUninitializedRegExpMatchesArray(ObjectInitializationScope& scope, GCDeferralContext* deferralContext, Structure* structure, unsigned initialLength)
 {
@@ -39,20 +40,20 @@ ALWAYS_INLINE JSArray* tryCreateUninitializedRegExpMatchesArray(ObjectInitializa
     if (vectorLength > MAX_STORAGE_VECTOR_LENGTH)
         return 0;
 
-    JSGlobalObject* globalObject = structure->globalObject();
-    bool createUninitialized = globalObject->isOriginalArrayStructure(structure);
-    void* temp = vm.auxiliarySpace.tryAllocate(deferralContext, Butterfly::totalSize(0, structure->outOfLineCapacity(), true, vectorLength * sizeof(EncodedJSValue)));
-    if (UNLIKELY(!temp))
+    const bool hasIndexingHeader = true;
+    Butterfly* butterfly = Butterfly::tryCreateUninitialized(vm, nullptr, 0, structure->outOfLineCapacity(), hasIndexingHeader, vectorLength * sizeof(EncodedJSValue), deferralContext);
+    if (UNLIKELY(!butterfly))
         return nullptr;
-    Butterfly* butterfly = Butterfly::fromBase(temp, 0, structure->outOfLineCapacity());
+
     butterfly->setVectorLength(vectorLength);
     butterfly->setPublicLength(initialLength);
 
-    unsigned i = (createUninitialized ? initialLength : 0);
-    for (; i < vectorLength; ++i)
-        butterfly->contiguous()[i].clear();
+    for (unsigned i = initialLength; i < vectorLength; ++i)
+        butterfly->contiguous().atUnsafe(i).clear();
 
     JSArray* result = JSArray::createWithButterfly(vm, deferralContext, structure, butterfly);
+
+    const bool createUninitialized = true;
     scope.notifyAllocated(result, createUninitialized);
     return result;
 }
@@ -76,18 +77,32 @@ ALWAYS_INLINE JSArray* createRegExpMatchesArray(
     // FIXME: This should handle array allocation errors gracefully.
     // https://bugs.webkit.org/show_bug.cgi?id=155144
     
+    unsigned numSubpatterns = regExp->numSubpatterns();
+    bool hasNamedCaptures = regExp->hasNamedCaptures();
+    JSObject* groups = nullptr;
+    Structure* matchStructure = globalObject->regExpMatchesArrayStructure();
+    if (hasNamedCaptures) {
+        groups = JSFinalObject::create(vm, JSFinalObject::createStructure(vm, globalObject, globalObject->objectPrototype(), 0));
+        matchStructure = globalObject->regExpMatchesArrayWithGroupsStructure();
+    }
+
     auto setProperties = [&] () {
         array->putDirect(vm, RegExpMatchesArrayIndexPropertyOffset, jsNumber(result.start));
         array->putDirect(vm, RegExpMatchesArrayInputPropertyOffset, input);
+        if (hasNamedCaptures)
+            array->putDirect(vm, RegExpMatchesArrayGroupsPropertyOffset, groups);
+
+        ASSERT(!array->butterfly()->indexingHeader()->preCapacity(matchStructure));
+        auto capacity = matchStructure->outOfLineCapacity();
+        auto size = matchStructure->outOfLineSize();
+        memset(array->butterfly()->base(0, capacity), 0, (capacity - size) * sizeof(JSValue));
     };
-    
-    unsigned numSubpatterns = regExp->numSubpatterns();
-    
-    GCDeferralContext deferralContext(vm.heap);
-    
+
     if (UNLIKELY(globalObject->isHavingABadTime())) {
+        GCDeferralContext deferralContext(vm.heap);
         ObjectInitializationScope scope(vm);
-        array = JSArray::tryCreateUninitializedRestricted(scope, &deferralContext, globalObject->regExpMatchesArrayStructure(), numSubpatterns + 1);
+        array = JSArray::tryCreateUninitializedRestricted(scope, &deferralContext, matchStructure, numSubpatterns + 1);
+
         // FIXME: we should probably throw an out of memory error here, but
         // when making this change we should check that all clients of this
         // function will correctly handle an exception being thrown from here.
@@ -108,14 +123,18 @@ ALWAYS_INLINE JSArray* createRegExpMatchesArray(
             array->initializeIndexWithoutBarrier(scope, i, value);
         }
     } else {
+        GCDeferralContext deferralContext(vm.heap);
         ObjectInitializationScope scope(vm);
-        array = tryCreateUninitializedRegExpMatchesArray(scope, &deferralContext, globalObject->regExpMatchesArrayStructure(), numSubpatterns + 1);
+        array = tryCreateUninitializedRegExpMatchesArray(scope, &deferralContext, matchStructure, numSubpatterns + 1);
+
+        // FIXME: we should probably throw an out of memory error here, but
+        // when making this change we should check that all clients of this
+        // function will correctly handle an exception being thrown from here.
+        // https://bugs.webkit.org/show_bug.cgi?id=169786
         RELEASE_ASSERT(array);
         
         setProperties();
         
-        // Now the object is safe to scan by GC.
-
         array->initializeIndexWithoutBarrier(scope, 0, jsSubstringOfResolved(vm, &deferralContext, input, result.start, result.end - result.start), ArrayWithContiguous);
         
         for (unsigned i = 1; i <= numSubpatterns; ++i) {
@@ -126,6 +145,18 @@ ALWAYS_INLINE JSArray* createRegExpMatchesArray(
             else
                 value = jsUndefined();
             array->initializeIndexWithoutBarrier(scope, i, value, ArrayWithContiguous);
+        }
+    }
+
+    // Now the object is safe to scan by GC.
+
+    // We initialize the groups object late as it could allocate, which with the current API could cause
+    // allocations.
+    if (groups) {
+        for (unsigned i = 1; i <= numSubpatterns; ++i) {
+            String groupName = regExp->getCaptureGroupName(i);
+            if (!groupName.isEmpty())
+                groups->putDirect(vm, Identifier::fromString(&vm, groupName), array->getIndexQuickly(i));
         }
     }
     return array;
@@ -139,5 +170,7 @@ inline JSArray* createRegExpMatchesArray(ExecState* exec, JSGlobalObject* global
 JSArray* createEmptyRegExpMatchesArray(JSGlobalObject*, JSString*, RegExp*);
 Structure* createRegExpMatchesArrayStructure(VM&, JSGlobalObject*);
 Structure* createRegExpMatchesArraySlowPutStructure(VM&, JSGlobalObject*);
+Structure* createRegExpMatchesArrayWithGroupsStructure(VM&, JSGlobalObject*);
+Structure* createRegExpMatchesArrayWithGroupsSlowPutStructure(VM&, JSGlobalObject*);
 
 } // namespace JSC

@@ -30,7 +30,9 @@
 
 #include "AccessibilityNodeObject.h"
 #include "LayoutRect.h"
+#include "RenderObject.h"
 #include <wtf/Forward.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
     
@@ -50,7 +52,7 @@ class RenderView;
 class VisibleSelection;
 class Widget;
     
-class AccessibilityRenderObject : public AccessibilityNodeObject {
+class AccessibilityRenderObject : public AccessibilityNodeObject, public CanMakeWeakPtr<AccessibilityRenderObject> {
 public:
     static Ref<AccessibilityRenderObject> create(RenderObject*);
     virtual ~AccessibilityRenderObject();
@@ -113,7 +115,7 @@ public:
     IntPoint clickPoint() override;
     
     void setRenderer(RenderObject*);
-    RenderObject* renderer() const override { return m_renderer; }
+    RenderObject* renderer() const override { return m_renderer.get(); }
     RenderBoxModelObject* renderBoxModelObject() const;
     Node* node() const override;
 
@@ -169,12 +171,12 @@ public:
     IntRect boundsForRects(LayoutRect&, LayoutRect&, RefPtr<Range>) const;
     void setSelectedVisiblePositionRange(const VisiblePositionRange&) const override;
     bool isVisiblePositionRangeInDifferentDocument(const VisiblePositionRange&) const;
-    bool ariaHasPopup() const override;
+    bool hasPopup() const override;
 
     bool supportsARIADropping() const override;
     bool supportsARIADragging() const override;
     bool isARIAGrabbed() override;
-    void determineARIADropEffects(Vector<String>&) override;
+    Vector<String> determineARIADropEffects() override;
     
     VisiblePosition visiblePositionForPoint(const IntPoint&) const override;
     VisiblePosition visiblePositionForIndex(unsigned indexValue, bool lastIndexOK) const override;
@@ -201,7 +203,6 @@ public:
 
 protected:
     explicit AccessibilityRenderObject(RenderObject*);
-    void setRenderObject(RenderObject* renderer) { m_renderer = renderer; }
     ScrollableArea* getScrollableAreaIfScrollable() const override;
     void scrollTo(const IntPoint&) const override;
     
@@ -214,7 +215,7 @@ protected:
     virtual bool isIgnoredElementWithinMathTree() const;
 #endif
 
-    RenderObject* m_renderer;
+    WeakPtr<RenderObject> m_renderer;
 
 private:
     bool isAccessibilityRenderObject() const final { return true; }
@@ -270,16 +271,19 @@ private:
     bool elementAttributeValue(const QualifiedName&) const;
     void setElementAttributeValue(const QualifiedName&, bool);
     
-    ESpeak speakProperty() const override;
+    OptionSet<SpeakAs> speakAsProperty() const override;
     
-    const String ariaLiveRegionStatus() const override;
-    const AtomicString& ariaLiveRegionRelevant() const override;
-    bool ariaLiveRegionAtomic() const override;
+    const String liveRegionStatus() const override;
+    const String liveRegionRelevant() const override;
+    bool liveRegionAtomic() const override;
     bool isBusy() const override;
 
     bool inheritsPresentationalRole() const override;
 
     bool shouldGetTextFromNode(AccessibilityTextUnderElementMode) const;
+
+    RenderObject* targetElementForActiveDescendant(const QualifiedName&, AccessibilityObject*) const;
+    bool canHavePlainText() const;
 };
 
 } // namespace WebCore

@@ -16,10 +16,9 @@ PASS Intl.Collator('en', 42) is an instance of Intl.Collator
 PASS Intl.Collator('en', null) threw exception TypeError: null is not an object (evaluating 'Intl.Collator('en', null)').
 PASS class DerivedCollator extends Intl.Collator {};(new DerivedCollator) instanceof DerivedCollator is true
 PASS class DerivedCollator extends Intl.Collator {};(new DerivedCollator) instanceof Intl.Collator is true
-PASS class DerivedCollator extends Intl.Collator {};new DerivedCollator().compare('a', 'b') === -1 is true
+PASS class DerivedCollator extends Intl.Collator {};new DerivedCollator('en').compare('a', 'b') === -1 is true
 PASS class DerivedCollator extends Intl.Collator {};Object.getPrototypeOf(new DerivedCollator) === DerivedCollator.prototype is true
 PASS class DerivedCollator extends Intl.Collator {};Object.getPrototypeOf(Object.getPrototypeOf(new DerivedCollator)) === Intl.Collator.prototype is true
-PASS testCollator(Intl.Collator(), [{locale: 'en-US'}]) is true
 PASS testCollator(Intl.Collator('en'), [{locale: 'en'}]) is true
 PASS testCollator(Intl.Collator('eN-uS'), [{locale: 'en-US'}]) is true
 PASS testCollator(Intl.Collator(['en', 'de']), [{locale: 'en'}]) is true
@@ -130,9 +129,13 @@ PASS Intl.Collator.supportedLocalesOf('x-12345-12345-en-US') did not throw excep
 PASS Intl.Collator.supportedLocalesOf('x-en-US-12345-12345') did not throw exception.
 PASS Intl.Collator.supportedLocalesOf('x-en-u-foo') did not throw exception.
 PASS Intl.Collator.supportedLocalesOf('x-en-u-foo-u-bar') did not throw exception.
-PASS Intl.Collator.prototype.constructor is Object
 PASS Object.getPrototypeOf(Intl.Collator.prototype) is Object.prototype
+PASS Intl.Collator.prototype.constructor is Intl.Collator
+PASS Intl.Collator.prototype[Symbol.toStringTag] is 'Object'
 PASS Object.prototype.toString.call(Intl.Collator.prototype) is '[object Object]'
+PASS Object.getOwnPropertyDescriptor(Intl.Collator.prototype, Symbol.toStringTag).writable is false
+PASS Object.getOwnPropertyDescriptor(Intl.Collator.prototype, Symbol.toStringTag).enumerable is false
+PASS Object.getOwnPropertyDescriptor(Intl.Collator.prototype, Symbol.toStringTag).configurable is true
 PASS defaultCollator.compare is an instance of Function
 PASS Object.getOwnPropertyDescriptor(Intl.Collator.prototype, 'compare').get is an instance of Function
 PASS Object.getOwnPropertyDescriptor(Intl.Collator.prototype, 'compare').set is undefined

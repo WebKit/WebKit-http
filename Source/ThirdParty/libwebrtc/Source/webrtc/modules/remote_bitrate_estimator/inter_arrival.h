@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
-#define WEBRTC_MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
+#ifndef MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
+#define MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
 
-#include <cstddef>
+#include <stddef.h>
+#include <stdint.h>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -54,14 +54,9 @@ class InterArrival {
  private:
   struct TimestampGroup {
     TimestampGroup()
-        : size(0),
-          first_timestamp(0),
-          timestamp(0),
-          complete_time_ms(-1) {}
+        : size(0), first_timestamp(0), timestamp(0), complete_time_ms(-1) {}
 
-    bool IsFirstPacket() const {
-      return complete_time_ms == -1;
-    }
+    bool IsFirstPacket() const { return complete_time_ms == -1; }
 
     size_t size;
     uint32_t first_timestamp;
@@ -92,4 +87,4 @@ class InterArrival {
 };
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_
+#endif  // MODULES_REMOTE_BITRATE_ESTIMATOR_INTER_ARRIVAL_H_

@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_RANDOM_VECTOR_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_RANDOM_VECTOR_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_RANDOM_VECTOR_H_
+#define MODULES_AUDIO_CODING_NETEQ_RANDOM_VECTOR_H_
 
-#include <string.h>  // size_t
+#include <stddef.h>
+#include <stdint.h>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -24,10 +24,7 @@ class RandomVector {
   static const size_t kRandomTableSize = 256;
   static const int16_t kRandomTable[kRandomTableSize];
 
-  RandomVector()
-      : seed_(777),
-        seed_increment_(1) {
-  }
+  RandomVector() : seed_(777), seed_increment_(1) {}
 
   void Reset();
 
@@ -47,4 +44,4 @@ class RandomVector {
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_RANDOM_VECTOR_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_RANDOM_VECTOR_H_

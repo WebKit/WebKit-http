@@ -31,6 +31,7 @@ namespace WebCore {
 // We cache offsets so that text transformations can be applied in such a way that we can recover
 // the original unaltered string from our corresponding DOM node.
 class RenderTextFragment final : public RenderText {
+    WTF_MAKE_ISO_ALLOCATED(RenderTextFragment);
 public:
     RenderTextFragment(Text&, const String&, int startOffset, int length);
     RenderTextFragment(Document&, const String&, int startOffset, int length);
@@ -43,8 +44,8 @@ public:
     unsigned start() const { return m_start; }
     unsigned end() const { return m_end; }
 
-    RenderBoxModelObject* firstLetter() const { return m_firstLetter; }
-    void setFirstLetter(RenderBoxModelObject& firstLetter) { m_firstLetter = &firstLetter; }
+    RenderBoxModelObject* firstLetter() const { return m_firstLetter.get(); }
+    void setFirstLetter(RenderBoxModelObject& firstLetter) { m_firstLetter = makeWeakPtr(firstLetter); }
     
     RenderBlock* blockForAccompanyingFirstLetter();
 
@@ -59,7 +60,6 @@ public:
 private:
     bool isTextFragment() const override { return true; }
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    void willBeDestroyed() override;
 
     UChar previousCharacter() const override;
 
@@ -68,7 +68,7 @@ private:
     // Alternative description that can be used for accessibility instead of the native text.
     String m_altText;
     String m_contentString;
-    RenderBoxModelObject* m_firstLetter;
+    WeakPtr<RenderBoxModelObject> m_firstLetter;
 };
 
 } // namespace WebCore

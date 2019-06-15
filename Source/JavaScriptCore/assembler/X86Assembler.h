@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,80 +41,53 @@ inline bool CAN_SIGN_EXTEND_8_32(int32_t value) { return value == (int32_t)(sign
 
 namespace X86Registers {
 
-#define FOR_EACH_CPU_REGISTER(V) \
-    FOR_EACH_CPU_GPREGISTER(V) \
-    FOR_EACH_CPU_SPECIAL_REGISTER(V) \
-    FOR_EACH_CPU_FPREGISTER(V)
-
-// The following are defined as pairs of the following value:
-// 1. type of the storage needed to save the register value by the JIT probe.
-// 2. name of the register.
-#define FOR_EACH_CPU_GPREGISTER(V) \
-    V(void*, eax) \
-    V(void*, ecx) \
-    V(void*, edx) \
-    V(void*, ebx) \
-    V(void*, esp) \
-    V(void*, ebp) \
-    V(void*, esi) \
-    V(void*, edi) \
-    FOR_EACH_X86_64_CPU_GPREGISTER(V)
-
-#define FOR_EACH_CPU_SPECIAL_REGISTER(V) \
-    V(void*, eip) \
-    V(void*, eflags) \
-
-// Note: the JITs only stores double values in the FP registers.
-#define FOR_EACH_CPU_FPREGISTER(V) \
-    V(double, xmm0) \
-    V(double, xmm1) \
-    V(double, xmm2) \
-    V(double, xmm3) \
-    V(double, xmm4) \
-    V(double, xmm5) \
-    V(double, xmm6) \
-    V(double, xmm7) \
-    FOR_EACH_X86_64_CPU_FPREGISTER(V)
-
-#if CPU(X86)
-
-#define FOR_EACH_X86_64_CPU_GPREGISTER(V) // Nothing to add.
-#define FOR_EACH_X86_64_CPU_FPREGISTER(V) // Nothing to add.
-
-#elif CPU(X86_64)
-
-#define FOR_EACH_X86_64_CPU_GPREGISTER(V) \
-    V(void*, r8) \
-    V(void*, r9) \
-    V(void*, r10) \
-    V(void*, r11) \
-    V(void*, r12) \
-    V(void*, r13) \
-    V(void*, r14) \
-    V(void*, r15)
-
-#define FOR_EACH_X86_64_CPU_FPREGISTER(V) \
-    V(double, xmm8) \
-    V(double, xmm9) \
-    V(double, xmm10) \
-    V(double, xmm11) \
-    V(double, xmm12) \
-    V(double, xmm13) \
-    V(double, xmm14) \
-    V(double, xmm15)
-
-#endif // CPU(X86_64)
-
-typedef enum {
-    #define DECLARE_REGISTER(_type, _regName) _regName,
-    FOR_EACH_CPU_GPREGISTER(DECLARE_REGISTER)
-    #undef DECLARE_REGISTER
+typedef enum : int8_t {
+    eax,
+    ecx,
+    edx,
+    ebx,
+    esp,
+    ebp,
+    esi,
+    edi,
+#if CPU(X86_64)
+    r8,
+    r9,
+    r10,
+    r11,
+    r12,
+    r13,
+    r14,
+    r15,
+#endif
+    InvalidGPRReg = -1,
 } RegisterID;
 
-typedef enum {
-    #define DECLARE_REGISTER(_type, _regName) _regName,
-    FOR_EACH_CPU_FPREGISTER(DECLARE_REGISTER)
-    #undef DECLARE_REGISTER
+typedef enum : int8_t {
+    eip,
+    eflags
+} SPRegisterID;
+
+typedef enum : int8_t {
+    xmm0,
+    xmm1,
+    xmm2,
+    xmm3,
+    xmm4,
+    xmm5,
+    xmm6,
+    xmm7,
+#if CPU(X86_64)
+    xmm8,
+    xmm9,
+    xmm10,
+    xmm11,
+    xmm12,
+    xmm13,
+    xmm14,
+    xmm15,
+#endif
+    InvalidFPRReg = -1,
 } XMMRegisterID;
 
 } // namespace X86Register
@@ -132,6 +105,13 @@ public:
         return X86Registers::edi;
 #endif
     }
+    static constexpr unsigned numberOfRegisters() { return lastRegister() - firstRegister() + 1; }
+    
+    typedef X86Registers::SPRegisterID SPRegisterID;
+
+    static constexpr SPRegisterID firstSPRegister() { return X86Registers::eip; }
+    static constexpr SPRegisterID lastSPRegister() { return X86Registers::eflags; }
+    static constexpr unsigned numberOfSPRegisters() { return lastSPRegister() - firstSPRegister() + 1; }
     
     typedef X86Registers::XMMRegisterID XMMRegisterID;
     typedef XMMRegisterID FPRegisterID;
@@ -145,7 +125,52 @@ public:
         return X86Registers::xmm7;
 #endif
     }
+    static constexpr unsigned numberOfFPRegisters() { return lastFPRegister() - firstFPRegister() + 1; }
+    
+    static const char* gprName(RegisterID id)
+    {
+        ASSERT(id >= firstRegister() && id <= lastRegister());
+        static const char* const nameForRegister[numberOfRegisters()] = {
+#if CPU(X86_64)
+            "rax", "rcx", "rdx", "rbx",
+            "rsp", "rbp", "rsi", "rdi",
+            "r8", "r9", "r10", "r11",
+            "r12", "r13", "r14", "r15"
+#else
+            "eax", "ecx", "edx", "ebx",
+            "esp", "ebp", "esi", "edi",
+#endif
+        };
+        return nameForRegister[id];
+    }
 
+    static const char* sprName(SPRegisterID id)
+    {
+        ASSERT(id >= firstSPRegister() && id <= lastSPRegister());
+        static const char* const nameForRegister[numberOfSPRegisters()] = {
+#if CPU(X86_64)
+            "rip", "rflags"
+#else
+            "eip", "eflags"
+#endif
+        };
+        return nameForRegister[id];
+    }
+    
+    static const char* fprName(FPRegisterID reg)
+    {
+        ASSERT(reg >= firstFPRegister() && reg <= lastFPRegister());
+        static const char* const nameForRegister[numberOfFPRegisters()] = {
+            "xmm0", "xmm1", "xmm2", "xmm3",
+            "xmm4", "xmm5", "xmm6", "xmm7",
+#if CPU(X86_64)
+            "xmm8", "xmm9", "xmm10", "xmm11",
+            "xmm12", "xmm13", "xmm14", "xmm15"
+#endif
+        };
+        return nameForRegister[reg];
+    }
+    
     typedef enum {
         ConditionO,
         ConditionNO,
@@ -237,6 +262,7 @@ private:
         OP_GROUP1A_Ev                   = 0x8F,
         OP_NOP                          = 0x90,
         OP_XCHG_EAX                     = 0x90,
+        OP_PAUSE                        = 0x90,
         OP_CDQ                          = 0x99,
         OP_MOV_EAXOv                    = 0xA1,
         OP_MOV_OvEAX                    = 0xA3,
@@ -277,6 +303,7 @@ private:
         OP2_CVTTSD2SI_GdWsd = 0x2C,
         OP2_CVTTSS2SI_GdWsd = 0x2C,
         OP2_UCOMISD_VsdWsd  = 0x2E,
+        OP2_RDTSC           = 0x31,
         OP2_3BYTE_ESCAPE_3A = 0x3A,
         OP2_CMOVCC          = 0x40,
         OP2_ADDSD_VsdWsd    = 0x58,
@@ -295,11 +322,13 @@ private:
         OP2_MOVD_EdVd       = 0x7E,
         OP2_JCC_rel32       = 0x80,
         OP_SETCC            = 0x90,
+        OP2_CPUID           = 0xA2,
         OP2_3BYTE_ESCAPE_AE = 0xAE,
         OP2_IMUL_GvEv       = 0xAF,
         OP2_CMPXCHGb        = 0xB0,
         OP2_CMPXCHG         = 0xB1,
         OP2_MOVZX_GvEb      = 0xB6,
+        OP2_POPCNT          = 0xB8,
         OP2_BSF             = 0xBC,
         OP2_TZCNT           = 0xBC,
         OP2_BSR             = 0xBD,
@@ -310,6 +339,7 @@ private:
         OP2_XADDb           = 0xC0,
         OP2_XADD            = 0xC1,
         OP2_PEXTRW_GdUdIb   = 0xC5,
+        OP2_BSWAP           = 0xC8,
         OP2_PSLLQ_UdqIb     = 0x73,
         OP2_PSRLQ_UdqIb     = 0x73,
         OP2_POR_VdqWdq      = 0XEB,
@@ -318,7 +348,9 @@ private:
     typedef enum {
         OP3_ROUNDSS_VssWssIb = 0x0A,
         OP3_ROUNDSD_VsdWsdIb = 0x0B,
+        OP3_LFENCE           = 0xE8,
         OP3_MFENCE           = 0xF0,
+        OP3_SFENCE           = 0xF8,
     } ThreeByteOpcodeID;
 
     struct VexPrefix {
@@ -654,6 +686,18 @@ public:
     void andl_mr(int offset, RegisterID base, RegisterID index, int scale, RegisterID dst)
     {
         m_formatter.oneByteOp(OP_AND_GvEv, dst, base, index, scale, offset);
+    }
+
+    void andw_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_OPERAND_SIZE);
+        andl_mr(offset, base, dst);
+    }
+
+    void andw_mr(int offset, RegisterID base, RegisterID index, int scale, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_OPERAND_SIZE);
+        andl_mr(offset, base, index, scale, dst);
     }
 
     void andl_rm(RegisterID src, int offset, RegisterID base)
@@ -1597,6 +1641,18 @@ public:
     }
 #endif
 
+    void bswapl_r(RegisterID dst)
+    {
+        m_formatter.twoByteOp(OP2_BSWAP, dst);
+    }
+
+#if CPU(X86_64)
+    void bswapq_r(RegisterID dst)
+    {
+        m_formatter.twoByteOp64(OP2_BSWAP, dst);
+    }
+#endif
+
     void tzcnt_rr(RegisterID src, RegisterID dst)
     {
         m_formatter.prefix(PRE_SSE_F3);
@@ -1623,10 +1679,48 @@ public:
     }
 #endif
 
+    void popcnt_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_POPCNT, dst, src);
+    }
+
+    void popcnt_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_POPCNT, dst, base, offset);
+    }
+
+#if CPU(X86_64)
+    void popcntq_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp64(OP2_POPCNT, dst, src);
+    }
+
+    void popcntq_mr(int offset, RegisterID base, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp64(OP2_POPCNT, dst, base, offset);
+    }
+#endif
+
 private:
     template<GroupOpcodeID op>
     void shiftInstruction32(int imm, RegisterID dst)
     {
+        if (imm == 1)
+            m_formatter.oneByteOp(OP_GROUP2_Ev1, op, dst);
+        else {
+            m_formatter.oneByteOp(OP_GROUP2_EvIb, op, dst);
+            m_formatter.immediate8(imm);
+        }
+    }
+
+    template<GroupOpcodeID op>
+    void shiftInstruction16(int imm, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_OPERAND_SIZE);
         if (imm == 1)
             m_formatter.oneByteOp(OP_GROUP2_Ev1, op, dst);
         else {
@@ -1684,6 +1778,11 @@ public:
     void roll_CLr(RegisterID dst)
     {
         m_formatter.oneByteOp(OP_GROUP2_EvCL, GROUP2_OP_ROL, dst);
+    }
+
+    void rolw_i8r(int imm, RegisterID dst)
+    {
+        shiftInstruction16<GROUP2_OP_ROL>(imm, dst);
     }
 
 #if CPU(X86_64)
@@ -3094,6 +3193,16 @@ public:
         m_formatter.prefix(PRE_SSE_F2);
         m_formatter.twoByteOpAddr(OP2_MOVSD_WsdVsd, (RegisterID)src, bitwise_cast<uint32_t>(address));
     }
+    void movss_mr(const void* address, XMMRegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOpAddr(OP2_MOVSD_VsdWsd, (RegisterID)dst, bitwise_cast<uint32_t>(address));
+    }
+    void movss_rm(XMMRegisterID src, const void* address)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOpAddr(OP2_MOVSD_WsdVsd, (RegisterID)src, bitwise_cast<uint32_t>(address));
+    }
 #endif
 
     void mulsd_rr(XMMRegisterID src, XMMRegisterID dst)
@@ -3515,10 +3624,36 @@ public:
         m_formatter.twoByteOp64(OP2_XADD, src, base, index, scale, offset);
     }
 #endif // CPU(X86_64)
-    
+
+    void lfence()
+    {
+        m_formatter.threeByteOp(OP2_3BYTE_ESCAPE_AE, OP3_LFENCE);
+    }
+
     void mfence()
     {
         m_formatter.threeByteOp(OP2_3BYTE_ESCAPE_AE, OP3_MFENCE);
+    }
+
+    void sfence()
+    {
+        m_formatter.threeByteOp(OP2_3BYTE_ESCAPE_AE, OP3_SFENCE);
+    }
+
+    void rdtsc()
+    {
+        m_formatter.twoByteOp(OP2_RDTSC);
+    }
+
+    void pause()
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.oneByteOp(OP_PAUSE);
+    }
+
+    void cpuid()
+    {
+        m_formatter.twoByteOp(OP2_CPUID);
     }
 
     // Assembler admin methods:
@@ -3575,7 +3710,7 @@ public:
         ASSERT(to.isSet());
 
         char* code = reinterpret_cast<char*>(m_formatter.data());
-        ASSERT(!reinterpret_cast<int32_t*>(code + from.m_offset)[-1]);
+        ASSERT(!WTF::unalignedLoad<int32_t>(bitwise_cast<int32_t*>(code + from.m_offset) - 1));
         setRel32(code + from.m_offset, code + to.m_offset);
     }
     
@@ -3634,22 +3769,21 @@ public:
     
     static void* readPointer(void* where)
     {
-        return reinterpret_cast<void**>(where)[-1];
+        return WTF::unalignedLoad<void*>(bitwise_cast<void**>(where) - 1);
     }
 
     static void replaceWithHlt(void* instructionStart)
     {
-        uint8_t* ptr = reinterpret_cast<uint8_t*>(instructionStart);
-        ptr[0] = static_cast<uint8_t>(OP_HLT);
+        WTF::unalignedStore<uint8_t>(instructionStart, static_cast<uint8_t>(OP_HLT));
     }
 
     static void replaceWithJump(void* instructionStart, void* to)
     {
-        uint8_t* ptr = reinterpret_cast<uint8_t*>(instructionStart);
-        uint8_t* dstPtr = reinterpret_cast<uint8_t*>(to);
+        uint8_t* ptr = bitwise_cast<uint8_t*>(instructionStart);
+        uint8_t* dstPtr = bitwise_cast<uint8_t*>(to);
         intptr_t distance = (intptr_t)(dstPtr - (ptr + 5));
-        ptr[0] = static_cast<uint8_t>(OP_JMP_rel32);
-        *reinterpret_cast<int32_t*>(ptr + 1) = static_cast<int32_t>(distance);
+        WTF::unalignedStore<uint8_t>(ptr, static_cast<uint8_t>(OP_JMP_rel32));
+        WTF::unalignedStore<int32_t>(ptr + 1, static_cast<int32_t>(distance));
     }
     
     static ptrdiff_t maxJumpReplacementSize()
@@ -3851,17 +3985,17 @@ private:
 
     static void setPointer(void* where, void* value)
     {
-        reinterpret_cast<void**>(where)[-1] = value;
+        WTF::unalignedStore<void*>(bitwise_cast<void**>(where) - 1, value);
     }
 
     static void setInt32(void* where, int32_t value)
     {
-        reinterpret_cast<int32_t*>(where)[-1] = value;
+        WTF::unalignedStore<int32_t>(bitwise_cast<int32_t*>(where) - 1, value);
     }
     
     static void setInt8(void* where, int8_t value)
     {
-        reinterpret_cast<int8_t*>(where)[-1] = value;
+        WTF::unalignedStore<int8_t>(bitwise_cast<int8_t*>(where) - 1, value);
     }
 
     static void setRel32(void* from, void* to)
@@ -4230,6 +4364,14 @@ private:
             writer.putByteUnchecked(opcode);
         }
 
+        void twoByteOp(TwoByteOpcodeID opcode, int reg)
+        {
+            SingleInstructionBufferWriter writer(m_buffer);
+            writer.emitRexIfNeeded(0, 0, reg);
+            writer.putByteUnchecked(OP_2BYTE_ESCAPE);
+            writer.putByteUnchecked(opcode + (reg & 7));
+        }
+
         void twoByteOp(TwoByteOpcodeID opcode, int reg, RegisterID rm)
         {
             SingleInstructionBufferWriter writer(m_buffer);
@@ -4401,6 +4543,14 @@ private:
             writer.emitRexW(reg, 0, 0);
             writer.putByteUnchecked(opcode);
             writer.memoryModRMAddr(reg, address);
+        }
+
+        void twoByteOp64(TwoByteOpcodeID opcode, int reg)
+        {
+            SingleInstructionBufferWriter writer(m_buffer);
+            writer.emitRexW(0, 0, reg);
+            writer.putByteUnchecked(OP_2BYTE_ESCAPE);
+            writer.putByteUnchecked(opcode + (reg & 7));
         }
 
         void twoByteOp64(TwoByteOpcodeID opcode, int reg, RegisterID rm)

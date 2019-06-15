@@ -28,6 +28,7 @@
 #include "WKBundlePagePrivate.h"
 
 #include "APIArray.h"
+#include "APIFrameHandle.h"
 #include "APIString.h"
 #include "APIURL.h"
 #include "APIURLRequest.h"
@@ -58,10 +59,12 @@
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/AccessibilityObject.h>
 #include <WebCore/ApplicationCacheStorage.h>
-#include <WebCore/MainFrame.h>
+#include <WebCore/Frame.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageOverlay.h>
 #include <WebCore/PageOverlayController.h>
+#include <WebCore/RenderLayerCompositor.h>
+#include <WebCore/ScriptExecutionContext.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/URL.h>
 #include <WebCore/WheelEventTestTrigger.h>
@@ -168,6 +171,11 @@ WKBundlePageGroupRef WKBundlePageGetPageGroup(WKBundlePageRef pageRef)
 WKBundleFrameRef WKBundlePageGetMainFrame(WKBundlePageRef pageRef)
 {
     return toAPI(toImpl(pageRef)->mainWebFrame());
+}
+
+WKFrameHandleRef WKBundleFrameCreateFrameHandle(WKBundleFrameRef bundleFrameRef)
+{
+    return toAPI(&API::FrameHandle::create(toImpl(bundleFrameRef)->frameID()).leakRef());
 }
 
 void WKBundlePageClickMenuItem(WKBundlePageRef pageRef, WKContextMenuItemRef item)
@@ -365,22 +373,22 @@ WKBundleBackForwardListRef WKBundlePageGetBackForwardList(WKBundlePageRef pageRe
 
 void WKBundlePageInstallPageOverlay(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().installPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
+    toImpl(pageRef)->corePage()->pageOverlayController().installPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
 }
 
 void WKBundlePageUninstallPageOverlay(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().uninstallPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
+    toImpl(pageRef)->corePage()->pageOverlayController().uninstallPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::DoNotFade);
 }
 
 void WKBundlePageInstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().installPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
+    toImpl(pageRef)->corePage()->pageOverlayController().installPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
 }
 
 void WKBundlePageUninstallPageOverlayWithAnimation(WKBundlePageRef pageRef, WKBundlePageOverlayRef pageOverlayRef)
 {
-    toImpl(pageRef)->mainFrame()->pageOverlayController().uninstallPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
+    toImpl(pageRef)->corePage()->pageOverlayController().uninstallPageOverlay(*toImpl(pageOverlayRef)->coreOverlay(), WebCore::PageOverlay::FadeMode::Fade);
 }
 
 void WKBundlePageSetTopOverhangImage(WKBundlePageRef pageRef, WKImageRef imageRef)
@@ -422,6 +430,8 @@ bool WKBundlePageHasLocalDataForURL(WKBundlePageRef pageRef, WKURLRef urlRef)
 
 bool WKBundlePageCanHandleRequest(WKURLRequestRef requestRef)
 {
+    if (!requestRef)
+        return false;
     return WebPage::canHandleRequest(toImpl(requestRef)->resourceRequest());
 }
 
@@ -478,17 +488,17 @@ void WKBundlePageForceRepaint(WKBundlePageRef page)
 
 void WKBundlePageSimulateMouseDown(WKBundlePageRef page, int button, WKPoint position, int clickCount, WKEventModifiers modifiers, double time)
 {
-    toImpl(page)->simulateMouseDown(button, toIntPoint(position), clickCount, modifiers, time);
+    toImpl(page)->simulateMouseDown(button, toIntPoint(position), clickCount, modifiers, WallTime::fromRawSeconds(time));
 }
 
 void WKBundlePageSimulateMouseUp(WKBundlePageRef page, int button, WKPoint position, int clickCount, WKEventModifiers modifiers, double time)
 {
-    toImpl(page)->simulateMouseUp(button, toIntPoint(position), clickCount, modifiers, time);
+    toImpl(page)->simulateMouseUp(button, toIntPoint(position), clickCount, modifiers, WallTime::fromRawSeconds(time));
 }
 
 void WKBundlePageSimulateMouseMotion(WKBundlePageRef page, WKPoint position, double time)
 {
-    toImpl(page)->simulateMouseMotion(toIntPoint(position), time);
+    toImpl(page)->simulateMouseMotion(toIntPoint(position), WallTime::fromRawSeconds(time));
 }
 
 uint64_t WKBundlePageGetRenderTreeSize(WKBundlePageRef pageRef)
@@ -532,9 +542,9 @@ WKArrayRef WKBundlePageCopyTrackedRepaintRects(WKBundlePageRef pageRef)
     return toAPI(&toImpl(pageRef)->trackedRepaintRects().leakRef());
 }
 
-void WKBundlePageSetComposition(WKBundlePageRef pageRef, WKStringRef text, int from, int length)
+void WKBundlePageSetComposition(WKBundlePageRef pageRef, WKStringRef text, int from, int length, bool suppressUnderline)
 {
-    toImpl(pageRef)->setCompositionForTesting(toWTFString(text), from, length);
+    toImpl(pageRef)->setCompositionForTesting(toWTFString(text), from, length, suppressUnderline);
 }
 
 bool WKBundlePageHasComposition(WKBundlePageRef pageRef)
@@ -610,6 +620,25 @@ void WKBundlePageRegisterScrollOperationCompletionCallback(WKBundlePageRef pageR
     });
 }
 
+void WKBundlePagePostTask(WKBundlePageRef pageRef, WKBundlePageTestNotificationCallback callback, void* context)
+{
+    if (!callback)
+        return;
+    
+    WebKit::WebPage* webPage = toImpl(pageRef);
+    WebCore::Page* page = webPage ? webPage->corePage() : nullptr;
+    if (!page)
+        return;
+
+    WebCore::Document* document = page->mainFrame().document();
+    if (!document)
+        return;
+
+    document->postTask([=] (WebCore::ScriptExecutionContext&) {
+        callback(context);
+    });
+}
+
 void WKBundlePagePostMessage(WKBundlePageRef pageRef, WKStringRef messageNameRef, WKTypeRef messageBodyRef)
 {
     toImpl(pageRef)->postMessage(toWTFString(messageNameRef), toImpl(messageBodyRef));
@@ -678,14 +707,13 @@ void WKBundlePageResetApplicationCacheOriginQuota(WKBundlePageRef page, WKString
 
 WKArrayRef WKBundlePageCopyOriginsWithApplicationCache(WKBundlePageRef page)
 {
-    HashSet<RefPtr<WebCore::SecurityOrigin>> origins;
-    toImpl(page)->corePage()->applicationCacheStorage().getOriginsWithCache(origins);
+    auto origins = toImpl(page)->corePage()->applicationCacheStorage().originsWithCache();
 
     Vector<RefPtr<API::Object>> originIdentifiers;
     originIdentifiers.reserveInitialCapacity(origins.size());
 
     for (const auto& origin : origins)
-        originIdentifiers.uncheckedAppend(API::String::create(WebCore::SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier()));
+        originIdentifiers.uncheckedAppend(API::String::create(origin->data().databaseIdentifier()));
 
     return toAPI(&API::Array::create(WTFMove(originIdentifiers)).leakRef());
 }
@@ -706,3 +734,21 @@ void WKBundlePageSetEventThrottlingBehaviorOverride(WKBundlePageRef page, WKEven
 
     toImpl(page)->corePage()->setEventThrottlingBehaviorOverride(behaviorValue);
 }
+
+void WKBundlePageSetCompositingPolicyOverride(WKBundlePageRef page, WKCompositingPolicy* policy)
+{
+    std::optional<WebCore::CompositingPolicy> policyValue;
+    if (policy) {
+        switch (*policy) {
+        case kWKCompositingPolicyNormal:
+            policyValue = WebCore::CompositingPolicy::Normal;
+            break;
+        case kWKCompositingPolicyConservative:
+            policyValue = WebCore::CompositingPolicy::Conservative;
+            break;
+        }
+    }
+
+    toImpl(page)->corePage()->setCompositingPolicyOverride(policyValue);
+}
+

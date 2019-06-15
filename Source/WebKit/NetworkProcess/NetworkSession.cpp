@@ -26,8 +26,6 @@
 #include "config.h"
 #include "NetworkSession.h"
 
-#if USE(NETWORK_SESSION)
-
 #include "NetworkDataTask.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <wtf/MainThread.h>
@@ -39,31 +37,23 @@
 #if USE(SOUP)
 #include "NetworkSessionSoup.h"
 #endif
-
-
-using namespace WebCore;
+#if USE(CURL)
+#include "NetworkSessionCurl.h"
+#endif
 
 namespace WebKit {
+using namespace WebCore;
 
-Ref<NetworkSession> NetworkSession::create(SessionID sessionID, LegacyCustomProtocolManager* customProtocolManager)
+Ref<NetworkSession> NetworkSession::create(NetworkSessionCreationParameters&& parameters)
 {
 #if PLATFORM(COCOA)
-    return NetworkSessionCocoa::create(sessionID, customProtocolManager);
+    return NetworkSessionCocoa::create(WTFMove(parameters));
 #endif
 #if USE(SOUP)
-    UNUSED_PARAM(customProtocolManager);
-    return NetworkSessionSoup::create(sessionID);
+    return NetworkSessionSoup::create(WTFMove(parameters));
 #endif
-}
-
-NetworkSession& NetworkSession::defaultSession()
-{
-#if PLATFORM(COCOA)
-    return NetworkSessionCocoa::defaultSession();
-#else
-    ASSERT(RunLoop::isMain());
-    static NetworkSession* session = &NetworkSession::create(SessionID::defaultSessionID()).leakRef();
-    return *session;
+#if USE(CURL)
+    return NetworkSessionCurl::create(WTFMove(parameters));
 #endif
 }
 
@@ -74,7 +64,7 @@ NetworkStorageSession& NetworkSession::networkStorageSession() const
     return *storageSession;
 }
 
-NetworkSession::NetworkSession(SessionID sessionID)
+NetworkSession::NetworkSession(PAL::SessionID sessionID)
     : m_sessionID(sessionID)
 {
 }
@@ -90,5 +80,3 @@ void NetworkSession::invalidateAndCancel()
 }
 
 } // namespace WebKit
-
-#endif // USE(NETWORK_SESSION)

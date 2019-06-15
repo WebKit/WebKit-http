@@ -32,12 +32,10 @@
 #import "WebKitNSStringExtras.h"
 #import "WebLocalizableStrings.h"
 #import "WebNSDataExtras.h"
-#import "WebSystemInterface.h"
 #import <Foundation/NSURLRequest.h>
 #import <WebCore/URL.h>
 #import <WebCore/LoaderNSURLExtras.h>
 #import <WebCore/WebCoreNSURLExtras.h>
-#import <WebKitSystemInterface.h>
 #import <wtf/Assertions.h>
 #import <wtf/ObjcRuntimeExtras.h>
 #import <unicode/uchar.h>
@@ -45,11 +43,6 @@
 
 using namespace WebCore;
 using namespace WTF;
-
-#if PLATFORM(IOS)
-// Fake URL scheme.
-#define WebDataProtocolScheme @"webkit-fake-url"
-#endif
 
 #define URL_BYTES_BUFFER_LENGTH 2048
 
@@ -217,20 +210,6 @@ using namespace WTF;
 
     return [NSURL URLWithString:[@"file:" stringByAppendingString:[self absoluteString]]];
 }
-
-#if PLATFORM(IOS)
-+ (NSURL *)uniqueURLWithRelativePart:(NSString *)relativePart
-{
-    CFUUIDRef UUIDRef = CFUUIDCreate(kCFAllocatorDefault);
-    NSString *UUIDString = (NSString *)CFUUIDCreateString(kCFAllocatorDefault, UUIDRef);
-    CFRelease(UUIDRef);
-    NSURL *URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://%@/%@", WebDataProtocolScheme, UUIDString, relativePart]];
-    CFRelease(UUIDString);
-    
-    return URL;
-}
-
-#endif // PLATFORM(IOS)
 @end
 
 @implementation NSString (WebNSURLExtras)

@@ -8,57 +8,57 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_TEST_UTILITY_H_
-#define WEBRTC_MODULES_AUDIO_CODING_TEST_UTILITY_H_
+#ifndef MODULES_AUDIO_CODING_TEST_UTILITY_H_
+#define MODULES_AUDIO_CODING_TEST_UTILITY_H_
 
-#include "webrtc/modules/audio_coding/include/audio_coding_module.h"
-#include "webrtc/test/gtest.h"
+#include "modules/audio_coding/include/audio_coding_module.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
 //-----------------------------
-#define CHECK_ERROR(f)                                                         \
-  do {                                                                         \
-    EXPECT_GE(f, 0) << "Error Calling API";                                    \
-  } while(0)
+#define CHECK_ERROR(f)                      \
+  do {                                      \
+    EXPECT_GE(f, 0) << "Error Calling API"; \
+  } while (0)
 
 //-----------------------------
-#define CHECK_PROTECTED(f)                                                     \
-  do {                                                                         \
-    if (f >= 0) {                                                              \
-      ADD_FAILURE() << "Error Calling API";                                    \
-    } else {                                                                   \
-      printf("An expected error is caught.\n");                                \
-    }                                                                          \
-  } while(0)
+#define CHECK_PROTECTED(f)                      \
+  do {                                          \
+    if (f >= 0) {                               \
+      ADD_FAILURE() << "Error Calling API";     \
+    } else {                                    \
+      printf("An expected error is caught.\n"); \
+    }                                           \
+  } while (0)
 
 //----------------------------
-#define CHECK_ERROR_MT(f)                                                      \
-  do {                                                                         \
-    if (f < 0) {                                                               \
-      fprintf(stderr, "Error Calling API in file %s at line %d \n",            \
-              __FILE__, __LINE__);                                             \
-    }                                                                          \
-  } while(0)
+#define CHECK_ERROR_MT(f)                                                     \
+  do {                                                                        \
+    if (f < 0) {                                                              \
+      fprintf(stderr, "Error Calling API in file %s at line %d \n", __FILE__, \
+              __LINE__);                                                      \
+    }                                                                         \
+  } while (0)
 
 //----------------------------
-#define CHECK_PROTECTED_MT(f)                                                  \
-  do {                                                                         \
-    if (f >= 0) {                                                              \
-      fprintf(stderr, "Error Calling API in file %s at line %d \n",            \
-              __FILE__, __LINE__);                                             \
-    } else {                                                                   \
-      printf("An expected error is caught.\n");                                \
-    }                                                                          \
-  } while(0)
+#define CHECK_PROTECTED_MT(f)                                                 \
+  do {                                                                        \
+    if (f >= 0) {                                                             \
+      fprintf(stderr, "Error Calling API in file %s at line %d \n", __FILE__, \
+              __LINE__);                                                      \
+    } else {                                                                  \
+      printf("An expected error is caught.\n");                               \
+    }                                                                         \
+  } while (0)
 
-#define DELETE_POINTER(p)                                                      \
-  do {                                                                         \
-    if (p != NULL) {                                                           \
-      delete p;                                                                \
-      p = NULL;                                                                \
-    }                                                                          \
-  } while(0)
+#define DELETE_POINTER(p) \
+  do {                    \
+    if (p != NULL) {      \
+      delete p;           \
+      p = NULL;           \
+    }                     \
+  } while (0)
 
 class ACMTestTimer {
  public:
@@ -71,7 +71,9 @@ class ACMTestTimer {
   void Tick100ms();
   void Tick1sec();
   void CurrentTimeHMS(char* currTime);
-  void CurrentTime(unsigned long& h, unsigned char& m, unsigned char& s,
+  void CurrentTime(unsigned long& h,
+                   unsigned char& m,
+                   unsigned char& s,
                    unsigned short& ms);
 
  private:
@@ -135,4 +137,4 @@ class VADCallback : public ACMVADCallback {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_TEST_UTILITY_H_
+#endif  // MODULES_AUDIO_CODING_TEST_UTILITY_H_

@@ -128,15 +128,6 @@
 }
 
 
-// Deallocate.
-- (void)dealloc {
-
-    // Simple.
-    [super dealloc];
-    
-}
-
-
 // Sink a method invocation.
 - (void)_setFrameNeedsDisplay:(BOOL)needsDisplay {
     
@@ -250,7 +241,10 @@
     windowRef = [carbonWindow windowRef];
     osStatus = CopyWindowTitleAsCFString(windowRef, &windowTitle);
     if (osStatus==noErr) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
         windowTitleAsNSString = (NSString *)windowTitle;
+#pragma clang diagnostic pop
     } else {
         NSLog(@"A Carbon window's title couldn't be gotten.");
         windowTitleAsNSString = @"";

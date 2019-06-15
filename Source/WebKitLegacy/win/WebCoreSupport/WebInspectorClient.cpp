@@ -28,12 +28,12 @@
 
 #include "WebInspectorClient.h"
 
-#include "WebCoreBundleWin.h"
 #include "WebInspectorDelegate.h"
 #include "WebKit.h"
 #include "WebMutableURLRequest.h"
 #include "WebNodeHighlight.h"
 #include "WebView.h"
+#include <JavaScriptCore/InspectorAgentBase.h>
 #include <WebCore/BString.h>
 #include <WebCore/Element.h>
 #include <WebCore/FloatRect.h>
@@ -42,8 +42,8 @@
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/RenderObject.h>
+#include <WebCore/WebCoreBundleWin.h>
 #include <WebCore/WindowMessageBroadcaster.h>
-#include <inspector/InspectorAgentBase.h>
 #include <wchar.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/StringConcatenate.h>

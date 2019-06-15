@@ -44,10 +44,9 @@
 #include <WebCore/ScriptController.h>
 #include <wtf/NeverDestroyed.h>
 
+namespace WebKit {
 using namespace JSC;
 using namespace WebCore;
-
-namespace WebKit {
 
 
 NPRuntimeObjectMap::NPRuntimeObjectMap(PluginView* pluginView)
@@ -200,12 +199,9 @@ bool NPRuntimeObjectMap::evaluate(NPObject* npObject, const String& scriptString
 
 void NPRuntimeObjectMap::invalidate()
 {
-    Vector<NPJSObject*> npJSObjects;
-    copyValuesToVector(m_npJSObjects, npJSObjects);
-
     // Deallocate all the object wrappers so we won't leak any JavaScript objects.
-    for (size_t i = 0; i < npJSObjects.size(); ++i)
-        deallocateNPObject(npJSObjects[i]);
+    for (auto& npJSObject : copyToVector(m_npJSObjects.values()))
+        deallocateNPObject(npJSObject);
     
     // We shouldn't have any NPJSObjects left now.
     ASSERT(m_npJSObjects.isEmpty());

@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/desktop_capture/differ_vector_sse2.h"
+#include "modules/desktop_capture/differ_vector_sse2.h"
 
 #if defined(_MSC_VER)
 #include <intrin.h>
 #else
-#include <mmintrin.h>
 #include <emmintrin.h>
+#include <mmintrin.h>
 #endif
 
 namespace webrtc {

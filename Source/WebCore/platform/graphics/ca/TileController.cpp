@@ -32,13 +32,13 @@
 #include "Logging.h"
 #include "PlatformCALayer.h"
 #include "Region.h"
-#include "TextStream.h"
 #include "TileCoverageMap.h"
 #include "TileGrid.h"
 #include <utility>
 #include <wtf/MainThread.h>
+#include <wtf/text/TextStream.h>
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 #include "IOSurface.h"
 #endif
 
@@ -53,12 +53,12 @@ static const Seconds tileSizeUpdateDelay { 500_ms };
 
 String TileController::tileGridContainerLayerName()
 {
-    return ASCIILiteral("TileGrid container");
+    return "TileGrid container"_s;
 }
 
 String TileController::zoomedOutTileGridContainerLayerName()
 {
-    return ASCIILiteral("Zoomed-out TileGrid container");
+    return "Zoomed-out TileGrid container"_s;
 }
 
 TileController::TileController(PlatformCALayer* rootPlatformLayer)
@@ -534,7 +534,7 @@ IntSize TileController::tileSize() const
     const int kLowestCommonDenominatorMaxTileSize = 4 * 1024;
     IntSize maxTileSize(kLowestCommonDenominatorMaxTileSize, kLowestCommonDenominatorMaxTileSize);
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
     IntSize surfaceSizeLimit = IOSurface::maximumSize();
     surfaceSizeLimit.scale(1 / m_deviceScaleFactor);
     maxTileSize = maxTileSize.shrunkTo(surfaceSizeLimit);
@@ -667,7 +667,7 @@ void TileController::setScrollingModeIndication(ScrollingModeIndication scrollin
 
 void TileController::setHasMargins(bool marginTop, bool marginBottom, bool marginLeft, bool marginRight)
 {
-    BoxExtent<bool> marginEdges(marginTop, marginRight, marginBottom, marginLeft);
+    RectEdges<bool> marginEdges(marginTop, marginRight, marginBottom, marginLeft);
     if (marginEdges == m_marginEdges)
         return;
     
@@ -743,6 +743,7 @@ RefPtr<PlatformCALayer> TileController::createTileLayer(const IntRect& tileRect,
     layer->setContentsScale(m_deviceScaleFactor * temporaryScaleFactor);
     layer->setAcceleratesDrawing(m_acceleratesDrawing);
     layer->setWantsDeepColorBackingStore(m_wantsDeepColorBackingStore);
+    layer->setSupportsSubpixelAntialiasedText(m_supportsSubpixelAntialiasedText);
 
     layer->setNeedsDisplay();
 

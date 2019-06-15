@@ -51,8 +51,6 @@ static const void* replyBlockKey = &replyBlockKey;
 
 NSString * const invocationKey = @"invocation";
 
-using namespace WebKit;
-
 struct PendingReply {
     PendingReply() = default;
 
@@ -69,7 +67,7 @@ struct PendingReply {
 };
 
 @implementation _WKRemoteObjectRegistry {
-    std::unique_ptr<RemoteObjectRegistry> _remoteObjectRegistry;
+    std::unique_ptr<WebKit::RemoteObjectRegistry> _remoteObjectRegistry;
 
     RetainPtr<NSMapTable> _remoteObjectProxies;
     HashMap<String, std::pair<RetainPtr<id>, RetainPtr<_WKRemoteObjectInterface>>> _exportedObjects;
@@ -106,12 +104,22 @@ struct PendingReply {
     return remoteObject.autorelease();
 }
 
-- (id)_initWithMessageSender:(IPC::MessageSender&)messageSender
+- (id)_initWithWebPage:(WebKit::WebPage&)page
 {
     if (!(self = [super init]))
         return nil;
 
-    _remoteObjectRegistry = std::make_unique<RemoteObjectRegistry>(self, messageSender);
+    _remoteObjectRegistry = std::make_unique<WebKit::RemoteObjectRegistry>(self, page);
+
+    return self;
+}
+
+- (id)_initWithWebPageProxy:(WebKit::WebPageProxy&)page
+{
+    if (!(self = [super init]))
+        return nil;
+
+    _remoteObjectRegistry = std::make_unique<WebKit::RemoteObjectRegistry>(self, page);
 
     return self;
 }
@@ -130,7 +138,7 @@ static uint64_t generateReplyIdentifier()
 
 - (void)_sendInvocation:(NSInvocation *)invocation interface:(_WKRemoteObjectInterface *)interface
 {
-    std::unique_ptr<RemoteObjectInvocation::ReplyInfo> replyInfo;
+    std::unique_ptr<WebKit::RemoteObjectInvocation::ReplyInfo> replyInfo;
 
     NSMethodSignature *methodSignature = invocation.methodSignature;
     for (NSUInteger i = 0, count = methodSignature.numberOfArguments; i < count; ++i) {
@@ -147,12 +155,12 @@ static uint64_t generateReplyIdentifier()
         if (!replyBlock)
             [NSException raise:NSInvalidArgumentException format:@"A NULL reply block was passed into a message. (%s)", sel_getName(invocation.selector)];
 
-        const char* replyBlockSignature = _Block_signature(replyBlock);
+        const char* replyBlockSignature = _Block_signature((__bridge void*)replyBlock);
 
         if (strcmp([NSMethodSignature signatureWithObjCTypes:replyBlockSignature].methodReturnType, "v"))
             [NSException raise:NSInvalidArgumentException format:@"Return value of block argument must be 'void'. (%s)", sel_getName(invocation.selector)];
 
-        replyInfo = std::make_unique<RemoteObjectInvocation::ReplyInfo>(generateReplyIdentifier(), replyBlockSignature);
+        replyInfo = std::make_unique<WebKit::RemoteObjectInvocation::ReplyInfo>(generateReplyIdentifier(), replyBlockSignature);
 
         // Replace the block object so we won't try to encode it.
         id null = nullptr;
@@ -169,7 +177,7 @@ static uint64_t generateReplyIdentifier()
     if (!_remoteObjectRegistry)
         return;
 
-    _remoteObjectRegistry->sendInvocation(RemoteObjectInvocation(interface.identifier, [encoder rootObjectDictionary], WTFMove(replyInfo)));
+    _remoteObjectRegistry->sendInvocation(WebKit::RemoteObjectInvocation(interface.identifier, [encoder rootObjectDictionary], WTFMove(replyInfo)));
 }
 
 - (WebKit::RemoteObjectRegistry&)remoteObjectRegistry
@@ -177,7 +185,7 @@ static uint64_t generateReplyIdentifier()
     return *_remoteObjectRegistry;
 }
 
-- (void)_invokeMethod:(const RemoteObjectInvocation&)remoteObjectInvocation
+- (void)_invokeMethod:(const WebKit::RemoteObjectInvocation&)remoteObjectInvocation
 {
     auto& interfaceIdentifier = remoteObjectInvocation.interfaceIdentifier();
     auto* encodedInvocation = remoteObjectInvocation.encodedInvocation();
@@ -254,7 +262,7 @@ static uint64_t generateReplyIdentifier()
                 auto encoder = adoptNS([[WKRemoteObjectEncoder alloc] init]);
                 [encoder encodeObject:invocation forKey:invocationKey];
 
-                remoteObjectRegistry->_remoteObjectRegistry->sendReplyBlock(replyID, UserData([encoder rootObjectDictionary]));
+                remoteObjectRegistry->_remoteObjectRegistry->sendReplyBlock(replyID, WebKit::UserData([encoder rootObjectDictionary]));
                 checker->didCallReplyBlock();
             });
 

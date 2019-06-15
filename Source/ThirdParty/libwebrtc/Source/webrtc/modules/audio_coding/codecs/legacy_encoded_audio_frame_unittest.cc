@@ -8,9 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/acm2/rent_a_codec.h"
-#include "webrtc/modules/audio_coding/codecs/legacy_encoded_audio_frame.h"
-#include "webrtc/test/gtest.h"
+#include "modules/audio_coding/codecs/legacy_encoded_audio_frame.h"
+
+#include "modules/audio_coding/acm2/rent_a_codec.h"
+#include "rtc_base/numerics/safe_conversions.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -95,20 +97,15 @@ TEST_P(SplitBySamplesTest, PayloadSizes) {
   // 40 ms -> 20 + 20 ms
   // 50 ms -> 25 + 25 ms
   // 60 ms -> 30 + 30 ms
-  ExpectedSplit expected_splits[] = {
-    {10, 1, {10}},
-    {20, 1, {20}},
-    {30, 1, {30}},
-    {40, 2, {20, 20}},
-    {50, 2, {25, 25}},
-    {60, 2, {30, 30}}
-  };
+  ExpectedSplit expected_splits[] = {{10, 1, {10}},     {20, 1, {20}},
+                                     {30, 1, {30}},     {40, 2, {20, 20}},
+                                     {50, 2, {25, 25}}, {60, 2, {30, 30}}};
 
   for (const auto& expected_split : expected_splits) {
     // The payload values are set to steadily increase (modulo 256), so that the
     // resulting frames can be checked and we can be reasonably certain no
     // sample was missed or repeated.
-    const auto generate_payload = [] (size_t num_bytes) {
+    const auto generate_payload = [](size_t num_bytes) {
       rtc::Buffer payload(num_bytes);
       uint8_t value = 0;
       // Allow wrap-around of value in counter below.
@@ -140,8 +137,9 @@ TEST_P(SplitBySamplesTest, PayloadSizes) {
         ASSERT_EQ(value, payload[i]);
       }
 
-      expected_timestamp += expected_split.frame_sizes[i] * samples_per_ms_;
-      expected_byte_offset += length_bytes;
+      expected_timestamp += rtc::checked_cast<uint32_t>(
+          expected_split.frame_sizes[i] * samples_per_ms_);
+      expected_byte_offset += rtc::checked_cast<uint32_t>(length_bytes);
     }
   }
 }

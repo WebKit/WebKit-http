@@ -23,12 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
+#if ENABLE(NETSCAPE_PLUGIN_API)
 
-#include "Page.h"
 #include "PluginMainThreadScheduler.h"
 #include "PluginView.h"
-#include "npruntime_internal.h"
+#include <WebCore/Page.h>
+#include <WebCore/npruntime_internal.h>
 
 using namespace WebCore;
 
@@ -212,3 +212,5 @@ NPError NPN_PopUpContextMenu(NPP instance, NPMenu* menu)
     return NPERR_NO_ERROR;
 #endif // PLATFORM(QT) && defined(XP_MACOSX)
 }
+
+#endif

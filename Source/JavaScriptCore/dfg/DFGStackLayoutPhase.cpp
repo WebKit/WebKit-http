@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,15 +73,6 @@ public:
                     break;
                 }
                     
-                case GetLocalUnlinked: {
-                    VirtualRegister operand = node->unlinkedLocal();
-                    if (operand.isArgument())
-                        break;
-                    usedLocals.set(operand.toLocal());
-                    hasNodesThatNeedFixup = true;
-                    break;
-                }
-                    
                 case LoadVarargs:
                 case ForwardVarargs: {
                     LoadVarargsData* data = node->loadVarargsData();
@@ -112,8 +103,8 @@ public:
                 }
             }
         }
-        
-        for (InlineCallFrameSet::iterator iter = m_graph.m_plan.inlineCallFrames->begin(); !!iter; ++iter) {
+
+        for (InlineCallFrameSet::iterator iter = m_graph.m_plan.inlineCallFrames()->begin(); !!iter; ++iter) {
             InlineCallFrame* inlineCallFrame = *iter;
             
             if (inlineCallFrame->isVarargs()) {
@@ -121,7 +112,7 @@ public:
                     CallFrameSlot::argumentCount + inlineCallFrame->stackOffset).toLocal());
             }
             
-            for (unsigned argument = inlineCallFrame->arguments.size(); argument-- > 1;) {
+            for (unsigned argument = inlineCallFrame->argumentsWithFixup.size(); argument--;) {
                 usedLocals.set(VirtualRegister(
                     virtualRegisterForArgument(argument).offset() +
                     inlineCallFrame->stackOffset).toLocal());
@@ -187,7 +178,7 @@ public:
                     allocation, VirtualRegister(inlineCallFrame->stackOffset + CallFrameSlot::argumentCount));
             }
             
-            for (unsigned argument = inlineCallFrame->arguments.size(); argument-- > 1;) {
+            for (unsigned argument = inlineCallFrame->argumentsWithFixup.size(); argument--;) {
                 ArgumentPosition& position = m_graph.m_argumentPositions[
                     data.argumentPositionStart + argument];
                 VariableAccessData* variable = position.someVariable();
@@ -198,7 +189,7 @@ public:
                     source = ValueSource::forFlushFormat(
                         variable->machineLocal(), variable->flushFormat());
                 }
-                inlineCallFrame->arguments[argument] = source.valueRecovery();
+                inlineCallFrame->argumentsWithFixup[argument] = source.valueRecovery();
             }
             
             RELEASE_ASSERT(inlineCallFrame->isClosureCall == !!data.calleeVariable);
@@ -212,7 +203,7 @@ public:
                 RELEASE_ASSERT(inlineCallFrame->calleeRecovery.isConstant());
         }
         
-        // Fix GetLocalUnlinked's variable references.
+        // Fix Varargs' variable references.
         if (hasNodesThatNeedFixup) {
             for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
                 BasicBlock* block = m_graph.block(blockIndex);
@@ -221,11 +212,6 @@ public:
                 for (unsigned nodeIndex = block->size(); nodeIndex--;) {
                     Node* node = block->at(nodeIndex);
                     switch (node->op()) {
-                    case GetLocalUnlinked: {
-                        node->setUnlinkedMachineLocal(assign(allocation, node->unlinkedLocal()));
-                        break;
-                    }
-                        
                     case LoadVarargs:
                     case ForwardVarargs: {
                         LoadVarargsData* data = node->loadVarargsData();

@@ -21,8 +21,12 @@ info: |
 
   1. Return false.
 features: [generators]
-negative: ReferenceError
+negative:
+  phase: parse
+  type: ReferenceError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 function* g() {
   (yield) = 1;

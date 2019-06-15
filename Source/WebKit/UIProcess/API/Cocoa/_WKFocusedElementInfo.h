@@ -52,7 +52,8 @@ typedef NS_ENUM(NSInteger, WKInputType) {
     WKInputTypeMonth,
     WKInputTypeWeek,
     WKInputTypeTime,
-    WKInputTypeSelect
+    WKInputTypeSelect,
+    WKInputTypeColor
 };
 
 /**
@@ -68,12 +69,20 @@ typedef NS_ENUM(NSInteger, WKInputType) {
 /* The value of the input at the time it was focused. */
 @property (nonatomic, readonly, copy) NSString *value;
 
+/* The placeholder text of the input. */
+@property (nonatomic, readonly, copy) NSString *placeholder;
+
+/* The text of a label element associated with the input. */
+@property (nonatomic, readonly, copy) NSString *label;
+
 /**
  * Whether the element was focused due to user interaction. NO indicates that
  * the element was focused programmatically, e.g. by calling focus() in JavaScript
  * or by using the autofocus attribute.
  */
 @property (nonatomic, readonly, getter=isUserInitiated) BOOL userInitiated;
+
+@property (nonatomic, readonly) NSObject <NSSecureCoding> *userObject WK_API_AVAILABLE(macosx(10.13.4), ios(11.3));
 
 @end
 

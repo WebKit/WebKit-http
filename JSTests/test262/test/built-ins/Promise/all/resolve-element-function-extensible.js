@@ -4,7 +4,7 @@
 /*---
 es6id: 25.4.4.1.2
 description: The [[Extensible]] slot of Promise.all Resolve Element functions
-info: >
+info: |
   17 ECMAScript Standard Built-in Objects:
     Unless specified otherwise, the [[Extensible]] internal slot
     of a built-in object initially has the value true.
@@ -16,10 +16,13 @@ var thenable = {
     resolveElementFunction = fulfill;
   }
 };
+
 function NotPromise(executor) {
-  executor(function(){}, function(){});
+  executor(function() {}, function() {});
 }
-NotPromise.resolve = function(v) { return v; };
+NotPromise.resolve = function(v) {
+  return v;
+};
 Promise.all.call(NotPromise, [thenable]);
 
 assert(Object.isExtensible(resolveElementFunction));

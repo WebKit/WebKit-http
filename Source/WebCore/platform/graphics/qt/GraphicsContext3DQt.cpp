@@ -493,6 +493,7 @@ bool GraphicsContext3D::makeContextCurrent()
     return m_private->makeCurrentIfNeeded();
 }
 
+// Simplify GraphicsContext3D::paintToCanvas() r228052
 void GraphicsContext3D::paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
                                       int canvasWidth, int canvasHeight, QPainter* context)
 {

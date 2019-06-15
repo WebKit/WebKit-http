@@ -28,10 +28,11 @@
 namespace WebCore {
 
 class HTMLLabelElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLLabelElement);
 public:
     static Ref<HTMLLabelElement> create(const QualifiedName&, Document&);
 
-    WEBCORE_EXPORT LabelableElement* control() const;
+    WEBCORE_EXPORT RefPtr<LabelableElement> control() const;
     WEBCORE_EXPORT HTMLFormElement* form() const final;
 
     bool willRespondToMouseClickEvents() final;

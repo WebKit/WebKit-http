@@ -39,6 +39,7 @@ namespace WebCore {
 class HTMLSelectElement;
 
 class RenderListBox final : public RenderBlockFlow, public ScrollableArea {
+    WTF_MAKE_ISO_ALLOCATED(RenderListBox);
 public:
     RenderListBox(HTMLSelectElement&, RenderStyle&&);
     virtual ~RenderListBox();
@@ -105,8 +106,8 @@ private:
     int scrollTop() const override;
     int scrollWidth() const override;
     int scrollHeight() const override;
-    void setScrollLeft(int) override;
-    void setScrollTop(int) override;
+    void setScrollLeft(int, ScrollClamping) override;
+    void setScrollTop(int, ScrollClamping) override;
 
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
@@ -140,7 +141,7 @@ private:
     bool usesMockScrollAnimator() const override;
     void logMockScrollAnimatorMessage(const String&) const override;
 
-    // NOTE: This should only be called by the overriden setScrollOffset from ScrollableArea.
+    // NOTE: This should only be called by the overridden setScrollOffset from ScrollableArea.
     void scrollTo(int newOffset);
 
     using PaintFunction = WTF::Function<void(PaintInfo&, const LayoutPoint&, int listItemIndex)>;

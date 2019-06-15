@@ -1,9 +1,9 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.21
+esid: sec-%typedarray%.prototype.reverse
 description: Throws a TypeError exception when invoked as a function
-info: >
+info: |
   22.2.3.21 %TypedArray%.prototype.reverse ( )
 
   ...
@@ -18,6 +18,7 @@ info: >
   exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var reverse = TypedArray.prototype.reverse;

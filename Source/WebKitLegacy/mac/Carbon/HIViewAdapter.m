@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,8 +30,8 @@
 
 #import "HIViewAdapter.h"
 
-#import "QuickDrawCompatibility.h"
 #import "WebNSObjectExtras.h"
+#import <pal/spi/mac/QuickDrawSPI.h>
 #import <wtf/Assertions.h>
 
 static void SetViewNeedsDisplay(HIViewRef inView, RgnHandle inRegion, Boolean inNeedsDisplay);
@@ -88,7 +88,10 @@ static NSView *_webkit_NSView_nextValidKeyView(id self, SEL _cmd);
 
 + (HIViewRef)getHIViewForNSView:(NSView*)inView
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
     return sViewMap ? (HIViewRef)CFDictionaryGetValue(sViewMap, inView) : NULL;
+#pragma clang diagnostic pop
 }
 
 + (void)unbindNSView:(NSView*)inView

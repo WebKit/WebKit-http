@@ -38,6 +38,11 @@ WKTypeID WKOpenPanelParametersGetTypeID()
     return toAPI(API::OpenPanelParameters::APIType);
 }
 
+bool WKOpenPanelParametersGetAllowsDirectories(WKOpenPanelParametersRef parametersRef)
+{
+    return toImpl(parametersRef)->allowDirectories();
+}
+
 bool WKOpenPanelParametersGetAllowsMultipleFiles(WKOpenPanelParametersRef parametersRef)
 {
     return toImpl(parametersRef)->allowMultipleFiles();
@@ -46,6 +51,11 @@ bool WKOpenPanelParametersGetAllowsMultipleFiles(WKOpenPanelParametersRef parame
 WKArrayRef WKOpenPanelParametersCopyAcceptedMIMETypes(WKOpenPanelParametersRef parametersRef)
 {
     return toAPI(&toImpl(parametersRef)->acceptMIMETypes().leakRef());
+}
+
+WKArrayRef WKOpenPanelParametersCopyAcceptedFileExtensions(WKOpenPanelParametersRef parametersRef)
+{
+    return toAPI(&toImpl(parametersRef)->acceptFileExtensions().leakRef());
 }
 
 // Deprecated.

@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Let 'x' be the return value from getPrototypeOf when called on d.
     Then, x.isPrototypeOf(d) must be true.
 es5id: 15.2.3.2-2-2
@@ -11,12 +11,12 @@ description: >
     (custom object)
 ---*/
 
-  function base() {}
+function base() {}
 
-  function derived() {}
-  derived.prototype = new base();
+function derived() {}
+derived.prototype = new base();
 
-  var d = new derived();
-  var x = Object.getPrototypeOf(d);
+var d = new derived();
+var x = Object.getPrototypeOf(d);
 
 assert.sameValue(x.isPrototypeOf(d), true, 'x.isPrototypeOf(d)');

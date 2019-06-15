@@ -8,22 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/desktop_capture/win/desktop.h"
+#include "modules/desktop_capture/win/desktop.h"
 
 #include <vector>
 
-#include "webrtc/base/logging.h"
+#include "rtc_base/logging.h"
 
 namespace webrtc {
 
-Desktop::Desktop(HDESK desktop, bool own) : desktop_(desktop), own_(own) {
-}
+Desktop::Desktop(HDESK desktop, bool own) : desktop_(desktop), own_(own) {}
 
 Desktop::~Desktop() {
   if (own_ && desktop_ != NULL) {
     if (!::CloseDesktop(desktop_)) {
-      LOG(LS_ERROR) << "Failed to close the owned desktop handle: "
-                    << GetLastError();
+      RTC_LOG(LS_ERROR) << "Failed to close the owned desktop handle: "
+                        << GetLastError();
     }
   }
 }
@@ -41,7 +40,7 @@ bool Desktop::GetName(std::wstring* desktop_name_out) const {
   std::vector<WCHAR> buffer(length);
   if (!GetUserObjectInformationW(desktop_, UOI_NAME, &buffer[0],
                                  length * sizeof(WCHAR), &length)) {
-    LOG(LS_ERROR) << "Failed to query the desktop name: " << GetLastError();
+    RTC_LOG(LS_ERROR) << "Failed to query the desktop name: " << GetLastError();
     return false;
   }
 
@@ -63,8 +62,8 @@ bool Desktop::IsSame(const Desktop& other) const {
 
 bool Desktop::SetThreadDesktop() const {
   if (!::SetThreadDesktop(desktop_)) {
-    LOG(LS_ERROR) << "Failed to assign the desktop to the current thread: "
-                  << GetLastError();
+    RTC_LOG(LS_ERROR) << "Failed to assign the desktop to the current thread: "
+                      << GetLastError();
     return false;
   }
 
@@ -72,14 +71,14 @@ bool Desktop::SetThreadDesktop() const {
 }
 
 Desktop* Desktop::GetDesktop(const WCHAR* desktop_name) {
-  ACCESS_MASK desired_access =
-      DESKTOP_CREATEMENU | DESKTOP_CREATEWINDOW | DESKTOP_ENUMERATE |
-      DESKTOP_HOOKCONTROL | DESKTOP_WRITEOBJECTS | DESKTOP_READOBJECTS |
-      DESKTOP_SWITCHDESKTOP | GENERIC_WRITE;
+  ACCESS_MASK desired_access = DESKTOP_CREATEMENU | DESKTOP_CREATEWINDOW |
+                               DESKTOP_ENUMERATE | DESKTOP_HOOKCONTROL |
+                               DESKTOP_WRITEOBJECTS | DESKTOP_READOBJECTS |
+                               DESKTOP_SWITCHDESKTOP | GENERIC_WRITE;
   HDESK desktop = OpenDesktop(desktop_name, 0, FALSE, desired_access);
   if (desktop == NULL) {
-    LOG(LS_ERROR) << "Failed to open the desktop '" << desktop_name << "': "
-                  << GetLastError();
+    RTC_LOG(LS_ERROR) << "Failed to open the desktop '" << desktop_name
+                      << "': " << GetLastError();
     return NULL;
   }
 
@@ -98,9 +97,10 @@ Desktop* Desktop::GetInputDesktop() {
 Desktop* Desktop::GetThreadDesktop() {
   HDESK desktop = ::GetThreadDesktop(GetCurrentThreadId());
   if (desktop == NULL) {
-    LOG(LS_ERROR) << "Failed to retrieve the handle of the desktop assigned to "
-                     "the current thread: "
-                  << GetLastError();
+    RTC_LOG(LS_ERROR)
+        << "Failed to retrieve the handle of the desktop assigned to "
+           "the current thread: "
+        << GetLastError();
     return NULL;
   }
 

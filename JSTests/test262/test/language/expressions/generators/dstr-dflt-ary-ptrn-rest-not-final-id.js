@@ -5,9 +5,11 @@
 description: Rest element (identifier) may not be followed by any element (generator function expression (default parameter))
 esid: sec-generator-function-definitions-runtime-semantics-evaluation
 es6id: 14.4.14
-features: [destructuring-binding, default-parameters]
+features: [generators, destructuring-binding, default-parameters]
 flags: [generated]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 info: |
     GeneratorExpression : function * ( FormalParameters ) { GeneratorBody }
 
@@ -45,6 +47,7 @@ info: |
         [ BindingElementList[?Yield] ]
         [ BindingElementList[?Yield] , Elisionopt BindingRestElement[?Yield]opt ]
 ---*/
+throw "Test262: This statement should not be evaluated.";
 
 var callCount = 0;
 var f;

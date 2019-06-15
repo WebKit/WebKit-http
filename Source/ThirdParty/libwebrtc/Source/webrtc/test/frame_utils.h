@@ -7,12 +7,12 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_TEST_FRAME_UTILS_H_
-#define WEBRTC_TEST_FRAME_UTILS_H_
+#ifndef TEST_FRAME_UTILS_H_
+#define TEST_FRAME_UTILS_H_
 
 #include <stdint.h>
 
-#include "webrtc/base/scoped_ref_ptr.h"
+#include "rtc_base/scoped_ref_ptr.h"
 
 namespace webrtc {
 class I420Buffer;
@@ -40,9 +40,9 @@ bool FramesEqual(const webrtc::VideoFrame& f1, const webrtc::VideoFrame& f2);
 bool FrameBufsEqual(const rtc::scoped_refptr<webrtc::VideoFrameBuffer>& f1,
                     const rtc::scoped_refptr<webrtc::VideoFrameBuffer>& f2);
 
-rtc::scoped_refptr<I420Buffer> ReadI420Buffer(int width, int height, FILE *);
+rtc::scoped_refptr<I420Buffer> ReadI420Buffer(int width, int height, FILE*);
 
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_TEST_FRAME_UTILS_H_
+#endif  // TEST_FRAME_UTILS_H_

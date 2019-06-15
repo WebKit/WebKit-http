@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.foreach
 description: >
   The callbackfn return does not change the instance
-info: >
+info: |
   22.2.3.12 %TypedArray%.prototype.forEach ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.forEach is a distinct function that implements the same
@@ -12,6 +12,7 @@ info: >
   this object's [[ArrayLength]] internal slot is accessed in place of performing
   a [[Get]] of "length"
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

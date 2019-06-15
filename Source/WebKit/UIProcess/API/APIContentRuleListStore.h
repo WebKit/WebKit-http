@@ -52,7 +52,8 @@ public:
     // to prevent crashing while loading old data.
     // Also update ContentRuleListStore::getContentRuleListSource to be able to find the original JSON
     // source from old versions.
-    const static uint32_t CurrentContentRuleListFileVersion = 9;
+    // Update ContentRuleListStore::getContentRuleListSource with this.
+    const static uint32_t CurrentContentRuleListFileVersion = 10;
 
     static ContentRuleListStore& defaultStore(bool legacyFilename);
     static Ref<ContentRuleListStore> storeWithPath(const WTF::String& storePath, bool legacyFilename);
@@ -61,15 +62,15 @@ public:
     explicit ContentRuleListStore(const WTF::String& storePath, bool legacyFilename);
     virtual ~ContentRuleListStore();
 
-    void compileContentRuleList(const WTF::String& identifier, WTF::String&& json, Function<void(RefPtr<API::ContentRuleList>, std::error_code)>);
-    void lookupContentRuleList(const WTF::String& identifier, Function<void(RefPtr<API::ContentRuleList>, std::error_code)>);
-    void removeContentRuleList(const WTF::String& identifier, Function<void(std::error_code)>);
-    void getAvailableContentRuleListIdentifiers(Function<void(WTF::Vector<WTF::String>)>);
+    void compileContentRuleList(const WTF::String& identifier, WTF::String&& json, CompletionHandler<void(RefPtr<API::ContentRuleList>, std::error_code)>);
+    void lookupContentRuleList(const WTF::String& identifier, CompletionHandler<void(RefPtr<API::ContentRuleList>, std::error_code)>);
+    void removeContentRuleList(const WTF::String& identifier, CompletionHandler<void(std::error_code)>);
+    void getAvailableContentRuleListIdentifiers(CompletionHandler<void(WTF::Vector<WTF::String>)>);
 
     // For testing only.
     void synchronousRemoveAllContentRuleLists();
     void invalidateContentRuleListVersion(const WTF::String& identifier);
-    void getContentRuleListSource(const WTF::String& identifier, Function<void(WTF::String)>);
+    void getContentRuleListSource(const WTF::String& identifier, CompletionHandler<void(WTF::String)>);
 
 private:
     WTF::String defaultStorePath(bool legacyFilename);

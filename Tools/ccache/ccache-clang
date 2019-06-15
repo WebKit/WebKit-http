@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright (C) 2017 Apple Inc. All rights reserved.
 #
@@ -34,4 +34,4 @@ while [[ $position -le $# ]]; do
     esac
     position=$(($position + 1))
 done
-CCACHE_SLOPPINESS="pch_defines,time_macros" ccache $(xcrun -f -sdk "$sdk" "${_XCRUN_TOOL:-clang}") "$@"
+$(dirname "$0")/ccache-wrapper $(xcrun -f -sdk "$sdk" "${_XCRUN_TOOL:-clang}") "$@"

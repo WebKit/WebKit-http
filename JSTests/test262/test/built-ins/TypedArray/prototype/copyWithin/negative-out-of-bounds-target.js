@@ -2,10 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 esid: sec-%typedarray%.prototype.copywithin
-es6id: 22.2.3.5
 description: >
   Set values with out of bounds negative target argument.
-info: >
+info: |
   22.2.3.5 %TypedArray%.prototype.copyWithin (target, start [ , end ] )
 
   %TypedArray%.prototype.copyWithin is a distinct function that implements the
@@ -24,6 +23,7 @@ info: >
   to be min(relativeTarget, len).
   ...
 includes: [compareArray.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {
@@ -37,9 +37,25 @@ testWithTypedArrayConstructors(function(TA) {
 
   assert(
     compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(-Infinity, 0),
+      [1, 2, 3, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(-Infinity, 0) -> [1, 2, 3, 4, 5]'
+  );
+
+  assert(
+    compareArray(
       new TA([0, 1, 2, 3, 4]).copyWithin(-10, 2),
       [2, 3, 4, 3, 4]
     ),
     '[0, 1, 2, 3, 4].copyWithin(-10, 2) -> [2, 3, 4, 3, 4]'
+  );
+
+  assert(
+    compareArray(
+      new TA([1, 2, 3, 4, 5]).copyWithin(-Infinity, 2),
+      [3, 4, 5, 4, 5]
+    ),
+    '[1, 2, 3, 4, 5].copyWithin(-Infinity, 2) -> [3, 4, 5, 4, 5]'
   );
 });

@@ -35,13 +35,9 @@ Ref<StorageEvent> StorageEvent::createForBindings()
     return adoptRef(*new StorageEvent);
 }
 
-StorageEvent::StorageEvent()
-{
-}
+StorageEvent::StorageEvent() = default;
 
-StorageEvent::~StorageEvent()
-{
-}
+StorageEvent::~StorageEvent() = default;
 
 Ref<StorageEvent> StorageEvent::create(const AtomicString& type, const String& key, const String& oldValue, const String& newValue, const String& url, Storage* storageArea)
 {
@@ -54,7 +50,7 @@ Ref<StorageEvent> StorageEvent::create(const AtomicString& type, const Init& ini
 }
 
 StorageEvent::StorageEvent(const AtomicString& type, const String& key, const String& oldValue, const String& newValue, const String& url, Storage* storageArea)
-    : Event(type, false, false)
+    : Event(type, CanBubble::No, IsCancelable::No)
     , m_key(key)
     , m_oldValue(oldValue)
     , m_newValue(newValue)
@@ -75,7 +71,7 @@ StorageEvent::StorageEvent(const AtomicString& type, const Init& initializer, Is
 
 void StorageEvent::initStorageEvent(const AtomicString& type, bool canBubble, bool cancelable, const String& key, const String& oldValue, const String& newValue, const String& url, Storage* storageArea)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
     initEvent(type, canBubble, cancelable);

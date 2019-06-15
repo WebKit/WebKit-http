@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WindowServerConnection_h
-#define WindowServerConnection_h
+#pragma once
 
 namespace WebKit {
 
@@ -41,14 +40,9 @@ private:
     void windowServerConnectionStateChanged();
 
     void applicationWindowModificationsStopped(bool stopped);
-
-    static void applicationWindowModificationsStarted(uint32_t, void*, uint32_t, void*, uint32_t);
-    static void applicationWindowModificationsStopped(uint32_t, void*, uint32_t, void*, uint32_t);
 #endif
 
     bool m_applicationWindowModificationsHaveStopped;
 };
 
 } // namespace WebKit
-
-#endif // WindowServerConnection_h

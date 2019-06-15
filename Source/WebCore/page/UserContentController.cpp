@@ -29,9 +29,9 @@
 #include "DOMWrapperWorld.h"
 #include "UserScript.h"
 #include "UserStyleSheet.h"
-#include <heap/HeapInlines.h>
-#include <runtime/JSCellInlines.h>
-#include <runtime/StructureInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/JSCellInlines.h>
+#include <JavaScriptCore/StructureInlines.h>
 
 #if ENABLE(CONTENT_EXTENSIONS)
 #include "CompiledContentExtension.h"
@@ -44,13 +44,9 @@ Ref<UserContentController> UserContentController::create()
     return adoptRef(*new UserContentController);
 }
 
-UserContentController::UserContentController()
-{
-}
+UserContentController::UserContentController() = default;
 
-UserContentController::~UserContentController()
-{
-}
+UserContentController::~UserContentController() = default;
 
 void UserContentController::forEachUserScript(Function<void(DOMWrapperWorld&, const UserScript&)>&& functor) const
 {

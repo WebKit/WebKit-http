@@ -27,7 +27,7 @@
 #include "Pattern.h"
 #include "RenderTreeAsText.h"
 #include "SVGRenderingContext.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -47,7 +47,7 @@ void FETile::platformApplySoftware()
     FilterEffect* in = inputEffect(0);
 
     ImageBuffer* resultImage = createImageBufferResult();
-    ImageBuffer* inBuffer = in->asImageBuffer();
+    ImageBuffer* inBuffer = in->imageBufferResult();
     if (!resultImage || !inBuffer)
         return;
 
@@ -79,24 +79,21 @@ void FETile::platformApplySoftware()
     auto pattern = Pattern::create(tileImageCopy.releaseNonNull(), true, true);
 
     AffineTransform patternTransform;
-    patternTransform.translate(inMaxEffectLocation.x() - maxEffectLocation.x(), inMaxEffectLocation.y() - maxEffectLocation.y());
+    patternTransform.translate(inMaxEffectLocation - maxEffectLocation);
     pattern.get().setPatternSpaceTransform(patternTransform);
     GraphicsContext& filterContext = resultImage->context();
     filterContext.setFillPattern(WTFMove(pattern));
     filterContext.fillRect(FloatRect(FloatPoint(), absolutePaintRect().size()));
 }
 
-void FETile::dump()
+TextStream& FETile::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FETile::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feTile";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feTile";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << "]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
 
     return ts;
 }

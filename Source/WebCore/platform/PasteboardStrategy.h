@@ -27,7 +27,6 @@
 #define PasteboardStrategy_h
 
 #include <wtf/Forward.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -36,8 +35,10 @@ class SelectionData;
 class SharedBuffer;
 class URL;
 struct PasteboardImage;
+struct PasteboardItemInfo;
 struct PasteboardURL;
 struct PasteboardWebContent;
+struct PasteboardCustomData;
 
 class PasteboardStrategy {
 public:
@@ -49,8 +50,9 @@ public:
     virtual int getPasteboardItemsCount(const String& pasteboardName) = 0;
     virtual String readStringFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) = 0;
     virtual RefPtr<SharedBuffer> readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName) = 0;
-    virtual URL readURLFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName, String& title) = 0;
-    virtual void getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName) = 0;
+    virtual URL readURLFromPasteboard(int index, const String& pasteboardName, String& title) = 0;
+    virtual Vector<PasteboardItemInfo> allPasteboardItemInfo(const String& pasteboardName) = 0;
+    virtual PasteboardItemInfo informationForItemAtIndex(int index, const String& pasteboardName) = 0;
     virtual void updateSupportedTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName) = 0;
     virtual void getTypesByFidelityForItemAtIndex(Vector<String>& types, uint64_t index, const String& pasteboardName) = 0;
 #endif // PLATFORM(IOS)
@@ -59,6 +61,7 @@ public:
     virtual RefPtr<SharedBuffer> bufferForType(const String& pasteboardType, const String& pasteboardName) = 0;
     virtual void getPathnamesForType(Vector<String>& pathnames, const String& pasteboardType, const String& pasteboardName) = 0;
     virtual String stringForType(const String& pasteboardType, const String& pasteboardName) = 0;
+    virtual Vector<String> allStringsForType(const String& pasteboardType, const String& pasteboardName) = 0;
     virtual long changeCount(const String& pasteboardName) = 0;
     virtual String uniqueName() = 0;
     virtual Color color(const String& pasteboardName) = 0;
@@ -67,11 +70,14 @@ public:
 
     virtual long addTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName) = 0;
     virtual long setTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName) = 0;
-    virtual long copy(const String& fromPasteboard, const String& toPasteboard) = 0;
     virtual long setBufferForType(SharedBuffer*, const String& pasteboardType, const String& pasteboardName) = 0;
-    virtual long setPathnamesForType(const Vector<String>&, const String& pasteboardType, const String& pasteboardName) = 0;
+    virtual long setURL(const PasteboardURL&, const String& pasteboardName) = 0;
+    virtual long setColor(const Color&, const String& pasteboardName) = 0;
     virtual long setStringForType(const String&, const String& pasteboardType, const String& pasteboardName) = 0;
 #endif
+
+    virtual Vector<String> typesSafeForDOMToReadAndWrite(const String& pasteboardName, const String& origin) = 0;
+    virtual long writeCustomData(const PasteboardCustomData&, const String& pasteboardName) = 0;
 
 #if PLATFORM(GTK)
     virtual void writeToClipboard(const String& pasteboardName, const SelectionData&) = 0;

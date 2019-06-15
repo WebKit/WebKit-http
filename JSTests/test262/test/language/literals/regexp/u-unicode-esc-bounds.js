@@ -4,13 +4,17 @@
 /*---
 description: Out-of-range value of hexadecimal digits in UnicodeEscapeSequence
 es6id: 21.2.1.1
-info: >
+info: |
     21.2.1.1 Static Semantics: Early Errors
 
     RegExpUnicodeEscapeSequence :: u{ HexDigits }
 
         - It is a Syntax Error if the MV of HexDigits > 1114111.
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 /\u{110000}/u;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/PluginData.h>
 #include <utility>
+#include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
@@ -42,10 +43,6 @@ namespace IPC {
     class MachPort;
     class Connection;
     class DummyType;
-}
-
-namespace WTF {
-    class String;
 }
 
 namespace WebKit {
@@ -361,17 +358,8 @@ public:
     static IPC::StringReference name() { return IPC::StringReference("GetPluginProcessConnection"); }
     static const bool isSync = true;
 
-    struct DelayedReply : public ThreadSafeRefCounted<DelayedReply> {
-        DelayedReply(Ref<IPC::Connection>&&, std::unique_ptr<IPC::Encoder>);
-        ~DelayedReply();
-
-        bool send(const IPC::Connection::Handle& connectionHandle);
-
-    private:
-        RefPtr<IPC::Connection> m_connection;
-        std::unique_ptr<IPC::Encoder> m_encoder;
-    };
-
+    using DelayedReply = CompletionHandler<void(const IPC::Connection::Handle& connectionHandle)>;
+    static void send(std::unique_ptr<IPC::Encoder>&&, IPC::Connection&, const IPC::Connection::Handle& connectionHandle);
     typedef std::tuple<IPC::Connection::Handle&> Reply;
     explicit GetPluginProcessConnection(const String& pluginPath)
         : m_arguments(pluginPath)
@@ -395,17 +383,8 @@ public:
     static IPC::StringReference name() { return IPC::StringReference("TestMultipleAttributes"); }
     static const bool isSync = true;
 
-    struct DelayedReply : public ThreadSafeRefCounted<DelayedReply> {
-        DelayedReply(Ref<IPC::Connection>&&, std::unique_ptr<IPC::Encoder>);
-        ~DelayedReply();
-
-        bool send();
-
-    private:
-        RefPtr<IPC::Connection> m_connection;
-        std::unique_ptr<IPC::Encoder> m_encoder;
-    };
-
+    using DelayedReply = CompletionHandler<void()>;
+    static void send(std::unique_ptr<IPC::Encoder>&&, IPC::Connection&);
     typedef std::tuple<> Reply;
     const Arguments& arguments() const
     {

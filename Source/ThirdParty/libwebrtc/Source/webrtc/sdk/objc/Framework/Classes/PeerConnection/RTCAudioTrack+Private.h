@@ -10,7 +10,7 @@
 
 #import "WebRTC/RTCAudioTrack.h"
 
-#include "webrtc/api/mediastreaminterface.h"
+#include "api/mediastreaminterface.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -18,8 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface RTCAudioTrack ()
 
 /** AudioTrackInterface created or passed in at construction. */
-@property(nonatomic, readonly)
-    rtc::scoped_refptr<webrtc::AudioTrackInterface> nativeAudioTrack;
+@property(nonatomic, readonly) rtc::scoped_refptr<webrtc::AudioTrackInterface> nativeAudioTrack;
 
 /** Initialize an RTCAudioTrack with an id. */
 - (instancetype)initWithFactory:(RTCPeerConnectionFactory *)factory

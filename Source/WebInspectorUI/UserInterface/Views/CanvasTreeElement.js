@@ -23,14 +23,33 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.CanvasTreeElement = class CanvasTreeElement extends WebInspector.GeneralTreeElement
+WI.CanvasTreeElement = class CanvasTreeElement extends WI.FolderizedTreeElement
 {
-    constructor(representedObject)
+    constructor(representedObject, showRecordings = true)
     {
-        console.assert(representedObject instanceof WebInspector.Canvas);
+        console.assert(representedObject instanceof WI.Canvas);
 
-        const subtitle = null;
+        let subtitle = WI.Canvas.displayNameForContextType(representedObject.contextType);
         super(["canvas", representedObject.contextType], representedObject.displayName, subtitle, representedObject);
+
+        this.registerFolderizeSettings("shader-programs", WI.UIString("Shader Programs"), this.representedObject.shaderProgramCollection, WI.ShaderProgramTreeElement);
+
+        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStarted, this._updateStatus, this);
+        WI.canvasManager.addEventListener(WI.CanvasManager.Event.RecordingStopped, this._updateStatus, this);
+
+        this.representedObject.shaderProgramCollection.addEventListener(WI.Collection.Event.ItemAdded, this._handleItemAdded, this);
+        this.representedObject.shaderProgramCollection.addEventListener(WI.Collection.Event.ItemRemoved, this._handleItemRemoved, this);
+
+        this._showRecordings = showRecordings;
+        if (this._showRecordings) {
+            function createRecordingTreeElement(recording) {
+                return new WI.GeneralTreeElement(["recording"], recording.displayName, null, recording);
+            }
+            this.registerFolderizeSettings("recordings", WI.UIString("Recordings"), this.representedObject.recordingCollection, createRecordingTreeElement);
+
+            this.representedObject.recordingCollection.addEventListener(WI.Collection.Event.ItemAdded, this._handleItemAdded, this);
+            this.representedObject.recordingCollection.addEventListener(WI.Collection.Event.ItemRemoved, this._handleItemRemoved, this);
+        }
     }
 
     // Protected
@@ -41,20 +60,42 @@ WebInspector.CanvasTreeElement = class CanvasTreeElement extends WebInspector.Ge
 
         this.element.addEventListener("mouseover", this._handleMouseOver.bind(this));
         this.element.addEventListener("mouseout", this._handleMouseOut.bind(this));
+
+        this.onpopulate();
+    }
+
+    onpopulate()
+    {
+        super.onpopulate();
+
+        if (this.children.length && !this.shouldRefreshChildren)
+            return;
+
+        this.shouldRefreshChildren = false;
+
+        this.removeChildren();
+
+        for (let program of this.representedObject.shaderProgramCollection)
+            this.addChildForRepresentedObject(program);
+
+        if (this._showRecordings) {
+            for (let recording of this.representedObject.recordingCollection)
+                this.addChildForRepresentedObject(recording);
+        }
     }
 
     populateContextMenu(contextMenu, event)
     {
         super.populateContextMenu(contextMenu, event);
 
-        contextMenu.appendItem(WebInspector.UIString("Log Canvas Context"), () => {
-            WebInspector.RemoteObject.resolveCanvasContext(this.representedObject, WebInspector.RuntimeManager.ConsoleObjectGroup, (remoteObject) => {
+        contextMenu.appendItem(WI.UIString("Log Canvas Context"), () => {
+            WI.RemoteObject.resolveCanvasContext(this.representedObject, WI.RuntimeManager.ConsoleObjectGroup, (remoteObject) => {
                 if (!remoteObject)
                     return;
 
-                const text = WebInspector.UIString("Selected Canvas Context");
+                const text = WI.UIString("Selected Canvas Context");
                 const addSpecialUserLogClass = true;
-                WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, addSpecialUserLogClass);
+                WI.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, addSpecialUserLogClass);
             });
         });
 
@@ -63,24 +104,48 @@ WebInspector.CanvasTreeElement = class CanvasTreeElement extends WebInspector.Ge
 
     // Private
 
+    _handleItemAdded(event)
+    {
+        this.addChildForRepresentedObject(event.data.item);
+    }
+
+    _handleItemRemoved(event)
+    {
+        this.removeChildForRepresentedObject(event.data.item);
+    }
+
     _handleMouseOver(event)
     {
         if (this.representedObject.cssCanvasName) {
             this.representedObject.requestCSSCanvasClientNodes((cssCanvasClientNodes) => {
-                WebInspector.domTreeManager.highlightDOMNodeList(cssCanvasClientNodes.map((node) => node.id), "all");
+                WI.domTreeManager.highlightDOMNodeList(cssCanvasClientNodes.map((node) => node.id), "all");
             });
         } else {
             this.representedObject.requestNode((node) => {
                 if (!node || !node.ownerDocument)
                     return;
 
-                WebInspector.domTreeManager.highlightDOMNode(node.id, "all");
+                WI.domTreeManager.highlightDOMNode(node.id, "all");
             });
         }
     }
 
     _handleMouseOut(event)
     {
-        WebInspector.domTreeManager.hideDOMNodeHighlight();
+        WI.domTreeManager.hideDOMNodeHighlight();
+    }
+
+    _updateStatus()
+    {
+        if (this.representedObject.isRecording) {
+            if (!this.status || !this.status[WI.CanvasTreeElement.SpinnerSymbol]) {
+                let spinner = new WI.IndeterminateProgressSpinner;
+                this.status = spinner.element;
+                this.status[WI.CanvasTreeElement.SpinnerSymbol] = true;
+            }
+        } else {
+            if (this.status && this.status[WI.CanvasTreeElement.SpinnerSymbol])
+                this.status = "";
+        }
     }
 };

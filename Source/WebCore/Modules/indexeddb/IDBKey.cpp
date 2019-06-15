@@ -29,10 +29,10 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBKeyData.h"
-#include <runtime/ArrayBufferView.h>
-#include <runtime/JSArrayBuffer.h>
-#include <runtime/JSArrayBufferView.h>
-#include <runtime/JSCInlines.h>
+#include <JavaScriptCore/ArrayBufferView.h>
+#include <JavaScriptCore/JSArrayBuffer.h>
+#include <JavaScriptCore/JSArrayBufferView.h>
+#include <JavaScriptCore/JSCInlines.h>
 
 namespace WebCore {
 
@@ -83,9 +83,7 @@ IDBKey::IDBKey(const ThreadSafeDataBuffer& buffer)
 {
 }
 
-IDBKey::~IDBKey()
-{
-}
+IDBKey::~IDBKey() = default;
 
 bool IDBKey::isValid() const
 {

@@ -26,8 +26,10 @@
 #include "config.h"
 #include "GenericEventQueue.h"
 
+#include "Document.h"
 #include "Event.h"
 #include "EventTarget.h"
+#include "Node.h"
 #include "ScriptExecutionContext.h"
 #include "Timer.h"
 #include <wtf/MainThread.h>
@@ -40,9 +42,7 @@ GenericEventQueue::GenericEventQueue(EventTarget& owner)
 {
 }
 
-GenericEventQueue::~GenericEventQueue()
-{
-}
+GenericEventQueue::~GenericEventQueue() = default;
 
 void GenericEventQueue::enqueueEvent(RefPtr<Event>&& event)
 {
@@ -67,6 +67,9 @@ void GenericEventQueue::dispatchOneEvent()
     Ref<EventTarget> protect(m_owner);
     RefPtr<Event> event = m_pendingEvents.takeFirst();
     EventTarget& target = event->target() ? *event->target() : m_owner;
+    ASSERT_WITH_MESSAGE(!target.scriptExecutionContext()->activeDOMObjectsAreStopped(),
+        "An attempt to dispatch an event on a stopped target by EventTargetInterface=%d (nodeName=%s target=%p owner=%p)",
+        m_owner.eventTargetInterface(), m_owner.isNode() ? static_cast<Node&>(m_owner).nodeName().ascii().data() : "", &target, &m_owner);
     target.dispatchEvent(*event);
 }
 
@@ -112,9 +115,6 @@ void GenericEventQueue::resume()
         return;
 
     m_isSuspended = false;
-
-    if (m_pendingEvents.isEmpty())
-        return;
 
     for (unsigned i = 0; i < m_pendingEvents.size(); ++i)
         m_taskQueue.enqueueTask(std::bind(&GenericEventQueue::dispatchOneEvent, this));

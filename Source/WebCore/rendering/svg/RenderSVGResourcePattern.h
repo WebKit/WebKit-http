@@ -26,6 +26,7 @@
 #include "RenderSVGResourceContainer.h"
 #include "SVGPatternElement.h"
 #include <memory>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -38,6 +39,7 @@ public:
 };
 
 class RenderSVGResourcePattern final : public RenderSVGResourceContainer {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGResourcePattern);
 public:
     RenderSVGResourcePattern(SVGPatternElement&, RenderStyle&&);
     SVGPatternElement& patternElement() const;
@@ -63,9 +65,9 @@ private:
 
     PatternData* buildPattern(RenderElement&, OptionSet<RenderSVGResourceMode>, GraphicsContext&);
 
-    bool m_shouldCollectPatternAttributes : 1;
     PatternAttributes m_attributes;
     HashMap<RenderElement*, std::unique_ptr<PatternData>> m_patternMap;
+    bool m_shouldCollectPatternAttributes { true };
 };
 
 } // namespace WebCore

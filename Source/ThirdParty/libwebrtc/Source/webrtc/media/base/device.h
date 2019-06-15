@@ -8,22 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_BASE_DEVICE_H_
-#define WEBRTC_MEDIA_BASE_DEVICE_H_
+#ifndef MEDIA_BASE_DEVICE_H_
+#define MEDIA_BASE_DEVICE_H_
 
-#include "webrtc/base/stringencode.h"
+#include <string>
+
+#include "rtc_base/stringencode.h"
 
 namespace cricket {
 
 // Used to represent an audio or video capture or render device.
 struct Device {
   Device() {}
-  Device(const std::string& name, int id)
-      : name(name),
-        id(rtc::ToString(id)) {
-  }
-  Device(const std::string& name, const std::string& id)
-      : name(name), id(id) {}
+  Device(const std::string& name, int id) : name(name), id(rtc::ToString(id)) {}
+  Device(const std::string& name, const std::string& id) : name(name), id(id) {}
 
   std::string name;
   std::string id;
@@ -31,4 +29,4 @@ struct Device {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_BASE_DEVICE_H_
+#endif  // MEDIA_BASE_DEVICE_H_

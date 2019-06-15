@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,19 +39,19 @@ enum NoResultTag { NoResult };
 // top of the LowLevelInterpreter.asm file.
 
 typedef MacroAssembler::RegisterID GPRReg;
-#define InvalidGPRReg ((::JSC::GPRReg)-1)
+static constexpr GPRReg InvalidGPRReg { GPRReg::InvalidGPRReg };
 
 #if ENABLE(JIT)
 
 #if USE(JSVALUE64)
 class JSValueRegs {
 public:
-    JSValueRegs()
+    constexpr JSValueRegs()
         : m_gpr(InvalidGPRReg)
     {
     }
     
-    explicit JSValueRegs(GPRReg gpr)
+    constexpr explicit JSValueRegs(GPRReg gpr)
         : m_gpr(gpr)
     {
     }
@@ -139,7 +139,9 @@ public:
         ASSERT(!isAddress());
         return m_base;
     }
-    
+
+    GPRReg payloadGPR() const { return gpr(); }
+
     JSValueRegs regs() const
     {
         return JSValueRegs(gpr());
@@ -159,8 +161,8 @@ private:
 class JSValueRegs {
 public:
     JSValueRegs()
-        : m_tagGPR(static_cast<int8_t>(InvalidGPRReg))
-        , m_payloadGPR(static_cast<int8_t>(InvalidGPRReg))
+        : m_tagGPR(InvalidGPRReg)
+        , m_payloadGPR(InvalidGPRReg)
     {
     }
     
@@ -194,8 +196,8 @@ public:
     }
     bool operator!=(JSValueRegs other) const { return !(*this == other); }
     
-    GPRReg tagGPR() const { return static_cast<GPRReg>(m_tagGPR); }
-    GPRReg payloadGPR() const { return static_cast<GPRReg>(m_payloadGPR); }
+    GPRReg tagGPR() const { return m_tagGPR; }
+    GPRReg payloadGPR() const { return m_payloadGPR; }
     GPRReg gpr(WhichValueWord which) const
     {
         switch (which) {
@@ -213,16 +215,16 @@ public:
     void dump(PrintStream&) const;
     
 private:
-    int8_t m_tagGPR;
-    int8_t m_payloadGPR;
+    GPRReg m_tagGPR;
+    GPRReg m_payloadGPR;
 };
 
 class JSValueSource {
 public:
     JSValueSource()
         : m_offset(notAddress())
-        , m_baseOrTag(static_cast<int8_t>(InvalidGPRReg))
-        , m_payload(static_cast<int8_t>(InvalidGPRReg))
+        , m_baseOrTag(InvalidGPRReg)
+        , m_payload(InvalidGPRReg)
         , m_tagType(0)
     {
     }
@@ -237,28 +239,28 @@ public:
     
     JSValueSource(GPRReg tagGPR, GPRReg payloadGPR)
         : m_offset(notAddress())
-        , m_baseOrTag(static_cast<int8_t>(tagGPR))
-        , m_payload(static_cast<int8_t>(payloadGPR))
+        , m_baseOrTag(tagGPR)
+        , m_payload(payloadGPR)
         , m_tagType(0)
     {
     }
     
     JSValueSource(MacroAssembler::Address address)
         : m_offset(address.offset)
-        , m_baseOrTag(static_cast<int8_t>(address.base))
-        , m_payload(static_cast<int8_t>(InvalidGPRReg))
+        , m_baseOrTag(address.base)
+        , m_payload(InvalidGPRReg)
         , m_tagType(0)
     {
         ASSERT(m_offset != notAddress());
-        ASSERT(static_cast<GPRReg>(m_baseOrTag) != InvalidGPRReg);
+        ASSERT(m_baseOrTag != InvalidGPRReg);
     }
     
     static JSValueSource unboxedCell(GPRReg payloadGPR)
     {
         JSValueSource result;
         result.m_offset = notAddress();
-        result.m_baseOrTag = static_cast<int8_t>(InvalidGPRReg);
-        result.m_payload = static_cast<int8_t>(payloadGPR);
+        result.m_baseOrTag = InvalidGPRReg;
+        result.m_payload = payloadGPR;
         result.m_tagType = static_cast<int8_t>(JSValue::CellTag);
         return result;
     }
@@ -266,8 +268,7 @@ public:
     bool operator!() const { return !static_cast<bool>(*this); }
     explicit operator bool() const
     {
-        return static_cast<GPRReg>(m_baseOrTag) != InvalidGPRReg
-            || static_cast<GPRReg>(m_payload) != InvalidGPRReg;
+        return m_baseOrTag != InvalidGPRReg || m_payload != InvalidGPRReg;
     }
     
     bool isAddress() const
@@ -285,26 +286,26 @@ public:
     GPRReg base() const
     {
         ASSERT(isAddress());
-        return static_cast<GPRReg>(m_baseOrTag);
+        return m_baseOrTag;
     }
     
     GPRReg tagGPR() const
     {
-        ASSERT(!isAddress() && static_cast<GPRReg>(m_baseOrTag) != InvalidGPRReg);
-        return static_cast<GPRReg>(m_baseOrTag);
+        ASSERT(!isAddress() && m_baseOrTag != InvalidGPRReg);
+        return m_baseOrTag;
     }
     
     GPRReg payloadGPR() const
     {
         ASSERT(!isAddress());
-        return static_cast<GPRReg>(m_payload);
+        return m_payload;
     }
     
     bool hasKnownTag() const
     {
         ASSERT(!!*this);
         ASSERT(!isAddress());
-        return static_cast<GPRReg>(m_baseOrTag) == InvalidGPRReg;
+        return m_baseOrTag == InvalidGPRReg;
     }
     
     uint32_t tag() const
@@ -323,8 +324,8 @@ private:
     static inline int32_t notAddress() { return 0x80000000; }     
           
     int32_t m_offset;
-    int8_t m_baseOrTag;
-    int8_t m_payload; 
+    GPRReg m_baseOrTag;
+    GPRReg m_payload;
     int8_t m_tagType; // Contains the low bits of the tag.
 };
 #endif // USE(JSVALUE32_64)
@@ -382,12 +383,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<int>(reg) < 8);
-        static const char* nameForRegister[8] = {
-            "eax", "ecx", "edx", "ebx",
-            "esp", "ebp", "esi", "edi",
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -467,7 +463,8 @@ public:
     static const GPRReg returnValueGPR = X86Registers::eax; // regT0
     static const GPRReg returnValueGPR2 = X86Registers::edx; // regT1 or regT2
     static const GPRReg nonPreservedNonReturnGPR = X86Registers::r10; // regT5 (regT4 on Windows)
-    static const GPRReg nonPreservedNonArgumentGPR = X86Registers::r10; // regT5 (regT4 on Windows)
+    static const GPRReg nonPreservedNonArgumentGPR0 = X86Registers::r10; // regT5 (regT4 on Windows)
+    static const GPRReg nonPreservedNonArgumentGPR1 = X86Registers::eax;
 
     // FIXME: I believe that all uses of this are dead in the sense that it just causes the scratch
     // register allocator to select a different register and potentially spill things. It would be better
@@ -511,14 +508,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<int>(reg) < 16);
-        static const char* nameForRegister[16] = {
-            "rax", "rcx", "rdx", "rbx",
-            "rsp", "rbp", "rsi", "rdi",
-            "r8", "r9", "r10", "r11",
-            "r12", "r13", "r14", "r15"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const std::array<GPRReg, 3>& reservedRegisters()
@@ -604,14 +594,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<int>(reg) < 16);
-        static const char* nameForRegister[16] = {
-            "r0", "r1", "r2", "r3",
-            "r4", "r5", "r6", "r7",
-            "r8", "r9", "r10", "r11",
-            "r12", "r13", "r14", "r15"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -677,7 +660,8 @@ public:
     static const GPRReg returnValueGPR = ARM64Registers::x0; // regT0
     static const GPRReg returnValueGPR2 = ARM64Registers::x1; // regT1
     static const GPRReg nonPreservedNonReturnGPR = ARM64Registers::x2;
-    static const GPRReg nonPreservedNonArgumentGPR = ARM64Registers::x8;
+    static const GPRReg nonPreservedNonArgumentGPR0 = ARM64Registers::x8;
+    static const GPRReg nonPreservedNonArgumentGPR1 = ARM64Registers::x9;
     static const GPRReg patchpointScratchRegister;
 
     // GPRReg mapping is direct, the machine register numbers can
@@ -718,14 +702,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(static_cast<unsigned>(reg) < 32);
-        static const char* nameForRegister[32] = {
-            "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
-            "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
-            "r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
-            "r24", "r25", "r26", "r27", "r28", "fp", "lr", "sp"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const std::array<GPRReg, 4>& reservedRegisters()
@@ -751,7 +728,7 @@ public:
 class GPRInfo {
 public:
     typedef GPRReg RegisterType;
-    static const unsigned numberOfRegisters = 7;
+    static const unsigned numberOfRegisters = 11;
     static const unsigned numberOfArgumentRegisters = NUMBER_OF_ARGUMENT_REGISTERS;
 
     // regT0 must be v0 for returning a 32-bit value.
@@ -765,6 +742,10 @@ public:
     static const GPRReg regT4 = MIPSRegisters::t4;
     static const GPRReg regT5 = MIPSRegisters::t5;
     static const GPRReg regT6 = MIPSRegisters::t6;
+    static const GPRReg regT7 = MIPSRegisters::a0;
+    static const GPRReg regT8 = MIPSRegisters::a1;
+    static const GPRReg regT9 = MIPSRegisters::a2;
+    static const GPRReg regT10 = MIPSRegisters::a3;
     // These registers match the baseline JIT.
     static const GPRReg callFrameRegister = MIPSRegisters::fp;
     // These constants provide the names for the general purpose argument & return value registers.
@@ -780,7 +761,7 @@ public:
     static GPRReg toRegister(unsigned index)
     {
         ASSERT(index < numberOfRegisters);
-        static const GPRReg registerForIndex[numberOfRegisters] = { regT0, regT1, regT2, regT3, regT4, regT5, regT6 };
+        static const GPRReg registerForIndex[numberOfRegisters] = { regT0, regT1, regT2, regT3, regT4, regT5, regT6, regT7, regT8, regT9, regT10 };
         return registerForIndex[index];
     }
 
@@ -796,7 +777,7 @@ public:
         ASSERT(reg != InvalidGPRReg);
         ASSERT(reg < 32);
         static const unsigned indexForRegister[32] = {
-            InvalidIndex, InvalidIndex, 0, 1, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex,
+            InvalidIndex, InvalidIndex, 0, 1, 7, 8, 9, 10,
             InvalidIndex, InvalidIndex, 2, 3, 4, 5, 6, InvalidIndex,
             InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex,
             InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex, InvalidIndex
@@ -808,14 +789,7 @@ public:
     static const char* debugName(GPRReg reg)
     {
         ASSERT(reg != InvalidGPRReg);
-        ASSERT(reg < 16);
-        static const char* nameForRegister[16] = {
-            "zero", "at", "v0", "v1",
-            "a0", "a1", "a2", "a3",
-            "t0", "t1", "t2", "t3",
-            "t4", "t5", "t6", "t7"
-        };
-        return nameForRegister[reg];
+        return MacroAssembler::gprName(reg);
     }
 
     static const unsigned InvalidIndex = 0xffffffff;
@@ -838,6 +812,9 @@ inline GPRReg extractResult(JSValueRegs result) { return result.gpr(); }
 inline JSValueRegs extractResult(JSValueRegs result) { return result; }
 #endif
 inline NoResultTag extractResult(NoResultTag) { return NoResult; }
+
+// We use this hack to get the GPRInfo from the GPRReg type in templates because our code is bad and we should feel bad..
+constexpr GPRInfo toInfoFromReg(GPRReg) { return GPRInfo(); }
 
 #endif // ENABLE(JIT)
 

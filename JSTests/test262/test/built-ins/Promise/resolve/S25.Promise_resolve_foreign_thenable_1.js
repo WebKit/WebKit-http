@@ -2,25 +2,22 @@
 // See LICENSE for details.
 
 /*---
-info: >
+info: |
    Promise.resolve
 es6id: S25.4.4.5
 author: Sam Mikes
 description: Promise.resolve delegates to foreign thenable
-includes: [PromiseHelper.js]
 flags: [async]
 ---*/
 
-var sequence = [];
-
 var thenable = {
-    then: function(onResolve, onReject) {
-        return onResolve('resolved');
-    }
+  then: function(onResolve, onReject) {
+    return onResolve('resolved');
+  }
 };
 
 var p = Promise.resolve(thenable);
 
-p.then(function (r) {
-    assert.sameValue(r, 'resolved');
+p.then(function(r) {
+  assert.sameValue(r, 'resolved');
 }).then($DONE, $DONE);

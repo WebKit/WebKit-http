@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,7 @@
 #import "config.h"
 #import "ThemeCocoa.h"
 
+#import "FontCascade.h"
 #import "GraphicsContext.h"
 #import <dlfcn.h>
 
@@ -51,13 +52,14 @@ static void fitContextToBox(GraphicsContext& context, const FloatSize& srcImageS
 }
 
 #if ENABLE(APPLE_PAY)
+
 static NSBundle *passKitBundle()
 {
     static NSBundle *passKitBundle;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
 #if PLATFORM(MAC)
-        passKitBundle = [NSBundle bundleWithURL:[NSURL fileURLWithPath:@"/System/Library/PrivateFrameworks/PassKit.framework"]];
+        passKitBundle = [NSBundle bundleWithURL:[NSURL fileURLWithPath:@"/System/Library/PrivateFrameworks/PassKit.framework" isDirectory:YES]];
 #else
         dlopen("/System/Library/Frameworks/PassKit.framework/PassKit", RTLD_NOW);
         passKitBundle = [NSBundle bundleForClass:NSClassFromString(@"PKPaymentAuthorizationViewController")];

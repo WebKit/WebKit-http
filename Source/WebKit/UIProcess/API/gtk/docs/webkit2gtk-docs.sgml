@@ -59,6 +59,7 @@
     <xi:include href="xml/WebKitWebsiteData.xml"/>
     <xi:include href="xml/WebKitNetworkProxySettings.xml"/>
     <xi:include href="xml/WebKitAutomationSession.xml"/>
+    <xi:include href="xml/WebKitApplicationInfo.xml"/>
   </chapter>
 
   <chapter>
@@ -124,7 +125,17 @@
   <index id="api-index-2-18" role="2.18">
     <title>Index of new symbols in 2.18</title>
     <xi:include href="xml/api-index-2.18.xml"><xi:fallback /></xi:include>
-    </index>
+  </index>
+
+  <index id="api-index-2-20" role="2.20">
+    <title>Index of new symbols in 2.20</title>
+    <xi:include href="xml/api-index-2.20.xml"><xi:fallback /></xi:include>
+  </index>
+
+  <index id="api-index-2-22" role="2.22">
+    <title>Index of new symbols in 2.22</title>
+    <xi:include href="xml/api-index-2.22.xml"><xi:fallback /></xi:include>
+  </index>
 
   <xi:include href="xml/annotation-glossary.xml"><xi:fallback /></xi:include>
 </book>

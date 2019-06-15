@@ -1,4 +1,3 @@
-import platform
 import os
 
 import mock
@@ -8,7 +7,7 @@ import hypothesis.strategies as hs
 
 import pytest
 
-from .. import manifest, item, sourcefile, utils
+from .. import manifest, item, utils
 
 
 def SourceFileWithTest(path, hash, cls, *args):
@@ -111,7 +110,7 @@ def test_manifest_to_json_forwardslash():
         'paths': {
             'a/b': ('0000000000000000000000000000000000000000', 'testharness')
         },
-        'version': 4,
+        'version': 5,
         'url_base': '/',
         'items': {
             'reftest': {},
@@ -135,7 +134,7 @@ def test_manifest_to_json_backslash():
             'paths': {
                 'a/b': ('0000000000000000000000000000000000000000', 'testharness')
             },
-            'version': 4,
+            'version': 5,
             'url_base': '/',
             'items': {
                 'reftest': {},
@@ -158,7 +157,7 @@ def test_manifest_from_json_backslash():
         'paths': {
             'a\\b': ('0000000000000000000000000000000000000000', 'testharness')
         },
-        'version': 4,
+        'version': 5,
         'url_base': '/',
         'items': {
             'reftest': {},
@@ -232,6 +231,52 @@ def test_reftest_computation_chain_update_remove():
     assert list(m) == [("reftest", test2.path, {test2})]
 
 
+def test_reftest_computation_chain_update_test_type():
+    m = manifest.Manifest()
+
+    s1 = SourceFileWithTest("test", "0"*40, item.RefTest, [("/test-ref", "==")])
+
+    assert m.update([s1]) is True
+
+    test1 = s1.manifest_items()[1][0]
+
+    assert list(m) == [("reftest", test1.path, {test1})]
+
+    # test becomes a testharness test (hash change because that is determined
+    # based on the file contents). The updated manifest should not includes the
+    # old reftest.
+    s2 = SourceFileWithTest("test", "1"*40, item.TestharnessTest)
+    assert m.update([s2]) is True
+
+    test2 = s2.manifest_items()[1][0]
+
+    assert list(m) == [("testharness", test2.path, {test2})]
+
+
+def test_reftest_computation_chain_update_node_change():
+    m = manifest.Manifest()
+
+    s1 = SourceFileWithTest("test1", "0"*40, item.RefTest, [("/test2", "==")])
+    s2 = SourceFileWithTest("test2", "0"*40, item.RefTestNode, [("/test3", "==")])
+
+    assert m.update([s1, s2]) is True
+
+    test1 = s1.manifest_items()[1][0]
+    test2 = s2.manifest_items()[1][0]
+
+    assert list(m) == [("reftest", test1.path, {test1}),
+                       ("reftest_node", test2.path, {test2})]
+
+    #test2 changes to support type
+    s2 = SourceFileWithTest("test2", "1"*40, item.SupportFile)
+
+    assert m.update([s1,s2]) is True
+    test3 = s2.manifest_items()[1][0]
+
+    assert list(m) == [("reftest", test1.path, {test1}),
+                       ("support", test3.path, {test3})]
+
+
 def test_iterpath():
     m = manifest.Manifest()
 
@@ -246,3 +291,51 @@ def test_iterpath():
                                                                  "/test2-1.html",
                                                                  "/test2-2.html"])
     assert set(m.iterpath("missing")) == set()
+
+
+def test_filter():
+    m = manifest.Manifest()
+
+    sources = [SourceFileWithTest("test1", "0"*40, item.RefTest, [("/test1-ref", "==")]),
+               SourceFileWithTest("test2", "0"*40, item.RefTest, [("/test2-ref", "==")]),
+               SourceFileWithTests("test2", "0"*40, item.TestharnessTest, [("/test2-1.html",),
+                                                                           ("/test2-2.html",)]),
+               SourceFileWithTest("test3", "0"*40, item.TestharnessTest)]
+    m.update(sources)
+
+    json = m.to_json()
+
+    def filter(it):
+        for test in it:
+            if test[0] in ["/test2-2.html", "/test3"]:
+                yield test
+
+    filtered_manifest = manifest.Manifest.from_json("/", json, types=["testharness"], meta_filters=[filter])
+
+    actual = [
+        (ty, path, [test.id for test in tests])
+        for (ty, path, tests) in filtered_manifest
+    ]
+    assert actual == [
+        ("testharness", "test2", ["/test2-2.html"]),
+        ("testharness", "test3", ["/test3"]),
+    ]
+
+
+def test_reftest_node_by_url():
+    m = manifest.Manifest()
+
+    s1 = SourceFileWithTest("test1", "0"*40, item.RefTest, [("/test2", "==")])
+    s2 = SourceFileWithTest("test2", "0"*40, item.RefTest, [("/test3", "==")])
+
+    m.update([s1, s2])
+
+    test1 = s1.manifest_items()[1][0]
+    test2 = s2.manifest_items()[1][0]
+    test2_node = test2.to_RefTestNode()
+
+    assert m.reftest_nodes_by_url == {"/test1": test1,
+                                      "/test2": test2_node}
+    m._reftest_nodes_by_url = None
+    assert m.reftest_nodes_by_url == {"/test1": test1,
+                                      "/test2": test2_node}

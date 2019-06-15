@@ -75,6 +75,8 @@ public:
     reverse_iterator rend() { return reverse_iterator(begin()); }
     const_reverse_iterator rbegin() const { return const_reverse_iterator(end()); }
     const_reverse_iterator rend() const { return const_reverse_iterator(begin()); }
+    
+    template<typename U> bool contains(const U&);
 
     T& first() { ASSERT(m_start != m_end); return m_buffer.buffer()[m_start]; }
     const T& first() const { ASSERT(m_start != m_end); return m_buffer.buffer()[m_start]; }
@@ -100,6 +102,11 @@ public:
     template<typename U, typename Func>
     void appendAndBubble(U&&, const Func&);
     
+    // Remove and return the first element for which the callback returns true. Returns a null version of
+    // T if it the callback always returns false.
+    template<typename Func>
+    T takeFirst(const Func&);
+
     // Remove and return the last element for which the callback returns true. Returns a null version of
     // T if it the callback always returns false.
     template<typename Func>
@@ -433,6 +440,17 @@ void Deque<T, inlineCapacity>::expandCapacity()
 }
 
 template<typename T, size_t inlineCapacity>
+template<typename U>
+bool Deque<T, inlineCapacity>::contains(const U& searchValue)
+{
+    for (auto& value : *this) {
+        if (value == searchValue)
+            return true;
+    }
+    return false;
+}
+
+template<typename T, size_t inlineCapacity>
 inline auto Deque<T, inlineCapacity>::takeFirst() -> T
 {
     T oldFirst = WTFMove(first());
@@ -567,6 +585,25 @@ inline void Deque<T, inlineCapacity>::appendAndBubble(U&& value, const Func& fun
         std::swap(*prev, *iter);
         iter = prev;
     }
+}
+
+template<typename T, size_t inlineCapacity>
+template<typename Func>
+inline T Deque<T, inlineCapacity>::takeFirst(const Func& func)
+{
+    unsigned count = 0;
+    unsigned size = this->size();
+    while (count < size) {
+        T candidate = takeFirst();
+        if (func(candidate)) {
+            while (count--)
+                prepend(takeLast());
+            return candidate;
+        }
+        count++;
+        append(WTFMove(candidate));
+    }
+    return T();
 }
 
 template<typename T, size_t inlineCapacity>

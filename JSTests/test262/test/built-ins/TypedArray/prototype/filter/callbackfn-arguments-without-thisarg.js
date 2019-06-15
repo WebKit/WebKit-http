@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.filter
 description: >
   callbackfn arguments
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
@@ -13,6 +13,7 @@ info: >
     c. Let selected be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,32 +26,45 @@
 #include "config.h"
 #include "JSDOMWrapper.h"
 
+#include "DOMWindow.h"
 #include "DOMWrapperWorld.h"
 #include "JSDOMWindow.h"
+#include "JSRemoteDOMWindow.h"
+#include "SerializedScriptValue.h"
 #include "WebCoreJSClientData.h"
-#include <runtime/Error.h>
-
-using namespace JSC;
+#include <JavaScriptCore/Error.h>
 
 namespace WebCore {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSDOMObject);
 
-JSDOMWindow& JSDOMObject::domWindow() const
+JSDOMObject::JSDOMObject(JSC::Structure* structure, JSC::JSGlobalObject& globalObject)
+    : Base(globalObject.vm(), structure)
 {
-    auto* domWindow = JSC::jsCast<JSDOMWindow*>(JSC::JSNonFinalObject::globalObject());
-    ASSERT(domWindow);
-    return *domWindow;
+    ASSERT(scriptExecutionContext() || globalObject.classInfo() == JSRemoteDOMWindow::info());
 }
 
-Subspace* outputConstraintSubspaceFor(VM& vm)
+CompleteSubspace* outputConstraintSubspaceFor(VM& vm)
 {
     return &static_cast<JSVMClientData*>(vm.clientData)->outputConstraintSpace();
 }
 
-Subspace* globalObjectOutputConstraintSubspaceFor(VM& vm)
+CompleteSubspace* globalObjectOutputConstraintSubspaceFor(VM& vm)
 {
     return &static_cast<JSVMClientData*>(vm.clientData)->globalObjectOutputConstraintSpace();
+}
+
+JSC::JSValue cloneAcrossWorlds(JSC::ExecState& state, const JSDOMObject& owner, JSC::JSValue value)
+{
+    if (isWorldCompatible(state, value))
+        return value;
+    // FIXME: Is it best to handle errors by returning null rather than throwing an exception?
+    auto serializedValue = SerializedScriptValue::create(state, value, SerializationErrorMode::NonThrowing);
+    if (!serializedValue)
+        return JSC::jsNull();
+    // FIXME: Why is owner->globalObject() better than state.lexicalGlobalObject() here?
+    // Unlike this, isWorldCompatible uses state.lexicalGlobalObject(); should the two match?
+    return serializedValue->deserialize(state, owner.globalObject());
 }
 
 } // namespace WebCore

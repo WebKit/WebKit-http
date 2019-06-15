@@ -5,22 +5,14 @@
 info: Appearing of "continue" within a "try/catch" Block yields SyntaxError
 es5id: 12.7_A8_T2
 description: Checking if execution of "continue" within catch Block fails
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
 
-var x=0,y=0;
+throw "Test262: This statement should not be evaluated.";
 
 try{
-	LABEL1 : do {
-		x++;
-		throw "gonna leave it";
-		y++;
-	} while(0);
-	$ERROR('#1: throw "gonna leave it" lead to throwing exception');
 } catch(e){
 	continue;
-	LABEL2 : do {
-		x++;
-		y++;
-	} while(0);
 };

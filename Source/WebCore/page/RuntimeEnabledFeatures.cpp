@@ -33,7 +33,8 @@
 #include "RuntimeEnabledFeatures.h"
 
 #include "MediaPlayer.h"
-#include "WebSocket.h"
+#include <JavaScriptCore/Options.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -41,6 +42,9 @@ RuntimeEnabledFeatures::RuntimeEnabledFeatures()
 {
 #if ENABLE(MEDIA_STREAM) && PLATFORM(COCOA)
     m_isMediaDevicesEnabled = false;
+#endif
+#if PLATFORM(WATCHOS)
+    m_isWebSocketEnabled = false;
 #endif
 }
 
@@ -51,18 +55,9 @@ RuntimeEnabledFeatures& RuntimeEnabledFeatures::sharedFeatures()
     return runtimeEnabledFeatures;
 }
 
-#if ENABLE(VIDEO)
-bool RuntimeEnabledFeatures::audioEnabled() const
+bool RuntimeEnabledFeatures::spectreGadgetsEnabled() const
 {
-    return MediaPlayer::isAvailable();
+    return JSC::Options::enableSpectreGadgets();
 }
-#endif
-
-#if ENABLE(WEB_SOCKETS)
-bool RuntimeEnabledFeatures::webSocketEnabled() const
-{
-    return WebSocket::isAvailable();
-}
-#endif
 
 } // namespace WebCore

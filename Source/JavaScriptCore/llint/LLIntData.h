@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,8 @@
 #pragma once
 
 #include "JSCJSValue.h"
+#include "MacroAssemblerCodeRef.h"
 #include "Opcode.h"
-#include <array>
 
 namespace JSC {
 
@@ -42,39 +42,21 @@ typedef void (*LLIntCode)();
 
 namespace LLInt {
 
-struct OpcodeStats {
-    OpcodeID id;
-    size_t count { 0 };
-    size_t slowPathCount { 0 };
-};
-typedef std::array<OpcodeStats, numOpcodeIDs> OpcodeStatsArray;
-
 class Data {
 public:
-
     static void performAssertions(VM&);
-    static OpcodeStats& opcodeStats(OpcodeID id) { return (*s_opcodeStatsArray)[id]; }
-
-    JS_EXPORT_PRIVATE static void finalizeStats();
-
-    static void dumpStats();
-    static void loadStats();
 
 private:
-    static void ensureStats();
-    static void resetStats();
-    static void saveStats();
-
-    static Instruction* s_exceptionInstructions;
+    static Instruction s_exceptionInstructions[maxOpcodeLength + 1];
     static Opcode s_opcodeMap[numOpcodeIDs];
-    static OpcodeStatsArray* s_opcodeStatsArray;
 
     friend void initialize();
 
     friend Instruction* exceptionInstructions();
     friend Opcode* opcodeMap();
     friend Opcode getOpcode(OpcodeID);
-    friend void* getCodePtr(OpcodeID);
+    template<PtrTag tag> friend MacroAssemblerCodePtr<tag> getCodePtr(OpcodeID);
+    template<PtrTag tag> friend MacroAssemblerCodeRef<tag> getCodeRef(OpcodeID);
 };
 
 void initialize();
@@ -98,15 +80,36 @@ inline Opcode getOpcode(OpcodeID id)
 #endif
 }
 
-ALWAYS_INLINE void* getCodePtr(OpcodeID id)
+template<PtrTag tag>
+ALWAYS_INLINE MacroAssemblerCodePtr<tag> getCodePtr(OpcodeID opcodeID)
 {
-    return reinterpret_cast<void*>(getOpcode(id));
+    void* address = reinterpret_cast<void*>(getOpcode(opcodeID));
+    address = retagCodePtr<BytecodePtrTag, tag>(address);
+    return MacroAssemblerCodePtr<tag>::createFromExecutableAddress(address);
+}
+
+template<PtrTag tag>
+ALWAYS_INLINE MacroAssemblerCodeRef<tag> getCodeRef(OpcodeID opcodeID)
+{
+    return MacroAssemblerCodeRef<tag>::createSelfManagedCodeRef(getCodePtr<tag>(opcodeID));
 }
 
 #if ENABLE(JIT)
-ALWAYS_INLINE LLIntCode getCodeFunctionPtr(OpcodeID codeId)
+template<PtrTag tag>
+ALWAYS_INLINE LLIntCode getCodeFunctionPtr(OpcodeID opcodeID)
 {
-    return reinterpret_cast<LLIntCode>(getCodePtr(codeId));
+    ASSERT(opcodeID >= NUMBER_OF_BYTECODE_IDS);
+#if COMPILER(MSVC)
+    return reinterpret_cast<LLIntCode>(getCodePtr<tag>(opcodeID).executableAddress());
+#else
+    return reinterpret_cast<LLIntCode>(getCodePtr<tag>(opcodeID).template executableAddress());
+#endif
+}
+
+#else
+ALWAYS_INLINE void* getCodePtr(OpcodeID id)
+{
+    return reinterpret_cast<void*>(getOpcode(id));
 }
 #endif
 

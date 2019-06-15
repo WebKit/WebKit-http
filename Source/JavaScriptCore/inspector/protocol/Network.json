@@ -1,7 +1,7 @@
 {
     "domain": "Network",
     "description": "Network domain allows tracking network activities of the page. It exposes information about http, file, data and other requests and responses, their headers, bodies, timing, etc.",
-    "availability": "web",
+    "availability": ["web", "service-worker"],
     "types": [
         {
             "id": "LoaderId",
@@ -65,12 +65,12 @@
             "description": "HTTP response data.",
             "properties": [
                 { "name": "url", "type": "string", "description": "Response URL. This URL can be different from CachedResource.url in case of redirect." },
-                { "name": "status", "type": "number", "description": "HTTP response status code." },
+                { "name": "status", "type": "integer", "description": "HTTP response status code." },
                 { "name": "statusText", "type": "string", "description": "HTTP response status text." },
                 { "name": "headers", "$ref": "Headers", "description": "HTTP response headers." },
                 { "name": "headersText", "type": "string", "optional": true, "description": "HTTP response headers text." },
                 { "name": "mimeType", "type": "string", "description": "Resource mimeType as determined by the browser." },
-                { "name": "source", "type": "string", "enum": ["unknown", "network", "memory-cache", "disk-cache"], "description": "Specifies where the response came from." },
+                { "name": "source", "type": "string", "enum": ["unknown", "network", "memory-cache", "disk-cache", "service-worker"], "description": "Specifies where the response came from." },
                 { "name": "requestHeaders", "$ref": "Headers", "optional": true, "description": "Refined HTTP request headers that were actually transmitted over the network." },
                 { "name": "requestHeadersText", "type": "string", "optional": true, "description": "HTTP request headers text." },
                 { "name": "timing", "$ref": "ResourceTiming", "optional": true, "description": "Timing information for the given request." }
@@ -106,7 +106,7 @@
             "type": "object",
             "description": "WebSocket response data.",
             "properties": [
-                { "name": "status", "type": "number", "description": "HTTP response status code." },
+                { "name": "status", "type": "integer", "description": "HTTP response status code." },
                 { "name": "statusText", "type": "string", "description": "HTTP response status text." },
                 { "name": "headers", "$ref": "Headers", "description": "HTTP response headers." }
             ]
@@ -191,7 +191,7 @@
             "returns": [
                 { "name": "content", "type": "string", "description": "Resource content." },
                 { "name": "mimeType", "type": "string", "description": "Resource mimeType." },
-                { "name": "status", "type": "number", "description": "HTTP response status code." }
+                { "name": "status", "type": "integer", "description": "HTTP response status code." }
             ]
         },
         {
@@ -216,7 +216,8 @@
                 { "name": "loaderId", "$ref": "LoaderId", "description": "Loader identifier." },
                 { "name": "documentURL", "type": "string", "description": "URL of the document this request is loaded for." },
                 { "name": "request", "$ref": "Request", "description": "Request data." },
-                { "name": "timestamp", "$ref": "Timestamp", "description": "Timestamp." },
+                { "name": "timestamp", "$ref": "Timestamp" },
+                { "name": "walltime", "$ref": "Walltime" },
                 { "name": "initiator", "$ref": "Initiator", "description": "Request initiator." },
                 { "name": "redirectResponse", "optional": true, "$ref": "Response", "description": "Redirect response data." },
                 { "name": "type", "$ref": "Page.ResourceType", "optional": true, "description": "Resource type." },

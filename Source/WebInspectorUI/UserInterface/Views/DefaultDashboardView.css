@@ -27,7 +27,7 @@ body.web .toolbar.collapsed .dashboard.default > :matches(.resourcesSize, .time,
     display: none;
 }
 
-body.javascript .toolbar .dashboard.default > :matches(.resourcesCount, .resourcesSize, .time) {
+body:not(.web) .toolbar .dashboard.default > :matches(.resourcesCount, .resourcesSize, .time) {
     display: none;
 }
 
@@ -53,7 +53,7 @@ body.javascript .toolbar .dashboard.default > :matches(.resourcesCount, .resourc
     border-radius: 4px;
     border: 1px solid transparent;
 
-    font-family: -apple-system, sans-serif;
+    font-family: -webkit-system-font, sans-serif;
     font-variant-numeric: tabular-nums;
 }
 

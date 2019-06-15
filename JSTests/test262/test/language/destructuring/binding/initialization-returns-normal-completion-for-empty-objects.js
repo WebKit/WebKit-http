@@ -5,7 +5,7 @@
 es6id: 13.3.3.5
 description: >
   Normal completion when initializing an empty ObjectBindingPattern
-info: >
+info: |
   13.3.3.5 Runtime Semantics: BindingInitialization
 
   BindingPattern : ObjectBindingPattern
@@ -18,6 +18,7 @@ info: >
 
   1. Return NormalCompletion(empty).
 
+features: [destructuring-binding]
 ---*/
 
 function fn({}) { return true; }

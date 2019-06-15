@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     We overload valueOf method so it return non Primitive value
     Thus [[DefaultValue]] must return Object.toString() value
 es5id: 8.12.8_A3
@@ -13,12 +13,19 @@ description: >
 
 try
 {
-  var __obj = {toString: function() {return "1"}, valueOf: function() {return new Object();}}
+  var __obj = {
+    toString: function() {
+      return "1"
+    },
+    valueOf: function() {
+      return new Object();
+    }
+  }
   if (Number(__obj) !== 1) {
     $ERROR('#1.1: var __obj = {toNumber: function() {return "1"}, valueOf: function() {return new Object();}}; Number(__obj) === 1. Actual: ' + (Number(__obj)));
   }
 }
-catch(e)
+catch (e)
 {
   $ERROR('#1.2: var __obj = {toNumber: function() {return "1"}, valueOf: function() {return new Object();}}; Number(__obj) === 1. Actual: ' + (e));
 }

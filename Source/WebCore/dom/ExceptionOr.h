@@ -1,6 +1,6 @@
 /*
 
-Copyright (C) 2016 Apple Inc. All rights reserved.
+Copyright (C) 2016-2017 Apple Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #pragma once
 
 #include "Exception.h"
+#include <wtf/CrossThreadCopier.h>
 #include <wtf/Expected.h>
 
 namespace WebCore {
@@ -94,7 +95,7 @@ template<typename ReturnType> template<typename OtherType> inline ExceptionOr<Re
 
 template<typename ReturnType> inline bool ExceptionOr<ReturnType>::hasException() const
 {
-    return !m_value.hasValue();
+    return !m_value.has_value();
 }
 
 template<typename ReturnType> inline const Exception& ExceptionOr<ReturnType>::exception() const
@@ -159,7 +160,7 @@ inline ExceptionOr<void>::ExceptionOr(Exception&& exception)
 
 inline bool ExceptionOr<void>::hasException() const
 {
-    return !m_value.hasValue();
+    return !m_value.has_value();
 }
 
 inline const Exception& ExceptionOr<void>::exception() const
@@ -179,4 +180,16 @@ inline ExceptionOr<void> isolatedCopy(ExceptionOr<void>&& value)
     return { };
 }
 
+}
+
+namespace WTF {
+template<typename T> struct CrossThreadCopierBase<false, false, WebCore::ExceptionOr<T> > {
+    typedef WebCore::ExceptionOr<T> Type;
+    static Type copy(const Type& source)
+    {
+        if (source.hasException())
+            return crossThreadCopy(source.exception());
+        return crossThreadCopy(source.returnValue());
+    }
+};
 }

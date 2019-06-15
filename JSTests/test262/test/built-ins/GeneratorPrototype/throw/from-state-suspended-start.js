@@ -6,9 +6,11 @@ description: >
     Resuming abruptly from a generator in the 'suspendedStart' state should
     honor the abrupt completion and trigger a transition into the 'completed'
     state.
+features: [generators]
 ---*/
 
 function E() {}
+
 function* G() {
   yield 1;
   yield 2;
@@ -16,7 +18,9 @@ function* G() {
 var iter;
 
 iter = G();
-assert.throws(E, function() { iter.throw(new E()); });
+assert.throws(E, function() {
+  iter.throw(new E());
+});
 
 var result = iter.next();
 

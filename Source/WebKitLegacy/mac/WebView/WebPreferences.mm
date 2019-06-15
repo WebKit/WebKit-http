@@ -34,32 +34,31 @@
 #import "WebFrameNetworkingContext.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
-#import "WebKitSystemInterface.h"
 #import "WebKitVersionChecks.h"
 #import "WebNSDictionaryExtras.h"
 #import "WebNSURLExtras.h"
-#import "WebSystemInterface.h"
+#import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/AudioSession.h>
-#import <WebCore/CFNetworkSPI.h>
+#import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/NetworkStorageSession.h>
-#import <WebCore/PlatformCookieJar.h>
-#import <WebCore/ResourceHandle.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
-#import <runtime/InitializeThreading.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/RunLoop.h>
 
 using namespace WebCore;
 
-#if PLATFORM(IOS)
+#if HAVE(AUDIO_TOOLBOX_AUDIO_SESSION)
 #import <AudioToolbox/AudioSession.h>
+#endif
+
+#if PLATFORM(IOS)
 #import <WebCore/Device.h>
 #import <WebCore/GraphicsContext.h>
-#import <WebCore/ImageSource.h>
 #import <WebCore/WebCoreThreadMessage.h>
 #endif
 
@@ -77,14 +76,14 @@ static NSMutableDictionary *webPreferencesInstances;
 
 static unsigned webPreferencesInstanceCountWithPrivateBrowsingEnabled;
 
-static bool contains(const char* const array[], int count, const char* item)
+template<unsigned size> static bool contains(const char* const (&array)[size], const char* item)
 {
     if (!item)
         return false;
-
-    for (int i = 0; i < count; i++)
-        if (!strcasecmp(array[i], item))
+    for (auto* string : array) {
+        if (equalIgnoringASCIICase(string, item))
             return true;
+    }
     return false;
 }
 
@@ -141,11 +140,11 @@ static WebCacheModel cacheModelForMainBundle(void)
         };
 
         const char* bundleID = [[[NSBundle mainBundle] bundleIdentifier] UTF8String];
-        if (contains(documentViewerIDs, sizeof(documentViewerIDs) / sizeof(documentViewerIDs[0]), bundleID))
+        if (contains(documentViewerIDs, bundleID))
             return WebCacheModelDocumentViewer;
-        if (contains(documentBrowserIDs, sizeof(documentBrowserIDs) / sizeof(documentBrowserIDs[0]), bundleID))
+        if (contains(documentBrowserIDs, bundleID))
             return WebCacheModelDocumentBrowser;
-        if (contains(primaryWebBrowserIDs, sizeof(primaryWebBrowserIDs) / sizeof(primaryWebBrowserIDs[0]), bundleID))
+        if (contains(primaryWebBrowserIDs, bundleID))
             return WebCacheModelPrimaryWebBrowser;
 
         bool isLinkedAgainstWebKit = WebKitLinkedOnOrAfter(0);
@@ -401,7 +400,6 @@ public:
     bool requiresPlaysInlineAttribute = !allowsInlineMediaPlayback;
     bool attachmentElementEnabled = IOSApplication::isMobileMail();
 #endif
-    InitWebCoreSystemInterface();
 
     NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:
         @"Times",                       WebKitStandardFontPreferenceKey,
@@ -520,9 +518,9 @@ public:
         [NSNumber numberWithBool:YES],  WebKitLargeImageAsyncDecodingEnabledPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitAnimatedImageAsyncDecodingEnabledPreferenceKey,
 #if PLATFORM(IOS)
-        [NSNumber numberWithUnsignedInt:FrameFlatteningFullyEnabled], WebKitFrameFlatteningPreferenceKey,
+        [NSNumber numberWithUnsignedInt:static_cast<uint32_t>(FrameFlattening::FullyEnabled)], WebKitFrameFlatteningPreferenceKey,
 #else
-        [NSNumber numberWithUnsignedInt:FrameFlatteningDisabled], WebKitFrameFlatteningPreferenceKey,
+        [NSNumber numberWithUnsignedInt:static_cast<uint32_t>(FrameFlattening::Disabled)], WebKitFrameFlatteningPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO], WebKitAsyncFrameScrollingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitSpatialNavigationEnabledPreferenceKey,
@@ -600,7 +598,6 @@ public:
 #endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
-        [NSNumber numberWithBool:Settings::isQTKitEnabled()], WebKitQTKitEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
@@ -608,6 +605,7 @@ public:
         [NSNumber numberWithBool:NO], WebKitUseLegacyTextAlignPositionedElementBehaviorPreferenceKey,
 #if ENABLE(MEDIA_SOURCE)
         [NSNumber numberWithBool:YES], WebKitMediaSourceEnabledPreferenceKey,
+        @NO, WebKitSourceBufferChangeTypeEnabledPreferenceKey,
 #endif
 #if ENABLE(SERVICE_CONTROLS)
         [NSNumber numberWithBool:NO], WebKitImageControlsEnabledPreferenceKey,
@@ -624,16 +622,21 @@ public:
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitDataTransferItemsEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitCustomPasteboardDataEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey,
+
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
 #if ENABLE(WEBGPU)
         [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
 #endif
-#if ENABLE(FETCH_API)
+        [NSNumber numberWithBool:NO], WebKitCacheAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
-#endif
+
 #if ENABLE(STREAMS_API)
         [NSNumber numberWithBool:NO], WebKitReadableByteStreamAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitWritableStreamAPIEnabledPreferenceKey,
@@ -641,43 +644,49 @@ public:
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
         [NSNumber numberWithBool:NO], WebKitDownloadAttributeEnabledPreferenceKey,
 #endif
-        [NSNumber numberWithBool:YES], WebKitCSSGridLayoutEnabledPreferenceKey,
-#if ENABLE(WEB_ANIMATIONS)
+        [NSNumber numberWithBool:NO], WebKitDirectoryUploadEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
-#endif
 
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:NO], WebKitVisualViewportEnabledPreferenceKey,
 #else
         [NSNumber numberWithBool:YES], WebKitVisualViewportEnabledPreferenceKey,
 #endif
+        [NSNumber numberWithBool:NO], WebKitVisualViewportAPIEnabledPreferenceKey,
 
+        [NSNumber numberWithBool:NO], WebKitCSSOMViewScrollingAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
+        [NSNumber numberWithBool:NO], WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey,
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMediaDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaStreamEnabledPreferenceKey,
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
-        @NO, WebKitDisplayContentsEnabledPreferenceKey,
+        @YES, WebKitDisplayContentsEnabledPreferenceKey,
         @NO, WebKitUserTimingEnabledPreferenceKey,
         @NO, WebKitResourceTimingEnabledPreferenceKey,
-        @NO, WebKitCredentialManagementEnabledPreferenceKey,
+        @NO, WebKitWebAuthenticationEnabledPreferenceKey,
         @NO, WebKitMediaUserGestureInheritsFromDocument,
         @NO, WebKitIsSecureContextAttributeEnabledPreferenceKey,
-#if PLATFORM(IOS)
-        @NO, WebKitLegacyEncryptedMediaAPIEnabledKey,
-#else
         @YES, WebKitLegacyEncryptedMediaAPIEnabledKey,
-#endif
+        @NO, WebKitEncryptedMediaAPIEnabledKey,
         @YES, WebKitViewportFitEnabledPreferenceKey,
         @YES, WebKitConstantPropertiesEnabledPreferenceKey,
+        @NO, WebKitColorFilterEnabledPreferenceKey,
+        @NO, WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey,
+        @YES, WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey,
+        @NO, WebKitInspectorAdditionsEnabledPreferenceKey,
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
+        @NO, WebKitAccessibilityObjectModelEnabledPreferenceKey,
+        @YES, WebKitAriaReflectionEnabledPreferenceKey,
+        @NO, WebKitMediaCapabilitiesEnabledPreferenceKey,
+        @NO, WebKitFetchAPIKeepAliveEnabledPreferenceKey,
+        @NO, WebKitServerTimingEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -756,7 +765,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setInt:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -779,7 +788,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setUnsignedInt:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -802,7 +811,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setFloat:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -824,7 +833,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setBool:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -847,7 +856,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setLongLong:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -870,7 +879,7 @@ public:
 #if PLATFORM(IOS)
     dispatch_barrier_sync(_private->readWriteQueue, ^{
 #endif
-    [_private->values.get() _webkit_setUnsignedLongLong:value forKey:_key];
+    [_private->values.get() setObject:@(value) forKey:_key];
 #if PLATFORM(IOS)
     });
 #endif
@@ -1008,7 +1017,7 @@ public:
         return [NSURL _web_URLWithDataAsString:locationString];
     } else {
         locationString = [locationString stringByExpandingTildeInPath];
-        return [NSURL fileURLWithPath:locationString];
+        return [NSURL fileURLWithPath:locationString isDirectory:NO];
     }
 }
 
@@ -1496,6 +1505,16 @@ public:
     [self _setBoolValue: flag forKey: WebKitAllowFileAccessFromFileURLsPreferenceKey];
 }
 
+- (BOOL)allowCrossOriginSubresourcesToAskForCredentials
+{
+    return [self _boolValueForKey:WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey];
+}
+
+- (void)setAllowCrossOriginSubresourcesToAskForCredentials:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAllowCrossOriginSubresourcesToAskForCredentialsKey];
+}
+
 - (BOOL)needsStorageAccessFromFileURLsQuirk
 {
     return [self _boolValueForKey: WebKitNeedsStorageAccessFromFileURLsQuirkKey];
@@ -1831,7 +1850,7 @@ public:
 
 + (CFStringEncoding)_systemCFStringEncoding
 {
-    return WKGetWebDefaultCFStringEncoding();
+    return webDefaultCFStringEncoding();
 }
 
 + (void)_setInitialDefaultTextEncodingToSystemEncoding
@@ -1859,13 +1878,13 @@ static NSString *classIBCreatorID = nil;
 
 + (void)_clearNetworkLoaderSession
 {
-    WebCore::deleteAllCookies(NetworkStorageSession::defaultStorageSession());
+    NetworkStorageSession::defaultStorageSession().deleteAllCookies();
 }
 
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
     RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage();
-    ASSERT(cookieStorage); // Will fail when building without USE(CFURLCONNECTION) and NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
+    ASSERT(cookieStorage); // Will fail when NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
     CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
 }
 
@@ -2260,16 +2279,6 @@ static NSString *classIBCreatorID = nil;
     return [self _boolValueForKey:WebKitAVFoundationNSURLSessionEnabledKey];
 }
 
-- (void)setQTKitEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitQTKitEnabledPreferenceKey];
-}
-
-- (BOOL)isQTKitEnabled
-{
-    return [self _boolValueForKey:WebKitQTKitEnabledPreferenceKey];
-}
-
 - (void)setVideoPluginProxyEnabled:(BOOL)flag
 {
     // No-op, left for SPI compatibility.
@@ -2317,6 +2326,7 @@ static NSString *classIBCreatorID = nil;
 
 - (void)setAudioSessionCategoryOverride:(unsigned)override
 {
+#if HAVE(AUDIO_TOOLBOX_AUDIO_SESSION)
     if (override > AudioSession::AudioProcessing) {
         // Clients are passing us OSTypes values from AudioToolbox/AudioSession.h,
         // which need to be translated into AudioSession::CategoryType:
@@ -2344,6 +2354,7 @@ static NSString *classIBCreatorID = nil;
             break;
         }
     }
+#endif
 
     [self _setUnsignedIntValue:override forKey:WebKitAudioSessionCategoryOverride];
 }
@@ -2732,6 +2743,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitMediaSourceEnabledPreferenceKey];
 }
 
+- (BOOL)sourceBufferChangeTypeEnabled
+{
+    return [self _boolValueForKey:WebKitSourceBufferChangeTypeEnabledPreferenceKey];
+}
+
+- (void)setSourceBufferChangeTypeEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitSourceBufferChangeTypeEnabledPreferenceKey];
+}
+
 - (BOOL)imageControlsEnabled
 {
     return [self _boolValueForKey:WebKitImageControlsEnabledPreferenceKey];
@@ -2810,16 +2831,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setPeerConnectionEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
-}
-
-- (BOOL)webRTCLegacyAPIEnabled
-{
-    return [self _boolValueForKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
-}
-
-- (void)setWebRTCLegacyAPIEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitWebRTCLegacyAPIEnabledPreferenceKey];
 }
 
 - (BOOL)linkPreloadEnabled
@@ -2972,6 +2983,46 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCustomElementsEnabledPreferenceKey];
 }
 
+- (BOOL)dataTransferItemsEnabled
+{
+    return [self _boolValueForKey:WebKitDataTransferItemsEnabledPreferenceKey];
+}
+
+- (void)setDataTransferItemsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitDataTransferItemsEnabledPreferenceKey];
+}
+
+- (BOOL)customPasteboardDataEnabled
+{
+    return [self _boolValueForKey:WebKitCustomPasteboardDataEnabledPreferenceKey];
+}
+
+- (void)setCustomPasteboardDataEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCustomPasteboardDataEnabledPreferenceKey];
+}
+
+- (BOOL)cacheAPIEnabled
+{
+    return [self _boolValueForKey:WebKitCacheAPIEnabledPreferenceKey];
+}
+
+- (void)setCacheAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCacheAPIEnabledPreferenceKey];
+}
+
+- (BOOL)crossOriginWindowPolicySupportEnabled
+{
+    return [self _boolValueForKey:WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey];
+}
+
+- (void)setCrossOriginWindowPolicySupportEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCrossOriginWindowPolicySupportEnabledPreferenceKey];
+}
+
 - (BOOL)fetchAPIEnabled
 {
     return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
@@ -3012,14 +3063,14 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitDownloadAttributeEnabledPreferenceKey];
 }
 
-- (BOOL)isCSSGridLayoutEnabled
+- (void)setDirectoryUploadEnabled:(BOOL)flag
 {
-    return [self _boolValueForKey:WebKitCSSGridLayoutEnabledPreferenceKey];
+    [self _setBoolValue:flag forKey:WebKitDirectoryUploadEnabledPreferenceKey];
 }
 
-- (void)setCSSGridLayoutEnabled:(BOOL)flag
+- (BOOL)directoryUploadEnabled
 {
-    [self _setBoolValue:flag forKey:WebKitCSSGridLayoutEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitDirectoryUploadEnabledPreferenceKey];
 }
 
 - (BOOL)visualViewportEnabled
@@ -3032,6 +3083,26 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitVisualViewportEnabledPreferenceKey];
 }
 
+- (BOOL)visualViewportAPIEnabled
+{
+    return [self _boolValueForKey:WebKitVisualViewportAPIEnabledPreferenceKey];
+}
+
+- (void)setVisualViewportAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitVisualViewportAPIEnabledPreferenceKey];
+}
+
+- (BOOL)CSSOMViewScrollingAPIEnabled
+{
+    return [self _boolValueForKey:WebKitCSSOMViewScrollingAPIEnabledPreferenceKey];
+}
+
+- (void)setCSSOMViewScrollingAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCSSOMViewScrollingAPIEnabledPreferenceKey];
+}
+
 - (BOOL)webAnimationsEnabled
 {
     return [self _boolValueForKey:WebKitWebAnimationsEnabledPreferenceKey];
@@ -3040,6 +3111,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setWebAnimationsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitWebAnimationsEnabledPreferenceKey];
+}
+
+- (BOOL)fetchAPIKeepAliveEnabled
+{
+    return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
+}
+
+- (void)setFetchAPIKeepAliveEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitFetchAPIEnabledPreferenceKey];
 }
 
 - (BOOL)modernMediaControlsEnabled
@@ -3052,6 +3133,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitModernMediaControlsEnabledPreferenceKey];
 }
 
+- (BOOL)webAnimationsCSSIntegrationEnabled
+{
+    return [self _boolValueForKey:WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey];
+}
+
+- (void)setWebAnimationsCSSIntegrationEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitWebAnimationsCSSIntegrationEnabledPreferenceKey];
+}
+
 - (BOOL)intersectionObserverEnabled
 {
     return [self _boolValueForKey:WebKitIntersectionObserverEnabledPreferenceKey];
@@ -3060,6 +3151,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setIntersectionObserverEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitIntersectionObserverEnabledPreferenceKey];
+}
+
+- (BOOL)menuItemElementEnabled
+{
+    return [self _boolValueForKey:WebKitMenuItemElementEnabledPreferenceKey];
+}
+
+- (void)setMenuItemElementEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMenuItemElementEnabledPreferenceKey];
 }
 
 - (BOOL)displayContentsEnabled
@@ -3092,14 +3193,14 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitResourceTimingEnabledPreferenceKey];
 }
 
-- (BOOL)credentialManagementEnabled
+- (BOOL)webAuthenticationEnabled
 {
-    return [self _boolValueForKey:WebKitCredentialManagementEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitWebAuthenticationEnabledPreferenceKey];
 }
 
-- (void)setCredentialManagementEnabled:(BOOL)flag
+- (void)setWebAuthenticationEnabled:(BOOL)flag
 {
-    [self _setBoolValue:flag forKey:WebKitCredentialManagementEnabledPreferenceKey];
+    [self _setBoolValue:flag forKey:WebKitWebAuthenticationEnabledPreferenceKey];
 }
 
 - (BOOL)mediaUserGestureInheritsFromDocument
@@ -3154,6 +3255,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitLegacyEncryptedMediaAPIEnabledKey];
 }
 
+- (BOOL)encryptedMediaAPIEnabled
+{
+    return [self _boolValueForKey:WebKitEncryptedMediaAPIEnabledKey];
+}
+
+- (void)setEncryptedMediaAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitEncryptedMediaAPIEnabledKey];
+}
+
 - (BOOL)viewportFitEnabled
 {
     return [self _boolValueForKey:WebKitViewportFitEnabledPreferenceKey];
@@ -3172,6 +3283,86 @@ static NSString *classIBCreatorID = nil;
 - (void)setConstantPropertiesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitConstantPropertiesEnabledPreferenceKey];
+}
+
+- (BOOL)colorFilterEnabled
+{
+    return [self _boolValueForKey:WebKitColorFilterEnabledPreferenceKey];
+}
+
+- (void)setColorFilterEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitColorFilterEnabledPreferenceKey];
+}
+
+- (BOOL)punchOutWhiteBackgroundsInDarkMode
+{
+    return [self _boolValueForKey:WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey];
+}
+
+- (void)setPunchOutWhiteBackgroundsInDarkMode:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitPunchOutWhiteBackgroundsInDarkModePreferenceKey];
+}
+
+- (BOOL)allowMediaContentTypesRequiringHardwareSupportAsFallback
+{
+    return [self _boolValueForKey:WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey];
+}
+
+- (void)setAllowMediaContentTypesRequiringHardwareSupportAsFallback:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey];
+}
+
+- (BOOL)inspectorAdditionsEnabled
+{
+    return [self _boolValueForKey:WebKitInspectorAdditionsEnabledPreferenceKey];
+}
+
+- (void)setInspectorAdditionsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitInspectorAdditionsEnabledPreferenceKey];
+}
+
+- (BOOL)accessibilityObjectModelEnabled
+{
+    return [self _boolValueForKey:WebKitAccessibilityObjectModelEnabledPreferenceKey];
+}
+
+- (void)setAccessibilityObjectModelEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAccessibilityObjectModelEnabledPreferenceKey];
+}
+
+- (BOOL)ariaReflectionEnabled
+{
+    return [self _boolValueForKey:WebKitAriaReflectionEnabledPreferenceKey];
+}
+
+- (void)setAriaReflectionEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAriaReflectionEnabledPreferenceKey];
+}
+
+- (BOOL)mediaCapabilitiesEnabled
+{
+    return [self _boolValueForKey:WebKitMediaCapabilitiesEnabledPreferenceKey];
+}
+
+- (void)setMediaCapabilitiesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaCapabilitiesEnabledPreferenceKey];
+}
+
+- (BOOL)serverTimingEnabled
+{
+    return [self _boolValueForKey:WebKitServerTimingEnabledPreferenceKey];
+}
+
+- (void)setServerTimingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitServerTimingEnabledPreferenceKey];
 }
 
 @end

@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_SCTP_SCTPTRANSPORTINTERNAL_H_
-#define WEBRTC_MEDIA_SCTP_SCTPTRANSPORTINTERNAL_H_
+#ifndef MEDIA_SCTP_SCTPTRANSPORTINTERNAL_H_
+#define MEDIA_SCTP_SCTPTRANSPORTINTERNAL_H_
 
 // TODO(deadbeef): Move SCTP code out of media/, and make it not depend on
 // anything in media/.
@@ -18,13 +18,13 @@
 #include <string>
 #include <vector>
 
-#include "webrtc/base/copyonwritebuffer.h"
-#include "webrtc/base/thread.h"
+#include "rtc_base/copyonwritebuffer.h"
+#include "rtc_base/thread.h"
 // For SendDataParams/ReceiveDataParams.
 // TODO(deadbeef): Use something else for SCTP. It's confusing that we use an
 // SSRC field for SID.
-#include "webrtc/media/base/mediachannel.h"
-#include "webrtc/p2p/base/packettransportinternal.h"
+#include "media/base/mediachannel.h"
+#include "p2p/base/packettransportinternal.h"
 
 namespace cricket {
 
@@ -48,17 +48,15 @@ constexpr uint16_t kMinSctpSid = 0;
 // usrsctp.h)
 const int kSctpDefaultPort = 5000;
 
-// Abstract SctpTransport interface for use internally (by
-// PeerConnection/WebRtcSession/etc.). Exists to allow mock/fake SctpTransports
-// to be created.
+// Abstract SctpTransport interface for use internally (by PeerConnection etc.).
+// Exists to allow mock/fake SctpTransports to be created.
 class SctpTransportInternal {
  public:
   virtual ~SctpTransportInternal() {}
 
-  // Changes what underlying DTLS channel is uses. Used when switching which
+  // Changes what underlying DTLS transport is uses. Used when switching which
   // bundled transport the SctpTransport uses.
-  // Assumes |channel| is non-null.
-  virtual void SetTransportChannel(rtc::PacketTransportInternal* channel) = 0;
+  virtual void SetDtlsTransport(rtc::PacketTransportInternal* transport) = 0;
 
   // When Start is called, connects as soon as possible; this can be called
   // before DTLS completes, in which case the connection will begin when DTLS
@@ -87,10 +85,10 @@ class SctpTransportInternal {
   // used" part. See:
   // https://bugs.chromium.org/p/chromium/issues/detail?id=619849
   virtual bool OpenStream(int sid) = 0;
-  // The inverse of OpenStream. When this method returns, the reset process may
-  // have not finished but it will have begun.
-  // TODO(deadbeef): We need a way to tell when it's done. See:
-  // https://bugs.chromium.org/p/webrtc/issues/detail?id=4453
+  // The inverse of OpenStream. Begins the closing procedure, which will
+  // eventually result in SignalClosingProcedureComplete on the side that
+  // initiates it, and both SignalClosingProcedureStartedRemotely and
+  // SignalClosingProcedureComplete on the other side.
   virtual bool ResetStream(int sid) = 0;
   // Send data down this channel (will be wrapped as SCTP packets then given to
   // usrsctp that will then post the network interface).
@@ -113,8 +111,14 @@ class SctpTransportInternal {
   // contains message payload.
   sigslot::signal2<const ReceiveDataParams&, const rtc::CopyOnWriteBuffer&>
       SignalDataReceived;
-  // Parameter is SID of closed stream.
-  sigslot::signal1<int> SignalStreamClosedRemotely;
+  // Parameter is SID; fired when we receive an incoming stream reset on an
+  // open stream, indicating that the other side started the closing procedure.
+  // After resetting the outgoing stream, SignalClosingProcedureComplete will
+  // fire too.
+  sigslot::signal1<int> SignalClosingProcedureStartedRemotely;
+  // Parameter is SID; fired when closing procedure is complete (both incoming
+  // and outgoing streams reset).
+  sigslot::signal1<int> SignalClosingProcedureComplete;
 
   // Helper for debugging.
   virtual void set_debug_name_for_testing(const char* debug_name) = 0;
@@ -134,4 +138,4 @@ class SctpTransportInternalFactory {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_SCTP_SCTPTRANSPORTINTERNAL_H_
+#endif  // MEDIA_SCTP_SCTPTRANSPORTINTERNAL_H_

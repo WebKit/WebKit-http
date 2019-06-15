@@ -2,10 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-es6id: 22.2.3.12
+esid: sec-%typedarray%.prototype.foreach
 description: >
   %TypedArray%.prototype.forEach.length is 1.
-info: >
+info: |
   %TypedArray%.prototype.forEach (callbackfn [ , thisArg ] )
 
   17 ECMAScript Standard Built-in Objects:
@@ -20,6 +20,7 @@ info: >
     object has the attributes { [[Writable]]: false, [[Enumerable]]: false,
     [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.prototype.forEach.length, 1);

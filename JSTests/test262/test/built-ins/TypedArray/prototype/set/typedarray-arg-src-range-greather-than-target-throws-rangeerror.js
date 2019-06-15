@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.set-typedarray-offset
 description: >
   If srcLength + targetOffset > targetLength, throw a RangeError exception.
-info: >
+info: |
   22.2.3.23.2 %TypedArray%.prototype.set(typedArray [ , offset ] )
 
   1. Assert: typedArray has a [[TypedArrayName]] internal slot. If it does not,
@@ -19,6 +19,7 @@ info: >
   22. If srcLength + targetOffset > targetLength, throw a RangeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

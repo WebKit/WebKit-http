@@ -23,14 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.DataGrid
+WI.TimelineDataGrid = class TimelineDataGrid extends WI.DataGrid
 {
-    constructor(columns, treeOutline, synchronizerDelegate, editCallback, deleteCallback)
+    constructor(columns, editCallback, deleteCallback)
     {
         super(columns, editCallback, deleteCallback);
-
-        if (treeOutline)
-            this._treeOutlineDataGridSynchronizer = new WebInspector.TreeOutlineDataGridSynchronizer(treeOutline, this, synchronizerDelegate);
 
         this.element.classList.add("timeline");
 
@@ -46,7 +43,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
             this._scopeBarColumns.push(identifier);
             scopeBar.columnIdentifier = identifier;
-            scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectedItemsDidChange, this);
+            scopeBar.addEventListener(WI.ScopeBar.Event.SelectionChanged, this._scopeBarSelectedItemsDidChange, this);
         }
 
         if (this._scopeBarColumns.length > 1) {
@@ -54,8 +51,8 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
             return;
         }
 
-        this.addEventListener(WebInspector.DataGrid.Event.SelectedNodeChanged, this._dataGridSelectedNodeChanged, this);
-        this.addEventListener(WebInspector.DataGrid.Event.SortChanged, this._sort, this);
+        this.addEventListener(WI.DataGrid.Event.SelectedNodeChanged, this._dataGridSelectedNodeChanged, this);
+        this.addEventListener(WI.DataGrid.Event.SortChanged, this._sort, this);
 
         this.columnChooserEnabled = true;
     }
@@ -67,15 +64,15 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         var scopeBarItems = [];
         for (var [key, value] of map) {
             var id = prefix + key;
-            var item = new WebInspector.ScopeBarItem(id, value);
+            var item = new WI.ScopeBarItem(id, value);
             item.value = key;
             scopeBarItems.push(item);
         }
 
-        var allItem = new WebInspector.ScopeBarItem(prefix + "type-all", WebInspector.UIString("All"));
+        var allItem = new WI.ScopeBarItem(prefix + "type-all", WI.UIString("All"));
         scopeBarItems.unshift(allItem);
 
-        return new WebInspector.ScopeBar(prefix + "scope-bar", scopeBarItems, allItem, true);
+        return new WI.ScopeBar(prefix + "scope-bar", scopeBarItems, allItem, true);
     }
 
     // Public
@@ -93,16 +90,15 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
         this._sortDelegate = delegate;
 
-        if (this.sortOrder !== WebInspector.DataGrid.SortOrder.Indeterminate)
-            this.dispatchEventToListeners(WebInspector.DataGrid.Event.SortChanged);
+        if (this.sortOrder !== WI.DataGrid.SortOrder.Indeterminate)
+            this.dispatchEventToListeners(WI.DataGrid.Event.SortChanged);
     }
 
     reset()
     {
         // May be overridden by subclasses. If so, they should call the superclass.
 
-        if (!this._treeOutlineDataGridSynchronizer)
-            this.removeChildren();
+        this.removeChildren();
 
         this._hidePopover();
     }
@@ -110,9 +106,6 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
     shown()
     {
         // May be overridden by subclasses. If so, they should call the superclass.
-
-        if (this._treeOutlineDataGridSynchronizer)
-            this._treeOutlineDataGridSynchronizer.synchronize();
     }
 
     hidden()
@@ -122,61 +115,21 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         this._hidePopover();
     }
 
-    treeElementForDataGridNode(dataGridNode)
-    {
-        if (!this._treeOutlineDataGridSynchronizer)
-            return null;
-
-        return this._treeOutlineDataGridSynchronizer.treeElementForDataGridNode(dataGridNode);
-    }
-
-    dataGridNodeForTreeElement(treeElement)
-    {
-        if (!this._treeOutlineDataGridSynchronizer)
-            return null;
-
-        return this._treeOutlineDataGridSynchronizer.dataGridNodeForTreeElement(treeElement);
-    }
-
     callFramePopoverAnchorElement()
     {
         // Implemented by subclasses.
         return null;
     }
 
-    addRowInSortOrder(treeElement, dataGridNode, parentTreeElementOrDataGridNode)
+    addRowInSortOrder(dataGridNode, parentDataGridNode)
     {
-        let parentDataGridNode;
-        let childElement = dataGridNode;
-
-        if (treeElement) {
-            console.assert(this._treeOutlineDataGridSynchronizer);
-            if (!this._treeOutlineDataGridSynchronizer)
-                return;
-
-            this._treeOutlineDataGridSynchronizer.associate(treeElement, dataGridNode);
-
-            console.assert(!parentTreeElementOrDataGridNode || parentTreeElementOrDataGridNode instanceof WebInspector.TreeElement);
-
-            let parentTreeElement = parentTreeElementOrDataGridNode || this._treeOutlineDataGridSynchronizer.treeOutline;
-            parentDataGridNode = parentTreeElement.root ? this : this._treeOutlineDataGridSynchronizer.dataGridNodeForTreeElement(parentTreeElement);
-
-            parentTreeElementOrDataGridNode = parentTreeElement;
-            childElement = treeElement;
-        } else {
-            parentTreeElementOrDataGridNode = parentTreeElementOrDataGridNode || this;
-            parentDataGridNode = parentTreeElementOrDataGridNode;
-        }
+        parentDataGridNode = parentDataGridNode || this;
 
         if (this.sortColumnIdentifier) {
             let insertionIndex = insertionIndexForObjectInListSortedByFunction(dataGridNode, parentDataGridNode.children, this._sortComparator.bind(this));
-
-            // If parent is a tree element, the synchronizer will insert into the data grid.
-            parentTreeElementOrDataGridNode.insertChild(childElement, insertionIndex);
-        } else {
-            // If parent is a tree element, the synchronizer will append to the data grid.
-            parentTreeElementOrDataGridNode.appendChild(childElement);
-        }
+            parentDataGridNode.insertChild(dataGridNode, insertionIndex);
+        } else
+            parentDataGridNode.appendChild(dataGridNode);
     }
 
     shouldIgnoreSelectionEvent()
@@ -236,9 +189,6 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         let selectedNode = this.selectedNode;
         let sortComparator = this._sortComparator.bind(this);
 
-        if (this._treeOutlineDataGridSynchronizer)
-            this._treeOutlineDataGridSynchronizer.enabled = false;
-
         for (let dataGridNode of this._dirtyDataGridNodes) {
             dataGridNode.refresh();
 
@@ -259,23 +209,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
                 selectedNode.revealAndSelect();
                 this._ignoreSelectionEvent = false;
             }
-
-            if (!this._treeOutlineDataGridSynchronizer)
-                continue;
-
-            let treeOutline = this._treeOutlineDataGridSynchronizer.treeOutline;
-            let treeElement = this._treeOutlineDataGridSynchronizer.treeElementForDataGridNode(dataGridNode);
-            console.assert(treeElement);
-
-            treeOutline.reattachIfIndexChanged(treeElement, insertionIndex);
-
-            // Adding the tree element back to the tree outline subjects it to filters.
-            // Make sure we keep the hidden state in-sync while the synchronizer is disabled.
-            dataGridNode.element.classList.toggle("hidden", treeElement.hidden);
         }
-
-        if (this._treeOutlineDataGridSynchronizer)
-            this._treeOutlineDataGridSynchronizer.enabled = true;
 
         this._dirtyDataGridNodes = null;
     }
@@ -292,15 +226,6 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         let selectedNode = this.selectedNode;
         this._ignoreSelectionEvent = true;
 
-        let treeOutline;
-        if (this._treeOutlineDataGridSynchronizer) {
-            this._treeOutlineDataGridSynchronizer.enabled = false;
-
-            treeOutline = this._treeOutlineDataGridSynchronizer.treeOutline;
-            if (treeOutline.selectedTreeElement)
-                treeOutline.selectedTreeElement.deselect(true);
-        }
-
         // Collect parent nodes that need their children sorted. So this in two phases since
         // traverseNextNode would get confused if we sort the tree while traversing it.
         let parentDataGridNodes = [this];
@@ -315,36 +240,11 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         for (let parentDataGridNode of parentDataGridNodes) {
             let childDataGridNodes = parentDataGridNode.children.slice();
             parentDataGridNode.removeChildren();
-
-            let parentTreeElement;
-            if (this._treeOutlineDataGridSynchronizer) {
-                parentTreeElement = parentDataGridNode === this ? treeOutline : this._treeOutlineDataGridSynchronizer.treeElementForDataGridNode(parentDataGridNode);
-                console.assert(parentTreeElement);
-
-                parentTreeElement.removeChildren();
-            }
-
             childDataGridNodes.sort(this._sortComparator.bind(this));
 
-            for (let dataGridNode of childDataGridNodes) {
-                if (this._treeOutlineDataGridSynchronizer) {
-                    let treeElement = this._treeOutlineDataGridSynchronizer.treeElementForDataGridNode(dataGridNode);
-                    console.assert(treeElement);
-
-                    if (parentTreeElement)
-                        parentTreeElement.appendChild(treeElement);
-
-                    // Adding the tree element back to the tree outline subjects it to filters.
-                    // Make sure we keep the hidden state in-sync while the synchronizer is disabled.
-                    dataGridNode.element.classList.toggle("hidden", treeElement.hidden);
-                }
-
+            for (let dataGridNode of childDataGridNodes)
                 parentDataGridNode.appendChild(dataGridNode);
-            }
         }
-
-        if (this._treeOutlineDataGridSynchronizer)
-            this._treeOutlineDataGridSynchronizer.enabled = true;
 
         if (selectedNode)
             selectedNode.revealAndSelect();
@@ -358,7 +258,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         if (!sortColumnIdentifier)
             return 0;
 
-        var sortDirection = this.sortOrder === WebInspector.DataGrid.SortOrder.Ascending ? 1 : -1;
+        var sortDirection = this.sortOrder === WI.DataGrid.SortOrder.Ascending ? 1 : -1;
 
         if (this._sortDelegate && typeof this._sortDelegate.dataGridSortComparator === "function") {
             let result = this._sortDelegate.dataGridSortComparator(sortColumnIdentifier, sortDirection, node1, node2);
@@ -382,18 +282,18 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         if (typeof value1 === "string" && typeof value2 === "string")
             return value1.extendedLocaleCompare(value2) * sortDirection;
 
-        if (value1 instanceof WebInspector.CallFrame || value2 instanceof WebInspector.CallFrame) {
+        if (value1 instanceof WI.CallFrame || value2 instanceof WI.CallFrame) {
             // Sort by function name if available, then fall back to the source code object.
             value1 = value1 && value1.functionName ? value1.functionName : (value1 && value1.sourceCodeLocation ? value1.sourceCodeLocation.sourceCode : "");
             value2 = value2 && value2.functionName ? value2.functionName : (value2 && value2.sourceCodeLocation ? value2.sourceCodeLocation.sourceCode : "");
         }
 
-        if (value1 instanceof WebInspector.SourceCode || value2 instanceof WebInspector.SourceCode) {
+        if (value1 instanceof WI.SourceCode || value2 instanceof WI.SourceCode) {
             value1 = value1 ? value1.displayName || "" : "";
             value2 = value2 ? value2.displayName || "" : "";
         }
 
-        if (value1 instanceof WebInspector.SourceCodeLocation || value2 instanceof WebInspector.SourceCodeLocation) {
+        if (value1 instanceof WI.SourceCodeLocation || value2 instanceof WI.SourceCodeLocation) {
             value1 = value1 ? value1.displayLocationString() || "" : "";
             value2 = value2 ? value2.displayLocationString() || "" : "";
         }
@@ -430,12 +330,12 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
         this._showPopoverTimeout = setTimeout(() => {
             if (!this._popover) {
-                this._popover = new WebInspector.Popover;
+                this._popover = new WI.Popover;
                 this._popover.windowResizeHandler = () => { this._updatePopoverForSelectedNode(false); };
             }
             this._updatePopoverForSelectedNode(true);
             this._showPopoverTimeout = undefined;
-        }, WebInspector.TimelineDataGrid.DelayedPopoverShowTimeout);
+        }, WI.TimelineDataGrid.DelayedPopoverShowTimeout);
     }
 
     _hidePopover()
@@ -454,7 +354,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         this._hidePopoverContentClearTimeout = setTimeout(() => {
             if (this._popoverCallStackTreeOutline)
                 this._popoverCallStackTreeOutline.removeChildren();
-        }, WebInspector.TimelineDataGrid.DelayedPopoverHideContentClearTimeout);
+        }, WI.TimelineDataGrid.DelayedPopoverHideContentClearTimeout);
     }
 
     _updatePopoverForSelectedNode(updateContent)
@@ -468,7 +368,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
             return;
 
         // The element might be hidden if it does not have a width and height.
-        let rect = WebInspector.Rect.rectFromClientRect(targetPopoverElement.getBoundingClientRect());
+        let rect = WI.Rect.rectFromClientRect(targetPopoverElement.getBoundingClientRect());
         if (!rect.size.width && !rect.size.height)
             return;
 
@@ -478,7 +378,7 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
         }
 
         let targetFrame = rect.pad(2);
-        let preferredEdges = [WebInspector.RectEdge.MAX_Y, WebInspector.RectEdge.MIN_Y, WebInspector.RectEdge.MAX_X];
+        let preferredEdges = [WI.RectEdge.MAX_Y, WI.RectEdge.MIN_Y, WI.RectEdge.MAX_X];
 
         if (updateContent)
             this._popover.presentNewContentWithFrame(this._createPopoverContent(), targetFrame, preferredEdges);
@@ -489,21 +389,20 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
     _createPopoverContent()
     {
         if (!this._popoverCallStackTreeOutline) {
-            this._popoverCallStackTreeOutline = new WebInspector.TreeOutline;
+            this._popoverCallStackTreeOutline = new WI.TreeOutline;
             this._popoverCallStackTreeOutline.disclosureButtons = false;
             this._popoverCallStackTreeOutline.element.classList.add("timeline-data-grid");
-            this._popoverCallStackTreeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._popoverCallStackTreeSelectionDidChange, this);
+            this._popoverCallStackTreeOutline.addEventListener(WI.TreeOutline.Event.SelectionDidChange, this._popoverCallStackTreeSelectionDidChange, this);
         } else
             this._popoverCallStackTreeOutline.removeChildren();
 
         var callFrames = this.selectedNode.record.callFrames;
         for (var i = 0; i < callFrames.length; ++i) {
-            var callFrameTreeElement = new WebInspector.CallFrameTreeElement(callFrames[i]);
+            var callFrameTreeElement = new WI.CallFrameTreeElement(callFrames[i]);
             this._popoverCallStackTreeOutline.appendChild(callFrameTreeElement);
         }
 
-        var content = document.createElement("div");
-        content.className = "timeline-data-grid-popover";
+        let content = document.createElement("div");
         content.appendChild(this._popoverCallStackTreeOutline.element);
         return content;
     }
@@ -516,18 +415,18 @@ WebInspector.TimelineDataGrid = class TimelineDataGrid extends WebInspector.Data
 
         this._popover.dismiss();
 
-        console.assert(treeElement instanceof WebInspector.CallFrameTreeElement, "TreeElements in TimelineDataGrid popover should always be CallFrameTreeElements");
+        console.assert(treeElement instanceof WI.CallFrameTreeElement, "TreeElements in TimelineDataGrid popover should always be CallFrameTreeElements");
         var callFrame = treeElement.callFrame;
         if (!callFrame.sourceCodeLocation)
             return;
 
-        WebInspector.showSourceCodeLocation(callFrame.sourceCodeLocation, {
+        WI.showSourceCodeLocation(callFrame.sourceCodeLocation, {
             ignoreNetworkTab: true,
             ignoreSearchTab: true,
         });
     }
 };
 
-WebInspector.TimelineDataGrid.HasNonDefaultFilterStyleClassName = "has-non-default-filter";
-WebInspector.TimelineDataGrid.DelayedPopoverShowTimeout = 250;
-WebInspector.TimelineDataGrid.DelayedPopoverHideContentClearTimeout = 500;
+WI.TimelineDataGrid.HasNonDefaultFilterStyleClassName = "has-non-default-filter";
+WI.TimelineDataGrid.DelayedPopoverShowTimeout = 250;
+WI.TimelineDataGrid.DelayedPopoverHideContentClearTimeout = 500;

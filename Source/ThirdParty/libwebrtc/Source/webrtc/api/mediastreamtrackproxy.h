@@ -11,13 +11,13 @@
 // This file includes proxy classes for tracks. The purpose is
 // to make sure tracks are only accessed from the signaling thread.
 
-#ifndef WEBRTC_API_MEDIASTREAMTRACKPROXY_H_
-#define WEBRTC_API_MEDIASTREAMTRACKPROXY_H_
+#ifndef API_MEDIASTREAMTRACKPROXY_H_
+#define API_MEDIASTREAMTRACKPROXY_H_
 
 #include <string>
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/proxy.h"
+#include "api/mediastreaminterface.h"
+#include "api/proxy.h"
 
 namespace webrtc {
 
@@ -25,41 +25,41 @@ namespace webrtc {
 // are called on is an implementation detail.
 
 BEGIN_SIGNALING_PROXY_MAP(AudioTrack)
-  PROXY_SIGNALING_THREAD_DESTRUCTOR()
-  PROXY_CONSTMETHOD0(std::string, kind)
-  PROXY_CONSTMETHOD0(std::string, id)
-  PROXY_CONSTMETHOD0(TrackState, state)
-  PROXY_CONSTMETHOD0(bool, enabled)
-  PROXY_CONSTMETHOD0(AudioSourceInterface*, GetSource)
-  PROXY_METHOD1(void, AddSink, AudioTrackSinkInterface*)
-  PROXY_METHOD1(void, RemoveSink, AudioTrackSinkInterface*)
-  PROXY_METHOD1(bool, GetSignalLevel, int*)
-  PROXY_METHOD0(rtc::scoped_refptr<AudioProcessorInterface>, GetAudioProcessor)
-  PROXY_METHOD1(bool, set_enabled, bool)
-  PROXY_METHOD1(void, RegisterObserver, ObserverInterface*)
-  PROXY_METHOD1(void, UnregisterObserver, ObserverInterface*)
+PROXY_SIGNALING_THREAD_DESTRUCTOR()
+PROXY_CONSTMETHOD0(std::string, kind)
+PROXY_CONSTMETHOD0(std::string, id)
+PROXY_CONSTMETHOD0(TrackState, state)
+PROXY_CONSTMETHOD0(bool, enabled)
+PROXY_CONSTMETHOD0(AudioSourceInterface*, GetSource)
+PROXY_METHOD1(void, AddSink, AudioTrackSinkInterface*)
+PROXY_METHOD1(void, RemoveSink, AudioTrackSinkInterface*)
+PROXY_METHOD1(bool, GetSignalLevel, int*)
+PROXY_METHOD0(rtc::scoped_refptr<AudioProcessorInterface>, GetAudioProcessor)
+PROXY_METHOD1(bool, set_enabled, bool)
+PROXY_METHOD1(void, RegisterObserver, ObserverInterface*)
+PROXY_METHOD1(void, UnregisterObserver, ObserverInterface*)
 END_PROXY_MAP()
 
 BEGIN_PROXY_MAP(VideoTrack)
-  PROXY_SIGNALING_THREAD_DESTRUCTOR()
-  PROXY_CONSTMETHOD0(std::string, kind)
-  PROXY_CONSTMETHOD0(std::string, id)
-  PROXY_CONSTMETHOD0(TrackState, state)
-  PROXY_CONSTMETHOD0(bool, enabled)
-  PROXY_METHOD1(bool, set_enabled, bool)
-  PROXY_CONSTMETHOD0(ContentHint, content_hint)
-  PROXY_METHOD1(void, set_content_hint, ContentHint)
-  PROXY_WORKER_METHOD2(void,
-                       AddOrUpdateSink,
-                       rtc::VideoSinkInterface<VideoFrame>*,
-                       const rtc::VideoSinkWants&)
-  PROXY_WORKER_METHOD1(void, RemoveSink, rtc::VideoSinkInterface<VideoFrame>*)
-  PROXY_CONSTMETHOD0(VideoTrackSourceInterface*, GetSource)
+PROXY_SIGNALING_THREAD_DESTRUCTOR()
+PROXY_CONSTMETHOD0(std::string, kind)
+PROXY_CONSTMETHOD0(std::string, id)
+PROXY_CONSTMETHOD0(TrackState, state)
+PROXY_CONSTMETHOD0(bool, enabled)
+PROXY_METHOD1(bool, set_enabled, bool)
+PROXY_CONSTMETHOD0(ContentHint, content_hint)
+PROXY_METHOD1(void, set_content_hint, ContentHint)
+PROXY_WORKER_METHOD2(void,
+                     AddOrUpdateSink,
+                     rtc::VideoSinkInterface<VideoFrame>*,
+                     const rtc::VideoSinkWants&)
+PROXY_WORKER_METHOD1(void, RemoveSink, rtc::VideoSinkInterface<VideoFrame>*)
+PROXY_CONSTMETHOD0(VideoTrackSourceInterface*, GetSource)
 
-  PROXY_METHOD1(void, RegisterObserver, ObserverInterface*)
-  PROXY_METHOD1(void, UnregisterObserver, ObserverInterface*)
+PROXY_METHOD1(void, RegisterObserver, ObserverInterface*)
+PROXY_METHOD1(void, UnregisterObserver, ObserverInterface*)
 END_PROXY_MAP()
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_MEDIASTREAMTRACKPROXY_H_
+#endif  // API_MEDIASTREAMTRACKPROXY_H_

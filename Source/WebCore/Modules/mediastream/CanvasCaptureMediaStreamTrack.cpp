@@ -26,6 +26,7 @@
 #include "CanvasCaptureMediaStreamTrack.h"
 
 #include "GraphicsContext.h"
+#include "HTMLCanvasElement.h"
 #include "WebGLRenderingContextBase.h"
 
 #if ENABLE(MEDIA_STREAM)
@@ -101,7 +102,7 @@ void CanvasCaptureMediaStreamTrack::Source::requestFrameTimerFired()
     requestFrame();
 }
 
-void CanvasCaptureMediaStreamTrack::Source::canvasDestroyed(HTMLCanvasElement& canvas)
+void CanvasCaptureMediaStreamTrack::Source::canvasDestroyed(CanvasBase& canvas)
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
 
@@ -109,27 +110,33 @@ void CanvasCaptureMediaStreamTrack::Source::canvasDestroyed(HTMLCanvasElement& c
     m_canvas = nullptr;
 }
 
-void CanvasCaptureMediaStreamTrack::Source::canvasResized(HTMLCanvasElement& canvas)
+void CanvasCaptureMediaStreamTrack::Source::canvasResized(CanvasBase& canvas)
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
+
+    OptionSet<RealtimeMediaSourceSettings::Flag> changed;
+    if (m_canvas->width() != m_settings.width())
+        changed.add(RealtimeMediaSourceSettings::Flag::Width);
+    if (m_canvas->height() != m_settings.height())
+        changed.add(RealtimeMediaSourceSettings::Flag::Height);
 
     m_settings.setWidth(m_canvas->width());
     m_settings.setHeight(m_canvas->height());
 
-    settingsDidChange();
+    settingsDidChange(changed);
 }
 
-void CanvasCaptureMediaStreamTrack::Source::canvasChanged(HTMLCanvasElement& canvas, const FloatRect&)
+void CanvasCaptureMediaStreamTrack::Source::canvasChanged(CanvasBase& canvas, const FloatRect&)
 {
     ASSERT_UNUSED(canvas, m_canvas == &canvas);
 
     // FIXME: We need to preserve drawing buffer as we are currently grabbing frames asynchronously.
     // We should instead add an anchor point for both 2d and 3d contexts where canvas will actually paint.
     // And call canvas observers from that point.
-    if (canvas.renderingContext() && canvas.renderingContext()->isWebGL()) {
-        auto& context = static_cast<WebGLRenderingContextBase&>(*canvas.renderingContext());
+    if (is<WebGLRenderingContextBase>(canvas.renderingContext())) {
+        auto& context = downcast<WebGLRenderingContextBase>(*canvas.renderingContext());
         if (!context.isPreservingDrawingBuffer()) {
-            canvas.document().addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Turning drawing buffer preservation for the WebGL canvas being captured"));
+            canvas.scriptExecutionContext()->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "Turning drawing buffer preservation for the WebGL canvas being captured"_s);
             context.setPreserveDrawingBuffer(true);
         }
     }
@@ -161,6 +168,14 @@ void CanvasCaptureMediaStreamTrack::Source::captureCanvas()
         return;
 
     videoSampleAvailable(*sample);
+}
+
+RefPtr<MediaStreamTrack> CanvasCaptureMediaStreamTrack::clone()
+{
+    if (!scriptExecutionContext())
+        return nullptr;
+
+    return CanvasCaptureMediaStreamTrack::create(*scriptExecutionContext(), m_canvas.copyRef(), m_source->frameRequestRate());
 }
 
 }

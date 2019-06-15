@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_video/h264/sps_parser.h"
+#include "common_video/h264/sps_parser.h"
 
-#include "webrtc/base/arraysize.h"
-#include "webrtc/base/bitbuffer.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/common_video/h264/h264_common.h"
-#include "webrtc/test/gtest.h"
+#include "common_video/h264/h264_common.h"
+#include "rtc_base/arraysize.h"
+#include "rtc_base/bitbuffer.h"
+#include "rtc_base/buffer.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -110,9 +110,9 @@ void GenerateFakeSps(uint16_t width,
 class H264SpsParserTest : public ::testing::Test {
  public:
   H264SpsParserTest() {}
-  virtual ~H264SpsParserTest() {}
+  ~H264SpsParserTest() override {}
 
-  rtc::Optional<SpsParser::SpsState> sps_;
+  absl::optional<SpsParser::SpsState> sps_;
 };
 
 TEST_F(H264SpsParserTest, TestSampleSPSHdLandscape) {
@@ -169,6 +169,19 @@ TEST_F(H264SpsParserTest, TestSyntheticSPSWeirdResolution) {
   EXPECT_EQ(156u, sps_->width);
   EXPECT_EQ(122u, sps_->height);
   EXPECT_EQ(2u, sps_->id);
+}
+
+TEST_F(H264SpsParserTest, TestSampleSPSWithScalingLists) {
+  // SPS from a 1920x1080 video. Contains scaling lists (and vertical cropping).
+  const uint8_t buffer[] = {0x64, 0x00, 0x2a, 0xad, 0x84, 0x01, 0x0c, 0x20,
+                            0x08, 0x61, 0x00, 0x43, 0x08, 0x02, 0x18, 0x40,
+                            0x10, 0xc2, 0x00, 0x84, 0x3b, 0x50, 0x3c, 0x01,
+                            0x13, 0xf2, 0xcd, 0xc0, 0x40, 0x40, 0x50, 0x00,
+                            0x00, 0x00, 0x10, 0x00, 0x00, 0x01, 0xe8, 0x40};
+  EXPECT_TRUE(
+      static_cast<bool>(sps_ = SpsParser::ParseSps(buffer, arraysize(buffer))));
+  EXPECT_EQ(1920u, sps_->width);
+  EXPECT_EQ(1080u, sps_->height);
 }
 
 }  // namespace webrtc

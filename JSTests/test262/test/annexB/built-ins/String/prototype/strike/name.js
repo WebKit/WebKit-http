@@ -5,7 +5,7 @@
 es6id: B.2.3.12
 description: >
   String.prototype.strike.name is "strike".
-info: >
+info: |
   String.prototype.strike ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.strike.name, "strike");
-
-verifyNotEnumerable(String.prototype.strike, "name");
-verifyNotWritable(String.prototype.strike, "name");
-verifyConfigurable(String.prototype.strike, "name");
+verifyProperty(String.prototype.strike, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "strike"
+});

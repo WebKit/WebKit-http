@@ -23,26 +23,37 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VideoTrackPrivateGStreamer_h
-#define VideoTrackPrivateGStreamer_h
+#pragma once
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(VIDEO_TRACK)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "TrackPrivateBaseGStreamer.h"
 #include "VideoTrackPrivate.h"
 
+#include <gst/gst.h>
+#include <wtf/WeakPtr.h>
+
 namespace WebCore {
+class MediaPlayerPrivateGStreamer;
 
 class VideoTrackPrivateGStreamer final : public VideoTrackPrivate, public TrackPrivateBaseGStreamer {
 public:
-    static Ref<VideoTrackPrivateGStreamer> create(GRefPtr<GstElement> playbin, gint index, GRefPtr<GstPad> pad)
+    static Ref<VideoTrackPrivateGStreamer> create(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstPad> pad)
     {
-        return adoptRef(*new VideoTrackPrivateGStreamer(playbin, index, pad));
+        return adoptRef(*new VideoTrackPrivateGStreamer(player, index, pad));
     }
+#if GST_CHECK_VERSION(1, 10, 0)
+    static Ref<VideoTrackPrivateGStreamer> create(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstStream> stream)
+    {
+        return adoptRef(*new VideoTrackPrivateGStreamer(player, index, stream));
+    }
+    Kind kind() const final;
+#endif
 
     void disconnect() override;
 
+    void markAsActive();
     void setSelected(bool) override;
     void setActive(bool enabled) override { setSelected(enabled); }
 
@@ -53,14 +64,14 @@ public:
     AtomicString language() const override { return m_language; }
 
 private:
-    VideoTrackPrivateGStreamer(GRefPtr<GstElement> playbin, gint index, GRefPtr<GstPad>);
-
+    VideoTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer>, gint index, GRefPtr<GstPad>);
+#if GST_CHECK_VERSION(1, 10, 0)
+    VideoTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer>, gint index, GRefPtr<GstStream>);
+#endif
     AtomicString m_id;
-    GRefPtr<GstElement> m_playbin;
+    WeakPtr<MediaPlayerPrivateGStreamer> m_player;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(VIDEO_TRACK)
-
-#endif // VideoTrackPrivateGStreamer_h

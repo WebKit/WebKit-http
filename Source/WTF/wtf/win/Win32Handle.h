@@ -32,6 +32,7 @@ namespace WTF {
 
 class Win32Handle {
     WTF_MAKE_NONCOPYABLE(Win32Handle);
+
 public:
     Win32Handle() : m_handle(INVALID_HANDLE_VALUE) { }
     explicit Win32Handle(HANDLE handle) : m_handle(handle) { }

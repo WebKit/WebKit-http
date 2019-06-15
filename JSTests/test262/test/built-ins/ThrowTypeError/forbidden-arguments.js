@@ -5,7 +5,7 @@
 esid: sec-%throwtypeerror%
 description: >
   %ThrowTypeError% does not have an own "arguments" property.
-info: >
+info: |
   %ThrowTypeError% ( )
 
   The %ThrowTypeError% intrinsic is an anonymous built-in function
@@ -25,6 +25,9 @@ info: >
     properties.
 ---*/
 
-var ThrowTypeError = Object.getOwnPropertyDescriptor(function(){ "use strict"; return arguments; }(), "callee").get;
+var ThrowTypeError = Object.getOwnPropertyDescriptor(function() {
+  "use strict";
+  return arguments;
+}(), "callee").get;
 
 assert.sameValue(Object.prototype.hasOwnProperty.call(ThrowTypeError, "arguments"), false);

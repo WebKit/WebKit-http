@@ -26,6 +26,8 @@
 #import "config.h"
 #import "ScrollView.h"
 
+#if PLATFORM(IOS)
+
 #import "FloatRect.h"
 #import "IntRect.h"
 #import "Logging.h"
@@ -38,7 +40,6 @@
 #import "WKViewPrivate.h"
 #import "WebCoreFrameView.h"
 #import <wtf/BlockObjCExceptions.h>
-#import <wtf/CurrentTime.h>
 
 using namespace std;
 
@@ -316,3 +317,5 @@ void ScrollView::platformSetScrollOrigin(const IntPoint& origin, bool updatePosi
 }
 
 }
+
+#endif // PLATFORM(IOS)

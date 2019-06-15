@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,69 +23,57 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PingLoad_h
-#define PingLoad_h
+#pragma once
 
-#include "AuthenticationManager.h"
 #include "NetworkDataTask.h"
-#include "SessionTracker.h"
+#include "NetworkResourceLoadParameters.h"
+#include <WebCore/ResourceError.h>
+#include <WebCore/ResourceResponse.h>
+#include <wtf/CompletionHandler.h>
+#include <wtf/UniqueRef.h>
+#include <wtf/WeakPtr.h>
+
+namespace WebCore {
+class ContentSecurityPolicy;
+class HTTPHeaderMap;
+class URL;
+}
 
 namespace WebKit {
 
-class PingLoad final : private NetworkDataTaskClient {
-public:
-    PingLoad(const NetworkResourceLoadParameters& parameters)
-        : m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
-        , m_shouldFollowRedirects(parameters.shouldFollowRedirects)
-    {
-        if (auto* networkSession = SessionTracker::networkSession(parameters.sessionID)) {
-            m_task = NetworkDataTask::create(*networkSession, *this, parameters);
-            m_task->resume();
-        } else
-            ASSERT_NOT_REACHED();
+class NetworkConnectionToWebProcess;
+class NetworkLoadChecker;
 
-        // If the server never responds, this object will hang around forever.
-        // Set a very generous timeout, just in case.
-        m_timeoutTimer.startOneShot(60000_s);
-    }
+class PingLoad final : public CanMakeWeakPtr<PingLoad>, private NetworkDataTaskClient {
+public:
+    PingLoad(NetworkResourceLoadParameters&&, CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)>&&);
     
 private:
-    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&& request, RedirectCompletionHandler&& completionHandler) final
-    {
-        completionHandler(m_shouldFollowRedirects ? request : WebCore::ResourceRequest());
-    }
-    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&& completionHandler) final
-    {
-        completionHandler(AuthenticationChallengeDisposition::Cancel, { });
-        delete this;
-    }
-    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&& completionHandler) final
-    {
-        completionHandler(WebCore::PolicyAction::PolicyIgnore);
-        delete this;
-    }
-    void didReceiveData(Ref<WebCore::SharedBuffer>&&) final { ASSERT_NOT_REACHED(); }
-    void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) final { delete this; }
-    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) final { }
-    void wasBlocked() final { delete this; }
-    void cannotShowURL() final { delete this; }
+    ~PingLoad();
 
-    void timeoutTimerFired() { delete this; }
+    const WebCore::URL& currentURL() const;
+    WebCore::ContentSecurityPolicy* contentSecurityPolicy() const;
+
+    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) final;
+    void didReceiveChallenge(WebCore::AuthenticationChallenge&&, ChallengeCompletionHandler&&) final;
+    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) final;
+    void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
+    void didCompleteWithError(const WebCore::ResourceError&, const WebCore::NetworkLoadMetrics&) final;
+    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) final;
+    void wasBlocked() final;
+    void cannotShowURL() final;
+    void timeoutTimerFired();
+
+    void loadRequest(WebCore::ResourceRequest&&);
+
+    void didFinish(const WebCore::ResourceError& = { }, const WebCore::ResourceResponse& response = { });
     
-    virtual ~PingLoad()
-    {
-        if (m_task) {
-            ASSERT(m_task->client() == this);
-            m_task->clearClient();
-            m_task->cancel();
-        }
-    }
-    
+    NetworkResourceLoadParameters m_parameters;
+    WTF::CompletionHandler<void(const WebCore::ResourceError&, const WebCore::ResourceResponse&)> m_completionHandler;
     RefPtr<NetworkDataTask> m_task;
     WebCore::Timer m_timeoutTimer;
-    bool m_shouldFollowRedirects;
+    UniqueRef<NetworkLoadChecker> m_networkLoadChecker;
+    std::optional<WebCore::ResourceRequest> m_lastRedirectionRequest;
 };
 
 }
-
-#endif

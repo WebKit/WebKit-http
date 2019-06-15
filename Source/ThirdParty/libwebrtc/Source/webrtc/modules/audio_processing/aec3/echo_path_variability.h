@@ -8,19 +8,32 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_VARIABILITY_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_VARIABILITY_H_
+#ifndef MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_VARIABILITY_H_
+#define MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_VARIABILITY_H_
 
 namespace webrtc {
 
 struct EchoPathVariability {
-  EchoPathVariability(bool gain_change, bool delay_change);
+  enum class DelayAdjustment {
+    kNone,
+    kBufferReadjustment,
+    kBufferFlush,
+    kDelayReset,
+    kNewDetectedDelay
+  };
 
-  bool AudioPathChanged() const { return gain_change || delay_change; }
+  EchoPathVariability(bool gain_change,
+                      DelayAdjustment delay_change,
+                      bool clock_drift);
+
+  bool AudioPathChanged() const {
+    return gain_change || delay_change != DelayAdjustment::kNone;
+  }
   bool gain_change;
-  bool delay_change;
+  DelayAdjustment delay_change;
+  bool clock_drift;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_VARIABILITY_H_
+#endif  // MODULES_AUDIO_PROCESSING_AEC3_ECHO_PATH_VARIABILITY_H_

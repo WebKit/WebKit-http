@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
 
 namespace JSC {
 
-const ClassInfo JSMapIterator::s_info = { "Map Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSMapIterator) };
+const ClassInfo JSMapIterator::s_info = { "Map Iterator", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(JSMapIterator) };
 
 void JSMapIterator::finishCreation(VM& vm, JSMap* iteratedObject)
 {
@@ -54,16 +54,9 @@ JSValue JSMapIterator::createPair(CallFrame* callFrame, JSValue key, JSValue val
     MarkedArgumentBuffer args;
     args.append(key);
     args.append(value);
-    JSGlobalObject* globalObject = callFrame->jsCallee()->globalObject();
+    ASSERT(!args.hasOverflowed());
+    JSGlobalObject* globalObject = callFrame->jsCallee()->globalObject(callFrame->vm());
     return constructArray(callFrame, 0, globalObject, args);
-}
-
-JSMapIterator* JSMapIterator::clone(ExecState* exec)
-{
-    VM& vm = exec->vm();
-    auto clone = JSMapIterator::create(vm, exec->jsCallee()->globalObject()->mapIteratorStructure(), m_map.get(), m_kind);
-    clone->setIterator(vm, m_iter.get());
-    return clone;
 }
 
 }

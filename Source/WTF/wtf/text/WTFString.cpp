@@ -1,6 +1,6 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007-2009 Torch Mobile, Inc.
  *
  * This library is free software; you can redistribute it and/or
@@ -30,7 +30,6 @@
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
-#include <wtf/StringExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/dtoa.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -48,12 +47,10 @@ String::String(const UChar* characters, unsigned length)
 }
 
 // Construct a string with UTF-16 data, from a null-terminated source.
-String::String(const UChar* str)
+String::String(const UChar* nullTerminatedString)
 {
-    if (!str)
-        return;
-
-    m_impl = StringImpl::create(str, lengthOfNullTerminatedString(str));
+    if (nullTerminatedString)
+        m_impl = StringImpl::create(nullTerminatedString, lengthOfNullTerminatedString(nullTerminatedString));
 }
 
 // Construct a string with latin1 data.
@@ -69,17 +66,17 @@ String::String(const char* characters, unsigned length)
         m_impl = StringImpl::create(reinterpret_cast<const LChar*>(characters), length);
 }
 
-// Construct a string with latin1 data, from a null-terminated source.
-String::String(const LChar* characters)
+// Construct a string with Latin-1 data, from a null-terminated source.
+String::String(const LChar* nullTerminatedString)
 {
-    if (characters)
-        m_impl = StringImpl::create(characters);
+    if (nullTerminatedString)
+        m_impl = StringImpl::create(nullTerminatedString);
 }
 
-String::String(const char* characters)
+String::String(const char* nullTerminatedString)
 {
-    if (characters)
-        m_impl = StringImpl::create(reinterpret_cast<const LChar*>(characters));
+    if (nullTerminatedString)
+        m_impl = StringImpl::create(reinterpret_cast<const LChar*>(nullTerminatedString));
 }
 
 String::String(ASCIILiteral characters)
@@ -87,35 +84,36 @@ String::String(ASCIILiteral characters)
 {
 }
 
-void String::append(const String& str)
+void String::append(const String& otherString)
 {
     // FIXME: This is extremely inefficient. So much so that we might want to take this out of String's API.
 
-    if (str.isEmpty())
-       return;
-
-    if (str.m_impl) {
-        if (m_impl) {
-            if (m_impl->is8Bit() && str.m_impl->is8Bit()) {
-                LChar* data;
-                if (str.length() > std::numeric_limits<unsigned>::max() - m_impl->length())
-                    CRASH();
-                auto newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
-                memcpy(data, m_impl->characters8(), m_impl->length() * sizeof(LChar));
-                memcpy(data + m_impl->length(), str.characters8(), str.length() * sizeof(LChar));
-                m_impl = WTFMove(newImpl);
-                return;
-            }
-            UChar* data;
-            if (str.length() > std::numeric_limits<unsigned>::max() - m_impl->length())
-                CRASH();
-            auto newImpl = StringImpl::createUninitialized(m_impl->length() + str.length(), data);
-            StringView(*m_impl).getCharactersWithUpconvert(data);
-            StringView(str).getCharactersWithUpconvert(data + m_impl->length());
-            m_impl = WTFMove(newImpl);
-        } else
-            m_impl = str.m_impl;
+    if (!m_impl) {
+        m_impl = otherString.m_impl;
+        return;
     }
+
+    if (otherString.isEmpty())
+        return;
+
+    auto length = m_impl->length();
+    auto otherLength = otherString.m_impl->length();
+    if (otherLength > std::numeric_limits<unsigned>::max() - length)
+        CRASH();
+
+    if (m_impl->is8Bit() && otherString.m_impl->is8Bit()) {
+        LChar* data;
+        auto newImpl = StringImpl::createUninitialized(length + otherLength, data);
+        StringImpl::copyCharacters(data, m_impl->characters8(), length);
+        StringImpl::copyCharacters(data + length, otherString.m_impl->characters8(), otherLength);
+        m_impl = WTFMove(newImpl);
+        return;
+    }
+    UChar* data;
+    auto newImpl = StringImpl::createUninitialized(length + otherLength, data);
+    StringView(*m_impl).getCharactersWithUpconvert(data);
+    StringView(*otherString.m_impl).getCharactersWithUpconvert(data + length);
+    m_impl = WTFMove(newImpl);
 }
 
 void String::append(LChar character)
@@ -134,7 +132,7 @@ void String::append(LChar character)
         CRASH();
     LChar* data;
     auto newImpl = StringImpl::createUninitialized(m_impl->length() + 1, data);
-    memcpy(data, m_impl->characters8(), m_impl->length());
+    StringImpl::copyCharacters(data, m_impl->characters8(), m_impl->length());
     data[m_impl->length()] = character;
     m_impl = WTFMove(newImpl);
 }
@@ -227,8 +225,8 @@ void String::append(const LChar* charactersToAppend, unsigned lengthToAppend)
             CRASH();
         LChar* data;
         auto newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
-        StringImpl::copyChars(data, m_impl->characters8(), strLength);
-        StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
+        StringImpl::copyCharacters(data, m_impl->characters8(), strLength);
+        StringImpl::copyCharacters(data + strLength, charactersToAppend, lengthToAppend);
         m_impl = WTFMove(newImpl);
         return;
     }
@@ -237,8 +235,8 @@ void String::append(const LChar* charactersToAppend, unsigned lengthToAppend)
         CRASH();
     UChar* data;
     auto newImpl = StringImpl::createUninitialized(length() + lengthToAppend, data);
-    StringImpl::copyChars(data, m_impl->characters16(), strLength);
-    StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
+    StringImpl::copyCharacters(data, m_impl->characters16(), strLength);
+    StringImpl::copyCharacters(data + strLength, charactersToAppend, lengthToAppend);
     m_impl = WTFMove(newImpl);
 }
 
@@ -264,10 +262,10 @@ void String::append(const UChar* charactersToAppend, unsigned lengthToAppend)
     UChar* data;
     auto newImpl = StringImpl::createUninitialized(strLength + lengthToAppend, data);
     if (m_impl->is8Bit())
-        StringImpl::copyChars(data, characters8(), strLength);
+        StringImpl::copyCharacters(data, characters8(), strLength);
     else
-        StringImpl::copyChars(data, characters16(), strLength);
-    StringImpl::copyChars(data + strLength, charactersToAppend, lengthToAppend);
+        StringImpl::copyCharacters(data, characters16(), strLength);
+    StringImpl::copyCharacters(data + strLength, charactersToAppend, lengthToAppend);
     m_impl = WTFMove(newImpl);
 }
 
@@ -285,41 +283,33 @@ void String::truncate(unsigned position)
         m_impl = m_impl->substring(0, position);
 }
 
-template <typename CharacterType>
-inline void String::removeInternal(const CharacterType* characters, unsigned position, int lengthToRemove)
+template<typename CharacterType> inline void String::removeInternal(const CharacterType* characters, unsigned position, unsigned lengthToRemove)
 {
     CharacterType* data;
     auto newImpl = StringImpl::createUninitialized(length() - lengthToRemove, data);
-    memcpy(data, characters, position * sizeof(CharacterType));
-    memcpy(data + position, characters + position + lengthToRemove,
-        (length() - lengthToRemove - position) * sizeof(CharacterType));
-
+    StringImpl::copyCharacters(data, characters, position);
+    StringImpl::copyCharacters(data + position, characters + position + lengthToRemove, length() - lengthToRemove - position);
     m_impl = WTFMove(newImpl);
 }
 
-void String::remove(unsigned position, int lengthToRemove)
+void String::remove(unsigned position, unsigned lengthToRemove)
 {
-    if (lengthToRemove <= 0)
+    if (!lengthToRemove)
         return;
-    if (position >= length())
+    auto length = this->length();
+    if (position >= length)
         return;
-    if (static_cast<unsigned>(lengthToRemove) > length() - position)
-        lengthToRemove = length() - position;
-
-    if (is8Bit()) {
+    lengthToRemove = std::min(lengthToRemove, length - position);
+    if (is8Bit())
         removeInternal(characters8(), position, lengthToRemove);
-
-        return;
-    }
-
-    removeInternal(characters16(), position, lengthToRemove);
+    else
+        removeInternal(characters16(), position, lengthToRemove);
 }
 
-String String::substring(unsigned pos, unsigned len) const
+String String::substring(unsigned position, unsigned length) const
 {
-    if (!m_impl) 
-        return String();
-    return m_impl->substring(pos, len);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->substring(position, length) : String { };
 }
 
 String String::substringSharingImpl(unsigned offset, unsigned length) const
@@ -332,100 +322,93 @@ String String::substringSharingImpl(unsigned offset, unsigned length) const
 
     if (!offset && length == stringLength)
         return *this;
-    return String(StringImpl::createSubstringSharingImpl(*m_impl, offset, length));
+    return StringImpl::createSubstringSharingImpl(*m_impl, offset, length);
 }
 
 String String::convertToASCIILowercase() const
 {
     // FIXME: Should this function, and the many others like it, be inlined?
-    if (!m_impl)
-        return String();
-    return m_impl->convertToASCIILowercase();
+    return m_impl ? m_impl->convertToASCIILowercase() : String { };
 }
 
 String String::convertToASCIIUppercase() const
 {
     // FIXME: Should this function, and the many others like it, be inlined?
-    if (!m_impl)
-        return String();
-    return m_impl->convertToASCIIUppercase();
+    return m_impl ? m_impl->convertToASCIIUppercase() : String { };
 }
 
 String String::convertToLowercaseWithoutLocale() const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->convertToLowercaseWithoutLocale();
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->convertToLowercaseWithoutLocale() : String { };
 }
 
 String String::convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned failingIndex) const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(failingIndex);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(failingIndex) : String { };
 }
 
 String String::convertToUppercaseWithoutLocale() const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->convertToUppercaseWithoutLocale();
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->convertToUppercaseWithoutLocale() : String { };
 }
 
 String String::convertToLowercaseWithLocale(const AtomicString& localeIdentifier) const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->convertToLowercaseWithLocale(localeIdentifier);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->convertToLowercaseWithLocale(localeIdentifier) : String { };
 }
 
 String String::convertToUppercaseWithLocale(const AtomicString& localeIdentifier) const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->convertToUppercaseWithLocale(localeIdentifier);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->convertToUppercaseWithLocale(localeIdentifier) : String { };
 }
 
 String String::stripWhiteSpace() const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->stripWhiteSpace();
+    // FIXME: Should this function, and the many others like it, be inlined?
+    // FIXME: This function needs a new name. For one thing, "whitespace" is a single
+    // word so the "s" should be lowercase. For another, it's not clear from this name
+    // that the function uses the Unicode definition of whitespace. Most WebKit callers
+    // don't want that and eventually we should consider deleting this.
+    return m_impl ? m_impl->stripWhiteSpace() : String { };
 }
 
-String String::stripWhiteSpace(IsWhiteSpaceFunctionPtr isWhiteSpace) const
+String String::stripLeadingAndTrailingCharacters(CodeUnitMatchFunction predicate) const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->stripWhiteSpace(isWhiteSpace);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->stripLeadingAndTrailingCharacters(predicate) : String { };
 }
 
 String String::simplifyWhiteSpace() const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->simplifyWhiteSpace();
+    // FIXME: Should this function, and the many others like it, be inlined?
+    // FIXME: This function needs a new name. For one thing, "whitespace" is a single
+    // word so the "s" should be lowercase. For another, it's not clear from this name
+    // that the function uses the Unicode definition of whitespace. Most WebKit callers
+    // don't want that and eventually we should consider deleting this.
+    return m_impl ? m_impl->simplifyWhiteSpace() : String { };
 }
 
-String String::simplifyWhiteSpace(IsWhiteSpaceFunctionPtr isWhiteSpace) const
+String String::simplifyWhiteSpace(CodeUnitMatchFunction isWhiteSpace) const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->simplifyWhiteSpace(isWhiteSpace);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->simplifyWhiteSpace(isWhiteSpace) : String { };
 }
 
-String String::removeCharacters(CharacterMatchFunctionPtr findMatch) const
+String String::removeCharacters(CodeUnitMatchFunction findMatch) const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->removeCharacters(findMatch);
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->removeCharacters(findMatch) : String { };
 }
 
 String String::foldCase() const
 {
-    if (!m_impl)
-        return String();
-    return m_impl->foldCase();
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->foldCase() : String { };
 }
 
 bool String::percentage(int& result) const
@@ -465,43 +448,24 @@ Vector<UChar> String::charactersWithNullTermination() const
     return result;
 }
 
-String String::format(const char *format, ...)
+WTF_ATTRIBUTE_PRINTF(1, 0) static String createWithFormatAndArguments(const char *format, va_list args)
 {
-#if PLATFORM(QT)
-    // Use QString::vsprintf to avoid the locale dependent formatting of vsnprintf.
-    // https://bugs.webkit.org/show_bug.cgi?id=18994
-    va_list args;
-    va_start(args, format);
-
-    QString buffer;
-    buffer.vsprintf(format, args);
-
-    va_end(args);
-
-    QByteArray ba = buffer.toUtf8();
-    return StringImpl::create(reinterpret_cast<const LChar*>(ba.constData()), ba.length());
-
-#else
-    va_list args;
-    va_start(args, format);
-
-#if USE(CF) && !OS(WINDOWS)
-    if (strstr(format, "%@")) {
-        RetainPtr<CFStringRef> cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
+    va_list argsCopy;
+    va_copy(argsCopy, args);
 
 #if COMPILER(CLANG)
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wformat-nonliteral"
 #endif
-        RetainPtr<CFStringRef> result = adoptCF(CFStringCreateWithFormatAndArguments(kCFAllocatorDefault, nullptr, cfFormat.get(), args));
-#if COMPILER(CLANG)
-#pragma clang diagnostic pop
-#endif
 
-        va_end(args);
+#if USE(CF) && !OS(WINDOWS)
+    if (strstr(format, "%@")) {
+        auto cfFormat = adoptCF(CFStringCreateWithCString(kCFAllocatorDefault, format, kCFStringEncodingUTF8));
+        auto result = adoptCF(CFStringCreateWithFormatAndArguments(kCFAllocatorDefault, nullptr, cfFormat.get(), args));
+        va_end(argsCopy);
         return result.get();
     }
-#endif // USE(CF) && !OS(WINDOWS)
+#endif
 
     // Do the format once to get the length.
 #if COMPILER(MSVC)
@@ -510,25 +474,38 @@ String String::format(const char *format, ...)
     char ch;
     int result = vsnprintf(&ch, 1, format, args);
 #endif
-    va_end(args);
 
-    if (result == 0)
-        return String("");
-    if (result < 0)
+    if (!result) {
+        va_end(argsCopy);
+        return emptyString();
+    }
+    if (result < 0) {
+        va_end(argsCopy);
         return String();
+    }
 
     Vector<char, 256> buffer;
     unsigned len = result;
     buffer.grow(len + 1);
-    
-    va_start(args, format);
-    // Now do the formatting again, guaranteed to fit.
-    vsnprintf(buffer.data(), buffer.size(), format, args);
 
-    va_end(args);
-    
-    return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), len);
+    // Now do the formatting again, guaranteed to fit.
+    vsnprintf(buffer.data(), buffer.size(), format, argsCopy);
+    va_end(argsCopy);
+
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
 #endif
+
+    return StringImpl::create(reinterpret_cast<const LChar*>(buffer.data()), len);
+}
+
+String String::format(const char *format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    String result = createWithFormatAndArguments(format, args);
+    va_end(args);
+    return result;
 }
 
 String String::number(int number)
@@ -699,12 +676,10 @@ float String::toFloat(bool* ok) const
     return m_impl->toFloat(ok);
 }
 
-#if COMPILER_SUPPORTS(CXX_REFERENCE_QUALIFIED_FUNCTIONS)
 String String::isolatedCopy() const &
 {
-    if (!m_impl)
-        return String();
-    return m_impl->isolatedCopy();
+    // FIXME: Should this function, and the many others like it, be inlined?
+    return m_impl ? m_impl->isolatedCopy() : String { };
 }
 
 String String::isolatedCopy() &&
@@ -712,41 +687,23 @@ String String::isolatedCopy() &&
     if (isSafeToSendToAnotherThread()) {
         // Since we know that our string is a temporary that will be destroyed
         // we can just steal the m_impl from it, thus avoiding a copy.
-        return String(WTFMove(*this));
+        return { WTFMove(*this) };
     }
 
-    if (!m_impl)
-        return String();
-
-    return m_impl->isolatedCopy();
+    return m_impl ? m_impl->isolatedCopy() : String { };
 }
-#else
-String String::isolatedCopy() const
-{
-    if (!m_impl)
-        return String();
-    return m_impl->isolatedCopy();
-}
-#endif
 
 bool String::isSafeToSendToAnotherThread() const
 {
-    if (!impl())
-        return true;
-    if (isEmpty())
-        return true;
     // AtomicStrings are not safe to send between threads as ~StringImpl()
     // will try to remove them from the wrong AtomicStringTable.
-    if (impl()->isAtomic())
-        return false;
-    if (impl()->hasOneRef())
-        return true;
-    return false;
+    return isEmpty() || (m_impl->hasOneRef() && !m_impl->isAtomic());
 }
 
-void String::split(const String& separator, bool allowEmptyEntries, Vector<String>& result) const
+template<bool allowEmptyEntries>
+inline Vector<String> String::splitInternal(const String& separator) const
 {
-    result.clear();
+    Vector<String> result;
 
     unsigned startPos = 0;
     size_t endPos;
@@ -757,9 +714,12 @@ void String::split(const String& separator, bool allowEmptyEntries, Vector<Strin
     }
     if (allowEmptyEntries || startPos != length())
         result.append(substring(startPos));
+
+    return result;
 }
 
-void String::split(UChar separator, bool allowEmptyEntries, const SplitFunctor& functor) const
+template<bool allowEmptyEntries>
+inline void String::splitInternal(UChar separator, const SplitFunctor& functor) const
 {
     StringView view(*this);
 
@@ -774,12 +734,45 @@ void String::split(UChar separator, bool allowEmptyEntries, const SplitFunctor& 
         functor(view.substring(startPos));
 }
 
-void String::split(UChar separator, bool allowEmptyEntries, Vector<String>& result) const
+template<bool allowEmptyEntries>
+inline Vector<String> String::splitInternal(UChar separator) const
 {
-    result.clear();
-    split(separator, allowEmptyEntries, [&result](StringView item) {
+    Vector<String> result;
+    splitInternal<allowEmptyEntries>(separator, [&result](StringView item) {
         result.append(item.toString());
     });
+
+    return result;
+}
+
+void String::split(UChar separator, const SplitFunctor& functor) const
+{
+    splitInternal<false>(separator, functor);
+}
+
+Vector<String> String::split(UChar separator) const
+{
+    return splitInternal<false>(separator);
+}
+
+Vector<String> String::split(const String& separator) const
+{
+    return splitInternal<false>(separator);
+}
+
+void String::splitAllowingEmptyEntries(UChar separator, const SplitFunctor& functor) const
+{
+    splitInternal<true>(separator, functor);
+}
+
+Vector<String> String::splitAllowingEmptyEntries(UChar separator) const
+{
+    return splitInternal<true>(separator);
+}
+
+Vector<String> String::splitAllowingEmptyEntries(const String& separator) const
+{
+    return splitInternal<true>(separator);
 }
 
 CString String::ascii() const
@@ -846,12 +839,21 @@ CString String::latin1() const
     return result;
 }
 
+Expected<CString, UTF8ConversionError> String::tryGetUtf8(ConversionMode mode) const
+{
+    return m_impl ? m_impl->tryGetUtf8(mode) : CString { "", 0 };
+}
+
+Expected<CString, UTF8ConversionError> String::tryGetUtf8() const
+{
+    return tryGetUtf8(LenientConversion);
+}
+
 CString String::utf8(ConversionMode mode) const
 {
-    if (!m_impl)
-        return CString("", 0);
-    
-    return m_impl->utf8(mode);
+    Expected<CString, UTF8ConversionError> expectedString = tryGetUtf8(mode);
+    RELEASE_ASSERT(expectedString);
+    return expectedString.value();
 }
 
 CString String::utf8() const
@@ -880,7 +882,7 @@ String String::make16BitFrom8BitSource(const LChar* source, size_t length)
     UChar* destination;
     String result = String::createUninitialized(length, destination);
     
-    StringImpl::copyChars(destination, source, length);
+    StringImpl::copyCharacters(destination, source, length);
     
     return result;
 }
@@ -949,8 +951,8 @@ static bool isCharacterAllowedInBase(UChar c, int base)
     return false;
 }
 
-template <typename IntegralType, typename CharType>
-static inline IntegralType toIntegralType(const CharType* data, size_t length, bool* ok, int base)
+template<typename IntegralType, typename CharacterType>
+static inline IntegralType toIntegralType(const CharacterType* data, size_t length, bool* ok, int base)
 {
     static const IntegralType integralMax = std::numeric_limits<IntegralType>::max();
     static const bool isSigned = std::numeric_limits<IntegralType>::is_signed;
@@ -984,7 +986,7 @@ static inline IntegralType toIntegralType(const CharType* data, size_t length, b
     while (length && isCharacterAllowedInBase(*data, base)) {
         --length;
         IntegralType digitValue;
-        CharType c = *data;
+        auto c = *data;
         if (isASCIIDigit(c))
             digitValue = c - '0';
         else if (c >= 'a')
@@ -1025,8 +1027,8 @@ bye:
     return isOk ? value : 0;
 }
 
-template <typename CharType>
-static unsigned lengthOfCharactersAsInteger(const CharType* data, size_t length)
+template<typename CharacterType>
+static unsigned lengthOfCharactersAsInteger(const CharacterType* data, size_t length)
 {
     size_t i = 0;
 
@@ -1151,8 +1153,8 @@ intptr_t charactersToIntPtr(const UChar* data, size_t length, bool* ok)
 
 enum TrailingJunkPolicy { DisallowTrailingJunk, AllowTrailingJunk };
 
-template <typename CharType, TrailingJunkPolicy policy>
-static inline double toDoubleType(const CharType* data, size_t length, bool* ok, size_t& parsedLength)
+template<typename CharacterType, TrailingJunkPolicy policy>
+static inline double toDoubleType(const CharacterType* data, size_t length, bool* ok, size_t& parsedLength)
 {
     size_t leadingSpacesLength = 0;
     while (leadingSpacesLength < length && isASCIISpace(data[leadingSpacesLength]))
@@ -1212,14 +1214,14 @@ float charactersToFloat(const UChar* data, size_t length, size_t& parsedLength)
 const String& emptyString()
 {
     static NeverDestroyed<String> emptyString(StringImpl::empty());
-
     return emptyString;
 }
 
 } // namespace WTF
 
 #ifndef NDEBUG
-// For use in the debugger
+
+// For use in the debugger.
 String* string(const char*);
 Vector<char> asciiDebug(StringImpl* impl);
 Vector<char> asciiDebug(String& string);
@@ -1231,14 +1233,14 @@ void String::show() const
 
 String* string(const char* s)
 {
-    // leaks memory!
+    // Intentionally leaks memory!
     return new String(s);
 }
 
 Vector<char> asciiDebug(StringImpl* impl)
 {
     if (!impl)
-        return asciiDebug(String(ASCIILiteral("[null]")).impl());
+        return asciiDebug(String("[null]"_s).impl());
 
     Vector<char> buffer;
     for (unsigned i = 0; i < impl->length(); ++i) {

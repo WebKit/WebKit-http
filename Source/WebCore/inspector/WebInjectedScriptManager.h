@@ -26,7 +26,7 @@
 #pragma once
 
 #include "CommandLineAPIHost.h"
-#include <inspector/InjectedScriptManager.h>
+#include <JavaScriptCore/InjectedScriptManager.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -34,9 +34,11 @@ namespace WebCore {
 class DOMWindow;
 
 class WebInjectedScriptManager final : public Inspector::InjectedScriptManager {
+    WTF_MAKE_NONCOPYABLE(WebInjectedScriptManager);
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     WebInjectedScriptManager(Inspector::InspectorEnvironment&, Ref<Inspector::InjectedScriptHost>&&);
-    virtual ~WebInjectedScriptManager() { }
+    virtual ~WebInjectedScriptManager() = default;
 
     CommandLineAPIHost* commandLineAPIHost() const { return m_commandLineAPIHost.get(); }
 

@@ -35,21 +35,21 @@
 namespace WebCore {
 namespace SimpleLineLayout {
 
-TextFragmentIterator::Style::Style(const RenderStyle& style, bool useSimplifiedTextMeasuring)
+TextFragmentIterator::Style::Style(const RenderStyle& style)
     : font(style.fontCascade())
     , textAlign(style.textAlign())
     , hasKerningOrLigatures(font.enableKerning() || font.requiresShaping())
     , collapseWhitespace(style.collapseWhiteSpace())
     , preserveNewline(style.preserveNewline())
     , wrapLines(style.autoWrap())
-    , breakAnyWordOnOverflow(style.wordBreak() == BreakAllWordBreak && wrapLines)
+    , breakAnyWordOnOverflow(style.wordBreak() == WordBreak::BreakAll && wrapLines)
     , breakFirstWordOnOverflow(breakAnyWordOnOverflow || (style.breakWords() && (wrapLines || preserveNewline)))
-    , breakNBSP(wrapLines && style.nbspMode() == SPACE)
-    , keepAllWordsForCJK(style.wordBreak() == KeepAllWordBreak)
+    , breakNBSP(wrapLines && style.nbspMode() == NBSPMode::Space)
+    , keepAllWordsForCJK(style.wordBreak() == WordBreak::KeepAll)
     , wordSpacing(font.wordSpacing())
     , tabWidth(collapseWhitespace ? 0 : style.tabSize())
-    , shouldHyphenate(style.hyphens() == HyphensAuto && canHyphenate(style.locale()))
-    , hyphenStringWidth(shouldHyphenate ? (useSimplifiedTextMeasuring ? font.widthForSimpleText(style.hyphenString()) : font.width(TextRun(style.hyphenString()))) : 0)
+    , shouldHyphenate(style.hyphens() == Hyphens::Auto && canHyphenate(style.locale()))
+    , hyphenStringWidth(shouldHyphenate ? font.width(TextRun(String(style.hyphenString()))) : 0)
     , hyphenLimitBefore(style.hyphenationLimitBefore() < 0 ? 2 : style.hyphenationLimitBefore())
     , hyphenLimitAfter(style.hyphenationLimitAfter() < 0 ? 2 : style.hyphenationLimitAfter())
     , locale(style.locale())
@@ -62,7 +62,7 @@ TextFragmentIterator::TextFragmentIterator(const RenderBlockFlow& flow)
     : m_flowContents(flow)
     , m_currentSegment(m_flowContents.begin())
     , m_lineBreakIterator(m_currentSegment->text, flow.style().locale())
-    , m_style(flow.style(), m_currentSegment->canUseSimplifiedTextMeasuring)
+    , m_style(flow.style())
 {
 }
 

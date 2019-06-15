@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ExecutionContextList = class ExecutionContextList extends WebInspector.Object
+WI.ExecutionContextList = class ExecutionContextList
 {
     constructor()
     {
-        super();
-
         this._contexts = [];
         this._pageExecutionContext = null;
     }

@@ -8,14 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_TEST_MOCK_AUDIO_ENCODER_H_
-#define WEBRTC_TEST_MOCK_AUDIO_ENCODER_H_
+#ifndef TEST_MOCK_AUDIO_ENCODER_H_
+#define TEST_MOCK_AUDIO_ENCODER_H_
 
 #include <string>
 
-#include "webrtc/api/audio_codecs/audio_encoder.h"
-#include "webrtc/base/array_view.h"
-#include "webrtc/test/gmock.h"
+#include "api/array_view.h"
+#include "api/audio_codecs/audio_encoder.h"
+#include "test/gmock.h"
 
 namespace webrtc {
 
@@ -27,7 +27,6 @@ class MockAudioEncoder : public AudioEncoder {
   // http://crbug.com/428099.
   MockAudioEncoder();
   ~MockAudioEncoder();
-  MOCK_METHOD0(Die, void());
   MOCK_METHOD1(Mark, void(std::string desc));
   MOCK_CONST_METHOD0(SampleRateHz, int());
   MOCK_CONST_METHOD0(NumChannels, size_t());
@@ -44,7 +43,7 @@ class MockAudioEncoder : public AudioEncoder {
   MOCK_METHOD1(SetMaxPayloadSize, void(int max_payload_size_bytes));
   MOCK_METHOD2(OnReceivedUplinkBandwidth,
                void(int target_audio_bitrate_bps,
-                    rtc::Optional<int64_t> probing_interval_ms));
+                    absl::optional<int64_t> probing_interval_ms));
   MOCK_METHOD1(OnReceivedUplinkPacketLossFraction,
                void(float uplink_packet_loss_fraction));
 
@@ -104,4 +103,4 @@ class MockAudioEncoder : public AudioEncoder {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_TEST_MOCK_AUDIO_ENCODER_H_
+#endif  // TEST_MOCK_AUDIO_ENCODER_H_

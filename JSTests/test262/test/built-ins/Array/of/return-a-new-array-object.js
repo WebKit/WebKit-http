@@ -1,10 +1,11 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-array.of
 es6id: 22.1.2.3
 description: >
   Returns a new Array.
-info: >
+info: |
   Array.of ( ...items )
 
   1. Let len be the actual number of arguments passed to this function.

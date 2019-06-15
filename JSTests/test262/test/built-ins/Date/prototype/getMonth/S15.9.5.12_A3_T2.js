@@ -2,14 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The Date.prototype.getMonth property "length" has { ReadOnly, !
     DontDelete, DontEnum } attributes
+esid: sec-date.prototype.getmonth
 es5id: 15.9.5.12_A3_T2
 description: Checking DontDelete attribute
 ---*/
 
-if (delete Date.prototype.getMonth.length  !== true) {
+if (delete Date.prototype.getMonth.length !== true) {
   $ERROR('#1: The Date.prototype.getMonth.length property does not have the attributes DontDelete');
 }
 

@@ -5,9 +5,11 @@
 description: Rest element (identifier) may not be followed by any element (generator method)
 esid: sec-generator-function-definitions-runtime-semantics-propertydefinitionevaluation
 es6id: 14.4.13
-features: [destructuring-binding]
+features: [generators, destructuring-binding]
 flags: [generated]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 info: |
     GeneratorMethod :
         * PropertyName ( StrictFormalParameters ) { GeneratorBody }
@@ -50,6 +52,7 @@ info: |
         [ BindingElementList[?Yield] ]
         [ BindingElementList[?Yield] , Elisionopt BindingRestElement[?Yield]opt ]
 ---*/
+throw "Test262: This statement should not be evaluated.";
 
 var callCount = 0;
 var obj = {

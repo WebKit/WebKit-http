@@ -46,12 +46,15 @@ private:
 inline Structure* InternalFunctionAllocationProfile::createAllocationStructureFromBase(VM& vm, JSGlobalObject* globalObject, JSCell* owner, JSObject* prototype, Structure* baseStructure)
 {
     ASSERT(!m_structure || m_structure.get()->classInfo() != baseStructure->classInfo());
+    ASSERT(baseStructure->hasMonoProto());
 
     Structure* structure;
+    // FIXME: Implement polymorphic prototypes for subclasses of builtin types:
+    // https://bugs.webkit.org/show_bug.cgi?id=177318
     if (prototype == baseStructure->storedPrototype())
         structure = baseStructure;
     else
-        structure = vm.prototypeMap.emptyStructureForPrototypeFromBaseStructure(globalObject, prototype, baseStructure);
+        structure = vm.structureCache.emptyStructureForPrototypeFromBaseStructure(globalObject, prototype, baseStructure);
 
     // Ensure that if another thread sees the structure, it will see it properly created.
     WTF::storeStoreFence();

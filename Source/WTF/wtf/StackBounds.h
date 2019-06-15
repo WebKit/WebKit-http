@@ -28,6 +28,7 @@
 #define StackBounds_h
 
 #include <algorithm>
+#include <wtf/ThreadingPrimitives.h>
 
 namespace WTF {
 
@@ -40,20 +41,19 @@ class StackBounds {
     const static size_t s_defaultAvailabilityDelta = 64 * 1024;
 
 public:
-    static StackBounds emptyBounds() { return StackBounds(); }
+    enum class StackDirection { Upward, Downward };
 
+    static constexpr StackBounds emptyBounds() { return StackBounds(); }
+
+#if HAVE(STACK_BOUNDS_FOR_NEW_THREAD)
+    // This function is only effective for newly created threads. In some platform, it returns a bogus value for the main thread.
+    static StackBounds newThreadStackBounds(PlatformThreadHandle);
+#endif
     static StackBounds currentThreadStackBounds()
     {
-        StackBounds bounds;
-        bounds.initialize();
-        bounds.checkConsistency();
-        return bounds;
-    }
-
-    StackBounds(void* origin, void* end)
-        : m_origin(origin)
-        , m_bound(end)
-    {
+        auto result = currentThreadStackBoundsInternal();
+        result.checkConsistency();
+        return result;
     }
 
     void* origin() const
@@ -123,17 +123,25 @@ public:
     bool isGrowingDownward() const
     {
         ASSERT(m_origin && m_bound);
-        return true;
+        return m_bound <= m_origin;
     }
 
 private:
-    StackBounds()
-        : m_origin(0)
-        , m_bound(0)
+    StackBounds(void* origin, void* end)
+        : m_origin(origin)
+        , m_bound(end)
     {
     }
 
-    WTF_EXPORT_PRIVATE void initialize();
+    constexpr StackBounds()
+        : m_origin(nullptr)
+        , m_bound(nullptr)
+    {
+    }
+
+    static StackDirection stackDirection();
+
+    WTF_EXPORT_PRIVATE static StackBounds currentThreadStackBoundsInternal();
 
     void checkConsistency() const
     {

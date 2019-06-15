@@ -13,12 +13,11 @@
 #include <utility>
 #include <vector>
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
-#include "webrtc/modules/rtp_rtcp/source/fec_test_helper.h"
-#include "webrtc/modules/rtp_rtcp/source/forward_error_correction.h"
-#include "webrtc/modules/rtp_rtcp/source/ulpfec_generator.h"
-#include "webrtc/test/gtest.h"
+#include "modules/rtp_rtcp/source/byte_io.h"
+#include "modules/rtp_rtcp/source/fec_test_helper.h"
+#include "modules/rtp_rtcp/source/forward_error_correction.h"
+#include "modules/rtp_rtcp/source/ulpfec_generator.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -95,8 +94,8 @@ TEST_F(UlpfecGeneratorTest, NoEmptyFecWithSeqNumGaps) {
     size_t num_fec_packets = ulpfec_generator_.NumAvailableFecPackets();
     if (num_fec_packets > 0) {
       std::vector<std::unique_ptr<RedPacket>> fec_packets =
-          ulpfec_generator_.GetUlpfecPacketsAsRed(
-              kRedPayloadType, kFecPayloadType, 100, p.header_size);
+          ulpfec_generator_.GetUlpfecPacketsAsRed(kRedPayloadType,
+                                                  kFecPayloadType, 100);
       EXPECT_EQ(num_fec_packets, fec_packets.size());
     }
   }
@@ -122,10 +121,10 @@ TEST_F(UlpfecGeneratorTest, OneFrameFec) {
     last_timestamp = packet->header.header.timestamp;
   }
   EXPECT_TRUE(ulpfec_generator_.FecAvailable());
-  uint16_t seq_num = packet_generator_.NextPacketSeqNum();
+  const uint16_t seq_num = packet_generator_.NextPacketSeqNum();
   std::vector<std::unique_ptr<RedPacket>> red_packets =
       ulpfec_generator_.GetUlpfecPacketsAsRed(kRedPayloadType, kFecPayloadType,
-                                              seq_num, kRtpHeaderSize);
+                                              seq_num);
   EXPECT_FALSE(ulpfec_generator_.FecAvailable());
   ASSERT_EQ(1u, red_packets.size());
   VerifyHeader(seq_num, last_timestamp, kRedPayloadType, kFecPayloadType,
@@ -157,48 +156,51 @@ TEST_F(UlpfecGeneratorTest, TwoFrameFec) {
     }
   }
   EXPECT_TRUE(ulpfec_generator_.FecAvailable());
-  uint16_t seq_num = packet_generator_.NextPacketSeqNum();
+  const uint16_t seq_num = packet_generator_.NextPacketSeqNum();
   std::vector<std::unique_ptr<RedPacket>> red_packets =
       ulpfec_generator_.GetUlpfecPacketsAsRed(kRedPayloadType, kFecPayloadType,
-                                              seq_num, kRtpHeaderSize);
+                                              seq_num);
   EXPECT_FALSE(ulpfec_generator_.FecAvailable());
   ASSERT_EQ(1u, red_packets.size());
   VerifyHeader(seq_num, last_timestamp, kRedPayloadType, kFecPayloadType,
                red_packets.front().get(), false);
 }
 
-TEST_F(UlpfecGeneratorTest, BuildRedPacket) {
-  packet_generator_.NewFrame(1);
-  std::unique_ptr<AugmentedPacket> packet = packet_generator_.NextPacket(0, 10);
-  std::unique_ptr<RedPacket> red_packet = UlpfecGenerator::BuildRedPacket(
-      packet->data, packet->length - kRtpHeaderSize, kRtpHeaderSize,
-      kRedPayloadType);
-  EXPECT_EQ(packet->length + 1, red_packet->length());
-  VerifyHeader(packet->header.header.sequenceNumber,
-               packet->header.header.timestamp, kRedPayloadType,
-               packet->header.header.payloadType, red_packet.get(),
-               true);  // Marker bit set.
-  for (int i = 0; i < 10; ++i) {
-    EXPECT_EQ(i, red_packet->data()[kRtpHeaderSize + 1 + i]);
+TEST_F(UlpfecGeneratorTest, MixedMediaRtpHeaderLengths) {
+  constexpr size_t kShortRtpHeaderLength = 12;
+  constexpr size_t kLongRtpHeaderLength = 16;
+
+  // Only one frame required to generate FEC.
+  FecProtectionParams params = {127, 1, kFecMaskRandom};
+  ulpfec_generator_.SetFecParameters(params);
+
+  // Fill up internal buffer with media packets with short RTP header length.
+  packet_generator_.NewFrame(kUlpfecMaxMediaPackets + 1);
+  for (size_t i = 0; i < kUlpfecMaxMediaPackets; ++i) {
+    std::unique_ptr<AugmentedPacket> packet =
+        packet_generator_.NextPacket(i, 10);
+    EXPECT_EQ(0, ulpfec_generator_.AddRtpPacketAndGenerateFec(
+                     packet->data, packet->length, kShortRtpHeaderLength));
+    EXPECT_FALSE(ulpfec_generator_.FecAvailable());
   }
-}
 
-TEST_F(UlpfecGeneratorTest, BuildRedPacketWithEmptyPayload) {
-  constexpr size_t kNumFrames = 1;
-  constexpr size_t kPayloadLength = 0;
-  constexpr size_t kRedForFecHeaderLength = 1;
+  // Kick off FEC generation with media packet with long RTP header length.
+  // Since the internal buffer is full, this packet will not be protected.
+  std::unique_ptr<AugmentedPacket> packet =
+      packet_generator_.NextPacket(kUlpfecMaxMediaPackets, 10);
+  EXPECT_EQ(0, ulpfec_generator_.AddRtpPacketAndGenerateFec(
+                   packet->data, packet->length, kLongRtpHeaderLength));
+  EXPECT_TRUE(ulpfec_generator_.FecAvailable());
 
-  packet_generator_.NewFrame(kNumFrames);
-  std::unique_ptr<AugmentedPacket> packet(
-      packet_generator_.NextPacket(0, kPayloadLength));
-  std::unique_ptr<RedPacket> red_packet = UlpfecGenerator::BuildRedPacket(
-      packet->data, packet->length - kRtpHeaderSize, kRtpHeaderSize,
-      kRedPayloadType);
-  EXPECT_EQ(packet->length + kRedForFecHeaderLength, red_packet->length());
-  VerifyHeader(packet->header.header.sequenceNumber,
-               packet->header.header.timestamp, kRedPayloadType,
-               packet->header.header.payloadType, red_packet.get(),
-               true);  // Marker bit set.
+  // Ensure that the RED header is placed correctly, i.e. the correct
+  // RTP header length was used in the RED packet creation.
+  const uint16_t seq_num = packet_generator_.NextPacketSeqNum();
+  std::vector<std::unique_ptr<RedPacket>> red_packets =
+      ulpfec_generator_.GetUlpfecPacketsAsRed(kRedPayloadType, kFecPayloadType,
+                                              seq_num);
+  for (const auto& red_packet : red_packets) {
+    EXPECT_EQ(kFecPayloadType, red_packet->data()[kShortRtpHeaderLength]);
+  }
 }
 
 }  // namespace webrtc

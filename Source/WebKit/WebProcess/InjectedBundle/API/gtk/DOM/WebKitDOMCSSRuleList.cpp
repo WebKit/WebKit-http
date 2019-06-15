@@ -23,9 +23,7 @@
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMCSSRuleListPrivate.h"
 #include "WebKitDOMCSSRulePrivate.h"
 #include "WebKitDOMPrivate.h"
@@ -38,6 +36,8 @@
 typedef struct _WebKitDOMCSSRuleListPrivate {
     RefPtr<WebCore::CSSRuleList> coreObject;
 } WebKitDOMCSSRuleListPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,8 +68,8 @@ WebKitDOMCSSRuleList* wrapCSSRuleList(WebCore::CSSRuleList* coreObject)
 G_DEFINE_TYPE(WebKitDOMCSSRuleList, webkit_dom_css_rule_list, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_LENGTH,
+    DOM_CSS_RULE_LIST_PROP_0,
+    DOM_CSS_RULE_LIST_PROP_LENGTH,
 };
 
 static void webkit_dom_css_rule_list_finalize(GObject* object)
@@ -87,7 +87,7 @@ static void webkit_dom_css_rule_list_get_property(GObject* object, guint propert
     WebKitDOMCSSRuleList* self = WEBKIT_DOM_CSS_RULE_LIST(object);
 
     switch (propertyId) {
-    case PROP_LENGTH:
+    case DOM_CSS_RULE_LIST_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_css_rule_list_get_length(self));
         break;
     default:
@@ -117,7 +117,7 @@ static void webkit_dom_css_rule_list_class_init(WebKitDOMCSSRuleListClass* reque
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_CSS_RULE_LIST_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "CSSRuleList:length",
@@ -151,3 +151,4 @@ gulong webkit_dom_css_rule_list_get_length(WebKitDOMCSSRuleList* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

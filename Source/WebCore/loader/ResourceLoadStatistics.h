@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #include "URL.h"
 #include <wtf/HashCountedSet.h>
+#include <wtf/HashSet.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
@@ -50,12 +51,14 @@ struct ResourceLoadStatistics {
     ResourceLoadStatistics& operator=(ResourceLoadStatistics&&) = default;
 
     WEBCORE_EXPORT static String primaryDomain(const URL&);
-    WEBCORE_EXPORT static String primaryDomain(const String& host);
+    WEBCORE_EXPORT static String primaryDomain(StringView host);
+
+    WEBCORE_EXPORT static WallTime reduceTimeResolution(WallTime);
 
     WEBCORE_EXPORT void encode(KeyedEncoder&) const;
-    WEBCORE_EXPORT bool decode(KeyedDecoder&);
+    WEBCORE_EXPORT bool decode(KeyedDecoder&, unsigned modelVersion);
 
-    String toString() const;
+    WEBCORE_EXPORT String toString() const;
 
     WEBCORE_EXPORT void merge(const ResourceLoadStatistics&);
 
@@ -68,20 +71,31 @@ struct ResourceLoadStatistics {
     // Timestamp. Default value is negative, 0 means it was reset.
     WallTime mostRecentUserInteractionTime { WallTime::fromRawSeconds(-1) };
     bool grandfathered { false };
-    
+
+    // Storage access
+    HashSet<String> storageAccessUnderTopFrameOrigins;
+
+    // Top frame stats
+    HashCountedSet<String> topFrameUniqueRedirectsTo;
+    HashCountedSet<String> topFrameUniqueRedirectsFrom;
+
     // Subframe stats
     HashCountedSet<String> subframeUnderTopFrameOrigins;
     
     // Subresource stats
     HashCountedSet<String> subresourceUnderTopFrameOrigins;
     HashCountedSet<String> subresourceUniqueRedirectsTo;
-    
+    HashCountedSet<String> subresourceUniqueRedirectsFrom;
+
     // Prevalent resource stats
     bool isPrevalentResource { false };
+    bool isVeryPrevalentResource { false };
     unsigned dataRecordsRemoved { 0 };
+    unsigned timesAccessedAsFirstPartyDueToUserInteraction { 0 };
+    unsigned timesAccessedAsFirstPartyDueToStorageAccessAPI { 0 };
 
     // In-memory only
-    bool isMarkedForCookiePartitioning { false };
+    bool isMarkedForCookieBlocking { false };
 };
 
 } // namespace WebCore

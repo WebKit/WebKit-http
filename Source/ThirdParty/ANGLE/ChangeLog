@@ -1,3 +1,354 @@
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/189081>
+
+        * src/angle.xcodeproj: Removed.
+        * src/common/third_party/numerics: Removed.
+
+2018-08-28  David Kilzer  <ddkilzer@apple.com>
+
+        Move PMurHash.{cpp,h} into 'src' folder to match path on disk
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        (src/common/third_party/smhasher/src): Add folder and move
+        PMurHash.{cpp,h} into it.  This makes tidy-Xcode-project-file
+        run smoothly when updating the ANGLE project.
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2018-08-03  Alex Christensen  <achristensen@webkit.org>
+
+        Fix spelling of "overridden"
+        https://bugs.webkit.org/show_bug.cgi?id=188315
+
+        Reviewed by Darin Adler.
+
+        * src/libANGLE/renderer/ProgramImpl.h:
+
+2018-07-14  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Ensure WebKit stack is ad-hoc signed
+        https://bugs.webkit.org/show_bug.cgi?id=187667
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Configurations/Base.xcconfig:
+
+2018-07-04  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce PLATFORM(IOSMAC)
+        https://bugs.webkit.org/show_bug.cgi?id=187315
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2018-06-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Clean up and modernize some build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=186463
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig: Removed definition for macOS 10.11.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+
+2018-05-30  David Kilzer  <ddkilzer@apple.com>
+
+        ANGLE: Fix clang static analyzer issues in GetExecutablePath() and GetExecutableDirectory()
+        <https://webkit.org/b/186106>
+        <rdar://problem/40659179>
+
+        Reviewed by Alex Christensen.
+
+        * src/common/system_utils_linux.cpp:
+        (angle::GetExecutablePath):
+        (angle::GetExecutableDirectory):
+        * src/common/system_utils_mac.cpp:
+        (angle::GetExecutablePath):
+        (angle::GetExecutableDirectory):
+        * src/common/system_utils_win.cpp:
+        (angle::GetExecutablePath):
+        (angle::GetExecutableDirectory):
+
+2018-05-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r232052.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Use more C++17"
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+        https://trac.webkit.org/changeset/232052
+
+2018-05-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use more C++17
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+
+        Reviewed by JF Bastien.
+
+        * Configurations/Base.xcconfig:
+
+2018-04-18  Jer Noble  <jer.noble@apple.com>
+
+        Don't put build products into WK_ALTERNATE_WEBKIT_SDK_PATH for engineering builds
+        https://bugs.webkit.org/show_bug.cgi?id=184762
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2018-04-19  David Kilzer  <ddkilzer@apple.com>
+
+        Enable Objective-C weak references
+        <https://webkit.org/b/184789>
+        <rdar://problem/39571716>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_ENABLE_OBJC_WEAK): Enable.
+
+2018-03-19  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r225340): WPE port should not be getting EGL X11 types on ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=183749
+
+        Reviewed by Alex Christensen.
+
+        Add back the USE_WPE ifdef.
+
+        * changes.diff:
+        * include/EGL/eglplatform.h:
+
+2018-03-15  Tim Horton  <timothy_horton@apple.com>
+
+        Add and adopt WK_ALTERNATE_FRAMEWORKS_DIR in ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=183675
+        <rdar://problem/38515281>
+
+        Reviewed by Dan Bernstein.
+
+        * ANGLE.xcodeproj/project.pbxproj:
+        * Configurations/ANGLE.xcconfig:
+        * Configurations/Base.xcconfig:
+
+2018-01-27  Dan Bernstein  <mitz@apple.com>
+
+        HaveInternalSDK includes should be "#include?"
+        https://bugs.webkit.org/show_bug.cgi?id=179670
+
+        * Configurations/Base.xcconfig:
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Streamline and future-proof target-macOS-version-dependent build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=181803
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Updated.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+
+2018-01-09  Dan Bernstein  <mitz@apple.com>
+
+        Removed some empty directories that were left behind
+
+        * src/third_party/murmurhash: Removed.
+        * third_party: Removed.
+        * third_party/deqp: Removed.
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wstrict-prototypes for WebKit
+        <https://webkit.org/b/180757>
+        <rdar://problem/36024132>
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_WARN_STRICT_PROTOTYPES): Add. Set to YES.
+
+2017-12-06  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE's changes.diff
+        https://bugs.webkit.org/show_bug.cgi?id=180491
+
+        Reviewed by Antoine Quint.
+
+        Here is the list of things we've changed from the
+        ANGLE commit that we merged in.
+
+        * changes.diff:
+
+2017-12-06  Dean Jackson  <dino@apple.com>
+
+        Some iOS tests failing after ANGLE update
+        https://bugs.webkit.org/show_bug.cgi?id=180487
+        <rdar://problem/35885969>
+
+        Reviewed by Antoine Quint.
+
+        The iOS OpenGL compiler doesn't like function declarations with
+        nameless array parameters. See:
+        <rdar://problem/35885989> Nameless array parameters in function declaration cause compiler error
+
+        While that is being fixed, tell ANGLE's translator to not cull
+        the names from parameters. This is not a bug in ANGLE, so we won't
+        fix it upstream at the moment.
+
+        * src/compiler/translator/ParseContext.cpp:
+        (sh::TParseContext::addFunctionPrototypeDeclaration):
+
+2017-12-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix byte order macros and address new -Wunknown-pragmas warnings
+        https://bugs.webkit.org/show_bug.cgi?id=180177
+        <rdar://problem/35774734>
+
+        I'm not sure how this code was developed, as it seems to have been designed for GCC, but it
+        does not use any of GCC's documented byte order macros, and accordingly does not work. Let's
+        fix it to guarantee there are no problems when building with GCC. I presume it should help
+        Clang as well.
+
+        This time, hopefully without breaking 32-bit macOS, where __BYTE_ORDER actually is defined.
+
+        * src/common/third_party/smhasher/src/PMurHash.cpp:
+        (angle::PMurHash32_Process):
+
+2017-12-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r225412.
+
+        Breaks 32-bit macOS builds.
+
+        Reverted changeset:
+
+        "Unreviewed, fix byte order macros and address new -Wunknown-
+        pragmas warnings"
+        https://bugs.webkit.org/show_bug.cgi?id=180177
+        https://trac.webkit.org/changeset/225412
+
+2017-12-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix byte order macros and address new -Wunknown-pragmas warnings
+        https://bugs.webkit.org/show_bug.cgi?id=180177
+        <rdar://problem/35774734>
+
+        I'm not sure how this code was developed, as it seems to have been designed for GCC, but it
+        does not use any of GCC's documented byte order macros, and accordingly does not work. Let's
+        fix it to guarantee there are no problems when building with GCC. I presume it should help
+        Clang as well.
+
+        * src/common/third_party/smhasher/src/PMurHash.cpp:
+        (angle::PMurHash32_Process):
+
+2017-12-01  Tomoki Imai  <Tomoki.Imai@sony.com>
+
+        Fix WinCairo build break after r225340
+        https://bugs.webkit.org/show_bug.cgi?id=180230
+
+        Unreviewed build fix.
+
+        * CMakeLists.txt: Add missing sources.
+        * PlatformWin.cmake: Add missing sources.
+
+2017-12-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix -Wunknown-pragmas warnings.
+        https://bugs.webkit.org/show_bug.cgi?id=180177
+
+        It seems GCC has started to warn about unrecognized Clang pragmas. Oh well.
+
+        This is not sent upstream, because the Clang pragmas appear to be downstream WebKit
+        additions. changes.diff is not updated, because it was not updated in yesterday's ANGLE
+        update.
+
+        * include/GLSLANG/ShaderVars.h:
+        * src/libANGLE/Platform.cpp:
+
+2017-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        Speculative WinCairo fix.
+        https://bugs.webkit.org/show_bug.cgi?id=180177
+
+        * CMakeLists.txt:
+        * PlatformWin.cmake:
+
+2017-11-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed build fix, remove executable property from a header file.
+
+        * include/KHR/khrplatform.h: Removed property svn:executable.
+
+2017-11-30  Dean Jackson  <dino@apple.com>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=180177
+        <rdar://problem/35774734>
+
+        Reviewed by Alex Christensen.
+
+        Huge list of changed files omitted.
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
 2017-07-13  Adrian Perez de Castro  <aperez@igalia.com>
 
         eglplatform.h does not support Wayland

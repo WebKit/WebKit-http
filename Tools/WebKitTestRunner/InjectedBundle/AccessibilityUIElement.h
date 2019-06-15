@@ -97,6 +97,16 @@ public:
     void decrement();
     void showMenu();
     void press();
+    bool dismiss();
+#if PLATFORM(MAC)
+    void syncPress();
+    void asyncIncrement();
+    void asyncDecrement();
+#else
+    void syncPress() { press(); }
+    void asyncIncrement() { }
+    void asyncDecrement() { };
+#endif
 
     // Attributes - platform-independent implementations
     JSRetainPtr<JSStringRef> stringAttributeValue(JSStringRef attribute);
@@ -168,7 +178,7 @@ public:
     JSRetainPtr<JSStringRef> classList() const;
 
     // CSS3-speech properties.
-    JSRetainPtr<JSStringRef> speak();
+    JSRetainPtr<JSStringRef> speakAs();
     
     // Table-specific attributes
     JSRetainPtr<JSStringRef> attributesOfColumnHeaders();
@@ -195,6 +205,14 @@ public:
     RefPtr<AccessibilityUIElement> ariaOwnsElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaFlowToElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaControlsElementAtIndex(unsigned);
+#if PLATFORM(MAC) || PLATFORM(GTK)
+    RefPtr<AccessibilityUIElement> ariaDetailsElementAtIndex(unsigned);
+    RefPtr<AccessibilityUIElement> ariaErrorMessageElementAtIndex(unsigned);
+#else
+    RefPtr<AccessibilityUIElement> ariaDetailsElementAtIndex(unsigned) { return nullptr; }
+    RefPtr<AccessibilityUIElement> ariaErrorMessageElementAtIndex(unsigned) { return nullptr; }
+#endif
+
 #if PLATFORM(GTK)
     RefPtr<AccessibilityUIElement> ariaLabelledByElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaDescribedByElementAtIndex(unsigned);
@@ -203,9 +221,7 @@ public:
     RefPtr<AccessibilityUIElement> ariaControlsReferencingElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaLabelledByReferencingElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaDescribedByReferencingElementAtIndex(unsigned);
-    RefPtr<AccessibilityUIElement> ariaDetailsElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaDetailsReferencingElementAtIndex(unsigned);
-    RefPtr<AccessibilityUIElement> ariaErrorMessageElementAtIndex(unsigned);
     RefPtr<AccessibilityUIElement> ariaErrorMessageReferencingElementAtIndex(unsigned);
 #else
     RefPtr<AccessibilityUIElement> ariaLabelledByElementAtIndex(unsigned) { return nullptr; }
@@ -215,9 +231,7 @@ public:
     RefPtr<AccessibilityUIElement> ariaControlsReferencingElementAtIndex(unsigned) { return nullptr; }
     RefPtr<AccessibilityUIElement> ariaLabelledByReferencingElementAtIndex(unsigned) { return nullptr; }
     RefPtr<AccessibilityUIElement> ariaDescribedByReferencingElementAtIndex(unsigned) { return nullptr; }
-    RefPtr<AccessibilityUIElement> ariaDetailsElementAtIndex(unsigned) { return nullptr; }
     RefPtr<AccessibilityUIElement> ariaDetailsReferencingElementAtIndex(unsigned) { return nullptr; }
-    RefPtr<AccessibilityUIElement> ariaErrorMessageElementAtIndex(unsigned) { return nullptr; }
     RefPtr<AccessibilityUIElement> ariaErrorMessageReferencingElementAtIndex(unsigned) { return nullptr; }
 #endif
 
@@ -234,6 +248,8 @@ public:
     bool setSelectedTextRange(unsigned location, unsigned length);
     JSRetainPtr<JSStringRef> stringForRange(unsigned location, unsigned length);
     JSRetainPtr<JSStringRef> attributedStringForRange(unsigned location, unsigned length);
+    JSRetainPtr<JSStringRef> attributedStringForElement();
+
     bool attributedStringRangeIsMisspelled(unsigned location, unsigned length);
     unsigned uiElementCountForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
     RefPtr<AccessibilityUIElement> uiElementForSearchPredicate(JSContextRef, AccessibilityUIElement* startElement, bool isDirectionNext, JSValueRef searchKey, JSStringRef searchText, bool visibleOnly, bool immediateDescendantsOnly);
@@ -271,6 +287,8 @@ public:
     RefPtr<AccessibilityTextMarker> nextTextMarker(AccessibilityTextMarker*);
     RefPtr<AccessibilityUIElement> accessibilityElementForTextMarker(AccessibilityTextMarker*);
     JSRetainPtr<JSStringRef> stringForTextMarkerRange(AccessibilityTextMarkerRange*);
+    JSRetainPtr<JSStringRef> attributedStringForTextMarkerRange(AccessibilityTextMarkerRange*);
+    JSRetainPtr<JSStringRef> attributedStringForTextMarkerRangeWithOptions(AccessibilityTextMarkerRange*, bool);
     int textMarkerRangeLength(AccessibilityTextMarkerRange*);
     bool attributedStringForTextMarkerRangeContainsAttribute(JSStringRef, AccessibilityTextMarkerRange*);
     int indexForTextMarker(AccessibilityTextMarker*);

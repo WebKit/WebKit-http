@@ -9,11 +9,10 @@
  *
  */
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_VOIP_METRIC_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_VOIP_METRIC_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_VOIP_METRIC_H_
+#define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_VOIP_METRIC_H_
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/modules/include/module_common_types.h"
+#include "modules/include/module_common_types.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -50,4 +49,4 @@ class VoipMetric {
 
 }  // namespace rtcp
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_VOIP_METRIC_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_VOIP_METRIC_H_

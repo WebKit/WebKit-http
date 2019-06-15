@@ -17,6 +17,7 @@ description: >
       f. Let status be Call(adder, set, «nextValue.[[value]]»).
       g. If status is an abrupt completion, return IteratorClose(iter, status).
 
+features: [Symbol.iterator]
 ---*/
 
 var count = 0;
@@ -24,14 +25,19 @@ var iterable = {};
 iterable[Symbol.iterator] = function() {
   return {
     next: function() {
-      return { value: null, done: false };
+      return {
+        value: null,
+        done: false
+      };
     },
     return: function() {
       count += 1;
     }
   };
 };
-Set.prototype.add = function() { throw new Error(); }
+Set.prototype.add = function() {
+  throw new Error();
+}
 
 assert.throws(Error, function() {
   new Set(iterable);

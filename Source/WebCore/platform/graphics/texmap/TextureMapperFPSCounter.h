@@ -24,6 +24,7 @@
 
 #include "FloatPoint.h"
 #include "TransformationMatrix.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
@@ -33,13 +34,13 @@ class TextureMapperFPSCounter {
     WTF_MAKE_NONCOPYABLE(TextureMapperFPSCounter);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    TextureMapperFPSCounter();
-    void updateFPSAndDisplay(TextureMapper&, const FloatPoint& = FloatPoint::zero(), const TransformationMatrix& = TransformationMatrix());
+    WEBCORE_EXPORT TextureMapperFPSCounter();
+    WEBCORE_EXPORT void updateFPSAndDisplay(TextureMapper&, const FloatPoint& = FloatPoint::zero(), const TransformationMatrix& = TransformationMatrix());
 
 private:
     bool m_isShowingFPS;
-    double m_fpsInterval;
-    double m_fpsTimestamp;
+    Seconds m_fpsInterval;
+    MonotonicTime m_fpsTimestamp;
     int m_lastFPS;
     int m_frameCount;
 };

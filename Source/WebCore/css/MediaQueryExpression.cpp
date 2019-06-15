@@ -29,31 +29,37 @@
 #include "MediaQueryExpression.h"
 
 #include "CSSAspectRatioValue.h"
-#include "CSSParserToken.h"
 #include "CSSPrimitiveValue.h"
+#include "CSSPropertyParserHelpers.h"
 #include "MediaFeatureNames.h"
+#include "MediaQueryParserContext.h"
+#include <wtf/text/TextStream.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-static inline bool featureWithValidIdent(const AtomicString& mediaFeature)
+static inline bool featureWithValidIdent(const AtomicString& mediaFeature, const CSSPrimitiveValue& value, const MediaQueryParserContext& context)
 {
+    if (value.primitiveType() != CSSPrimitiveValue::UnitType::CSS_IDENT)
+        return false;
+
     return mediaFeature == MediaFeatureNames::orientation
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-    || mediaFeature == MediaFeatureNames::viewMode
-#endif
     || mediaFeature == MediaFeatureNames::colorGamut
     || mediaFeature == MediaFeatureNames::anyHover
     || mediaFeature == MediaFeatureNames::anyPointer
     || mediaFeature == MediaFeatureNames::hover
     || mediaFeature == MediaFeatureNames::invertedColors
     || mediaFeature == MediaFeatureNames::pointer
-    || mediaFeature == MediaFeatureNames::prefersReducedMotion;
+#if ENABLE(APPLICATION_MANIFEST)
+    || mediaFeature == MediaFeatureNames::displayMode
+#endif
+    || mediaFeature == MediaFeatureNames::prefersReducedMotion
+    || (mediaFeature == MediaFeatureNames::prefersDarkInterface && (context.useSystemAppearance || isUASheetBehavior(context.mode)));
 }
 
-static inline bool featureWithValidDensity(const String& mediaFeature, const CSSParserToken& token)
+static inline bool featureWithValidDensity(const String& mediaFeature, const CSSPrimitiveValue& value)
 {
-    if (!CSSPrimitiveValue::isResolution(static_cast<CSSPrimitiveValue::UnitType>(token.unitType())) || token.numericValue() <= 0)
+    if (!value.isResolution() || value.doubleValue() <= 0)
         return false;
     
     return mediaFeature == MediaFeatureNames::resolution
@@ -61,11 +67,10 @@ static inline bool featureWithValidDensity(const String& mediaFeature, const CSS
     || mediaFeature == MediaFeatureNames::maxResolution;
 }
 
-static inline bool featureWithValidPositiveLength(const String& mediaFeature, const CSSParserToken& token)
+static inline bool featureWithValidPositiveLength(const String& mediaFeature, const CSSPrimitiveValue& value)
 {
-    if (!(CSSPrimitiveValue::isLength(token.unitType()) || (token.type() == NumberToken && !token.numericValue())) || token.numericValue() < 0)
+    if (!(value.isLength() || (value.isNumber() && !value.doubleValue())) || value.doubleValue() < 0)
         return false;
-    
     
     return mediaFeature == MediaFeatureNames::height
     || mediaFeature == MediaFeatureNames::maxHeight
@@ -81,14 +86,11 @@ static inline bool featureWithValidPositiveLength(const String& mediaFeature, co
     || mediaFeature == MediaFeatureNames::maxDeviceWidth;
 }
 
-static inline bool featureWithPositiveInteger(const String& mediaFeature, const CSSParserToken& token)
+static inline bool featureExpectingPositiveInteger(const String& mediaFeature)
 {
-    if (token.numericValueType() != IntegerValueType || token.numericValue() < 0)
-        return false;
-    
     return mediaFeature == MediaFeatureNames::color
-    || mediaFeature == MediaFeatureNames:: maxColor
-    || mediaFeature == MediaFeatureNames:: minColor
+    || mediaFeature == MediaFeatureNames::maxColor
+    || mediaFeature == MediaFeatureNames::minColor
     || mediaFeature == MediaFeatureNames::colorIndex
     || mediaFeature == MediaFeatureNames::maxColorIndex
     || mediaFeature == MediaFeatureNames::minColorIndex
@@ -97,9 +99,16 @@ static inline bool featureWithPositiveInteger(const String& mediaFeature, const 
     || mediaFeature == MediaFeatureNames::minMonochrome;
 }
 
-static inline bool featureWithPositiveNumber(const String& mediaFeature, const CSSParserToken& token)
+static inline bool featureWithPositiveInteger(const String& mediaFeature, const CSSPrimitiveValue& value)
 {
-    if (token.type() != NumberToken || token.numericValue() < 0)
+    if (!value.isNumber())
+        return false;
+    return featureExpectingPositiveInteger(mediaFeature);
+}
+
+static inline bool featureWithPositiveNumber(const String& mediaFeature, const CSSPrimitiveValue& value)
+{
+    if (!value.isNumber())
         return false;
     
     return mediaFeature == MediaFeatureNames::transform3d
@@ -111,9 +120,9 @@ static inline bool featureWithPositiveNumber(const String& mediaFeature, const C
     || mediaFeature == MediaFeatureNames::transform2d;
 }
 
-static inline bool featureWithZeroOrOne(const String& mediaFeature, const CSSParserToken& token)
+static inline bool featureWithZeroOrOne(const String& mediaFeature, const CSSPrimitiveValue& value)
 {
-    if (token.numericValueType() != IntegerValueType || !(token.numericValue() == 1 || !token.numericValue()))
+    if (!value.isNumber() || !(value.doubleValue() == 1 || !value.doubleValue()))
         return false;
     
     return mediaFeature == MediaFeatureNames::grid;
@@ -129,7 +138,7 @@ static inline bool isAspectRatioFeature(const AtomicString& mediaFeature)
         || mediaFeature == MediaFeatureNames::maxDeviceAspectRatio;
 }
 
-static inline bool isFeatureValidWithoutValue(const AtomicString& mediaFeature)
+static inline bool isFeatureValidWithoutValue(const AtomicString& mediaFeature, const MediaQueryParserContext& context)
 {
     // Media features that are prefixed by min/max cannot be used without a value.
     return mediaFeature == MediaFeatureNames::anyHover
@@ -151,65 +160,73 @@ static inline bool isFeatureValidWithoutValue(const AtomicString& mediaFeature)
         || mediaFeature == MediaFeatureNames::transition
         || mediaFeature == MediaFeatureNames::animation
         || mediaFeature == MediaFeatureNames::invertedColors
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-        || mediaFeature == MediaFeatureNames::viewMode
-#endif
         || mediaFeature == MediaFeatureNames::pointer
         || mediaFeature == MediaFeatureNames::prefersReducedMotion
+        || (mediaFeature == MediaFeatureNames::prefersDarkInterface && (context.useSystemAppearance || isUASheetBehavior(context.mode)))
         || mediaFeature == MediaFeatureNames::devicePixelRatio
         || mediaFeature == MediaFeatureNames::resolution
+#if ENABLE(APPLICATION_MANIFEST)
+        || mediaFeature == MediaFeatureNames::displayMode
+#endif
         || mediaFeature == MediaFeatureNames::videoPlayableInline;
 }
 
-MediaQueryExpression::MediaQueryExpression(const String& feature, const Vector<CSSParserToken, 4>& tokenList)
+inline RefPtr<CSSPrimitiveValue> consumeFirstValue(const String& mediaFeature, CSSParserTokenRange& range)
+{
+    if (auto value = CSSPropertyParserHelpers::consumeInteger(range, 0))
+        return value;
+
+    if (!featureExpectingPositiveInteger(mediaFeature) && !isAspectRatioFeature(mediaFeature)) {
+        if (auto value = CSSPropertyParserHelpers::consumeNumber(range, ValueRangeNonNegative))
+            return value;
+    }
+
+    if (auto value = CSSPropertyParserHelpers::consumeLength(range, HTMLStandardMode, ValueRangeNonNegative))
+        return value;
+
+    if (auto value = CSSPropertyParserHelpers::consumeResolution(range))
+        return value;
+
+    if (auto value = CSSPropertyParserHelpers::consumeIdent(range))
+        return value;
+
+    return nullptr;
+}
+
+MediaQueryExpression::MediaQueryExpression(const String& feature, CSSParserTokenRange& range, MediaQueryParserContext& context)
     : m_mediaFeature(feature.convertToASCIILowercase())
     , m_isValid(false)
 {
-    // Create value for media query expression that must have 1 or more values.
-    if (!tokenList.size() && isFeatureValidWithoutValue(m_mediaFeature)) {
-        // Valid, creates a MediaQueryExp with an 'invalid' MediaQueryExpValue
-        m_isValid = true;
-    } else if (tokenList.size() == 1) {
-        CSSParserToken token = tokenList.first();
-        if (token.type() == IdentToken) {
-            CSSValueID ident = token.id();
-            if (!featureWithValidIdent(m_mediaFeature))
-                return;
-            m_value = CSSPrimitiveValue::createIdentifier(ident);
+    RefPtr<CSSPrimitiveValue> firstValue = consumeFirstValue(m_mediaFeature, range);
+    if (!firstValue) {
+        if (isFeatureValidWithoutValue(m_mediaFeature, context)) {
+            // Valid, creates a MediaQueryExp with an 'invalid' MediaQueryExpValue
             m_isValid = true;
-        } else if (token.type() == NumberToken || token.type() == PercentageToken || token.type() == DimensionToken) {
-            // Check for numeric token types since it is only safe for these types to call numericValue.
-            if (featureWithValidDensity(m_mediaFeature, token)
-                || featureWithValidPositiveLength(m_mediaFeature, token)) {
-                // Media features that must have non-negative <density>, ie. dppx, dpi or dpcm,
-                // or Media features that must have non-negative <length> or number value.
-                m_value = CSSPrimitiveValue::create(token.numericValue(), (CSSPrimitiveValue::UnitType) token.unitType());
-                m_isValid = true;
-            } else if (featureWithPositiveInteger(m_mediaFeature, token)
-                || featureWithPositiveNumber(m_mediaFeature, token)
-                || featureWithZeroOrOne(m_mediaFeature, token)) {
-                // Media features that must have non-negative integer value,
-                // or media features that must have non-negative number value,
-                // or media features that must have (0|1) value.
-                m_value = CSSPrimitiveValue::create(token.numericValue(), CSSPrimitiveValue::UnitType::CSS_NUMBER);
-                m_isValid = true;
-            }
         }
-    } else if (tokenList.size() == 3 && isAspectRatioFeature(m_mediaFeature)) {
-        // FIXME: <ratio> is supposed to allow whitespace around the '/'
-        // Applicable to device-aspect-ratio and aspect-ratio.
-        const CSSParserToken& numerator = tokenList[0];
-        const CSSParserToken& delimiter = tokenList[1];
-        const CSSParserToken& denominator = tokenList[2];
-        if (delimiter.type() != DelimiterToken || delimiter.delimiter() != '/')
+        return;
+    }
+    // Create value for media query expression that must have 1 or more values.
+    if (isAspectRatioFeature(m_mediaFeature)) {
+        if (!firstValue->isNumber() || !firstValue->doubleValue())
             return;
-        if (numerator.type() != NumberToken || numerator.numericValue() <= 0 || numerator.numericValueType() != IntegerValueType)
+        if (!CSSPropertyParserHelpers::consumeSlashIncludingWhitespace(range))
             return;
-        if (denominator.type() != NumberToken || denominator.numericValue() <= 0 || denominator.numericValueType() != IntegerValueType)
+        RefPtr<CSSPrimitiveValue> denominatorValue = CSSPropertyParserHelpers::consumePositiveInteger(range);
+        if (!denominatorValue)
             return;
-        
-        m_value = CSSAspectRatioValue::create(numerator.numericValue(), denominator.numericValue());
+
+        unsigned numerator = clampTo<unsigned>(firstValue->doubleValue());
+        unsigned denominator = clampTo<unsigned>(denominatorValue->doubleValue());
+        m_value = CSSAspectRatioValue::create(numerator, denominator);
         m_isValid = true;
+        return;
+    }
+    if (featureWithPositiveInteger(m_mediaFeature, *firstValue) || featureWithPositiveNumber(m_mediaFeature, *firstValue)
+        || featureWithZeroOrOne(m_mediaFeature, *firstValue) || featureWithValidDensity(m_mediaFeature, *firstValue)
+        || featureWithValidPositiveLength(m_mediaFeature, *firstValue) || featureWithValidIdent(m_mediaFeature, *firstValue, context)) {
+        m_value = firstValue;
+        m_isValid = true;
+        return;
     }
 }
 
@@ -230,5 +247,12 @@ String MediaQueryExpression::serialize() const
     m_serializationCache = result.toString();
     return m_serializationCache;
 }
+
+TextStream& operator<<(TextStream& ts, const MediaQueryExpression& expression)
+{
+    ts << expression.serialize();
+    return ts;
+}
+
 
 } // namespace

@@ -1,9 +1,9 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.10
+esid: sec-%typedarray%.prototype.find
 description: Throws a TypeError exception when invoked as a function
-info: >
+info: |
   22.2.3.10 %TypedArray%.prototype.find (predicate [ , thisArg ] )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -17,6 +17,7 @@ info: >
   exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var find = TypedArray.prototype.find;

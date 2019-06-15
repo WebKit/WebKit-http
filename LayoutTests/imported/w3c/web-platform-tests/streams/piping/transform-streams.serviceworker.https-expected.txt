@@ -1,3 +1,4 @@
 
-FAIL Service worker test setup undefined is not an object (evaluating 'navigator.serviceWorker.getRegistration')
+PASS Service worker test setup 
+FAIL Piping through an identity transform stream should close the destination when the source closes Can't find variable: TransformStream
 

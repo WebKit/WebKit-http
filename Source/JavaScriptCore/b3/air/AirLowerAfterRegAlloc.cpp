@@ -46,7 +46,9 @@ namespace JSC { namespace B3 { namespace Air {
 
 namespace {
 
-bool verbose = false;
+namespace AirLowerAfterRegAllocInternal {
+static const bool verbose = false;
+}
     
 } // anonymous namespace
 
@@ -54,7 +56,7 @@ void lowerAfterRegAlloc(Code& code)
 {
     PhaseScope phaseScope(code, "lowerAfterRegAlloc");
 
-    if (verbose)
+    if (AirLowerAfterRegAllocInternal::verbose)
         dataLog("Code before lowerAfterRegAlloc:\n", code);
     
     auto isRelevant = [] (Inst& inst) -> bool {
@@ -181,7 +183,7 @@ void lowerAfterRegAlloc(Code& code)
                 regsToSave.exclude(RegisterSet::stackRegisters());
                 regsToSave.exclude(RegisterSet::reservedHardwareRegisters());
 
-                RegisterSet preUsed = regsToSave;
+                RegisterSet preUsed = liveRegs;
                 Vector<Arg> destinations = computeCCallingConvention(code, value);
                 Tmp result = cCallResult(value->type());
                 Arg originalResult = result ? inst.args[1] : Arg();
@@ -221,7 +223,7 @@ void lowerAfterRegAlloc(Code& code)
                         stackSlots.append(stackSlot);
                     });
 
-                if (verbose)
+                if (AirLowerAfterRegAllocInternal::verbose)
                     dataLog("Pre-call pairs for ", inst, ": ", listDump(pairs), "\n");
                 
                 insertionSet.insertInsts(
@@ -232,7 +234,7 @@ void lowerAfterRegAlloc(Code& code)
                     inst.kind.effects = true;
 
                 // Now we need to emit code to restore registers.
-                pairs.resize(0);
+                pairs.shrink(0);
                 unsigned stackSlotIndex = 0;
                 regsToSave.forEach(
                     [&] (Reg reg) {
@@ -273,7 +275,7 @@ void lowerAfterRegAlloc(Code& code)
             });
     }
 
-    if (verbose)
+    if (AirLowerAfterRegAllocInternal::verbose)
         dataLog("Code after lowerAfterRegAlloc:\n", code);
 }
 

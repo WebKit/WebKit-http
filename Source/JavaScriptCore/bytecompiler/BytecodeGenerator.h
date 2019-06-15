@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  * Copyright (C) 2012 Igalia, S.L.
  *
@@ -33,7 +33,10 @@
 #include "CodeBlock.h"
 #include "Instruction.h"
 #include "Interpreter.h"
+#include "JSAsyncGeneratorFunction.h"
+#include "JSBigInt.h"
 #include "JSGeneratorFunction.h"
+#include "JSTemplateObjectDescriptor.h"
 #include "Label.h"
 #include "LabelScope.h"
 #include "Nodes.h"
@@ -41,24 +44,26 @@
 #include "RegisterID.h"
 #include "StaticPropertyAnalyzer.h"
 #include "SymbolTable.h"
-#include "TemplateRegistryKey.h"
 #include "UnlinkedCodeBlock.h"
 #include <functional>
 #include <wtf/CheckedArithmetic.h>
+#include <wtf/HashFunctions.h>
 #include <wtf/SegmentedVector.h>
 #include <wtf/SetForScope.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
+    class JSImmutableButterfly;
     class Identifier;
-    class JSTemplateRegistryKey;
 
     enum ExpectedFunction {
         NoExpectedFunction,
         ExpectObjectConstructor,
         ExpectArrayConstructor
     };
+
+    enum class EmitAwait { Yes, No };
 
     enum class DebuggableCall { Yes, No };
     enum class ThisResolutionType { Local, Scoped };
@@ -316,10 +321,10 @@ namespace JSC {
         bool isLocal() const { return m_offset.isStack(); }
         RegisterID* local() const { return m_local; }
 
-        bool isReadOnly() const { return m_attributes & ReadOnly; }
+        bool isReadOnly() const { return m_attributes & PropertyAttribute::ReadOnly; }
         bool isSpecial() const { return m_kind != NormalVariable; }
         bool isConst() const { return isReadOnly() && m_isLexicallyScoped; }
-        void setIsReadOnly() { m_attributes |= ReadOnly; }
+        void setIsReadOnly() { m_attributes |= PropertyAttribute::ReadOnly; }
 
         void dump(PrintStream&) const;
 
@@ -374,12 +379,22 @@ namespace JSC {
         SuperBinding superBinding() const { return m_codeBlock->superBinding(); }
         JSParserScriptMode scriptMode() const { return m_codeBlock->scriptMode(); }
 
-        template<typename... Args>
-        static ParserError generate(VM& vm, Args&& ...args)
+        template<typename Node, typename UnlinkedCodeBlock>
+        static ParserError generate(VM& vm, Node* node, const SourceCode& sourceCode, UnlinkedCodeBlock* unlinkedCodeBlock, DebuggerMode debuggerMode, const VariableEnvironment* environment)
         {
+            MonotonicTime before;
+            if (UNLIKELY(Options::reportBytecodeCompileTimes()))
+                before = MonotonicTime::now();
+
             DeferGC deferGC(vm.heap);
-            auto bytecodeGenerator = std::make_unique<BytecodeGenerator>(vm, std::forward<Args>(args)...);
-            return bytecodeGenerator->generate(); 
+            auto bytecodeGenerator = std::make_unique<BytecodeGenerator>(vm, node, unlinkedCodeBlock, debuggerMode, environment);
+            auto result = bytecodeGenerator->generate();
+
+            if (UNLIKELY(Options::reportBytecodeCompileTimes())) {
+                MonotonicTime after = MonotonicTime::now();
+                dataLogLn(result.isValid() ? "Failed to compile #" : "Compiled #", CodeBlockHash(sourceCode, unlinkedCodeBlock->isConstructor() ? CodeForConstruct : CodeForCall), " into bytecode ", bytecodeGenerator->instructions().size(), " instructions in ", (after - before).milliseconds(), " ms.");
+            }
+            return result;
         }
 
         bool isArgumentNumber(const Identifier&, int);
@@ -452,9 +467,9 @@ namespace JSC {
         }
 
         // Moves src to dst if dst is not null and is different from src, otherwise just returns src.
-        RegisterID* moveToDestinationIfNeeded(RegisterID* dst, RegisterID* src)
+        RegisterID* move(RegisterID* dst, RegisterID* src)
         {
-            return dst == ignoredResult() ? 0 : (dst && dst != src) ? emitMove(dst, src) : src;
+            return dst == ignoredResult() ? nullptr : (dst && dst != src) ? emitMove(dst, src) : src;
         }
 
         Ref<LabelScope> newLabelScope(LabelScope::Type, const Identifier* = 0);
@@ -515,6 +530,16 @@ namespace JSC {
         RegisterID* emitNodeInTailPosition(ExpressionNode* n)
         {
             return emitNodeInTailPosition(nullptr, n);
+        }
+
+        RegisterID* emitDefineClassElements(PropertyListNode* n, RegisterID* constructor, RegisterID* prototype)
+        {
+            ASSERT(constructor->refCount() && prototype->refCount());
+            if (UNLIKELY(!m_vm->isSafeToRecurse()))
+                return emitThrowExpressionTooDeepException();
+            if (UNLIKELY(n->needsDebugHook()))
+                emitDebugHook(n);
+            return n->emitBytecode(*this, constructor, prototype);
         }
 
         RegisterID* emitNodeForProperty(RegisterID* dst, ExpressionNode* node)
@@ -642,7 +667,9 @@ namespace JSC {
         void emitTDZCheckIfNecessary(const Variable&, RegisterID* target, RegisterID* scope);
         void liftTDZCheckIfPossible(const Variable&);
         RegisterID* emitNewObject(RegisterID* dst);
-        RegisterID* emitNewArray(RegisterID* dst, ElementNode*, unsigned length); // stops at first elision
+        RegisterID* emitNewArray(RegisterID* dst, ElementNode*, unsigned length, IndexingType recommendedIndexingType); // stops at first elision
+        RegisterID* emitNewArrayBuffer(RegisterID* dst, JSImmutableButterfly*, IndexingType recommendedIndexingType);
+        // FIXME: new_array_with_spread should use an array allocation profile and take a recommendedIndexingType
         RegisterID* emitNewArrayWithSpread(RegisterID* dst, ElementNode*);
         RegisterID* emitNewArrayWithSize(RegisterID* dst, RegisterID* length);
 
@@ -655,12 +682,12 @@ namespace JSC {
 
         void emitSetFunctionNameIfNeeded(ExpressionNode* valueNode, RegisterID* value, RegisterID* name);
 
-        RegisterID* emitMoveLinkTimeConstant(RegisterID* dst, LinkTimeConstant);
-        RegisterID* emitMoveEmptyValue(RegisterID* dst);
-        RegisterID* emitMove(RegisterID* dst, RegisterID* src);
+        RegisterID* moveLinkTimeConstant(RegisterID* dst, LinkTimeConstant);
+        RegisterID* moveEmptyValue(RegisterID* dst);
 
         RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOpProfiled(op_to_number, dst, src); }
         RegisterID* emitToString(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_string, dst, src); }
+        RegisterID* emitToObject(RegisterID* dst, RegisterID* src, const Identifier& message);
         RegisterID* emitInc(RegisterID* srcDst);
         RegisterID* emitDec(RegisterID* srcDst);
 
@@ -668,11 +695,13 @@ namespace JSC {
         RegisterID* emitInstanceOf(RegisterID* dst, RegisterID* value, RegisterID* basePrototype);
         RegisterID* emitInstanceOfCustom(RegisterID* dst, RegisterID* value, RegisterID* constructor, RegisterID* hasInstanceValue);
         RegisterID* emitTypeOf(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_typeof, dst, src); }
-        RegisterID* emitIn(RegisterID* dst, RegisterID* property, RegisterID* base);
+        RegisterID* emitInByVal(RegisterID* dst, RegisterID* property, RegisterID* base);
+        RegisterID* emitInById(RegisterID* dst, RegisterID* base, const Identifier& property);
 
         RegisterID* emitTryGetById(RegisterID* dst, RegisterID* base, const Identifier& property);
         RegisterID* emitGetById(RegisterID* dst, RegisterID* base, const Identifier& property);
         RegisterID* emitGetById(RegisterID* dst, RegisterID* base, RegisterID* thisVal, const Identifier& property);
+        RegisterID* emitDirectGetById(RegisterID* dst, RegisterID* base, const Identifier& property);
         RegisterID* emitPutById(RegisterID* base, const Identifier& property, RegisterID* value);
         RegisterID* emitPutById(RegisterID* base, RegisterID* thisValue, const Identifier& property, RegisterID* value);
         RegisterID* emitDirectPutById(RegisterID* base, const Identifier& property, RegisterID* value, PropertyNode::PutType);
@@ -683,9 +712,11 @@ namespace JSC {
         RegisterID* emitPutByVal(RegisterID* base, RegisterID* thisValue, RegisterID* property, RegisterID* value);
         RegisterID* emitDirectPutByVal(RegisterID* base, RegisterID* property, RegisterID* value);
         RegisterID* emitDeleteByVal(RegisterID* dst, RegisterID* base, RegisterID* property);
-        RegisterID* emitPutByIndex(RegisterID* base, unsigned index, RegisterID* value);
 
-        RegisterID* emitAssert(RegisterID* condition, int line);
+        void emitSuperSamplerBegin();
+        void emitSuperSamplerEnd();
+
+        RegisterID* emitIdWithProfile(RegisterID* src, SpeculatedType profile);
         void emitUnreachable();
 
         void emitPutGetterById(RegisterID* base, const Identifier& property, unsigned propertyDescriptorOptions, RegisterID* getter);
@@ -698,6 +729,8 @@ namespace JSC {
 
         // Initialize object with generator fields (@generatorThis, @generatorNext, @generatorState, @generatorFrame)
         void emitPutGeneratorFields(RegisterID* nextFunction);
+        
+        void emitPutAsyncGeneratorFields(RegisterID* nextFunction);
 
         ExpectedFunction expectedFunctionForIdentifier(const Identifier&);
         RegisterID* emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, DebuggableCall);
@@ -715,7 +748,7 @@ namespace JSC {
         void emitCallDefineProperty(RegisterID* newObj, RegisterID* propertyNameRegister,
             RegisterID* valueRegister, RegisterID* getterRegister, RegisterID* setterRegister, unsigned options, const JSTextPosition&);
 
-        void emitEnumeration(ThrowableExpressionData* enumerationNode, ExpressionNode* subjectNode, const std::function<void(BytecodeGenerator&, RegisterID*)>& callBack, ForOfNode* = nullptr, RegisterID* forLoopSymbolTable = nullptr);
+        void emitEnumeration(ThrowableExpressionData* enumerationNode, ExpressionNode* subjectNode, const ScopedLambda<void(BytecodeGenerator&, RegisterID*)>& callBack, ForOfNode* = nullptr, RegisterID* forLoopSymbolTable = nullptr);
 
         RegisterID* emitGetTemplateObject(RegisterID* dst, TaggedTemplateNode*);
         RegisterID* emitGetGlobalPrivate(RegisterID* dst, const Identifier& property);
@@ -773,9 +806,9 @@ namespace JSC {
         RegisterID* emitIsDerivedArray(RegisterID* dst, RegisterID* src) { return emitIsCellWithType(dst, src, DerivedArrayType); }
         void emitRequireObjectCoercible(RegisterID* value, const String& error);
 
-        RegisterID* emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node);
-        RegisterID* emitIteratorNextWithValue(RegisterID* dst, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node);
-        void emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node);
+        RegisterID* emitIteratorNext(RegisterID* dst, RegisterID* nextMethod, RegisterID* iterator, const ThrowableExpressionData* node, JSC::EmitAwait = JSC::EmitAwait::No);
+        RegisterID* emitIteratorNextWithValue(RegisterID* dst, RegisterID* nextMethod, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node);
+        void emitIteratorClose(RegisterID* iterator, const ThrowableExpressionData* node, EmitAwait = EmitAwait::No);
 
         RegisterID* emitRestParameter(RegisterID* result, unsigned numParametersToSkip);
 
@@ -785,7 +818,7 @@ namespace JSC {
         TryData* pushTry(Label& start, Label& handlerLabel, HandlerType);
         // End a try block. 'end' must have been emitted.
         void popTry(TryData*, Label& end);
-        void emitCatch(RegisterID* exceptionRegister, RegisterID* thrownValueRegister);
+        void emitCatch(RegisterID* exceptionRegister, RegisterID* thrownValueRegister, TryData*);
 
     private:
         static const int CurrentLexicalScopeIndex = -2;
@@ -824,6 +857,10 @@ namespace JSC {
         void emitPushCatchScope(VariableEnvironment&);
         void emitPopCatchScope(VariableEnvironment&);
 
+        RegisterID* emitGetIterator(RegisterID*, ThrowableExpressionData*);
+        RegisterID* emitGetAsyncIterator(RegisterID*, ThrowableExpressionData*);
+
+        void emitAwait(RegisterID*);
         void emitGetScope();
         RegisterID* emitPushWithScope(RegisterID* objectScope);
         void emitPopWithScope();
@@ -874,7 +911,7 @@ namespace JSC {
         }
         void emitSetCompletionValue(RegisterID* reg)
         {
-            emitMove(completionValueRegister(), reg);
+            move(completionValueRegister(), reg);
         }
 
         void emitJumpIf(OpcodeID compareOpcode, RegisterID* completionTypeRegister, CompletionType, Label& jumpTarget);
@@ -897,17 +934,17 @@ namespace JSC {
         void popStructureForInScope(RegisterID* local);
         void invalidateForInContextForLocal(RegisterID* local);
 
-        RefPtr<LabelScope> breakTarget(const Identifier&);
-        RefPtr<LabelScope> continueTarget(const Identifier&);
+        LabelScope* breakTarget(const Identifier&);
+        LabelScope* continueTarget(const Identifier&);
 
         void beginSwitch(RegisterID*, SwitchInfo::SwitchType);
         void endSwitch(uint32_t clauseCount, const Vector<Ref<Label>, 8>&, ExpressionNode**, Label& defaultLabel, int32_t min, int32_t range);
 
-        void emitYieldPoint(RegisterID*);
+        void emitYieldPoint(RegisterID*, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason);
 
         void emitGeneratorStateLabel();
         void emitGeneratorStateChange(int32_t state);
-        RegisterID* emitYield(RegisterID* argument);
+        RegisterID* emitYield(RegisterID* argument, JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason = JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason::Yield);
         RegisterID* emitDelegateYield(RegisterID* argument, ThrowableExpressionData*);
         RegisterID* generatorStateRegister() { return &m_parameters[static_cast<int32_t>(JSGeneratorFunction::GeneratorArgument::State)]; }
         RegisterID* generatorValueRegister() { return &m_parameters[static_cast<int32_t>(JSGeneratorFunction::GeneratorArgument::Value)]; }
@@ -916,7 +953,9 @@ namespace JSC {
 
         CodeType codeType() const { return m_codeType; }
 
-        bool shouldEmitDebugHooks() { return m_shouldEmitDebugHooks; }
+        bool shouldBeConcernedWithCompletionValue() const { return m_codeType != FunctionCode; }
+
+        bool shouldEmitDebugHooks() const { return m_shouldEmitDebugHooks; }
         
         bool isStrictMode() const { return m_codeBlock->isStrictMode(); }
 
@@ -950,6 +989,10 @@ namespace JSC {
         bool isNewTargetUsedInInnerArrowFunction();
         bool isArgumentsUsedInInnerArrowFunction();
 
+        void emitToThis();
+
+        RegisterID* emitMove(RegisterID* dst, RegisterID* src);
+
     public:
         bool isSuperUsedInInnerArrowFunction();
         bool isSuperCallUsedInInnerArrowFunction();
@@ -966,7 +1009,7 @@ namespace JSC {
         Variable variableForLocalEntry(const Identifier&, const SymbolTableEntry&, int symbolTableConstantIndex, bool isLexicallyScoped);
 
         void emitOpcode(OpcodeID);
-        UnlinkedArrayAllocationProfile newArrayAllocationProfile();
+        UnlinkedArrayAllocationProfile newArrayAllocationProfile(IndexingType);
         UnlinkedObjectAllocationProfile newObjectAllocationProfile();
         UnlinkedValueProfile emitProfiledOpcode(OpcodeID);
         int kill(RegisterID* dst)
@@ -984,10 +1027,13 @@ namespace JSC {
         void allocateCalleeSaveSpace();
         void allocateAndEmitScope();
 
-        typedef HashMap<double, JSValue> NumberMap;
-        typedef HashMap<UniquedStringImpl*, JSString*, IdentifierRepHash> IdentifierStringMap;
-        typedef HashMap<Ref<TemplateRegistryKey>, RegisterID*> TemplateRegistryKeyMap;
-        
+        using BigIntMapEntry = std::tuple<UniquedStringImpl*, uint8_t, bool>;
+
+        using NumberMap = HashMap<double, JSValue>;
+        using IdentifierStringMap = HashMap<UniquedStringImpl*, JSString*, IdentifierRepHash>;
+        using IdentifierBigIntMap = HashMap<BigIntMapEntry, JSBigInt*>;
+        using TemplateObjectDescriptorMap = HashMap<Ref<TemplateObjectDescriptor>, JSTemplateObjectDescriptor*>;
+
         // Helper for emitCall() and emitConstruct(). This works because the set of
         // expected functions have identical behavior for both call and construct
         // (i.e. "Object()" is identical to "new Object()").
@@ -995,6 +1041,7 @@ namespace JSC {
         
         RegisterID* emitCall(OpcodeID, RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, DebuggableCall);
 
+        RegisterID* emitCallIterator(RegisterID* iterator, RegisterID* argument, ThrowableExpressionData*);
         RegisterID* newRegister();
 
         // Adds an anonymous local var slot. To give this slot a name, add it to symbolTable().
@@ -1027,10 +1074,7 @@ namespace JSC {
         unsigned addConstant(const Identifier&);
         RegisterID* addConstantValue(JSValue, SourceCodeRepresentation = SourceCodeRepresentation::Other);
         RegisterID* addConstantEmptyValue();
-        unsigned addRegExp(RegExp*);
 
-        unsigned addConstantBuffer(unsigned length);
-        
         UnlinkedFunctionExecutable* makeFunction(FunctionMetadataNode* metadata)
         {
             DerivedContextType newDerivedContextType = DerivedContextType::None;
@@ -1065,17 +1109,34 @@ namespace JSC {
 
         void initializeParameters(FunctionParameters&);
         void initializeVarLexicalEnvironment(int symbolTableConstantIndex, SymbolTable* functionSymbolTable, bool hasCapturedVariables);
-        void initializeDefaultParameterValuesAndSetupFunctionScopeStack(FunctionParameters&, bool isSimpleParameterList, FunctionNode*, SymbolTable*, int symbolTableConstantIndex, const std::function<bool (UniquedStringImpl*)>& captures, bool shouldCreateArgumentsVariableInParameterScope);
+        void initializeDefaultParameterValuesAndSetupFunctionScopeStack(FunctionParameters&, bool isSimpleParameterList, FunctionNode*, SymbolTable*, int symbolTableConstantIndex, const ScopedLambda<bool (UniquedStringImpl*)>& captures, bool shouldCreateArgumentsVariableInParameterScope);
         void initializeArrowFunctionContextScopeIfNeeded(SymbolTable* functionSymbolTable = nullptr, bool canReuseLexicalEnvironment = false);
         bool needsDerivedConstructorInArrowFunctionLexicalEnvironment();
 
+        enum class TDZNecessityLevel {
+            NotNeeded,
+            Optimize,
+            DoNotOptimize
+        };
+        typedef HashMap<RefPtr<UniquedStringImpl>, TDZNecessityLevel, IdentifierRepHash> TDZMap;
+
     public:
         JSString* addStringConstant(const Identifier&);
-        RegisterID* addTemplateRegistryKeyConstant(Ref<TemplateRegistryKey>&&);
+        JSValue addBigIntConstant(const Identifier&, uint8_t radix, bool sign);
+        RegisterID* addTemplateObjectConstant(Ref<TemplateObjectDescriptor>&&);
 
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow>& instructions() { return m_instructions; }
 
         RegisterID* emitThrowExpressionTooDeepException();
+
+        class PreservedTDZStack {
+        private:
+            Vector<TDZMap> m_preservedTDZStack;
+            friend class BytecodeGenerator;
+        };
+
+        void preserveTDZStack(PreservedTDZStack&);
+        void restoreTDZStack(const PreservedTDZStack&);
 
     private:
         Vector<UnlinkedInstruction, 0, UnsafeVectorOverflow> m_instructions;
@@ -1089,12 +1150,7 @@ namespace JSC {
             int m_symbolTableConstantIndex;
         };
         Vector<LexicalScopeStackEntry> m_lexicalScopeStack;
-        enum class TDZNecessityLevel {
-            NotNeeded,
-            Optimize,
-            DoNotOptimize
-        };
-        typedef HashMap<RefPtr<UniquedStringImpl>, TDZNecessityLevel, IdentifierRepHash> TDZMap;
+
         Vector<TDZMap> m_TDZStack;
         std::optional<size_t> m_varScopeLexicalScopeStackIndex;
         void pushTDZVariables(const VariableEnvironment&, TDZCheckOptimization, TDZRequirement);
@@ -1170,7 +1226,8 @@ namespace JSC {
         typedef HashMap<EncodedJSValueWithRepresentation, unsigned, EncodedJSValueWithRepresentationHash, EncodedJSValueWithRepresentationHashTraits> JSValueMap;
         JSValueMap m_jsValueMap;
         IdentifierStringMap m_stringMap;
-        TemplateRegistryKeyMap m_templateRegistryKeyMap;
+        IdentifierBigIntMap m_bigIntMap;
+        TemplateObjectDescriptorMap m_templateObjectDescriptorMap;
 
         StaticPropertyAnalyzer m_staticPropertyAnalyzer { &m_instructions };
 
@@ -1188,6 +1245,9 @@ namespace JSC {
         bool m_inTailPosition { false };
         bool m_needsToUpdateArrowFunctionContext;
         DerivedContextType m_derivedContextType { DerivedContextType::None };
+
+        using CatchEntry = std::tuple<TryData*, int, int>;
+        Vector<CatchEntry> m_catchesToEmit;
     };
 
 } // namespace JSC

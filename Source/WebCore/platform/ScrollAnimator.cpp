@@ -55,9 +55,7 @@ ScrollAnimator::ScrollAnimator(ScrollableArea& scrollableArea)
 {
 }
 
-ScrollAnimator::~ScrollAnimator()
-{
-}
+ScrollAnimator::~ScrollAnimator() = default;
 
 bool ScrollAnimator::scroll(ScrollbarOrientation orientation, ScrollGranularity, float step, float multiplier)
 {
@@ -77,7 +75,7 @@ bool ScrollAnimator::scroll(ScrollbarOrientation orientation, ScrollGranularity,
     return true;
 }
 
-void ScrollAnimator::scrollToOffsetWithoutAnimation(const FloatPoint& offset)
+void ScrollAnimator::scrollToOffsetWithoutAnimation(const FloatPoint& offset, ScrollClamping)
 {
     FloatPoint newPositon = ScrollableArea::scrollPositionFromOffset(offset, toFloatSize(m_scrollableArea.scrollOrigin()));
     FloatSize delta = newPositon - currentPosition();

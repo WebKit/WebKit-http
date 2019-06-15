@@ -69,7 +69,7 @@ class AutomaticThread;
 
 class AutomaticThreadCondition : public ThreadSafeRefCounted<AutomaticThreadCondition> {
 public:
-    static WTF_EXPORT_PRIVATE RefPtr<AutomaticThreadCondition> create();
+    static WTF_EXPORT_PRIVATE Ref<AutomaticThreadCondition> create();
     
     WTF_EXPORT_PRIVATE ~AutomaticThreadCondition();
     
@@ -125,11 +125,13 @@ public:
     bool notify(const AbstractLocker&);
 
     void join();
-    
+
+    virtual const char* name() const { return "WTF::AutomaticThread"; }
+
 protected:
     // This logically creates the thread, but in reality the thread won't be created until someone
     // calls AutomaticThreadCondition::notifyOne() or notifyAll().
-    AutomaticThread(const AbstractLocker&, Box<Lock>, RefPtr<AutomaticThreadCondition>);
+    AutomaticThread(const AbstractLocker&, Box<Lock>, Ref<AutomaticThreadCondition>&&, Seconds timeout = 10_s);
     
     // To understand PollResult and WorkResult, imagine that poll() and work() are being called like
     // so:
@@ -168,6 +170,11 @@ protected:
     // can be sure that the default ones don't do anything (so you don't need a super call).
     virtual void threadDidStart();
     virtual void threadIsStopping(const AbstractLocker&);
+
+    // Control whether this automatic thread should sleep when timeout happens.
+    // By overriding this function, we can customize how automatic threads will sleep.
+    // For example, when you have thread pool, you can decrease active threads moderately.
+    virtual bool shouldSleep(const AbstractLocker&) { return true; }
     
 private:
     friend class AutomaticThreadCondition;
@@ -175,7 +182,8 @@ private:
     void start(const AbstractLocker&);
     
     Box<Lock> m_lock;
-    RefPtr<AutomaticThreadCondition> m_condition;
+    Ref<AutomaticThreadCondition> m_condition;
+    Seconds m_timeout;
     bool m_isRunning { true };
     bool m_isWaiting { false };
     bool m_hasUnderlyingThread { false };

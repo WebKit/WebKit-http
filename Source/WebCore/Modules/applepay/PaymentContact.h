@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,16 +36,17 @@ namespace WebCore {
 
 struct ApplePayPaymentContact;
 
-class PaymentContact {
+class WEBCORE_EXPORT PaymentContact {
 public:
     PaymentContact() = default;
     explicit PaymentContact(PKContact *pkContact)
         : m_pkContact(pkContact)
     {
     }
+    virtual ~PaymentContact() = default;
 
-    static PaymentContact fromApplePayPaymentContact(const ApplePayPaymentContact&);
-    ApplePayPaymentContact toApplePayPaymentContact() const;
+    static PaymentContact fromApplePayPaymentContact(unsigned version, const ApplePayPaymentContact&);
+    virtual ApplePayPaymentContact toApplePayPaymentContact(unsigned version) const;
 
     PKContact *pkContact() const { return m_pkContact.get(); }
 

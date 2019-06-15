@@ -28,11 +28,9 @@
 
 #include "NetworkSession.h"
 #include "SessionTracker.h"
-#include "WebCookieManager.h"
 #include "WebPage.h"
 #include "WebProcess.h"
 #include "WebsiteDataStoreParameters.h"
-#include <WebCore/CFNetworkSPI.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
 #include <WebCore/FrameLoaderClient.h>
@@ -40,35 +38,16 @@
 #include <WebCore/Page.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/Settings.h>
-#include <WebKitSystemInterface.h>
-
-using namespace WebCore;
+#include <wtf/ProcessPrivilege.h>
 
 namespace WebKit {
-    
-void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID)
-{
-    ASSERT(sessionID.isEphemeral());
-
-    if (WebCore::NetworkStorageSession::storageSession(sessionID))
-        return;
-
-    String base;
-    if (SessionTracker::getIdentifierBase().isNull())
-        base = [[NSBundle mainBundle] bundleIdentifier];
-    else
-        base = SessionTracker::getIdentifierBase();
-
-    NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, base + '.' + String::number(sessionID.sessionID()));
-#if USE(NETWORK_SESSION)
-    auto networkSession = NetworkSession::create(sessionID);
-    SessionTracker::setSession(sessionID, WTFMove(networkSession));
-#endif
-}
+using namespace WebCore;
 
 void WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&& parameters)
 {
-    if (NetworkStorageSession::storageSession(parameters.sessionID))
+    ASSERT(!hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
+    auto sessionID = parameters.networkSessionParameters.sessionID;
+    if (NetworkStorageSession::storageSession(sessionID))
         return;
 
     String base;
@@ -77,29 +56,9 @@ void WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStorePa
     else
         base = SessionTracker::getIdentifierBase();
 
-    SandboxExtension::consumePermanently(parameters.cookieStoragePathExtensionHandle);
-
-    RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFDataCreate(kCFAllocatorDefault, parameters.uiProcessCookieStorageIdentifier.data(), parameters.uiProcessCookieStorageIdentifier.size()));
-    auto uiProcessCookieStorage = adoptCF(CFHTTPCookieStorageCreateFromIdentifyingData(kCFAllocatorDefault, cookieStorageData.get()));
-
-    NetworkStorageSession::ensureSession(parameters.sessionID, base + '.' + String::number(parameters.sessionID.sessionID()), WTFMove(uiProcessCookieStorage));
-
-#if USE(NETWORK_SESSION)
-    auto networkSession = NetworkSession::create(parameters.sessionID);
-    SessionTracker::setSession(parameters.sessionID, WTFMove(networkSession));
-#endif
+    NetworkStorageSession::ensureSession(sessionID, base + '.' + String::number(sessionID.sessionID()));
 }
 
-void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
-{
-    [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:static_cast<NSHTTPCookieAcceptPolicy>(policy)];
-
-    NetworkStorageSession::forEach([&] (const NetworkStorageSession& networkStorageSession) {
-        if (auto cookieStorage = networkStorageSession.cookieStorage())
-            CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
-    });
-}
-    
 bool WebFrameNetworkingContext::localFileContentSniffingEnabled() const
 {
     return frame() && frame()->settings().localFileContentSniffingEnabled();
@@ -130,6 +89,7 @@ ResourceError WebFrameNetworkingContext::blockedError(const ResourceRequest& req
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     ASSERT(RunLoop::isMain());
+    ASSERT(!hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
     if (frame()) {
         if (auto* storageSession = WebCore::NetworkStorageSession::storageSession(frame()->page()->sessionID()))
             return *storageSession;
@@ -142,7 +102,7 @@ NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 WebFrameLoaderClient* WebFrameNetworkingContext::webFrameLoaderClient() const
 {
     if (!frame())
-        return 0;
+        return nullptr;
 
     return toWebFrameLoaderClient(frame()->loader().client());
 }

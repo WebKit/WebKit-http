@@ -32,11 +32,13 @@
 #import <AppKit/AppKit.h>
 
 @class WKView;
+@class WKWebView;
 
 WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 @interface _WKThumbnailView : NSView
 
 - (instancetype)initWithFrame:(NSRect)frame fromWKView:(WKView *)wkView;
+- (instancetype)initWithFrame:(NSRect)frame fromWKWebView:(WKWebView *)webView;
 
 @property (nonatomic) CGFloat scale;
 @property (nonatomic, readonly) CGSize snapshotSize;
@@ -45,6 +47,8 @@ WK_CLASS_AVAILABLE(macosx(10.10), ios(8.0))
 
 // Defaults to NO.
 @property (nonatomic) BOOL shouldKeepSnapshotWhenRemovedFromSuperview;
+
+@property (strong, nonatomic) NSColor *overrideBackgroundColor;
 
 // This should be removed when all clients go away; it is always YES now.
 @property (nonatomic) BOOL usesSnapshot;

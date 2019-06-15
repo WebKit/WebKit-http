@@ -39,7 +39,7 @@ class Scrollbar;
 
 class ScrollingStateFrameScrollingNode final : public ScrollingStateScrollingNode {
 public:
-    static Ref<ScrollingStateFrameScrollingNode> create(ScrollingStateTree&, ScrollingNodeID);
+    static Ref<ScrollingStateFrameScrollingNode> create(ScrollingStateTree&, ScrollingNodeType, ScrollingNodeID);
 
     Ref<ScrollingStateNode> clone(ScrollingStateTree&) override;
 
@@ -131,10 +131,10 @@ public:
 #endif
     void setScrollerImpsFromScrollbars(Scrollbar* verticalScrollbar, Scrollbar* horizontalScrollbar);
 
-    void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const override;
+    void dumpProperties(WTF::TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
 private:
-    ScrollingStateFrameScrollingNode(ScrollingStateTree&, ScrollingNodeID);
+    ScrollingStateFrameScrollingNode(ScrollingStateTree&, ScrollingNodeType, ScrollingNodeID);
     ScrollingStateFrameScrollingNode(const ScrollingStateFrameScrollingNode&, ScrollingStateTree&);
 
     LayerRepresentation m_counterScrollingLayer;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -66,6 +66,8 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << containerTemporaryDirectoryExtensionHandle;
 #endif
     encoder << mediaKeyStorageDirectory;
+    encoder << webCoreLoggingChannels;
+    encoder << webKitLoggingChannels;
     encoder << mediaKeyStorageDirectoryExtensionHandle;
 #if ENABLE(MEDIA_STREAM)
     encoder << audioCaptureExtensionHandle;
@@ -82,6 +84,8 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << urlSchemesRegisteredAsCORSEnabled;
     encoder << urlSchemesRegisteredAsAlwaysRevalidated;
     encoder << urlSchemesRegisteredAsCachePartitioned;
+    encoder << urlSchemesServiceWorkersCanHandle;
+    encoder << urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest;
     encoder.encodeEnum(cacheModel);
     encoder << shouldAlwaysUseComplexTextCodePath;
     encoder << shouldEnableMemoryPressureReliefLogging;
@@ -89,14 +93,17 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldUseFontSmoothing;
     encoder << resourceLoadStatisticsEnabled;
     encoder << fontWhitelist;
-    encoder << iconDatabaseEnabled;
     encoder << terminationTimeout;
     encoder << languages;
+#if USE(GSTREAMER)
+    encoder << gstreamerOptions;
+#endif
     encoder << textCheckerState;
     encoder << fullKeyboardAccessEnabled;
     encoder << defaultRequestTimeoutInterval;
-#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
     encoder << uiProcessBundleIdentifier;
+    encoder << uiProcessSDKVersion;
 #endif
     encoder << presentingApplicationPID;
 #if PLATFORM(COCOA)
@@ -118,6 +125,7 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << plugInAutoStartOriginHashes;
     encoder << plugInAutoStartOrigins;
     encoder << memoryCacheDisabled;
+    encoder << attrStyleEnabled;
 
 #if ENABLE(SERVICE_CONTROLS)
     encoder << hasImageServices;
@@ -133,10 +141,6 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     IPC::encode(encoder, networkATSContext.get());
 #endif
 
-#if OS(LINUX)
-    encoder << memoryPressureMonitorHandle;
-#endif
-
 #if PLATFORM(WAYLAND)
     encoder << waylandCompositorDisplayName;
 #endif
@@ -144,14 +148,32 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if USE(SOUP)
     encoder << proxySettings;
 #endif
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    encoder << shouldLogUserInteraction;
+#endif
+
+#if PLATFORM(COCOA)
+    encoder << mediaMIMETypes;
+#endif
+
+#if PLATFORM(MAC)
+    encoder << screenProperties;
+    encoder << useOverlayScrollbars;
+#endif
 }
 
 bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreationParameters& parameters)
 {
     if (!decoder.decode(parameters.injectedBundlePath))
         return false;
-    if (!decoder.decode(parameters.injectedBundlePathExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> injectedBundlePathExtensionHandle;
+    decoder >> injectedBundlePathExtensionHandle;
+    if (!injectedBundlePathExtensionHandle)
         return false;
+    parameters.injectedBundlePathExtensionHandle = WTFMove(*injectedBundlePathExtensionHandle);
+
     if (!decoder.decode(parameters.additionalSandboxExtensionHandles))
         return false;
     if (!decoder.decode(parameters.initializationUserData))
@@ -160,39 +182,86 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.applicationCacheFlatFileSubdirectoryName))
         return false;
-    if (!decoder.decode(parameters.applicationCacheDirectoryExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> applicationCacheDirectoryExtensionHandle;
+    decoder >> applicationCacheDirectoryExtensionHandle;
+    if (!applicationCacheDirectoryExtensionHandle)
         return false;
+    parameters.applicationCacheDirectoryExtensionHandle = WTFMove(*applicationCacheDirectoryExtensionHandle);
+
     if (!decoder.decode(parameters.webSQLDatabaseDirectory))
         return false;
-    if (!decoder.decode(parameters.webSQLDatabaseDirectoryExtensionHandle))
+
+    std::optional<SandboxExtension::Handle> webSQLDatabaseDirectoryExtensionHandle;
+    decoder >> webSQLDatabaseDirectoryExtensionHandle;
+    if (!webSQLDatabaseDirectoryExtensionHandle)
         return false;
+    parameters.webSQLDatabaseDirectoryExtensionHandle = WTFMove(*webSQLDatabaseDirectoryExtensionHandle);
+
     if (!decoder.decode(parameters.mediaCacheDirectory))
         return false;
-    if (!decoder.decode(parameters.mediaCacheDirectoryExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> mediaCacheDirectoryExtensionHandle;
+    decoder >> mediaCacheDirectoryExtensionHandle;
+    if (!mediaCacheDirectoryExtensionHandle)
         return false;
+    parameters.mediaCacheDirectoryExtensionHandle = WTFMove(*mediaCacheDirectoryExtensionHandle);
+
     if (!decoder.decode(parameters.javaScriptConfigurationDirectory))
         return false;
-    if (!decoder.decode(parameters.javaScriptConfigurationDirectoryExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> javaScriptConfigurationDirectoryExtensionHandle;
+    decoder >> javaScriptConfigurationDirectoryExtensionHandle;
+    if (!javaScriptConfigurationDirectoryExtensionHandle)
         return false;
+    parameters.javaScriptConfigurationDirectoryExtensionHandle = WTFMove(*javaScriptConfigurationDirectoryExtensionHandle);
+
 #if PLATFORM(MAC)
     if (!decoder.decode(parameters.uiProcessCookieStorageIdentifier))
         return false;
 #endif
 #if PLATFORM(IOS)
-    if (!decoder.decode(parameters.cookieStorageDirectoryExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> cookieStorageDirectoryExtensionHandle;
+    decoder >> cookieStorageDirectoryExtensionHandle;
+    if (!cookieStorageDirectoryExtensionHandle)
         return false;
-    if (!decoder.decode(parameters.containerCachesDirectoryExtensionHandle))
+    parameters.cookieStorageDirectoryExtensionHandle = WTFMove(*cookieStorageDirectoryExtensionHandle);
+
+    std::optional<SandboxExtension::Handle> containerCachesDirectoryExtensionHandle;
+    decoder >> containerCachesDirectoryExtensionHandle;
+    if (!containerCachesDirectoryExtensionHandle)
         return false;
-    if (!decoder.decode(parameters.containerTemporaryDirectoryExtensionHandle))
+    parameters.containerCachesDirectoryExtensionHandle = WTFMove(*containerCachesDirectoryExtensionHandle);
+
+    std::optional<SandboxExtension::Handle> containerTemporaryDirectoryExtensionHandle;
+    decoder >> containerTemporaryDirectoryExtensionHandle;
+    if (!containerTemporaryDirectoryExtensionHandle)
         return false;
+    parameters.containerTemporaryDirectoryExtensionHandle = WTFMove(*containerTemporaryDirectoryExtensionHandle);
+
 #endif
     if (!decoder.decode(parameters.mediaKeyStorageDirectory))
         return false;
-    if (!decoder.decode(parameters.mediaKeyStorageDirectoryExtensionHandle))
+    if (!decoder.decode(parameters.webCoreLoggingChannels))
         return false;
+    if (!decoder.decode(parameters.webKitLoggingChannels))
+        return false;
+    
+    std::optional<SandboxExtension::Handle> mediaKeyStorageDirectoryExtensionHandle;
+    decoder >> mediaKeyStorageDirectoryExtensionHandle;
+    if (!mediaKeyStorageDirectoryExtensionHandle)
+        return false;
+    parameters.mediaKeyStorageDirectoryExtensionHandle = WTFMove(*mediaKeyStorageDirectoryExtensionHandle);
+
 #if ENABLE(MEDIA_STREAM)
-    if (!decoder.decode(parameters.audioCaptureExtensionHandle))
+
+    std::optional<SandboxExtension::Handle> audioCaptureExtensionHandle;
+    decoder >> audioCaptureExtensionHandle;
+    if (!audioCaptureExtensionHandle)
         return false;
+    parameters.audioCaptureExtensionHandle = WTFMove(*audioCaptureExtensionHandle);
+
     if (!decoder.decode(parameters.shouldCaptureAudioInUIProcess))
         return false;
 #endif
@@ -218,6 +287,10 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.urlSchemesRegisteredAsCachePartitioned))
         return false;
+    if (!decoder.decode(parameters.urlSchemesServiceWorkersCanHandle))
+        return false;
+    if (!decoder.decode(parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest))
+        return false;
     if (!decoder.decodeEnum(parameters.cacheModel))
         return false;
     if (!decoder.decode(parameters.shouldAlwaysUseComplexTextCodePath))
@@ -232,20 +305,24 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.fontWhitelist))
         return false;
-    if (!decoder.decode(parameters.iconDatabaseEnabled))
-        return false;
     if (!decoder.decode(parameters.terminationTimeout))
         return false;
     if (!decoder.decode(parameters.languages))
         return false;
+#if USE(GSTREAMER)
+    if (!decoder.decode(parameters.gstreamerOptions))
+        return false;
+#endif
     if (!decoder.decode(parameters.textCheckerState))
         return false;
     if (!decoder.decode(parameters.fullKeyboardAccessEnabled))
         return false;
     if (!decoder.decode(parameters.defaultRequestTimeoutInterval))
         return false;
-#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
     if (!decoder.decode(parameters.uiProcessBundleIdentifier))
+        return false;
+    if (!decoder.decode(parameters.uiProcessSDKVersion))
         return false;
 #endif
     if (!decoder.decode(parameters.presentingApplicationPID))
@@ -257,8 +334,13 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.uiProcessBundleResourcePath))
         return false;
-    if (!decoder.decode(parameters.uiProcessBundleResourcePathExtensionHandle))
+    
+    std::optional<SandboxExtension::Handle> uiProcessBundleResourcePathExtensionHandle;
+    decoder >> uiProcessBundleResourcePathExtensionHandle;
+    if (!uiProcessBundleResourcePathExtensionHandle)
         return false;
+    parameters.uiProcessBundleResourcePathExtensionHandle = WTFMove(*uiProcessBundleResourcePathExtensionHandle);
+
     if (!decoder.decode(parameters.shouldEnableJIT))
         return false;
     if (!decoder.decode(parameters.shouldEnableFTLJIT))
@@ -288,6 +370,8 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
     if (!decoder.decode(parameters.memoryCacheDisabled))
         return false;
+    if (!decoder.decode(parameters.attrStyleEnabled))
+        return false;
 
 #if ENABLE(SERVICE_CONTROLS)
     if (!decoder.decode(parameters.hasImageServices))
@@ -308,11 +392,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
         return false;
 #endif
 
-#if OS(LINUX)
-    if (!decoder.decode(parameters.memoryPressureMonitorHandle))
-        return false;
-#endif
-
 #if PLATFORM(WAYLAND)
     if (!decoder.decode(parameters.waylandCompositorDisplayName))
         return false;
@@ -320,6 +399,26 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
 
 #if USE(SOUP)
     if (!decoder.decode(parameters.proxySettings))
+        return false;
+#endif
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    if (!decoder.decode(parameters.shouldLogUserInteraction))
+        return false;
+#endif
+
+#if PLATFORM(COCOA)
+    if (!decoder.decode(parameters.mediaMIMETypes))
+        return false;
+#endif
+
+#if PLATFORM(MAC)
+    std::optional<WebCore::ScreenProperties> screenProperties;
+    decoder >> screenProperties;
+    if (!screenProperties)
+        return false;
+    parameters.screenProperties = WTFMove(*screenProperties);
+    if (!decoder.decode(parameters.useOverlayScrollbars))
         return false;
 #endif
 

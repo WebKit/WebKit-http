@@ -34,9 +34,8 @@
 #import <wtf/MainThread.h>
 #import <wtf/spi/cf/CFBundleSPI.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static bool getPluginArchitecture(CFBundleRef bundle, PluginModuleInfo& plugin)
 {
@@ -149,8 +148,7 @@ static bool getPluginInfoFromPropertyLists(CFBundleRef bundle, PluginModuleInfo&
             // The DivX plug-in lists multiple extensions in a comma separated string instead of using
             // multiple array elements in the property list. Work around this here by splitting the
             // extension string into components.
-            Vector<String> extensionComponents;
-            String(extension).convertToASCIILowercase().split(',', extensionComponents);
+            Vector<String> extensionComponents = String(extension).convertToASCIILowercase().split(',');
 
             for (auto& component : extensionComponents)
                 mimeClassInfo.extensions.append(component);
@@ -237,8 +235,7 @@ PluginVersion PluginVersion::parse(const String& versionString)
 {
     PluginVersion version;
 
-    Vector<String> versionStringComponents;
-    versionString.split('.', versionStringComponents);
+    Vector<String> versionStringComponents = versionString.split('.');
     for (size_t i = 0; i < versionStringComponents.size(); ++i) {
         bool successfullyParsed = false;
         unsigned versionComponent = versionStringComponents[i].toUInt(&successfullyParsed);

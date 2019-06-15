@@ -5,7 +5,7 @@ es6id: 9.5.4
 description: >
     Trap is called with handler on its context and target as the first
     parameter.
-info: >
+info: |
     [[PreventExtensions]] ( )
 
     ...
@@ -16,12 +16,12 @@ info: >
 var _target, _handler;
 var target = {};
 var handler = {
-    preventExtensions: function(t) {
-        _handler = this;
-        _target = t;
+  preventExtensions: function(t) {
+    _handler = this;
+    _target = t;
 
-        return Object.preventExtensions(target);
-    }
+    return Object.preventExtensions(target);
+  }
 };
 var p = new Proxy(target, handler);
 

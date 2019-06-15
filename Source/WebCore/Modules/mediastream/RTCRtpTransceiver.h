@@ -36,6 +36,7 @@
 #include "RTCIceTransport.h"
 #include "RTCRtpReceiver.h"
 #include "RTCRtpSender.h"
+#include "RTCRtpTransceiverBackend.h"
 #include "RTCRtpTransceiverDirection.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
@@ -46,42 +47,33 @@ namespace WebCore {
 
 class RTCRtpTransceiver : public RefCounted<RTCRtpTransceiver>, public ScriptWrappable {
 public:
-    static Ref<RTCRtpTransceiver> create(Ref<RTCRtpSender>&& sender, Ref<RTCRtpReceiver>&& receiver) { return adoptRef(*new RTCRtpTransceiver(WTFMove(sender), WTFMove(receiver))); }
-    virtual ~RTCRtpTransceiver() { }
+    static Ref<RTCRtpTransceiver> create(Ref<RTCRtpSender>&& sender, Ref<RTCRtpReceiver>&& receiver, std::unique_ptr<RTCRtpTransceiverBackend>&& backend) { return adoptRef(*new RTCRtpTransceiver(WTFMove(sender), WTFMove(receiver), WTFMove(backend))); }
+    virtual ~RTCRtpTransceiver() = default;
 
     bool hasSendingDirection() const;
     void enableSendingDirection();
     void disableSendingDirection();
 
-    const String& directionString() const;
-    RTCRtpTransceiverDirection direction() const { return m_direction; }
-    // FIXME: setDirection should trigger negotiation needed.
-    void setDirection(RTCRtpTransceiverDirection direction) { m_direction = direction; }
-
-    const String& provisionalMid() const { return m_provisionalMid; }
-    void setProvisionalMid(const String& provisionalMid) { m_provisionalMid = provisionalMid; }
-
-    const String& mid() const { return m_mid; }
-    void setMid(const String& mid) { m_mid = mid; }
+    RTCRtpTransceiverDirection direction() const;
+    std::optional<RTCRtpTransceiverDirection> currentDirection() const;
+    void setDirection(RTCRtpTransceiverDirection);
+    String mid() const;
 
     RTCRtpSender& sender() { return m_sender.get(); }
     RTCRtpReceiver& receiver() { return m_receiver.get(); }
 
     bool stopped() const { return m_stopped; }
-    void stop() { m_stopped = true; }
+    void stop();
 
     // FIXME: Temporary solution to keep track of ICE states for this transceiver. Later, each
     // sender and receiver will have up to two DTLS transports, which in turn will have an ICE
     // transport each.
     RTCIceTransport& iceTransport() { return m_iceTransport.get(); }
 
-    static String getNextMid();
+    RTCRtpTransceiverBackend* backend() { return m_backend.get(); }
 
 private:
-    RTCRtpTransceiver(Ref<RTCRtpSender>&&, Ref<RTCRtpReceiver>&&);
-
-    String m_provisionalMid;
-    String m_mid;
+    RTCRtpTransceiver(Ref<RTCRtpSender>&&, Ref<RTCRtpReceiver>&&, std::unique_ptr<RTCRtpTransceiverBackend>&&);
 
     RTCRtpTransceiverDirection m_direction;
 
@@ -91,6 +83,7 @@ private:
     bool m_stopped { false };
 
     Ref<RTCIceTransport> m_iceTransport;
+    std::unique_ptr<RTCRtpTransceiverBackend> m_backend;
 };
 
 class RtpTransceiverSet {

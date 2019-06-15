@@ -2,6 +2,7 @@
  * Copyright (C) 2004, 2005, 2007 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005 Rob Buis <buis@kde.org>
  * Copyright (C) 2010 Dirk Schulze <krit@webkit.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -31,27 +32,19 @@
 #include "RenderSVGResource.h"
 #include "SVGNames.h"
 #include "SVGPreserveAspectRatioValue.h"
-#include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_PRESERVEASPECTRATIO(SVGFEImageElement, SVGNames::preserveAspectRatioAttr, PreserveAspectRatio, preserveAspectRatio)
-DEFINE_ANIMATED_STRING(SVGFEImageElement, XLinkNames::hrefAttr, Href, href)
-DEFINE_ANIMATED_BOOLEAN(SVGFEImageElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGFEImageElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(preserveAspectRatio)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(href)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGFilterPrimitiveStandardAttributes)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGFEImageElement);
 
 inline SVGFEImageElement::SVGFEImageElement(const QualifiedName& tagName, Document& document)
     : SVGFilterPrimitiveStandardAttributes(tagName, document)
+    , SVGExternalResourcesRequired(this)
+    , SVGURIReference(this)
 {
     ASSERT(hasTagName(SVGNames::feImageTag));
-    registerAnimatedPropertiesForSVGFEImageElement();
+    registerAttributes();
 }
 
 Ref<SVGFEImageElement> SVGFEImageElement::create(const QualifiedName& tagName, Document& document)
@@ -89,7 +82,7 @@ void SVGFEImageElement::requestImageResource()
 
     CachedResourceRequest request(ResourceRequest(document().completeURL(href())), options);
     request.setInitiator(*this);
-    m_cachedImage = document().cachedResourceLoader().requestImage(WTFMove(request));
+    m_cachedImage = document().cachedResourceLoader().requestImage(WTFMove(request)).value_or(nullptr);
 
     if (m_cachedImage)
         m_cachedImage->addClient(*this);
@@ -102,7 +95,7 @@ void SVGFEImageElement::buildPendingResource()
         return;
 
     String id;
-    Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
+    auto target = makeRefPtr(SVGURIReference::targetElementFromIRIString(href(), document(), &id));
     if (!target) {
         if (id.isEmpty())
             requestImageResource();
@@ -113,10 +106,18 @@ void SVGFEImageElement::buildPendingResource()
     } else if (target->isSVGElement()) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target));
+        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target.get()));
     }
 
     invalidate();
+}
+
+void SVGFEImageElement::registerAttributes()
+{
+    auto& registry = attributeRegistry();
+    if (!registry.isEmpty())
+        return;
+    registry.registerAttribute<SVGNames::preserveAspectRatioAttr, &SVGFEImageElement::m_preserveAspectRatio>();
 }
 
 void SVGFEImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -124,7 +125,7 @@ void SVGFEImageElement::parseAttribute(const QualifiedName& name, const AtomicSt
     if (name == SVGNames::preserveAspectRatioAttr) {
         SVGPreserveAspectRatioValue preserveAspectRatio;
         preserveAspectRatio.parse(value);
-        setPreserveAspectRatioBaseValue(preserveAspectRatio);
+        m_preserveAspectRatio.setValue(preserveAspectRatio);
         return;
     }
 
@@ -150,21 +151,21 @@ void SVGFEImageElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGFilterPrimitiveStandardAttributes::svgAttributeChanged(attrName);
 }
 
-Node::InsertionNotificationRequest SVGFEImageElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGFEImageElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGFilterPrimitiveStandardAttributes::insertedInto(rootParent);
-    return InsertionShouldCallFinishedInsertingSubtree;
+    SVGFilterPrimitiveStandardAttributes::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void SVGFEImageElement::finishedInsertingSubtree()
+void SVGFEImageElement::didFinishInsertingNode()
 {
     buildPendingResource();
 }
 
-void SVGFEImageElement::removedFrom(ContainerNode& rootParent)
+void SVGFEImageElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGFilterPrimitiveStandardAttributes::removedFrom(rootParent);
-    if (rootParent.isConnected())
+    SVGFilterPrimitiveStandardAttributes::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         clearResourceReferences();
 }
 
@@ -173,7 +174,7 @@ void SVGFEImageElement::notifyFinished(CachedResource&)
     if (!isConnected())
         return;
 
-    Element* parent = parentElement();
+    auto parent = makeRefPtr(parentElement());
 
     if (!parent || !parent->hasTagName(SVGNames::filterTag))
         return;

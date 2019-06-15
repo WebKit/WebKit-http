@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CrossfadeGeneratedImage_h
-#define CrossfadeGeneratedImage_h
+#pragma once
 
 #include "FloatSize.h"
 #include "GeneratedImage.h"
@@ -55,7 +54,7 @@ protected:
 
 private:
     bool isCrossfadeGeneratedImage() const override { return true; }
-    void dump(TextStream&) const override;
+    void dump(WTF::TextStream&) const override;
     
     void drawCrossfade(GraphicsContext&);
 
@@ -68,4 +67,4 @@ private:
 
 }
 
-#endif
+SPECIALIZE_TYPE_TRAITS_IMAGE(CrossfadeGeneratedImage)

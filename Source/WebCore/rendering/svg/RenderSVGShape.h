@@ -43,7 +43,12 @@ class RenderSVGResource;
 class SVGGraphicsElement;
 
 class RenderSVGShape : public RenderSVGModelObject {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGShape);
 public:
+    enum PointCoordinateSpace {
+        GlobalCoordinateSpace,
+        LocalCoordinateSpace
+    };
     RenderSVGShape(SVGGraphicsElement&, RenderStyle&&);
     virtual ~RenderSVGShape();
 
@@ -57,24 +62,31 @@ public:
     virtual void strokeShape(GraphicsContext&) const;
     virtual bool isRenderingDisabled() const = 0;
 
+    bool isPointInFill(const FloatPoint&);
+    bool isPointInStroke(const FloatPoint&);
+
+    float getTotalLength() const;
+    void getPointAtLength(FloatPoint&, float distance) const;
+
     bool hasPath() const { return m_path.get(); }
     Path& path() const
     {
         ASSERT(m_path);
         return *m_path;
     }
+    void clearPath() { m_path = nullptr; }
 
 protected:
     void element() const = delete;
 
     virtual void updateShapeFromElement();
     virtual bool isEmpty() const;
-    virtual bool shapeDependentStrokeContains(const FloatPoint&);
+    virtual bool shapeDependentStrokeContains(const FloatPoint&, PointCoordinateSpace = GlobalCoordinateSpace);
     virtual bool shapeDependentFillContains(const FloatPoint&, const WindRule) const;
     float strokeWidth() const;
     bool hasSmoothStroke() const;
 
-    bool hasNonScalingStroke() const { return style().svgStyle().vectorEffect() == VE_NON_SCALING_STROKE; }
+    bool hasNonScalingStroke() const { return style().svgStyle().vectorEffect() == VectorEffect::NonScalingStroke; }
     AffineTransform nonScalingStrokeTransform() const;
     Path* nonScalingStrokePath(const Path*, const AffineTransform&) const;
 
@@ -83,7 +95,7 @@ protected:
 
 private:
     // Hit-detection separated for the fill and the stroke
-    bool fillContains(const FloatPoint&, bool requiresFill = true, const WindRule fillRule = RULE_NONZERO);
+    bool fillContains(const FloatPoint&, bool requiresFill = true, const WindRule fillRule = WindRule::NonZero);
     bool strokeContains(const FloatPoint&, bool requiresStroke = true);
 
     FloatRect repaintRectInLocalCoordinates() const final { return m_repaintBoundingBox; }
@@ -122,13 +134,14 @@ private:
 private:
     FloatRect m_repaintBoundingBox;
     FloatRect m_repaintBoundingBoxExcludingShadow;
-    AffineTransform m_localTransform;
-    std::unique_ptr<Path> m_path;
-    Vector<MarkerPosition> m_markerPositions;
 
     bool m_needsBoundariesUpdate : 1;
     bool m_needsShapeUpdate : 1;
     bool m_needsTransformUpdate : 1;
+
+    AffineTransform m_localTransform;
+    std::unique_ptr<Path> m_path;
+    Vector<MarkerPosition> m_markerPositions;
 };
 
 } // namespace WebCore

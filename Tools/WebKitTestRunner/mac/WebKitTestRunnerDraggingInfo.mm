@@ -29,6 +29,7 @@
 #import "EventSenderProxy.h"
 #import "PlatformWebView.h"
 #import "TestController.h"
+#import "TestRunnerWKWebView.h"
 
 using namespace WTR;
 
@@ -40,23 +41,15 @@ using namespace WTR;
     if (!self)
         return nil;
 
-    _draggedImage = [image retain];
-    _draggingPasteboard = [pasteboard retain];
-    _draggingSource = [source retain];
+    _draggedImage = image;
+    _draggingPasteboard = pasteboard;
+    _draggingSource = source;
     _offset = offset;
     
     return self;
 }
 
-- (void)dealloc
-{
-    [_draggedImage release];
-    [_draggingPasteboard release];
-    [_draggingSource release];
-    [super dealloc];
-}
-
-- (NSWindow *)draggingDestinationWindow 
+- (NSWindow *)draggingDestinationWindow
 {
     return [TestController::singleton().mainWebView()->platformView() window];
 }

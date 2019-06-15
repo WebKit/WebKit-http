@@ -90,11 +90,36 @@ TEST(WebCore, URLExtras_Spoof)
         "xn--o8f", // U+1D21
         "xn--p8f", // U+1D22
         "xn--0na", // U+0261
+        "xn--cn-ded", // U+054D
+        "xn--ews-nfe.org", // U+054D
+        "xn--yotube-qkh", // U+0578
+        "xn--cla-7fe.edu", // U+0578
+        "xn--rsa94l", // U+05D5 U+0307
+        "xn--hdb9c", // U+05D5 U+05B9
+        "xn--idb7c", // U+05D5 U+05BA
+        "xn--pdb3b", // U+05D5 U+05C1
+        "xn--qdb1b", // U+05D5 U+05C2
+        "xn--sdb7a", // U+05D5 U+05C4
+        "xn--2-zic", // U+0032 U+05E1
     };
     for (const String& host : punycodedSpoofHosts) {
         auto url = makeString("http://", host, "/").utf8();
         EXPECT_STREQ(url.data(), userVisibleString(literalURL(url.data())));
     }
+}
+
+TEST(WebCore, URLExtras_NotSpoofed)
+{
+    // Valid mixtures of Armenian and other scripts
+    EXPECT_STREQ("https://en.wikipedia.org/wiki/.\u0570\u0561\u0575", userVisibleString(literalURL("https://en.wikipedia.org/wiki/.\u0570\u0561\u0575")));
+    EXPECT_STREQ("https://\u0573\u0574\u0578.\u0570\u0561\u0575", userVisibleString(literalURL("https://\u0573\u0574\u0578.\u0570\u0561\u0575")));
+    EXPECT_STREQ("https://\u0573-1-\u0574\u0578.\u0570\u0561\u0575", userVisibleString(literalURL("https://\u0573-1-\u0574\u0578.\u0570\u0561\u0575")));
+    EXPECT_STREQ("https://2\u0573_\u0574\u0578.\u0570\u0561\u0575", userVisibleString(literalURL("https://2\u0573_\u0574\u0578.\u0570\u0561\u0575")));
+    EXPECT_STREQ("https://\u0573_\u0574\u05783.\u0570\u0561\u0575", userVisibleString(literalURL("https://\u0573_\u0574\u05783.\u0570\u0561\u0575")));
+    EXPECT_STREQ("https://got\u0551\u0535\u0543.com", userVisibleString(literalURL("https://got\u0551\u0535\u0543.com")));
+    EXPECT_STREQ("https://\u0551\u0535\u0543fans.net", userVisibleString(literalURL("https://\u0551\u0535\u0543fans.net")));
+    EXPECT_STREQ("https://\u0551\u0535or\u0575\u0543.biz", userVisibleString(literalURL("https://\u0551\u0535or\u0575\u0543.biz")));
+    EXPECT_STREQ("https://\u0551\u0535and!$^&*()-~+={}or<>,.?\u0575\u0543.biz", userVisibleString(literalURL("https://\u0551\u0535and!$^&*()-~+={}or<>,.?\u0575\u0543.biz")));
 }
 
 TEST(WebCore, URLExtras_DivisionSign)

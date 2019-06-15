@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_STUNSERVER_H_
-#define WEBRTC_P2P_BASE_STUNSERVER_H_
+#ifndef P2P_BASE_STUNSERVER_H_
+#define P2P_BASE_STUNSERVER_H_
 
 #include <memory>
 
-#include "webrtc/p2p/base/stun.h"
-#include "webrtc/base/asyncudpsocket.h"
+#include "p2p/base/stun.h"
+#include "rtc_base/asyncudpsocket.h"
 
 namespace cricket {
 
@@ -29,32 +29,30 @@ class StunServer : public sigslot::has_slots<> {
 
  protected:
   // Slot for AsyncSocket.PacketRead:
-  void OnPacket(
-      rtc::AsyncPacketSocket* socket, const char* buf, size_t size,
-      const rtc::SocketAddress& remote_addr,
-      const rtc::PacketTime& packet_time);
+  void OnPacket(rtc::AsyncPacketSocket* socket,
+                const char* buf,
+                size_t size,
+                const rtc::SocketAddress& remote_addr,
+                const rtc::PacketTime& packet_time);
 
   // Handlers for the different types of STUN/TURN requests:
   virtual void OnBindingRequest(StunMessage* msg,
-      const rtc::SocketAddress& addr);
-  void OnAllocateRequest(StunMessage* msg,
-      const rtc::SocketAddress& addr);
-  void OnSharedSecretRequest(StunMessage* msg,
-      const rtc::SocketAddress& addr);
-  void OnSendRequest(StunMessage* msg,
-      const rtc::SocketAddress& addr);
+                                const rtc::SocketAddress& addr);
+  void OnAllocateRequest(StunMessage* msg, const rtc::SocketAddress& addr);
+  void OnSharedSecretRequest(StunMessage* msg, const rtc::SocketAddress& addr);
+  void OnSendRequest(StunMessage* msg, const rtc::SocketAddress& addr);
 
   // Sends an error response to the given message back to the user.
-  void SendErrorResponse(
-      const StunMessage& msg, const rtc::SocketAddress& addr,
-      int error_code, const char* error_desc);
+  void SendErrorResponse(const StunMessage& msg,
+                         const rtc::SocketAddress& addr,
+                         int error_code,
+                         const char* error_desc);
 
   // Sends the given message to the appropriate destination.
-  void SendResponse(const StunMessage& msg,
-       const rtc::SocketAddress& addr);
+  void SendResponse(const StunMessage& msg, const rtc::SocketAddress& addr);
 
   // A helper method to compose a STUN binding response.
-  void GetStunBindReqponse(StunMessage* request,
+  void GetStunBindResponse(StunMessage* request,
                            const rtc::SocketAddress& remote_addr,
                            StunMessage* response) const;
 
@@ -64,4 +62,4 @@ class StunServer : public sigslot::has_slots<> {
 
 }  // namespace cricket
 
-#endif  // WEBRTC_P2P_BASE_STUNSERVER_H_
+#endif  // P2P_BASE_STUNSERVER_H_

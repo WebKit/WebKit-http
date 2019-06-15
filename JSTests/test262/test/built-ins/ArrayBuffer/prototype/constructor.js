@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer.prototype.constructor
 es6id: 24.1.4.2
 description: >
   The `ArrayBuffer.prototype.constructor` property descriptor.
-info: >
+info: |
   The initial value of ArrayBuffer.prototype.constructor is the intrinsic
   object %ArrayBuffer%.
 

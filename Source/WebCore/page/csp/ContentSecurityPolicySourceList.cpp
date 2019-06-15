@@ -130,7 +130,7 @@ bool ContentSecurityPolicySourceList::isProtocolAllowedByStar(const URL& url) co
     return isAllowed;
 }
 
-bool ContentSecurityPolicySourceList::matches(const URL& url, bool didReceiveRedirectResponse)
+bool ContentSecurityPolicySourceList::matches(const URL& url, bool didReceiveRedirectResponse) const
 {
     if (m_allowStar && isProtocolAllowedByStar(url))
         return true;
@@ -196,6 +196,8 @@ void ContentSecurityPolicySourceList::parse(const UChar* begin, const UChar* end
 
         ASSERT(position == end || isASCIISpace(*position));
     }
+    
+    m_list.shrinkToFit();
 }
 
 // source            = scheme ":"
@@ -437,10 +439,10 @@ static bool isNonceCharacter(UChar c)
 // nonce-value     = base64-value
 bool ContentSecurityPolicySourceList::parseNonceSource(const UChar* begin, const UChar* end)
 {
-    static NeverDestroyed<String> noncePrefix("'nonce-", String::ConstructFromLiteral);
-    if (!StringView(begin, end - begin).startsWithIgnoringASCIICase(noncePrefix.get()))
+    const unsigned noncePrefixLength = 7;
+    if (!StringView(begin, end - begin).startsWithIgnoringASCIICase("'nonce-"))
         return false;
-    const UChar* position = begin + noncePrefix.get().length();
+    const UChar* position = begin + noncePrefixLength;
     const UChar* beginNonceValue = position;
     skipWhile<UChar, isNonceCharacter>(position, end);
     if (position >= end || position == beginNonceValue || *position != '\'')
@@ -471,7 +473,7 @@ bool ContentSecurityPolicySourceList::parseHashSource(const UChar* begin, const 
     if (digest->value.size() > ContentSecurityPolicyHash::maximumDigestLength)
         return false;
 
-    m_hashAlgorithmsUsed |= digest->algorithm;
+    m_hashAlgorithmsUsed.add(digest->algorithm);
     m_hashes.add(WTFMove(*digest));
     return true;
 }

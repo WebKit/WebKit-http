@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef APIContextConfiguration_h
-#define APIContextConfiguration_h
+#pragma once
 
 #include "APIObject.h"
 #include "CacheModel.h"
@@ -52,7 +51,10 @@ public:
     void setShouldHaveLegacyDataStore(bool shouldHaveLegacyDataStore) { m_shouldHaveLegacyDataStore = shouldHaveLegacyDataStore; }
 
     unsigned maximumProcessCount() const { return m_maximumProcessCount; }
-    void setMaximumProcessCount(unsigned maximumProcessCount) { m_maximumProcessCount = maximumProcessCount; } 
+    void setMaximumProcessCount(unsigned maximumProcessCount) { m_maximumProcessCount = maximumProcessCount; }
+
+    bool isAutomaticProcessWarmingEnabled() const { return m_isAutomaticProcessWarmingEnabled; }
+    void setIsAutomaticProcessWarmingEnabled(bool value) { m_isAutomaticProcessWarmingEnabled = value; }
 
     bool diskCacheSpeculativeValidationEnabled() const { return m_diskCacheSpeculativeValidationEnabled; }
     void setDiskCacheSpeculativeValidationEnabled(bool enabled) { m_diskCacheSpeculativeValidationEnabled = enabled; }
@@ -110,6 +112,9 @@ public:
     bool ignoreSynchronousMessagingTimeoutsForTesting() const { return m_ignoreSynchronousMessagingTimeoutsForTesting; }
     void setIgnoreSynchronousMessagingTimeoutsForTesting(bool allowed) { m_ignoreSynchronousMessagingTimeoutsForTesting = allowed; }
 
+    bool attrStyleEnabled() const { return m_attrStyleEnabled; }
+    void setAttrStyleEnabled(bool enabled) { m_attrStyleEnabled = enabled; }
+
     const Vector<WTF::String>& overrideLanguages() const { return m_overrideLanguages; }
     void setOverrideLanguages(Vector<WTF::String>&& languages) { m_overrideLanguages = WTFMove(languages); }
 
@@ -118,9 +123,6 @@ public:
 
     const WTF::String& sourceApplicationSecondaryIdentifier() const { return m_sourceApplicationSecondaryIdentifier; }
     void setSourceApplicationSecondaryIdentifier(const WTF::String& sourceApplicationSecondaryIdentifier) { m_sourceApplicationSecondaryIdentifier = sourceApplicationSecondaryIdentifier; }
-
-    bool allowsCellularAccess() const { return m_allowsCellularAccess; }
-    void setAllowsCellularAccess(bool allowsCellularAccess) { m_allowsCellularAccess = allowsCellularAccess; }
     
     bool alwaysRunsAtBackgroundPriority() const { return m_alwaysRunsAtBackgroundPriority; }
     void setAlwaysRunsAtBackgroundPriority(bool alwaysRunsAtBackgroundPriority) { m_alwaysRunsAtBackgroundPriority = alwaysRunsAtBackgroundPriority; }
@@ -136,8 +138,30 @@ public:
     void setCTDataConnectionServiceType(const WTF::String& ctDataConnectionServiceType) { m_ctDataConnectionServiceType = ctDataConnectionServiceType; }
 #endif
 
-    pid_t presentingApplicationPID() const { return m_presentingApplicationPID; }
-    void setPresentingApplicationPID(pid_t pid) { m_presentingApplicationPID = pid; }
+    ProcessID presentingApplicationPID() const { return m_presentingApplicationPID; }
+    void setPresentingApplicationPID(ProcessID pid) { m_presentingApplicationPID = pid; }
+
+    bool processSwapsOnNavigation() const { return m_processSwapsOnNavigation; }
+    void setProcessSwapsOnNavigation(bool swaps) { m_processSwapsOnNavigation = swaps; }
+
+    bool alwaysKeepAndReuseSwappedProcesses() const { return m_alwaysKeepAndReuseSwappedProcesses; }
+    void setAlwaysKeepAndReuseSwappedProcesses(bool keepAndReuse) { m_alwaysKeepAndReuseSwappedProcesses = keepAndReuse; }
+
+    bool processSwapsOnWindowOpenWithOpener() const { return m_processSwapsOnWindowOpenWithOpener; }
+    void setProcessSwapsOnWindowOpenWithOpener(bool swaps) { m_processSwapsOnWindowOpenWithOpener = swaps; }
+
+    const WTF::String& customWebContentServiceBundleIdentifier() const { return m_customWebContentServiceBundleIdentifier; }
+    void setCustomWebContentServiceBundleIdentifier(const WTF::String& customWebContentServiceBundleIdentifier) { m_customWebContentServiceBundleIdentifier = customWebContentServiceBundleIdentifier; }
+
+#if ENABLE(PROXIMITY_NETWORKING)
+    unsigned wirelessContextIdentifier() const { return m_wirelessContextIdentifier; }
+    void setWirelessContextIdentifier(unsigned wirelessContextIdentifier) { m_wirelessContextIdentifier = wirelessContextIdentifier; }
+#endif
+
+#if PLATFORM(COCOA)
+    bool suppressesConnectionTerminationOnSystemChange() const { return m_suppressesConnectionTerminationOnSystemChange; }
+    void setSuppressesConnectionTerminationOnSystemChange(bool suppressesConnectionTerminationOnSystemChange) { m_suppressesConnectionTerminationOnSystemChange = suppressesConnectionTerminationOnSystemChange; }
+#endif
 
 private:
     bool m_shouldHaveLegacyDataStore { false };
@@ -163,19 +187,31 @@ private:
     Vector<WTF::CString> m_additionalReadAccessAllowedPaths;
     bool m_fullySynchronousModeIsAllowedForTesting { false };
     bool m_ignoreSynchronousMessagingTimeoutsForTesting { false };
+    bool m_attrStyleEnabled { false };
     Vector<WTF::String> m_overrideLanguages;
     WTF::String m_sourceApplicationBundleIdentifier;
     WTF::String m_sourceApplicationSecondaryIdentifier;
-    bool m_allowsCellularAccess { true };
     bool m_alwaysRunsAtBackgroundPriority { false };
     bool m_shouldTakeUIBackgroundAssertion { true };
     bool m_shouldCaptureAudioInUIProcess { false };
-    pid_t m_presentingApplicationPID { getCurrentProcessID() };
+    ProcessID m_presentingApplicationPID { getCurrentProcessID() };
+    bool m_processSwapsOnNavigation { false };
+    bool m_alwaysKeepAndReuseSwappedProcesses { false };
+    bool m_processSwapsOnWindowOpenWithOpener { false };
+    bool m_isAutomaticProcessWarmingEnabled { false };
+    WTF::String m_customWebContentServiceBundleIdentifier;
+
 #if PLATFORM(IOS)
     WTF::String m_ctDataConnectionServiceType;
+#endif
+
+#if ENABLE(PROXIMITY_NETWORKING)
+    unsigned m_wirelessContextIdentifier { 0 };
+#endif
+
+#if PLATFORM(COCOA)
+    bool m_suppressesConnectionTerminationOnSystemChange { false };
 #endif
 };
 
 } // namespace API
-
-#endif // APIContextConfiguration_h

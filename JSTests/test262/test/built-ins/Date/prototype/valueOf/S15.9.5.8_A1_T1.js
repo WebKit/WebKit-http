@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "valueOf" has { DontEnum } attributes
+esid: sec-date.prototype.valueof
 es5id: 15.9.5.8_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.valueOf;
-if(x === 1)
+if (x === 1)
   Date.prototype.valueOf = 2;
 else
   Date.prototype.valueOf = 1;

@@ -42,6 +42,7 @@
 #include "HTMLParamElement.h"
 #include "HTMLPlugInElement.h"
 #include "HitTestResult.h"
+#include "LayoutState.h"
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "Page.h"
@@ -54,11 +55,14 @@
 #include "Settings.h"
 #include "Text.h"
 #include "TextRun.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
 
 using namespace HTMLNames;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderEmbeddedObject);
 
 static const float replacementTextRoundedRectHeight = 22;
 static const float replacementTextRoundedRectLeftTextMargin = 10;
@@ -152,6 +156,8 @@ static String unavailablePluginReplacementText(RenderEmbeddedObject::PluginUnava
         return blockedPluginByContentSecurityPolicyText();
     case RenderEmbeddedObject::InsecurePluginVersion:
         return insecurePluginVersionText();
+    case RenderEmbeddedObject::UnsupportedPlugin:
+        return unsupportedPluginText();
     }
 
     ASSERT_NOT_REACHED();
@@ -243,7 +249,7 @@ void RenderEmbeddedObject::paintContents(PaintInfo& paintInfo, const LayoutPoint
 void RenderEmbeddedObject::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
     // The relevant repainted object heuristic is not tuned for plugin documents.
-    bool countsTowardsRelevantObjects = !document().isPluginDocument() && paintInfo.phase == PaintPhaseForeground;
+    bool countsTowardsRelevantObjects = !document().isPluginDocument() && paintInfo.phase == PaintPhase::Foreground;
 
     if (isPluginUnavailable()) {
         if (countsTowardsRelevantObjects)
@@ -286,7 +292,7 @@ void RenderEmbeddedObject::paintReplaced(PaintInfo& paintInfo, const LayoutPoint
     if (!showsUnavailablePluginIndicator())
         return;
 
-    if (paintInfo.phase == PaintPhaseSelection)
+    if (paintInfo.phase == PaintPhase::Selection)
         return;
 
     GraphicsContext& context = paintInfo.context();
@@ -372,16 +378,14 @@ void RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumul
     fontDescription.setWeight(boldWeightValue());
     fontDescription.setRenderingMode(settings().fontRenderingMode());
     fontDescription.setComputedSize(12);
-    font = FontCascade(fontDescription, 0, 0);
+    font = FontCascade(WTFMove(fontDescription), 0, 0);
     font.update(0);
 
     run = TextRun(m_unavailablePluginReplacementText);
     textWidth = font.width(run);
 
     replacementTextRect.setSize(FloatSize(textWidth + replacementTextRoundedRectLeftTextMargin + (includesArrow ? replacementTextRoundedRectRightTextMarginWithArrow : replacementTextRoundedRectRightTextMargin), replacementTextRoundedRectHeight));
-    float x = (contentRect.size().width() / 2 - replacementTextRect.size().width() / 2) + contentRect.location().x();
-    float y = (contentRect.size().height() / 2 - replacementTextRect.size().height() / 2) + contentRect.location().y();
-    replacementTextRect.setLocation(FloatPoint(x, y));
+    replacementTextRect.setLocation(contentRect.location() + (contentRect.size() / 2 - replacementTextRect.size() / 2));
 
     indicatorRect = replacementTextRect;
 
@@ -454,7 +458,7 @@ void RenderEmbeddedObject::layout()
     // When calling layout() on a child node, a parent must either push a LayoutStateMaintainter, or
     // instantiate LayoutStateDisabler. Since using a LayoutStateMaintainer is slightly more efficient,
     // and this method will be called many times per second during playback, use a LayoutStateMaintainer:
-    LayoutStateMaintainer statePusher(view(), *this, locationOffset(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
+    LayoutStateMaintainer statePusher(*this, locationOffset(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
     
     childBox.setLocation(LayoutPoint(borderLeft(), borderTop()) + LayoutSize(paddingLeft(), paddingTop()));
     childBox.mutableStyle().setHeight(Length(newSize.height(), Fixed));
@@ -462,8 +466,6 @@ void RenderEmbeddedObject::layout()
     childBox.setNeedsLayout(MarkOnlyThis);
     childBox.layout();
     clearChildNeedsLayout();
-    
-    statePusher.pop();
 }
 
 bool RenderEmbeddedObject::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)

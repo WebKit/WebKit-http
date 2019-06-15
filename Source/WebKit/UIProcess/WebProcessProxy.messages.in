@@ -21,7 +21,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 messages -> WebProcessProxy LegacyReceiver {
-    AddBackForwardItem(uint64_t itemID, uint64_t pageID, struct WebKit::PageState pageState)
+    UpdateBackForwardItem(struct WebKit::BackForwardListItemState backForwardListItemState)
     DidDestroyFrame(uint64_t frameID) 
 
     DidDestroyUserGestureToken(uint64_t userGestureTokenID) 
@@ -33,13 +33,11 @@ messages -> WebProcessProxy LegacyReceiver {
 
     # Plugin messages.
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    GetPlugins(bool refresh) -> (Vector<WebCore::PluginInfo> plugins, Vector<WebCore::PluginInfo> applicationPlugins)
+    GetPlugins(bool refresh) -> (Vector<WebCore::PluginInfo> plugins, Vector<WebCore::PluginInfo> applicationPlugins, struct std::optional<Vector<WebCore::SupportedPluginIdentifier>> supportedPluginIdentifiers)
     GetPluginProcessConnection(uint64_t pluginProcessToken) -> (IPC::Attachment connectionHandle, bool supportsAsynchronousInitialization) Delayed
 #endif
     GetNetworkProcessConnection() -> (IPC::Attachment connectionHandle) Delayed
-#if ENABLE(DATABASE_PROCESS)
-    GetDatabaseProcessConnection() -> (IPC::Attachment connectionHandle) Delayed
-#endif
+    GetStorageProcessConnection(PAL::SessionID initialSessionID) -> (IPC::Attachment connectionHandle) Delayed
     ProcessReadyToSuspend()
     DidCancelProcessSuspension()
 
@@ -49,14 +47,27 @@ messages -> WebProcessProxy LegacyReceiver {
     DidExceedInactiveMemoryLimit()
     DidExceedCPULimit()
 
-    StopResponsivenessTimer()
+    TestIncomingSyncIPCMessageWhileWaitingForSyncReply() -> (bool handled)
 
-    RetainIconForPageURL(String pageURL)
-    ReleaseIconForPageURL(String pageURL)
+    StopResponsivenessTimer()
 
     DidReceiveMainThreadPing()
     DidReceiveBackgroundResponsivenessPing()
 
     MemoryPressureStatusChanged(bool isUnderMemoryPressure)
     DidExceedInactiveMemoryLimitWhileActive()
+
+    CreateNewMessagePortChannel(struct WebCore::MessagePortIdentifier port1, struct WebCore::MessagePortIdentifier port2)
+    EntangleLocalPortInThisProcessToRemote(struct WebCore::MessagePortIdentifier local, struct WebCore::MessagePortIdentifier remote)
+    MessagePortDisentangled(struct WebCore::MessagePortIdentifier local)
+    MessagePortClosed(struct WebCore::MessagePortIdentifier local)
+    TakeAllMessagesForPort(struct WebCore::MessagePortIdentifier port, uint64_t messagesCallbackIdentifier)
+    PostMessageToRemote(struct WebCore::MessageWithMessagePorts message, struct WebCore::MessagePortIdentifier remote)
+    CheckRemotePortForActivity(struct WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
+    DidDeliverMessagePortMessages(uint64_t messageBatchIdentifier)
+    DidCheckProcessLocalPortForActivity(uint64_t callbackIdentifier, bool isLocallyReachable)
+
+#if PLATFORM(COCOA)
+    CacheMediaMIMETypes(Vector<String> types)
+#endif
 }

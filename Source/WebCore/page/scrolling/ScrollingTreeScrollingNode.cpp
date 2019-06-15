@@ -30,7 +30,7 @@
 
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -39,9 +39,7 @@ ScrollingTreeScrollingNode::ScrollingTreeScrollingNode(ScrollingTree& scrollingT
 {
 }
 
-ScrollingTreeScrollingNode::~ScrollingTreeScrollingNode()
-{
-}
+ScrollingTreeScrollingNode::~ScrollingTreeScrollingNode() = default;
 
 void ScrollingTreeScrollingNode::commitStateBeforeChildren(const ScrollingStateNode& stateNode)
 {

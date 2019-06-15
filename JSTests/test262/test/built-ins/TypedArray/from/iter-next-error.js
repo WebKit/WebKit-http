@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.from
 description: Returns error produced by advancing the iterator
-info: >
+info: |
   22.2.2.1.1 Runtime Semantics: IterableToArrayLike( items )
 
   2. If usingIterator is not undefined, then
@@ -11,8 +11,8 @@ info: >
     d. Repeat, while next is not false
       i. Let next be ? IteratorStep(iterator).
   ...
-features: [Symbol.iterator]
 includes: [testTypedArray.js]
+features: [Symbol.iterator, TypedArray]
 ---*/
 
 var iter = {};

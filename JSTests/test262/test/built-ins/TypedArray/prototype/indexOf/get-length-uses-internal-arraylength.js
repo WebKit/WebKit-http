@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.indexof
 description: Get "length" uses internal ArrayLength
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.indexOf (searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.indexOf is a distinct function that implements the same
@@ -17,6 +17,7 @@ info: >
   2. Let len be ? ToLength(? Get(O, "length")).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 Object.defineProperty(TypedArray.prototype, "length", {value: 0});

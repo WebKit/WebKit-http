@@ -30,6 +30,7 @@
 #if JSC_OBJC_API_ENABLED
 
 #import "APICast.h"
+#import "DFGWorklist.h"
 #import "JSManagedValueInternal.h"
 #import "JSVirtualMachine.h"
 #import "JSVirtualMachineInternal.h"
@@ -42,7 +43,7 @@
 
 static NSMapTable *globalWrapperCache = 0;
 
-static StaticLock wrapperCacheMutex;
+static Lock wrapperCacheMutex;
 
 static void initWrapperCache()
 {
@@ -68,14 +69,14 @@ static NSMapTable *wrapperCache()
 
 + (void)addWrapper:(JSVirtualMachine *)wrapper forJSContextGroupRef:(JSContextGroupRef)group
 {
-    std::lock_guard<StaticLock> lock(wrapperCacheMutex);
-    NSMapInsert(wrapperCache(), group, wrapper);
+    std::lock_guard<Lock> lock(wrapperCacheMutex);
+    NSMapInsert(wrapperCache(), group, (__bridge void*)wrapper);
 }
 
 + (JSVirtualMachine *)wrapperForJSContextGroupRef:(JSContextGroupRef)group
 {
-    std::lock_guard<StaticLock> lock(wrapperCacheMutex);
-    return static_cast<JSVirtualMachine *>(NSMapGet(wrapperCache(), group));
+    std::lock_guard<Lock> lock(wrapperCacheMutex);
+    return (__bridge JSVirtualMachine *)NSMapGet(wrapperCache(), group);
 }
 
 @end
@@ -153,7 +154,7 @@ static id getInternalObjcObject(id object)
 - (bool)isOldExternalObject:(id)object
 {
     JSC::VM* vm = toJS(m_group);
-    return vm->heap.collectorSlotVisitor().containsOpaqueRoot(object);
+    return vm->heap.collectorSlotVisitor().containsOpaqueRoot((__bridge void*)object);
 }
 
 - (void)addExternalRememberedObject:(id)object
@@ -186,11 +187,10 @@ static id getInternalObjcObject(id object)
         ownedObjects = [[NSMapTable alloc] initWithKeyOptions:weakIDOptions valueOptions:integerOptions capacity:1];
 
         [m_externalObjectGraph setObject:ownedObjects forKey:owner];
-        [ownedObjects release];
     }
 
-    size_t count = reinterpret_cast<size_t>(NSMapGet(ownedObjects, object));
-    NSMapInsert(ownedObjects, object, reinterpret_cast<void*>(count + 1));
+    size_t count = reinterpret_cast<size_t>(NSMapGet(ownedObjects, (__bridge void*)object));
+    NSMapInsert(ownedObjects, (__bridge void*)object, reinterpret_cast<void*>(count + 1));
 }
 
 - (void)removeManagedReference:(id)object withOwner:(id)owner
@@ -211,14 +211,14 @@ static id getInternalObjcObject(id object)
     if (!ownedObjects)
         return;
    
-    size_t count = reinterpret_cast<size_t>(NSMapGet(ownedObjects, object));
+    size_t count = reinterpret_cast<size_t>(NSMapGet(ownedObjects, (__bridge void*)object));
     if (count > 1) {
-        NSMapInsert(ownedObjects, object, reinterpret_cast<void*>(count - 1));
+        NSMapInsert(ownedObjects, (__bridge void*)object, reinterpret_cast<void*>(count - 1));
         return;
     }
     
     if (count == 1)
-        NSMapRemove(ownedObjects, object);
+        NSMapRemove(ownedObjects, (__bridge void*)object);
 
     if (![ownedObjects count]) {
         [m_externalObjectGraph removeObjectForKey:owner];
@@ -245,12 +245,12 @@ JSContextGroupRef getGroupFromVirtualMachine(JSVirtualMachine *virtualMachine)
 
 - (JSContext *)contextForGlobalContextRef:(JSGlobalContextRef)globalContext
 {
-    return static_cast<JSContext *>(NSMapGet(m_contextCache, globalContext));
+    return (__bridge JSContext *)NSMapGet(m_contextCache, globalContext);
 }
 
 - (void)addContext:(JSContext *)wrapper forGlobalContextRef:(JSGlobalContextRef)globalContext
 {
-    NSMapInsert(m_contextCache, globalContext, wrapper);
+    NSMapInsert(m_contextCache, globalContext, (__bridge void*)wrapper);
 }
 
 - (Lock&)externalDataMutex
@@ -268,6 +268,35 @@ JSContextGroupRef getGroupFromVirtualMachine(JSVirtualMachine *virtualMachine)
     return m_externalRememberedSet;
 }
 
+- (void)shrinkFootprintWhenIdle
+{
+    JSC::VM* vm = toJS(m_group);
+    JSC::JSLockHolder locker(vm);
+    vm->shrinkFootprintWhenIdle();
+}
+
+#if ENABLE(DFG_JIT)
+
++ (NSUInteger)setNumberOfDFGCompilerThreads:(NSUInteger)numberOfThreads
+{
+    JSC::DFG::Worklist* worklist = JSC::DFG::existingGlobalDFGWorklistOrNull();
+    if (worklist)
+        return worklist->setNumberOfThreads(numberOfThreads, JSC::Options::priorityDeltaOfDFGCompilerThreads());
+    else
+        return JSC::DFG::setNumberOfDFGCompilerThreads(numberOfThreads);
+}
+
++ (NSUInteger)setNumberOfFTLCompilerThreads:(NSUInteger)numberOfThreads
+{
+    JSC::DFG::Worklist* worklist = JSC::DFG::existingGlobalFTLWorklistOrNull();
+    if (worklist)
+        return worklist->setNumberOfThreads(numberOfThreads, JSC::Options::priorityDeltaOfFTLCompilerThreads());
+    else
+        return JSC::DFG::setNumberOfFTLCompilerThreads(numberOfThreads);
+}
+
+#endif // ENABLE(DFG_JIT)
+
 @end
 
 static void scanExternalObjectGraph(JSC::VM& vm, JSC::SlotVisitor& visitor, void* root, bool lockAcquired)
@@ -283,14 +312,13 @@ static void scanExternalObjectGraph(JSC::VM& vm, JSC::SlotVisitor& visitor, void
         while (!stack.isEmpty()) {
             void* nextRoot = stack.last();
             stack.removeLast();
-            if (visitor.containsOpaqueRootTriState(nextRoot) == TrueTriState)
+            if (!visitor.addOpaqueRoot(nextRoot))
                 continue;
-            visitor.addOpaqueRoot(nextRoot);
 
             auto appendOwnedObjects = [&] {
-                NSMapTable *ownedObjects = [externalObjectGraph objectForKey:static_cast<id>(nextRoot)];
+                NSMapTable *ownedObjects = [externalObjectGraph objectForKey:(__bridge id)nextRoot];
                 for (id ownedObject in ownedObjects)
-                    stack.append(static_cast<void*>(ownedObject));
+                    stack.append((__bridge void*)ownedObject);
             };
 
             if (lockAcquired)
@@ -323,12 +351,10 @@ void scanExternalRememberedSet(JSC::VM& vm, JSC::SlotVisitor& visitor)
             NSMapTable *ownedObjects = [externalObjectGraph objectForKey:key];
             bool lockAcquired = true;
             for (id ownedObject in ownedObjects)
-                scanExternalObjectGraph(vm, visitor, ownedObject, lockAcquired);
+                scanExternalObjectGraph(vm, visitor, (__bridge void*)ownedObject, lockAcquired);
         }
         [externalRememberedSet removeAllObjects];
     }
-
-    visitor.mergeIfNecessary();
 }
 
 #endif // JSC_OBJC_API_ENABLED

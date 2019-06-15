@@ -29,15 +29,15 @@
 #include "FEGaussianBlurNEON.h"
 #include "Filter.h"
 #include "GraphicsContext.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 #if USE(ACCELERATE)
 #include <Accelerate/Accelerate.h>
 #endif
 
-#include <runtime/JSCInlines.h>
-#include <runtime/TypedArrayInlines.h>
-#include <runtime/Uint8ClampedArray.h>
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/TypedArrayInlines.h>
+#include <JavaScriptCore/Uint8ClampedArray.h>
 #include <wtf/MathExtras.h>
 #include <wtf/ParallelJobs.h>
 
@@ -91,29 +91,14 @@ Ref<FEGaussianBlur> FEGaussianBlur::create(Filter& filter, float x, float y, Edg
     return adoptRef(*new FEGaussianBlur(filter, x, y, edgeMode));
 }
 
-float FEGaussianBlur::stdDeviationX() const
-{
-    return m_stdX;
-}
-
 void FEGaussianBlur::setStdDeviationX(float x)
 {
     m_stdX = x;
 }
 
-float FEGaussianBlur::stdDeviationY() const
-{
-    return m_stdY;
-}
-
 void FEGaussianBlur::setStdDeviationY(float y)
 {
     m_stdY = y;
-}
-
-EdgeModeType FEGaussianBlur::edgeMode() const
-{
-    return m_edgeMode;
 }
 
 void FEGaussianBlur::setEdgeMode(EdgeModeType edgeMode)
@@ -122,11 +107,11 @@ void FEGaussianBlur::setEdgeMode(EdgeModeType edgeMode)
 }
 
 // This function only operates on Alpha channel.
-inline void boxBlurAlphaOnly(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* dstPixelArray,
+inline void boxBlurAlphaOnly(const Uint8ClampedArray& srcPixelArray, Uint8ClampedArray& dstPixelArray,
     unsigned dx, int& dxLeft, int& dxRight, int& stride, int& strideLine, int& effectWidth, int& effectHeight, const int& maxKernelSize)
 {
-    unsigned char* srcData = srcPixelArray->data();
-    unsigned char* dstData = dstPixelArray->data();
+    const uint8_t* srcData = srcPixelArray.data();
+    uint8_t* dstData = dstPixelArray.data();
     // Memory alignment is: RGBA, zero-index based.
     const int channel = 3;
 
@@ -137,43 +122,41 @@ inline void boxBlurAlphaOnly(const Uint8ClampedArray* srcPixelArray, Uint8Clampe
         // Fill the kernel.
         for (int i = 0; i < maxKernelSize; ++i) {
             unsigned offset = line + i * stride;
-            unsigned char* srcPtr = srcData + offset;
+            const uint8_t* srcPtr = srcData + offset;
             sum += srcPtr[channel];
         }
 
         // Blurring.
         for (int x = 0; x < effectWidth; ++x) {
             unsigned pixelByteOffset = line + x * stride + channel;
-            unsigned char* dstPtr = dstData + pixelByteOffset;
-            *dstPtr = static_cast<unsigned char>(sum / dx);
+            uint8_t* dstPtr = dstData + pixelByteOffset;
+            *dstPtr = static_cast<uint8_t>(sum / dx);
 
             // Shift kernel.
             if (x >= dxLeft) {
                 unsigned leftOffset = pixelByteOffset - dxLeft * stride;
-                unsigned char* srcPtr = srcData + leftOffset;
+                const uint8_t* srcPtr = srcData + leftOffset;
                 sum -= *srcPtr;
             }
 
             if (x + dxRight < effectWidth) {
                 unsigned rightOffset = pixelByteOffset + dxRight * stride;
-                unsigned char* srcPtr = srcData + rightOffset;
+                const uint8_t* srcPtr = srcData + rightOffset;
                 sum += *srcPtr;
             }
         }
     }
 }
 
-inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* dstPixelArray,
+inline void boxBlur(const Uint8ClampedArray& srcPixelArray, Uint8ClampedArray& dstPixelArray,
     unsigned dx, int dxLeft, int dxRight, int stride, int strideLine, int effectWidth, int effectHeight, bool alphaImage, EdgeModeType edgeMode)
 {
     const int maxKernelSize = std::min(dxRight, effectWidth);
-    if (alphaImage) {
-        return boxBlurAlphaOnly(srcPixelArray, dstPixelArray, dx, dxLeft, dxRight, stride, strideLine,
-            effectWidth, effectHeight, maxKernelSize);
-    }
+    if (alphaImage)
+        return boxBlurAlphaOnly(srcPixelArray, dstPixelArray, dx, dxLeft, dxRight, stride, strideLine,  effectWidth, effectHeight, maxKernelSize);
 
-    unsigned char* srcData = srcPixelArray->data();
-    unsigned char* dstData = dstPixelArray->data();
+    const uint8_t* srcData = srcPixelArray.data();
+    uint8_t* dstData = dstPixelArray.data();
 
     // Concerning the array width/length: it is Element size + Margin + Border. The number of pixels will be
     // P = width * height * channels.
@@ -185,7 +168,7 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
             // Fill the kernel.
             for (int i = 0; i < maxKernelSize; ++i) {
                 unsigned offset = line + i * stride;
-                unsigned char* srcPtr = srcData + offset;
+                const uint8_t* srcPtr = srcData + offset;
                 sumR += *srcPtr++;
                 sumG += *srcPtr++;
                 sumB += *srcPtr++;
@@ -195,17 +178,17 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
             // Blurring.
             for (int x = 0; x < effectWidth; ++x) {
                 unsigned pixelByteOffset = line + x * stride;
-                unsigned char* dstPtr = dstData + pixelByteOffset;
+                uint8_t* dstPtr = dstData + pixelByteOffset;
 
-                *dstPtr++ = static_cast<unsigned char>(sumR / dx);
-                *dstPtr++ = static_cast<unsigned char>(sumG / dx);
-                *dstPtr++ = static_cast<unsigned char>(sumB / dx);
-                *dstPtr = static_cast<unsigned char>(sumA / dx);
+                *dstPtr++ = static_cast<uint8_t>(sumR / dx);
+                *dstPtr++ = static_cast<uint8_t>(sumG / dx);
+                *dstPtr++ = static_cast<uint8_t>(sumB / dx);
+                *dstPtr = static_cast<uint8_t>(sumA / dx);
 
                 // Shift kernel.
                 if (x >= dxLeft) {
                     unsigned leftOffset = pixelByteOffset - dxLeft * stride;
-                    unsigned char* srcPtr = srcData + leftOffset;
+                    const uint8_t* srcPtr = srcData + leftOffset;
                     sumR -= srcPtr[0];
                     sumG -= srcPtr[1];
                     sumB -= srcPtr[2];
@@ -214,7 +197,7 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
 
                 if (x + dxRight < effectWidth) {
                     unsigned rightOffset = pixelByteOffset + dxRight * stride;
-                    unsigned char* srcPtr = srcData + rightOffset;
+                    const uint8_t* srcPtr = srcData + rightOffset;
                     sumR += srcPtr[0];
                     sumG += srcPtr[1];
                     sumB += srcPtr[2];
@@ -225,14 +208,14 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
         } else {
             // FIXME: Add support for 'wrap' here.
             // Get edge values for edgeMode 'duplicate'.
-            unsigned char* edgeValueLeft = srcData + line;
-            unsigned char* edgeValueRight  = srcData + (line + (effectWidth - 1) * stride);
+            const uint8_t* edgeValueLeft = srcData + line;
+            const uint8_t* edgeValueRight  = srcData + (line + (effectWidth - 1) * stride);
 
             // Fill the kernel.
             for (int i = dxLeft * -1; i < dxRight; ++i) {
                 // Is this right for negative values of 'i'?
                 unsigned offset = line + i * stride;
-                unsigned char* srcPtr = srcData + offset;
+                const uint8_t* srcPtr = srcData + offset;
 
                 if (i < 0) {
                     sumR += edgeValueLeft[0];
@@ -255,12 +238,12 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
             // Blurring.
             for (int x = 0; x < effectWidth; ++x) {
                 unsigned pixelByteOffset = line + x * stride;
-                unsigned char* dstPtr = dstData + pixelByteOffset;
+                uint8_t* dstPtr = dstData + pixelByteOffset;
 
-                *dstPtr++ = static_cast<unsigned char>(sumR / dx);
-                *dstPtr++ = static_cast<unsigned char>(sumG / dx);
-                *dstPtr++ = static_cast<unsigned char>(sumB / dx);
-                *dstPtr = static_cast<unsigned char>(sumA / dx);
+                *dstPtr++ = static_cast<uint8_t>(sumR / dx);
+                *dstPtr++ = static_cast<uint8_t>(sumG / dx);
+                *dstPtr++ = static_cast<uint8_t>(sumB / dx);
+                *dstPtr = static_cast<uint8_t>(sumA / dx);
 
                 // Shift kernel.
                 if (x < dxLeft) {
@@ -270,7 +253,7 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
                     sumA -= edgeValueLeft[3];
                 } else {
                     unsigned leftOffset = pixelByteOffset - dxLeft * stride;
-                    unsigned char* srcPtr = srcData + leftOffset;
+                    const uint8_t* srcPtr = srcData + leftOffset;
                     sumR -= srcPtr[0];
                     sumG -= srcPtr[1];
                     sumB -= srcPtr[2];
@@ -284,7 +267,7 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
                     sumA += edgeValueRight[3];
                 } else {
                     unsigned rightOffset = pixelByteOffset + dxRight * stride;
-                    unsigned char* srcPtr = srcData + rightOffset;
+                    const uint8_t* srcPtr = srcData + rightOffset;
                     sumR += srcPtr[0];
                     sumG += srcPtr[1];
                     sumB += srcPtr[2];
@@ -296,9 +279,9 @@ inline void boxBlur(const Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* d
 }
 
 #if USE(ACCELERATE)
-inline void accelerateBoxBlur(const Uint8ClampedArray* src, Uint8ClampedArray* dst, unsigned kernelSize, int stride, int effectWidth, int effectHeight)
+inline void accelerateBoxBlur(Uint8ClampedArray& ioBuffer, Uint8ClampedArray& tempBuffer, unsigned kernelSize, int stride, int effectWidth, int effectHeight)
 {
-    if (!src || !src->data() || !dst || !dst->data()) {
+    if (!ioBuffer.data() || !tempBuffer.data()) {
         ASSERT_NOT_REACHED();
         return;
     }
@@ -313,13 +296,13 @@ inline void accelerateBoxBlur(const Uint8ClampedArray* src, Uint8ClampedArray* d
         kernelSize += 1;
 
     vImage_Buffer effectInBuffer;
-    effectInBuffer.data = src->data();
+    effectInBuffer.data = static_cast<void*>(ioBuffer.data());
     effectInBuffer.width = effectWidth;
     effectInBuffer.height = effectHeight;
     effectInBuffer.rowBytes = stride;
 
     vImage_Buffer effectOutBuffer;
-    effectOutBuffer.data = dst->data();
+    effectOutBuffer.data = tempBuffer.data();
     effectOutBuffer.width = effectWidth;
     effectOutBuffer.height = effectHeight;
     effectOutBuffer.rowBytes = stride;
@@ -336,78 +319,78 @@ inline void accelerateBoxBlur(const Uint8ClampedArray* src, Uint8ClampedArray* d
     vImageBoxConvolve_ARGB8888(&effectInBuffer, &effectOutBuffer, tmpBuffer, 0, 0, kernelSize, kernelSize, 0, kvImageEdgeExtend);
     WTF::fastFree(tmpBuffer);
 
-    // The final result should be stored in src.
-    if (dst == src) {
-        ASSERT(src->length() == dst->length());
-        memcpy(dst->data(), src->data(), src->length());
-    }
+    // The final result should be stored in ioBuffer.
+    ASSERT(ioBuffer.length() == tempBuffer.length());
+    memcpy(ioBuffer.data(), tempBuffer.data(), ioBuffer.length());
 }
 #endif
 
-inline void standardBoxBlur(Uint8ClampedArray* src, Uint8ClampedArray* dst, unsigned kernelSizeX, unsigned kernelSizeY, int stride, IntSize& paintSize, bool isAlphaImage, EdgeModeType edgeMode)
+inline void standardBoxBlur(Uint8ClampedArray& ioBuffer, Uint8ClampedArray& tempBuffer, unsigned kernelSizeX, unsigned kernelSizeY, int stride, IntSize& paintSize, bool isAlphaImage, EdgeModeType edgeMode)
 {
     int dxLeft = 0;
     int dxRight = 0;
     int dyLeft = 0;
     int dyRight = 0;
+    
+    Uint8ClampedArray* fromBuffer = &ioBuffer;
+    Uint8ClampedArray* toBuffer = &tempBuffer;
 
     for (int i = 0; i < 3; ++i) {
         if (kernelSizeX) {
             kernelPosition(i, kernelSizeX, dxLeft, dxRight);
 #if HAVE(ARM_NEON_INTRINSICS)
             if (!isAlphaImage)
-                boxBlurNEON(src, dst, kernelSizeX, dxLeft, dxRight, 4, stride, paintSize.width(), paintSize.height());
+                boxBlurNEON(*fromBuffer, *toBuffer, kernelSizeX, dxLeft, dxRight, 4, stride, paintSize.width(), paintSize.height());
             else
-                boxBlur(src, dst, kernelSizeX, dxLeft, dxRight, 4, stride, paintSize.width(), paintSize.height(), true, edgeMode);
+                boxBlur(*fromBuffer, *toBuffer, kernelSizeX, dxLeft, dxRight, 4, stride, paintSize.width(), paintSize.height(), true, edgeMode);
 #else
-            boxBlur(src, dst, kernelSizeX, dxLeft, dxRight, 4, stride, paintSize.width(), paintSize.height(), isAlphaImage, edgeMode);
+            boxBlur(*fromBuffer, *toBuffer, kernelSizeX, dxLeft, dxRight, 4, stride, paintSize.width(), paintSize.height(), isAlphaImage, edgeMode);
 #endif
-            std::swap(src, dst);
+            std::swap(fromBuffer, toBuffer);
         }
 
         if (kernelSizeY) {
             kernelPosition(i, kernelSizeY, dyLeft, dyRight);
 #if HAVE(ARM_NEON_INTRINSICS)
             if (!isAlphaImage)
-                boxBlurNEON(src, dst, kernelSizeY, dyLeft, dyRight, stride, 4, paintSize.height(), paintSize.width());
+                boxBlurNEON(*fromBuffer, *toBuffer, kernelSizeY, dyLeft, dyRight, stride, 4, paintSize.height(), paintSize.width());
             else
-                boxBlur(src, dst, kernelSizeY, dyLeft, dyRight, stride, 4, paintSize.height(), paintSize.width(), true, edgeMode);
+                boxBlur(*fromBuffer, *toBuffer, kernelSizeY, dyLeft, dyRight, stride, 4, paintSize.height(), paintSize.width(), true, edgeMode);
 #else
-            boxBlur(src, dst, kernelSizeY, dyLeft, dyRight, stride, 4, paintSize.height(), paintSize.width(), isAlphaImage, edgeMode);
+            boxBlur(*fromBuffer, *toBuffer, kernelSizeY, dyLeft, dyRight, stride, 4, paintSize.height(), paintSize.width(), isAlphaImage, edgeMode);
 #endif
-            std::swap(src, dst);
+            std::swap(fromBuffer, toBuffer);
         }
     }
 
-    // The final result should be stored in src.
-    if (dst == src) {
-        ASSERT(src->length() == dst->length());
-        memcpy(dst->data(), src->data(), src->length());
+    // The final result should be stored in ioBuffer.
+    if (&ioBuffer != fromBuffer) {
+        ASSERT(ioBuffer.length() == fromBuffer->length());
+        memcpy(ioBuffer.data(), fromBuffer->data(), ioBuffer.length());
     }
 }
 
-inline void FEGaussianBlur::platformApplyGeneric(Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* tmpPixelArray, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize)
+inline void FEGaussianBlur::platformApplyGeneric(Uint8ClampedArray& ioBuffer, Uint8ClampedArray& tmpPixelArray, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize)
 {
     int stride = 4 * paintSize.width();
 
 #if USE(ACCELERATE)
     if (kernelSizeX == kernelSizeY && (m_edgeMode == EDGEMODE_NONE || m_edgeMode == EDGEMODE_DUPLICATE)) {
-        accelerateBoxBlur(srcPixelArray, tmpPixelArray, kernelSizeX, stride, paintSize.width(), paintSize.height());
+        accelerateBoxBlur(ioBuffer, tmpPixelArray, kernelSizeX, stride, paintSize.width(), paintSize.height());
         return;
     }
 #endif
 
-    standardBoxBlur(srcPixelArray, tmpPixelArray, kernelSizeX, kernelSizeY, stride, paintSize, isAlphaImage(), m_edgeMode);
+    standardBoxBlur(ioBuffer, tmpPixelArray, kernelSizeX, kernelSizeY, stride, paintSize, isAlphaImage(), m_edgeMode);
 }
 
 void FEGaussianBlur::platformApplyWorker(PlatformApplyParameters* parameters)
 {
     IntSize paintSize(parameters->width, parameters->height);
-    parameters->filter->platformApplyGeneric(parameters->srcPixelArray.get(), parameters->dstPixelArray.get(),
-        parameters->kernelSizeX, parameters->kernelSizeY, paintSize);
+    parameters->filter->platformApplyGeneric(*parameters->ioPixelArray, *parameters->tmpPixelArray, parameters->kernelSizeX, parameters->kernelSizeY, paintSize);
 }
 
-inline void FEGaussianBlur::platformApply(Uint8ClampedArray* srcPixelArray, Uint8ClampedArray* tmpPixelArray, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize)
+inline void FEGaussianBlur::platformApply(Uint8ClampedArray& ioBuffer, Uint8ClampedArray& tmpPixelArray, unsigned kernelSizeX, unsigned kernelSizeY, IntSize& paintSize)
 {
 #if !USE(ACCELERATE)
     int scanline = 4 * paintSize.width();
@@ -435,12 +418,12 @@ inline void FEGaussianBlur::platformApply(Uint8ClampedArray* srcPixelArray, Uint
 
                 int blockSize = (endY - startY) * scanline;
                 if (!job) {
-                    params.srcPixelArray = srcPixelArray;
-                    params.dstPixelArray = tmpPixelArray;
+                    params.ioPixelArray = &ioBuffer;
+                    params.tmpPixelArray = &tmpPixelArray;
                 } else {
-                    params.srcPixelArray = Uint8ClampedArray::createUninitialized(blockSize);
-                    params.dstPixelArray = Uint8ClampedArray::createUninitialized(blockSize);
-                    memcpy(params.srcPixelArray->data(), srcPixelArray->data() + startY * scanline, blockSize);
+                    params.ioPixelArray = Uint8ClampedArray::createUninitialized(blockSize);
+                    params.tmpPixelArray = Uint8ClampedArray::createUninitialized(blockSize);
+                    memcpy(params.ioPixelArray->data(), ioBuffer.data() + startY * scanline, blockSize);
                 }
 
                 params.width = paintSize.width();
@@ -465,7 +448,7 @@ inline void FEGaussianBlur::platformApply(Uint8ClampedArray* srcPixelArray, Uint
                 destinationOffset = currentY * scanline;
                 size = adjustedBlockHeight * scanline;
 
-                memcpy(srcPixelArray->data() + destinationOffset, params.srcPixelArray->data() + sourceOffset, size);
+                memcpy(ioBuffer.data() + destinationOffset, params.ioPixelArray->data() + sourceOffset, size);
             }
             return;
         }
@@ -474,7 +457,7 @@ inline void FEGaussianBlur::platformApply(Uint8ClampedArray* srcPixelArray, Uint
 #endif
 
     // The selection here eventually should happen dynamically on some platforms.
-    platformApplyGeneric(srcPixelArray, tmpPixelArray, kernelSizeX, kernelSizeY, paintSize);
+    platformApplyGeneric(ioBuffer, tmpPixelArray, kernelSizeX, kernelSizeY, paintSize);
 }
 
 static int clampedToKernelSize(float value)
@@ -485,29 +468,28 @@ static int clampedToKernelSize(float value)
     return clampTo<int>(std::min(size, static_cast<unsigned>(gMaxKernelSize)));
 }
     
-IntSize FEGaussianBlur::calculateUnscaledKernelSize(const FloatPoint& stdDeviation)
+IntSize FEGaussianBlur::calculateUnscaledKernelSize(FloatSize stdDeviation)
 {
-    ASSERT(stdDeviation.x() >= 0 && stdDeviation.y() >= 0);
+    ASSERT(stdDeviation.width() >= 0 && stdDeviation.height() >= 0);
     IntSize kernelSize;
 
-    if (stdDeviation.x())
-        kernelSize.setWidth(clampedToKernelSize(stdDeviation.x()));
+    if (stdDeviation.width())
+        kernelSize.setWidth(clampedToKernelSize(stdDeviation.width()));
 
-    if (stdDeviation.y())
-        kernelSize.setHeight(clampedToKernelSize(stdDeviation.y()));
+    if (stdDeviation.height())
+        kernelSize.setHeight(clampedToKernelSize(stdDeviation.height()));
 
     return kernelSize;
 }
 
-IntSize FEGaussianBlur::calculateKernelSize(const Filter& filter, const FloatPoint& stdDeviation)
+IntSize FEGaussianBlur::calculateKernelSize(const Filter& filter, FloatSize stdDeviation)
 {
-    FloatPoint stdFilterScaled(filter.applyHorizontalScale(stdDeviation.x()), filter.applyVerticalScale(stdDeviation.y()));
-    return calculateUnscaledKernelSize(stdFilterScaled);
+    return calculateUnscaledKernelSize(filter.scaledByFilterResolution(stdDeviation));
 }
 
 void FEGaussianBlur::determineAbsolutePaintRect()
 {
-    IntSize kernelSize = calculateKernelSize(filter(), FloatPoint(m_stdX, m_stdY));
+    IntSize kernelSize = calculateKernelSize(filter(), { m_stdX, m_stdY });
 
     FloatRect absolutePaintRect = inputEffect(0)->absolutePaintRect();
     // Edge modes other than 'none' do not inflate the affected paint rect.
@@ -532,43 +514,38 @@ void FEGaussianBlur::platformApplySoftware()
 {
     FilterEffect* in = inputEffect(0);
 
-    Uint8ClampedArray* srcPixelArray = createPremultipliedImageResult();
-    if (!srcPixelArray)
+    Uint8ClampedArray* resultPixelArray = createPremultipliedImageResult();
+    if (!resultPixelArray)
         return;
 
     setIsAlphaImage(in->isAlphaImage());
 
     IntRect effectDrawingRect = requestedRegionOfInputImageData(in->absolutePaintRect());
-    in->copyPremultipliedImage(srcPixelArray, effectDrawingRect);
+    in->copyPremultipliedResult(*resultPixelArray, effectDrawingRect);
 
     if (!m_stdX && !m_stdY)
         return;
 
-    IntSize kernelSize = calculateKernelSize(filter(), FloatPoint(m_stdX, m_stdY));
+    IntSize kernelSize = calculateKernelSize(filter(), { m_stdX, m_stdY });
     kernelSize.scale(filter().filterScale());
 
     IntSize paintSize = absolutePaintRect().size();
     paintSize.scale(filter().filterScale());
-    RefPtr<Uint8ClampedArray> tmpImageData = Uint8ClampedArray::createUninitialized((paintSize.area() * 4).unsafeGet());
-    if (!tmpImageData) {
-        WTFLogAlways("FEGaussianBlur::platformApplySoftware Unable to create buffer. Requested size was %d x %d\n", paintSize.width(), paintSize.height());
+    auto tmpImageData = Uint8ClampedArray::createUninitialized((paintSize.area() * 4).unsafeGet());
+    if (!tmpImageData)
         return;
-    }
 
-    platformApply(srcPixelArray, tmpImageData.get(), kernelSize.width(), kernelSize.height(), paintSize);
+    platformApply(*resultPixelArray, *tmpImageData, kernelSize.width(), kernelSize.height(), paintSize);
 }
 
-void FEGaussianBlur::dump()
+TextStream& FEGaussianBlur::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FEGaussianBlur::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feGaussianBlur";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feGaussianBlur";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << " stdDeviation=\"" << m_stdX << ", " << m_stdY << "\"]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
     return ts;
 }
 

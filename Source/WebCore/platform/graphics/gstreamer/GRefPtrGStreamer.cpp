@@ -353,6 +353,46 @@ template <> void derefGPtr<GstQuery>(GstQuery* ptr)
         gst_query_unref(ptr);
 }
 
+#if GST_CHECK_VERSION(1, 10, 0)
+template <> GRefPtr<GstStream> adoptGRef(GstStream* ptr)
+{
+    return GRefPtr<GstStream>(ptr, GRefPtrAdopt);
+}
+
+template <> GstStream* refGPtr<GstStream>(GstStream* ptr)
+{
+    if (ptr)
+        gst_object_ref(GST_OBJECT_CAST(ptr));
+
+    return ptr;
+}
+
+template <> void derefGPtr<GstStream>(GstStream* ptr)
+{
+    if (ptr)
+        gst_object_unref(ptr);
+}
+
+template <> GRefPtr<GstStreamCollection> adoptGRef(GstStreamCollection* ptr)
+{
+    return GRefPtr<GstStreamCollection>(ptr, GRefPtrAdopt);
+}
+
+template <> GstStreamCollection* refGPtr<GstStreamCollection>(GstStreamCollection* ptr)
+{
+    if (ptr)
+        gst_object_ref(GST_OBJECT_CAST(ptr));
+
+    return ptr;
+}
+
+template <> void derefGPtr<GstStreamCollection>(GstStreamCollection* ptr)
+{
+    if (ptr)
+        gst_object_unref(ptr);
+}
+#endif
+
 template <> GRefPtr<WebKitVideoSink> adoptGRef(WebKitVideoSink* ptr)
 {
     ASSERT(!ptr || !g_object_is_floating(ptr));
@@ -402,6 +442,50 @@ template <> void derefGPtr<WebKitWebSrc>(WebKitWebSrc* ptr)
     if (ptr)
         gst_object_unref(GST_OBJECT(ptr));
 }
+
+#if USE(GSTREAMER_GL)
+
+template<> GRefPtr<GstGLDisplay> adoptGRef(GstGLDisplay* ptr)
+{
+    ASSERT(!ptr || !g_object_is_floating(ptr));
+    return GRefPtr<GstGLDisplay>(ptr, GRefPtrAdopt);
+}
+
+template<> GstGLDisplay* refGPtr<GstGLDisplay>(GstGLDisplay* ptr)
+{
+    if (ptr)
+        gst_object_ref_sink(GST_OBJECT(ptr));
+
+    return ptr;
+}
+
+template<> void derefGPtr<GstGLDisplay>(GstGLDisplay* ptr)
+{
+    if (ptr)
+        gst_object_unref(GST_OBJECT(ptr));
+}
+
+template<> GRefPtr<GstGLContext> adoptGRef(GstGLContext* ptr)
+{
+    ASSERT(!ptr || !g_object_is_floating(ptr));
+    return GRefPtr<GstGLContext>(ptr, GRefPtrAdopt);
+}
+
+template<> GstGLContext* refGPtr<GstGLContext>(GstGLContext* ptr)
+{
+    if (ptr)
+        gst_object_ref_sink(GST_OBJECT(ptr));
+
+    return ptr;
+}
+
+template<> void derefGPtr<GstGLContext>(GstGLContext* ptr)
+{
+    if (ptr)
+        gst_object_unref(GST_OBJECT(ptr));
+}
+
+#endif // USE(GSTREAMER_GL)
 
 } // namespace WTF
 

@@ -1,8 +1,8 @@
 [
     {
         "name": "web-platform-tests",
-        "url": "https://github.com/w3c/web-platform-tests.git",
-        "revision": "cb7017e654fb4daddb9dee8d654c78b26e61fa9f",
+        "url": "https://github.com/web-platform-tests/wpt.git",
+        "revision": "0313d9f",
         "paths_to_skip": [
             "conformance-checkers",
             "docs",
@@ -16,7 +16,6 @@
             "fonts",
             "images",
             "resources",
-            "tools",
             "serve.py"
         ],
         "import_options": ["generate_init_py"]

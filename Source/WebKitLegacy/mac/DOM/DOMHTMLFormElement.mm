@@ -31,7 +31,7 @@
 #import <WebCore/HTMLCollection.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLNames.h>
-#import <WebCore/JSMainThreadExecState.h>
+#import <WebCore/JSExecState.h>
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/URL.h>
 #import <WebCore/WebScriptObjectPrivate.h>
@@ -178,16 +178,6 @@
     WebCore::JSMainThreadNullState state;
     return IMPL->checkValidity();
 }
-
-
-#if ENABLE(REQUEST_AUTOCOMPLETE)
-- (void)requestAutocomplete
-{
-    WebCore::JSMainThreadNullState state;
-    IMPL->requestAutocomplete();
-}
-
-#endif
 
 @end
 

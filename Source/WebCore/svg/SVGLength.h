@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "SVGLengthValue.h"
 #include "SVGPropertyTearOff.h"
 
@@ -58,11 +57,6 @@ public:
         return adoptRef(*new SVGLength(initialValue));
     }
 
-    static Ref<SVGLength> create(const SVGLengthValue* initialValue)
-    {
-        return adoptRef(*new SVGLength(initialValue));
-    }
-
     template<typename T> static ExceptionOr<Ref<SVGLength>> create(ExceptionOr<T>&& initialValue)
     {
         if (initialValue.hasException())
@@ -83,7 +77,7 @@ public:
     ExceptionOr<void> setValueForBindings(float value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().setValue(value, SVGLengthContext { contextElement() });
         if (result.hasException())
@@ -101,7 +95,7 @@ public:
     ExceptionOr<void> setValueInSpecifiedUnits(float valueInSpecifiedUnits)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setValueInSpecifiedUnits(valueInSpecifiedUnits);
         commitChange();
@@ -117,7 +111,7 @@ public:
     ExceptionOr<void> setValueAsString(const String& value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().setValueAsString(value);
         if (result.hasException())
@@ -130,7 +124,7 @@ public:
     ExceptionOr<void> newValueSpecifiedUnits(unsigned short unitType, float valueInSpecifiedUnits)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().newValueSpecifiedUnits(unitType, valueInSpecifiedUnits);
         if (result.hasException())
@@ -143,7 +137,7 @@ public:
     ExceptionOr<void> convertToSpecifiedUnits(unsigned short unitType)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         auto result = propertyReference().convertToSpecifiedUnits(unitType, SVGLengthContext { contextElement() });
         if (result.hasException())
@@ -160,11 +154,6 @@ private:
     }
 
     explicit SVGLength(const SVGLengthValue& initialValue)
-        : SVGPropertyTearOff<SVGLengthValue>(initialValue)
-    {
-    }
-
-    explicit SVGLength(const SVGLengthValue* initialValue)
         : SVGPropertyTearOff<SVGLengthValue>(initialValue)
     {
     }

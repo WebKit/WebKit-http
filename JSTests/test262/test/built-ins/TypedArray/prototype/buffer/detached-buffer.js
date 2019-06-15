@@ -3,13 +3,14 @@
 /*---
 esid: sec-get-%typedarray%.prototype.buffer
 description: The getter method does not throw with a detached buffer
-info: >
+info: |
   22.2.3.1 get %TypedArray%.prototype.buffer
 
   ...
   4. Let buffer be the value of O's [[ViewedArrayBuffer]] internal slot.
   5. Return buffer.
 includes: [testTypedArray.js, detachArrayBuffer.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

@@ -4,7 +4,7 @@
 es6id: 9.5.6
 description: >
     Throw a TypeError exception if trap is not callable.
-info: >
+info: |
     [[DefineOwnProperty]] (P, Desc)
 
     ...
@@ -19,11 +19,11 @@ info: >
 
 var target = {};
 var p = new Proxy(target, {
-    defineProperty: {}
+  defineProperty: {}
 });
 
 assert.throws(TypeError, function() {
-    Object.defineProperty(p, "foo", {
-        value: 1
-    });
+  Object.defineProperty(p, "foo", {
+    value: 1
+  });
 });

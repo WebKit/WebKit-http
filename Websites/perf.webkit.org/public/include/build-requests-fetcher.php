@@ -30,6 +30,17 @@ class BuildRequestsFetcher {
             $row['task_id'] = $task_id;
     }
 
+    function fetch_requests_for_groups($test_groups) {
+        $test_group_id_list = array();
+        foreach($test_groups as $group)
+            array_push($test_group_id_list, intval($group['testgroup_id']));
+
+        $this->rows = $this->db->query_and_fetch_all('SELECT *, testgroup_task as task_id
+            FROM build_requests, analysis_test_groups
+            WHERE request_group = testgroup_id AND testgroup_id = ANY($1)
+            ORDER BY request_group, request_order', array('{' . implode(', ', $test_group_id_list) . '}'));
+    }
+
     function fetch_incomplete_requests_for_triggerable($triggerable_id) {
         $this->rows = $this->db->query_and_fetch_all('SELECT *, test_groups.testgroup_task as task_id FROM build_requests,
             (SELECT testgroup_id, testgroup_task, (case when testgroup_author is not null then 0 else 1 end) as author_order, testgroup_created_at
@@ -122,7 +133,12 @@ class BuildRequestsFetcher {
             if ($root_file_id)
                 $this->add_uploaded_file($root_file_id);
 
-            array_push($revision_items, array('commit' => $row['commit_id'], 'patch' => $patch_file_id, 'rootFile' => $root_file_id));
+            array_push($revision_items, array(
+                'commit' => $row['commit_id'],
+                'patch' => $patch_file_id,
+                'rootFile' => $root_file_id,
+                'commitOwner' => $row['commitset_commit_owner'],
+                'requiresBuild' => Database::is_true($row['commitset_requires_build'])));
 
             if (array_key_exists($commit_id, $this->commits_by_id))
                 continue;
@@ -130,6 +146,7 @@ class BuildRequestsFetcher {
             array_push($this->commits, array(
                 'id' => $commit_id,
                 'repository' => $repository_id,
+                'commitOwner' => $row['commitset_commit_owner'],
                 'revision' => $revision,
                 'time' => Database::to_js_time($commit_time)));
 
@@ -137,6 +154,25 @@ class BuildRequestsFetcher {
         }
 
         $this->commit_sets_by_id[$commit_set_id] = TRUE;
+
+        $owner_commits_rows = $this->db->query_and_fetch_all('SELECT * FROM commits, repositories
+            WHERE commit_repository = repository_id AND  commit_id
+            IN (SELECT DISTINCT(commitset_commit_owner) FROM commit_set_items
+              WHERE commitset_set = $1 AND commitset_commit_owner IS NOT NULL)', array($commit_set_id));
+
+        foreach ($owner_commits_rows as $row) {
+            $commit_id = $row['commit_id'];
+            if (array_key_exists($commit_id, $this->commits_by_id))
+                continue;
+
+            array_push($this->commits, array(
+                'id' => $commit_id,
+                'repository' => $resolve_ids ? $row['repository_name'] : $row['repository_id'],
+                'commitOwner' => NULL,
+                'revision' => $row['commit_revision'],
+                'time' => Database::to_js_time($row['commit_time'])));
+            $this->commits_by_id[$commit_id] = TRUE;
+        }
 
         array_push($this->commit_sets, array('id' => $commit_set_id, 'revisionItems' => $revision_items, 'customRoots' => $custom_roots));
     }

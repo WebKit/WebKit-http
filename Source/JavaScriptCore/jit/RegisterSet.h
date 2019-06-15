@@ -36,11 +36,14 @@
 namespace JSC {
 
 typedef Bitmap<MacroAssembler::numGPRs + MacroAssembler::numFPRs + 1> RegisterBitmap;
+class RegisterAtOffsetList;
 
 class RegisterSet {
 public:
+    constexpr RegisterSet() { }
+
     template<typename... Regs>
-    explicit RegisterSet(Regs... regs)
+    constexpr explicit RegisterSet(Regs... regs)
     {
         setMany(regs...);
     }
@@ -51,6 +54,7 @@ public:
     static RegisterSet specialRegisters(); // The union of stack, reserved hardware, and runtime registers.
     JS_EXPORT_PRIVATE static RegisterSet calleeSaveRegisters();
     static RegisterSet vmCalleeSaveRegisters(); // Callee save registers that might be saved and used by any tier.
+    static RegisterAtOffsetList* vmCalleeSaveRegisterOffsets();
     static RegisterSet llintBaselineCalleeSaveRegisters(); // Registers saved and used by the LLInt.
     static RegisterSet dfgCalleeSaveRegisters(); // Registers saved and used by the DFG JIT.
     static RegisterSet ftlCalleeSaveRegisters(); // Registers that might be saved and used by the FTL JIT.
@@ -63,7 +67,7 @@ public:
     JS_EXPORT_PRIVATE static RegisterSet allGPRs();
     JS_EXPORT_PRIVATE static RegisterSet allFPRs();
     static RegisterSet allRegisters();
-    static RegisterSet argumentGPRS();
+    JS_EXPORT_PRIVATE static RegisterSet argumentGPRS();
 
     static RegisterSet registersToNotSaveForJSCall();
     static RegisterSet registersToNotSaveForCCall();
@@ -203,6 +207,7 @@ public:
     
 private:
     void setAny(Reg reg) { set(reg); }
+    void setAny(JSValueRegs regs) { set(regs); }
     void setAny(const RegisterSet& set) { merge(set); }
     void setMany() { }
     template<typename RegType, typename... Regs>

@@ -3,7 +3,7 @@
 /*---
 es6id: 19.4.1
 description: Symbol can be used as the value of an extends
-info: >
+info: |
   19.4.1 The Symbol Constructor
 
   ...
@@ -11,6 +11,7 @@ info: >
   be subclassed. It may be used as the value of an extends clause of a class
   definition but a super call to the Symbol constructor will cause an exception.
   ...
+features: [Symbol]
 ---*/
 
 class S extends Symbol {}

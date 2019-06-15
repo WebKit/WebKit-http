@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-date.prototype.tolocalestring
 es6id: 20.3.4.39
 description: >
   Date.prototype.toLocaleString.name is "toLocaleString".
-info: >
+info: |
   Date.prototype.toLocaleString ( [ reserved1 [ , reserved2 ] ] )
 
   17 ECMAScript Standard Built-in Objects:

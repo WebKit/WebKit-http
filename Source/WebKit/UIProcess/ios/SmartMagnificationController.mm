@@ -44,8 +44,6 @@
 
 #pragma clang diagnostic pop
 
-using namespace WebCore;
-
 static const float smartMagnificationPanScrollThresholdZoomedOut = 60;
 static const float smartMagnificationPanScrollThresholdIPhone = 100;
 static const float smartMagnificationPanScrollThresholdIPad = 150;
@@ -55,6 +53,7 @@ static const double smartMagnificationMaximumScale = 1.6;
 static const double smartMagnificationMinimumScale = 0;
 
 namespace WebKit {
+using namespace WebCore;
 
 SmartMagnificationController::SmartMagnificationController(WKContentView *contentView)
     : m_webPageProxy(*contentView.page)
@@ -89,7 +88,7 @@ void SmartMagnificationController::adjustSmartMagnificationTargetRectAndZoomScal
     maximumScale = std::min(maximumScale, smartMagnificationMaximumScale);
 }
 
-void SmartMagnificationController::didCollectGeometryForSmartMagnificationGesture(FloatPoint origin, FloatRect targetRect, FloatRect visibleContentRect, bool isReplacedElement, double viewportMinimumScale, double viewportMaximumScale)
+void SmartMagnificationController::didCollectGeometryForSmartMagnificationGesture(FloatPoint origin, FloatRect targetRect, FloatRect visibleContentRect, bool fitEntireRect, double viewportMinimumScale, double viewportMaximumScale)
 {
     if (targetRect.isEmpty()) {
         // FIXME: If we don't zoom, send the tap along to text selection (see <rdar://problem/6810344>).
@@ -98,7 +97,7 @@ void SmartMagnificationController::didCollectGeometryForSmartMagnificationGestur
     }
     double minimumScale = viewportMinimumScale;
     double maximumScale = viewportMaximumScale;
-    adjustSmartMagnificationTargetRectAndZoomScales(!isReplacedElement, targetRect, minimumScale, maximumScale);
+    adjustSmartMagnificationTargetRectAndZoomScales(!fitEntireRect, targetRect, minimumScale, maximumScale);
 
     // FIXME: Check if text selection wants to consume the double tap before we attempt magnification.
 
@@ -107,7 +106,7 @@ void SmartMagnificationController::didCollectGeometryForSmartMagnificationGestur
     float minimumScrollDistance;
     if ([m_contentView bounds].size.width <= m_webPageProxy.unobscuredContentRect().width())
         minimumScrollDistance = smartMagnificationPanScrollThresholdZoomedOut;
-    else if (UICurrentUserInterfaceIdiomIsPad())
+    else if (currentUserInterfaceIdiomIsPad())
         minimumScrollDistance = smartMagnificationPanScrollThresholdIPad;
     else
         minimumScrollDistance = smartMagnificationPanScrollThresholdIPhone;
@@ -115,7 +114,7 @@ void SmartMagnificationController::didCollectGeometryForSmartMagnificationGestur
     // For replaced elements like images, we want to fit the whole element
     // in the view, so scale it down enough to make both dimensions fit if possible.
     // For other elements, try to fit them horizontally.
-    if ([m_contentView _zoomToRect:targetRect withOrigin:origin fitEntireRect:isReplacedElement minimumScale:minimumScale maximumScale:maximumScale minimumScrollDistance:minimumScrollDistance])
+    if ([m_contentView _zoomToRect:targetRect withOrigin:origin fitEntireRect:fitEntireRect minimumScale:minimumScale maximumScale:maximumScale minimumScrollDistance:minimumScrollDistance])
         return;
 
     // FIXME: If we still don't zoom, send the tap along to text selection (see <rdar://problem/6810344>).

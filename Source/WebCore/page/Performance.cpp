@@ -33,8 +33,6 @@
 #include "config.h"
 #include "Performance.h"
 
-#if ENABLE(WEB_TIMING)
-
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "Event.h"
@@ -48,21 +46,19 @@
 #include "PerformanceUserTiming.h"
 #include "ResourceResponse.h"
 #include "ScriptExecutionContext.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
 Performance::Performance(ScriptExecutionContext& context, MonotonicTime timeOrigin)
     : ContextDestructionObserver(&context)
+    , m_resourceTimingBufferFullTimer(*this, &Performance::resourceTimingBufferFullTimerFired)
     , m_timeOrigin(timeOrigin)
     , m_performanceTimelineTaskQueue(context)
 {
     ASSERT(m_timeOrigin);
 }
 
-Performance::~Performance()
-{
-}
+Performance::~Performance() = default;
 
 void Performance::contextDestroyed()
 {
@@ -71,7 +67,7 @@ void Performance::contextDestroyed()
     ContextDestructionObserver::contextDestroyed();
 }
 
-double Performance::now() const
+DOMHighResTimeStamp Performance::now() const
 {
     Seconds now = MonotonicTime::now() - m_timeOrigin;
     return reduceTimeResolution(now).milliseconds();
@@ -79,9 +75,15 @@ double Performance::now() const
 
 Seconds Performance::reduceTimeResolution(Seconds seconds)
 {
-    double resolution = (100_us).seconds();
+    double resolution = (1000_us).seconds();
     double reduced = std::floor(seconds.seconds() / resolution) * resolution;
     return Seconds(reduced);
+}
+
+DOMHighResTimeStamp Performance::relativeTimeFromTimeOriginInReducedResolution(MonotonicTime timestamp) const
+{
+    Seconds seconds = timestamp - m_timeOrigin;
+    return reduceTimeResolution(seconds).milliseconds();
 }
 
 PerformanceNavigation* Performance::navigation()
@@ -164,31 +166,80 @@ Vector<RefPtr<PerformanceEntry>> Performance::getEntriesByName(const String& nam
 void Performance::clearResourceTimings()
 {
     m_resourceTimingBuffer.clear();
+    m_resourceTimingBufferFullFlag = false;
 }
 
 void Performance::setResourceTimingBufferSize(unsigned size)
 {
     m_resourceTimingBufferSize = size;
+    m_resourceTimingBufferFullFlag = false;
 }
 
 void Performance::addResourceTiming(ResourceTiming&& resourceTiming)
 {
-    RefPtr<PerformanceResourceTiming> entry = PerformanceResourceTiming::create(m_timeOrigin, WTFMove(resourceTiming));
+    auto entry = PerformanceResourceTiming::create(m_timeOrigin, WTFMove(resourceTiming));
 
-    queueEntry(*entry);
-
-    if (isResourceTimingBufferFull())
+    if (m_waitingForBackupBufferToBeProcessed) {
+        m_backupResourceTimingBuffer.append(WTFMove(entry));
         return;
+    }
 
-    m_resourceTimingBuffer.append(entry);
+    if (m_resourceTimingBufferFullFlag) {
+        // We fired resourcetimingbufferfull event but the author script didn't clear the buffer.
+        // Notify performance observers but don't add it to the buffer.
+        queueEntry(entry.get());
+        return;
+    }
 
-    if (isResourceTimingBufferFull())
-        dispatchEvent(Event::create(eventNames().resourcetimingbufferfullEvent, true, false));
+    if (isResourceTimingBufferFull()) {
+        ASSERT(!m_resourceTimingBufferFullTimer.isActive());
+        m_backupResourceTimingBuffer.append(WTFMove(entry));
+        m_waitingForBackupBufferToBeProcessed = true;
+        m_resourceTimingBufferFullTimer.startOneShot(0_s);
+        return;
+    }
+
+    queueEntry(entry.get());
+    m_resourceTimingBuffer.append(WTFMove(entry));
 }
 
 bool Performance::isResourceTimingBufferFull() const
 {
     return m_resourceTimingBuffer.size() >= m_resourceTimingBufferSize;
+}
+
+void Performance::resourceTimingBufferFullTimerFired()
+{
+    while (!m_backupResourceTimingBuffer.isEmpty()) {
+        auto backupBuffer = WTFMove(m_backupResourceTimingBuffer);
+        ASSERT(m_backupResourceTimingBuffer.isEmpty());
+
+        m_resourceTimingBufferFullFlag = true;
+        dispatchEvent(Event::create(eventNames().resourcetimingbufferfullEvent, Event::CanBubble::Yes, Event::IsCancelable::No));
+
+        if (m_resourceTimingBufferFullFlag) {
+            for (auto& entry : backupBuffer)
+                queueEntry(*entry);
+            // Dispatching resourcetimingbufferfull event may have inserted more entries.
+            for (auto& entry : m_backupResourceTimingBuffer)
+                queueEntry(*entry);
+            m_backupResourceTimingBuffer.clear();
+            break;
+        }
+
+        // More entries may have added while dispatching resourcetimingbufferfull event.
+        backupBuffer.appendVector(m_backupResourceTimingBuffer);
+        m_backupResourceTimingBuffer.clear();
+
+        for (auto& entry : backupBuffer) {
+            if (!isResourceTimingBufferFull()) {
+                m_resourceTimingBuffer.append(entry.copyRef());
+                queueEntry(*entry);
+            } else
+                m_backupResourceTimingBuffer.append(entry.copyRef());
+        }
+    }
+    m_waitingForBackupBufferToBeProcessed = false;
 }
 
 ExceptionOr<void> Performance::mark(const String& markName)
@@ -233,6 +284,13 @@ void Performance::clearMeasures(const String& measureName)
     m_userTiming->clearMeasures(measureName);
 }
 
+void Performance::removeAllObservers()
+{
+    for (auto& observer : m_observers)
+        observer->disassociate();
+    m_observers.clear();
+}
+
 void Performance::registerPerformanceObserver(PerformanceObserver& observer)
 {
     m_observers.add(&observer);
@@ -260,13 +318,9 @@ void Performance::queueEntry(PerformanceEntry& entry)
         return;
 
     m_performanceTimelineTaskQueue.enqueueTask([this] () {
-        Vector<RefPtr<PerformanceObserver>> observers;
-        copyToVector(m_observers, observers);
-        for (auto& observer : observers)
+        for (auto& observer : copyToVector(m_observers))
             observer->deliver();
     });
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_TIMING)

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2004, 2005 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,22 +24,17 @@
 
 #include "RenderSVGHiddenContainer.h"
 #include "SVGNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_BOOLEAN(SVGDefsElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGDefsElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGDefsElement);
 
 inline SVGDefsElement::SVGDefsElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
+    , SVGExternalResourcesRequired(this)
 {
     ASSERT(hasTagName(SVGNames::defsTag));
-    registerAnimatedPropertiesForSVGDefsElement();
 }
 
 Ref<SVGDefsElement> SVGDefsElement::create(const QualifiedName& tagName, Document& document)

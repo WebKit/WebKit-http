@@ -4,13 +4,14 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   callbackfn is not callable
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
   ...
   4. If IsCallable(callbackfn) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

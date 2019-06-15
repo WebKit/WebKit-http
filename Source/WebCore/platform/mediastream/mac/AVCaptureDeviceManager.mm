@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
-#import "AVMediaCaptureSource.h"
 #import "AVVideoCaptureSource.h"
 #import "AudioSourceProvider.h"
 #import "Logging.h"
@@ -52,26 +51,15 @@ SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureDevice)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureSession)
 
-#define AVCaptureDevice getAVCaptureDeviceClass()
-#define AVCaptureSession getAVCaptureSessionClass()
-
-SOFT_LINK_POINTER(AVFoundation, AVMediaTypeAudio, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVMediaTypeMuxed, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVMediaTypeVideo, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset1280x720, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset640x480, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset352x288, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPresetLow, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureDeviceWasConnectedNotification, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureDeviceWasDisconnectedNotification, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeAudio, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeMuxed, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVMediaTypeVideo, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVCaptureDeviceWasConnectedNotification, NSString *)
+SOFT_LINK_CONSTANT(AVFoundation, AVCaptureDeviceWasDisconnectedNotification, NSString *)
 
 #define AVMediaTypeAudio getAVMediaTypeAudio()
 #define AVMediaTypeMuxed getAVMediaTypeMuxed()
 #define AVMediaTypeVideo getAVMediaTypeVideo()
-#define AVCaptureSessionPreset1280x720 getAVCaptureSessionPreset1280x720()
-#define AVCaptureSessionPreset640x480 getAVCaptureSessionPreset640x480()
-#define AVCaptureSessionPreset352x288 getAVCaptureSessionPreset352x288()
-#define AVCaptureSessionPresetLow getAVCaptureSessionPresetLow()
 #define AVCaptureDeviceWasConnectedNotification getAVCaptureDeviceWasConnectedNotification()
 #define AVCaptureDeviceWasDisconnectedNotification getAVCaptureDeviceWasDisconnectedNotification()
 
@@ -90,7 +78,8 @@ using namespace WebCore;
 
 namespace WebCore {
 
-Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevices()
+
+Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevicesInternal()
 {
     if (!isAvailable())
         return m_devices;
@@ -103,6 +92,11 @@ Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevices()
     }
 
     return m_devices;
+}
+
+const Vector<CaptureDevice>& AVCaptureDeviceManager::captureDevices()
+{
+    return captureDevicesInternal();
 }
 
 inline static bool deviceIsAvailable(AVCaptureDeviceTypedef *device)
@@ -120,9 +114,9 @@ inline static bool deviceIsAvailable(AVCaptureDeviceTypedef *device)
 
 void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType type)
 {
-    ASSERT(type == CaptureDevice::DeviceType::Video || type == CaptureDevice::DeviceType::Audio);
+    ASSERT(type == CaptureDevice::DeviceType::Camera || type == CaptureDevice::DeviceType::Microphone);
 
-    NSString *platformType = (type == CaptureDevice::DeviceType::Video) ? AVMediaTypeVideo : AVMediaTypeAudio;
+    NSString *platformType = (type == CaptureDevice::DeviceType::Camera) ? AVMediaTypeVideo : AVMediaTypeAudio;
 
     for (AVCaptureDeviceTypedef *platformDevice in [getAVCaptureDeviceClass() devices]) {
 
@@ -130,8 +124,8 @@ void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::Device
         if (!hasMatchingType)
             continue;
 
-        std::optional<CaptureDevice> existingCaptureDevice = captureDeviceFromPersistentID(platformDevice.uniqueID);
-        if (existingCaptureDevice && existingCaptureDevice->type() == type)
+        CaptureDevice existingCaptureDevice = captureDeviceFromPersistentID(platformDevice.uniqueID);
+        if (existingCaptureDevice && existingCaptureDevice.type() == type)
             continue;
 
         CaptureDevice captureDevice(platformDevice.uniqueID, type, platformDevice.localizedName);
@@ -142,8 +136,7 @@ void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::Device
 
 void AVCaptureDeviceManager::refreshCaptureDevices()
 {
-    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Video);
-    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Audio);
+    refreshAVCaptureDevicesOfType(CaptureDevice::DeviceType::Camera);
 }
 
 bool AVCaptureDeviceManager::isAvailable()
@@ -168,22 +161,6 @@ AVCaptureDeviceManager::~AVCaptureDeviceManager()
     [m_objcObserver disconnect];
 }
 
-Vector<CaptureDevice> AVCaptureDeviceManager::getAudioSourcesInfo()
-{
-    if (!isAvailable())
-        return Vector<CaptureDevice>();
-
-    return CaptureDeviceManager::getAudioSourcesInfo();
-}
-
-Vector<CaptureDevice> AVCaptureDeviceManager::getVideoSourcesInfo()
-{
-    if (!isAvailable())
-        return Vector<CaptureDevice>();
-
-    return CaptureDeviceManager::getVideoSourcesInfo();
-}
-
 void AVCaptureDeviceManager::registerForDeviceNotifications()
 {
     [[NSNotificationCenter defaultCenter] addObserver:m_objcObserver.get() selector:@selector(deviceConnected:) name:AVCaptureDeviceWasConnectedNotification object:nil];
@@ -193,14 +170,12 @@ void AVCaptureDeviceManager::registerForDeviceNotifications()
 void AVCaptureDeviceManager::deviceConnected()
 {
     refreshCaptureDevices();
-
-    for (auto& observer : m_observers.values())
-        observer();
+    deviceChanged();
 }
 
 void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
 {
-    Vector<CaptureDevice>& devices = captureDevices();
+    auto& devices = captureDevicesInternal();
 
     size_t count = devices.size();
     if (!count)
@@ -214,8 +189,7 @@ void AVCaptureDeviceManager::deviceDisconnected(AVCaptureDeviceTypedef* device)
         }
     }
 
-    for (auto& observer : m_observers.values())
-        observer();
+    deviceChanged();
 }
 
 } // namespace WebCore

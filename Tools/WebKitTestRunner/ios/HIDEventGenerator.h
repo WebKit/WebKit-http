@@ -64,6 +64,9 @@ extern NSString* const HIDEventPhaseMoved;
 extern NSString* const HIDEventPhaseEnded;
 extern NSString* const HIDEventPhaseCanceled;
 
+// Values for touch counts, etc, to keep debug code in sync
+
+extern NSUInteger const HIDMaxTouchCount;
 
 @interface HIDEventGenerator : NSObject
 

@@ -7,9 +7,9 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#include "webrtc/test/video_renderer.h"
+#include "test/video_renderer.h"
 
-#include "webrtc/test/linux/glx_renderer.h"
+#include "test/linux/glx_renderer.h"
 
 namespace webrtc {
 namespace test {
@@ -23,5 +23,5 @@ VideoRenderer* VideoRenderer::CreatePlatformRenderer(const char* window_title,
   }
   return NULL;
 }
-}  // test
-}  // webrtc
+}  // namespace test
+}  // namespace webrtc

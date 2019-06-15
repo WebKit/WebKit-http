@@ -38,6 +38,12 @@
 
 namespace WebCore {
 
+#if PLATFORM(COCOA)
+const float ColorSwatchCornerRadius = 4;
+const float ColorSwatchStrokeSize = 4;
+const float ColorSwatchWidth = 24;
+#endif
+
 DragImageRef fitDragImageToMaxSize(DragImageRef image, const IntSize& layoutSize, const IntSize& maxSize)
 {
     float heightResizeRatio = 0.0f;
@@ -109,7 +115,7 @@ static DragImageRef createDragImageFromSnapshot(std::unique_ptr<ImageBuffer> sna
 #else
     UNUSED_PARAM(node);
 #endif
-    RefPtr<Image> image = ImageBuffer::sinkIntoImage(WTFMove(snapshot), Unscaled);
+    RefPtr<Image> image = ImageBuffer::sinkIntoImage(WTFMove(snapshot), PreserveResolution::Yes);
     if (!image)
         return nullptr;
     return createDragImageFromImage(image.get(), orientation);
@@ -135,22 +141,23 @@ struct ScopedFrameSelectionState {
     ScopedFrameSelectionState(Frame& frame)
         : frame(frame)
     {
-        if (RenderView* root = frame.contentRenderer())
-            root->getSelection(startRenderer, startOffset, endRenderer, endOffset);
+        if (auto* renderView = frame.contentRenderer())
+            selection = renderView->selection().get();
     }
 
     ~ScopedFrameSelectionState()
     {
-        if (RenderView* root = frame.contentRenderer())
-            root->setSelection(startRenderer, startOffset, endRenderer, endOffset, RenderView::RepaintNothing);
+        if (auto* renderView = frame.contentRenderer()) {
+            ASSERT(selection);
+            renderView->selection().set(selection.value(), SelectionRangeData::RepaintMode::Nothing);
+        }
     }
 
     const Frame& frame;
-    RenderObject* startRenderer;
-    RenderObject* endRenderer;
-    std::optional<unsigned> startOffset;
-    std::optional<unsigned> endOffset;
+    std::optional<SelectionRangeData::Context> selection;
 };
+
+#if !PLATFORM(IOS)
 
 DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlackText)
 {
@@ -184,11 +191,13 @@ DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlack
     int startOffset = start.deprecatedEditingOffset();
     int endOffset = end.deprecatedEditingOffset();
     ASSERT(startOffset >= 0 && endOffset >= 0);
-    view->setSelection(startRenderer, startOffset, endRenderer, endOffset, RenderView::RepaintNothing);
+    view->selection().set({ startRenderer, endRenderer, static_cast<unsigned>(startOffset), static_cast<unsigned>(endOffset) }, SelectionRangeData::RepaintMode::Nothing);
     // We capture using snapshotFrameRect() because we fake up the selection using
     // FrameView but snapshotSelection() uses the selection from the Frame itself.
-    return createDragImageFromSnapshot(snapshotFrameRect(frame, view->selectionBounds(), options), nullptr);
+    return createDragImageFromSnapshot(snapshotFrameRect(frame, view->selection().boundsClippedToVisibleContent(), options), nullptr);
 }
+
+#endif
 
 DragImageRef createDragImageForImage(Frame& frame, Node& node, IntRect& imageRect, IntRect& elementRect)
 {
@@ -256,6 +265,7 @@ DragImage::DragImage(DragImage&& other)
     : m_dragImageRef { std::exchange(other.m_dragImageRef, nullptr) }
 {
     m_indicatorData = other.m_indicatorData;
+    m_visiblePath = other.m_visiblePath;
 }
 
 DragImage& DragImage::operator=(DragImage&& other)
@@ -265,6 +275,7 @@ DragImage& DragImage::operator=(DragImage&& other)
 
     m_dragImageRef = std::exchange(other.m_dragImageRef, nullptr);
     m_indicatorData = other.m_indicatorData;
+    m_visiblePath = other.m_visiblePath;
 
     return *this;
 }

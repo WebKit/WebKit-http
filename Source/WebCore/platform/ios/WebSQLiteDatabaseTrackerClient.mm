@@ -50,8 +50,9 @@ WebSQLiteDatabaseTrackerClient& WebSQLiteDatabaseTrackerClient::sharedWebSQLiteD
 }
 
 WebSQLiteDatabaseTrackerClient::WebSQLiteDatabaseTrackerClient()
-    : m_hysteresis([this](HysteresisState state) { hysteresisUpdated(state); }, hysteresisDuration)
+    : m_hysteresis([this](PAL::HysteresisState state) { hysteresisUpdated(state); }, hysteresisDuration)
 {
+    ASSERT(pthread_main_np());
 }
 
 WebSQLiteDatabaseTrackerClient::~WebSQLiteDatabaseTrackerClient()
@@ -60,21 +61,22 @@ WebSQLiteDatabaseTrackerClient::~WebSQLiteDatabaseTrackerClient()
 
 void WebSQLiteDatabaseTrackerClient::willBeginFirstTransaction()
 {
-    callOnMainThread([this] {
+    dispatch_async(dispatch_get_main_queue(), [this] {
         m_hysteresis.start();
     });
 }
 
 void WebSQLiteDatabaseTrackerClient::didFinishLastTransaction()
 {
-    callOnMainThread([this] {
+    dispatch_async(dispatch_get_main_queue(), [this] {
         m_hysteresis.stop();
     });
 }
 
-void WebSQLiteDatabaseTrackerClient::hysteresisUpdated(HysteresisState state)
+void WebSQLiteDatabaseTrackerClient::hysteresisUpdated(PAL::HysteresisState state)
 {
-    if (state == HysteresisState::Started)
+    ASSERT(pthread_main_np());
+    if (state == PAL::HysteresisState::Started)
         [WebDatabaseTransactionBackgroundTaskController startBackgroundTask];
     else
         [WebDatabaseTransactionBackgroundTaskController endBackgroundTask];
@@ -82,11 +84,7 @@ void WebSQLiteDatabaseTrackerClient::hysteresisUpdated(HysteresisState state)
 
 }
 
-static Lock& transactionBackgroundTaskIdentifierLock()
-{
-    static NeverDestroyed<Lock> mutex;
-    return mutex;
-}
+static Lock transactionBackgroundTaskIdentifierLock;
 
 static NSUInteger transactionBackgroundTaskIdentifier;
 
@@ -109,7 +107,7 @@ static NSUInteger getTransactionBackgroundTaskIdentifier()
 
 + (void)startBackgroundTask
 {
-    LockHolder lock(transactionBackgroundTaskIdentifierLock());
+    auto locker = holdLock(transactionBackgroundTaskIdentifierLock);
 
     // If there's already an existing background task going on, there's no need to start a new one.
     WebBackgroundTaskController *backgroundTaskController = [WebBackgroundTaskController sharedController];
@@ -124,7 +122,7 @@ static NSUInteger getTransactionBackgroundTaskIdentifier()
 
 + (void)endBackgroundTask
 {
-    LockHolder lock(transactionBackgroundTaskIdentifierLock());
+    auto locker = holdLock(transactionBackgroundTaskIdentifierLock);
 
     // It is possible that we were unable to start the background task when the first transaction began.
     // Don't try to end the task in that case.

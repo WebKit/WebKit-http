@@ -38,6 +38,14 @@ from webkitpy.tool import steps
 
 
 class StepsTest(unittest.TestCase):
+
+    def setUp(self):
+        # Port._build_path() calls Tools/Scripts/webkit-build-directory and caches the result. When capturing output,
+        # this can cause the first invocation of Port._build_path() to have more output than subsequent invocations.
+        # This may cause test flakiness when test order changes. By explicitly calling Port._build_path() before running
+        # tests in this suite, we avoid such flakiness.
+        MockTool().port_factory.get(options=self._step_options())._build_path()
+
     def _step_options(self):
         options = MockOptions()
         options.group = None
@@ -116,8 +124,6 @@ Running Perl unit tests
 MOCK run_and_throw_if_fail: ['Tools/Scripts/test-webkitperl'], cwd=/mock-checkout
 Running JavaScriptCore tests
 MOCK run_and_throw_if_fail: ['Tools/Scripts/run-javascriptcore-tests', '--no-fail-fast'], cwd=/mock-checkout
-Running bindings generation tests
-MOCK run_and_throw_if_fail: ['Tools/Scripts/run-bindings-tests'], cwd=/mock-checkout
 Running run-webkit-tests
 MOCK run_and_throw_if_fail: ['Tools/Scripts/run-webkit-tests', '--release', '--quiet'], cwd=/mock-checkout
 """
@@ -138,8 +144,6 @@ Running Perl unit tests
 MOCK run_and_throw_if_fail: ['Tools/Scripts/test-webkitperl'], cwd=/mock-checkout
 Running JavaScriptCore tests
 MOCK run_and_throw_if_fail: ['Tools/Scripts/run-javascriptcore-tests', '--no-fail-fast'], cwd=/mock-checkout
-Running bindings generation tests
-MOCK run_and_throw_if_fail: ['Tools/Scripts/run-bindings-tests'], cwd=/mock-checkout
 Running run-webkit-tests
 MOCK run_and_throw_if_fail: ['Tools/Scripts/run-webkit-tests', '--debug', '--quiet'], cwd=/mock-checkout
 """
@@ -184,7 +188,7 @@ MOCK run_and_throw_if_fail: ['Tools/Scripts/run-webkit-tests', '--debug', '--qui
         tool._deprecated_port = DeprecatedPort()
         step = steps.Build(tool, mock_options)
         expected_logs = """Building WebKit
-MOCK run_and_throw_if_fail: ['Tools/Scripts/build-jsc', '--debug', 'ARCHS=True'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'TERM': 'none', 'MOCK_ENVIRON_COPY': '1'}
+MOCK run_and_throw_if_fail: ['Tools/Scripts/build-jsc', '--debug', 'ARCHS=True'], cwd=/mock-checkout, env={'TERM': 'dumb', 'MOCK_ENVIRON_COPY': '1'}
 """
         OutputCapture().assert_outputs(self, step.run, [{}], expected_logs=expected_logs)
 
@@ -200,7 +204,7 @@ MOCK run_and_throw_if_fail: ['Tools/Scripts/build-jsc', '--debug', 'ARCHS=True']
         tool._deprecated_port = DeprecatedPort()
         step = steps.Build(tool, mock_options)
         expected_logs = """Building WebKit
-MOCK run_and_throw_if_fail: ['Tools/Scripts/build-jsc', '--release', 'ARCHS=True'], cwd=/mock-checkout, env={'LC_ALL': 'C', 'TERM': 'none', 'MOCK_ENVIRON_COPY': '1'}
+MOCK run_and_throw_if_fail: ['Tools/Scripts/build-jsc', '--release', 'ARCHS=True'], cwd=/mock-checkout, env={'TERM': 'dumb', 'MOCK_ENVIRON_COPY': '1'}
 """
         OutputCapture().assert_outputs(self, step.run, [{}], expected_logs=expected_logs)
 
@@ -254,6 +258,19 @@ This patch does not have relevant changes.
         tool._deprecated_port = DeprecatedPort()
         step = steps.RunTests(tool, mock_options)
         expected_logs = """MOCK run_and_throw_if_fail: ['Tools/Scripts/run-bindings-tests', '--json-output=/tmp/bindings_test_results.json'], cwd=/mock-checkout
+"""
+        OutputCapture().assert_outputs(self, step.run, [{}], expected_logs=expected_logs)
+
+    def test_runtests_webkitpy(self):
+        mock_options = self._step_options()
+        mock_options.non_interactive = False
+        mock_options.group = "webkitpy"
+        step = steps.RunTests(MockTool(log_executive=True), mock_options)
+        tool = MockTool(log_executive=True)
+        # FIXME: We shouldn't use a real port-object here, but there is too much to mock at the moment.
+        tool._deprecated_port = DeprecatedPort()
+        step = steps.RunTests(tool, mock_options)
+        expected_logs = """MOCK run_and_throw_if_fail: ['Tools/Scripts/test-webkitpy', '--json-output=/tmp/python-unittest-results/webkitpy_test_results.json'], cwd=/mock-checkout
 """
         OutputCapture().assert_outputs(self, step.run, [{}], expected_logs=expected_logs)
 

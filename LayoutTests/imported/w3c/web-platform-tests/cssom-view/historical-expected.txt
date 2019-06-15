@@ -1,3 +1,0 @@
-
-PASS Support for DOMRectList 
-

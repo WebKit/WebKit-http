@@ -28,7 +28,6 @@
 
 #if HAVE(AVFOUNDATION_LOADER_DELEGATE) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-#include "ExceptionCode.h"
 #include "LegacyCDM.h"
 #include "LegacyCDMSession.h"
 #include "MediaPlayer.h"
@@ -44,7 +43,7 @@
 
 namespace WebCore {
 
-CDMSessionAVFoundationCF::CDMSessionAVFoundationCF(MediaPlayerPrivateAVFoundationCF& parent, CDMSessionClient*)
+CDMSessionAVFoundationCF::CDMSessionAVFoundationCF(MediaPlayerPrivateAVFoundationCF& parent, LegacyCDMSessionClient*)
     : m_parent(parent)
     , m_sessionId(createCanonicalUUIDString())
 {

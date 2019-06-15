@@ -32,6 +32,7 @@ class SVGTextElement;
 class RenderSVGInlineText;
 
 class RenderSVGText final : public RenderSVGBlock {
+    WTF_MAKE_ISO_ALLOCATED(RenderSVGText);
 public:
     RenderSVGText(SVGTextElement&, RenderStyle&&);
     virtual ~RenderSVGText();
@@ -69,7 +70,7 @@ private:
     void paint(PaintInfo&, const LayoutPoint&) override;
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
     bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override;
-    VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) override;
 
     bool requiresLayer() const override { return false; }
     void layout() override;
@@ -82,8 +83,6 @@ private:
 
     void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
     const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
-    void addChild(RenderObject* child, RenderObject* beforeChild = nullptr) override;
-    void removeChild(RenderObject&) override;
     void willBeDestroyed() override;
 
     const AffineTransform& localToParentTransform() const override { return m_localTransform; }
@@ -91,7 +90,6 @@ private:
     std::unique_ptr<RootInlineBox> createRootInlineBox() override;
 
     RenderBlock* firstLineBlock() const override;
-    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) override;
 
     bool shouldHandleSubtreeMutations() const;
 

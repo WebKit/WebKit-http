@@ -8,43 +8,22 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MEDIA_BASE_FAKEVIDEORENDERER_H_
-#define WEBRTC_MEDIA_BASE_FAKEVIDEORENDERER_H_
+#ifndef MEDIA_BASE_FAKEVIDEORENDERER_H_
+#define MEDIA_BASE_FAKEVIDEORENDERER_H_
 
-#include "webrtc/api/video/video_frame.h"
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/media/base/videosinkinterface.h"
+#include "api/video/video_frame.h"
+#include "api/video/video_sink_interface.h"
+#include "rtc_base/criticalsection.h"
+#include "rtc_base/logging.h"
 
 namespace cricket {
 
 // Faked video renderer that has a callback for actions on rendering.
 class FakeVideoRenderer : public rtc::VideoSinkInterface<webrtc::VideoFrame> {
  public:
-  FakeVideoRenderer()
-      : errors_(0),
-        width_(0),
-        height_(0),
-        rotation_(webrtc::kVideoRotation_0),
-        timestamp_us_(0),
-        num_rendered_frames_(0),
-        black_frame_(false) {}
+  FakeVideoRenderer();
 
-  virtual void OnFrame(const webrtc::VideoFrame& frame) {
-    rtc::CritScope cs(&crit_);
-    // TODO(zhurunz) Check with VP8 team to see if we can remove this
-    // tolerance on Y values. Some unit tests produce Y values close
-    // to 16 rather than close to zero, for supposedly black frames.
-    // Largest value observed is 34, e.g., running
-    // PeerConnectionIntegrationTest.SendAndReceive16To9AspectRatio.
-    black_frame_ = CheckFrameColorYuv(0, 48, 128, 128, 128, 128, &frame);
-    // Treat unexpected frame size as error.
-    ++num_rendered_frames_;
-    width_ = frame.width();
-    height_ = frame.height();
-    rotation_ = frame.rotation();
-    timestamp_us_ = frame.timestamp_us();
-  }
+  void OnFrame(const webrtc::VideoFrame& frame) override;
 
   int errors() const { return errors_; }
   int width() const {
@@ -127,16 +106,16 @@ class FakeVideoRenderer : public rtc::VideoSinkInterface<webrtc::VideoFrame> {
     return true;
   }
 
-  int errors_;
-  int width_;
-  int height_;
-  webrtc::VideoRotation rotation_;
-  int64_t timestamp_us_;
-  int num_rendered_frames_;
-  bool black_frame_;
+  int errors_ = 0;
+  int width_ = 0;
+  int height_ = 0;
+  webrtc::VideoRotation rotation_ = webrtc::kVideoRotation_0;
+  int64_t timestamp_us_ = 0;
+  int num_rendered_frames_ = 0;
+  bool black_frame_ = false;
   rtc::CriticalSection crit_;
 };
 
 }  // namespace cricket
 
-#endif  // WEBRTC_MEDIA_BASE_FAKEVIDEORENDERER_H_
+#endif  // MEDIA_BASE_FAKEVIDEORENDERER_H_

@@ -61,7 +61,6 @@
 #endif
 
 #if !TARGET_OS_IPHONE
-#import <ApplicationServices/ApplicationServices.h>
 #import <Carbon/Carbon.h>
 
 #ifndef CGFLOAT_DEFINED
@@ -83,10 +82,10 @@ typedef float CGFloat;
 #endif
 #endif
 
-#include <wtf/Platform.h>
-#include <wtf/ExportMacros.h>
-#include <runtime/JSExportMacros.h>
+#include <JavaScriptCore/JSExportMacros.h>
 #include <WebCore/PlatformExportMacros.h>
+#include <pal/ExportMacros.h>
+#include <wtf/ExportMacros.h>
 
 /* Work around bug with C++ library that screws up Objective-C++ when exception support is disabled. */
 #undef try

@@ -32,7 +32,7 @@
 #include "config.h"
 #include "ScriptCallStack.h"
 
-#include "InspectorValues.h"
+#include <wtf/DataLog.h>
 
 namespace Inspector {
 
@@ -105,9 +105,9 @@ bool ScriptCallStack::isEqual(ScriptCallStack* o) const
     return true;
 }
 
-Ref<Inspector::Protocol::Array<Inspector::Protocol::Console::CallFrame>> ScriptCallStack::buildInspectorArray() const
+Ref<JSON::ArrayOf<Protocol::Console::CallFrame>> ScriptCallStack::buildInspectorArray() const
 {
-    auto frames = Inspector::Protocol::Array<Inspector::Protocol::Console::CallFrame>::create();
+    auto frames = JSON::ArrayOf<Protocol::Console::CallFrame>::create();
     for (size_t i = 0; i < m_frames.size(); i++)
         frames->addItem(m_frames.at(i).buildInspectorObject());
     return frames;

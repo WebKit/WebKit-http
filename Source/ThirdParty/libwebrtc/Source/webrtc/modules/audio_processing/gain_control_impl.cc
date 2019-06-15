@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/gain_control_impl.h"
+#include "modules/audio_processing/gain_control_impl.h"
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/audio_processing/audio_buffer.h"
-#include "webrtc/modules/audio_processing/agc/legacy/gain_control.h"
-#include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
+#include "absl/types/optional.h"
+#include "modules/audio_processing/agc/legacy/gain_control.h"
+#include "modules/audio_processing/audio_buffer.h"
+#include "modules/audio_processing/logging/apm_data_dumper.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -67,9 +67,7 @@ class GainControlImpl::GainController {
     set_capture_level(capture_level);
   }
 
-  void set_capture_level(int capture_level) {
-    capture_level_ = rtc::Optional<int>(capture_level);
-  }
+  void set_capture_level(int capture_level) { capture_level_ = capture_level; }
 
   int get_capture_level() {
     RTC_DCHECK(capture_level_);
@@ -80,7 +78,7 @@ class GainControlImpl::GainController {
   Handle* state_;
   // TODO(peah): Remove the optional once the initialization is moved into the
   // ctor.
-  rtc::Optional<int> capture_level_;
+  absl::optional<int> capture_level_;
 
   RTC_DISALLOW_COPY_AND_ASSIGN(GainController);
 };
@@ -259,7 +257,7 @@ int GainControlImpl::stream_analog_level() {
   data_dumper_->DumpRaw("gain_control_stream_analog_level", 1,
                         &analog_capture_level_);
   // TODO(ajm): enable this assertion?
-  //RTC_DCHECK_EQ(kAdaptiveAnalog, mode_);
+  // RTC_DCHECK_EQ(kAdaptiveAnalog, mode_);
 
   return analog_capture_level_;
 }
@@ -303,8 +301,7 @@ GainControl::Mode GainControlImpl::mode() const {
   return mode_;
 }
 
-int GainControlImpl::set_analog_level_limits(int minimum,
-                                             int maximum) {
+int GainControlImpl::set_analog_level_limits(int minimum, int maximum) {
   if (minimum < 0) {
     return AudioProcessing::kBadParameterError;
   }
@@ -394,8 +391,8 @@ void GainControlImpl::Initialize(size_t num_proc_channels, int sample_rate_hz) {
   rtc::CritScope cs_capture(crit_capture_);
   data_dumper_->InitiateNewSetOfRecordings();
 
-  num_proc_channels_ = rtc::Optional<size_t>(num_proc_channels);
-  sample_rate_hz_ = rtc::Optional<int>(sample_rate_hz);
+  num_proc_channels_ = num_proc_channels;
+  sample_rate_hz_ = sample_rate_hz;
 
   if (!enabled_) {
     return;
@@ -419,11 +416,10 @@ int GainControlImpl::Configure() {
   WebRtcAgcConfig config;
   // TODO(ajm): Flip the sign here (since AGC expects a positive value) if we
   //            change the interface.
-  //RTC_DCHECK_LE(target_level_dbfs_, 0);
-  //config.targetLevelDbfs = static_cast<int16_t>(-target_level_dbfs_);
+  // RTC_DCHECK_LE(target_level_dbfs_, 0);
+  // config.targetLevelDbfs = static_cast<int16_t>(-target_level_dbfs_);
   config.targetLevelDbfs = static_cast<int16_t>(target_level_dbfs_);
-  config.compressionGaindB =
-      static_cast<int16_t>(compression_gain_db_);
+  config.compressionGaindB = static_cast<int16_t>(compression_gain_db_);
   config.limiterEnable = limiter_enabled_;
 
   int error = AudioProcessing::kNoError;

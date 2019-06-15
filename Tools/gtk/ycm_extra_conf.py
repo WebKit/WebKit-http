@@ -31,7 +31,8 @@ if os.path.islink(original_file):
 else:
     __tools_directory = os.path.dirname(original_file)
 
-sys.path.insert(0, os.path.abspath(__tools_directory))
+top_level_directory = os.path.normpath(os.path.join(os.path.abspath(__tools_directory), '..', '..'))
+sys.path.insert(0, os.path.join(top_level_directory, 'Tools', 'glib'))
 import common
 
 
@@ -92,7 +93,7 @@ def FlagsForFile(filename, **kwargs):
         'do_cache': (Boolean) True if the result should be cached.
     """
 
-    result = {'flags': ['-std=c++11', '-x', 'c++'], 'do_cache': True}
+    result = {'flags': ['-std=c++17', '-x', 'c++'], 'do_cache': True}
 
     # Headers can't be built, so we get the source file flags instead.
     if filename.endswith('.h'):
@@ -109,17 +110,17 @@ def FlagsForFile(filename, **kwargs):
 
     build_path = os.path.normpath(get_build_path())
     if not build_path:
-        print "Could not find WebKit build path."
+        print("Could not find WebKit build path.")
         return result
 
     database = ycm_core.CompilationDatabase(build_path)
     if not database:
-        print "Could not find compile_commands.json in %s, You might forget to add CMAKE_EXPORT_COMPILE_COMMANDS=ON to cmakeargs" % build_path
+        print("Could not find compile_commands.json in %s, You might forget to add CMAKE_EXPORT_COMPILE_COMMANDS=ON to cmakeargs" % build_path)
         return result
 
     compilation_info = database.GetCompilationInfoForFile(filename)
     if not compilation_info:
-        print "No compilation info."
+        print("No compilation info.")
         return result
 
     result['flags'] = transform_relative_paths_to_absolute_paths(list(compilation_info.compiler_flags_), compilation_info.compiler_working_dir_)
@@ -129,4 +130,4 @@ def FlagsForFile(filename, **kwargs):
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >= 2:
-        print FlagsForFile(sys.argv[1])
+        print(FlagsForFile(sys.argv[1]))

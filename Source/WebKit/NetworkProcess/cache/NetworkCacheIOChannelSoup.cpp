@@ -26,8 +26,6 @@
 #include "config.h"
 #include "NetworkCacheIOChannel.h"
 
-#if ENABLE(NETWORK_CACHE)
-
 #include "NetworkCacheFileSystem.h"
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
@@ -43,14 +41,14 @@ IOChannel::IOChannel(const String& filePath, Type type)
     : m_path(filePath)
     , m_type(type)
 {
-    auto path = WebCore::fileSystemRepresentation(filePath);
+    auto path = WebCore::FileSystem::fileSystemRepresentation(filePath);
     GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(path.data()));
     switch (m_type) {
     case Type::Create: {
         g_file_delete(file.get(), nullptr, nullptr);
         m_outputStream = adoptGRef(G_OUTPUT_STREAM(g_file_create(file.get(), static_cast<GFileCreateFlags>(G_FILE_CREATE_PRIVATE), nullptr, nullptr)));
 #if !HAVE(STAT_BIRTHTIME)
-        GUniquePtr<char> birthtimeString(g_strdup_printf("%" G_GUINT64_FORMAT, std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())));
+        GUniquePtr<char> birthtimeString(g_strdup_printf("%" G_GUINT64_FORMAT, WallTime::now().secondsSinceEpoch().secondsAs<uint64_t>()));
         g_file_set_attribute_string(file.get(), "xattr::birthtime", birthtimeString.get(), G_FILE_QUERY_INFO_NONE, nullptr, nullptr);
 #endif
         break;
@@ -282,5 +280,3 @@ void IOChannel::write(size_t offset, const Data& data, WorkQueue* queue, Functio
 
 } // namespace NetworkCache
 } // namespace WebKit
-
-#endif

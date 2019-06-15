@@ -30,13 +30,13 @@
 
 #import "ContentFilterUnblockHandler.h"
 #import "Logging.h"
-#import "NEFilterSourceSPI.h"
 #import "ResourceRequest.h"
 #import "ResourceResponse.h"
 #import "RuntimeApplicationChecks.h"
 #import "SharedBuffer.h"
 #import "URL.h"
 #import <objc/runtime.h>
+#import <pal/spi/cocoa/NEFilterSourceSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(NetworkExtension);
@@ -180,7 +180,7 @@ ContentFilterUnblockHandler NetworkExtensionContentFilter::unblockHandler() cons
 
     RetainPtr<NEFilterSource> neFilterSource { m_neFilterSource };
     return ContentFilterUnblockHandler {
-        ASCIILiteral("nefilter-unblock"), [neFilterSource](DecisionHandlerFunction decisionHandler) {
+        "nefilter-unblock"_s, [neFilterSource](DecisionHandlerFunction decisionHandler) {
             [neFilterSource remediateWithDecisionHandler:[decisionHandler](NEFilterSourceStatus status, NSDictionary *) {
                 LOG(ContentFiltering, "NEFilterSource %s the unblock request.\n", status == NEFilterSourceStatusPass ? "allowed" : "did not allow");
                 decisionHandler(status == NEFilterSourceStatusPass);

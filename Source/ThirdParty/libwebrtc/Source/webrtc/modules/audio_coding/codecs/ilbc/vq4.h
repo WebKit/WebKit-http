@@ -16,21 +16,21 @@
 
 ******************************************************************/
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_VQ4_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_VQ4_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_VQ4_H_
+#define MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_VQ4_H_
 
-#include "webrtc/typedefs.h"
+#include <stdint.h>
 
 /*----------------------------------------------------------------*
  *  Vector quantization of order 4 (based on MSE)
  *---------------------------------------------------------------*/
 
 void WebRtcIlbcfix_Vq4(
-    int16_t *Xq,  /* (o) the quantized vector (Q13) */
-    int16_t *index, /* (o) the quantization index */
-    int16_t *CB,  /* (i) the vector quantization codebook (Q13) */
-    int16_t *X,  /* (i) the vector to quantize (Q13) */
-    int16_t n_cb  /* (i) the number of vectors in the codebook */
-                       );
+    int16_t* Xq,    /* (o) the quantized vector (Q13) */
+    int16_t* index, /* (o) the quantization index */
+    int16_t* CB,    /* (i) the vector quantization codebook (Q13) */
+    int16_t* X,     /* (i) the vector to quantize (Q13) */
+    int16_t n_cb    /* (i) the number of vectors in the codebook */
+    );
 
 #endif

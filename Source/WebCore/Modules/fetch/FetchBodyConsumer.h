@@ -28,24 +28,29 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
+#include "FetchBodySource.h"
 #include "JSDOMPromiseDeferred.h"
+#include "ReadableStreamSink.h"
 #include "SharedBuffer.h"
 
 namespace WebCore {
 
 class Blob;
+class FetchBodySource;
+class ReadableStream;
 
 class FetchBodyConsumer {
 public:
-    // Type is used in FetchResponse.js and should be kept synchronized with it.
     enum class Type { None, ArrayBuffer, Blob, JSON, Text };
 
     FetchBodyConsumer(Type type) : m_type(type) { }
 
     void append(const char* data, unsigned);
     void append(const unsigned char* data, unsigned);
+
+    bool hasData() const { return !!m_buffer; }
+    const SharedBuffer* data() const { return m_buffer.get(); }
+    void setData(Ref<SharedBuffer>&& data) { m_buffer = WTFMove(data); }
 
     RefPtr<SharedBuffer> takeData();
     RefPtr<JSC::ArrayBuffer> takeAsArrayBuffer();
@@ -55,19 +60,28 @@ public:
     void setContentType(const String& contentType) { m_contentType = contentType; }
     void setType(Type type) { m_type = type; }
 
-    void clean() { m_buffer = nullptr; }
+    void clean();
 
-    void resolve(Ref<DeferredPromise>&&);
+    void extract(ReadableStream&, ReadableStreamToSharedBufferSink::Callback&&);
+    void resolve(Ref<DeferredPromise>&&, ReadableStream*);
     void resolveWithData(Ref<DeferredPromise>&&, const unsigned char*, unsigned);
 
-    bool hasData() const { return !!m_buffer; }
+    void loadingFailed();
+    void loadingSucceeded();
+
+    void setConsumePromise(Ref<DeferredPromise>&&);
+    void setSource(Ref<FetchBodySource>&&);
+
+    void setAsLoading() { m_isLoading = true; }
 
 private:
     Type m_type;
     String m_contentType;
     RefPtr<SharedBuffer> m_buffer;
+    RefPtr<DeferredPromise> m_consumePromise;
+    RefPtr<ReadableStreamToSharedBufferSink> m_sink;
+    RefPtr<FetchBodySource> m_source;
+    bool m_isLoading { false };
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

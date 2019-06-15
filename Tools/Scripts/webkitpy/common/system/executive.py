@@ -174,37 +174,39 @@ class Executive(AbstractExecutive):
             task_kill_executable = os.path.join('C:', os.sep, 'WINDOWS', 'system32', 'taskkill.exe')
             command = [task_kill_executable, "/f", "/t", "/pid", pid]
             # taskkill will exit 128 if the process is not found.  We should log.
-            self.run_command(command, error_handler=self.ignore_error)
+            self.run_command(command, ignore_errors=True)
             return
 
         # According to http://docs.python.org/library/os.html
         # os.kill isn't available on Windows. python 2.5.5 os.kill appears
         # to work in cygwin, however it occasionally raises EAGAIN.
-        retries_left = 10 if sys.platform == "cygwin" else 1
-        while retries_left > 0:
+        retries_left = 10 if sys.platform == "cygwin" else 2
+        current_signal = signal.SIGTERM
+        while retries_left > 0 and self.check_running_pid(pid):
             try:
                 retries_left -= 1
-                # Give processes one change to clean up quickly before exiting.
-                # Following up with a kill should have no effect if the process
-                # already exited, and forcefully kill it if SIGTERM wasn't enough.
-                os.kill(pid, signal.SIGTERM)
-                os.kill(pid, signal.SIGKILL)
-            except OSError, e:
-                if e.errno == errno.EAGAIN:
+                os.kill(pid, current_signal)
+            except OSError as e:
+                if current_signal == signal.SIGTERM:
+                    pass
+                elif e.errno == errno.EAGAIN:
                     if retries_left <= 0:
                         _log.warn("Failed to kill pid %s.  Too many EAGAIN errors." % pid)
-                    continue
-                if e.errno == errno.ESRCH:  # The process does not exist.
+                elif e.errno == errno.ESRCH:  # The process does not exist.
                     return
-                if e.errno == errno.EPIPE:  # The process has exited already on cygwin
+                elif e.errno == errno.EPIPE:  # The process has exited already on cygwin
                     return
-                if e.errno == errno.ECHILD:
+                elif e.errno == errno.ECHILD:
                     # Can't wait on a non-child process, but the kill worked.
                     return
-                if e.errno == errno.EACCES and sys.platform == 'cygwin':
+                elif e.errno == errno.EACCES and sys.platform == 'cygwin':
                     # Cygwin python sometimes can't kill native processes.
                     return
-                raise
+                else:
+                    raise
+
+            # Give processes one chance to clean up quickly before exiting.
+            current_signal = signal.SIGKILL
 
     def _win32_check_running_pid(self, pid):
         # importing ctypes at the top-level seems to cause weird crashes at
@@ -271,7 +273,7 @@ class Executive(AbstractExecutive):
 
         running_pids = []
         if sys.platform in ("cygwin"):
-            ps_process = self.run_command(['ps', '-e'], error_handler=Executive.ignore_error)
+            ps_process = self.run_command(['ps', '-e'], ignore_errors=True)
             for line in ps_process.splitlines():
                 tokens = line.strip().split()
                 try:
@@ -279,7 +281,7 @@ class Executive(AbstractExecutive):
                     if process_name_filter(process_name):
                         running_pids.append(int(pid))
                         self.pid_to_system_pid[int(pid)] = int(winpid)
-                except ValueError, e:
+                except ValueError as e:
                     pass
         else:
             ps_process = self.popen(['ps', '-eo', 'pid,comm'], stdout=self.PIPE, stderr=self.PIPE)
@@ -291,7 +293,7 @@ class Executive(AbstractExecutive):
                     pid, process_name = line.strip().split(' ', 1)
                     if process_name_filter(process_name):
                         running_pids.append(int(pid))
-                except ValueError, e:
+                except ValueError as e:
                     pass
 
         return sorted(running_pids)
@@ -325,7 +327,7 @@ class Executive(AbstractExecutive):
                 killCommand = os.path.join('C:', os.sep, 'WINDOWS', 'system32', 'taskkill.exe')
             command = [killCommmand, "/f", "/im", image_name]
             # taskkill will exit 128 if the process is not found.  We should log.
-            self.run_command(command, error_handler=self.ignore_error)
+            self.run_command(command, ignore_errors=True)
             return
 
         # FIXME: This is inconsistent that kill_all uses TERM and kill_process
@@ -336,7 +338,7 @@ class Executive(AbstractExecutive):
         # killall returns 1 if no process can be found and 2 on command error.
         # FIXME: We should pass a custom error_handler to allow only exit_code 1.
         # We should log in exit_code == 1
-        self.run_command(command, error_handler=self.ignore_error)
+        self.run_command(command, ignore_errors=True)
 
     def _compute_stdin(self, input):
         """Returns (stdin, string_to_communicate)"""
@@ -364,6 +366,7 @@ class Executive(AbstractExecutive):
                     env=None,
                     input=None,
                     error_handler=None,
+                    ignore_errors=False,
                     return_exit_code=False,
                     return_stderr=True,
                     decode_output=True):
@@ -383,9 +386,9 @@ class Executive(AbstractExecutive):
                              close_fds=self._should_close_fds())
         output = process.communicate(string_to_communicate)[0]
 
-        # run_command automatically decodes to unicode() unless explicitly told not to.
+        # run_command automatically decodes to unicode() and converts CRLF to LF unless explicitly told not to.
         if decode_output:
-            output = output.decode(self._child_process_encoding())
+            output = output.decode(self._child_process_encoding()).replace('\r\n', '\n')
 
         # wait() is not threadsafe and can throw OSError due to:
         # http://bugs.python.org/issue1731717
@@ -401,6 +404,11 @@ class Executive(AbstractExecutive):
                                        exit_code=exit_code,
                                        output=output,
                                        cwd=cwd)
+
+            if ignore_errors:
+                assert error_handler is None, "don't specify error_handler if ignore_errors is True"
+                error_handler = Executive.ignore_error
+
             (error_handler or self.default_error_handler)(script_error)
         return output
 

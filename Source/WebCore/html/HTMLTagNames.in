@@ -8,11 +8,11 @@ a interfaceName=HTMLAnchorElement
 abbr interfaceName=HTMLElement
 acronym interfaceName=HTMLElement
 address interfaceName=HTMLElement
-applet constructorNeedsCreatedByParser
+applet
 area
 article interfaceName=HTMLElement
 aside interfaceName=HTMLElement
-attachment conditional=ATTACHMENT_ELEMENT, settingsConditional=attachmentElementEnabled
+attachment conditional=ATTACHMENT_ELEMENT, runtimeEnabled=attachmentElement
 audio wrapperOnlyIfMediaIsAvailable, conditional=VIDEO, constructorNeedsCreatedByParser, customTypeHelper
 b interfaceName=HTMLElement
 base
@@ -25,7 +25,7 @@ blockquote interfaceName=HTMLQuoteElement
 body
 br interfaceName=HTMLBRElement
 button constructorNeedsFormElement
-canvas
+canvas customTypeHelper
 caption interfaceName=HTMLTableCaptionElement
 center interfaceName=HTMLElement
 cite interfaceName=HTMLElement
@@ -44,7 +44,7 @@ div
 dl interfaceName=HTMLDListElement
 dt interfaceName=HTMLElement
 em interfaceName=HTMLElement
-embed constructorNeedsCreatedByParser
+embed
 fieldset interfaceName=HTMLFieldSetElement, constructorNeedsFormElement
 figcaption interfaceName=HTMLElement
 figure interfaceName=HTMLElement
@@ -83,6 +83,7 @@ map
 mark interfaceName=HTMLElement
 marquee
 menu
+menuitem interfaceName=HTMLMenuItemElement, runtimeEnabled=menuItemElement
 meta
 meter interfaceName=HTMLMeterElement, conditional=METER_ELEMENT
 nav interfaceName=HTMLElement
@@ -90,7 +91,7 @@ nobr interfaceName=HTMLElement
 noembed interfaceName=HTMLElement
 noframes interfaceName=HTMLElement
 nolayer interfaceName=HTMLElement
-object constructorNeedsFormElement, constructorNeedsCreatedByParser
+object constructorNeedsFormElement
 ol interfaceName=HTMLOListElement
 optgroup interfaceName=HTMLOptGroupElement
 option

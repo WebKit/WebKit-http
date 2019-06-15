@@ -4,7 +4,7 @@
 es6id: 26.1.13
 description: >
   Return false if receiver is not an object.
-info: >
+info: |
   26.1.13 Reflect.set ( target, propertyKey, V [ , receiver ] )
 
   ...
@@ -29,7 +29,9 @@ info: >
   ...
 ---*/
 
-var o1 = {p: 42};
+var o1 = {
+  p: 42
+};
 var receiver = 'receiver is a string';
 var result = Reflect.set(o1, 'p', 43, receiver);
 

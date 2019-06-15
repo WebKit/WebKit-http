@@ -8,12 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_OPUS_OPUS_INTERFACE_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_OPUS_OPUS_INTERFACE_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_OPUS_OPUS_INTERFACE_H_
+#define MODULES_AUDIO_CODING_CODECS_OPUS_OPUS_INTERFACE_H_
 
 #include <stddef.h>
+#include <stdint.h>
 
-#include "webrtc/typedefs.h"
+#include "modules/audio_coding/codecs/opus/opus_inst.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -222,6 +223,40 @@ int16_t WebRtcOpus_DisableCbr(OpusEncInst* inst);
 int16_t WebRtcOpus_SetComplexity(OpusEncInst* inst, int32_t complexity);
 
 /*
+ * WebRtcOpus_GetBandwidth(...)
+ *
+ * This function returns the current bandwidth.
+ *
+ * Input:
+ *      - inst               : Encoder context
+ *
+ * Return value              :  Bandwidth - Success
+ *                             -1 - Error
+ */
+int32_t WebRtcOpus_GetBandwidth(OpusEncInst* inst);
+
+/*
+ * WebRtcOpus_SetBandwidth(...)
+ *
+ * By default Opus decides which bandwidth to encode the signal in depending on
+ * the the bitrate. This function overrules the previous setting and forces the
+ * encoder to encode in narrowband/wideband/fullband/etc.
+ *
+ * Input:
+ *      - inst               : Encoder context
+ *      - bandwidth          : New target bandwidth. Valid values are:
+ *                             OPUS_BANDWIDTH_NARROWBAND
+ *                             OPUS_BANDWIDTH_MEDIUMBAND
+ *                             OPUS_BANDWIDTH_WIDEBAND
+ *                             OPUS_BANDWIDTH_SUPERWIDEBAND
+ *                             OPUS_BANDWIDTH_FULLBAND
+ *
+ * Return value              :  0 - Success
+ *                             -1 - Error
+ */
+int16_t WebRtcOpus_SetBandwidth(OpusEncInst* inst, int32_t bandwidth);
+
+/*
  * WebRtcOpus_SetForceChannels(...)
  *
  * If the encoder is initialized as a stereo encoder, Opus will by default
@@ -283,8 +318,10 @@ void WebRtcOpus_DecoderInit(OpusDecInst* inst);
  * Return value              : >0 - Samples per channel in decoded vector
  *                             -1 - Error
  */
-int WebRtcOpus_Decode(OpusDecInst* inst, const uint8_t* encoded,
-                      size_t encoded_bytes, int16_t* decoded,
+int WebRtcOpus_Decode(OpusDecInst* inst,
+                      const uint8_t* encoded,
+                      size_t encoded_bytes,
+                      int16_t* decoded,
                       int16_t* audio_type);
 
 /****************************************************************************
@@ -301,7 +338,8 @@ int WebRtcOpus_Decode(OpusDecInst* inst, const uint8_t* encoded,
  * Return value                   : >0 - number of samples in decoded PLC vector
  *                                  -1 - Error
  */
-int WebRtcOpus_DecodePlc(OpusDecInst* inst, int16_t* decoded,
+int WebRtcOpus_DecodePlc(OpusDecInst* inst,
+                         int16_t* decoded,
                          int number_of_lost_frames);
 
 /****************************************************************************
@@ -322,8 +360,10 @@ int WebRtcOpus_DecodePlc(OpusDecInst* inst, int16_t* decoded,
  *                              0 - No FEC data in the packet
  *                             -1 - Error
  */
-int WebRtcOpus_DecodeFec(OpusDecInst* inst, const uint8_t* encoded,
-                         size_t encoded_bytes, int16_t* decoded,
+int WebRtcOpus_DecodeFec(OpusDecInst* inst,
+                         const uint8_t* encoded,
+                         size_t encoded_bytes,
+                         int16_t* decoded,
                          int16_t* audio_type);
 
 /****************************************************************************
@@ -394,4 +434,4 @@ int WebRtcOpus_PacketHasFec(const uint8_t* payload,
 }  // extern "C"
 #endif
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_CODECS_OPUS_OPUS_INTERFACE_H_
+#endif  // MODULES_AUDIO_CODING_CODECS_OPUS_OPUS_INTERFACE_H_

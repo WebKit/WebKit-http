@@ -28,9 +28,9 @@
 
 #if USE(QUICK_LOOK)
 
-#import "QuickLookSPI.h"
 #import "ResourceRequest.h"
 #import "ResourceResponse.h"
+#import <pal/spi/ios/QuickLookSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK(QuickLook);
@@ -59,7 +59,7 @@ PreviewConverter::PreviewConverter(NSData *data, const String& uti, const String
 
 ResourceRequest PreviewConverter::safeRequest(const ResourceRequest& request) const
 {
-    return [m_platformConverter safeRequestForRequest:request.nsURLRequest(DoNotUpdateHTTPBody)];
+    return [m_platformConverter safeRequestForRequest:request.nsURLRequest(HTTPBodyUpdatePolicy::DoNotUpdateHTTPBody)];
 }
 
 ResourceRequest PreviewConverter::previewRequest() const

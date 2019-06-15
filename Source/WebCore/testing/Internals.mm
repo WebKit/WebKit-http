@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,17 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "Internals.h"
+#import "config.h"
+#import "Internals.h"
 
-#include "DOMURL.h"
-#include "Document.h"
-#include "Editor.h"
-#include "EditorClient.h"
-#include "Frame.h"
-#include <wtf/SoftLinking.h>
+#import "DOMURL.h"
+#import "DictionaryLookup.h"
+#import "Document.h"
+#import "EventHandler.h"
+#import "HitTestResult.h"
+#import "Range.h"
+#import "WebCoreNSURLExtras.h"
+#import <wtf/SoftLinking.h>
 
 #if PLATFORM(IOS)
 SOFT_LINK_FRAMEWORK(UIKit)
@@ -42,20 +44,34 @@ namespace WebCore {
 
 String Internals::userVisibleString(const DOMURL& url)
 {
-    return contextDocument()->frame()->editor().client()->userVisibleString(url.href());
+    return WebCore::userVisibleString(url.href());
 }
 
-#if PLATFORM(COCOA)
 bool Internals::userPrefersReducedMotion() const
 {
 #if PLATFORM(IOS)
     return UIAccessibilityIsReduceMotionEnabled();
-#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-    return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
 #else
-    return false;
+    return [[NSWorkspace sharedWorkspace] accessibilityDisplayShouldReduceMotion];
 #endif
 }
+
+#if PLATFORM(MAC)
+
+ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, int y)
+{
+    auto* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { InvalidAccessError };
+
+    document->updateLayoutIgnorePendingStylesheets();
+
+    HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y));
+    RefPtr<Range> range;
+    std::tie(range, std::ignore) = DictionaryLookup::rangeAtHitTestResult(result);
+    return WTFMove(range);
+}
+
 #endif
 
 }

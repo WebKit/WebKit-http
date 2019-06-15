@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-5-23
 description: >
     Array.prototype.lastIndexOf - value of 'fromIndex' is an object
@@ -9,20 +10,20 @@ description: >
     method that returns a string
 ---*/
 
-        var toStringAccessed = false;
-        var valueOfAccessed = false;
+var toStringAccessed = false;
+var valueOfAccessed = false;
 
-        var fromIndex = {
-            toString: function () {
-                toStringAccessed = true;
-                return '1';
-            },
+var fromIndex = {
+  toString: function() {
+    toStringAccessed = true;
+    return '1';
+  },
 
-            valueOf: function () {
-                valueOfAccessed = true;
-                return {};
-            }
-        };
+  valueOf: function() {
+    valueOfAccessed = true;
+    return {};
+  }
+};
 
 assert.sameValue([0, true].lastIndexOf(true, fromIndex), 1, '[0, true].lastIndexOf(true, fromIndex)');
 assert(toStringAccessed, 'toStringAccessed !== true');

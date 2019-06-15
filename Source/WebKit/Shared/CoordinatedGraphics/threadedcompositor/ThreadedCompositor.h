@@ -29,6 +29,7 @@
 
 #include "CompositingRunLoop.h"
 #include "CoordinatedGraphicsScene.h"
+#include <WebCore/CoordinatedGraphicsState.h>
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
 #include <WebCore/TextureMapper.h>
@@ -38,19 +39,13 @@
 #include <wtf/ThreadSafeRefCounted.h>
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
-#include <WebCore/DisplayRefreshMonitor.h>
+#include "ThreadedDisplayRefreshMonitor.h"
 #endif
-
-namespace WebCore {
-struct CoordinatedGraphicsState;
-}
 
 namespace WebKit {
 
 class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
-class ThreadedDisplayRefreshMonitor;
-class WebPage;
 
 class ThreadedCompositor : public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor> {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
@@ -58,9 +53,6 @@ class ThreadedCompositor : public CoordinatedGraphicsSceneClient, public ThreadS
 public:
     class Client {
     public:
-        virtual void renderNextFrame() = 0;
-        virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
-
         virtual uint64_t nativeSurfaceHandleForCompositing() = 0;
         virtual void didDestroyGLContext() = 0;
 
@@ -70,7 +62,7 @@ public:
 
     enum class ShouldDoFrameSync { No, Yes };
 
-    static Ref<ThreadedCompositor> create(Client&, WebPage&, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
+    static Ref<ThreadedCompositor> create(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
     virtual ~ThreadedCompositor();
 
     void setNativeSurfaceHandleForCompositing(uint64_t);
@@ -80,7 +72,6 @@ public:
     void setDrawsBackground(bool);
 
     void updateSceneState(const WebCore::CoordinatedGraphicsState&);
-    void releaseUpdateAtlases(Vector<uint32_t>&&);
 
     void invalidate();
 
@@ -88,20 +79,16 @@ public:
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     RefPtr<WebCore::DisplayRefreshMonitor> displayRefreshMonitor(WebCore::PlatformDisplayID);
-    void renderNextFrameIfNeeded();
-    void completeCoordinatedUpdateIfNeeded();
-    void coordinateUpdateCompletionWithClient();
+    void handleDisplayRefreshMonitorUpdate();
 #endif
 
     void frameComplete();
 
 private:
-    ThreadedCompositor(Client&, WebPage&, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
+    ThreadedCompositor(Client&, ThreadedDisplayRefreshMonitor::Client&, WebCore::PlatformDisplayID, const WebCore::IntSize&, float scaleFactor, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
 
     // CoordinatedGraphicsSceneClient
-    void renderNextFrame() override;
     void updateViewport() override;
-    void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
     void renderLayerTree();
     void sceneUpdateFinished();
@@ -126,14 +113,16 @@ private:
         float scaleFactor { 1 };
         bool drawsBackground { true };
         bool needsResize { false };
+
+        Vector<WebCore::CoordinatedGraphicsState> states;
+
+        bool clientRendersNextFrame { false };
+        bool coordinateUpdateCompletionWithClient { false };
     } m_attributes;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     Ref<ThreadedDisplayRefreshMonitor> m_displayRefreshMonitor;
 #endif
-
-    Atomic<bool> m_clientRendersNextFrame;
-    Atomic<bool> m_coordinateUpdateCompletionWithClient;
 };
 
 } // namespace WebKit

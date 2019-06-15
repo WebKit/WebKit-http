@@ -28,13 +28,14 @@ info: |
     d. Else,
       i. Let R be ? ToString(? Invoke(nextElement, "toLocaleString")).
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var separator = ["", ""].toLocaleString();
 
 var arr = [42, 0, 43];
 
-testWithTypedArrayConstructors(function(TA) {
+testWithTypedArrayConstructors(function(TA, N) {
   var sample = new TA(arr);
   var expected =
     sample[0].toLocaleString().toString() +

@@ -10,8 +10,8 @@
 
 #include <utility>
 
-#include "webrtc/api/rtcerror.h"
-#include "webrtc/test/gtest.h"
+#include "api/rtcerror.h"
+#include "test/gtest.h"
 
 namespace {
 
@@ -57,15 +57,6 @@ struct MoveOnlyInt2 {
 }  // namespace
 
 namespace webrtc {
-
-// Simple test for ostream operator for RTCErrorType.
-TEST(RTCErrorTypeTest, OstreamOperator) {
-  std::ostringstream oss;
-  oss << webrtc::RTCErrorType::NONE << ' '
-      << webrtc::RTCErrorType::INVALID_PARAMETER << ' '
-      << webrtc::RTCErrorType::INTERNAL_ERROR;
-  EXPECT_EQ("NONE INVALID_PARAMETER INTERNAL_ERROR", oss.str());
-}
 
 // Test that the default constructor creates a "no error" error.
 TEST(RTCErrorTest, DefaultConstructor) {

@@ -60,7 +60,7 @@ ALWAYS_INLINE JSWebAssemblyMemory* getMemory(ExecState* exec, VM& vm, JSValue va
     JSWebAssemblyMemory* memory = jsDynamicCast<JSWebAssemblyMemory*>(vm, value); 
     if (!memory) {
         throwException(exec, throwScope, 
-            createTypeError(exec, ASCIILiteral("WebAssembly.Memory.prototype.buffer getter called with non WebAssembly.Memory |this| value")));
+            createTypeError(exec, "WebAssembly.Memory.prototype.buffer getter called with non WebAssembly.Memory |this| value"_s));
         return nullptr;
     }
     return memory;
@@ -77,8 +77,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyMemoryProtoFuncGrow(ExecState* exec)
     uint32_t delta = toNonWrappingUint32(exec, exec->argument(0));
     RETURN_IF_EXCEPTION(throwScope, { });
 
-    bool shouldThrowExceptionsOnFailure = true;
-    Wasm::PageCount result = memory->grow(vm, exec, delta, shouldThrowExceptionsOnFailure);
+    Wasm::PageCount result = memory->grow(vm, exec, delta);
     RETURN_IF_EXCEPTION(throwScope, { });
 
     return JSValue::encode(jsNumber(result.pageCount()));

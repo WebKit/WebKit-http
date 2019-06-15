@@ -8,12 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_NS_NOISE_SUPPRESSION_X_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_NS_NOISE_SUPPRESSION_X_H_
+#ifndef MODULES_AUDIO_PROCESSING_NS_NOISE_SUPPRESSION_X_H_
+#define MODULES_AUDIO_PROCESSING_NS_NOISE_SUPPRESSION_X_H_
 
 #include <stddef.h>
-
-#include "webrtc/typedefs.h"
+#include <stdint.h>
 
 typedef struct NsxHandleT NsxHandle;
 
@@ -24,7 +23,7 @@ extern "C" {
 /*
  * This function creates an instance of the fixed point Noise Suppression.
  */
-NsxHandle* WebRtcNsx_Create();
+NsxHandle* WebRtcNsx_Create(void);
 
 /*
  * This function frees the dynamic memory of a specified Noise Suppression
@@ -104,10 +103,10 @@ const uint32_t* WebRtcNsx_noise_estimate(const NsxHandle* nsxInst,
  *
  * Return value         : Number of frequency bins.
  */
-size_t WebRtcNsx_num_freq();
+size_t WebRtcNsx_num_freq(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_NS_NOISE_SUPPRESSION_X_H_
+#endif  // MODULES_AUDIO_PROCESSING_NS_NOISE_SUPPRESSION_X_H_

@@ -8,26 +8,29 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_MEDIATYPES_H_
-#define WEBRTC_API_MEDIATYPES_H_
-
-#include "webrtc/base/export.h"
+#ifndef API_MEDIATYPES_H_
+#define API_MEDIATYPES_H_
 
 #include <string>
 
+// The cricket and webrtc have separate definitions for what a media type is.
+// They're not compatible. Watch out for this.
+
 namespace cricket {
 
-enum MediaType {
-  MEDIA_TYPE_AUDIO,
-  MEDIA_TYPE_VIDEO,
-  MEDIA_TYPE_DATA
-};
+enum MediaType { MEDIA_TYPE_AUDIO, MEDIA_TYPE_VIDEO, MEDIA_TYPE_DATA };
 
-WEBRTC_DYLIB_EXPORT std::string MediaTypeToString(MediaType type);
+std::string MediaTypeToString(MediaType type);
 // Aborts on invalid string. Only expected to be used on strings that are
 // guaranteed to be valid, such as MediaStreamTrackInterface::kind().
 MediaType MediaTypeFromString(const std::string& type_str);
 
 }  // namespace cricket
 
-#endif  // WEBRTC_API_MEDIATYPES_H_
+namespace webrtc {
+
+enum class MediaType { ANY, AUDIO, VIDEO, DATA };
+
+}  // namespace webrtc
+
+#endif  // API_MEDIATYPES_H_

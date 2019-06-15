@@ -10,11 +10,16 @@
 
 package org.webrtc;
 
-/** Factory for creating VideoEncoders. */
-interface VideoEncoderFactory {
-  /** Creates an encoder for the given video codec. */
-  public VideoEncoder createEncoder(VideoCodecInfo info);
+import javax.annotation.Nullable;
 
-  /** Enumerates the list of supported video codecs. */
-  public VideoCodecInfo[] getSupportedCodecs();
+/** Factory for creating VideoEncoders. */
+public interface VideoEncoderFactory {
+  /** Creates an encoder for the given video codec. */
+  @Nullable @CalledByNative VideoEncoder createEncoder(VideoCodecInfo info);
+
+  /**
+   * Enumerates the list of supported video codecs. This method will only be called once and the
+   * result will be cached.
+   */
+  @CalledByNative VideoCodecInfo[] getSupportedCodecs();
 }

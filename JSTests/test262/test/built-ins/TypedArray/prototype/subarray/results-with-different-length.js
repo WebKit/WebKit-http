@@ -3,12 +3,13 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Subarray may return a new instance with a smaller length
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
   17. Return ? TypedArraySpeciesCreate(O, argumentsList).
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

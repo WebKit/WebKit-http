@@ -157,3 +157,44 @@ void WKContextConfigurationSetShouldCaptureAudioInUIProcess(WKContextConfigurati
 {
     toImpl(configuration)->setShouldCaptureAudioInUIProcess(should);
 }
+
+bool WKContextConfigurationProcessSwapsOnNavigation(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->processSwapsOnNavigation();
+}
+
+void WKContextConfigurationSetProcessSwapsOnNavigation(WKContextConfigurationRef configuration, bool swaps)
+{
+    toImpl(configuration)->setProcessSwapsOnNavigation(swaps);
+}
+
+bool WKContextConfigurationAlwaysKeepAndReuseSwappedProcesses(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->alwaysKeepAndReuseSwappedProcesses();
+}
+
+void WKContextConfigurationSetAlwaysKeepAndReuseSwappedProcesses(WKContextConfigurationRef configuration, bool keepAndReuse)
+{
+    toImpl(configuration)->setAlwaysKeepAndReuseSwappedProcesses(keepAndReuse);
+}
+
+bool WKContextConfigurationProcessSwapsOnWindowOpenWithOpener(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->processSwapsOnWindowOpenWithOpener();
+}
+
+void WKContextConfigurationSetProcessSwapsOnWindowOpenWithOpener(WKContextConfigurationRef configuration, bool swaps)
+{
+    toImpl(configuration)->setProcessSwapsOnWindowOpenWithOpener(swaps);
+}
+
+int64_t WKContextConfigurationDiskCacheSizeOverride(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->diskCacheSizeOverride();
+}
+
+void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef configuration, int64_t size)
+{
+    toImpl(configuration)->setDiskCacheSizeOverride(size);
+}
+

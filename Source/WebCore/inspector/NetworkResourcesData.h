@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,7 +30,6 @@
 #pragma once
 
 #include "InspectorPageAgent.h"
-#include "TextResourceDecoder.h"
 #include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
@@ -38,6 +38,7 @@ namespace WebCore {
 
 class CachedResource;
 class ResourceResponse;
+class TextResourceDecoder;
 class SharedBuffer;
 
 class NetworkResourcesData {
@@ -49,24 +50,24 @@ public:
     public:
         ResourceData(const String& requestId, const String& loaderId);
 
-        String requestId() const { return m_requestId; }
-        String loaderId() const { return m_loaderId; }
+        const String& requestId() const { return m_requestId; }
+        const String& loaderId() const { return m_loaderId; }
 
-        String frameId() const { return m_frameId; }
+        const String& frameId() const { return m_frameId; }
         void setFrameId(const String& frameId) { m_frameId = frameId; }
 
-        String url() const { return m_url; }
-        void setUrl(const String& url) { m_url = url; }
+        const String& url() const { return m_url; }
+        void setURL(const String& url) { m_url = url; }
 
         bool hasContent() const { return !m_content.isNull(); }
-        String content() const { return m_content; }
+        const String& content() const { return m_content; }
         void setContent(const String&, bool base64Encoded);
 
         bool base64Encoded() const { return m_base64Encoded; }
 
         unsigned removeContent();
-        bool isContentEvicted() const { return m_isContentEvicted; }
         unsigned evictContent();
+        bool isContentEvicted() const { return m_isContentEvicted; }
 
         InspectorPageAgent::ResourceType type() const { return m_type; }
         void setType(InspectorPageAgent::ResourceType type) { m_type = type; }
@@ -74,7 +75,7 @@ public:
         int httpStatusCode() const { return m_httpStatusCode; }
         void setHTTPStatusCode(int httpStatusCode) { m_httpStatusCode = httpStatusCode; }
 
-        String textEncodingName() const { return m_textEncodingName; }
+        const String& textEncodingName() const { return m_textEncodingName; }
         void setTextEncodingName(const String& textEncodingName) { m_textEncodingName = textEncodingName; }
 
         RefPtr<TextResourceDecoder> decoder() const { return m_decoder.copyRef(); }
@@ -85,6 +86,11 @@ public:
 
         CachedResource* cachedResource() const { return m_cachedResource; }
         void setCachedResource(CachedResource* cachedResource) { m_cachedResource = cachedResource; }
+
+        bool forceBufferData() const { return m_forceBufferData; }
+        void setForceBufferData(bool force) { m_forceBufferData = force; }
+
+        bool hasBufferedData() const { return m_dataBuffer; }
 
     private:
         bool hasData() const { return m_dataBuffer; }
@@ -97,35 +103,34 @@ public:
         String m_frameId;
         String m_url;
         String m_content;
-        bool m_base64Encoded;
-        RefPtr<SharedBuffer> m_dataBuffer;
-        bool m_isContentEvicted;
-        InspectorPageAgent::ResourceType m_type;
-        int m_httpStatusCode;
-
         String m_textEncodingName;
         RefPtr<TextResourceDecoder> m_decoder;
-
+        RefPtr<SharedBuffer> m_dataBuffer;
         RefPtr<SharedBuffer> m_buffer;
-        CachedResource* m_cachedResource;
+        CachedResource* m_cachedResource { nullptr };
+        InspectorPageAgent::ResourceType m_type { InspectorPageAgent::OtherResource };
+        int m_httpStatusCode { 0 };
+        bool m_isContentEvicted { false };
+        bool m_base64Encoded { false };
+        bool m_forceBufferData { false };
     };
 
     NetworkResourcesData();
-
     ~NetworkResourcesData();
 
-    void resourceCreated(const String& requestId, const String& loaderId);
-    void responseReceived(const String& requestId, const String& frameId, const ResourceResponse&);
+    void resourceCreated(const String& requestId, const String& loaderId, InspectorPageAgent::ResourceType);
+    void resourceCreated(const String& requestId, const String& loaderId, CachedResource&);
+    void responseReceived(const String& requestId, const String& frameId, const ResourceResponse&, InspectorPageAgent::ResourceType, bool forceBufferData);
     void setResourceType(const String& requestId, InspectorPageAgent::ResourceType);
     InspectorPageAgent::ResourceType resourceType(const String& requestId);
     void setResourceContent(const String& requestId, const String& content, bool base64Encoded = false);
-    void maybeAddResourceData(const String& requestId, const char* data, size_t dataLength);
+    ResourceData const* maybeAddResourceData(const String& requestId, const char* data, size_t dataLength);
     void maybeDecodeDataToContent(const String& requestId);
     void addCachedResource(const String& requestId, CachedResource*);
     void addResourceSharedBuffer(const String& requestId, RefPtr<SharedBuffer>&&, const String& textEncodingName);
     ResourceData const* data(const String& requestId);
     Vector<String> removeCachedResource(CachedResource*);
-    void clear(const String& preservedLoaderId = String());
+    void clear(std::optional<String> preservedLoaderId = std::nullopt);
     Vector<ResourceData*> resources();
 
 private:
@@ -134,10 +139,8 @@ private:
     bool ensureFreeSpace(size_t);
 
     Deque<String> m_requestIdsDeque;
-
-    typedef HashMap<String, ResourceData*> ResourceDataMap;
-    ResourceDataMap m_requestIdToResourceDataMap;
-    size_t m_contentSize;
+    HashMap<String, std::unique_ptr<ResourceData>> m_requestIdToResourceDataMap;
+    size_t m_contentSize { 0 };
     size_t m_maximumResourcesContentSize;
     size_t m_maximumSingleResourceContentSize;
 };

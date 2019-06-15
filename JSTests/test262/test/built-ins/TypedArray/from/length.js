@@ -5,7 +5,7 @@
 esid: sec-%typedarray%.from
 description: >
   %TypedArray%.from.length is 1.
-info: >
+info: |
   %TypedArray%.from ( source [ , mapfn [ , thisArg ] ] )
 
   17 ECMAScript Standard Built-in Objects:
@@ -21,6 +21,7 @@ info: >
   has the attributes { [[Writable]]: false, [[Enumerable]]: false,
   [[Configurable]]: true }.
 includes: [propertyHelper.js, testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 assert.sameValue(TypedArray.from.length, 1);

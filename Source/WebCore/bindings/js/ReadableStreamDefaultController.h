@@ -33,9 +33,9 @@
 
 #include "JSDOMConvertBufferSource.h"
 #include "JSReadableStreamDefaultController.h"
-#include <runtime/JSCJSValue.h>
-#include <runtime/JSCJSValueInlines.h>
-#include <runtime/TypedArrays.h>
+#include <JavaScriptCore/JSCJSValue.h>
+#include <JavaScriptCore/JSCJSValueInlines.h>
+#include <JavaScriptCore/TypedArrays.h>
 
 namespace WebCore {
 
@@ -53,8 +53,6 @@ public:
     void error(const ResolveResultType&);
 
     void close() { invoke(*globalObject().globalExec(), jsController(), "close", JSC::jsUndefined()); }
-
-    bool isControlledReadableStreamLocked() const;
 
 private:
     void error(JSC::ExecState& state, JSC::JSValue value) { invoke(state, jsController(), "error", value); }

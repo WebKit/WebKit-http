@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     If x is less than or equal to -0 and x is greater than or equal to -0.5,
     Math.round(x) is equal to -0
 es5id: 15.8.2.15_A7
@@ -21,7 +21,7 @@ if (1 / Math.round(-0.5) !== 1 / -0) {
 
 // CHECK#2
 if (1 / Math.round(-0.25) !== 1 / -0) {
-	$ERROR("#2: '1 / Math.round(-0.25) !== 1 / -0'");
+  $ERROR("#2: '1 / Math.round(-0.25) !== 1 / -0'");
 }
 
 // CHECK#3

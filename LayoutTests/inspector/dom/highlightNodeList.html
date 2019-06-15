@@ -7,8 +7,8 @@ function test()
 {
     let suite = InspectorTest.createAsyncSuite("DOM.highlightNodeList");
 
-    let mainFrame = WebInspector.frameResourceManager.mainFrame;
-    let childFrames = mainFrame.childFrameCollection.toArray();
+    let mainFrame = WI.frameResourceManager.mainFrame;
+    let childFrames = Array.from(mainFrame.childFrameCollection);
     InspectorTest.expectEqual(childFrames.length, 1, "Page should have a subframe.");
 
     const highlightConfig = {
@@ -20,10 +20,10 @@ function test()
     };
 
     function getHighlight(callback) {
-        InspectorTest.evaluateInPage("window.internals.inspectorHighlightObject()", (error, payload, wasThrown) => {
+        InspectorTest.evaluateInPage("window.internals.inspectorHighlightObject()", (error, value, wasThrown) => {
             InspectorTest.assert(!error, "Unexpected error dumping highlight: " + error);
             InspectorTest.assert(!wasThrown, "Unexpected exception when dumping highlight.");
-            callback(JSON.parse(payload.value));
+            callback(JSON.parse(value));
         });
     }
 
@@ -73,7 +73,7 @@ function test()
         name: "DOM.highlightNodeList.mainFrameNode",
         description: "Should highlight all div in the main frame.",
         test(resolve, reject) {
-            WebInspector.domTreeManager.querySelectorAll(mainFrameDocumentNodeId, "div", (nodeIds) => {
+            WI.domTreeManager.querySelectorAll(mainFrameDocumentNodeId, "div", (nodeIds) => {
                 DOMAgent.highlightNodeList(nodeIds, highlightConfig, (error) => {
                     if (error) {
                         reject(error);
@@ -91,7 +91,7 @@ function test()
         name: "DOM.highlightNodeList.childFrameNode",
         description: "Should highlight all div in the child frame.",
         test(resolve, reject) {
-            WebInspector.domTreeManager.querySelectorAll(childFrameDocumentNodeId, "div", (nodeIds) => {
+            WI.domTreeManager.querySelectorAll(childFrameDocumentNodeId, "div", (nodeIds) => {
                 DOMAgent.highlightNodeList(nodeIds, highlightConfig, (error) => {
                     if (error) {
                         reject(error);
@@ -137,10 +137,10 @@ function test()
         }
     });
 
-    WebInspector.domTreeManager.requestDocument((documentNode) => {
+    WI.domTreeManager.requestDocument((documentNode) => {
         mainFrameDocumentNodeId = documentNode.id;
         RuntimeAgent.evaluate.invoke({expression: "document", objectGroup: "test", contextId: childFrames[0].pageExecutionContext.id}, (error, remoteObjectPayload) => {
-            let remoteObject = WebInspector.RemoteObject.fromPayload(remoteObjectPayload)
+            let remoteObject = WI.RemoteObject.fromPayload(remoteObjectPayload)
             remoteObject.pushNodeToFrontend((documentNodeId) => {
                 childFrameDocumentNodeId = documentNodeId;
 

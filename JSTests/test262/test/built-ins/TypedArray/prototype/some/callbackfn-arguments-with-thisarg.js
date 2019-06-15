@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.some
 description: >
   thisArg does not affect callbackfn arguments
-info: >
+info: |
   22.2.3.25 %TypedArray%.prototype.some ( callbackfn [ , thisArg ] )
 
   %TypedArray%.prototype.some is a distinct function that implements the same
@@ -24,6 +24,7 @@ info: >
       ii. Let testResult be ToBoolean(? Call(callbackfn, T, « kValue, k, O »)).
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

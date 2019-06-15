@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.includes
 description: Requires a [[TypedArrayName]] internal slot.
-info: >
+info: |
   22.2.3.14 %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -17,6 +17,7 @@ info: >
   exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

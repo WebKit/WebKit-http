@@ -8,13 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AGC_AGC_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AGC_AGC_H_
+#ifndef MODULES_AUDIO_PROCESSING_AGC_AGC_H_
+#define MODULES_AUDIO_PROCESSING_AGC_AGC_H_
 
 #include <memory>
 
-#include "webrtc/modules/audio_processing/vad/voice_activity_detector.h"
-#include "webrtc/typedefs.h"
+#include "modules/audio_processing/vad/voice_activity_detector.h"
 
 namespace webrtc {
 
@@ -31,7 +30,7 @@ class Agc {
   virtual float AnalyzePreproc(const int16_t* audio, size_t length);
   // |audio| must be mono; in a multi-channel stream, provide the first (usually
   // left) channel.
-  virtual int Process(const int16_t* audio, size_t length, int sample_rate_hz);
+  virtual void Process(const int16_t* audio, size_t length, int sample_rate_hz);
 
   // Retrieves the difference between the target RMS level and the current
   // signal RMS level in dB. Returns true if an update is available and false
@@ -53,4 +52,4 @@ class Agc {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AGC_AGC_H_
+#endif  // MODULES_AUDIO_PROCESSING_AGC_AGC_H_

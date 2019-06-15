@@ -8,16 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_PC_TEST_PEERCONNECTIONTESTWRAPPER_H_
-#define WEBRTC_PC_TEST_PEERCONNECTIONTESTWRAPPER_H_
+#ifndef PC_TEST_PEERCONNECTIONTESTWRAPPER_H_
+#define PC_TEST_PEERCONNECTIONTESTWRAPPER_H_
 
 #include <memory>
+#include <string>
+#include <vector>
 
-#include "webrtc/api/peerconnectioninterface.h"
-#include "webrtc/api/test/fakeconstraints.h"
-#include "webrtc/base/sigslot.h"
-#include "webrtc/pc/test/fakeaudiocapturemodule.h"
-#include "webrtc/pc/test/fakevideotrackrenderer.h"
+#include "api/peerconnectioninterface.h"
+#include "api/test/fakeconstraints.h"
+#include "pc/test/fakeaudiocapturemodule.h"
+#include "pc/test/fakevideotrackrenderer.h"
+#include "rtc_base/third_party/sigslot/sigslot.h"
 
 class PeerConnectionTestWrapper
     : public webrtc::PeerConnectionObserver,
@@ -46,13 +48,13 @@ class PeerConnectionTestWrapper
 
   // Implements PeerConnectionObserver.
   void OnSignalingChange(
-     webrtc::PeerConnectionInterface::SignalingState new_state) override {}
-  void OnAddStream(
-      rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) override;
-  void OnRemoveStream(
-      rtc::scoped_refptr<webrtc::MediaStreamInterface> stream) override {}
+      webrtc::PeerConnectionInterface::SignalingState new_state) override {}
+  void OnAddTrack(
+      rtc::scoped_refptr<webrtc::RtpReceiverInterface> receiver,
+      const std::vector<rtc::scoped_refptr<webrtc::MediaStreamInterface>>&
+          streams) override;
   void OnDataChannel(
-      rtc::scoped_refptr<webrtc::DataChannelInterface> data_channel) override ;
+      rtc::scoped_refptr<webrtc::DataChannelInterface> data_channel) override;
   void OnRenegotiationNeeded() override {}
   void OnIceConnectionChange(
       webrtc::PeerConnectionInterface::IceConnectionState new_state) override {}
@@ -62,40 +64,43 @@ class PeerConnectionTestWrapper
 
   // Implements CreateSessionDescriptionObserver.
   void OnSuccess(webrtc::SessionDescriptionInterface* desc) override;
-  void OnFailure(const std::string& error) override {}
+  void OnFailure(webrtc::RTCError) override {}
 
   void CreateOffer(const webrtc::MediaConstraintsInterface* constraints);
   void CreateAnswer(const webrtc::MediaConstraintsInterface* constraints);
   void ReceiveOfferSdp(const std::string& sdp);
   void ReceiveAnswerSdp(const std::string& sdp);
-  void AddIceCandidate(const std::string& sdp_mid, int sdp_mline_index,
+  void AddIceCandidate(const std::string& sdp_mid,
+                       int sdp_mline_index,
                        const std::string& candidate);
   void WaitForCallEstablished();
   void WaitForConnection();
   void WaitForAudio();
   void WaitForVideo();
-  void GetAndAddUserMedia(
-    bool audio, const webrtc::FakeConstraints& audio_constraints,
-    bool video, const webrtc::FakeConstraints& video_constraints);
+  void GetAndAddUserMedia(bool audio,
+                          const cricket::AudioOptions& audio_options,
+                          bool video,
+                          const webrtc::FakeConstraints& video_constraints);
 
   // sigslots
   sigslot::signal1<std::string*> SignalOnIceCandidateCreated;
-  sigslot::signal3<const std::string&,
-                   int,
-                   const std::string&> SignalOnIceCandidateReady;
+  sigslot::signal3<const std::string&, int, const std::string&>
+      SignalOnIceCandidateReady;
   sigslot::signal1<std::string*> SignalOnSdpCreated;
   sigslot::signal1<const std::string&> SignalOnSdpReady;
   sigslot::signal1<webrtc::DataChannelInterface*> SignalOnDataChannel;
 
  private:
-  void SetLocalDescription(const std::string& type, const std::string& sdp);
-  void SetRemoteDescription(const std::string& type, const std::string& sdp);
+  void SetLocalDescription(webrtc::SdpType type, const std::string& sdp);
+  void SetRemoteDescription(webrtc::SdpType type, const std::string& sdp);
   bool CheckForConnection();
   bool CheckForAudio();
   bool CheckForVideo();
   rtc::scoped_refptr<webrtc::MediaStreamInterface> GetUserMedia(
-      bool audio, const webrtc::FakeConstraints& audio_constraints,
-      bool video, const webrtc::FakeConstraints& video_constraints);
+      bool audio,
+      const cricket::AudioOptions& audio_options,
+      bool video,
+      const webrtc::FakeConstraints& video_constraints);
 
   std::string name_;
   rtc::Thread* const network_thread_;
@@ -105,6 +110,7 @@ class PeerConnectionTestWrapper
       peer_connection_factory_;
   rtc::scoped_refptr<FakeAudioCaptureModule> fake_audio_capture_module_;
   std::unique_ptr<webrtc::FakeVideoTrackRenderer> renderer_;
+  int num_get_user_media_calls_ = 0;
 };
 
-#endif  // WEBRTC_PC_TEST_PEERCONNECTIONTESTWRAPPER_H_
+#endif  // PC_TEST_PEERCONNECTIONTESTWRAPPER_H_

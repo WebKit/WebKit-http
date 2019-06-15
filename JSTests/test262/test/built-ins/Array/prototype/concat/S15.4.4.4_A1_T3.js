@@ -2,7 +2,8 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-array.prototype.concat
+info: |
     When the concat method is called with zero or more arguments item1, item2,
     etc., it returns an array containing the array elements of the object followed by
     the array elements of each argument in order
@@ -10,7 +11,7 @@ es5id: 15.4.4.4_A1_T3
 description: Checking this algorithm with no items
 ---*/
 
-var x = [0,1];
+var x = [0, 1];
 var arr = x.concat();
 
 //CHECK#0
@@ -32,7 +33,7 @@ if (arr[1] !== 1) {
 //CHECK#3
 if (arr.length !== 2) {
   $ERROR('#3: var x = [0,1]; var arr = x.concat(); arr.length === 2. Actual: ' + (arr.length));
-}  
+}
 
 //CHECK#4
 if (arr === x) {

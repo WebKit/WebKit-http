@@ -31,8 +31,11 @@
 #include "HTMLParserIdioms.h"
 #include "HTMLTableElement.h"
 #include "RenderTableCell.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLTableCellElement);
 
 using namespace HTMLNames;
 
@@ -128,7 +131,7 @@ void HTMLTableCellElement::parseAttribute(const QualifiedName& name, const Atomi
 
 const StyleProperties* HTMLTableCellElement::additionalPresentationAttributeStyle() const
 {
-    if (HTMLTableElement* table = findParentTable())
+    if (RefPtr<HTMLTableElement> table = findParentTable())
         return table->additionalCellStyle();
     return 0;
 }

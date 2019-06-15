@@ -2,11 +2,12 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-1-1
 description: Array.prototype.forEach applied to undefined
 ---*/
 
 
 assert.throws(TypeError, function() {
-            Array.prototype.forEach.call(undefined); // TypeError is thrown if value is undefined
+  Array.prototype.forEach.call(undefined); // TypeError is thrown if value is undefined
 });

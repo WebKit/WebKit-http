@@ -10,25 +10,30 @@
 
 #include <algorithm>
 #include <cstring>
+#include <memory>
 #include <numeric>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/base/event.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/base/race_checker.h"
-#include "webrtc/base/safe_conversions.h"
-#include "webrtc/base/scoped_ref_ptr.h"
-#include "webrtc/base/thread_annotations.h"
-#include "webrtc/base/thread_checker.h"
-#include "webrtc/base/timeutils.h"
-#include "webrtc/modules/audio_device/audio_device_impl.h"
-#include "webrtc/modules/audio_device/include/audio_device.h"
-#include "webrtc/modules/audio_device/include/mock_audio_transport.h"
-#include "webrtc/test/gmock.h"
-#include "webrtc/test/gtest.h"
+#include "absl/types/optional.h"
+#include "api/array_view.h"
+#include "modules/audio_device/audio_device_impl.h"
+#include "modules/audio_device/include/audio_device.h"
+#include "modules/audio_device/include/mock_audio_transport.h"
+#include "rtc_base/buffer.h"
+#include "rtc_base/criticalsection.h"
+#include "rtc_base/event.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/numerics/safe_conversions.h"
+#include "rtc_base/race_checker.h"
+#include "rtc_base/scoped_ref_ptr.h"
+#include "rtc_base/thread_annotations.h"
+#include "rtc_base/thread_checker.h"
+#include "rtc_base/timeutils.h"
+#include "test/gmock.h"
+#include "test/gtest.h"
+#ifdef WEBRTC_WIN
+#include "modules/audio_device/include/audio_device_factory.h"
+#include "modules/audio_device/win/core_audio_utility_win.h"
+#endif
 
 using ::testing::_;
 using ::testing::AtLeast;
@@ -94,8 +99,8 @@ enum class TransportType {
 // measurements.
 class AudioStream {
  public:
-  virtual void Write(rtc::ArrayView<const int16_t> source, size_t channels) = 0;
-  virtual void Read(rtc::ArrayView<int16_t> destination, size_t channels) = 0;
+  virtual void Write(rtc::ArrayView<const int16_t> source) = 0;
+  virtual void Read(rtc::ArrayView<int16_t> destination) = 0;
 
   virtual ~AudioStream() = default;
 };
@@ -122,8 +127,7 @@ int IndexToMilliseconds(size_t index, size_t frames_per_10ms_buffer) {
 // change over time and that both sides will use the same size.
 class FifoAudioStream : public AudioStream {
  public:
-  void Write(rtc::ArrayView<const int16_t> source, size_t channels) override {
-    EXPECT_EQ(channels, 1u);
+  void Write(rtc::ArrayView<const int16_t> source) override {
     RTC_DCHECK_RUNS_SERIALIZED(&race_checker_);
     const size_t size = [&] {
       rtc::CritScope lock(&lock_);
@@ -140,8 +144,7 @@ class FifoAudioStream : public AudioStream {
     written_elements_ += size;
   }
 
-  void Read(rtc::ArrayView<int16_t> destination, size_t channels) override {
-    EXPECT_EQ(channels, 1u);
+  void Read(rtc::ArrayView<int16_t> destination) override {
     rtc::CritScope lock(&lock_);
     if (fifo_.empty()) {
       std::fill(destination.begin(), destination.end(), 0);
@@ -173,10 +176,10 @@ class FifoAudioStream : public AudioStream {
   rtc::CriticalSection lock_;
   rtc::RaceChecker race_checker_;
 
-  std::list<Buffer16> fifo_ GUARDED_BY(lock_);
-  size_t write_count_ GUARDED_BY(race_checker_) = 0;
-  size_t max_size_ GUARDED_BY(race_checker_) = 0;
-  size_t written_elements_ GUARDED_BY(race_checker_) = 0;
+  std::list<Buffer16> fifo_ RTC_GUARDED_BY(lock_);
+  size_t write_count_ RTC_GUARDED_BY(race_checker_) = 0;
+  size_t max_size_ RTC_GUARDED_BY(race_checker_) = 0;
+  size_t written_elements_ RTC_GUARDED_BY(race_checker_) = 0;
 };
 
 // Inserts periodic impulses and measures the latency between the time of
@@ -191,9 +194,8 @@ class LatencyAudioStream : public AudioStream {
   }
 
   // Insert periodic impulses in first two samples of |destination|.
-  void Read(rtc::ArrayView<int16_t> destination, size_t channels) override {
+  void Read(rtc::ArrayView<int16_t> destination) override {
     RTC_DCHECK_RUN_ON(&read_thread_checker_);
-    EXPECT_EQ(channels, 1u);
     if (read_count_ == 0) {
       PRINT("[");
     }
@@ -204,7 +206,7 @@ class LatencyAudioStream : public AudioStream {
       {
         rtc::CritScope lock(&lock_);
         if (!pulse_time_) {
-          pulse_time_ = rtc::Optional<int64_t>(rtc::TimeMillis());
+          pulse_time_ = rtc::TimeMillis();
         }
       }
       constexpr int16_t impulse = std::numeric_limits<int16_t>::max();
@@ -214,8 +216,7 @@ class LatencyAudioStream : public AudioStream {
 
   // Detect received impulses in |source|, derive time between transmission and
   // detection and add the calculated delay to list of latencies.
-  void Write(rtc::ArrayView<const int16_t> source, size_t channels) override {
-    EXPECT_EQ(channels, 1u);
+  void Write(rtc::ArrayView<const int16_t> source) override {
     RTC_DCHECK_RUN_ON(&write_thread_checker_);
     RTC_DCHECK_RUNS_SERIALIZED(&race_checker_);
     rtc::CritScope lock(&lock_);
@@ -293,10 +294,10 @@ class LatencyAudioStream : public AudioStream {
   rtc::ThreadChecker read_thread_checker_;
   rtc::ThreadChecker write_thread_checker_;
 
-  rtc::Optional<int64_t> pulse_time_ GUARDED_BY(lock_);
-  std::vector<int> latencies_ GUARDED_BY(race_checker_);
-  size_t read_count_ ACCESS_ON(read_thread_checker_) = 0;
-  size_t write_count_ ACCESS_ON(write_thread_checker_) = 0;
+  absl::optional<int64_t> pulse_time_ RTC_GUARDED_BY(lock_);
+  std::vector<int> latencies_ RTC_GUARDED_BY(race_checker_);
+  size_t read_count_ RTC_GUARDED_BY(read_thread_checker_) = 0;
+  size_t write_count_ RTC_GUARDED_BY(write_thread_checker_) = 0;
 };
 
 // Mocks the AudioTransport object and proxies actions for the two callbacks
@@ -340,7 +341,7 @@ class MockAudioTransport : public test::MockAudioTransport {
                                       const bool typing_status,
                                       uint32_t& new_mic_level) {
     EXPECT_TRUE(rec_mode()) << "No test is expecting these callbacks.";
-    LOG(INFO) << "+";
+    RTC_LOG(INFO) << "+";
     // Store audio parameters once in the first callback. For all other
     // callbacks, verify that the provided audio parameters are maintained and
     // that each callback corresponds to 10ms for any given sample rate.
@@ -360,8 +361,7 @@ class MockAudioTransport : public test::MockAudioTransport {
     if (audio_stream_) {
       audio_stream_->Write(
           rtc::MakeArrayView(static_cast<const int16_t*>(audio_buffer),
-                             samples_per_channel * channels),
-          channels);
+                             samples_per_channel * channels));
     }
     // Signal the event after given amount of callbacks.
     if (ReceivedEnoughCallbacks()) {
@@ -375,11 +375,11 @@ class MockAudioTransport : public test::MockAudioTransport {
                                const size_t channels,
                                const uint32_t sample_rate,
                                void* audio_buffer,
-                               size_t& samples_per_channel_out,
+                               size_t& samples_out,
                                int64_t* elapsed_time_ms,
                                int64_t* ntp_time_ms) {
     EXPECT_TRUE(play_mode()) << "No test is expecting these callbacks.";
-    LOG(INFO) << "-";
+    RTC_LOG(INFO) << "-";
     // Store audio parameters once in the first callback. For all other
     // callbacks, verify that the provided audio parameters are maintained and
     // that each callback corresponds to 10ms for any given sample rate.
@@ -395,13 +395,11 @@ class MockAudioTransport : public test::MockAudioTransport {
                 playout_parameters_.frames_per_10ms_buffer());
     }
     play_count_++;
-    samples_per_channel_out = samples_per_channel;
+    samples_out = samples_per_channel * channels;
     // Read audio data from audio stream object if one has been injected.
     if (audio_stream_) {
-      audio_stream_->Read(
-          rtc::MakeArrayView(static_cast<int16_t*>(audio_buffer),
-                             samples_per_channel * channels),
-          channels);
+      audio_stream_->Read(rtc::MakeArrayView(
+          static_cast<int16_t*>(audio_buffer), samples_per_channel * channels));
     } else {
       // Fill the audio buffer with zeros to avoid disturbing audio.
       const size_t num_bytes = samples_per_channel * bytes_per_frame;
@@ -452,26 +450,31 @@ class MockAudioTransport : public test::MockAudioTransport {
 };
 
 // AudioDeviceTest test fixture.
-class AudioDeviceTest : public ::testing::Test {
+class AudioDeviceTest
+    : public ::testing::TestWithParam<webrtc::AudioDeviceModule::AudioLayer> {
  protected:
-  AudioDeviceTest() : event_(false, false) {
-#if !defined(ADDRESS_SANITIZER) && !defined(MEMORY_SANITIZER)
+  AudioDeviceTest() : audio_layer_(GetParam()), event_(false, false) {
+#if !defined(ADDRESS_SANITIZER) && !defined(MEMORY_SANITIZER) && \
+    !defined(WEBRTC_DUMMY_AUDIO_BUILD)
     rtc::LogMessage::LogToDebug(rtc::LS_INFO);
     // Add extra logging fields here if needed for debugging.
-    // rtc::LogMessage::LogTimestamps();
-    // rtc::LogMessage::LogThreads();
-    audio_device_ =
-        AudioDeviceModule::Create(0, AudioDeviceModule::kPlatformDefaultAudio);
+    rtc::LogMessage::LogTimestamps();
+    rtc::LogMessage::LogThreads();
+    audio_device_ = CreateAudioDevice();
     EXPECT_NE(audio_device_.get(), nullptr);
     AudioDeviceModule::AudioLayer audio_layer;
     int got_platform_audio_layer =
         audio_device_->ActiveAudioLayer(&audio_layer);
-    if (got_platform_audio_layer != 0 ||
-        audio_layer == AudioDeviceModule::kLinuxAlsaAudio) {
+    // First, ensure that a valid audio layer can be activated.
+    if (got_platform_audio_layer != 0) {
       requirements_satisfied_ = false;
     }
+    // Next, verify that the ADM can be initialized.
     if (requirements_satisfied_) {
-      EXPECT_EQ(0, audio_device_->Init());
+      requirements_satisfied_ = (audio_device_->Init() == 0);
+    }
+    // Finally, ensure that at least one valid device exists in each direction.
+    if (requirements_satisfied_) {
       const int16_t num_playout_devices = audio_device_->PlayoutDevices();
       const int16_t num_record_devices = audio_device_->RecordingDevices();
       requirements_satisfied_ =
@@ -492,8 +495,6 @@ class AudioDeviceTest : public ::testing::Test {
       // See https://bugs.chromium.org/p/webrtc/issues/detail?id=7397 for
       // details.
       EXPECT_EQ(0, audio_device_->SetStereoRecording(false));
-      EXPECT_EQ(0, audio_device_->SetAGC(false));
-      EXPECT_FALSE(audio_device_->AGC());
     }
   }
 
@@ -508,6 +509,32 @@ class AudioDeviceTest : public ::testing::Test {
 
   const rtc::scoped_refptr<AudioDeviceModule>& audio_device() const {
     return audio_device_;
+  }
+
+  rtc::scoped_refptr<AudioDeviceModule> CreateAudioDevice() {
+    // Use the default factory for kPlatformDefaultAudio and a special factory
+    // CreateWindowsCoreAudioAudioDeviceModule() for kWindowsCoreAudio2.
+    // The value of |audio_layer_| is set at construction by GetParam() and two
+    // different layers are tested on Windows only.
+    if (audio_layer_ == AudioDeviceModule::kPlatformDefaultAudio) {
+      return AudioDeviceModule::Create(audio_layer_);
+    } else if (audio_layer_ == AudioDeviceModule::kWindowsCoreAudio2) {
+#ifdef WEBRTC_WIN
+      // We must initialize the COM library on a thread before we calling any of
+      // the library functions. All COM functions in the ADM will return
+      // CO_E_NOTINITIALIZED otherwise.
+      com_initializer_ = absl::make_unique<webrtc_win::ScopedCOMInitializer>(
+          webrtc_win::ScopedCOMInitializer::kMTA);
+      EXPECT_TRUE(com_initializer_->Succeeded());
+      EXPECT_TRUE(webrtc_win::core_audio_utility::IsSupported());
+      EXPECT_TRUE(webrtc_win::core_audio_utility::IsMMCSSSupported());
+      return CreateWindowsCoreAudioAudioDeviceModule();
+#else
+      return nullptr;
+#endif
+    } else {
+      return nullptr;
+    }
   }
 
   void StartPlayout() {
@@ -538,17 +565,70 @@ class AudioDeviceTest : public ::testing::Test {
     EXPECT_FALSE(audio_device()->RecordingIsInitialized());
   }
 
+  bool NewWindowsAudioDeviceModuleIsUsed() {
+#ifdef WEBRTC_WIN
+    AudioDeviceModule::AudioLayer audio_layer;
+    EXPECT_EQ(0, audio_device()->ActiveAudioLayer(&audio_layer));
+    if (audio_layer == AudioDeviceModule::kWindowsCoreAudio2) {
+      // Default device is always added as first element in the list and the
+      // default communication device as the second element. Hence, the list
+      // contains two extra elements in this case.
+      return true;
+    }
+#endif
+    return false;
+  }
+
  private:
+#ifdef WEBRTC_WIN
+  // Windows Core Audio based ADM needs to run on a COM initialized thread.
+  std::unique_ptr<webrtc_win::ScopedCOMInitializer> com_initializer_;
+#endif
+  AudioDeviceModule::AudioLayer audio_layer_;
   bool requirements_satisfied_ = true;
   rtc::Event event_;
   rtc::scoped_refptr<AudioDeviceModule> audio_device_;
   bool stereo_playout_ = false;
 };
 
-// Uses the test fixture to create, initialize and destruct the ADM.
-TEST_F(AudioDeviceTest, ConstructDestruct) {}
+// Instead of using the test fixture, verify that the different factory methods
+// work as intended.
+TEST(AudioDeviceTestWin, ConstructDestructWithFactory) {
+  rtc::scoped_refptr<AudioDeviceModule> audio_device;
+  // The default factory should work for all platforms when a default ADM is
+  // requested.
+  audio_device =
+      AudioDeviceModule::Create(AudioDeviceModule::kPlatformDefaultAudio);
+  EXPECT_TRUE(audio_device);
+  audio_device = nullptr;
+#ifdef WEBRTC_WIN
+  // For Windows, the old factory method creates an ADM where the platform-
+  // specific parts are implemented by an AudioDeviceGeneric object. Verify
+  // that the old factory can't be used in combination with the latest audio
+  // layer AudioDeviceModule::kWindowsCoreAudio2.
+  audio_device =
+      AudioDeviceModule::Create(AudioDeviceModule::kWindowsCoreAudio2);
+  EXPECT_FALSE(audio_device);
+  audio_device = nullptr;
+  // Instead, ensure that the new dedicated factory method called
+  // CreateWindowsCoreAudioAudioDeviceModule() can be used on Windows and that
+  // it sets the audio layer to kWindowsCoreAudio2 implicitly. Note that, the
+  // new ADM for Windows must be created on a COM thread.
+  webrtc_win::ScopedCOMInitializer com_initializer(
+      webrtc_win::ScopedCOMInitializer::kMTA);
+  EXPECT_TRUE(com_initializer.Succeeded());
+  audio_device = CreateWindowsCoreAudioAudioDeviceModule();
+  EXPECT_TRUE(audio_device);
+  AudioDeviceModule::AudioLayer audio_layer;
+  EXPECT_EQ(0, audio_device->ActiveAudioLayer(&audio_layer));
+  EXPECT_EQ(audio_layer, AudioDeviceModule::kWindowsCoreAudio2);
+#endif
+}
 
-TEST_F(AudioDeviceTest, InitTerminate) {
+// Uses the test fixture to create, initialize and destruct the ADM.
+TEST_P(AudioDeviceTest, ConstructDestructDefault) {}
+
+TEST_P(AudioDeviceTest, InitTerminate) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   // Initialization is part of the test fixture.
   EXPECT_TRUE(audio_device()->Initialized());
@@ -556,21 +636,144 @@ TEST_F(AudioDeviceTest, InitTerminate) {
   EXPECT_FALSE(audio_device()->Initialized());
 }
 
-// Tests Start/Stop playout without any registered audio callback.
-TEST_F(AudioDeviceTest, StartStopPlayout) {
+// Enumerate all available and active output devices.
+TEST_P(AudioDeviceTest, PlayoutDeviceNames) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
-  StartPlayout();
-  StopPlayout();
+  char device_name[kAdmMaxDeviceNameSize];
+  char unique_id[kAdmMaxGuidSize];
+  int num_devices = audio_device()->PlayoutDevices();
+  if (NewWindowsAudioDeviceModuleIsUsed()) {
+    num_devices += 2;
+  }
+  EXPECT_GT(num_devices, 0);
+  for (int i = 0; i < num_devices; ++i) {
+    EXPECT_EQ(0, audio_device()->PlayoutDeviceName(i, device_name, unique_id));
+  }
+  EXPECT_EQ(-1, audio_device()->PlayoutDeviceName(num_devices, device_name,
+                                                  unique_id));
+}
+
+// Enumerate all available and active input devices.
+TEST_P(AudioDeviceTest, RecordingDeviceNames) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
+  char device_name[kAdmMaxDeviceNameSize];
+  char unique_id[kAdmMaxGuidSize];
+  int num_devices = audio_device()->RecordingDevices();
+  if (NewWindowsAudioDeviceModuleIsUsed()) {
+    num_devices += 2;
+  }
+  EXPECT_GT(num_devices, 0);
+  for (int i = 0; i < num_devices; ++i) {
+    EXPECT_EQ(0,
+              audio_device()->RecordingDeviceName(i, device_name, unique_id));
+  }
+  EXPECT_EQ(-1, audio_device()->RecordingDeviceName(num_devices, device_name,
+                                                    unique_id));
+}
+
+// Counts number of active output devices and ensure that all can be selected.
+TEST_P(AudioDeviceTest, SetPlayoutDevice) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
+  int num_devices = audio_device()->PlayoutDevices();
+  if (NewWindowsAudioDeviceModuleIsUsed()) {
+    num_devices += 2;
+  }
+  EXPECT_GT(num_devices, 0);
+  // Verify that all available playout devices can be set (not enabled yet).
+  for (int i = 0; i < num_devices; ++i) {
+    EXPECT_EQ(0, audio_device()->SetPlayoutDevice(i));
+  }
+  EXPECT_EQ(-1, audio_device()->SetPlayoutDevice(num_devices));
+#ifdef WEBRTC_WIN
+  // On Windows, verify the alternative method where the user can select device
+  // by role.
+  EXPECT_EQ(
+      0, audio_device()->SetPlayoutDevice(AudioDeviceModule::kDefaultDevice));
+  EXPECT_EQ(0, audio_device()->SetPlayoutDevice(
+                   AudioDeviceModule::kDefaultCommunicationDevice));
+#endif
+}
+
+// Counts number of active input devices and ensure that all can be selected.
+TEST_P(AudioDeviceTest, SetRecordingDevice) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
+  int num_devices = audio_device()->RecordingDevices();
+  if (NewWindowsAudioDeviceModuleIsUsed()) {
+    num_devices += 2;
+  }
+  EXPECT_GT(num_devices, 0);
+  // Verify that all available recording devices can be set (not enabled yet).
+  for (int i = 0; i < num_devices; ++i) {
+    EXPECT_EQ(0, audio_device()->SetRecordingDevice(i));
+  }
+  EXPECT_EQ(-1, audio_device()->SetRecordingDevice(num_devices));
+#ifdef WEBRTC_WIN
+  // On Windows, verify the alternative method where the user can select device
+  // by role.
+  EXPECT_EQ(
+      0, audio_device()->SetRecordingDevice(AudioDeviceModule::kDefaultDevice));
+  EXPECT_EQ(0, audio_device()->SetRecordingDevice(
+                   AudioDeviceModule::kDefaultCommunicationDevice));
+#endif
+}
+
+// Tests Start/Stop playout without any registered audio callback.
+TEST_P(AudioDeviceTest, StartStopPlayout) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
   StartPlayout();
   StopPlayout();
 }
 
 // Tests Start/Stop recording without any registered audio callback.
-TEST_F(AudioDeviceTest, StartStopRecording) {
+TEST_P(AudioDeviceTest, StartStopRecording) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   StartRecording();
   StopRecording();
+}
+
+// Tests Init/Stop/Init recording without any registered audio callback.
+// See https://bugs.chromium.org/p/webrtc/issues/detail?id=8041 for details
+// on why this test is useful.
+TEST_P(AudioDeviceTest, InitStopInitRecording) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
+  EXPECT_EQ(0, audio_device()->InitRecording());
+  EXPECT_TRUE(audio_device()->RecordingIsInitialized());
+  StopRecording();
+  EXPECT_EQ(0, audio_device()->InitRecording());
+  StopRecording();
+}
+
+// Tests Init/Stop/Init recording while playout is active.
+TEST_P(AudioDeviceTest, InitStopInitRecordingWhilePlaying) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
+  StartPlayout();
+  EXPECT_EQ(0, audio_device()->InitRecording());
+  EXPECT_TRUE(audio_device()->RecordingIsInitialized());
+  StopRecording();
+  EXPECT_EQ(0, audio_device()->InitRecording());
+  StopRecording();
+  StopPlayout();
+}
+
+// Tests Init/Stop/Init playout without any registered audio callback.
+TEST_P(AudioDeviceTest, InitStopInitPlayout) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
+  EXPECT_EQ(0, audio_device()->InitPlayout());
+  EXPECT_TRUE(audio_device()->PlayoutIsInitialized());
+  StopPlayout();
+  EXPECT_EQ(0, audio_device()->InitPlayout());
+  StopPlayout();
+}
+
+// Tests Init/Stop/Init playout while recording is active.
+TEST_P(AudioDeviceTest, InitStopInitPlayoutWhileRecording) {
+  SKIP_TEST_IF_NOT(requirements_satisfied());
   StartRecording();
+  EXPECT_EQ(0, audio_device()->InitPlayout());
+  EXPECT_TRUE(audio_device()->PlayoutIsInitialized());
+  StopPlayout();
+  EXPECT_EQ(0, audio_device()->InitPlayout());
+  StopPlayout();
   StopRecording();
 }
 
@@ -579,7 +782,7 @@ TEST_F(AudioDeviceTest, StartStopRecording) {
 // Note that we can't add expectations on audio parameters in EXPECT_CALL
 // since parameter are not provided in the each callback. We therefore test and
 // verify the parameters in the fake audio transport implementation instead.
-TEST_F(AudioDeviceTest, StartPlayoutVerifyCallbacks) {
+TEST_P(AudioDeviceTest, StartPlayoutVerifyCallbacks) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   MockAudioTransport mock(TransportType::kPlay);
   mock.HandleCallbacks(event(), nullptr, kNumCallbacks);
@@ -593,7 +796,7 @@ TEST_F(AudioDeviceTest, StartPlayoutVerifyCallbacks) {
 
 // Start recording and verify that the native audio layer starts providing real
 // audio samples using the RecordedDataIsAvailable() callback.
-TEST_F(AudioDeviceTest, StartRecordingVerifyCallbacks) {
+TEST_P(AudioDeviceTest, StartRecordingVerifyCallbacks) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   MockAudioTransport mock(TransportType::kRecord);
   mock.HandleCallbacks(event(), nullptr, kNumCallbacks);
@@ -608,7 +811,7 @@ TEST_F(AudioDeviceTest, StartRecordingVerifyCallbacks) {
 
 // Start playout and recording (full-duplex audio) and verify that audio is
 // active in both directions.
-TEST_F(AudioDeviceTest, StartPlayoutAndRecordingVerifyCallbacks) {
+TEST_P(AudioDeviceTest, StartPlayoutAndRecordingVerifyCallbacks) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   MockAudioTransport mock(TransportType::kPlayAndRecord);
   mock.HandleCallbacks(event(), nullptr, kNumCallbacks);
@@ -637,18 +840,18 @@ TEST_F(AudioDeviceTest, StartPlayoutAndRecordingVerifyCallbacks) {
 // sequence by running in loopback for a few seconds while measuring the size
 // (max and average) of the FIFO. The size of the FIFO is increased by the
 // recording side and decreased by the playout side.
-TEST_F(AudioDeviceTest, RunPlayoutAndRecordingInFullDuplex) {
+TEST_P(AudioDeviceTest, RunPlayoutAndRecordingInFullDuplex) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   NiceMock<MockAudioTransport> mock(TransportType::kPlayAndRecord);
   FifoAudioStream audio_stream;
   mock.HandleCallbacks(event(), &audio_stream,
                        kFullDuplexTimeInSec * kNumCallbacksPerSecond);
   EXPECT_EQ(0, audio_device()->RegisterAudioCallback(&mock));
-  // Run both sides in mono to make the loopback packet handling less complex.
-  // The test works for stereo as well; the only requirement is that both sides
-  // use the same configuration.
-  EXPECT_EQ(0, audio_device()->SetStereoPlayout(false));
-  EXPECT_EQ(0, audio_device()->SetStereoRecording(false));
+  // Run both sides using the same channel configuration to avoid conversions
+  // between mono/stereo while running in full duplex mode. Also, some devices
+  // (mainly on Windows) do not support mono.
+  EXPECT_EQ(0, audio_device()->SetStereoPlayout(true));
+  EXPECT_EQ(0, audio_device()->SetStereoRecording(true));
   StartPlayout();
   StartRecording();
   event()->Wait(static_cast<int>(
@@ -657,8 +860,9 @@ TEST_F(AudioDeviceTest, RunPlayoutAndRecordingInFullDuplex) {
   StopPlayout();
   // This thresholds is set rather high to accommodate differences in hardware
   // in several devices. The main idea is to capture cases where a very large
-  // latency is built up.
-  EXPECT_LE(audio_stream.average_size(), 5u);
+  // latency is built up. See http://bugs.webrtc.org/7744 for examples on
+  // bots where relatively large average latencies can happen.
+  EXPECT_LE(audio_stream.average_size(), 25u);
   PRINT("\n");
 }
 
@@ -673,15 +877,15 @@ TEST_F(AudioDeviceTest, RunPlayoutAndRecordingInFullDuplex) {
 // some sort of audio feedback loop. E.g. a headset where the mic is placed
 // close to the speaker to ensure highest possible echo. It is also recommended
 // to run the test at highest possible output volume.
-TEST_F(AudioDeviceTest, DISABLED_MeasureLoopbackLatency) {
+TEST_P(AudioDeviceTest, DISABLED_MeasureLoopbackLatency) {
   SKIP_TEST_IF_NOT(requirements_satisfied());
   NiceMock<MockAudioTransport> mock(TransportType::kPlayAndRecord);
   LatencyAudioStream audio_stream;
   mock.HandleCallbacks(event(), &audio_stream,
                        kMeasureLatencyTimeInSec * kNumCallbacksPerSecond);
   EXPECT_EQ(0, audio_device()->RegisterAudioCallback(&mock));
-  EXPECT_EQ(0, audio_device()->SetStereoPlayout(false));
-  EXPECT_EQ(0, audio_device()->SetStereoRecording(false));
+  EXPECT_EQ(0, audio_device()->SetStereoPlayout(true));
+  EXPECT_EQ(0, audio_device()->SetStereoRecording(true));
   StartPlayout();
   StartRecording();
   event()->Wait(static_cast<int>(
@@ -695,5 +899,21 @@ TEST_F(AudioDeviceTest, DISABLED_MeasureLoopbackLatency) {
   // Print out min, max and average delay values for debugging purposes.
   audio_stream.PrintResults();
 }
+
+#ifdef WEBRTC_WIN
+// Test two different audio layers (or rather two different Core Audio
+// implementations) for Windows.
+INSTANTIATE_TEST_CASE_P(
+    AudioLayerWin,
+    AudioDeviceTest,
+    ::testing::Values(AudioDeviceModule::kPlatformDefaultAudio,
+                      AudioDeviceModule::kWindowsCoreAudio2));
+#else
+// For all platforms but Windows, only test the default audio layer.
+INSTANTIATE_TEST_CASE_P(
+    AudioLayer,
+    AudioDeviceTest,
+    ::testing::Values(AudioDeviceModule::kPlatformDefaultAudio));
+#endif
 
 }  // namespace webrtc

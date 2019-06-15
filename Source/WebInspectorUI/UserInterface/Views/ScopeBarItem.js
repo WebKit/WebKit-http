@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
+WI.ScopeBarItem = class ScopeBarItem extends WI.Object
 {
-    constructor(id, label, exclusive, className)
+    constructor(id, label, exclusive, className, hidden)
     {
         super();
 
@@ -39,10 +39,12 @@ WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
         this._id = id;
         this._label = label;
         this._exclusive = exclusive;
+        this._hidden = !!hidden;
 
-        this._selectedSetting = new WebInspector.Setting("scopebaritem-" + id, false);
+        this._selectedSetting = new WI.Setting("scopebaritem-" + id, false);
 
         this._element.classList.toggle("selected", this._selectedSetting.value);
+        this._element.classList.toggle("hidden", this._hidden);
     }
 
     // Public
@@ -85,7 +87,22 @@ WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
         this._element.classList.toggle("selected", selected);
         this._selectedSetting.value = selected;
 
-        this.dispatchEventToListeners(WebInspector.ScopeBarItem.Event.SelectionChanged, {withModifier});
+        this.dispatchEventToListeners(WI.ScopeBarItem.Event.SelectionChanged, {withModifier});
+    }
+
+    get hidden()
+    {
+        return this._hidden;
+    }
+
+    set hidden(flag)
+    {
+        if (this._hidden === flag)
+            return;
+
+        this._hidden = flag;
+
+        this._element.classList.toggle("hidden", flag);
     }
 
     // Private
@@ -100,6 +117,6 @@ WebInspector.ScopeBarItem = class ScopeBarItem extends WebInspector.Object
     }
 };
 
-WebInspector.ScopeBarItem.Event = {
+WI.ScopeBarItem.Event = {
     SelectionChanged: "scope-bar-item-selection-did-change"
 };

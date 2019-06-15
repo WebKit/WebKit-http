@@ -49,6 +49,7 @@ class WebVTTCueData;
 // ----------------------------
 
 class VTTCueBox : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(VTTCueBox);
 public:
     static Ref<VTTCueBox> create(Document&, VTTCue&);
 
@@ -167,12 +168,16 @@ public:
 
     void didChange() override;
 
+    String toJSONString() const;
+
 protected:
     VTTCue(ScriptExecutionContext&, const MediaTime& start, const MediaTime& end, const String& content);
     VTTCue(ScriptExecutionContext&, const WebVTTCueData&);
 
     virtual Ref<VTTCueBox> createDisplayTree();
     VTTCueBox& displayTreeInternal();
+
+    void toJSON(JSON::Object&) const final;
 
 private:
     void initialize(ScriptExecutionContext&);
@@ -226,5 +231,20 @@ VTTCue* toVTTCue(TextTrackCue*);
 const VTTCue* toVTTCue(const TextTrackCue*);
 
 } // namespace WebCore
+
+namespace WTF {
+
+template<typename Type>
+struct LogArgument;
+
+template <>
+struct LogArgument<WebCore::VTTCue> {
+    static String toString(const WebCore::VTTCue& cue)
+    {
+        return cue.toJSONString();
+    }
+};
+
+} // namespace WTF
 
 #endif

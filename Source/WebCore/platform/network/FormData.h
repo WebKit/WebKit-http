@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FormData_h
-#define FormData_h
+#pragma once
 
 #include "BlobData.h"
 #include "URL.h"
@@ -29,17 +28,17 @@
 
 namespace WebCore {
 
+class DOMFormData;
 class Document;
-class FormDataList;
+class File;
+class SharedBuffer;
 class TextEncoding;
 
+// FIXME: Convert this to a Variant of structs and remove "Type" and also the "m_" prefixes from the data members.
+// The member functions can become non-member fucntions.
 class FormDataElement {
 public:
-    enum class Type {
-        Data,
-        EncodedFile,
-        EncodedBlob,
-    };
+    enum class Type { Data, EncodedFile, EncodedBlob };
 
     FormDataElement()
         : m_type(Type::Data)
@@ -69,12 +68,12 @@ public:
     {
     }
 
+    uint64_t lengthInBytes() const;
+
     FormDataElement isolatedCopy() const;
 
-    template<typename Encoder>
-    void encode(Encoder&) const;
-    template<typename Decoder>
-    static bool decode(Decoder&, FormDataElement& result);
+    template<typename Encoder> void encode(Encoder&) const;
+    template<typename Decoder> static std::optional<FormDataElement> decode(Decoder&);
 
     Type m_type;
     Vector<char> m_data;
@@ -84,9 +83,8 @@ public:
     int64_t m_fileLength;
     double m_expectedFileModificationTime;
     // FIXME: Generated file support in FormData is almost identical to Blob, they should be merged.
-    // We can't just switch to using Blobs for all files for two reasons:
-    // 1. Not all platforms enable BLOB support.
-    // 2. EncodedFile form data elements do not have a valid m_expectedFileModificationTime, meaning that we always upload the latest content from disk.
+    // We can't just switch to using Blobs for all files because EncodedFile form data elements do not
+    // have a valid m_expectedFileModificationTime, meaning we always upload the latest content from disk.
     String m_generatedFilename;
     bool m_shouldGenerateFile;
     bool m_ownsGeneratedFile;
@@ -114,7 +112,6 @@ inline bool operator!=(const FormDataElement& a, const FormDataElement& b)
     return !(a == b);
 }
 
-
 template<typename Encoder>
 void FormDataElement::encode(Encoder& encoder) const
 {
@@ -141,51 +138,52 @@ void FormDataElement::encode(Encoder& encoder) const
 }
 
 template<typename Decoder>
-bool FormDataElement::decode(Decoder& decoder, FormDataElement& result)
+std::optional<FormDataElement> FormDataElement::decode(Decoder& decoder)
 {
+    FormDataElement result;
     if (!decoder.decodeEnum(result.m_type))
-        return false;
+        return std::nullopt;
 
     switch (result.m_type) {
     case Type::Data:
         if (!decoder.decode(result.m_data))
-            return false;
+            return std::nullopt;
 
-        return true;
+        return WTFMove(result);
 
     case Type::EncodedFile:
         if (!decoder.decode(result.m_filename))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(result.m_generatedFilename))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(result.m_shouldGenerateFile))
-            return false;
+            return std::nullopt;
         result.m_ownsGeneratedFile = false;
         if (!decoder.decode(result.m_fileStart))
-            return false;
+            return std::nullopt;
         if (!decoder.decode(result.m_fileLength))
-            return false;
+            return std::nullopt;
 
         if (result.m_fileLength != BlobDataItem::toEndOfFile && result.m_fileLength < result.m_fileStart)
-            return false;
+            return std::nullopt;
 
         if (!decoder.decode(result.m_expectedFileModificationTime))
-            return false;
+            return std::nullopt;
 
-        return true;
+        return WTFMove(result);
 
     case Type::EncodedBlob: {
         String blobURLString;
         if (!decoder.decode(blobURLString))
-            return false;
+            return std::nullopt;
 
         result.m_url = URL(URL(), blobURLString);
 
-        return true;
+        return WTFMove(result);
     }
     }
 
-    return false;
+    return std::nullopt;
 }
 
 class FormData : public RefCounted<FormData> {
@@ -200,8 +198,9 @@ public:
     WEBCORE_EXPORT static Ref<FormData> create(const void*, size_t);
     static Ref<FormData> create(const CString&);
     static Ref<FormData> create(const Vector<char>&);
-    static Ref<FormData> create(const FormDataList&, const TextEncoding&, EncodingType = FormURLEncoded);
-    static Ref<FormData> createMultiPart(const FormDataList&, const TextEncoding&, Document*);
+    static Ref<FormData> create(const Vector<uint8_t>&);
+    static Ref<FormData> create(const DOMFormData&, EncodingType = FormURLEncoded);
+    static Ref<FormData> createMultiPart(const DOMFormData&, Document*);
     WEBCORE_EXPORT ~FormData();
 
     // FIXME: Both these functions perform a deep copy of m_elements, but differ in handling of other data members.
@@ -220,7 +219,7 @@ public:
     WEBCORE_EXPORT void appendBlob(const URL& blobURL);
     char* expandDataStore(size_t);
 
-    void flatten(Vector<char>&) const; // omits files
+    Vector<char> flatten() const; // omits files
     String flattenToString() const; // omits files
 
     // Resolve all blob references so we only have file and data.
@@ -230,6 +229,8 @@ public:
     bool isEmpty() const { return m_elements.isEmpty(); }
     const Vector<FormDataElement>& elements() const { return m_elements; }
     const Vector<char>& boundary() const { return m_boundary; }
+
+    RefPtr<SharedBuffer> asSharedBuffer() const;
 
     void generateFiles(Document*);
     void removeGeneratedFilesIfNeeded();
@@ -254,11 +255,18 @@ public:
         return FormURLEncoded;
     }
 
+    uint64_t lengthInBytes() const;
+
+    WEBCORE_EXPORT URL asBlobURL() const;
+
 private:
     FormData();
     FormData(const FormData&);
 
-    void appendKeyValuePairItems(const FormDataList&, const TextEncoding&, bool isMultiPartForm, Document*, EncodingType = FormURLEncoded);
+    void appendMultiPartFileValue(const File&, Vector<char>& header, TextEncoding&, Document*);
+    void appendMultiPartStringValue(const String&, Vector<char>& header, TextEncoding&);
+    void appendMultiPartKeyValuePairItems(const DOMFormData&, Document*);
+    void appendNonMultiPartKeyValuePairItems(const DOMFormData&, EncodingType);
 
     bool hasGeneratedFiles() const;
     bool hasOwnedGeneratedFiles() const;
@@ -269,6 +277,7 @@ private:
     bool m_alwaysStream { false };
     Vector<char> m_boundary;
     bool m_containsPasswordData { false };
+    mutable std::optional<uint64_t> m_lengthInBytes;
 };
 
 inline bool operator==(const FormData& a, const FormData& b)
@@ -288,6 +297,7 @@ void FormData::encode(Encoder& encoder) const
     encoder << m_boundary;
     encoder << m_elements;
     encoder << m_identifier;
+    // FIXME: Does not encode m_containsPasswordData. Why is that OK?
 }
 
 template<typename Decoder>
@@ -312,4 +322,3 @@ RefPtr<FormData> FormData::decode(Decoder& decoder)
 
 } // namespace WebCore
 
-#endif

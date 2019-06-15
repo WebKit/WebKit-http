@@ -42,16 +42,14 @@
 #import "WebSecurityOriginPrivate.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebViewInternal.h"
+#import <JavaScriptCore/InspectorAgentBase.h>
+#import <WebCore/Frame.h>
 #import <WebCore/InspectorController.h>
 #import <WebCore/InspectorFrontendClient.h>
-#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/ScriptController.h>
 #import <WebKitLegacy/DOMExtensions.h>
-#import <WebKitSystemInterface.h>
 #import <algorithm>
-#import <bindings/ScriptValue.h>
-#import <inspector/InspectorAgentBase.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/Base64.h>
 

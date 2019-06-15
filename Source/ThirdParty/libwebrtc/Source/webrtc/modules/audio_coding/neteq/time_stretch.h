@@ -8,15 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_TIME_STRETCH_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_TIME_STRETCH_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_TIME_STRETCH_H_
+#define MODULES_AUDIO_CODING_NETEQ_TIME_STRETCH_H_
 
 #include <assert.h>
 #include <string.h>  // memset, size_t
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/audio_coding/neteq/audio_multi_vector.h"
-#include "webrtc/typedefs.h"
+#include "modules/audio_coding/neteq/audio_multi_vector.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -35,7 +34,8 @@ class TimeStretch {
     kError = -1
   };
 
-  TimeStretch(int sample_rate_hz, size_t num_channels,
+  TimeStretch(int sample_rate_hz,
+              size_t num_channels,
               const BackgroundNoise& background_noise)
       : sample_rate_hz_(sample_rate_hz),
         fs_mult_(sample_rate_hz / 8000),
@@ -43,10 +43,8 @@ class TimeStretch {
         master_channel_(0),  // First channel is master.
         background_noise_(background_noise),
         max_input_value_(0) {
-    assert(sample_rate_hz_ == 8000 ||
-           sample_rate_hz_ == 16000 ||
-           sample_rate_hz_ == 32000 ||
-           sample_rate_hz_ == 48000);
+    assert(sample_rate_hz_ == 8000 || sample_rate_hz_ == 16000 ||
+           sample_rate_hz_ == 32000 || sample_rate_hz_ == 48000);
     assert(num_channels_ > 0);
     assert(master_channel_ < num_channels_);
     memset(auto_correlation_, 0, sizeof(auto_correlation_));
@@ -106,11 +104,13 @@ class TimeStretch {
   void AutoCorrelation();
 
   // Performs a simple voice-activity detection based on the input parameters.
-  bool SpeechDetection(int32_t vec1_energy, int32_t vec2_energy,
-                       size_t peak_index, int scaling) const;
+  bool SpeechDetection(int32_t vec1_energy,
+                       int32_t vec2_energy,
+                       size_t peak_index,
+                       int scaling) const;
 
   RTC_DISALLOW_COPY_AND_ASSIGN(TimeStretch);
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_TIME_STRETCH_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_TIME_STRETCH_H_

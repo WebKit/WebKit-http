@@ -26,22 +26,18 @@
 #import "config.h"
 #import "WebMemorySampler.h"
 
-#if ENABLE(MEMORY_SAMPLER)  
+#if ENABLE(MEMORY_SAMPLER)
 
+#import <JavaScriptCore/JSLock.h>
 #import <JavaScriptCore/MemoryStatistics.h>
 #import <JavaScriptCore/VM.h>
+#import <WebCore/CommonVM.h>
 #import <mach/mach.h>
-#import <mach/task.h>
 #import <mach/mach_types.h>
+#import <mach/task.h>
 #import <malloc/malloc.h>
 #import <notify.h>
-#import <runtime/JSLock.h>
-#import <WebCore/CommonVM.h>
-#import <wtf/CurrentTime.h>
-
-using namespace WebCore;
-using namespace JSC;
-using namespace WTF;
+#import <wtf/WallTime.h>
 
 namespace WebKit {
     
@@ -111,19 +107,19 @@ WebMemoryStatistics WebMemorySampler::sampleWebKit() const
     
     WebMemoryStatistics webKitMemoryStats;
     
-    FastMallocStatistics fastMallocStatistics = WTF::fastMallocStatistics();
+    auto fastMallocStatistics = WTF::fastMallocStatistics();
     size_t fastMallocBytesInUse = fastMallocStatistics.committedVMBytes - fastMallocStatistics.freeListBytes;
     size_t fastMallocBytesCommitted = fastMallocStatistics.committedVMBytes;
     totalBytesInUse += fastMallocBytesInUse;
     totalBytesCommitted += fastMallocBytesCommitted;
     
-    JSLockHolder lock(commonVM());
-    size_t jscHeapBytesInUse = commonVM().heap.size();
-    size_t jscHeapBytesCommitted = commonVM().heap.capacity();
+    JSC::JSLockHolder lock(WebCore::commonVM());
+    size_t jscHeapBytesInUse = WebCore::commonVM().heap.size();
+    size_t jscHeapBytesCommitted = WebCore::commonVM().heap.capacity();
     totalBytesInUse += jscHeapBytesInUse;
     totalBytesCommitted += jscHeapBytesCommitted;
     
-    GlobalMemoryStatistics globalMemoryStats = globalMemoryStatistics();
+    JSC::GlobalMemoryStatistics globalMemoryStats = JSC::globalMemoryStatistics();
     totalBytesInUse += globalMemoryStats.stackBytes + globalMemoryStats.JITBytes;
     totalBytesCommitted += globalMemoryStats.stackBytes + globalMemoryStats.JITBytes;
     
@@ -140,10 +136,10 @@ WebMemoryStatistics WebMemorySampler::sampleWebKit() const
     
     size_t residentSize = sampleProcessCommittedBytes();
 
-    double now = currentTime();
+    WallTime now = WallTime::now();
         
     webKitMemoryStats.keys.append(String("Timestamp"));
-    webKitMemoryStats.values.append(now);
+    webKitMemoryStats.values.append(now.secondsSinceEpoch().seconds());
     webKitMemoryStats.keys.append(String("Total Bytes of Memory In Use"));
     webKitMemoryStats.values.append(totalBytesInUse);
     webKitMemoryStats.keys.append(String("Fast Malloc Zone Bytes"));

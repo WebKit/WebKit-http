@@ -34,6 +34,7 @@
 #import "WKAPICast.h"
 #import "WKView.h"
 #import "WKViewInternal.h"
+#import "WKWebViewInternal.h"
 #import "WebPageProxy.h"
 
 // FIXME: Make it possible to leave a snapshot of the content presented in the WKView while the thumbnail is live.
@@ -42,12 +43,10 @@
 // FIXME: We should re-use existing tiles for unparented views, if we have them (we need to know if they've been purged; if so, repaint at scaled-down size).
 // FIXME: We should switch to the low-resolution scale if a view we have high-resolution tiles for repaints.
 
-using namespace WebCore;
-using namespace WebKit;
-
 @implementation _WKThumbnailView {
     RetainPtr<WKView> _wkView;
-    WebPageProxy* _webPageProxy;
+    RetainPtr<WKWebView> _wkWebView;
+    WebKit::WebPageProxy* _webPageProxy;
 
     BOOL _originalMayStartMediaWhenInWindow;
     BOOL _originalSourceViewIsInWindow;
@@ -55,6 +54,8 @@ using namespace WebKit;
     BOOL _snapshotWasDeferred;
     CGFloat _lastSnapshotScale;
     CGSize _lastSnapshotMaximumSize;
+
+    RetainPtr<NSColor *> _overrideBackgroundColor;
 }
 
 @synthesize snapshotSize=_snapshotSize;
@@ -62,23 +63,55 @@ using namespace WebKit;
 @synthesize exclusivelyUsesSnapshot=_exclusivelyUsesSnapshot;
 @synthesize shouldKeepSnapshotWhenRemovedFromSuperview=_shouldKeepSnapshotWhenRemovedFromSuperview;
 
-- (instancetype)initWithFrame:(NSRect)frame fromWKView:(WKView *)wkView
+- (instancetype)initWithFrame:(NSRect)frame
 {
     if (!(self = [super initWithFrame:frame]))
         return nil;
 
     self.wantsLayer = YES;
-    self.layer.backgroundColor = [NSColor whiteColor].CGColor;
-
-    _wkView = wkView;
-    _webPageProxy = toImpl([_wkView pageRef]);
     _scale = 1;
     _lastSnapshotScale = NAN;
+    
+    return self;
+}
 
+- (instancetype)initWithFrame:(NSRect)frame fromWKView:(WKView *)wkView
+{
+    if (!(self = [self initWithFrame:frame]))
+        return nil;
+
+    _wkView = wkView;
+    _webPageProxy = WebKit::toImpl([_wkView pageRef]);
     _originalMayStartMediaWhenInWindow = _webPageProxy->mayStartMediaWhenInWindow();
     _originalSourceViewIsInWindow = !![_wkView window];
 
     return self;
+}
+
+- (instancetype)initWithFrame:(NSRect)frame fromWKWebView:(WKWebView *)webView
+{
+    if (!(self = [self initWithFrame:frame]))
+        return nil;
+    
+    _wkWebView = webView;
+    _webPageProxy = [_wkWebView _page];
+    _originalMayStartMediaWhenInWindow = _webPageProxy->mayStartMediaWhenInWindow();
+    _originalSourceViewIsInWindow = !![_wkWebView window];
+    
+    return self;
+}
+
+- (BOOL)wantsUpdateLayer
+{
+    return YES;
+}
+
+- (void)updateLayer
+{
+    [super updateLayer];
+
+    NSColor *backgroundColor = self.overrideBackgroundColor ?: [NSColor quaternaryLabelColor];
+    self.layer.backgroundColor = backgroundColor.CGColor;
 }
 
 - (void)requestSnapshot
@@ -91,9 +124,9 @@ using namespace WebKit;
     _waitingForSnapshot = YES;
 
     RetainPtr<_WKThumbnailView> thumbnailView = self;
-    IntRect snapshotRect(IntPoint(), _webPageProxy->viewSize() - IntSize(0, _webPageProxy->topContentInset()));
-    SnapshotOptions options = SnapshotOptionsInViewCoordinates;
-    IntSize bitmapSize = snapshotRect.size();
+    WebCore::IntRect snapshotRect(WebCore::IntPoint(), _webPageProxy->viewSize() - WebCore::IntSize(0, _webPageProxy->topContentInset()));
+    WebKit::SnapshotOptions options = WebKit::SnapshotOptionsInViewCoordinates | WebKit::SnapshotOptionsUseScreenColorSpace;
+    WebCore::IntSize bitmapSize = snapshotRect.size();
     bitmapSize.scale(_scale * _webPageProxy->deviceScaleFactor());
 
     if (!CGSizeEqualToSize(_maximumSnapshotSize, CGSizeZero)) {
@@ -102,23 +135,43 @@ using namespace WebKit;
             sizeConstraintScale = CGFloatMin(sizeConstraintScale, _maximumSnapshotSize.width / bitmapSize.width());
         if (_maximumSnapshotSize.height)
             sizeConstraintScale = CGFloatMin(sizeConstraintScale, _maximumSnapshotSize.height / bitmapSize.height());
-        bitmapSize = IntSize(CGCeiling(bitmapSize.width() * sizeConstraintScale), CGCeiling(bitmapSize.height() * sizeConstraintScale));
+        bitmapSize = WebCore::IntSize(CGCeiling(bitmapSize.width() * sizeConstraintScale), CGCeiling(bitmapSize.height() * sizeConstraintScale));
     }
 
     _lastSnapshotScale = _scale;
     _lastSnapshotMaximumSize = _maximumSnapshotSize;
-    _webPageProxy->takeSnapshot(snapshotRect, bitmapSize, options, [thumbnailView](const ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
-        RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(imageHandle, SharedMemory::Protection::ReadOnly);
+    _webPageProxy->takeSnapshot(snapshotRect, bitmapSize, options, [thumbnailView](const WebKit::ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
+        auto bitmap = WebKit::ShareableBitmap::create(imageHandle, WebKit::SharedMemory::Protection::ReadOnly);
         RetainPtr<CGImageRef> cgImage = bitmap ? bitmap->makeCGImage() : nullptr;
         [thumbnailView _didTakeSnapshot:cgImage.get()];
     });
 }
 
+- (void)setOverrideBackgroundColor:(NSColor *)overrideBackgroundColor
+{
+    if ([_overrideBackgroundColor isEqual:overrideBackgroundColor])
+        return;
+
+    _overrideBackgroundColor = overrideBackgroundColor;
+    [self setNeedsDisplay:YES];
+}
+
+- (NSColor *)overrideBackgroundColor
+{
+    return _overrideBackgroundColor.get();
+}
+
 - (void)_viewWasUnparented
 {
     if (!_exclusivelyUsesSnapshot) {
-        [_wkView _setThumbnailView:nil];
-        [_wkView _setIgnoresAllEvents:NO];
+        if (_wkView) {
+            [_wkView _setThumbnailView:nil];
+            [_wkView _setIgnoresAllEvents:NO];
+        } else {
+            ASSERT(_wkWebView);
+            [_wkWebView _setThumbnailView:nil];
+            [_wkWebView _setIgnoresAllEvents:NO];
+        }
         _webPageProxy->setMayStartMediaWhenInWindow(_originalMayStartMediaWhenInWindow);
     }
 
@@ -131,7 +184,9 @@ using namespace WebKit;
 
 - (void)_viewWasParented
 {
-    if ([_wkView _thumbnailView])
+    if (_wkView && [_wkView _thumbnailView])
+        return;
+    if (_wkWebView && [_wkWebView _thumbnailView])
         return;
 
     if (!_exclusivelyUsesSnapshot && !_originalSourceViewIsInWindow)
@@ -140,8 +195,14 @@ using namespace WebKit;
     [self _requestSnapshotIfNeeded];
 
     if (!_exclusivelyUsesSnapshot) {
-        [_wkView _setThumbnailView:self];
-        [_wkView _setIgnoresAllEvents:YES];
+        if (_wkView) {
+            [_wkView _setThumbnailView:self];
+            [_wkView _setIgnoresAllEvents:YES];
+        } else {
+            ASSERT(_wkWebView);
+            [_wkWebView _setThumbnailView:self];
+            [_wkWebView _setIgnoresAllEvents:YES];
+        }
     }
 }
 
@@ -161,7 +222,7 @@ using namespace WebKit;
     _waitingForSnapshot = NO;
     self.layer.sublayers = @[];
     self.layer.contentsGravity = kCAGravityResizeAspectFill;
-    self.layer.contents = (id)image;
+    self.layer.contents = (__bridge id)image;
 
     // If we got a scale change while snapshotting, we'll take another snapshot once the first one returns.
     if (_snapshotWasDeferred) {

@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.slice
 description: >
   Perform regular set if target's uses a different element type
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
@@ -27,7 +27,7 @@ info: >
   ...
   16. Return A
 includes: [testTypedArray.js, compareArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 var arr = [42, 43, 44];

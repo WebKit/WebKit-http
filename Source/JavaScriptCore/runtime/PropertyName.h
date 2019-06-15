@@ -57,6 +57,11 @@ public:
         return m_impl && m_impl->isSymbol();
     }
 
+    bool isPrivateName() const
+    {
+        return isSymbol() && static_cast<const SymbolImpl*>(m_impl)->isPrivate();
+    }
+
     UniquedStringImpl* uid() const
     {
         return m_impl;
@@ -78,6 +83,7 @@ public:
 private:
     UniquedStringImpl* m_impl;
 };
+static_assert(sizeof(PropertyName) == sizeof(UniquedStringImpl*), "UniquedStringImpl* and PropertyName should be compatible to invoke easily from JIT code.");
 
 inline bool operator==(PropertyName a, const Identifier& b)
 {

@@ -45,6 +45,7 @@
 #include "RTCPeerConnectionState.h"
 #include "RTCRtpTransceiver.h"
 #include "RTCSignalingState.h"
+#include <wtf/LoggerHelper.h>
 
 namespace WebCore {
 
@@ -63,7 +64,14 @@ struct RTCRtpTransceiverInit {
     RTCRtpTransceiverDirection direction;
 };
 
-class RTCPeerConnection final : public RefCounted<RTCPeerConnection>, public RTCRtpSender::Backend, public EventTargetWithInlineData, public ActiveDOMObject {
+class RTCPeerConnection final
+    : public RefCounted<RTCPeerConnection>
+    , public EventTargetWithInlineData
+    , public ActiveDOMObject
+#if !RELEASE_LOG_DISABLED
+    , private LoggerHelper
+#endif
+{
 public:
     static Ref<RTCPeerConnection> create(ScriptExecutionContext&);
     virtual ~RTCPeerConnection();
@@ -98,6 +106,9 @@ public:
     void close();
 
     bool isClosed() const { return m_connectionState == RTCPeerConnectionState::Closed; }
+    bool isStopped() const { return m_isStopped; }
+
+    void addInternalTransceiver(Ref<RTCRtpTransceiver>&& transceiver) { m_transceiverSet->append(WTFMove(transceiver)); }
 
     // 5.1 RTCPeerConnection extensions
     const Vector<std::reference_wrapper<RTCRtpSender>>& getSenders() const { return m_transceiverSet->senders(); }
@@ -115,9 +126,6 @@ public:
 
     // 8.2 Statistics API
     void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&);
-
-    // Legacy MediaStream-based API, mostly implemented as JS built-ins
-    Vector<RefPtr<MediaStream>> getRemoteStreams() const { return m_backend->getRemoteStreams(); }
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const final { return RTCPeerConnectionEventTargetInterfaceType; }
@@ -137,18 +145,22 @@ public:
 
     void scheduleNegotiationNeededEvent();
 
-    RTCRtpSender::Backend& senderBackend() { return *this; }
     void fireEvent(Event&);
 
     void disableICECandidateFiltering() { m_backend->disableICECandidateFiltering(); }
     void enableICECandidateFiltering() { m_backend->enableICECandidateFiltering(); }
 
-    void enqueueReplaceTrackTask(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&);
-
     void clearController() { m_controller = nullptr; }
 
     // ActiveDOMObject.
     bool hasPendingActivity() const final;
+
+#if !RELEASE_LOG_DISABLED
+    const Logger& logger() const final { return m_logger.get(); }
+    const void* logIdentifier() const final { return m_logIdentifier; }
+    const char* logClassName() const final { return "RTCPeerConnection"; }
+    WTFLogChannel& logChannel() const final;
+#endif
 
 private:
     RTCPeerConnection(ScriptExecutionContext&);
@@ -165,16 +177,12 @@ private:
     // EventTarget implementation.
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
+    void dispatchEvent(Event&) final;
 
     // ActiveDOMObject
     WEBCORE_EXPORT void stop() final;
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
-
-    // FIXME: We might want PeerConnectionBackend to be the Backend
-    // RTCRtpSender::Backend
-    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromiseDeferred<void>&&) final;
-    RTCRtpParameters getParameters(RTCRtpSender&) const final;
 
     void updateConnectionState();
     bool doClose();
@@ -185,6 +193,11 @@ private:
     RTCIceGatheringState m_iceGatheringState { RTCIceGatheringState::New };
     RTCIceConnectionState m_iceConnectionState { RTCIceConnectionState::New };
     RTCPeerConnectionState m_connectionState { RTCPeerConnectionState::New };
+
+#if !RELEASE_LOG_DISABLED
+    Ref<const Logger> m_logger;
+    const void* m_logIdentifier;
+#endif
 
     std::unique_ptr<RtpTransceiverSet> m_transceiverSet { std::unique_ptr<RtpTransceiverSet>(new RtpTransceiverSet()) };
 

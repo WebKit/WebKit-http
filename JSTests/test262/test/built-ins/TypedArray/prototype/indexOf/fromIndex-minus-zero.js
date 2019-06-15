@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.indexof
 description: -0 fromIndex becomes 0
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.indexOf (searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.indexOf is a distinct function that implements the same
@@ -18,6 +18,7 @@ info: >
     a. If n is -0, let k be +0; else let k be n.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

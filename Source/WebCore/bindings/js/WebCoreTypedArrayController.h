@@ -25,8 +25,8 @@
 
 #pragma once
 
-#include <runtime/JSGlobalObject.h>
-#include <runtime/TypedArrayController.h>
+#include <JavaScriptCore/JSGlobalObject.h>
+#include <JavaScriptCore/TypedArrayController.h>
 
 namespace JSC {
 class WeakHandleOwner;
@@ -48,7 +48,7 @@ public:
 private:
     class JSArrayBufferOwner : public JSC::WeakHandleOwner {
     public:
-        bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&) override;
+        bool isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown>, void* context, JSC::SlotVisitor&, const char**) override;
         void finalize(JSC::Handle<JSC::Unknown>, void* context) override;
     };
 

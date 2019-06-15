@@ -27,7 +27,7 @@
 #include "SharedBuffer.h"
 
 #include "WebCoreObjCExtras.h"
-#include <runtime/InitializeThreading.h>
+#include <JavaScriptCore/InitializeThreading.h>
 #include <string.h>
 #include <wtf/MainThread.h>
 
@@ -85,7 +85,12 @@ namespace WebCore {
 
 Ref<SharedBuffer> SharedBuffer::create(NSData *nsData)
 {
-    return adoptRef(*new SharedBuffer((CFDataRef)nsData));
+    return adoptRef(*new SharedBuffer((__bridge CFDataRef)nsData));
+}
+
+void SharedBuffer::append(NSData *nsData)
+{
+    return append((__bridge CFDataRef)nsData);
 }
 
 RetainPtr<NSData> SharedBuffer::createNSData() const

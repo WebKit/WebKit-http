@@ -5,7 +5,7 @@ es6id: 9.5.15
 description: >
     A Proxy exotic object only accepts a constructor call if target is
     constructor.
-info: >
+info: |
     Proxy ( target, handler )
 
     7. If IsCallable(target) is true, then
@@ -24,5 +24,5 @@ var p = new Proxy(eval, {});
 p(); // the Proxy object is callable
 
 assert.throws(TypeError, function() {
-    new p();
+  new p();
 });

@@ -4,7 +4,7 @@
 /*---
 description: Invocation of `exec` method
 es6id: 21.2.5.8
-info: >
+info: |
     [...]
     13. Repeat, while done is false
         a. Let result be RegExpExec(rx, S).
@@ -17,7 +17,7 @@ info: >
     4. ReturnIfAbrupt(exec).
     5. If IsCallable(exec) is true, then
        a. Let result be Call(exec, R, «S»).
-features: [Symbol.match]
+features: [Symbol.replace]
 ---*/
 
 var r = /./;

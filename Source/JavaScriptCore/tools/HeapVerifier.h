@@ -28,6 +28,8 @@
 #include "CellList.h"
 #include "Heap.h"
 #include <wtf/MonotonicTime.h>
+#include <wtf/ScopedLambda.h>
+#include <wtf/UniqueArray.h>
 
 namespace JSC {
 
@@ -64,6 +66,8 @@ public:
 
 private:
     struct GCCycle {
+        WTF_MAKE_STRUCT_FAST_ALLOCATED;
+
         GCCycle()
             : before("Before Marking")
             , after("After Marking")
@@ -96,7 +100,7 @@ private:
 
     CellList* cellListForGathering(Phase);
     bool verifyCellList(Phase, CellList&);
-    static bool validateJSCell(VM* expectedVM, JSCell*, CellProfile*, CellList*, std::function<void()> printHeaderIfNeeded, const char* prefix = "");
+    static bool validateJSCell(VM* expectedVM, JSCell*, CellProfile*, CellList*, const ScopedLambda<void()>& printHeaderIfNeeded, const char* prefix = "");
 
     void printVerificationHeader();
 
@@ -107,7 +111,7 @@ private:
     int m_currentCycle;
     int m_numberOfCycles;
     bool m_didPrintLogs { false };
-    std::unique_ptr<GCCycle[]> m_cycles;
+    UniqueArray<GCCycle> m_cycles;
 };
 
 } // namespace JSC

@@ -27,17 +27,22 @@
 
 #if PLATFORM(IOS)
 
-#import "PageClient.h"
+#import "PageClientImplCocoa.h"
 #import "WebFullScreenManagerProxy.h"
 #import <wtf/RetainPtr.h>
 
 OBJC_CLASS WKContentView;
-OBJC_CLASS WKWebView;
 OBJC_CLASS WKEditorUndoTargetObjC;
 
+namespace WebCore {
+struct PromisedAttachmentInfo;
+}
+
 namespace WebKit {
-    
-class PageClientImpl : public PageClient
+
+enum class UndoOrRedo;
+
+class PageClientImpl : public PageClientImplCocoa
 #if ENABLE(FULLSCREEN_API)
     , public WebFullScreenManagerProxyClient
 #endif
@@ -64,7 +69,7 @@ private:
     void pageClosed() override;
     void preferencesDidChange() override;
     void toolTipChanged(const String&, const String&) override;
-    bool decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, API::SecurityOrigin&, GeolocationPermissionRequestProxy&) override;
+    void decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, API::SecurityOrigin&, Function<void(bool)>&) override;
     void didStartProvisionalLoadForMainFrame() override;
     void didFailProvisionalLoadForMainFrame() override;
     void didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider) override;
@@ -73,17 +78,17 @@ private:
     void setCursor(const WebCore::Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
     void didChangeViewportProperties(const WebCore::ViewportAttributes&) override;
-    void registerEditCommand(Ref<WebEditCommandProxy>&&, WebPageProxy::UndoOrRedo) override;
+    void registerEditCommand(Ref<WebEditCommandProxy>&&, UndoOrRedo) override;
     void clearAllEditCommands() override;
-    bool canUndoRedo(WebPageProxy::UndoOrRedo) override;
-    void executeUndoRedo(WebPageProxy::UndoOrRedo) override;
+    bool canUndoRedo(UndoOrRedo) override;
+    void executeUndoRedo(UndoOrRedo) override;
     void accessibilityWebProcessTokenReceived(const IPC::DataReference&) override;
     bool executeSavedCommandBySelector(const String& selector) override;
-    void setDragImage(const WebCore::IntPoint& clientPosition, Ref<ShareableBitmap>&& dragImage, WebCore::DragSourceAction) override;
     void updateSecureInputState() override;
     void resetSecureInputState() override;
     void notifyInputContextAboutDiscardedComposition() override;
     void makeFirstResponder() override;
+    void assistiveTechnologyMakeFirstResponder() override;
     WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) override;
     WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) override;
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) override;
@@ -95,10 +100,15 @@ private:
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
 #endif
     RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
-#if ENABLE(CONTEXT_MENUS)
-    RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
-#endif
     Ref<WebCore::ValidationBubble> createValidationBubble(const String& message, const WebCore::ValidationBubble::Settings&) final;
+
+#if ENABLE(INPUT_TYPE_COLOR)
+    RefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&, Vector<WebCore::Color>&&) final;
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    RefPtr<WebDataListSuggestionsDropdown> createDataListSuggestionsDropdown(WebPageProxy&) final;
+#endif
 
     void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) override;
     void clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation) override;
@@ -120,23 +130,22 @@ private:
     void didCommitLayerTree(const RemoteLayerTreeTransaction&) override;
     void layerTreeCommitComplete() override;
 
-    void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t transactionID) override;
     void couldNotRestorePageState() override;
     void restorePageState(std::optional<WebCore::FloatPoint>, const WebCore::FloatPoint&, const WebCore::FloatBoxExtent&, double) override;
     void restorePageCenterAndScale(std::optional<WebCore::FloatPoint>, double) override;
 
-    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) override;
+    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) override;
     void stopAssistingNode() override;
     bool isAssistingNode() override;
     void selectionDidChange() override;
     bool interpretKeyEvent(const NativeWebKeyboardEvent&, bool isCharEvent) override;
     void positionInformationDidChange(const InteractionInformationAtPosition&) override;
     void saveImageToLibrary(Ref<WebCore::SharedBuffer>&&) override;
-    bool allowsBlockSelection() override;
-    void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold) override;
-    void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) override;
+    void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect, WebCore::RouteSharingPolicy, const String&) override;
 
     bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, API::OpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
+    bool showShareSheet(const WebCore::ShareDataWithParsedURL&, WTF::CompletionHandler<void(bool)>&&) override;
+    
     void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID) override;
     double minimumZoomScale() const override;
     WebCore::FloatRect documentRect() const override;
@@ -150,14 +159,14 @@ private:
     void enableInspectorNodeSearch() override;
     void disableInspectorNodeSearch() override;
 
-    void overflowScrollViewWillStartPanGesture() override;
-    void overflowScrollViewDidScroll() override;
-    void overflowScrollWillStartScroll() override;
-    void overflowScrollDidEndScroll() override;
+    void scrollingNodeScrollViewWillStartPanGesture() override;
+    void scrollingNodeScrollViewDidScroll() override;
+    void scrollingNodeScrollWillStartScroll() override;
+    void scrollingNodeScrollDidEndScroll() override;
 
     // Auxiliary Client Creation
 #if ENABLE(FULLSCREEN_API)
-    virual WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() override;
+    WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() override;
 #endif
 
 #if ENABLE(FULLSCREEN_API)
@@ -189,6 +198,7 @@ private:
     void didCompleteSyntheticClick() override;
 
     void didChangeBackgroundColor() override;
+    void videoControlsManagerDidChange() override;
 
     void refView() override;
     void derefView() override;
@@ -197,24 +207,22 @@ private:
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
-    void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) override;
-
-    void didChangeAvoidsUnsafeArea(bool avoidsUnsafeArea) override;
-
 #if USE(QUICK_LOOK)
     void requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&&) override;
 #endif
 
 #if ENABLE(DATA_INTERACTION)
-    void didPerformDataInteractionControllerOperation(bool handled) override;
+    void didPerformDragOperation(bool handled) override;
     void didHandleStartDataInteractionRequest(bool started) override;
+    void didHandleAdditionalDragItemsRequest(bool added) override;
     void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) override;
     void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) override;
     void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
 
+    void didFinishProcessingAllPendingMouseEvents() final { }
+
     WKContentView *m_contentView;
-    WKWebView *m_webView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
 };
 } // namespace WebKit

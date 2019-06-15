@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2014 Yusuke Suzuki <utatane.tea@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,6 @@
 
 #include "CSSParser.h"
 #include "ElementDescendantIterator.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "SelectorChecker.h"
 #include "StaticNodeList.h"
@@ -474,13 +473,12 @@ static bool isCompiledSelector(SelectorCompilationStatus compilationStatus)
     return compilationStatus == SelectorCompilationStatus::SimpleSelectorChecker || compilationStatus == SelectorCompilationStatus::SelectorCheckerWithCheckingContext;
 }
 
-bool SelectorDataList::compileSelector(const SelectorData& selectorData, const ContainerNode& rootNode)
+bool SelectorDataList::compileSelector(const SelectorData& selectorData)
 {
     if (selectorData.compilationStatus != SelectorCompilationStatus::NotCompiled)
         return isCompiledSelector(selectorData.compilationStatus);
 
-    JSC::VM& vm = rootNode.document().scriptExecutionContext()->vm();
-    selectorData.compilationStatus = SelectorCompiler::compileSelector(selectorData.selector, &vm, SelectorCompiler::SelectorContext::QuerySelector, selectorData.compiledSelectorCodeRef);
+    selectorData.compilationStatus = SelectorCompiler::compileSelector(selectorData.selector, SelectorCompiler::SelectorContext::QuerySelector, selectorData.compiledSelectorCodeRef);
     return isCompiledSelector(selectorData.compilationStatus);
 }
 
@@ -500,7 +498,7 @@ ALWAYS_INLINE void SelectorDataList::execute(ContainerNode& rootNode, typename S
             break;
         }
 #if ENABLE(CSS_SELECTOR_JIT)
-        if (compileSelector(selectorData, *searchRootNode))
+        if (compileSelector(selectorData))
             goto CompiledSingleCase;
 #endif // ENABLE(CSS_SELECTOR_JIT)
         goto SingleSelectorCase;
@@ -514,7 +512,7 @@ ALWAYS_INLINE void SelectorDataList::execute(ContainerNode& rootNode, typename S
         const SelectorData& selectorData = m_selectors.first();
         ASSERT(selectorData.compilationStatus == SelectorCompilationStatus::NotCompiled);
         ASSERT(m_matchType == CompilableSingle || m_matchType == CompilableSingleWithRootFilter);
-        if (compileSelector(selectorData, *searchRootNode)) {
+        if (compileSelector(selectorData)) {
             if (m_matchType == CompilableSingle) {
                 m_matchType = CompiledSingle;
                 goto CompiledSingleCase;
@@ -582,7 +580,7 @@ ALWAYS_INLINE void SelectorDataList::execute(ContainerNode& rootNode, typename S
 #if ENABLE(CSS_SELECTOR_JIT)
         {
         for (auto& selector : m_selectors) {
-            if (!compileSelector(selector, *searchRootNode)) {
+            if (!compileSelector(selector)) {
                 m_matchType = MultipleSelectorMatch;
                 goto MultipleSelectorMatch;
             }
@@ -618,19 +616,18 @@ SelectorQuery::SelectorQuery(CSSSelectorList&& selectorList)
 
 ExceptionOr<SelectorQuery&> SelectorQueryCache::add(const String& selectors, Document& document)
 {
-    auto it = m_entries.find(selectors);
-    if (it != m_entries.end())
-        return *it->value;
+    if (auto* entry = m_entries.get(selectors))
+        return *entry;
 
     CSSParser parser(document);
     CSSSelectorList selectorList;
     parser.parseSelector(selectors, selectorList);
 
     if (!selectorList.first() || selectorList.hasInvalidSelector())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (selectorList.selectorsNeedNamespaceResolution())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     const int maximumSelectorQueryCacheSize = 256;
     if (m_entries.size() == maximumSelectorQueryCacheSize)

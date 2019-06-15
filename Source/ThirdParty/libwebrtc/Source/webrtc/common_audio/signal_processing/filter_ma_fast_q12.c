@@ -15,9 +15,9 @@
  *
  */
 
-#include "webrtc/common_audio/signal_processing/include/signal_processing_library.h"
+#include "common_audio/signal_processing/include/signal_processing_library.h"
 
-#include "webrtc/base/sanitizer.h"
+#include "rtc_base/sanitizer.h"
 
 void WebRtcSpl_FilterMAFastQ12(const int16_t* in_ptr,
                                int16_t* out_ptr,
@@ -37,7 +37,10 @@ void WebRtcSpl_FilterMAFastQ12(const int16_t* in_ptr,
 
         for (j = 0; j < B_length; j++)
         {
-          o += B[j] * in_ptr[i - j];
+          // Negative overflow is permitted here, because this is
+          // auto-regressive filters, and the state for each batch run is
+          // stored in the "negative" positions of the output vector.
+          o += B[j] * in_ptr[(ptrdiff_t) i - (ptrdiff_t) j];
         }
 
         // If output is higher than 32768, saturate it. Same with negative side

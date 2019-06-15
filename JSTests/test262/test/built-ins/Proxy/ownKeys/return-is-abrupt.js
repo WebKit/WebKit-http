@@ -1,27 +1,24 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 9.5.12
+esid: sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys
 description: >
     Trap returns abrupt.
-info: >
+info: |
     [[OwnPropertyKeys]] ( )
 
     ...
-    8. Let trapResultArray be Call(trap, handler, «target»).
-    9. Let trapResult be CreateListFromArrayLike(trapResultArray, «‍String, Symbol»).
-        7.3.17 CreateListFromArrayLike (obj [, elementTypes] )
+    7. Let trapResultArray be ? Call(trap, handler, « target »).
+    8. Let trapResult be ? CreateListFromArrayLike(trapResultArray, « String, Symbol »).
 
-        1. ReturnIfAbrupt(obj).
-    ...
 ---*/
 
 var p = new Proxy({}, {
-    ownKeys: function() {
-        throw new Test262Error();
-    }
+  ownKeys: function() {
+    throw new Test262Error();
+  }
 });
 
 assert.throws(Test262Error, function() {
-    Object.keys(p);
+  Object.keys(p);
 });

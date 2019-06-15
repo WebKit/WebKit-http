@@ -5,7 +5,7 @@
 es6id: 19.4.2.1
 description: >
   Symbol.for.name is "for".
-info: >
+info: |
   Symbol.for ( key )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,6 +17,7 @@ info: >
     object, if it exists, has the attributes { [[Writable]]: false,
     [[Enumerable]]: false, [[Configurable]]: true }.
 includes: [propertyHelper.js]
+features: [Symbol]
 ---*/
 
 assert.sameValue(Symbol.for.name, "for");

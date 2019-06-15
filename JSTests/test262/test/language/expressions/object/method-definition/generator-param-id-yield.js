@@ -8,8 +8,12 @@ description: >
 es6id: 14.4
 features: [generators]
 flags: [noStrict]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 ({
   *method(yield) {}

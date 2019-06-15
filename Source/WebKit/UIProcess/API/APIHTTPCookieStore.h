@@ -28,9 +28,9 @@
 #include "APIObject.h"
 #include "HTTPCookieAcceptPolicy.h"
 #include <WebCore/Cookie.h>
+#include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 class URL;
@@ -39,6 +39,7 @@ struct Cookie;
 
 namespace WebKit {
 class WebCookieManagerProxy;
+class WebsiteDataStore;
 }
 
 namespace API {
@@ -77,7 +78,7 @@ private:
     void registerForNewProcessPoolNotifications();
     void unregisterForNewProcessPoolNotifications();
 
-    WebsiteDataStore& m_owningDataStore;
+    Ref<WebKit::WebsiteDataStore> m_owningDataStore;
     HashSet<Observer*> m_observers;
 
     WebKit::WebCookieManagerProxy* m_observedCookieManagerProxy { nullptr };

@@ -42,15 +42,12 @@
 #import "WebProcessPool.h"
 #import "WebViewImpl.h"
 #import "_WKLinkIconParametersInternal.h"
-#import <WebCore/AVKitSPI.h>
+#import <pal/spi/cocoa/AVKitSPI.h>
 #import <wtf/BlockPtr.h>
-
-using namespace WebKit;
-using namespace WebCore;
 
 @interface WKViewData : NSObject {
 @public
-    std::unique_ptr<WebViewImpl> _impl;
+    std::unique_ptr<WebKit::WebViewImpl> _impl;
 }
 
 @end
@@ -64,6 +61,13 @@ using namespace WebCore;
 #if HAVE(TOUCH_BAR)
 @interface WKView () <NSTouchBarProvider>
 @end
+#endif
+
+#if ENABLE(DRAG_SUPPORT)
+
+@interface WKView () <NSFilePromiseProviderDelegate, NSDraggingSource>
+@end
+
 #endif
 
 @implementation WKView
@@ -108,6 +112,16 @@ using namespace WebCore;
 - (BOOL)drawsBackground
 {
     return _data->_impl->drawsBackground();
+}
+
+- (NSColor *)_backgroundColor
+{
+    return _data->_impl->backgroundColor();
+}
+
+- (void)_setBackgroundColor:(NSColor *)backgroundColor
+{
+    _data->_impl->setBackgroundColor(backgroundColor);
 }
 
 - (void)setDrawsTransparentBackground:(BOOL)drawsTransparentBackground
@@ -299,7 +313,7 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (void)changeFont:(id)sender
 {
-    _data->_impl->changeFontFromFontPanel();
+    _data->_impl->changeFontFromFontManager();
 }
 
 /*
@@ -742,7 +756,7 @@ Some other editing-related methods still unimplemented:
 
 - (BOOL)mouseDownCanMoveWindow
 {
-    return WebViewImpl::mouseDownCanMoveWindow();
+    return WebKit::WebViewImpl::mouseDownCanMoveWindow();
 }
 
 - (void)viewDidHide
@@ -867,19 +881,21 @@ Some other editing-related methods still unimplemented:
 
         static SEL delegateSelector()
         {
-            return sel_registerName("_shouldLoadIconWithParameters:completionHandler:");
+            return @selector(_shouldLoadIconWithParameters:completionHandler:);
         }
 
     private:
         typedef void (^IconLoadCompletionHandler)(NSData*);
 
-        void getLoadDecisionForIcon(const WebCore::LinkIcon& linkIcon, WTF::Function<void (WTF::Function<void (API::Data*, WebKit::CallbackBase::Error)>&&)>&& completionHandler) override {
+        void getLoadDecisionForIcon(const WebCore::LinkIcon& linkIcon, WTF::CompletionHandler<void(WTF::Function<void(API::Data*, WebKit::CallbackBase::Error)>&&)>&& completionHandler) override
+        {
             RetainPtr<_WKLinkIconParameters> parameters = adoptNS([[_WKLinkIconParameters alloc] _initWithLinkIcon:linkIcon]);
 
-            [m_wkView performSelector:delegateSelector() withObject:parameters.get() withObject:BlockPtr<void (IconLoadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) {
+            [m_wkView _shouldLoadIconWithParameters:parameters.get() completionHandler:BlockPtr<void(IconLoadCompletionHandler)>::fromCallable([completionHandler = WTFMove(completionHandler)](IconLoadCompletionHandler loadCompletionHandler) mutable {
+                ASSERT(RunLoop::isMain());
                 if (loadCompletionHandler) {
                     completionHandler([loadCompletionHandler = BlockPtr<void (NSData *)>(loadCompletionHandler)](API::Data* data, WebKit::CallbackBase::Error error) {
-                        if (error != CallbackBase::Error::None || !data)
+                        if (error != WebKit::CallbackBase::Error::None || !data)
                             loadCompletionHandler(nil);
                         else
                             loadCompletionHandler(wrapper(*data));
@@ -897,16 +913,16 @@ Some other editing-related methods still unimplemented:
 #endif // WK_API_ENABLED
 }
 
-- (instancetype)initWithFrame:(NSRect)frame processPool:(WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration
+- (instancetype)initWithFrame:(NSRect)frame processPool:(WebKit::WebProcessPool&)processPool configuration:(Ref<API::PageConfiguration>&&)configuration
 {
     self = [super initWithFrame:frame];
     if (!self)
         return nil;
 
-    InitializeWebKit2();
+    WebKit::InitializeWebKit2();
 
     _data = [[WKViewData alloc] init];
-    _data->_impl = std::make_unique<WebViewImpl>(self, nullptr, processPool, WTFMove(configuration));
+    _data->_impl = std::make_unique<WebKit::WebViewImpl>(self, nullptr, processPool, WTFMove(configuration));
 
     [self maybeInstallIconLoadingClient];
 
@@ -987,7 +1003,7 @@ Some other editing-related methods still unimplemented:
 
 - (id)_web_immediateActionAnimationControllerForHitTestResultInternal:(API::HitTestResult*)hitTestResult withType:(uint32_t)type userData:(API::Object*)userData
 {
-    return [self _immediateActionAnimationControllerForHitTestResult:toAPI(hitTestResult) withType:type userData:toAPI(userData)];
+    return [self _immediateActionAnimationControllerForHitTestResult:WebKit::toAPI(hitTestResult) withType:type userData:WebKit::toAPI(userData)];
 }
 
 - (void)_web_prepareForImmediateActionAnimation
@@ -1012,6 +1028,11 @@ Some other editing-related methods still unimplemented:
 
 #if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
 
+- (void)_web_didPerformDragOperation:(BOOL)handled
+{
+    UNUSED_PARAM(handled);
+}
+
 - (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
 {
     return WKDragDestinationActionAny;
@@ -1027,6 +1048,10 @@ Some other editing-related methods still unimplemented:
 - (void)_web_dismissContentRelativeChildWindowsWithAnimation:(BOOL)withAnimation
 {
     [self _dismissContentRelativeChildWindowsWithAnimation:withAnimation];
+}
+
+- (void)_web_editorStateDidChange
+{
 }
 
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event
@@ -1068,6 +1093,30 @@ Some other editing-related methods still unimplemented:
 
 #endif // HAVE(TOUCH_BAR)
 
+#if ENABLE(DRAG_SUPPORT)
+
+- (NSString *)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider fileNameForType:(NSString *)fileType
+{
+    return _data->_impl->fileNameForFilePromiseProvider(filePromiseProvider, fileType);
+}
+
+- (void)filePromiseProvider:(NSFilePromiseProvider *)filePromiseProvider writePromiseToURL:(NSURL *)url completionHandler:(void (^)(NSError *error))completionHandler
+{
+    _data->_impl->writeToURLForFilePromiseProvider(filePromiseProvider, url, completionHandler);
+}
+
+- (NSDragOperation)draggingSession:(NSDraggingSession *)session sourceOperationMaskForDraggingContext:(NSDraggingContext)context
+{
+    return _data->_impl->dragSourceOperationMask(session, context);
+}
+
+- (void)draggingSession:(NSDraggingSession *)session endedAtPoint:(NSPoint)screenPoint operation:(NSDragOperation)operation
+{
+    _data->_impl->draggingSessionEnded(session, screenPoint, operation);
+}
+
+#endif // ENABLE(DRAG_SUPPORT)
+
 @end
 
 @implementation WKView (Private)
@@ -1079,7 +1128,7 @@ Some other editing-related methods still unimplemented:
 
 - (void)saveBackForwardSnapshotForItem:(WKBackForwardListItemRef)item
 {
-    _data->_impl->saveBackForwardSnapshotForItem(*toImpl(item));
+    _data->_impl->saveBackForwardSnapshotForItem(*WebKit::toImpl(item));
 }
 
 - (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef
@@ -1103,19 +1152,19 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 - (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
 {
     auto configuration = API::PageConfiguration::create();
-    configuration->setProcessPool(toImpl(contextRef));
-    configuration->setPageGroup(toImpl(pageGroupRef));
-    configuration->setRelatedPage(toImpl(relatedPage));
+    configuration->setProcessPool(WebKit::toImpl(contextRef));
+    configuration->setPageGroup(WebKit::toImpl(pageGroupRef));
+    configuration->setRelatedPage(WebKit::toImpl(relatedPage));
 #if PLATFORM(MAC)
     configuration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(toUserInterfaceLayoutDirection(self.userInterfaceLayoutDirection))));
 #endif
 
-    return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration)];
+    return [self initWithFrame:frame processPool:*WebKit::toImpl(contextRef) configuration:WTFMove(configuration)];
 }
 
 - (id)initWithFrame:(NSRect)frame configurationRef:(WKPageConfigurationRef)configurationRef
 {
-    Ref<API::PageConfiguration> configuration = toImpl(configurationRef)->copy();
+    Ref<API::PageConfiguration> configuration = WebKit::toImpl(configurationRef)->copy();
     auto& processPool = *configuration->processPool();
 
     return [self initWithFrame:frame processPool:processPool configuration:WTFMove(configuration)];
@@ -1123,7 +1172,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 
 - (BOOL)wantsUpdateLayer
 {
-    return WebViewImpl::wantsUpdateLayer();
+    return WebKit::WebViewImpl::wantsUpdateLayer();
 }
 
 - (void)updateLayer
@@ -1133,17 +1182,17 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 
 - (WKPageRef)pageRef
 {
-    return toAPI(&_data->_impl->page());
+    return WebKit::toAPI(&_data->_impl->page());
 }
 
 - (BOOL)canChangeFrameLayout:(WKFrameRef)frameRef
 {
-    return _data->_impl->canChangeFrameLayout(*toImpl(frameRef));
+    return _data->_impl->canChangeFrameLayout(*WebKit::toImpl(frameRef));
 }
 
 - (NSPrintOperation *)printOperationWithPrintInfo:(NSPrintInfo *)printInfo forFrame:(WKFrameRef)frameRef
 {
-    return _data->_impl->printOperationWithPrintInfo(printInfo, *toImpl(frameRef));
+    return _data->_impl->printOperationWithPrintInfo(printInfo, *WebKit::toImpl(frameRef));
 }
 
 - (void)setFrame:(NSRect)rect andScrollBy:(NSSize)offset
@@ -1168,7 +1217,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 
 + (void)hideWordDefinitionWindow
 {
-    WebViewImpl::hideWordDefinitionWindow();
+    WebKit::WebViewImpl::hideWordDefinitionWindow();
 }
 
 - (NSSize)minimumSizeForAutoLayout
@@ -1241,7 +1290,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUs
 // FIXME: This returns an autoreleased object. Should it really be prefixed 'create'?
 - (NSWindow *)createFullScreenWindow
 {
-    return _data->_impl->createFullScreenWindow();
+    return _data->_impl->fullScreenWindow();
 }
 
 - (void)beginDeferringViewInWindowChanges
@@ -1590,6 +1639,40 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::Scrol
 // This method is for subclasses to override.
 - (void)_removeMediaPlaybackControlsView
 {
+}
+
+- (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock
+{
+    auto updateBlockCopy = makeBlockPtr(updateBlock);
+    _data->_impl->page().callAfterNextPresentationUpdate([updateBlockCopy](WebKit::CallbackBase::Error error) {
+        if (updateBlockCopy)
+            updateBlockCopy();
+    });
+}
+
+- (void)_setShouldSuppressFirstResponderChanges:(BOOL)shouldSuppress
+{
+    _data->_impl->setShouldSuppressFirstResponderChanges(shouldSuppress);
+}
+
+- (void)viewDidChangeEffectiveAppearance
+{
+    // This can be called during [super initWithCoder:] and [super initWithFrame:].
+    // That is before _data or _impl is ready to be used, so check. <rdar://problem/39611236>
+    if (!_data || !_data->_impl)
+        return;
+
+    _data->_impl->effectiveAppearanceDidChange();
+}
+
+- (void)_setUseSystemAppearance:(BOOL)useSystemAppearance
+{
+    _data->_impl->setUseSystemAppearance(useSystemAppearance);
+}
+
+- (BOOL)_useSystemAppearance
+{
+    return _data->_impl->useSystemAppearance();
 }
 
 @end

@@ -20,11 +20,11 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import time
-
 from webkitpy.port.ios_simulator import IOSSimulatorPort
 from webkitpy.port import ios_testcase
+from webkitpy.port import port_testcase
 from webkitpy.common.system.outputcapture import OutputCapture
+from webkitpy.common.version import Version
 from webkitpy.tool.mocktool import MockOptions
 from webkitpy.common.system.executive_mock import MockExecutive2, ScriptError
 
@@ -32,12 +32,12 @@ from webkitpy.common.system.executive_mock import MockExecutive2, ScriptError
 class IOSSimulatorTest(ios_testcase.IOSTest):
     # FIXME: https://bugs.webkit.org/show_bug.cgi?id=173107
     os_name = 'mac'
-    os_version = ''
+    os_version = None
     port_name = 'ios-simulator'
     port_maker = IOSSimulatorPort
 
-    def make_port(self, host=None, port_name=None, options=None, os_name=None, os_version=None, **kwargs):
-        port = super(IOSSimulatorTest, self).make_port(host=host, port_name=port_name, options=options, os_name=os_name, s_version=os_version, kwargs=kwargs)
+    def make_port(self, host=None, port_name=None, options=None, os_name=None, os_version=Version(11), **kwargs):
+        port = super(IOSSimulatorTest, self).make_port(host=host, port_name=port_name, options=options, os_name=os_name, os_version=os_version, kwargs=kwargs)
         port.set_option('child_processes', 1)
         return port
 
@@ -80,10 +80,38 @@ class IOSSimulatorTest(ios_testcase.IOSTest):
 
     def test_xcrun(self):
         def throwing_run_command(args):
-            print args
+            print(args)
             raise ScriptError("MOCK script error")
 
         port = self.make_port()
         port._executive = MockExecutive2(run_command_fn=throwing_run_command)
         expected_stdout = "['xcrun', '--sdk', 'iphonesimulator', '-find', 'test']\n"
         OutputCapture().assert_outputs(self, port.xcrun_find, args=['test', 'falling'], expected_stdout=expected_stdout)
+
+    def test_layout_test_searchpath_with_apple_additions(self):
+        with port_testcase.bind_mock_apple_additions():
+            search_path = self.make_port().default_baseline_search_path()
+        self.assertEqual(search_path[0], '/additional_testing_path/ios-simulator-add-ios11-wk1')
+        self.assertEqual(search_path[1], '/mock-checkout/LayoutTests/platform/ios-simulator-11-wk1')
+        self.assertEqual(search_path[2], '/additional_testing_path/ios-simulator-add-ios11')
+        self.assertEqual(search_path[3], '/mock-checkout/LayoutTests/platform/ios-simulator-11')
+        self.assertEqual(search_path[4], '/additional_testing_path/ios-simulator-wk1')
+        self.assertEqual(search_path[5], '/mock-checkout/LayoutTests/platform/ios-simulator-wk1')
+        self.assertEqual(search_path[6], '/additional_testing_path/ios-simulator')
+        self.assertEqual(search_path[7], '/mock-checkout/LayoutTests/platform/ios-simulator')
+        self.assertEqual(search_path[8], '/additional_testing_path/ios-add-ios11')
+        self.assertEqual(search_path[9], '/mock-checkout/LayoutTests/platform/ios-11')
+        self.assertEqual(search_path[10], '/additional_testing_path/ios-wk1')
+        self.assertEqual(search_path[11], '/mock-checkout/LayoutTests/platform/ios-wk1')
+
+    def test_layout_test_searchpath_without_apple_additions(self):
+        search_path = self.make_port(port_name='ios-simulator-wk2', os_version=Version(12)).default_baseline_search_path()
+
+        self.assertEqual(search_path[0], '/mock-checkout/LayoutTests/platform/ios-simulator-12-wk2')
+        self.assertEqual(search_path[1], '/mock-checkout/LayoutTests/platform/ios-simulator-12')
+        self.assertEqual(search_path[2], '/mock-checkout/LayoutTests/platform/ios-simulator-wk2')
+        self.assertEqual(search_path[3], '/mock-checkout/LayoutTests/platform/ios-simulator')
+        self.assertEqual(search_path[4], '/mock-checkout/LayoutTests/platform/ios-12')
+        self.assertEqual(search_path[5], '/mock-checkout/LayoutTests/platform/ios-wk2')
+        self.assertEqual(search_path[6], '/mock-checkout/LayoutTests/platform/ios')
+        self.assertEqual(search_path[7], '/mock-checkout/LayoutTests/platform/wk2')

@@ -41,10 +41,12 @@ PASS Detached Element.webkitMatchesSelector: Unknown pseudo-class: :example
 PASS Detached Element.webkitMatchesSelector: Unknown pseudo-element: div::example 
 PASS Detached Element.webkitMatchesSelector: Unknown pseudo-element: ::example 
 PASS Detached Element.webkitMatchesSelector: Invalid pseudo-element: :::before 
+PASS Detached Element.webkitMatchesSelector: Invalid pseudo-element: :: before 
 PASS Detached Element.webkitMatchesSelector: Undeclared namespace: ns|div 
 PASS Detached Element.webkitMatchesSelector: Undeclared namespace: :not(ns|div) 
 PASS Detached Element.webkitMatchesSelector: Invalid namespace: ^|div 
 PASS Detached Element.webkitMatchesSelector: Invalid namespace: $|div 
+PASS Detached Element.webkitMatchesSelector: Relative selector: >* 
 PASS In-document Element.webkitMatchesSelector: Empty String:  
 PASS In-document Element.webkitMatchesSelector: Invalid character: [ 
 PASS In-document Element.webkitMatchesSelector: Invalid character: ] 
@@ -72,10 +74,12 @@ PASS In-document Element.webkitMatchesSelector: Unknown pseudo-class: :example
 PASS In-document Element.webkitMatchesSelector: Unknown pseudo-element: div::example 
 PASS In-document Element.webkitMatchesSelector: Unknown pseudo-element: ::example 
 PASS In-document Element.webkitMatchesSelector: Invalid pseudo-element: :::before 
+PASS In-document Element.webkitMatchesSelector: Invalid pseudo-element: :: before 
 PASS In-document Element.webkitMatchesSelector: Undeclared namespace: ns|div 
 PASS In-document Element.webkitMatchesSelector: Undeclared namespace: :not(ns|div) 
 PASS In-document Element.webkitMatchesSelector: Invalid namespace: ^|div 
 PASS In-document Element.webkitMatchesSelector: Invalid namespace: $|div 
+PASS In-document Element.webkitMatchesSelector: Relative selector: >* 
 PASS In-document Element.webkitMatchesSelector: Type selector, matching html element (with no refNodes): html 
 PASS In-document Element.webkitMatchesSelector: Type selector, matching body element (with no refNodes): body 
 PASS In-document Element.webkitMatchesSelector: Universal selector, matching all children of element with specified ID (with no refNodes): #universal>* 
@@ -89,6 +93,7 @@ PASS In-document Element.webkitMatchesSelector: Attribute presence selector, mat
 PASS In-document Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected] 
 PASS In-document Element.webkitMatchesSelector: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected] 
 PASS In-document Element.webkitMatchesSelector: Attribute value selector, matching align attribute with value (with no refNodes): #attr-value [align="center"] 
+FAIL In-document Element.webkitMatchesSelector: Attribute value selector, matching align attribute with value, unclosed bracket (with no refNodes): #attr-value [align="center" The string did not match the expected pattern.
 PASS In-document Element.webkitMatchesSelector: Attribute value selector, matching align attribute with empty value (with no refNodes): #attr-value [align=""] 
 PASS In-document Element.webkitMatchesSelector: Attribute value selector, matching custom data-* attribute with unicode escaped value (with no refNodes): [data-attr-value="\e9"] 
 PASS In-document Element.webkitMatchesSelector: Attribute value selector, matching custom data-* attribute with escaped character (with no refNodes): [data-attr-value_foo="\e9"] 
@@ -192,12 +197,6 @@ PASS In-document Element.webkitMatchesSelector: Descendant combinator, matching 
 PASS In-document Element.webkitMatchesSelector: Descendant combinator, matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1 .descendant-div3 
 PASS In-document Element.webkitMatchesSelector: Descendant combinator, whitespace characters (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element that is a descendant of an element with id (with no refNodes): #descendant>>div 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): body>>#descendant-div1 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): div>>#descendant-div1 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id (with no refNodes): #descendant>>#descendant-div2 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id (with no refNodes): #descendant>>.descendant-div2 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS In-document Element.webkitMatchesSelector: Child combinator, matching element that is a child of an element with id (with no refNodes): #child>div 
 PASS In-document Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element (with no refNodes): div>#child-div1 
 PASS In-document Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element with id (with no refNodes): #child>#child-div1 
@@ -257,6 +256,7 @@ PASS Detached Element.webkitMatchesSelector: Attribute presence selector, matchi
 PASS Detached Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected] 
 PASS Detached Element.webkitMatchesSelector: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected] 
 PASS Detached Element.webkitMatchesSelector: Attribute value selector, matching align attribute with value (with no refNodes): #attr-value [align="center"] 
+FAIL Detached Element.webkitMatchesSelector: Attribute value selector, matching align attribute with value, unclosed bracket (with no refNodes): #attr-value [align="center" The string did not match the expected pattern.
 PASS Detached Element.webkitMatchesSelector: Attribute value selector, matching align attribute with empty value (with no refNodes): #attr-value [align=""] 
 PASS Detached Element.webkitMatchesSelector: Attribute value selector, matching custom data-* attribute with unicode escaped value (with no refNodes): [data-attr-value="\e9"] 
 PASS Detached Element.webkitMatchesSelector: Attribute value selector, matching custom data-* attribute with escaped character (with no refNodes): [data-attr-value_foo="\e9"] 
@@ -355,11 +355,6 @@ PASS Detached Element.webkitMatchesSelector: Descendant combinator, matching ele
 PASS Detached Element.webkitMatchesSelector: Descendant combinator, matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1 .descendant-div3 
 PASS Detached Element.webkitMatchesSelector: Descendant combinator, whitespace characters (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS Detached Element.webkitMatchesSelector: Descendant combinator '>>', matching element that is a descendant of an element with id (with no refNodes): #descendant>>div 
-PASS Detached Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): div>>#descendant-div1 
-PASS Detached Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id (with no refNodes): #descendant>>#descendant-div2 
-PASS Detached Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id (with no refNodes): #descendant>>.descendant-div2 
-PASS Detached Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS Detached Element.webkitMatchesSelector: Child combinator, matching element that is a child of an element with id (with no refNodes): #child>div 
 PASS Detached Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element (with no refNodes): div>#child-div1 
 PASS Detached Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element with id (with no refNodes): #child>#child-div1 
@@ -419,6 +414,7 @@ PASS Fragment Element.webkitMatchesSelector: Attribute presence selector, matchi
 PASS Fragment Element.webkitMatchesSelector: Attribute presence selector, matching option with selected attribute (with no refNodes): #attr-presence-select2 option[selected] 
 PASS Fragment Element.webkitMatchesSelector: Attribute presence selector, matching multiple options with selected attributes (with no refNodes): #attr-presence-select3 option[selected] 
 PASS Fragment Element.webkitMatchesSelector: Attribute value selector, matching align attribute with value (with no refNodes): #attr-value [align="center"] 
+FAIL Fragment Element.webkitMatchesSelector: Attribute value selector, matching align attribute with value, unclosed bracket (with no refNodes): #attr-value [align="center" The string did not match the expected pattern.
 PASS Fragment Element.webkitMatchesSelector: Attribute value selector, matching align attribute with empty value (with no refNodes): #attr-value [align=""] 
 PASS Fragment Element.webkitMatchesSelector: Attribute value selector, matching custom data-* attribute with unicode escaped value (with no refNodes): [data-attr-value="\e9"] 
 PASS Fragment Element.webkitMatchesSelector: Attribute value selector, matching custom data-* attribute with escaped character (with no refNodes): [data-attr-value_foo="\e9"] 
@@ -517,11 +513,6 @@ PASS Fragment Element.webkitMatchesSelector: Descendant combinator, matching ele
 PASS Fragment Element.webkitMatchesSelector: Descendant combinator, matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1 .descendant-div3 
 PASS Fragment Element.webkitMatchesSelector: Descendant combinator, whitespace characters (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS Fragment Element.webkitMatchesSelector: Descendant combinator '>>', matching element that is a descendant of an element with id (with no refNodes): #descendant>>div 
-PASS Fragment Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element (with no refNodes): div>>#descendant-div1 
-PASS Fragment Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id (with no refNodes): #descendant>>#descendant-div2 
-PASS Fragment Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id (with no refNodes): #descendant>>.descendant-div2 
-PASS Fragment Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with class (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS Fragment Element.webkitMatchesSelector: Child combinator, matching element that is a child of an element with id (with no refNodes): #child>div 
 PASS Fragment Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element (with no refNodes): div>#child-div1 
 PASS Fragment Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element with id (with no refNodes): #child>#child-div1 
@@ -570,8 +561,6 @@ PASS Fragment Element.webkitMatchesSelector: Syntax, group of selectors separato
 PASS Fragment Element.webkitMatchesSelector: Syntax, group of selectors separator, whitespace before (with no refNodes): #group em	\r
 ,#group strong 
 PASS Fragment Element.webkitMatchesSelector: Syntax, group of selectors separator, no whitespace (with no refNodes): #group em,#group strong 
-FAIL In-document Element.webkitMatchesSelector: Universal selector, matching all children of the specified reference element (with refNode Element): >* The string did not match the expected pattern.
-FAIL In-document Element.webkitMatchesSelector: Universal selector, matching all grandchildren of the specified reference element (with refNode Element): >*>* The string did not match the expected pattern.
 FAIL In-document Element.webkitMatchesSelector: Universal selector, matching all descendants of the specified reference element (with refNode Element): * assert_false: The element #universal should not match the selector. expected false got true
 PASS In-document Element.webkitMatchesSelector: Attribute presence selector, matching align attribute with value (with refNode Element): .attr-presence-div1[align] 
 PASS In-document Element.webkitMatchesSelector: Attribute presence selector, matching align attribute with empty value (with refNode Element): .attr-presence-div2[align] 
@@ -682,12 +671,6 @@ PASS In-document Element.webkitMatchesSelector: Descendant combinator, matching 
 PASS In-document Element.webkitMatchesSelector: Descendant combinator, matching element with class that is a descendant of an element with class (1) (with no refNodes): .descendant-div1 .descendant-div3 
 PASS In-document Element.webkitMatchesSelector: Descendant combinator, whitespace characters (1) (with no refNodes): #descendant	\r
 #descendant-div2 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element that is a descendant of an element with id (1) (with no refNodes): #descendant>>div 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element (1) (with no refNodes): body>>#descendant-div1 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element (1) (with no refNodes): div>>#descendant-div1 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with id that is a descendant of an element with id (1) (with no refNodes): #descendant>>#descendant-div2 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator '>>', matching element with class that is a descendant of an element with id (1) (with no refNodes): #descendant>>.descendant-div2 
-PASS In-document Element.webkitMatchesSelector: Descendant combinator, '>>', matching element with class that is a descendant of an element with class (1) (with no refNodes): .descendant-div1>>.descendant-div3 
 PASS In-document Element.webkitMatchesSelector: Child combinator, matching element that is a child of an element with id (1) (with no refNodes): #child>div 
 PASS In-document Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element (1) (with no refNodes): div>#child-div1 
 PASS In-document Element.webkitMatchesSelector: Child combinator, matching element with id that is a child of an element with id (1) (with no refNodes): #child>#child-div1 

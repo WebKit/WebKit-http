@@ -8,22 +8,21 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_ACM2_RENT_A_CODEC_H_
-#define WEBRTC_MODULES_AUDIO_CODING_ACM2_RENT_A_CODEC_H_
+#ifndef MODULES_AUDIO_CODING_ACM2_RENT_A_CODEC_H_
+#define MODULES_AUDIO_CODING_ACM2_RENT_A_CODEC_H_
 
 #include <stddef.h>
 #include <map>
 #include <memory>
 
-#include "webrtc/api/audio_codecs/audio_decoder.h"
-#include "webrtc/api/audio_codecs/audio_encoder.h"
-#include "webrtc/base/array_view.h"
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/base/scoped_ref_ptr.h"
-#include "webrtc/modules/audio_coding/include/audio_coding_module_typedefs.h"
-#include "webrtc/modules/audio_coding/neteq/neteq_decoder_enum.h"
-#include "webrtc/typedefs.h"
+#include "absl/types/optional.h"
+#include "api/array_view.h"
+#include "api/audio_codecs/audio_decoder.h"
+#include "api/audio_codecs/audio_encoder.h"
+#include "modules/audio_coding/include/audio_coding_module_typedefs.h"
+#include "modules/audio_coding/neteq/neteq_decoder_enum.h"
+#include "rtc_base/constructormagic.h"
+#include "rtc_base/scoped_ref_ptr.h"
 
 namespace webrtc {
 
@@ -58,10 +57,8 @@ class RentACodec {
 #ifdef WEBRTC_CODEC_ILBC
     kILBC,
 #endif
-#ifdef WEBRTC_CODEC_G722
     kG722,      // Mono
     kG722_2ch,  // Stereo
-#endif
 #ifdef WEBRTC_CODEC_OPUS
     kOpus,  // Mono and stereo
 #endif
@@ -92,10 +89,6 @@ class RentACodec {
 #ifndef WEBRTC_CODEC_ILBC
     kILBC = -1,
 #endif
-#ifndef WEBRTC_CODEC_G722
-    kG722 = -1,      // Mono
-    kG722_2ch = -1,  // Stereo
-#endif
 #ifndef WEBRTC_CODEC_OPUS
     kOpus = -1,  // Mono and stereo
 #endif
@@ -113,28 +106,28 @@ class RentACodec {
     return static_cast<size_t>(CodecId::kNumCodecs);
   }
 
-  static inline rtc::Optional<int> CodecIndexFromId(CodecId codec_id) {
+  static inline absl::optional<int> CodecIndexFromId(CodecId codec_id) {
     const int i = static_cast<int>(codec_id);
     return i >= 0 && i < static_cast<int>(NumberOfCodecs())
-               ? rtc::Optional<int>(i)
-               : rtc::Optional<int>();
+               ? absl::optional<int>(i)
+               : absl::nullopt;
   }
 
-  static inline rtc::Optional<CodecId> CodecIdFromIndex(int codec_index) {
+  static inline absl::optional<CodecId> CodecIdFromIndex(int codec_index) {
     return static_cast<size_t>(codec_index) < NumberOfCodecs()
-               ? rtc::Optional<RentACodec::CodecId>(
+               ? absl::optional<RentACodec::CodecId>(
                      static_cast<RentACodec::CodecId>(codec_index))
-               : rtc::Optional<RentACodec::CodecId>();
+               : absl::nullopt;
   }
 
-  static rtc::Optional<CodecId> CodecIdByParams(const char* payload_name,
-                                                int sampling_freq_hz,
-                                                size_t channels);
-  static rtc::Optional<CodecInst> CodecInstById(CodecId codec_id);
-  static rtc::Optional<CodecId> CodecIdByInst(const CodecInst& codec_inst);
-  static rtc::Optional<CodecInst> CodecInstByParams(const char* payload_name,
-                                                    int sampling_freq_hz,
-                                                    size_t channels);
+  static absl::optional<CodecId> CodecIdByParams(const char* payload_name,
+                                                 int sampling_freq_hz,
+                                                 size_t channels);
+  static absl::optional<CodecInst> CodecInstById(CodecId codec_id);
+  static absl::optional<CodecId> CodecIdByInst(const CodecInst& codec_inst);
+  static absl::optional<CodecInst> CodecInstByParams(const char* payload_name,
+                                                     int sampling_freq_hz,
+                                                     size_t channels);
   static bool IsCodecValid(const CodecInst& codec_inst);
 
   static inline bool IsPayloadTypeValid(int payload_type) {
@@ -143,10 +136,10 @@ class RentACodec {
 
   static rtc::ArrayView<const CodecInst> Database();
 
-  static rtc::Optional<bool> IsSupportedNumChannels(CodecId codec_id,
-                                                    size_t num_channels);
+  static absl::optional<bool> IsSupportedNumChannels(CodecId codec_id,
+                                                     size_t num_channels);
 
-  static rtc::Optional<NetEqDecoder> NetEqDecoderFromCodecId(
+  static absl::optional<NetEqDecoder> NetEqDecoderFromCodecId(
       CodecId codec_id,
       size_t num_channels);
 
@@ -204,4 +197,4 @@ class RentACodec {
 }  // namespace acm2
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_CODING_ACM2_RENT_A_CODEC_H_
+#endif  // MODULES_AUDIO_CODING_ACM2_RENT_A_CODEC_H_

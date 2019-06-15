@@ -28,16 +28,19 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LayoutUnit_h
-#define LayoutUnit_h
+#pragma once
 
-#include "ValueToString.h"
 #include <limits.h>
 #include <limits>
 #include <math.h>
 #include <stdlib.h>
 #include <wtf/MathExtras.h>
 #include <wtf/SaturatedArithmetic.h>
+#include <wtf/text/ValueToString.h>
+
+namespace WTF {
+class TextStream;
+}
 
 namespace WebCore {
 
@@ -775,6 +778,8 @@ inline float& operator/=(float& a, const LayoutUnit& b)
     return a;
 }
 
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const LayoutUnit&);
+
 inline int roundToInt(LayoutUnit value)
 {
     return value.round();
@@ -821,14 +826,15 @@ inline bool isIntegerValue(const LayoutUnit value)
     return value.toInt() == value;
 }
 
-#ifndef NDEBUG
-// This structure is used by PODIntervalTree for debugging.
-template <>
-struct ValueToString<LayoutUnit> {
-    static String string(const LayoutUnit value) { return String::number(value.toFloat()); }
-};
-#endif
-
 } // namespace WebCore
 
-#endif // LayoutUnit_h
+#ifndef NDEBUG
+namespace WTF {
+// This structure is used by PODIntervalTree for debugging.
+template <>
+struct ValueToString<WebCore::LayoutUnit> {
+    static String string(const WebCore::LayoutUnit value) { return String::number(value.toFloat()); }
+};
+
+} // namespace WTF
+#endif

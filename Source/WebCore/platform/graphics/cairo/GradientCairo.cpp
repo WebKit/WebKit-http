@@ -29,86 +29,71 @@
 
 #if USE(CAIRO)
 
+#include "CairoOperations.h"
+#include "CairoUtilities.h"
 #include "GraphicsContext.h"
 #include "PlatformContextCairo.h"
-#include <cairo.h>
 
 namespace WebCore {
 
 void Gradient::platformDestroy()
 {
-    if (m_gradient) {
-        cairo_pattern_destroy(m_gradient);
-        m_gradient = 0;
-    }
 }
 
-cairo_pattern_t* Gradient::platformGradient()
+cairo_pattern_t* Gradient::createPlatformGradient(float globalAlpha)
 {
-    return platformGradient(1);
-}
-
-cairo_pattern_t* Gradient::platformGradient(float globalAlpha)
-{
-    if (m_gradient && m_platformGradientAlpha == globalAlpha)
-        return m_gradient;
-
-    platformDestroy();
-    m_platformGradientAlpha = globalAlpha;
-
-    if (m_radial)
-        m_gradient = cairo_pattern_create_radial(m_p0.x(), m_p0.y(), m_r0, m_p1.x(), m_p1.y(), m_r1);
-    else
-        m_gradient = cairo_pattern_create_linear(m_p0.x(), m_p0.y(), m_p1.x(), m_p1.y());
+    cairo_pattern_t* gradient = WTF::switchOn(m_data,
+        [&] (const LinearData& data) -> cairo_pattern_t* {
+            return cairo_pattern_create_linear(data.point0.x(), data.point0.y(), data.point1.x(), data.point1.y());
+        },
+        [&] (const RadialData& data) -> cairo_pattern_t* {
+            return cairo_pattern_create_radial(data.point0.x(), data.point0.y(), data.startRadius, data.point1.x(), data.point1.y(), data.endRadius);
+        },
+        [&] (const ConicData&)  -> cairo_pattern_t* {
+            // FIXME: implement conic gradient rendering.
+            return nullptr;
+        }
+    );
 
     for (const auto& stop : m_stops) {
         if (stop.color.isExtended()) {
-            cairo_pattern_add_color_stop_rgba(m_gradient, stop.offset, stop.color.asExtended().red(), stop.color.asExtended().green(), stop.color.asExtended().blue(),
+            cairo_pattern_add_color_stop_rgba(gradient, stop.offset, stop.color.asExtended().red(), stop.color.asExtended().green(), stop.color.asExtended().blue(),
                 stop.color.asExtended().alpha() * globalAlpha);
         } else {
             float r, g, b, a;
             stop.color.getRGBA(r, g, b, a);
-            cairo_pattern_add_color_stop_rgba(m_gradient, stop.offset, r, g, b, a * globalAlpha);
+            cairo_pattern_add_color_stop_rgba(gradient, stop.offset, r, g, b, a * globalAlpha);
         }
     }
 
     switch (m_spreadMethod) {
     case SpreadMethodPad:
-        cairo_pattern_set_extend(m_gradient, CAIRO_EXTEND_PAD);
+        cairo_pattern_set_extend(gradient, CAIRO_EXTEND_PAD);
         break;
     case SpreadMethodReflect:
-        cairo_pattern_set_extend(m_gradient, CAIRO_EXTEND_REFLECT);
+        cairo_pattern_set_extend(gradient, CAIRO_EXTEND_REFLECT);
         break;
     case SpreadMethodRepeat:
-        cairo_pattern_set_extend(m_gradient, CAIRO_EXTEND_REPEAT);
+        cairo_pattern_set_extend(gradient, CAIRO_EXTEND_REPEAT);
         break;
     }
 
-    cairo_matrix_t matrix = m_gradientSpaceTransformation;
+    cairo_matrix_t matrix = toCairoMatrix(m_gradientSpaceTransformation);
     cairo_matrix_invert(&matrix);
-    cairo_pattern_set_matrix(m_gradient, &matrix);
+    cairo_pattern_set_matrix(gradient, &matrix);
 
-    return m_gradient;
+    return gradient;
 }
 
-void Gradient::setPlatformGradientSpaceTransform(const AffineTransform& gradientSpaceTransformation)
+void Gradient::fill(GraphicsContext& context, const FloatRect& rect)
 {
-    if (m_gradient) {
-        cairo_matrix_t matrix = gradientSpaceTransformation;
-        cairo_matrix_invert(&matrix);
-        cairo_pattern_set_matrix(m_gradient, &matrix);
-    }
-}
+    ASSERT(context.hasPlatformContext());
+    auto& platformContext = *context.platformContext();
 
-void Gradient::fill(GraphicsContext* context, const FloatRect& rect)
-{
-    cairo_t* cr = context->platformContext()->cr();
-
-    context->save();
-    cairo_set_source(cr, platformGradient());
-    cairo_rectangle(cr, rect.x(), rect.y(), rect.width(), rect.height());
-    cairo_fill(cr);
-    context->restore();
+    RefPtr<cairo_pattern_t> platformGradient = adoptRef(createPlatformGradient(1.0));
+    Cairo::save(platformContext);
+    Cairo::fillRect(platformContext, rect, platformGradient.get());
+    Cairo::restore(platformContext);
 }
 
 } // namespace WebCore

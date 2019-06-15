@@ -3,10 +3,11 @@
 
 /*---
 info: The Date.prototype has the property "setMilliseconds"
+esid: sec-properties-of-the-date-prototype-object
 es5id: 15.9.5_A28_T1
 description: The Date.prototype has the property "setMilliseconds"
 ---*/
 
-if(Date.prototype.hasOwnProperty("setMilliseconds") !== true){
+if (Date.prototype.hasOwnProperty("setMilliseconds") !== true) {
   $ERROR('#1: The Date.prototype has the property "setMilliseconds"');
 }

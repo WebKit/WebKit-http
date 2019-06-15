@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.indexof
 es5id: 15.4.4.14-3-21
 description: >
     Array.prototype.indexOf - 'length' is an object that has an own
@@ -9,23 +10,23 @@ description: >
     returns a string
 ---*/
 
-        var toStringAccessed = false;
-        var valueOfAccessed = false;
+var toStringAccessed = false;
+var valueOfAccessed = false;
 
-        var obj = {
-            1: true,
-            length: {
-                toString: function () {
-                    toStringAccessed = true;
-                    return '2';
-                },
+var obj = {
+  1: true,
+  length: {
+    toString: function() {
+      toStringAccessed = true;
+      return '2';
+    },
 
-                valueOf: function () {
-                    valueOfAccessed = true;
-                    return {};
-                }
-            }
-        };
+    valueOf: function() {
+      valueOfAccessed = true;
+      return {};
+    }
+  }
+};
 
 assert.sameValue(Array.prototype.indexOf.call(obj, true), 1, 'Array.prototype.indexOf.call(obj, true)');
 assert(toStringAccessed, 'toStringAccessed !== true');

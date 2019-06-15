@@ -26,6 +26,7 @@
 #import "config.h"
 #import "TestController.h"
 
+#import "GeneratedTouchesDebugWindow.h"
 #import "HIDEventGenerator.h"
 #import "IOSLayoutTestCommunication.h"
 #import "PlatformWebView.h"
@@ -44,6 +45,18 @@
 
 namespace WTR {
 
+static bool isDoneWaitingForKeyboardToDismiss = true;
+
+static void handleKeyboardWillHideNotification(CFNotificationCenterRef, void*, CFStringRef, const void*, CFDictionaryRef)
+{
+    isDoneWaitingForKeyboardToDismiss = false;
+}
+
+static void handleKeyboardDidHideNotification(CFNotificationCenterRef, void*, CFStringRef, const void*, CFDictionaryRef)
+{
+    isDoneWaitingForKeyboardToDismiss = true;
+}
+
 void TestController::notifyDone()
 {
 }
@@ -51,24 +64,34 @@ void TestController::notifyDone()
 void TestController::platformInitialize()
 {
     setUpIOSLayoutTestCommunication();
+    cocoaPlatformInitialize();
+
     [UIApplication sharedApplication].idleTimerDisabled = YES;
     [[UIScreen mainScreen] _setScale:2.0];
+
+    auto center = CFNotificationCenterGetLocalCenter();
+    CFNotificationCenterAddObserver(center, this, handleKeyboardWillHideNotification, (CFStringRef)UIKeyboardWillHideNotification, nullptr, CFNotificationSuspensionBehaviorDeliverImmediately);
+    CFNotificationCenterAddObserver(center, this, handleKeyboardDidHideNotification, (CFStringRef)UIKeyboardDidHideNotification, nullptr, CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
 void TestController::platformDestroy()
 {
     tearDownIOSLayoutTestCommunication();
+
+    auto center = CFNotificationCenterGetLocalCenter();
+    CFNotificationCenterRemoveObserver(center, this, (CFStringRef)UIKeyboardWillHideNotification, nullptr);
+    CFNotificationCenterRemoveObserver(center, this, (CFStringRef)UIKeyboardDidHideNotification, nullptr);
 }
 
 void TestController::initializeInjectedBundlePath()
 {
     NSString *nsBundlePath = [[NSBundle mainBundle].builtInPlugInsPath stringByAppendingPathComponent:@"WebKitTestRunnerInjectedBundle.bundle"];
-    m_injectedBundlePath.adopt(WKStringCreateWithCFString((CFStringRef)nsBundlePath));
+    m_injectedBundlePath.adopt(WKStringCreateWithCFString((__bridge CFStringRef)nsBundlePath));
 }
 
 void TestController::initializeTestPluginDirectory()
 {
-    m_testPluginDirectory.adopt(WKStringCreateWithCFString((CFStringRef)[[NSBundle mainBundle] bundlePath]));
+    m_testPluginDirectory.adopt(WKStringCreateWithCFString((__bridge CFStringRef)[[NSBundle mainBundle] bundlePath]));
 }
 
 void TestController::platformResetPreferencesToConsistentValues()
@@ -95,7 +118,12 @@ void TestController::platformResetStateToConsistentValues()
         [scrollView _removeAllAnimations:YES];
         [scrollView setZoomScale:1 animated:NO];
         [scrollView setContentOffset:CGPointZero];
+
+        if (webView.interactingWithFormControl)
+            [webView resignFirstResponder];
     }
+
+    runUntil(isDoneWaitingForKeyboardToDismiss, m_currentInvocation->shortTimeout());
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)
@@ -116,17 +144,17 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
             doneResizing = true;
         }];
 
-        platformRunUntil(doneResizing, 10);
-        if (!doneResizing)
-            WTFLogAlways("Timed out waiting for view resize to complete in platformConfigureViewForTest()");
+        platformRunUntil(doneResizing, noTimeout);
     }
     
     // We also pass data to InjectedBundle::beginTesting() to have it call
     // WKBundlePageSetUseTestingViewportConfiguration(false).
 }
 
-void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions&, const std::string&) const
+void TestController::updatePlatformSpecificTestOptionsForTest(TestOptions& options, const std::string&) const
 {
+    options.shouldShowTouches = shouldShowTouches();
+    [[GeneratedTouchesDebugWindow sharedGeneratedTouchesDebugWindow] setShouldShowTouches:options.shouldShowTouches];
 }
 
 void TestController::platformInitializeContext()

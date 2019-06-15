@@ -27,7 +27,14 @@
 #include "config.h"
 #include "DNSResolveQueue.h"
 
-#include <wtf/CurrentTime.h>
+#if USE(SOUP)
+#include "DNSResolveQueueSoup.h"
+#elif USE(CURL)
+#include "DNSResolveQueueCurl.h"
+#elif USE(CF)
+#include "DNSResolveQueueCFNet.h"
+#endif
+
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -52,7 +59,7 @@ static const Seconds resolvingRetryDelay { 100_ms };
 
 DNSResolveQueue& DNSResolveQueue::singleton()
 {
-    static NeverDestroyed<DNSResolveQueue> queue;
+    static NeverDestroyed<DNSResolveQueuePlatform> queue;
 
     return queue;
 }
@@ -60,8 +67,6 @@ DNSResolveQueue& DNSResolveQueue::singleton()
 DNSResolveQueue::DNSResolveQueue()
     : m_timer(*this, &DNSResolveQueue::timerFired)
     , m_requestsInFlight(0)
-    , m_isUsingProxy(true)
-    , m_lastProxyEnabledStatusCheckTime(0)
 {
     // isUsingProxy will return the initial value of m_isUsingProxy at first on
     // platforms that have an asynchronous implementation of updateIsUsingProxy,
@@ -74,8 +79,8 @@ DNSResolveQueue::DNSResolveQueue()
 // fake internal address, local caches may keep it even after re-connecting to another network.
 bool DNSResolveQueue::isUsingProxy()
 {
-    double time = monotonicallyIncreasingTime();
-    static const double minimumProxyCheckDelay = 5;
+    MonotonicTime time = MonotonicTime::now();
+    static const Seconds minimumProxyCheckDelay = 5_s;
     if (time - m_lastProxyEnabledStatusCheckTime > minimumProxyCheckDelay) {
         m_lastProxyEnabledStatusCheckTime = time;
         updateIsUsingProxy();

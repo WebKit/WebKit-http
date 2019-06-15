@@ -8,13 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_coding/codecs/red/audio_encoder_copy_red.h"
+#include "modules/audio_coding/codecs/red/audio_encoder_copy_red.h"
 
 #include <string.h>
 
 #include <utility>
 
-#include "webrtc/base/checks.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 
@@ -58,10 +58,8 @@ AudioEncoder::EncodedInfo AudioEncoderCopyRed::EncodeImpl(
     uint32_t rtp_timestamp,
     rtc::ArrayView<const int16_t> audio,
     rtc::Buffer* encoded) {
-
   const size_t primary_offset = encoded->size();
-  EncodedInfo info =
-      speech_encoder_->Encode(rtp_timestamp, audio, encoded);
+  EncodedInfo info = speech_encoder_->Encode(rtp_timestamp, audio, encoded);
 
   RTC_CHECK(info.redundant.empty()) << "Cannot use nested redundant encoders.";
   RTC_DCHECK_EQ(encoded->size() - primary_offset, info.encoded_bytes);
@@ -134,9 +132,9 @@ void AudioEncoderCopyRed::OnReceivedUplinkRecoverablePacketLossFraction(
 
 void AudioEncoderCopyRed::OnReceivedUplinkBandwidth(
     int target_audio_bitrate_bps,
-    rtc::Optional<int64_t> probing_interval_ms) {
+    absl::optional<int64_t> bwe_period_ms) {
   speech_encoder_->OnReceivedUplinkBandwidth(target_audio_bitrate_bps,
-                                             probing_interval_ms);
+                                             bwe_period_ms);
 }
 
 }  // namespace webrtc

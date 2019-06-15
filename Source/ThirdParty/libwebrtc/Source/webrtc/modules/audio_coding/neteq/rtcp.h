@@ -8,12 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_RTCP_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_RTCP_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_RTCP_H_
+#define MODULES_AUDIO_CODING_NETEQ_RTCP_H_
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/audio_coding/neteq/include/neteq.h"
-#include "webrtc/typedefs.h"
+#include "modules/audio_coding/neteq/include/neteq.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
@@ -22,9 +21,7 @@ struct RTPHeader;
 
 class Rtcp {
  public:
-  Rtcp() {
-    Init(0);
-  }
+  Rtcp() { Init(0); }
 
   ~Rtcp() {}
 
@@ -39,20 +36,20 @@ class Rtcp {
   void GetStatistics(bool no_reset, RtcpStatistics* stats);
 
  private:
-  uint16_t cycles_;  // The number of wrap-arounds for the sequence number.
-  uint16_t max_seq_no_;  // The maximum sequence number received. Starts over
-                         // from 0 after wrap-around.
+  uint16_t cycles_;       // The number of wrap-arounds for the sequence number.
+  uint16_t max_seq_no_;   // The maximum sequence number received. Starts over
+                          // from 0 after wrap-around.
   uint16_t base_seq_no_;  // The sequence number of the first received packet.
   uint32_t received_packets_;  // The number of packets that have been received.
   uint32_t received_packets_prior_;  // Number of packets received when last
                                      // report was generated.
   uint32_t expected_prior_;  // Expected number of packets, at the time of the
                              // last report.
-  int64_t jitter_;  // Current jitter value in Q4.
-  int32_t transit_;  // Clock difference for previous packet.
+  int64_t jitter_;           // Current jitter value in Q4.
+  int32_t transit_;          // Clock difference for previous packet.
 
   RTC_DISALLOW_COPY_AND_ASSIGN(Rtcp);
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_RTCP_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_RTCP_H_

@@ -8,23 +8,28 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_CHECKSUM_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_CHECKSUM_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_CHECKSUM_H_
+#define MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_CHECKSUM_H_
 
+#include <memory>
 #include <string>
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/md5digest.h"
-#include "webrtc/base/stringencode.h"
-#include "webrtc/modules/audio_coding/neteq/tools/audio_sink.h"
-#include "webrtc/typedefs.h"
+#include "modules/audio_coding/neteq/tools/audio_sink.h"
+#include "rtc_base/buffer.h"
+#include "rtc_base/constructormagic.h"
+#include "rtc_base/messagedigest.h"
+#include "rtc_base/stringencode.h"
+#include "rtc_base/system/arch.h"
 
 namespace webrtc {
 namespace test {
 
 class AudioChecksum : public AudioSink {
  public:
-  AudioChecksum() : finished_(false) {}
+  AudioChecksum()
+      : checksum_(rtc::MessageDigestFactory::Create(rtc::DIGEST_MD5)),
+        checksum_result_(checksum_->Size()),
+        finished_(false) {}
 
   bool WriteArray(const int16_t* audio, size_t num_samples) override {
     if (finished_)
@@ -33,7 +38,7 @@ class AudioChecksum : public AudioSink {
 #ifndef WEBRTC_ARCH_LITTLE_ENDIAN
 #error "Big-endian gives a different checksum"
 #endif
-    checksum_.Update(audio, num_samples * sizeof(*audio));
+    checksum_->Update(audio, num_samples * sizeof(*audio));
     return true;
   }
 
@@ -41,14 +46,15 @@ class AudioChecksum : public AudioSink {
   std::string Finish() {
     if (!finished_) {
       finished_ = true;
-      checksum_.Finish(checksum_result_, rtc::Md5Digest::kSize);
+      checksum_->Finish(checksum_result_.data(), checksum_result_.size());
     }
-    return rtc::hex_encode(checksum_result_, rtc::Md5Digest::kSize);
+    return rtc::hex_encode(checksum_result_.data<char>(),
+                           checksum_result_.size());
   }
 
  private:
-  rtc::Md5Digest checksum_;
-  char checksum_result_[rtc::Md5Digest::kSize];
+  std::unique_ptr<rtc::MessageDigest> checksum_;
+  rtc::Buffer checksum_result_;
   bool finished_;
 
   RTC_DISALLOW_COPY_AND_ASSIGN(AudioChecksum);
@@ -56,4 +62,4 @@ class AudioChecksum : public AudioSink {
 
 }  // namespace test
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_CHECKSUM_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_TOOLS_AUDIO_CHECKSUM_H_

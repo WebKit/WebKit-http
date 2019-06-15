@@ -46,9 +46,9 @@ extern "C" {
 
 #include <wtf/Atomics.h>
 #include <wtf/DataLog.h>
-#include <wtf/HashSet.h>
 #include <wtf/LocklessBag.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/ThreadGroup.h>
 #include <wtf/ThreadMessage.h>
 #include <wtf/Threading.h>
 
@@ -73,42 +73,24 @@ static void startMachExceptionHandlerThread()
 {
     static std::once_flag once;
     std::call_once(once, [] {
-        if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &exceptionPort) != KERN_SUCCESS)
-            CRASH();
+        kern_return_t kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &exceptionPort);
+        RELEASE_ASSERT(kr == KERN_SUCCESS);
+        kr = mach_port_insert_right(mach_task_self(), exceptionPort, exceptionPort, MACH_MSG_TYPE_MAKE_SEND);
+        RELEASE_ASSERT(kr == KERN_SUCCESS);
 
-        if (mach_port_insert_right(mach_task_self(), exceptionPort, exceptionPort, MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
-            CRASH();
+        dispatch_source_t source = dispatch_source_create(
+            DISPATCH_SOURCE_TYPE_MACH_RECV, exceptionPort, 0, DISPATCH_TARGET_QUEUE_DEFAULT);
+        RELEASE_ASSERT(source);
 
-        // It's not clear that this needs to be the high priority queue but it should be rare and it might be
-        // handling exceptions from high priority threads. Anyway, our handlers should be very fast anyway so it's
-        // probably not the end of the world if we handle a low priority exception on a high priority queue.
-        dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);
-        dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, exceptionPort, 0, queue);
-        RELEASE_ASSERT_WITH_MESSAGE(source, "We need to ensure our source was created.");
-
-        // We should never cancel our handler since it's a permanent thing so we don't add a cancel handler.
         dispatch_source_set_event_handler(source, ^{
-            // the leaks tool will get mad at us if we don't pretend to watch the source.
-            UNUSED_PARAM(source);
-            union Message {
-                mach_msg_header_t header;
-                char data[maxMessageSize];
-            };
-            Message messageHeaderIn;
-            Message messageHeaderOut;
+            UNUSED_PARAM(source); // Capture a pointer to source in user space to silence the leaks tool.
 
-            kern_return_t messageResult = mach_msg(&messageHeaderIn.header, MACH_RCV_MSG, 0, maxMessageSize, exceptionPort, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
-            if (messageResult == KERN_SUCCESS) {
-                if (!mach_exc_server(&messageHeaderIn.header, &messageHeaderOut.header))
-                    CRASH();
-
-                messageResult = mach_msg(&messageHeaderOut.header, MACH_SEND_MSG, messageHeaderOut.header.msgh_size, 0, messageHeaderOut.header.msgh_local_port, 0, MACH_PORT_NULL);
-                RELEASE_ASSERT(messageResult == KERN_SUCCESS);
-            } else {
-                dataLogLn("Failed to receive mach message due to ", mach_error_string(messageResult));
-                RELEASE_ASSERT_NOT_REACHED();
-            }
+            kern_return_t kr = mach_msg_server_once(
+                mach_exc_server, maxMessageSize, exceptionPort, MACH_MSG_TIMEOUT_NONE);
+            RELEASE_ASSERT(kr == KERN_SUCCESS);
         });
+
+        // No need for a cancel handler because we never destroy exceptionPort.
 
         dispatch_resume(source);
     });
@@ -215,37 +197,34 @@ void handleSignalsWithMach()
 }
 
 
-static StaticLock threadLock;
 exception_mask_t activeExceptions { 0 };
 
-inline void setExceptionPorts(const AbstractLocker&, Thread* thread)
+inline void setExceptionPorts(const AbstractLocker& threadGroupLocker, Thread& thread)
 {
-    kern_return_t result = thread_set_exception_ports(thread->machThread(), activeExceptions, exceptionPort, EXCEPTION_STATE | MACH_EXCEPTION_CODES, MACHINE_THREAD_STATE);
+    UNUSED_PARAM(threadGroupLocker);
+    kern_return_t result = thread_set_exception_ports(thread.machThread(), activeExceptions, exceptionPort, EXCEPTION_STATE | MACH_EXCEPTION_CODES, MACHINE_THREAD_STATE);
     if (result != KERN_SUCCESS) {
         dataLogLn("thread set port failed due to ", mach_error_string(result));
         CRASH();
     }
 }
 
-inline HashSet<Thread*>& activeThreads(const AbstractLocker&)
+static ThreadGroup& activeThreads()
 {
-    static NeverDestroyed<HashSet<Thread*>> activeThreads;
-    return activeThreads;
+    static std::once_flag initializeKey;
+    static ThreadGroup* activeThreadsPtr = nullptr;
+    std::call_once(initializeKey, [&] {
+        static NeverDestroyed<std::shared_ptr<ThreadGroup>> activeThreads { ThreadGroup::create() };
+        activeThreadsPtr = activeThreads.get().get();
+    });
+    return *activeThreadsPtr;
 }
 
-void registerThreadForMachExceptionHandling(Thread* thread)
+void registerThreadForMachExceptionHandling(Thread& thread)
 {
-    auto locker = holdLock(threadLock);
-    auto result = activeThreads(locker).add(thread);
-
-    if (result.isNewEntry)
+    auto locker = holdLock(activeThreads().getLock());
+    if (activeThreads().add(locker, thread) == ThreadGroupAddResult::NewlyAdded)
         setExceptionPorts(locker, thread);
-}
-
-void unregisterThreadForMachExceptionHandling(Thread* thread)
-{
-    auto locker = holdLock(threadLock);
-    activeThreads(locker).remove(thread);
 }
 
 #else
@@ -292,12 +271,12 @@ void installSignalHandler(Signal signal, SignalHandler&& handler)
     handlers[static_cast<size_t>(signal)]->add(WTFMove(handler));
 
 #if HAVE(MACH_EXCEPTIONS)
-    auto locker = holdLock(threadLock);
+    auto locker = holdLock(activeThreads().getLock());
     if (useMach) {
         activeExceptions |= toMachMask(signal);
 
-        for (Thread* thread : activeThreads(locker))
-            setExceptionPorts(locker, thread);
+        for (auto& thread : activeThreads().threads(locker))
+            setExceptionPorts(locker, thread.get());
     }
 #endif
 }

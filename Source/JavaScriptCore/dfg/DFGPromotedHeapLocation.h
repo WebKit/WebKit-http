@@ -63,6 +63,9 @@ enum PromotedLocationKind {
     VectorLengthPLoc,
     SpreadPLoc,
     NewArrayWithSpreadArgumentPLoc,
+    NewArrayBufferPLoc,
+    RegExpObjectRegExpPLoc,
+    RegExpObjectLastIndexPLoc,
 };
 
 class PromotedLocationDescriptor {
@@ -116,6 +119,7 @@ public:
         switch (kind()) {
         case NamedPropertyPLoc:
         case ClosureVarPLoc:
+        case RegExpObjectLastIndexPLoc:
             return false;
 
         default:

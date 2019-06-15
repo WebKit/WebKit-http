@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,12 +28,10 @@
 #include "APIObject.h"
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
-#include <wtf/Vector.h>
 
 namespace API {
 class Array;
 class Data;
-class String;
 }
 
 namespace WebKit {

@@ -98,14 +98,12 @@ private:
     MonotonicTime m_nextFireTime; // 0 if inactive
     MonotonicTime m_unalignedNextFireTime; // m_nextFireTime not considering alignment interval
     Seconds m_repeatInterval; // 0 if not repeating
-    int m_heapIndex { -1 }; // -1 if not in heap
+    signed int m_heapIndex : 31; // -1 if not in heap
+    bool m_wasDeleted : 1;
     unsigned m_heapInsertionOrder; // Used to keep order among equal-fire-time timers
     Vector<TimerBase*>* m_cachedThreadGlobalTimerHeap { nullptr };
 
-#ifndef NDEBUG
-    ThreadIdentifier m_thread;
-    bool m_wasDeleted { false };
-#endif
+    Ref<Thread> m_thread { Thread::current() };
 
     friend class ThreadTimers;
     friend class TimerHeapLessThanFunction;
@@ -140,14 +138,15 @@ inline bool TimerBase::isActive() const
 {
     // FIXME: Write this in terms of USE(WEB_THREAD) instead of PLATFORM(IOS).
 #if !PLATFORM(IOS)
-    ASSERT(m_thread == currentThread());
+    ASSERT(m_thread.ptr() == &Thread::current());
 #else
-    ASSERT(WebThreadIsCurrent() || pthread_main_np() || m_thread == currentThread());
+    ASSERT(WebThreadIsCurrent() || pthread_main_np() || m_thread.ptr() == &Thread::current());
 #endif // PLATFORM(IOS)
     return static_cast<bool>(m_nextFireTime);
 }
 
 class DeferrableOneShotTimer : protected TimerBase {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     template<typename TimerFiredClass>
     DeferrableOneShotTimer(TimerFiredClass& object, void (TimerFiredClass::*function)(), Seconds delay)

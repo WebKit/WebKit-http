@@ -31,18 +31,20 @@ typedef struct _SoupSession SoupSession;
 
 namespace WebKit {
 
+struct NetworkSessionCreationParameters;
+
 class NetworkSessionSoup final : public NetworkSession {
 public:
-    static Ref<NetworkSession> create(WebCore::SessionID sessionID)
+    static Ref<NetworkSession> create(NetworkSessionCreationParameters&& parameters)
     {
-        return adoptRef(*new NetworkSessionSoup(sessionID));
+        return adoptRef(*new NetworkSessionSoup(WTFMove(parameters)));
     }
     ~NetworkSessionSoup();
 
     SoupSession* soupSession() const;
 
 private:
-    NetworkSessionSoup(WebCore::SessionID);
+    NetworkSessionSoup(NetworkSessionCreationParameters&&);
 
     void clearCredentials() override;
 };

@@ -11,7 +11,9 @@ class CommitLog extends DataModelObject {
         this._remoteId = rawData.id;
         if (this._remoteId)
             this.ensureNamedStaticMap('remoteId')[this._remoteId] = this;
-        this._subCommits = null;
+        this._ownedCommits = null;
+        this._ownerCommit = null;
+        this._ownedCommitByOwnedRepository = new Map;
     }
 
     updateSingleton(rawData)
@@ -25,24 +27,32 @@ class CommitLog extends DataModelObject {
             this._rawData.authorName = rawData.authorName;
         if (rawData.message)
             this._rawData.message = rawData.message;
-        if (rawData.ownsSubCommits)
-            this._rawData.ownsSubCommits = rawData.ownsSubCommits;
+        if (rawData.ownsCommits)
+            this._rawData.ownsCommits = rawData.ownsCommits;
+        if (rawData.order)
+            this._rawData.order = rawData.order;
     }
 
     repository() { return this._repository; }
     time() { return new Date(this._rawData['time']); }
+    hasCommitTime() { return this._rawData['time'] > 0 && this._rawData['time'] != null; }
     author() { return this._rawData['authorName']; }
     revision() { return this._rawData['revision']; }
     message() { return this._rawData['message']; }
     url() { return this._repository.urlForRevision(this._rawData['revision']); }
-    ownsSubCommits() { return this._rawData['ownsSubCommits']; }
+    ownsCommits() { return this._rawData['ownsCommits']; }
+    ownedCommits() { return this._ownedCommits; }
+    ownerCommit() { return this._ownerCommit; }
+    order() { return this._rawData['order']; }
+    hasCommitOrder() { return this._rawData['order'] != null; }
+    setOwnerCommits(ownerCommit) { this._ownerCommit = ownerCommit; }
 
     label()
     {
-        var revision = this.revision();
+        const revision = this.revision();
         if (parseInt(revision) == revision) // e.g. r12345
             return 'r' + revision;
-        else if (revision.length == 40) // e.g. git hash
+        if (revision.length == 40) // e.g. git hash
             return revision.substring(0, 8);
         return revision;
     }
@@ -59,12 +69,10 @@ class CommitLog extends DataModelObject {
 
         const to = this.revision();
         const from = previousCommit.revision();
-        let fromRevisionForURL = from;
         let label = null;
-        if (parseInt(from) == from) { // e.g. r12345.
-            fromRevisionForURL = (parseInt(from) + 1).toString;
+        if (parseInt(from) == from)// e.g. r12345.
             label = `r${from}-r${this.revision()}`;
-        } else if (to.length == 40) // e.g. git hash
+        else if (to.length == 40) // e.g. git hash
             label = `${from.substring(0, 8)}..${to.substring(0, 8)}`;
         else
             label = `${from} - ${to}`;
@@ -86,50 +94,72 @@ class CommitLog extends DataModelObject {
         });
     }
 
-    fetchSubCommits()
+    static hasOrdering(firstCommit, secondCommit)
+    {
+        return (firstCommit.hasCommitTime() && secondCommit.hasCommitTime()) ||
+            (firstCommit.hasCommitOrder() && secondCommit.hasCommitOrder());
+    }
+
+    static orderTwoCommits(firstCommit, secondCommit)
+    {
+        console.assert(CommitLog.hasOrdering(firstCommit, secondCommit));
+        const firstCommitSmaller = firstCommit.hasCommitTime() && secondCommit.hasCommitTime() ?
+            firstCommit.time() < secondCommit.time() : firstCommit.order() < secondCommit.order();
+        return firstCommitSmaller ? [firstCommit, secondCommit] : [secondCommit, firstCommit];
+    }
+
+    ownedCommitForOwnedRepository(ownedRepository) { return this._ownedCommitByOwnedRepository.get(ownedRepository); }
+
+    fetchOwnedCommits()
     {
         if (!this.repository().ownedRepositories())
             return Promise.reject();
 
-        if (!this.ownsSubCommits())
+        if (!this.ownsCommits())
             return Promise.reject();
 
-        if (this._subCommits)
-            return Promise.resolve(this._subCommits);
+        if (this._ownedCommits)
+            return Promise.resolve(this._ownedCommits);
 
-        return CommitLog.cachedFetch(`../api/commits/${this.repository().id()}/sub-commits?owner-revision=${escape(this.revision())}`).then((data) => {
-            this._subCommits = CommitLog._constructFromRawData(data);
-            return this._subCommits;
+        return CommitLog.cachedFetch(`../api/commits/${this.repository().id()}/owned-commits?owner-revision=${escape(this.revision())}`).then((data) => {
+            this._ownedCommits = CommitLog._constructFromRawData(data);
+            this._ownedCommits.forEach((ownedCommit) => {
+                ownedCommit.setOwnerCommits(this);
+                this._ownedCommitByOwnedRepository.set(ownedCommit.repository(), ownedCommit);
+            });
+            return this._ownedCommits;
         });
     }
 
-    _buildSubCommitMap()
+    _buildOwnedCommitMap()
     {
-        const subCommitMap = new Map;
-        for (const commit of this._subCommits)
-            subCommitMap.set(commit.repository(), commit);
-        return subCommitMap;
+        const ownedCommitMap = new Map;
+        for (const commit of this._ownedCommits)
+            ownedCommitMap.set(commit.repository(), commit);
+        return ownedCommitMap;
     }
 
-    static diffSubCommits(previousCommit, currentCommit)
+    static ownedCommitDifferenceForOwnerCommits(...commits)
     {
-        console.assert(previousCommit);
-        console.assert(currentCommit);
-        console.assert(previousCommit._subCommits);
-        console.assert(currentCommit._subCommits);
+        console.assert(commits.length >= 2);
 
-        const previousSubCommitMap = previousCommit._buildSubCommitMap();
-        const currentSubCommitMap = currentCommit._buildSubCommitMap();
-        const subCommitRepositories = new Set([...currentSubCommitMap.keys(), ...previousSubCommitMap.keys()]);
+        const ownedCommitRepositories = new Set;
+        const ownedCommitMapList = commits.map((commit) => {
+            console.assert(commit);
+            console.assert(commit._ownedCommits);
+            const ownedCommitMap = commit._buildOwnedCommitMap();
+            for (const repository of ownedCommitMap.keys())
+                ownedCommitRepositories.add(repository);
+            return ownedCommitMap;
+        });
+
         const difference = new Map;
-
-        subCommitRepositories.forEach((subCommitRepository) => {
-            const currentRevision = currentSubCommitMap.get(subCommitRepository);
-            const previousRevision = previousSubCommitMap.get(subCommitRepository);
-            if (currentRevision != previousRevision)
-                difference.set(subCommitRepository, [previousRevision, currentRevision]);
+        ownedCommitRepositories.forEach((ownedCommitRepository) => {
+            const ownedCommits = ownedCommitMapList.map((ownedCommitMap) => ownedCommitMap.get(ownedCommitRepository));
+            const uniqueOwnedCommits = new Set(ownedCommits);
+            if (uniqueOwnedCommits.size > 1)
+                difference.set(ownedCommitRepository, ownedCommits);
         });
-
         return difference;
     }
 

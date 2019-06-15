@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2015-2018 Apple, Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,6 +26,19 @@
 #import "config.h"
 #import "Cookie.h"
 
+// FIXME: Remove NS_ASSUME_NONNULL_BEGIN/END and all _Nullable annotations once we remove the NSHTTPCookie forward declaration below.
+NS_ASSUME_NONNULL_BEGIN
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400 && __MAC_OS_X_VERSION_MAX_ALLOWED < 101500) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000 && __IPHONE_OS_VERSION_MAX_ALLOWED < 130000)
+typedef NSString * NSHTTPCookieStringPolicy;
+@interface NSHTTPCookie (Staging)
+@property (nullable, readonly, copy) NSHTTPCookieStringPolicy sameSitePolicy;
+@end
+
+static NSString * const NSHTTPCookieSameSiteLax = @"lax";
+static NSString * const NSHTTPCookieSameSiteStrict = @"strict";
+#endif
+
 namespace WebCore {
 
 static Vector<uint16_t> portVectorFromList(NSArray<NSNumber *> *portList)
@@ -39,7 +52,7 @@ static Vector<uint16_t> portVectorFromList(NSArray<NSNumber *> *portList)
     return ports;
 }
 
-static NSString *portStringFromVector(const Vector<uint16_t>& ports)
+static NSString * _Nullable portStringFromVector(const Vector<uint16_t>& ports)
 {
     if (ports.isEmpty())
         return nil;
@@ -54,20 +67,75 @@ static NSString *portStringFromVector(const Vector<uint16_t>& ports)
     return string;
 }
 
-Cookie::Cookie(NSHTTPCookie *cookie)
-    : Cookie(cookie.name, cookie.value, cookie.domain, cookie.path, [cookie.expiresDate timeIntervalSince1970] * 1000.0,
-    cookie.HTTPOnly, cookie.secure, cookie.sessionOnly, cookie.comment, cookie.commentURL, portVectorFromList(cookie.portList))
+static double cookieCreated(NSHTTPCookie *cookie)
 {
+    id value = cookie.properties[@"Created"];
+
+    auto toCanonicalFormat = [](double referenceFormat) {
+        return 1000.0 * (referenceFormat + NSTimeIntervalSince1970);
+    };
+
+    if ([value isKindOfClass:[NSNumber class]])
+        return toCanonicalFormat(((NSNumber *)value).doubleValue);
+
+    if ([value isKindOfClass:[NSString class]])
+        return toCanonicalFormat(((NSString *)value).doubleValue);
+
+    return 0;
 }
 
-Cookie::operator NSHTTPCookie *() const
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+static Cookie::SameSitePolicy coreSameSitePolicy(NSHTTPCookieStringPolicy _Nullable policy)
+{
+    if (!policy)
+        return Cookie::SameSitePolicy::None;
+    if ([policy isEqualToString:NSHTTPCookieSameSiteLax])
+        return Cookie::SameSitePolicy::Lax;
+    if ([policy isEqualToString:NSHTTPCookieSameSiteStrict])
+        return Cookie::SameSitePolicy::Strict;
+    ASSERT_NOT_REACHED();
+    return Cookie::SameSitePolicy::None;
+}
+
+static NSHTTPCookieStringPolicy _Nullable nsSameSitePolicy(Cookie::SameSitePolicy policy)
+{
+    switch (policy) {
+    case Cookie::SameSitePolicy::None:
+        return nil;
+    case Cookie::SameSitePolicy::Lax:
+        return NSHTTPCookieSameSiteLax;
+    case Cookie::SameSitePolicy::Strict:
+        return NSHTTPCookieSameSiteStrict;
+    }
+}
+#endif
+
+Cookie::Cookie(NSHTTPCookie *cookie)
+    : name { cookie.name }
+    , value { cookie.value }
+    , domain { cookie.domain }
+    , path { cookie.path }
+    , created { cookieCreated(cookie) }
+    , expires { [cookie.expiresDate timeIntervalSince1970] * 1000.0 }
+    , httpOnly { static_cast<bool>(cookie.HTTPOnly) }
+    , secure { static_cast<bool>(cookie.secure) }
+    , session { static_cast<bool>(cookie.sessionOnly) }
+    , comment { cookie.comment }
+    , commentURL { cookie.commentURL }
+    , ports { portVectorFromList(cookie.portList) }
+{
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+    if ([cookie respondsToSelector:@selector(sameSitePolicy)])
+        sameSite = coreSameSitePolicy(cookie.sameSitePolicy);
+#endif
+}
+
+Cookie::operator NSHTTPCookie * _Nullable () const
 {
     if (isNull())
         return nil;
 
-    // FIXME: existing APIs do not provide a way to set httpOnly without parsing headers from scratch.
-
-    NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithCapacity:11];
+    NSMutableDictionary *properties = [NSMutableDictionary dictionaryWithCapacity:14];
 
     if (!comment.isNull())
         [properties setObject:(NSString *)comment forKey:NSHTTPCookieComment];
@@ -88,9 +156,13 @@ Cookie::operator NSHTTPCookie *() const
         [properties setObject:(NSString *)value forKey:NSHTTPCookieValue];
 
     NSDate *expirationDate = [NSDate dateWithTimeIntervalSince1970:expires / 1000.0];
-    auto maxAge = [expirationDate timeIntervalSinceNow];
+    auto maxAge = ceil([expirationDate timeIntervalSinceNow]);
     if (maxAge > 0)
         [properties setObject:[NSString stringWithFormat:@"%f", maxAge] forKey:NSHTTPCookieMaximumAge];
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+    [properties setObject:[NSNumber numberWithDouble:created / 1000.0 - NSTimeIntervalSince1970] forKey:@"Created"];
+#endif
 
     auto* portString = portStringFromVector(ports);
     if (portString)
@@ -101,6 +173,14 @@ Cookie::operator NSHTTPCookie *() const
 
     if (session)
         [properties setObject:@YES forKey:NSHTTPCookieDiscard];
+    
+    if (httpOnly)
+        [properties setObject:@YES forKey:@"HttpOnly"];
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000)
+    if (auto* sameSitePolicy = nsSameSitePolicy(sameSite))
+        [properties setObject:sameSitePolicy forKey:@"SameSite"];
+#endif
 
     [properties setObject:@"1" forKey:NSHTTPCookieVersion];
 
@@ -114,17 +194,16 @@ bool Cookie::operator==(const Cookie& other) const
     bool otherNull = other.isNull();
     if (thisNull || otherNull)
         return thisNull == otherNull;
-    
-    NSHTTPCookie *nsCookie(*this);
-    return [nsCookie isEqual:other];
+    return [static_cast<NSHTTPCookie *>(*this) isEqual:other];
 }
     
 unsigned Cookie::hash() const
 {
     ASSERT(!name.isHashTableDeletedValue());
     ASSERT(!isNull());
-    NSHTTPCookie *nsCookie(*this);
-    return nsCookie.hash;
+    return static_cast<NSHTTPCookie *>(*this).hash;
 }
+
+NS_ASSUME_NONNULL_END
 
 } // namespace WebCore

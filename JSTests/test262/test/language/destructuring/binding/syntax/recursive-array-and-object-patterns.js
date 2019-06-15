@@ -5,12 +5,13 @@
 es6id: 13.3.3
 description: >
   Recursive array and object binding patterns
-info: >
+info: |
   Destructuring Binding Patterns - Syntax
 
   BindingPattern[Yield] :
     ObjectBindingPattern[?Yield]
     ArrayBindingPattern[?Yield]
+features: [destructuring-binding]
 ---*/
 
 function fn1([{}]) {}

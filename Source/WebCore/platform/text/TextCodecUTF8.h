@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,38 +23,31 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TextCodecUTF8_h
-#define TextCodecUTF8_h
+#pragma once
 
 #include "TextCodec.h"
+#include <unicode/utf8.h>
+#include <wtf/text/LChar.h>
 
 namespace WebCore {
 
 class TextCodecUTF8 : public TextCodec {
 public:
-    static std::unique_ptr<TextCodec> create(const TextEncoding&, const void*);
-    TextCodecUTF8()
-        : m_partialSequenceSize(0)
-    {
-    }
-
     static void registerEncodingNames(EncodingNameRegistrar);
     static void registerCodecs(TextCodecRegistrar);
 
 private:
     String decode(const char*, size_t length, bool flush, bool stopOnError, bool& sawError) override;
-    CString encode(const UChar*, size_t length, UnencodableHandling) override;
+    Vector<uint8_t> encode(StringView, UnencodableHandling) final;
 
-    template <typename CharType>
-    bool handlePartialSequence(CharType*& destination, const uint8_t*& source, const uint8_t* end, bool flush, bool stopOnError, bool& sawError);
-    void handleError(UChar*& destination, bool stopOnError, bool& sawError);
+    bool handlePartialSequence(LChar*& destination, const uint8_t*& source, const uint8_t* end, bool flush);
+    void handlePartialSequence(UChar*& destination, const uint8_t*& source, const uint8_t* end, bool flush, bool stopOnError, bool& sawError);
     void consumePartialSequenceByte();
 
-    int m_partialSequenceSize;
+    int m_partialSequenceSize { 0 };
     uint8_t m_partialSequence[U8_MAX_LENGTH];
     
 };
 
 } // namespace WebCore
 
-#endif // TextCodecUTF8_h

@@ -1,4 +1,4 @@
-# Copyright (C) 2011, 2012, 2014-2016 Apple Inc. All rights reserved.
+# Copyright (C) 2011-2018 Apple Inc. All rights reserved.
 # Copyright (C) 2014 University of Szeged. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -260,6 +260,31 @@ def arm64LowerMalformedLoadStoreAddresses(list)
     newList
 end
 
+def arm64LowerLabelReferences(list)
+    newList = []
+    list.each {
+        | node |
+        if node.is_a? Instruction
+            case node.opcode
+            when "loadi", "loadis", "loadp", "loadq", "loadb", "loadbs", "loadh", "loadhs"
+                labelRef = node.operands[0]
+                if labelRef.is_a? LabelReference
+                    tmp = Tmp.new(node.codeOrigin, :gpr)
+                    newList << Instruction.new(codeOrigin, "globaladdr", [LabelReference.new(node.codeOrigin, labelRef.label), tmp])
+                    newList << Instruction.new(codeOrigin, node.opcode, [Address.new(node.codeOrigin, tmp, Immediate.new(node.codeOrigin, labelRef.offset)), node.operands[1]])
+                else
+                    newList << node
+                end
+            else
+                newList << node
+            end
+        else
+            newList << node
+        end
+    }
+    newList
+end
+
 # Workaround for Cortex-A53 erratum (835769)
 def arm64CortexA53Fix835769(list)
     newList = []
@@ -296,6 +321,7 @@ class Sequence
         result = riscLowerHardBranchOps64(result)
         result = riscLowerShiftOps(result)
         result = arm64LowerMalformedLoadStoreAddresses(result)
+        result = arm64LowerLabelReferences(result)
         result = riscLowerMalformedAddresses(result) {
             | node, address |
             case node.opcode
@@ -478,10 +504,6 @@ end
 
 class Instruction
     def lowerARM64
-        $asm.comment codeOriginString
-        $asm.annotation annotation if $enableInstrAnnotations
-        $asm.debugAnnotation codeOrigin.debugDirective if $enableDebugAnnotations
-
         case opcode
         when 'addi'
             emitARM64Add("add", operands, :int)
@@ -904,6 +926,33 @@ class Instruction
             $asm.putStr("#if CPU(ARM64_CORTEXA53)")
             $asm.puts "nop"
             $asm.putStr("#endif")
+        when "globaladdr"
+            uid = $asm.newUID
+
+            # On Darwin, use Macho-O GOT relocation specifiers, along with
+            # the labels required for the .loh directive.
+            $asm.putStr("#if OS(DARWIN)")
+            $asm.puts "L_offlineasm_loh_adrp_#{uid}:"
+            $asm.puts "adrp #{operands[1].arm64Operand(:ptr)}, #{operands[0].asmLabel}@GOTPAGE"
+            $asm.puts "L_offlineasm_loh_ldr_#{uid}:"
+            $asm.puts "ldr #{operands[1].arm64Operand(:ptr)}, [#{operands[1].arm64Operand(:ptr)}, #{operands[0].asmLabel}@GOTPAGEOFF]"
+
+            # On Linux, use ELF GOT relocation specifiers.
+            $asm.putStr("#elif OS(LINUX)")
+            $asm.puts "adrp #{operands[1].arm64Operand(:ptr)}, :got:#{operands[0].asmLabel}"
+            $asm.puts "ldr #{operands[1].arm64Operand(:ptr)}, [#{operands[1].arm64Operand(:ptr)}, :got_lo12:#{operands[0].asmLabel}]"
+
+            # Throw a compiler error everywhere else.
+            $asm.putStr("#else")
+            $asm.putStr("#error Missing globaladdr implementation")
+            $asm.putStr("#endif")
+
+            $asm.deferAction {
+                # On Darwin, also include the .loh directive using the generated labels.
+                $asm.putStr("#if OS(DARWIN)")
+                $asm.puts ".loh AdrpLdrGot L_offlineasm_loh_adrp_#{uid}, L_offlineasm_loh_ldr_#{uid}"
+                $asm.putStr("#endif")
+            }
         else
             lowerDefault
         end

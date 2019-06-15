@@ -5,9 +5,13 @@ es6id: 25.2
 description: >
     When a generator body contains two consecutive yield statements, it should
     produce an iterable that visits each yielded value and then completes.
+features: [generators]
 ---*/
 
-function* g() { yield 1; yield 2; }
+function* g() {
+  yield 1;
+  yield 2;
+}
 var iter = g();
 var result;
 

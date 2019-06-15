@@ -2,16 +2,21 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-3-13
 description: >
     Array.prototype.reduce - 'length' is a string containing a decimal
     number
 ---*/
 
-        function callbackfn(prevVal, curVal, idx, obj) {
-            return (curVal === 11 && idx === 1);
-        }
+function callbackfn(prevVal, curVal, idx, obj) {
+  return (curVal === 11 && idx === 1);
+}
 
-        var obj = { 1: 11, 2: 9, length: "2.5" };
+var obj = {
+  1: 11,
+  2: 9,
+  length: "2.5"
+};
 
 assert.sameValue(Array.prototype.reduce.call(obj, callbackfn, 1), true, 'Array.prototype.reduce.call(obj, callbackfn, 1)');

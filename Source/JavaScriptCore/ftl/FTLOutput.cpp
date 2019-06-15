@@ -127,6 +127,11 @@ LValue Output::phi(LType type)
     return m_block->appendNew<B3::Value>(m_proc, B3::Phi, type, origin());
 }
 
+LValue Output::opaque(LValue value)
+{
+    return m_block->appendNew<Value>(m_proc, Opaque, origin(), value);
+}
+
 LValue Output::add(LValue left, LValue right)
 {
     if (Value* result = left->addConstant(m_proc, right)) {
@@ -854,6 +859,14 @@ void Output::addIncomingToPhi(LValue phi, ValueFromBlock value)
 {
     if (value)
         value.value()->as<B3::UpsilonValue>()->setPhi(phi);
+}
+
+void Output::entrySwitch(const Vector<LBasicBlock>& cases)
+{
+    RELEASE_ASSERT(cases.size() == m_proc.numEntrypoints());
+    m_block->appendNew<Value>(m_proc, EntrySwitch, origin());
+    for (LBasicBlock block : cases)
+        m_block->appendSuccessor(FrequentedBlock(block));
 }
 
 } } // namespace JSC::FTL

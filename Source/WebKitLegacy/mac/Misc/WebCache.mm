@@ -28,15 +28,14 @@
 #import "WebApplicationCacheInternal.h"
 #import "WebNSObjectExtras.h"
 #import "WebPreferences.h"
-#import "WebSystemInterface.h"
 #import "WebView.h"
 #import "WebViewInternal.h"
+#import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/CredentialStorage.h>
 #import <WebCore/CrossOriginPreflightResultCache.h>
 #import <WebCore/Document.h>
 #import <WebCore/MemoryCache.h>
-#import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/RunLoop.h>
 
@@ -58,7 +57,6 @@
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
 #endif
-    InitWebCoreSystemInterface();   
 }
 
 + (NSArray *)statistics
@@ -120,7 +118,7 @@
     webApplicationCacheStorage().empty();
 
     // Empty the Cross-Origin Preflight cache
-    WebCore::CrossOriginPreflightResultCache::singleton().empty();
+    WebCore::CrossOriginPreflightResultCache::singleton().clear();
 }
 
 #if PLATFORM(IOS)
@@ -164,10 +162,8 @@
 {
     if (!image || !url || ![[url absoluteString] length])
         return false;
-    WebCore::SecurityOrigin* topOrigin = nullptr;
-    if (frame)
-        topOrigin = &core(frame)->document()->topOrigin();
-    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, topOrigin ? topOrigin->domainForCachePartition() : emptyString());
+
+    return WebCore::MemoryCache::singleton().addImageToCache(RetainPtr<CGImageRef>(image), url, frame ? core(frame)->document()->domainForCachePartition() : emptyString());
 }
 
 + (void)removeImageFromCacheForURL:(NSURL *)url
@@ -179,10 +175,8 @@
 {
     if (!url)
         return;
-    WebCore::SecurityOrigin* topOrigin = nullptr;
-    if (frame)
-        topOrigin = &core(frame)->document()->topOrigin();
-    WebCore::MemoryCache::singleton().removeImageFromCache(url, topOrigin ? topOrigin->domainForCachePartition() : emptyString());
+
+    return WebCore::MemoryCache::singleton().removeImageFromCache(url, frame ? core(frame)->document()->domainForCachePartition() : emptyString());
 }
 
 + (CGImageRef)imageForURL:(NSURL *)url
@@ -191,7 +185,7 @@
         return nullptr;
     
     WebCore::ResourceRequest request(url);
-    WebCore::CachedResource* cachedResource = WebCore::MemoryCache::singleton().resourceForRequest(request, WebCore::SessionID::defaultSessionID());
+    WebCore::CachedResource* cachedResource = WebCore::MemoryCache::singleton().resourceForRequest(request, PAL::SessionID::defaultSessionID());
     if (!is<WebCore::CachedImage>(cachedResource))
         return nullptr;
     WebCore::CachedImage& cachedImage = downcast<WebCore::CachedImage>(*cachedResource);

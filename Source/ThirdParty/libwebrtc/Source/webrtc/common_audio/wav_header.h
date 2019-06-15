@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_AUDIO_WAV_HEADER_H_
-#define WEBRTC_COMMON_AUDIO_WAV_HEADER_H_
+#ifndef COMMON_AUDIO_WAV_HEADER_H_
+#define COMMON_AUDIO_WAV_HEADER_H_
 
 #include <stddef.h>
 #include <stdint.h>
@@ -26,8 +26,8 @@ class ReadableWav {
 };
 
 enum WavFormat {
-  kWavFormatPcm   = 1,  // PCM, each sample of size bytes_per_sample
-  kWavFormatALaw  = 6,  // 8-bit ITU-T G.711 A-law
+  kWavFormatPcm = 1,    // PCM, each sample of size bytes_per_sample
+  kWavFormatALaw = 6,   // 8-bit ITU-T G.711 A-law
   kWavFormatMuLaw = 7,  // 8-bit ITU-T G.711 mu-law
 };
 
@@ -61,4 +61,4 @@ bool ReadWavHeader(ReadableWav* readable,
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_AUDIO_WAV_HEADER_H_
+#endif  // COMMON_AUDIO_WAV_HEADER_H_

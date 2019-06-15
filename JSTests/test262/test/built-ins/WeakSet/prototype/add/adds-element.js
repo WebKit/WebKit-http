@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.4.3.1
+esid: sec-weakset.prototype.add
 description: >
   Appends value as the last element of entries.
-info: >
+info: |
   WeakSet.prototype.add ( value )
 
   ...

@@ -8,11 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/aec3/echo_path_variability.h"
+#include "modules/audio_processing/aec3/echo_path_variability.h"
 
 namespace webrtc {
 
-EchoPathVariability::EchoPathVariability(bool gain_change, bool delay_change)
-    : gain_change(gain_change), delay_change(delay_change) {}
+EchoPathVariability::EchoPathVariability(bool gain_change,
+                                         DelayAdjustment delay_change,
+                                         bool clock_drift)
+    : gain_change(gain_change),
+      delay_change(delay_change),
+      clock_drift(clock_drift) {}
 
 }  // namespace webrtc

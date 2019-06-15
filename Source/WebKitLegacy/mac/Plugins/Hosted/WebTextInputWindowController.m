@@ -27,7 +27,7 @@
 
 #import "WebTextInputWindowController.h"
 
-#import <WebKitSystemInterface.h>
+#import <pal/system/mac/WebPanel.h>
 
 @interface WebTextInputView : NSTextView {
 }
@@ -46,7 +46,7 @@
 
 @end
 
-@interface WebTextInputPanel : NSPanel {
+@interface WebTextInputPanel : WebPanel {
     NSTextView *_inputTextView;
 }
 
@@ -70,7 +70,7 @@
 
 - (id)init
 {
-    self = [super initWithContentRect:NSZeroRect styleMask:WKGetInputPanelWindowStyle() backing:NSBackingStoreBuffered defer:YES];
+    self = [super init];
     if (!self)
         return nil;
     
@@ -115,7 +115,10 @@
 
     // Let TSM know that a bottom input window would be created for marked text.
     // FIXME: Can be removed once we can rely on __NSUsesFloatingInputWindow (or a better API) being available everywhere.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-qual"
     EventRef carbonEvent = (EventRef)[event eventRef];
+#pragma clang diagnostic pop
     if (carbonEvent) {
         Boolean ignorePAH = true;
         SetEventParameter(carbonEvent, 'iPAH', typeBoolean, sizeof(ignorePAH), &ignorePAH);

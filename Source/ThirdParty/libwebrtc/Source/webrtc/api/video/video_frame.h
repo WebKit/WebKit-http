@@ -8,29 +8,51 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_VIDEO_VIDEO_FRAME_H_
-#define WEBRTC_API_VIDEO_VIDEO_FRAME_H_
+#ifndef API_VIDEO_VIDEO_FRAME_H_
+#define API_VIDEO_VIDEO_FRAME_H_
 
 #include <stdint.h>
 
-#include "webrtc/api/video/video_rotation.h"
-#include "webrtc/api/video/video_frame_buffer.h"
-#include "webrtc/base/export.h"
+#include "absl/types/optional.h"
+#include "api/video/color_space.h"
+#include "api/video/video_frame_buffer.h"
+#include "api/video/video_rotation.h"
 
 namespace webrtc {
 
-class WEBRTC_DYLIB_EXPORT VideoFrame {
+class VideoFrame {
  public:
-  // TODO(nisse): This constructor is consistent with the now deleted
-  // cricket::WebRtcVideoFrame. We should consider whether or not we
-  // want to stick to this style and deprecate the other constructor.
+  // Preferred way of building VideoFrame objects.
+  class Builder {
+   public:
+    Builder();
+    ~Builder();
+
+    VideoFrame build();
+    Builder& set_video_frame_buffer(
+        const rtc::scoped_refptr<VideoFrameBuffer>& buffer);
+    Builder& set_timestamp_ms(int64_t timestamp_ms);
+    Builder& set_timestamp_us(int64_t timestamp_us);
+    Builder& set_timestamp_rtp(uint32_t timestamp_rtp);
+    Builder& set_ntp_time_ms(int64_t ntp_time_ms);
+    Builder& set_rotation(VideoRotation rotation);
+    Builder& set_color_space(const ColorSpace& color_space);
+
+   private:
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> video_frame_buffer_;
+    int64_t timestamp_us_ = 0;
+    uint32_t timestamp_rtp_ = 0;
+    int64_t ntp_time_ms_ = 0;
+    VideoRotation rotation_ = kVideoRotation_0;
+    absl::optional<ColorSpace> color_space_;
+  };
+
+  // To be deprecated. Migrate all use to Builder.
   VideoFrame(const rtc::scoped_refptr<VideoFrameBuffer>& buffer,
              webrtc::VideoRotation rotation,
              int64_t timestamp_us);
-
-  // Preferred constructor.
   VideoFrame(const rtc::scoped_refptr<VideoFrameBuffer>& buffer,
-             uint32_t timestamp,
+             uint32_t timestamp_rtp,
              int64_t render_time_ms,
              VideoRotation rotation);
 
@@ -88,6 +110,9 @@ class WEBRTC_DYLIB_EXPORT VideoFrame {
   VideoRotation rotation() const { return rotation_; }
   void set_rotation(VideoRotation rotation) { rotation_ = rotation; }
 
+  // Set Color space when available.
+  absl::optional<ColorSpace> color_space() const { return color_space_; }
+
   // Get render time in milliseconds.
   // TODO(nisse): Deprecated. Migrate all users to timestamp_us().
   int64_t render_time_ms() const;
@@ -103,14 +128,22 @@ class WEBRTC_DYLIB_EXPORT VideoFrame {
   }
 
  private:
+  VideoFrame(const rtc::scoped_refptr<VideoFrameBuffer>& buffer,
+             int64_t timestamp_us,
+             uint32_t timestamp_rtp,
+             int64_t ntp_time_ms,
+             VideoRotation rotation,
+             const absl::optional<ColorSpace>& color_space);
+
   // An opaque reference counted handle that stores the pixel data.
   rtc::scoped_refptr<webrtc::VideoFrameBuffer> video_frame_buffer_;
   uint32_t timestamp_rtp_;
   int64_t ntp_time_ms_;
   int64_t timestamp_us_;
   VideoRotation rotation_;
+  absl::optional<ColorSpace> color_space_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_VIDEO_VIDEO_FRAME_H_
+#endif  // API_VIDEO_VIDEO_FRAME_H_

@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   callbackfn `this` value
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
   ...
@@ -15,6 +15,7 @@ info: >
     c. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
     ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var expected = (function() { return this; })();

@@ -3,14 +3,15 @@
 
 /*---
 description: Source is an object without length property
+esid: sec-array.from
 es6id: 22.1.2.1
 ---*/
 
 var obj = {
-    0: 2,
-    1: 4,
-    2: 8,
-    3: 16
+  0: 2,
+  1: 4,
+  2: 8,
+  3: 16
 }
 
 var a = Array.from(obj);

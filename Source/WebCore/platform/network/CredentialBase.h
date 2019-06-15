@@ -26,7 +26,6 @@
 #ifndef CredentialBase_h
 #define CredentialBase_h
 
-#include "PlatformExportMacros.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -42,7 +41,7 @@ enum CredentialPersistence {
 class CredentialBase {
 
 public:
-    bool isEmpty() const;
+    WEBCORE_EXPORT bool isEmpty() const;
     
     WEBCORE_EXPORT const String& user() const;
     WEBCORE_EXPORT const String& password() const;

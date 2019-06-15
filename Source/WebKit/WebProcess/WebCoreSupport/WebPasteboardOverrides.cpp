@@ -26,6 +26,8 @@
 #include "config.h"
 #include "WebPasteboardOverrides.h"
 
+#include <wtf/NeverDestroyed.h>
+
 namespace WebKit {
 
 WebPasteboardOverrides& WebPasteboardOverrides::sharedPasteboardOverrides()
@@ -101,7 +103,6 @@ bool WebPasteboardOverrides::getDataForOverride(const String& pasteboardName, co
     if (!getDataForOverride(pasteboardName, type, foundBuffer))
         return false;
 
-    data.clear();
     data.resize(foundBuffer.size());
     memcpy(data.data(), foundBuffer.data(), foundBuffer.size());
 

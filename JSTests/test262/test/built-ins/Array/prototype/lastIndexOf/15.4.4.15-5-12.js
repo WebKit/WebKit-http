@@ -2,13 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-5-12
 description: >
     Array.prototype.lastIndexOf - value of 'fromIndex' is a number
     (value is Infinity)
 ---*/
 
-        var arr = [];
-        arr[Math.pow(2, 32) - 2] = null; // length is the max value of Uint type
+var arr = [];
+arr[Math.pow(2, 32) - 2] = null; // length is the max value of Uint type
 
 assert.sameValue(arr.lastIndexOf(null, Infinity), Math.pow(2, 32) - 2, 'arr.lastIndexOf(null, Infinity)');

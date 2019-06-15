@@ -24,8 +24,7 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMFileListPrivate.h"
 #include "WebKitDOMFilePrivate.h"
 #include "WebKitDOMPrivate.h"
@@ -38,6 +37,8 @@
 typedef struct _WebKitDOMFileListPrivate {
     RefPtr<WebCore::FileList> coreObject;
 } WebKitDOMFileListPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,8 +69,8 @@ WebKitDOMFileList* wrapFileList(WebCore::FileList* coreObject)
 G_DEFINE_TYPE(WebKitDOMFileList, webkit_dom_file_list, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_LENGTH,
+    DOM_FILE_LIST_PROP_0,
+    DOM_FILE_LIST_PROP_LENGTH,
 };
 
 static void webkit_dom_file_list_finalize(GObject* object)
@@ -87,7 +88,7 @@ static void webkit_dom_file_list_get_property(GObject* object, guint propertyId,
     WebKitDOMFileList* self = WEBKIT_DOM_FILE_LIST(object);
 
     switch (propertyId) {
-    case PROP_LENGTH:
+    case DOM_FILE_LIST_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_file_list_get_length(self));
         break;
     default:
@@ -117,7 +118,7 @@ static void webkit_dom_file_list_class_init(WebKitDOMFileListClass* requestClass
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_FILE_LIST_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "FileList:length",
@@ -151,3 +152,4 @@ gulong webkit_dom_file_list_get_length(WebKitDOMFileList* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

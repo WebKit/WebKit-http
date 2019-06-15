@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 #include "WebPaymentCoordinatorMessages.h"
 #include "WebPaymentCoordinatorProxyMessages.h"
 #include "WebProcess.h"
-#include <WebCore/MainFrame.h>
+#include <WebCore/Frame.h>
 #include <WebCore/PaymentCoordinator.h>
 #include <WebCore/URL.h>
 
@@ -57,11 +57,39 @@ bool WebPaymentCoordinator::supportsVersion(unsigned version)
 
 #if !ENABLE(APPLE_PAY_SESSION_V3)
     static const unsigned currentVersion = 2;
-#else
+#elif !ENABLE(APPLE_PAY_SESSION_V4)
     static const unsigned currentVersion = 3;
+#else
+    static const unsigned currentVersion = 4;
 #endif
 
     return version <= currentVersion;
+}
+
+const WebPaymentCoordinator::AvailablePaymentNetworksSet& WebPaymentCoordinator::availablePaymentNetworks()
+{
+    if (m_availablePaymentNetworks)
+        return *m_availablePaymentNetworks;
+
+    m_availablePaymentNetworks = WebPaymentCoordinator::AvailablePaymentNetworksSet();
+
+    Vector<String> availablePaymentNetworks;
+    using AvailablePaymentNetworksMessage = Messages::WebPaymentCoordinatorProxy::AvailablePaymentNetworks;
+    if (m_webPage.sendSync(AvailablePaymentNetworksMessage(), AvailablePaymentNetworksMessage::Reply(availablePaymentNetworks))) {
+        for (auto& network : availablePaymentNetworks)
+            m_availablePaymentNetworks->add(network);
+    }
+
+    return *m_availablePaymentNetworks;
+}
+
+std::optional<String> WebPaymentCoordinator::validatedPaymentNetwork(const String& paymentNetwork)
+{
+    auto& paymentNetworks = availablePaymentNetworks();
+    auto result = paymentNetworks.find(paymentNetwork);
+    if (result == paymentNetworks.end())
+        return std::nullopt;
+    return *result;
 }
 
 bool WebPaymentCoordinator::canMakePayments()
@@ -103,7 +131,7 @@ void WebPaymentCoordinator::openPaymentSetup(const String& merchantIdentifier, c
     m_webPage.send(Messages::WebPaymentCoordinatorProxy::OpenPaymentSetup(merchantIdentifier, domainName, replyID));
 }
 
-bool WebPaymentCoordinator::showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest& paymentRequest)
+bool WebPaymentCoordinator::showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::ApplePaySessionPaymentRequest& paymentRequest)
 {
     Vector<String> linkIconURLStrings;
     for (const auto& linkIconURL : linkIconURLs)
@@ -166,7 +194,7 @@ void WebPaymentCoordinator::didAuthorizePayment(const WebCore::Payment& payment)
     paymentCoordinator().didAuthorizePayment(payment);
 }
 
-void WebPaymentCoordinator::didSelectShippingMethod(const WebCore::PaymentRequest::ShippingMethod& shippingMethod)
+void WebPaymentCoordinator::didSelectShippingMethod(const WebCore::ApplePaySessionPaymentRequest::ShippingMethod& shippingMethod)
 {
     paymentCoordinator().didSelectShippingMethod(shippingMethod);
 }
@@ -200,7 +228,7 @@ void WebPaymentCoordinator::openPaymentSetupReply(uint64_t requestID, bool resul
 
 WebCore::PaymentCoordinator& WebPaymentCoordinator::paymentCoordinator()
 {
-    return m_webPage.mainFrame()->paymentCoordinator();
+    return m_webPage.corePage()->paymentCoordinator();
 }
 
 }

@@ -301,17 +301,10 @@ Class kitClass(Node* impl)
     return nil;
 }
 
-id <DOMEventTarget> kit(EventTarget* eventTarget)
+id <DOMEventTarget> kit(EventTarget* target)
 {
-    if (!eventTarget)
-        return nil;
-
-    if (auto* node = eventTarget->toNode())
-        return kit(node);
-
-    // We don't have an ObjC binding for XMLHttpRequest.
-
-    return nil;
+    // We don't have Objective-C bindings for XMLHttpRequest, DOMWindow, and other non-Node targets.
+    return is<Node>(target) ? kit(downcast<Node>(target)) : nil;
 }
 
 @implementation DOMNode (DOMNodeExtensions)
@@ -537,7 +530,7 @@ id <DOMEventTarget> kit(EventTarget* eventTarget)
 + (id)_nodeFromJSWrapper:(JSObjectRef)jsWrapper
 {
     JSObject* object = toJS(jsWrapper);
-    if (!object->inherits(*object->vm(), JSNode::info()))
+    if (!object->inherits<JSNode>(*object->vm()))
         return nil;
     return kit(&jsCast<JSNode*>(object)->wrapped());
 }
@@ -701,7 +694,7 @@ id <DOMEventTarget> kit(EventTarget* eventTarget)
     auto* cachedImage = downcast<RenderImage>(*renderer).cachedImage();
     if (!cachedImage || cachedImage->errorOccurred())
         return nil;
-    return (NSData *)cachedImage->imageForRenderer(renderer)->tiffRepresentation();
+    return (__bridge NSData *)cachedImage->imageForRenderer(renderer)->tiffRepresentation();
 }
 
 #endif
@@ -758,7 +751,7 @@ id <DOMEventTarget> kit(EventTarget* eventTarget)
         return true;
 
     Document& document = link.document();
-    auto mediaQuerySet = MediaQuerySet::create(media);
+    auto mediaQuerySet = MediaQuerySet::create(media, MediaQueryParserContext(document));
     return MediaQueryEvaluator { "screen", document, document.renderView() ? &document.renderView()->style() : nullptr }.evaluate(mediaQuerySet.get());
 }
 
@@ -848,13 +841,6 @@ WebCore::NodeFilter* core(DOMNodeFilter *wrapper)
     if (_internal)
         reinterpret_cast<WebCore::NodeFilter*>(_internal)->deref();
     [super dealloc];
-}
-
-- (void)finalize
-{
-    if (_internal)
-        reinterpret_cast<WebCore::NodeFilter*>(_internal)->deref();
-    [super finalize];
 }
 
 - (short)acceptNode:(DOMNode *)node

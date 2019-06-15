@@ -13,6 +13,7 @@ set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 
 WEBKIT_OPTION_BEGIN()
 WEBKIT_OPTION_DEFINE(ENABLE_STATIC_JSC "Whether to build JavaScriptCore as a static library." PUBLIC OFF)
+WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_REMOTE_INSPECTOR PRIVATE OFF)
 if (WIN32)
     # FIXME: Enable FTL on Windows. https://bugs.webkit.org/show_bug.cgi?id=145366
     WEBKIT_OPTION_DEFAULT_PORT_VALUE(ENABLE_FTL_JIT PRIVATE OFF)
@@ -32,8 +33,8 @@ set(DEFAULT_EVENT_LOOP_TYPE "Generic")
 set(EVENT_LOOP_TYPE ${DEFAULT_EVENT_LOOP_TYPE} CACHE STRING "Implementation of event loop to be used in JavaScriptCore (one of ${ALL_EVENT_LOOP_TYPES})")
 
 set(ENABLE_WEBCORE OFF)
+set(ENABLE_WEBKIT_LEGACY OFF)
 set(ENABLE_WEBKIT OFF)
-set(ENABLE_WEBKIT2 OFF)
 
 if (WIN32)
     set(ENABLE_API_TESTS OFF)
@@ -41,18 +42,20 @@ else ()
     set(ENABLE_API_TESTS ON)
 endif ()
 
-if (WTF_CPU_X86 OR WTF_CPU_X86_64)
-    SET_AND_EXPOSE_TO_BUILD(USE_UDIS86 1)
+if (WTF_CPU_ARM OR WTF_CPU_MIPS)
+    SET_AND_EXPOSE_TO_BUILD(USE_CAPSTONE TRUE)
 endif ()
 
 # FIXME: JSCOnly on WIN32 seems to only work with fully static build
 # https://bugs.webkit.org/show_bug.cgi?id=172862
-if (ENABLE_STATIC_JSC OR WIN32)
-    set(JavaScriptCore_LIBRARY_TYPE STATIC)
+if (NOT ENABLE_STATIC_JSC AND NOT WIN32)
+    set(JavaScriptCore_LIBRARY_TYPE SHARED)
 endif ()
 
 if (WIN32)
     add_definitions(-DNOMINMAX)
+    add_definitions(-D_WINDOWS -DWINVER=0x601 -D_WIN32_WINNT=0x601)
+    add_definitions(-DUNICODE -D_UNICODE)
 
     if (NOT WEBKIT_LIBRARIES_DIR)
         if (DEFINED ENV{WEBKIT_LIBRARIES})
@@ -68,9 +71,17 @@ if (WIN32)
         set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB32_PATHS OFF)
         set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS ON)
 
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib64)
         set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib64)
-        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin64)
     endif ()
+
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 endif ()
 
 string(TOLOWER ${EVENT_LOOP_TYPE} LOWERCASE_EVENT_LOOP_TYPE)
@@ -86,28 +97,10 @@ endif ()
 
 if (NOT APPLE)
     find_package(ICU REQUIRED)
+    if (WIN32)
+        add_definitions(-DUCHAR_TYPE=wchar_t)
+    endif ()
 else ()
+    add_definitions(-DU_DISABLE_RENAMING=1 -DU_SHOW_CPLUSPLUS_API=0)
     set(ICU_LIBRARIES libicucore.dylib)
-endif ()
-
-# From OptionsGTK.cmake
-if (CMAKE_MAJOR_VERSION LESS 3)
-    # Before CMake 3 it was necessary to use a build script instead of using cmake --build directly
-    # to preserve colors and pretty-printing.
-
-    build_command(COMMAND_LINE_TO_BUILD)
-    # build_command unconditionally adds -i (ignore errors) for make, and there's
-    # no reasonable way to turn that off, so we just replace it with -k, which has
-    # the same effect, except that the return code will indicate that an error occurred.
-    # See: http://www.cmake.org/cmake/help/v3.0/command/build_command.html
-    string(REPLACE " -i" " -k" COMMAND_LINE_TO_BUILD ${COMMAND_LINE_TO_BUILD})
-    file(WRITE
-        ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
-        "#!/bin/sh\n"
-        "${COMMAND_LINE_TO_BUILD} $@"
-    )
-    file(COPY ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
-        DESTINATION ${CMAKE_BINARY_DIR}
-        FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
-    )
 endif ()

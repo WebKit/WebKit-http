@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When the Function constructor is called with one argument then body be that argument and the following steps are taken:
     i) Call ToString(body)
     ii) If P is not parsable as a FormalParameterListopt then throw a SyntaxError exception
@@ -20,7 +20,7 @@ description: >
 try {
   var f = new Function(x);
 } catch (e) {
-  $ERROR('#1: test failed with error '+e);
+  $ERROR('#1: test failed with error ' + e);
 }
 
 //CHECK#2
@@ -29,7 +29,7 @@ if (f.constructor !== Function) {
 }
 
 //CHECK#3
-if (f()!==undefined) {
+if (f() !== undefined) {
   $ERROR('#3: When the Function constructor is called with one argument then body be that argument the following steps are taken...');
 }
 

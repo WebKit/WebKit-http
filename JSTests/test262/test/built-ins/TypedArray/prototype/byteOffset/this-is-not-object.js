@@ -1,16 +1,16 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.3
+esid: sec-get-%typedarray%.prototype.byteoffset
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.3 get %TypedArray%.prototype.byteOffset
 
   1. Let O be the this value.
   2. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var TypedArrayPrototype = TypedArray.prototype;

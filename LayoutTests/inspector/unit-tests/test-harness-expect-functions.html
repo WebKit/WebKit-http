@@ -5,7 +5,7 @@
 <script>
 function test()
 {
-    let suite = InspectorTest.createSyncSuite("InspectorTestExpectFunctions");
+    let suite = InspectorTest.createSyncSuite("InspectorTest.ExpectFunctions.Sync");
 
     function toArray(a) {
         return a instanceof Array && a.length ? a : [a];
@@ -58,8 +58,8 @@ function test()
 
     let object1 = {a: 1, b: 2};
     let object2 = {a: 1, b: 2};
-    let customObject1 = new WebInspector.CSSStyleDeclaration;
-    let customObject2 = new WebInspector.CSSRule;
+    let customObject1 = new WI.CSSStyleDeclaration;
+    let customObject2 = new WI.CSSRule;
     let expectEqualTestCase = {
         functionName: "expectEqual",
         passingInputs: [

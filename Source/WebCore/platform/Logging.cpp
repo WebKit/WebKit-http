@@ -69,30 +69,28 @@ void setLogChannelToAccumulate(const String& name)
     logChannelsNeedInitialization = true;
 }
 
-void initializeLogChannelsIfNecessary()
+void initializeLogChannelsIfNecessary(std::optional<String> logChannelString)
 {
-    if (!logChannelsNeedInitialization)
+    if (!logChannelsNeedInitialization && !logChannelString)
         return;
 
     logChannelsNeedInitialization = false;
 
-    WTFInitializeLogChannelStatesFromString(logChannels, logChannelCount, logLevelString().utf8().data());
+    String enabledChannelsString = logChannelString ? logChannelString.value() : logLevelString();
+    WTFInitializeLogChannelStatesFromString(logChannels, logChannelCount, enabledChannelsString.utf8().data());
 }
 
-#ifndef NDEBUG
-void registerNotifyCallback(const String& notifyID, WTF::Function<void()>&& callback)
+WTFLogChannel* getLogChannel(const String& name)
 {
-#if PLATFORM(COCOA)
-    int token;
-    notify_register_dispatch(notifyID.utf8().data(), &token, dispatch_get_main_queue(), BlockPtr<void (int)>::fromCallable([callback = WTFMove(callback)] (int) {
-        callback();
-    }).get());
-#else
-    UNUSED_PARAM(notifyID);
-    UNUSED_PARAM(callback);
-#endif
+    return WTFLogChannelByName(logChannels, logChannelCount, name.utf8().data());
 }
-#endif
+
+#else
+
+WTFLogChannel* getLogChannel(const String&)
+{
+    return nullptr;
+}
 
 #endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 

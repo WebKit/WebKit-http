@@ -10,15 +10,16 @@ description: >
       a. If x and y are both the same Symbol value, 
           return true; otherwise, return false.
     ...
+features: [Symbol]
 ---*/
 
 assert.sameValue(
-    Object.is(Symbol(), Symbol()),
-    false,
-    "`Object.is(Symbol(), Symbol())` returns `false`"
+  Object.is(Symbol(), Symbol()),
+  false,
+  "`Object.is(Symbol(), Symbol())` returns `false`"
 );
 assert.sameValue(
-    Object.is(Symbol('description'), Symbol('description')),
-    false,
-    "`Object.is(Symbol('description'), Symbol('description'))` returns `false`"
+  Object.is(Symbol('description'), Symbol('description')),
+  false,
+  "`Object.is(Symbol('description'), Symbol('description'))` returns `false`"
 );

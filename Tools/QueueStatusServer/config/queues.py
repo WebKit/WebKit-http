@@ -38,11 +38,14 @@ all_queue_names = [
     "ios-sim-ews",
     "bindings-ews",
     "jsc-ews",
+    "jsc-mips-ews",
     "mac-ews",
     "mac-wk2-ews",
     "mac-debug-ews",
     "mac-32bit-ews",
+    "webkitpy-ews",
     "win-ews",
+    "wincairo-ews",
     "wpe-ews",
 ]
 

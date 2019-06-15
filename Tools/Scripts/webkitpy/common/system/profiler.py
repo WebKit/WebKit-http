@@ -26,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import logging
 import re
 import itertools
@@ -116,17 +117,17 @@ class GooglePProf(SingleFileOutputProfiler):
     def profile_after_exit(self):
         # google-pprof doesn't check its arguments, so we have to.
         if not (self._host.filesystem.exists(self._output_path)):
-            print "Failed to gather profile, %s does not exist." % self._output_path
+            print("Failed to gather profile, %s does not exist." % self._output_path)
             return
 
         pprof_args = [self._pprof_path(), '--text', self._executable_path, self._output_path]
         profile_text = self._host.executive.run_command(pprof_args)
-        print "First 10 lines of pprof --text:"
-        print self._first_ten_lines_of_profile(profile_text)
-        print "http://google-perftools.googlecode.com/svn/trunk/doc/cpuprofile.html documents output."
-        print
-        print "To interact with the the full profile, including produce graphs:"
-        print ' '.join([self._pprof_path(), self._executable_path, self._output_path])
+        print("First 10 lines of pprof --text:")
+        print(self._first_ten_lines_of_profile(profile_text))
+        print("http://google-perftools.googlecode.com/svn/trunk/doc/cpuprofile.html documents output.")
+        print()
+        print("To interact with the the full profile, including produce graphs:")
+        print(' '.join([self._pprof_path(), self._executable_path, self._output_path]))
 
 
 class Perf(SingleFileOutputProfiler):
@@ -169,23 +170,23 @@ class Perf(SingleFileOutputProfiler):
         # Return early if the process produced non-zero exit code or is still running (if it couldn't be killed).
         exit_code = self._wait_process.poll()
         if exit_code is not 0:
-            print "'perf record' failed, ",
+            print("'perf record' failed, ", end=' ')
             if exit_code:
-                print "exit code was %i." % exit_code
+                print("exit code was %i." % exit_code)
             else:
-                print "the profiled process with pid %i is still running." % self._watched_pid
+                print("the profiled process with pid %i is still running." % self._watched_pid)
             return
 
         perf_report_args = [self._perf_path(), 'report', '--call-graph', 'none', '--input', self._output_path]
         perf_report_output = self._host.executive.run_command(perf_report_args)
-        print "First 10 lines of 'perf report --call-graph=none':"
+        print("First 10 lines of 'perf report --call-graph=none':")
 
-        print " ".join(perf_report_args)
-        print "\n".join(self._first_ten_lines_of_profile(perf_report_output))
+        print(" ".join(perf_report_args))
+        print("\n".join(self._first_ten_lines_of_profile(perf_report_output)))
 
-        print "To view the full profile, run:"
-        print ' '.join([self._perf_path(), 'report', '-i', self._output_path])
-        print  # An extra line between tests looks nicer.
+        print("To view the full profile, run:")
+        print(' '.join([self._perf_path(), 'report', '-i', self._output_path]))
+        print()  # An extra line between tests looks nicer.
 
 
 class Sample(SingleFileOutputProfiler):

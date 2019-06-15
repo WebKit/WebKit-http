@@ -63,6 +63,12 @@ public:
     {
         auto throwScope = DECLARE_THROW_SCOPE(state.vm());
 
+        if (shouldThrow == CastedThisErrorBehavior::Assert) {
+            ASSERT(cast(state, thisValue));
+            auto* thisObject = JSC::jsCast<JSClass*>(JSC::JSValue::decode(thisValue));
+            return JSC::JSValue::encode(getter(state, *thisObject, throwScope));
+        }
+
         auto* thisObject = cast(state, thisValue);
         if (UNLIKELY(!thisObject)) {
             if (shouldThrow == CastedThisErrorBehavior::Throw)
@@ -81,6 +87,23 @@ public:
         auto throwScope = DECLARE_THROW_SCOPE(state.vm());
         
         return JSC::JSValue::encode(getter(state, throwScope));
+    }
+};
+
+struct AttributeSetter {
+    template<typename Functor>
+    static auto call(JSC::ExecState&, JSC::ThrowScope&, Functor&& functor) -> std::enable_if_t<std::is_same<void, decltype(functor())>::value>
+    {
+        functor();
+    }
+
+    template<typename Functor>
+    static auto call(JSC::ExecState& state, JSC::ThrowScope& throwScope, Functor&& functor) -> std::enable_if_t<!std::is_same<void, decltype(functor())>::value>
+    {
+        auto result = functor();
+        if (!result.hasException())
+            return;
+        propagateException(state, throwScope, result.releaseException());
     }
 };
 

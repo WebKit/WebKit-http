@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -45,7 +45,7 @@ bool BaseButtonInputType::shouldSaveAndRestoreFormControlState() const
     return false;
 }
 
-bool BaseButtonInputType::appendFormData(FormDataList&, bool) const
+bool BaseButtonInputType::appendFormData(DOMFormData&, bool) const
 {
     // Buttons except overridden types are never successful.
     return false;
@@ -53,7 +53,8 @@ bool BaseButtonInputType::appendFormData(FormDataList&, bool) const
 
 RenderPtr<RenderElement> BaseButtonInputType::createInputRenderer(RenderStyle&& style)
 {
-    return createRenderer<RenderButton>(element(), WTFMove(style));
+    ASSERT(element());
+    return createRenderer<RenderButton>(*element(), WTFMove(style));
 }
 
 bool BaseButtonInputType::storesValueSeparateFromAttribute()
@@ -63,7 +64,8 @@ bool BaseButtonInputType::storesValueSeparateFromAttribute()
 
 void BaseButtonInputType::setValue(const String& sanitizedValue, bool, TextFieldEventBehavior)
 {
-    element().setAttributeWithoutSynchronization(valueAttr, sanitizedValue);
+    ASSERT(element());
+    element()->setAttributeWithoutSynchronization(valueAttr, sanitizedValue);
 }
 
 } // namespace WebCore

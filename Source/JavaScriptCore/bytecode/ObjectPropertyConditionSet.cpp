@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -182,13 +182,15 @@ bool ObjectPropertyConditionSet::isValidAndWatchable() const
 
 namespace {
 
-bool verbose = false;
+namespace ObjectPropertyConditionSetInternal {
+static const bool verbose = false;
+}
 
 ObjectPropertyCondition generateCondition(
     VM& vm, JSCell* owner, JSObject* object, UniquedStringImpl* uid, PropertyCondition::Kind conditionKind)
 {
-    Structure* structure = object->structure();
-    if (verbose)
+    Structure* structure = object->structure(vm);
+    if (ObjectPropertyConditionSetInternal::verbose)
         dataLog("Creating condition ", conditionKind, " for ", pointerDump(structure), "\n");
 
     ObjectPropertyCondition result;
@@ -202,13 +204,17 @@ ObjectPropertyCondition generateCondition(
         break;
     }
     case PropertyCondition::Absence: {
+        if (structure->hasPolyProto())
+            return ObjectPropertyCondition();
         result = ObjectPropertyCondition::absence(
-            vm, owner, object, uid, object->structure()->storedPrototypeObject());
+            vm, owner, object, uid, object->structure(vm)->storedPrototypeObject());
         break;
     }
     case PropertyCondition::AbsenceOfSetEffect: {
+        if (structure->hasPolyProto())
+            return ObjectPropertyCondition();
         result = ObjectPropertyCondition::absenceOfSetEffect(
-            vm, owner, object, uid, object->structure()->storedPrototypeObject());
+            vm, owner, object, uid, object->structure(vm)->storedPrototypeObject());
         break;
     }
     case PropertyCondition::Equivalence: {
@@ -216,7 +222,9 @@ ObjectPropertyCondition generateCondition(
         PropertyOffset offset = structure->getConcurrently(uid, attributes);
         if (offset == invalidOffset)
             return ObjectPropertyCondition();
-        JSValue value = object->getDirect(offset);
+        JSValue value = object->getDirectConcurrently(structure, offset);
+        if (!value)
+            return ObjectPropertyCondition();
         result = ObjectPropertyCondition::equivalence(vm, owner, object, uid, value);
         break;
     }
@@ -226,12 +234,12 @@ ObjectPropertyCondition generateCondition(
     }
 
     if (!result.isStillValidAssumingImpurePropertyWatchpoint()) {
-        if (verbose)
+        if (ObjectPropertyConditionSetInternal::verbose)
             dataLog("Failed to create condition: ", result, "\n");
         return ObjectPropertyCondition();
     }
 
-    if (verbose)
+    if (ObjectPropertyConditionSetInternal::verbose)
         dataLog("New condition: ", result, "\n");
     return result;
 }
@@ -248,12 +256,21 @@ ObjectPropertyConditionSet generateConditions(
     Vector<ObjectPropertyCondition> conditions;
     
     for (;;) {
-        if (verbose)
+        if (ObjectPropertyConditionSetInternal::verbose)
             dataLog("Considering structure: ", pointerDump(structure), "\n");
         
         if (structure->isProxy()) {
-            if (verbose)
+            if (ObjectPropertyConditionSetInternal::verbose)
                 dataLog("It's a proxy, so invalid.\n");
+            return ObjectPropertyConditionSet::invalid();
+        }
+
+        if (structure->hasPolyProto()) {
+            // FIXME: Integrate this with PolyProtoAccessChain:
+            // https://bugs.webkit.org/show_bug.cgi?id=177339
+            // Or at least allow OPC set generation when the
+            // base is not poly proto:
+            // https://bugs.webkit.org/show_bug.cgi?id=177721
             return ObjectPropertyConditionSet::invalid();
         }
         
@@ -261,11 +278,11 @@ ObjectPropertyConditionSet generateConditions(
         
         if (value.isNull()) {
             if (!prototype) {
-                if (verbose)
+                if (ObjectPropertyConditionSetInternal::verbose)
                     dataLog("Reached end of prototype chain as expected, done.\n");
                 break;
             }
-            if (verbose)
+            if (ObjectPropertyConditionSetInternal::verbose)
                 dataLog("Unexpectedly reached end of prototype chain, so invalid.\n");
             return ObjectPropertyConditionSet::invalid();
         }
@@ -276,35 +293,35 @@ ObjectPropertyConditionSet generateConditions(
         if (structure->isDictionary()) {
             if (concurrency == MainThread) {
                 if (structure->hasBeenFlattenedBefore()) {
-                    if (verbose)
+                    if (ObjectPropertyConditionSetInternal::verbose)
                         dataLog("Dictionary has been flattened before, so invalid.\n");
                     return ObjectPropertyConditionSet::invalid();
                 }
 
-                if (verbose)
+                if (ObjectPropertyConditionSetInternal::verbose)
                     dataLog("Flattening ", pointerDump(structure));
                 structure->flattenDictionaryStructure(vm, object);
             } else {
-                if (verbose)
+                if (ObjectPropertyConditionSetInternal::verbose)
                     dataLog("Cannot flatten dictionary when not on main thread, so invalid.\n");
                 return ObjectPropertyConditionSet::invalid();
             }
         }
 
         if (!functor(conditions, object)) {
-            if (verbose)
+            if (ObjectPropertyConditionSetInternal::verbose)
                 dataLog("Functor failed, invalid.\n");
             return ObjectPropertyConditionSet::invalid();
         }
         
         if (object == prototype) {
-            if (verbose)
+            if (ObjectPropertyConditionSetInternal::verbose)
                 dataLog("Reached desired prototype, done.\n");
             break;
         }
     }
 
-    if (verbose)
+    if (ObjectPropertyConditionSetInternal::verbose)
         dataLog("Returning conditions: ", listDump(conditions), "\n");
     return ObjectPropertyConditionSet::create(conditions);
 }
@@ -375,6 +392,40 @@ ObjectPropertyConditionSet generateConditionsForPrototypePropertyHitCustom(
             conditions.append(result);
             return true;
         });
+}
+
+ObjectPropertyConditionSet generateConditionsForInstanceOf(
+    VM& vm, JSCell* owner, ExecState* exec, Structure* headStructure, JSObject* prototype,
+    bool shouldHit)
+{
+    bool didHit = false;
+    if (ObjectPropertyConditionSetInternal::verbose)
+        dataLog("Searching for prototype ", JSValue(prototype), " starting with structure ", RawPointer(headStructure), " with shouldHit = ", shouldHit, "\n");
+    ObjectPropertyConditionSet result = generateConditions(
+        vm, exec->lexicalGlobalObject(), headStructure, shouldHit ? prototype : nullptr,
+        [&] (Vector<ObjectPropertyCondition>& conditions, JSObject* object) -> bool {
+            if (ObjectPropertyConditionSetInternal::verbose)
+                dataLog("Encountered object: ", RawPointer(object), "\n");
+            if (object == prototype) {
+                RELEASE_ASSERT(shouldHit);
+                didHit = true;
+                return true;
+            }
+
+            Structure* structure = object->structure(vm);
+            if (structure->hasPolyProto())
+                return false;
+            conditions.append(
+                ObjectPropertyCondition::hasPrototype(
+                    vm, owner, object, structure->storedPrototypeObject()));
+            return true;
+        });
+    if (result.isValid()) {
+        if (ObjectPropertyConditionSetInternal::verbose)
+            dataLog("didHit = ", didHit, ", shouldHit = ", shouldHit, "\n");
+        RELEASE_ASSERT(didHit == shouldHit);
+    }
+    return result;
 }
 
 ObjectPropertyConditionSet generateConditionsForPrototypeEquivalenceConcurrently(

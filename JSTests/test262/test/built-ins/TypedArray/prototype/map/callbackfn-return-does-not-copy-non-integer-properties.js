@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.map
 description: >
   Does not copy non-integer properties to returned value
-info: >
+info: |
   22.2.3.19 %TypedArray%.prototype.map ( callbackfn [ , thisArg ] )
 
   ...
@@ -14,7 +14,7 @@ info: >
     c. Let mappedValue be ? Call(callbackfn, T, « kValue, k, O »).
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

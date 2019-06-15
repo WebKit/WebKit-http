@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_ORTC_MEDIADESCRIPTION_H_
-#define WEBRTC_API_ORTC_MEDIADESCRIPTION_H_
+#ifndef API_ORTC_MEDIADESCRIPTION_H_
+#define API_ORTC_MEDIADESCRIPTION_H_
 
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "webrtc/base/optional.h"
-#include "webrtc/media/base/cryptoparams.h"
+#include "absl/types/optional.h"
+#include "api/cryptoparams.h"
 
 namespace webrtc {
 
@@ -31,7 +31,7 @@ class MediaDescription {
   // The mid(media stream identification) is used for identifying media streams
   // within a session description.
   // https://tools.ietf.org/html/rfc5888#section-6
-  rtc::Optional<std::string> mid() const { return mid_; }
+  absl::optional<std::string> mid() const { return mid_; }
   void set_mid(std::string mid) { mid_.emplace(std::move(mid)); }
 
   // Security keys and parameters for this media stream. Can be used to
@@ -43,11 +43,11 @@ class MediaDescription {
   }
 
  private:
-  rtc::Optional<std::string> mid_;
+  absl::optional<std::string> mid_;
 
   std::vector<cricket::CryptoParams> sdes_params_;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_ORTC_MEDIADESCRIPTION_H_
+#endif  // API_ORTC_MEDIADESCRIPTION_H_

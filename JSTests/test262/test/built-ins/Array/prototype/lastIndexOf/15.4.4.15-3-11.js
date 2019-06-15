@@ -2,13 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-3-11
 description: >
     Array.prototype.lastIndexOf - value of 'length' is a string
     containing positive number
 ---*/
 
-        var obj = {1: true, 2: false, length: "2"};
+var obj = {
+  1: true,
+  2: false,
+  length: "2"
+};
 
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, true), 1, 'Array.prototype.lastIndexOf.call(obj, true)');
 assert.sameValue(Array.prototype.lastIndexOf.call(obj, false), -1, 'Array.prototype.lastIndexOf.call(obj, false)');

@@ -26,18 +26,17 @@
 #include "config.h"
 #include "PageOverlay.h"
 
+#include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PageOverlayController.h"
 #include "PlatformMouseEvent.h"
 #include "ScrollbarTheme.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
-static const double fadeAnimationDuration = 0.2;
+static const Seconds fadeAnimationDuration { 200_ms };
 static const double fadeAnimationFrameRate = 30;
 
 static PageOverlay::PageOverlayID generatePageOverlayID()
@@ -61,15 +60,13 @@ PageOverlay::PageOverlay(Client& client, OverlayType overlayType)
 {
 }
 
-PageOverlay::~PageOverlay()
-{
-}
+PageOverlay::~PageOverlay() = default;
 
 PageOverlayController* PageOverlay::controller() const
 {
     if (!m_page)
         return nullptr;
-    return &m_page->mainFrame().pageOverlayController();
+    return &m_page->pageOverlayController();
 }
 
 IntRect PageOverlay::bounds() const
@@ -227,6 +224,9 @@ Vector<String> PageOverlay::copyAccessibilityAttributeNames(bool parameterizedNa
 
 void PageOverlay::startFadeInAnimation()
 {
+    if (m_fadeAnimationType == FadeInAnimation && m_fadeAnimationTimer.isActive())
+        return;
+
     m_fractionFadedIn = 0;
     m_fadeAnimationType = FadeInAnimation;
 
@@ -235,6 +235,9 @@ void PageOverlay::startFadeInAnimation()
 
 void PageOverlay::startFadeOutAnimation()
 {
+    if (m_fadeAnimationType == FadeOutAnimation && m_fadeAnimationTimer.isActive())
+        return;
+
     m_fractionFadedIn = 1;
     m_fadeAnimationType = FadeOutAnimation;
 
@@ -249,13 +252,13 @@ void PageOverlay::stopFadeOutAnimation()
 
 void PageOverlay::startFadeAnimation()
 {
-    m_fadeAnimationStartTime = currentTime();
+    m_fadeAnimationStartTime = WallTime::now();
     m_fadeAnimationTimer.startRepeating(1_s / fadeAnimationFrameRate);
 }
 
 void PageOverlay::fadeAnimationTimerFired()
 {
-    float animationProgress = (currentTime() - m_fadeAnimationStartTime) / m_fadeAnimationDuration;
+    float animationProgress = (WallTime::now() - m_fadeAnimationStartTime) / m_fadeAnimationDuration;
 
     if (animationProgress >= 1.0)
         animationProgress = 1.0;

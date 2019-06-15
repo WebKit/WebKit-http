@@ -25,14 +25,13 @@
 
 #pragma once
 
-#include "PlatformExportMacros.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
 class CachedResource;
 
-class CachedResourceHandleBase {
+class WEBCORE_EXPORT CachedResourceHandleBase {
 public:
     ~CachedResourceHandleBase();
 
@@ -49,7 +48,7 @@ protected:
     CachedResourceHandleBase(CachedResource*);
     CachedResourceHandleBase(const CachedResourceHandleBase&);
 
-    WEBCORE_EXPORT void setResource(CachedResource*);
+    void setResource(CachedResource*);
     
 private:
     CachedResourceHandleBase& operator=(const CachedResourceHandleBase&) { return *this; } 

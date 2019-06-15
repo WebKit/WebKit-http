@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,16 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SessionState_h
-#define SessionState_h
+#pragma once
 
 #if PLATFORM(COCOA)
 #include "ViewSnapshotStore.h"
 #endif
 
+#include <WebCore/BackForwardItemIdentifier.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/SerializedScriptValue.h>
 #include <WebCore/URL.h>
 #include <wtf/Optional.h>
 #include <wtf/Vector.h>
@@ -50,7 +51,7 @@ bool isValidEnum(WebCore::ShouldOpenExternalURLsPolicy);
 struct HTTPBody {
     struct Element {
         void encode(IPC::Encoder&) const;
-        static bool decode(IPC::Decoder&, Element&);
+        static std::optional<Element> decode(IPC::Decoder&);
 
         enum class Type {
             Data,
@@ -82,7 +83,7 @@ struct HTTPBody {
 
 struct FrameState {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, FrameState&);
+    static std::optional<FrameState> decode(IPC::Decoder&);
 
     String urlString;
     String originalURLString;
@@ -120,24 +121,24 @@ struct PageState {
     String title;
     FrameState mainFrameState;
     WebCore::ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy { WebCore::ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+    RefPtr<WebCore::SerializedScriptValue> sessionStateObject;
 };
 
 struct BackForwardListItemState {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, BackForwardListItemState&);
+    static std::optional<BackForwardListItemState> decode(IPC::Decoder&);
 
-    uint64_t identifier;
+    WebCore::BackForwardItemIdentifier identifier;
 
     PageState pageState;
 #if PLATFORM(COCOA)
     RefPtr<ViewSnapshot> snapshot;
 #endif
-
 };
 
 struct BackForwardListState {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, BackForwardListState&);
+    static std::optional<BackForwardListState> decode(IPC::Decoder&);
 
     Vector<BackForwardListItemState> items;
     std::optional<uint32_t> currentIndex;
@@ -150,5 +151,3 @@ struct SessionState {
 };
 
 } // namespace WebKit
-
-#endif // SessionState_h

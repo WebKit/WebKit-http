@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.rangeForNextCSSNameOrValue = function(text, index = 0) {
+WI.rangeForNextCSSNameOrValue = function(text, index = 0) {
     let from = 0;
     let to = 0;
 
@@ -40,7 +40,7 @@ WebInspector.rangeForNextCSSNameOrValue = function(text, index = 0) {
 
     // Don't select leading/trailing whitespace.
     from += substring.match(/^\s*/)[0].length;
-    to -= substring.match(/[\s\;]*$/)[0].length;
+    to -= substring.match(/[\s;]*$/)[0].length;
 
     return {from, to};
 };

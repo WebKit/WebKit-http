@@ -23,20 +23,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#include "config.h"
-#include "objc_runtime.h"
+#import "config.h"
+#import "objc_runtime.h"
 
-#include "JSDOMBinding.h"
-#include "ObjCRuntimeObject.h"
-#include "WebScriptObject.h"
-#include "WebScriptObjectProtocol.h"
-#include "objc_instance.h"
-#include "runtime_array.h"
-#include "runtime_object.h"
-#include <runtime/Error.h>
-#include <runtime/JSGlobalObject.h>
-#include <runtime/JSLock.h>
-#include <wtf/RetainPtr.h>
+#import "JSDOMBinding.h"
+#import "ObjCRuntimeObject.h"
+#import "WebScriptObject.h"
+#import "WebScriptObjectProtocol.h"
+#import "objc_instance.h"
+#import "runtime_array.h"
+#import "runtime_object.h"
+#import <JavaScriptCore/Error.h>
+#import <JavaScriptCore/JSGlobalObject.h>
+#import <JavaScriptCore/JSLock.h>
+#import <wtf/RetainPtr.h>
 
 using namespace WebCore;
 
@@ -104,7 +104,7 @@ JSValue ObjcField::valueFromInstance(ExecState* exec, const Instance* instance) 
     JSLock::DropAllLocks dropAllLocks(exec); // Can't put this inside the @try scope because it unwinds incorrectly.
 
     @try {
-        if (id objcValue = [targetObject valueForKey:(NSString *)_name.get()])
+        if (id objcValue = [targetObject valueForKey:(__bridge NSString *)_name.get()])
             result = convertObjcValueToValue(exec, &objcValue, ObjcObjectType, instance->rootObject());
         {
             JSLockHolder lock(exec);
@@ -122,7 +122,8 @@ JSValue ObjcField::valueFromInstance(ExecState* exec, const Instance* instance) 
 
 static id convertValueToObjcObject(ExecState* exec, JSValue value)
 {
-    RefPtr<RootObject> rootObject = findRootObject(exec->vmEntryGlobalObject());
+    VM& vm = exec->vm();
+    RefPtr<RootObject> rootObject = findRootObject(vm.vmEntryGlobalObject(exec));
     if (!rootObject)
         return nil;
     return [webScriptObjectClass() _convertValueToObjcValue:value originRootObject:rootObject.get() rootObject:rootObject.get()];
@@ -139,7 +140,7 @@ bool ObjcField::setValueToInstance(ExecState* exec, const Instance* instance, JS
     JSLock::DropAllLocks dropAllLocks(exec); // Can't put this inside the @try scope because it unwinds incorrectly.
 
     @try {
-        [targetObject setValue:value forKey:(NSString *)_name.get()];
+        [targetObject setValue:value forKey:(__bridge NSString *)_name.get()];
         {
             JSLockHolder lock(exec);
             ObjcInstance::moveGlobalExceptionToExecState(exec);
@@ -166,7 +167,7 @@ bool ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) 
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (![_array.get() respondsToSelector:@selector(insertObject:atIndex:)]) {
-        throwTypeError(exec, scope, ASCIILiteral("Array is not mutable."));
+        throwTypeError(exec, scope, "Array is not mutable."_s);
         return false;
     }
 
@@ -180,7 +181,7 @@ bool ObjcArray::setValueAt(ExecState* exec, unsigned int index, JSValue aValue) 
     ObjcValue oValue = convertValueToObjcValue (exec, aValue, ObjcObjectType);
 
     @try {
-        [_array.get() insertObject:oValue.objectValue atIndex:index];
+        [_array.get() insertObject:(__bridge id)oValue.objectValue atIndex:index];
         return true;
     } @catch(NSException* localException) {
         throwException(exec, scope, createError(exec, "Objective-C exception."));
@@ -249,7 +250,7 @@ static EncodedJSValue JSC_HOST_CALL callObjCFallbackObject(ExecState* exec)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSValue thisValue = exec->thisValue();
-    if (!thisValue.inherits(vm, ObjCRuntimeObject::info()))
+    if (!thisValue.inherits<ObjCRuntimeObject>(vm))
         return throwVMTypeError(exec, scope);
 
     JSValue result = jsUndefined();

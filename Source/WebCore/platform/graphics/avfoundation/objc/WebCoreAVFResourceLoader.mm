@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -72,9 +72,21 @@ void WebCoreAVFResourceLoader::startLoading()
 
     // FIXME: Skip Content Security Policy check if the element that inititated this request
     // is in a user-agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=173498>.
-    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, BufferData, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, FetchOptions::Credentials::Omit, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::DisallowCaching));
+    CachedResourceRequest request(WTFMove(resourceRequest), ResourceLoaderOptions(
+        SendCallbackPolicy::SendCallbacks,
+        ContentSniffingPolicy::DoNotSniffContent,
+        DataBufferingPolicy::BufferData,
+        StoredCredentialsPolicy::DoNotUse,
+        ClientCredentialPolicy::CannotAskClientForCredentials,
+        FetchOptions::Credentials::Omit,
+        SecurityCheckPolicy::DoSecurityCheck,
+        FetchOptions::Mode::NoCors,
+        CertificateInfoPolicy::DoNotIncludeCertificateInfo,
+        ContentSecurityPolicyImposition::DoPolicyCheck,
+        DefersLoadingPolicy::AllowDefersLoading,
+        CachingPolicy::DisallowCaching));
     if (auto* loader = m_parent->player()->cachedResourceLoader())
-        m_resource = loader->requestMedia(WTFMove(request));
+        m_resource = loader->requestMedia(WTFMove(request)).value_or(nullptr);
 
     if (m_resource)
         m_resource->addClient(*this);
@@ -108,9 +120,10 @@ void WebCoreAVFResourceLoader::invalidate()
     });
 }
 
-void WebCoreAVFResourceLoader::responseReceived(CachedResource& resource, const ResourceResponse& response)
+void WebCoreAVFResourceLoader::responseReceived(CachedResource& resource, const ResourceResponse& response, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT_UNUSED(resource, &resource == m_resource);
+    CompletionHandlerCallingScope completionHandlerCaller(WTFMove(completionHandler));
 
     int status = response.httpStatusCode();
     if (status && (status < 200 || status > 299)) {
@@ -119,7 +132,7 @@ void WebCoreAVFResourceLoader::responseReceived(CachedResource& resource, const 
     }
 
     if (AVAssetResourceLoadingContentInformationRequest* contentInfo = [m_avRequest.get() contentInformationRequest]) {
-        String uti = UTIFromMIMEType(response.mimeType().createCFString().get()).get();
+        String uti = UTIFromMIMEType(response.mimeType());
 
         [contentInfo setContentType:uti];
 

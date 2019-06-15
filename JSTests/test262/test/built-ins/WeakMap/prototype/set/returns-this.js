@@ -2,8 +2,9 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.3.5
+esid: sec-weakmap.prototype.set
 description: Returns `this` after setting a new value.
-info: >
+info: |
   WeakMap.prototype.set ( key, value )
 
   1. Let M be this value.

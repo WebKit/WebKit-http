@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2003, 2006 Apple Inc.  All rights reserved.
  * Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
+ * Copyright (C) 2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceRequest_h
-#define ResourceRequest_h
+#pragma once
 
 #include "ResourceRequestBase.h"
 
@@ -33,56 +33,72 @@ typedef const struct _CFURLRequest* CFURLRequestRef;
 
 namespace WebCore {
 
-    class ResourceRequest : public ResourceRequestBase {
-    public:
-        ResourceRequest(const String& url)
-            : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
-        {
-        }
+class ResourceRequest : public ResourceRequestBase {
+public:
+    ResourceRequest(const String& url)
+        : ResourceRequestBase(URL(ParsedURLString, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
+    {
+    }
 
-        ResourceRequest(const URL& url)
-            : ResourceRequestBase(url, UseProtocolCachePolicy)
-        {
-        }
+    ResourceRequest(const URL& url)
+        : ResourceRequestBase(url, ResourceRequestCachePolicy::UseProtocolCachePolicy)
+    {
+    }
 
-        ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy)
-            : ResourceRequestBase(url, policy)
-        {
-            setHTTPReferrer(referrer);
-        }
+    ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = ResourceRequestCachePolicy::UseProtocolCachePolicy)
+        : ResourceRequestBase(url, policy)
+    {
+        setHTTPReferrer(referrer);
+    }
 
-        ResourceRequest()
-            : ResourceRequestBase(URL(), UseProtocolCachePolicy)
-        {
-        }
+    ResourceRequest()
+        : ResourceRequestBase(URL(), ResourceRequestCachePolicy::UseProtocolCachePolicy)
+    {
+    }
 
-        ResourceRequest(CFURLRequestRef)
-            : ResourceRequestBase()
-        {
-        }
+    ResourceRequest(CFURLRequestRef)
+        : ResourceRequestBase()
+    {
+    }
 
-        void updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest) { *this = delegateProvidedRequest; }
+    void updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest) { *this = delegateProvidedRequest; }
 
-        // Needed for compatibility.
-        CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const { return 0; }
+    // Needed for compatibility.
+    CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const { return 0; }
 
-        // The following two stubs are for compatibility with CFNetwork, and are not used.
-        static bool httpPipeliningEnabled() { return false; }
-        static void setHTTPPipeliningEnabled(bool) { }
+    // The following two stubs are for compatibility with CFNetwork, and are not used.
+    static bool httpPipeliningEnabled() { return false; }
+    static void setHTTPPipeliningEnabled(bool) { }
 
-    private:
-        friend class ResourceRequestBase;
+    template<class Encoder> void encodeWithPlatformData(Encoder&) const;
+    template<class Decoder> bool decodeWithPlatformData(Decoder&);
 
-        void doUpdatePlatformRequest() { }
-        void doUpdateResourceRequest() { }
-        void doUpdatePlatformHTTPBody() { }
-        void doUpdateResourceHTTPBody() { }
+private:
+    friend class ResourceRequestBase;
 
-        void doPlatformSetAsIsolatedCopy(const ResourceRequest&) { }
+    void doUpdatePlatformRequest() { }
+    void doUpdateResourceRequest() { }
+    void doUpdatePlatformHTTPBody() { }
+    void doUpdateResourceHTTPBody() { }
 
-        static bool s_httpPipeliningEnabled;
-    };
+    void doPlatformSetAsIsolatedCopy(const ResourceRequest&) { }
+
+    static bool s_httpPipeliningEnabled;
+};
+
+template<class Encoder>
+void ResourceRequest::encodeWithPlatformData(Encoder& encoder) const
+{
+    encodeBase(encoder);
+}
+
+template<class Decoder>
+bool ResourceRequest::decodeWithPlatformData(Decoder& decoder)
+{
+    if (!decodeBase(decoder))
+        return false;
+
+    return true;
+}
 
 } // namespace WebCore
-
-#endif // ResourceRequest_h

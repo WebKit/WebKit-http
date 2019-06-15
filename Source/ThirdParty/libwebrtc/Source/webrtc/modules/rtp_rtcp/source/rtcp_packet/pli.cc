@@ -8,11 +8,11 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/pli.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/pli.h"
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/common_header.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/common_header.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -41,7 +41,7 @@ bool Pli::Parse(const CommonHeader& packet) {
   RTC_DCHECK_EQ(packet.fmt(), kFeedbackMessageType);
 
   if (packet.payload_size_bytes() < kCommonFeedbackLength) {
-    LOG(LS_WARNING) << "Packet is too small to be a valid PLI packet";
+    RTC_LOG(LS_WARNING) << "Packet is too small to be a valid PLI packet";
     return false;
   }
 
@@ -56,7 +56,7 @@ size_t Pli::BlockLength() const {
 bool Pli::Create(uint8_t* packet,
                  size_t* index,
                  size_t max_length,
-                 RtcpPacket::PacketReadyCallback* callback) const {
+                 PacketReadyCallback callback) const {
   while (*index + BlockLength() > max_length) {
     if (!OnBufferFull(packet, index, callback))
       return false;

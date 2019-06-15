@@ -2,6 +2,7 @@
  * Copyright (C) 2004, 2005, 2007, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006, 2007, 2008 Rob Buis <buis@kde.org>
  * Copyright (C) Research In Motion Limited 2009-2010. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,26 +27,19 @@
 #include "RenderSVGResourceClipper.h"
 #include "SVGNames.h"
 #include "StyleResolver.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_ENUMERATION(SVGClipPathElement, SVGNames::clipPathUnitsAttr, ClipPathUnits, clipPathUnits, SVGUnitTypes::SVGUnitType)
-DEFINE_ANIMATED_BOOLEAN(SVGClipPathElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGClipPathElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(clipPathUnits)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGClipPathElement);
 
 inline SVGClipPathElement::SVGClipPathElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
-    , m_clipPathUnits(SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE)
+    , SVGExternalResourcesRequired(this)
 {
     ASSERT(hasTagName(SVGNames::clipPathTag));
-    registerAnimatedPropertiesForSVGClipPathElement();
+    registerAttributes();
 }
 
 Ref<SVGClipPathElement> SVGClipPathElement::create(const QualifiedName& tagName, Document& document)
@@ -53,15 +47,12 @@ Ref<SVGClipPathElement> SVGClipPathElement::create(const QualifiedName& tagName,
     return adoptRef(*new SVGClipPathElement(tagName, document));
 }
 
-bool SVGClipPathElement::isSupportedAttribute(const QualifiedName& attrName)
+void SVGClipPathElement::registerAttributes()
 {
-    static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
-    if (supportedAttributes.get().isEmpty()) {
-        SVGLangSpace::addSupportedAttributes(supportedAttributes);
-        SVGExternalResourcesRequired::addSupportedAttributes(supportedAttributes);
-        supportedAttributes.get().add(SVGNames::clipPathUnitsAttr);
-    }
-    return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
+    auto& registry = attributeRegistry();
+    if (!registry.isEmpty())
+        return;
+    registry.registerAttribute<SVGNames::clipPathUnitsAttr, SVGUnitTypes::SVGUnitType, &SVGClipPathElement::m_clipPathUnits>();
 }
 
 void SVGClipPathElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -69,7 +60,7 @@ void SVGClipPathElement::parseAttribute(const QualifiedName& name, const AtomicS
     if (name == SVGNames::clipPathUnitsAttr) {
         auto propertyValue = SVGPropertyTraits<SVGUnitTypes::SVGUnitType>::fromString(value);
         if (propertyValue > 0)
-            setClipPathUnitsBaseValue(propertyValue);
+            m_clipPathUnits.setValue(propertyValue);
         return;
     }
 
@@ -79,22 +70,23 @@ void SVGClipPathElement::parseAttribute(const QualifiedName& name, const AtomicS
 
 void SVGClipPathElement::svgAttributeChanged(const QualifiedName& attrName)
 {
-    if (!isSupportedAttribute(attrName)) {
-        SVGGraphicsElement::svgAttributeChanged(attrName);
+    if (isKnownAttribute(attrName)) {
+        InstanceInvalidationGuard guard(*this);
+
+        if (RenderObject* object = renderer())
+            object->setNeedsLayout();
         return;
     }
 
-    InstanceInvalidationGuard guard(*this);
-
-    if (RenderObject* object = renderer())
-        object->setNeedsLayout();
+    SVGGraphicsElement::svgAttributeChanged(attrName);
+    SVGExternalResourcesRequired::svgAttributeChanged(attrName);
 }
 
 void SVGClipPathElement::childrenChanged(const ChildChange& change)
 {
     SVGGraphicsElement::childrenChanged(change);
 
-    if (change.source == ChildChangeSourceParser)
+    if (change.source == ChildChangeSource::Parser)
         return;
 
     if (RenderObject* object = renderer())

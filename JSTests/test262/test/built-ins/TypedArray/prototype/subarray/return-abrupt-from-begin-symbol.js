@@ -3,14 +3,14 @@
 /*---
 esid: sec-%typedarray%.prototype.subarray
 description: Return abrupt from ToInteger(begin), begin is symbol
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
   7. Let relativeBegin be ? ToInteger(begin).
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var s = Symbol("1");

@@ -35,9 +35,8 @@
 #include "Page.h"
 #include "PlatformMouseEvent.h"
 #include "RuntimeEnabledFeatures.h"
-#include "ScriptController.h"
+#include "UserGestureIndicator.h"
 #include "VoidCallback.h"
-
 
 namespace WebCore {
 
@@ -53,14 +52,14 @@ void PointerLockController::requestPointerLock(Element* target)
         return;
     }
 
-    if (m_documentAllowedToRelockWithoutUserGesture != &target->document() && !ScriptController::processingUserGesture()) {
+    if (m_documentAllowedToRelockWithoutUserGesture != &target->document() && !UserGestureIndicator::processingUserGesture()) {
         enqueueEvent(eventNames().pointerlockerrorEvent, target);
         return;
     }
 
     if (target->document().isSandboxed(SandboxPointerLock)) {
         // FIXME: This message should be moved off the console once a solution to https://bugs.webkit.org/show_bug.cgi?id=103274 exists.
-        target->document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, ASCIILiteral("Blocked pointer lock on an element because the element's frame is sandboxed and the 'allow-pointer-lock' permission is not set."));
+        target->document().addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Blocked pointer lock on an element because the element's frame is sandboxed and the 'allow-pointer-lock' permission is not set."_s);
         enqueueEvent(eventNames().pointerlockerrorEvent, target);
         return;
     }
@@ -208,7 +207,7 @@ void PointerLockController::enqueueEvent(const AtomicString& type, Element* elem
 void PointerLockController::enqueueEvent(const AtomicString& type, Document* document)
 {
     if (document)
-        document->enqueueDocumentEvent(Event::create(type, true, false));
+        document->enqueueDocumentEvent(Event::create(type, Event::CanBubble::Yes, Event::IsCancelable::No));
 }
 
 } // namespace WebCore

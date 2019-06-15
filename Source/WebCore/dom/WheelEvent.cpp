@@ -35,12 +35,10 @@ inline static unsigned determineDeltaMode(const PlatformWheelEvent& event)
     return event.granularity() == ScrollByPageWheelEvent ? WheelEvent::DOM_DELTA_PAGE : WheelEvent::DOM_DELTA_PIXEL;
 }
 
-WheelEvent::WheelEvent()
-{
-}
+inline WheelEvent::WheelEvent() = default;
 
-WheelEvent::WheelEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
-    : MouseEvent(type, initializer, isTrusted)
+inline WheelEvent::WheelEvent(const AtomicString& type, const Init& initializer)
+    : MouseEvent(type, initializer)
     , m_wheelDelta(initializer.wheelDeltaX ? initializer.wheelDeltaX : -initializer.deltaX, initializer.wheelDeltaY ? initializer.wheelDeltaY : -initializer.deltaY)
     , m_deltaX(initializer.deltaX ? initializer.deltaX : -initializer.wheelDeltaX)
     , m_deltaY(initializer.deltaY ? initializer.deltaY : -initializer.wheelDeltaY)
@@ -49,33 +47,38 @@ WheelEvent::WheelEvent(const AtomicString& type, const Init& initializer, IsTrus
 {
 }
 
-WheelEvent::WheelEvent(const PlatformWheelEvent& event, DOMWindow* view)
-    : MouseEvent(eventNames().wheelEvent, true, true, event.timestamp(), view, 0, event.globalPosition(), event.position()
-#if ENABLE(POINTER_LOCK)
-        , { }
-#endif
-        , event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(), 0, 0, 0, 0, 0, false)
+inline WheelEvent::WheelEvent(const PlatformWheelEvent& event, RefPtr<WindowProxy>&& view)
+    : MouseEvent(eventNames().wheelEvent, CanBubble::Yes, IsCancelable::Yes, IsComposed::Yes, event.timestamp().approximateMonotonicTime(), WTFMove(view), 0,
+        event.globalPosition(), event.position() , { }, event.modifiers(), 0, 0, nullptr, 0, 0, nullptr, IsSimulated::No, IsTrusted::Yes)
     , m_wheelDelta(event.wheelTicksX() * TickMultiplier, event.wheelTicksY() * TickMultiplier)
     , m_deltaX(-event.deltaX())
     , m_deltaY(-event.deltaY())
     , m_deltaMode(determineDeltaMode(event))
-    , m_wheelEvent(event)
-    , m_initializedWithPlatformWheelEvent(true)
+    , m_underlyingPlatformEvent(event)
 {
 }
 
-void WheelEvent::initWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow* view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
+Ref<WheelEvent> WheelEvent::create(const PlatformWheelEvent& event, RefPtr<WindowProxy>&& view)
 {
-    if (dispatched())
+    return adoptRef(*new WheelEvent(event, WTFMove(view)));
+}
+
+Ref<WheelEvent> WheelEvent::createForBindings()
+{
+    return adoptRef(*new WheelEvent);
+}
+
+Ref<WheelEvent> WheelEvent::create(const AtomicString& type, const Init& initializer)
+{
+    return adoptRef(*new WheelEvent(type, initializer));
+}
+
+void WheelEvent::initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, RefPtr<WindowProxy>&& view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
+{
+    if (isBeingDispatched())
         return;
     
-    initUIEvent(eventNames().wheelEvent, true, true, view, 0);
-    
-    m_screenLocation = { screenX, screenY };
-    m_ctrlKey = ctrlKey;
-    m_altKey = altKey;
-    m_shiftKey = shiftKey;
-    m_metaKey = metaKey;
+    initMouseEvent(eventNames().wheelEvent, true, true, WTFMove(view), 0, screenX, screenY, pageX, pageY, ctrlKey, altKey, shiftKey, metaKey, 0, nullptr);
 
     // Normalize to 120 multiple for compatibility with IE.
     m_wheelDelta = { rawDeltaX * TickMultiplier, rawDeltaY * TickMultiplier };
@@ -84,7 +87,7 @@ void WheelEvent::initWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow* view, i
 
     m_deltaMode = DOM_DELTA_PIXEL;
 
-    initCoordinates({ pageX, pageY });
+    m_underlyingPlatformEvent = std::nullopt;
 }
 
 EventInterface WheelEvent::eventInterface() const

@@ -1,3 +1,542 @@
+2018-07-19  Antoine Quint  <graouts@apple.com>
+
+        Flaky crash in AnimationTimeline::cancelOrRemoveDeclarativeAnimation
+        https://bugs.webkit.org/show_bug.cgi?id=187530
+        <rdar://problem/42095186>
+
+        Reviewed by Dean Jackson.
+
+        Mark a WPT progression now that we correctly ignore animation names that have no matching @keyframes rule.
+
+        * css-animations/test_element-get-animations-expected.txt:
+
+2018-07-03  Antoine Quint  <graouts@apple.com>
+
+        Unreviewed, rebaselining somes Web Animations test expectations.
+
+        * css-animations/test_animations-dynamic-changes-expected.txt:
+        * css-animations/test_document-get-animations-expected.txt:
+        * css-animations/test_keyframeeffect-getkeyframes-expected.txt: Added.
+
+2018-06-28  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-starttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183834
+        <rdar://problem/40997932>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-starttime-expected.txt:
+
+2018-06-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-pausing.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183826
+        <rdar://problem/40997412>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-pausing-expected.txt:
+
+2018-06-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Ensure animations are updated prior to requestAnimationFrame callbacks
+        https://bugs.webkit.org/show_bug.cgi?id=186997
+        <rdar://problem/41419414>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-pausing-expected.txt:
+
+2018-06-20  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-ready.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183830
+        <rdar://problem/40997539>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-ready-expected.txt:
+
+2018-06-20  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_element-get-animations.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183841
+        <rdar://problem/40998101>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Transitions and CSS Animations tests.
+
+        * css-animations/test_element-get-animations-expected.txt:
+        * css-transitions/test_element-get-animations-expected.txt:
+
+2018-06-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_pseudoElement-get-animations.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183818
+        <rdar://problem/40997015>
+
+        Reviewed by Dean Jackson.
+
+        Mark progressions in the Mozilla CSS Transitions and CSS Animations tests.
+
+        * css-animations/test_pseudoElement-get-animations-expected.txt:
+        * css-transitions/test_element-get-animations-expected.txt:
+
+2018-06-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-playstate.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183828
+        <rdar://problem/40997469>
+
+        Reviewed by Dean Jackson.
+
+        Mark a progression in the Mozilla CSS Animations tests.
+
+        * css-animations/test_animation-playstate-expected.txt:
+
+2018-06-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-cancel.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183821
+        <rdar://problem/40997034>
+
+        Reviewed by Dean Jackson.
+
+        Mark a progression in the Mozilla CSS Transitions tests.
+
+        * css-transitions/test_animation-cancel-expected.txt:
+
+2018-06-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement "Starting of transitions" section from CSS Transitions
+        https://bugs.webkit.org/show_bug.cgi?id=186517
+        <rdar://problem/41000798>
+
+        Reviewed by Dean Jackson.
+
+        Mark some progressions in the Mozilla CSS Animations and CSS Transitions tests.
+
+        * css-transitions/test_animation-cancel-expected.txt:
+        * css-transitions/test_animation-ready-expected.txt:
+
+2018-06-15  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] CSS Animations should take precedence over CSS Transitions
+        https://bugs.webkit.org/show_bug.cgi?id=186651
+
+        Reviewed by Dean Jackson.
+
+        Mark some progressions in the Mozilla CSS Animations and CSS Transitions tests.
+
+        * css-animations/test_element-get-animations-expected.txt:
+        * css-transitions/test_document-get-animations-expected.txt:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_setting-effect.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183850
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * css-transitions/test_setting-effect-expected.txt:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-starttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183833
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * css-transitions/test_animation-starttime-expected.txt:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-currenttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183825
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * css-transitions/test_animation-currenttime-expected.txt:
+
+2018-06-11  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-transitions/test_animation-computed-timing.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183823
+
+        Unreviewed.
+
+        This test is now passing.
+
+        * css-transitions/test_animation-computed-timing-expected.txt:
+
+2018-05-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on for test runners
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Unreviewed. Rolling out the patch for this bug, it caused some flaky timeouts for animation suspension tests.
+
+        * css-animations/test_animation-cancel.html:
+        * css-animations/test_animation-computed-timing.html:
+        * css-animations/test_animation-currenttime.html:
+        * css-animations/test_animation-finish.html:
+        * css-animations/test_animation-finished.html:
+        * css-animations/test_animation-id.html:
+        * css-animations/test_animation-pausing.html:
+        * css-animations/test_animation-playstate.html:
+        * css-animations/test_animation-ready.html:
+        * css-animations/test_animation-reverse.html:
+        * css-animations/test_animation-starttime.html:
+        * css-animations/test_animations-dynamic-changes.html:
+        * css-animations/test_cssanimation-animationname.html:
+        * css-animations/test_document-get-animations.html:
+        * css-animations/test_effect-target.html:
+        * css-animations/test_element-get-animations.html:
+        * css-animations/test_event-dispatch.html:
+        * css-animations/test_event-order.html:
+        * css-animations/test_keyframeeffect-getkeyframes.html:
+        * css-animations/test_pseudoElement-get-animations.html:
+        * css-animations/test_setting-effect.html:
+        * css-transitions/test_animation-cancel.html:
+        * css-transitions/test_animation-computed-timing.html:
+        * css-transitions/test_animation-currenttime.html:
+        * css-transitions/test_animation-finished.html:
+        * css-transitions/test_animation-pausing.html:
+        * css-transitions/test_animation-ready.html:
+        * css-transitions/test_animation-starttime.html:
+        * css-transitions/test_csstransition-transitionproperty.html:
+        * css-transitions/test_document-get-animations.html:
+        * css-transitions/test_effect-target.html:
+        * css-transitions/test_element-get-animations.html:
+        * css-transitions/test_event-dispatch.html:
+        * css-transitions/test_keyframeeffect-getkeyframes.html:
+        * css-transitions/test_pseudoElement-get-animations.html:
+        * css-transitions/test_setting-effect.html:
+
+2018-05-18  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on for test runners
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Reviewed by Jon Lee.
+
+        Since Web Animations with CSS integration is on by default on test runners, we no longer need
+        the special HTML comment to turn the flag on for select tests.
+
+        * css-animations/test_animation-cancel.html:
+        * css-animations/test_animation-computed-timing.html:
+        * css-animations/test_animation-currenttime.html:
+        * css-animations/test_animation-finish.html:
+        * css-animations/test_animation-finished.html:
+        * css-animations/test_animation-id.html:
+        * css-animations/test_animation-pausing.html:
+        * css-animations/test_animation-playstate.html:
+        * css-animations/test_animation-ready.html:
+        * css-animations/test_animation-reverse.html:
+        * css-animations/test_animation-starttime.html:
+        * css-animations/test_animations-dynamic-changes.html:
+        * css-animations/test_cssanimation-animationname.html:
+        * css-animations/test_document-get-animations.html:
+        * css-animations/test_effect-target.html:
+        * css-animations/test_element-get-animations.html:
+        * css-animations/test_event-dispatch.html:
+        * css-animations/test_event-order.html:
+        * css-animations/test_keyframeeffect-getkeyframes.html:
+        * css-animations/test_pseudoElement-get-animations.html:
+        * css-animations/test_setting-effect.html:
+        * css-transitions/test_animation-cancel.html:
+        * css-transitions/test_animation-computed-timing.html:
+        * css-transitions/test_animation-currenttime.html:
+        * css-transitions/test_animation-finished.html:
+        * css-transitions/test_animation-pausing.html:
+        * css-transitions/test_animation-ready.html:
+        * css-transitions/test_animation-starttime.html:
+        * css-transitions/test_csstransition-transitionproperty.html:
+        * css-transitions/test_document-get-animations.html:
+        * css-transitions/test_effect-target.html:
+        * css-transitions/test_element-get-animations.html:
+        * css-transitions/test_event-dispatch.html:
+        * css-transitions/test_keyframeeffect-getkeyframes.html:
+        * css-transitions/test_pseudoElement-get-animations.html:
+        * css-transitions/test_setting-effect.html:
+
+2018-05-15  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose Web Animations CSS integration as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=185647
+
+        Reviewed by Dean Jackson.
+
+        Change the name of the Web Animations CSS integration flag so that tests can opt into this feature.
+
+        * css-animations/test_animation-cancel.html:
+        * css-animations/test_animation-computed-timing.html:
+        * css-animations/test_animation-currenttime.html:
+        * css-animations/test_animation-finish.html:
+        * css-animations/test_animation-finished.html:
+        * css-animations/test_animation-id.html:
+        * css-animations/test_animation-pausing.html:
+        * css-animations/test_animation-playstate.html:
+        * css-animations/test_animation-ready.html:
+        * css-animations/test_animation-reverse.html:
+        * css-animations/test_animation-starttime.html:
+        * css-animations/test_animations-dynamic-changes.html:
+        * css-animations/test_cssanimation-animationname.html:
+        * css-animations/test_document-get-animations.html:
+        * css-animations/test_effect-target.html:
+        * css-animations/test_element-get-animations.html:
+        * css-animations/test_event-dispatch.html:
+        * css-animations/test_event-order.html:
+        * css-animations/test_keyframeeffect-getkeyframes.html:
+        * css-animations/test_pseudoElement-get-animations.html:
+        * css-animations/test_setting-effect.html:
+        * css-transitions/test_animation-cancel.html:
+        * css-transitions/test_animation-computed-timing.html:
+        * css-transitions/test_animation-currenttime.html:
+        * css-transitions/test_animation-finished.html:
+        * css-transitions/test_animation-pausing.html:
+        * css-transitions/test_animation-ready.html:
+        * css-transitions/test_animation-starttime.html:
+        * css-transitions/test_csstransition-transitionproperty.html:
+        * css-transitions/test_document-get-animations.html:
+        * css-transitions/test_effect-target.html:
+        * css-transitions/test_element-get-animations.html:
+        * css-transitions/test_event-dispatch.html:
+        * css-transitions/test_keyframeeffect-getkeyframes.html:
+        * css-transitions/test_pseudoElement-get-animations.html:
+        * css-transitions/test_setting-effect.html:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-currenttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183819
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-currenttime-expected.txt:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correctly handle timing functions specified by CSS Animations and CSS Transitions
+        https://bugs.webkit.org/show_bug.cgi?id=183935
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-computed-timing-expected.txt:
+        * css-transitions/test_animation-computed-timing-expected.txt:
+        * css-transitions/test_keyframeeffect-getkeyframes-expected.txt:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] infinite repeat counts aren't reflected for CSS Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183932
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-computed-timing-expected.txt:
+        * css-animations/test_animation-finish-expected.txt:
+
+2018-03-22  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correctly cancel animations when a parent gets a "display: none" style or when an element is removed
+        https://bugs.webkit.org/show_bug.cgi?id=183919
+
+        Reviewed by Dean Jackson.
+
+        A number of tests now pass thanks to correctly canceling animations when a parent element in the hierarchy gets a
+        "display: none" style or if an element with animations is removed.
+
+        * css-animations/test_animation-cancel-expected.txt:
+        * css-animations/test_document-get-animations-expected.txt:
+        * css-animations/test_effect-target-expected.txt:
+        * css-transitions/test_animation-cancel-expected.txt:
+        * css-transitions/test_effect-target-expected.txt:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Animated transform styles are ignored when calling getComputedStyle()
+        https://bugs.webkit.org/show_bug.cgi?id=183918
+
+        Reviewed by Dean Jackson.
+
+        We obtain one more PASS by correctly serializing the transform property on getComputedStyle().
+
+        * css-animations/test_animation-cancel-expected.txt:
+
+2018-03-22  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Support "transition: all" for CSS Transitions as Web Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183917
+
+        Reviewed by Dean Jackson.
+
+        Record progressions thanks to supporting "transition: all".
+
+        * css-transitions/test_animation-finished-expected.txt:
+        * css-transitions/test_csstransition-transitionproperty-expected.txt:
+        * css-transitions/test_effect-target-expected.txt:
+        * css-transitions/test_element-get-animations-expected.txt:
+        * css-transitions/test_pseudoElement-get-animations-expected.txt:
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_event-dispatch.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183845
+
+        Reviewed by Dean Jackson.
+
+        Add test expectations for previously crashing tests, update other expectations with progressions, including
+        the two event dispatch tests which now pass all assertions.
+
+        * css-animations/test_animation-finish-expected.txt:
+        * css-animations/test_animation-pausing-expected.txt:
+        * css-animations/test_animation-playstate-expected.txt:
+        * css-animations/test_animation-ready-expected.txt:
+        * css-animations/test_animation-starttime-expected.txt:
+        * css-animations/test_event-dispatch-expected.txt:
+        * css-animations/test_event-order-expected.txt:
+        * css-animations/test_setting-effect-expected.txt: Added.
+        * css-transitions/test_animation-cancel-expected.txt:
+        * css-transitions/test_animation-computed-timing-expected.txt:
+        * css-transitions/test_animation-currenttime-expected.txt:
+        * css-transitions/test_animation-pausing-expected.txt:
+        * css-transitions/test_animation-starttime-expected.txt:
+        * css-transitions/test_event-dispatch-expected.txt:
+        * css-transitions/test_setting-effect-expected.txt: Added.
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Ensure animationcancel and transitioncancel events are dispatched
+        https://bugs.webkit.org/show_bug.cgi?id=183864
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-cancel-expected.txt:
+        * css-animations/test_animation-currenttime-expected.txt:
+        * css-animations/test_animation-finished-expected.txt:
+        * css-animations/test_animation-reverse-expected.txt:
+        * css-transitions/test_animation-cancel-expected.txt:
+        * css-transitions/test_animation-pausing-expected.txt:
+        * css-transitions/test_animation-ready-expected.txt:
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Dispatch DOM events for CSS Transitions and CSS Animations implemented as Web Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183781
+
+        Reviewed by Dean Jackson.
+
+        Some of the Mozilla tests no longer time out and partially pass, marking the progression.
+
+        * css-animations/test_animation-starttime-expected.txt:
+        * css-animations/test_element-get-animations-expected.txt:
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Import CSS Animations and CSS Transitions as Web Animations tests from Mozilla
+        https://bugs.webkit.org/show_bug.cgi?id=183851
+
+        Reviewed by Jon Lee.
+
+        Import a series of tests created by Mozilla contributors for CSS Animations and CSS Transitions as Web Animations.
+
+        * css-animations/test_animation-cancel-expected.txt: Added.
+        * css-animations/test_animation-cancel.html: Added.
+        * css-animations/test_animation-computed-timing-expected.txt: Added.
+        * css-animations/test_animation-computed-timing.html: Added.
+        * css-animations/test_animation-currenttime-expected.txt: Added.
+        * css-animations/test_animation-currenttime.html: Added.
+        * css-animations/test_animation-finish-expected.txt: Added.
+        * css-animations/test_animation-finish.html: Added.
+        * css-animations/test_animation-finished-expected.txt: Added.
+        * css-animations/test_animation-finished.html: Added.
+        * css-animations/test_animation-id-expected.txt: Added.
+        * css-animations/test_animation-id.html: Added.
+        * css-animations/test_animation-pausing-expected.txt: Added.
+        * css-animations/test_animation-pausing.html: Added.
+        * css-animations/test_animation-playstate-expected.txt: Added.
+        * css-animations/test_animation-playstate.html: Added.
+        * css-animations/test_animation-ready-expected.txt: Added.
+        * css-animations/test_animation-ready.html: Added.
+        * css-animations/test_animation-reverse-expected.txt: Added.
+        * css-animations/test_animation-reverse.html: Added.
+        * css-animations/test_animation-starttime-expected.txt: Added.
+        * css-animations/test_animation-starttime.html: Added.
+        * css-animations/test_animations-dynamic-changes-expected.txt: Added.
+        * css-animations/test_animations-dynamic-changes.html: Added.
+        * css-animations/test_cssanimation-animationname-expected.txt: Added.
+        * css-animations/test_cssanimation-animationname.html: Added.
+        * css-animations/test_document-get-animations-expected.txt: Added.
+        * css-animations/test_document-get-animations.html: Added.
+        * css-animations/test_effect-target-expected.txt: Added.
+        * css-animations/test_effect-target.html: Added.
+        * css-animations/test_element-get-animations-expected.txt: Added.
+        * css-animations/test_element-get-animations.html: Added.
+        * css-animations/test_event-dispatch-expected.txt: Added.
+        * css-animations/test_event-dispatch.html: Added.
+        * css-animations/test_event-order-expected.txt: Added.
+        * css-animations/test_event-order.html: Added.
+        * css-animations/test_keyframeeffect-getkeyframes.html: Added.
+        * css-animations/test_pseudoElement-get-animations-expected.txt: Added.
+        * css-animations/test_pseudoElement-get-animations.html: Added.
+        * css-animations/test_setting-effect.html: Added.
+        * css-transitions/test_animation-cancel-expected.txt: Added.
+        * css-transitions/test_animation-cancel.html: Added.
+        * css-transitions/test_animation-computed-timing-expected.txt: Added.
+        * css-transitions/test_animation-computed-timing.html: Added.
+        * css-transitions/test_animation-currenttime-expected.txt: Added.
+        * css-transitions/test_animation-currenttime.html: Added.
+        * css-transitions/test_animation-finished-expected.txt: Added.
+        * css-transitions/test_animation-finished.html: Added.
+        * css-transitions/test_animation-pausing-expected.txt: Added.
+        * css-transitions/test_animation-pausing.html: Added.
+        * css-transitions/test_animation-ready-expected.txt: Added.
+        * css-transitions/test_animation-ready.html: Added.
+        * css-transitions/test_animation-starttime-expected.txt: Added.
+        * css-transitions/test_animation-starttime.html: Added.
+        * css-transitions/test_csstransition-transitionproperty-expected.txt: Added.
+        * css-transitions/test_csstransition-transitionproperty.html: Added.
+        * css-transitions/test_document-get-animations-expected.txt: Added.
+        * css-transitions/test_document-get-animations.html: Added.
+        * css-transitions/test_effect-target-expected.txt: Added.
+        * css-transitions/test_effect-target.html: Added.
+        * css-transitions/test_element-get-animations-expected.txt: Added.
+        * css-transitions/test_element-get-animations.html: Added.
+        * css-transitions/test_event-dispatch-expected.txt: Added.
+        * css-transitions/test_event-dispatch.html: Added.
+        * css-transitions/test_keyframeeffect-getkeyframes-expected.txt: Added.
+        * css-transitions/test_keyframeeffect-getkeyframes.html: Added.
+        * css-transitions/test_pseudoElement-get-animations-expected.txt: Added.
+        * css-transitions/test_pseudoElement-get-animations.html: Added.
+        * css-transitions/test_setting-effect.html: Added.
+        * resources/testcommon.js: Added.
+
 2015-05-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         An SVG with no intrinsic size does not draw correct slices when used as a border-image for an HTML element.

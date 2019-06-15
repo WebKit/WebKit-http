@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.subarray
 description: >
   Custom @@species constructor throws if it does not return a compatible object
-info: >
+info: |
   22.2.3.27 %TypedArray%.prototype.subarray( begin , end )
 
   ...
@@ -30,7 +30,7 @@ info: >
   2. Perform ? ValidateTypedArray(newTypedArray).
   ...
 includes: [testTypedArray.js]
-features: [Symbol.species]
+features: [Symbol.species, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

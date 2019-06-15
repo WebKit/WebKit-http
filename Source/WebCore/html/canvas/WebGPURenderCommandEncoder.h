@@ -27,27 +27,20 @@
 
 #if ENABLE(WEBGPU)
 
-#include "WebGPUObject.h"
-
-#include <wtf/Vector.h>
+#include "GPURenderCommandEncoder.h"
+#include <wtf/Ref.h>
+#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
-class GPURenderCommandEncoder;
-class GPUBuffer;
-class GPURenderPipelineState;
-class GPUDepthStencilState;
-class WebGPUCommandBuffer;
-class WebGPUDepthStencilState;
-class WebGPURenderPassDescriptor;
-class WebGPUFunction;
-class WebGPURenderPipelineState;
 class WebGPUBuffer;
+class WebGPUDepthStencilState;
+class WebGPURenderPipelineState;
 
-class WebGPURenderCommandEncoder : public WebGPUObject {
+class WebGPURenderCommandEncoder : public RefCounted<WebGPURenderCommandEncoder> {
 public:
-    virtual ~WebGPURenderCommandEncoder();
-    static Ref<WebGPURenderCommandEncoder> create(WebGPURenderingContext*, WebGPUCommandBuffer*, WebGPURenderPassDescriptor*);
+    ~WebGPURenderCommandEncoder();
+    static Ref<WebGPURenderCommandEncoder> create(GPURenderCommandEncoder&&);
 
     void setRenderPipelineState(WebGPURenderPipelineState&);
     void setDepthStencilState(WebGPUDepthStencilState&);
@@ -56,11 +49,12 @@ public:
     void drawPrimitives(unsigned type, unsigned start, unsigned count);
     void endEncoding();
 
-    GPURenderCommandEncoder* renderCommandEncoder() { return m_renderCommandEncoder.get(); }
+    GPURenderCommandEncoder& encoder() { return m_encoder; }
 
 private:
-    WebGPURenderCommandEncoder(WebGPURenderingContext*, WebGPUCommandBuffer*, WebGPURenderPassDescriptor*);
-    RefPtr<GPURenderCommandEncoder> m_renderCommandEncoder;
+    explicit WebGPURenderCommandEncoder(GPURenderCommandEncoder&&);
+
+    GPURenderCommandEncoder m_encoder;
 };
 
 } // namespace WebCore

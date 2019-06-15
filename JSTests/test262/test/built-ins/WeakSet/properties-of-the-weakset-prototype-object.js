@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.4.3
+esid: sec-properties-of-the-weakset-prototype-object
 description: >
   The WeakSet.prototype's prototype is Object.prototype.
-info: >
+info: |
   23.4.3 Properties of the WeakSet Prototype Object
 
   The WeakSet prototype object is the intrinsic object %WeakSetPrototype%. The

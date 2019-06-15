@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/test/bitexactness_tools.h"
+#include "modules/audio_processing/test/bitexactness_tools.h"
 
 #include <math.h>
 #include <algorithm>
 #include <string>
 #include <vector>
 
-#include "webrtc/base/array_view.h"
-#include "webrtc/test/testsupport/fileutils.h"
+#include "api/array_view.h"
+#include "test/testsupport/fileutils.h"
 
 namespace webrtc {
 namespace test {
@@ -57,6 +57,7 @@ void ReadFloatSamplesFromStereoFile(size_t samples_per_channel,
                                     size_t num_channels,
                                     InputAudioFile* stereo_pcm_file,
                                     rtc::ArrayView<float> data) {
+  RTC_DCHECK_LE(num_channels, 2);
   RTC_DCHECK_EQ(data.size(), samples_per_channel * num_channels);
   std::vector<int16_t> read_samples(samples_per_channel * 2);
   stereo_pcm_file->Read(samples_per_channel * 2, read_samples.data());

@@ -221,7 +221,7 @@ static void invalidateGStateCallback(WKViewRef view)
     if (!self)
         return nil;
 
-    viewRef = (WKViewRef)WKRetain (viewR);
+    viewRef = static_cast<WKViewRef>(const_cast<void*>(WKRetain(viewR)));
     viewRef->wrapper = (void *)self;
 
     return self;
@@ -288,7 +288,7 @@ static void _WAKCopyWrapper(const void *value, void *context)
         return;
     
     NSMutableArray *array = (NSMutableArray *)context;
-    WAKView *view = WAKViewForWKViewRef((WKViewRef)value);
+    WAKView *view = WAKViewForWKViewRef(static_cast<WKViewRef>(const_cast<void*>(value)));
     if (view)
         [array addObject:view];
 }
@@ -776,20 +776,18 @@ static CGInterpolationQuality toCGInterpolationQuality(WebCore::InterpolationQua
 
 - (void)_appendDescriptionToString:(NSMutableString *)info atLevel:(int)level
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
+        if ([info length])
+            [info appendString:@"\n"];
 
-    if ([info length] != 0)
-        [info appendString:@"\n"];
+        for (int i = 1; i <= level; i++)
+            [info appendString:@"   | "];
 
-    for (int i = 1; i <= level; i++)
-        [info appendString:@"   | "];
+        [info appendString:[self description]];
 
-    [info appendString:[self description]];
-
-    for (WAKView *subview in [self subviews])
-        [subview _appendDescriptionToString:info atLevel:level + 1];
-
-    [pool release];
+        for (WAKView *subview in [self subviews])
+            [subview _appendDescriptionToString:info atLevel:level + 1];
+    }
 }
 
 @end

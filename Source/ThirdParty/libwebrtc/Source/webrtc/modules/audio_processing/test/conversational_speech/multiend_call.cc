@@ -8,24 +8,26 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/test/conversational_speech/multiend_call.h"
+#include "modules/audio_processing/test/conversational_speech/multiend_call.h"
 
 #include <algorithm>
 #include <iterator>
 
-#include "webrtc/base/logging.h"
-#include "webrtc/base/pathutils.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/pathutils.h"
 
 namespace webrtc {
 namespace test {
 namespace conversational_speech {
 
 MultiEndCall::MultiEndCall(
-    rtc::ArrayView<const Turn> timing, const std::string& audiotracks_path,
+    rtc::ArrayView<const Turn> timing,
+    const std::string& audiotracks_path,
     std::unique_ptr<WavReaderAbstractFactory> wavreader_abstract_factory)
-        : timing_(timing), audiotracks_path_(audiotracks_path),
-          wavreader_abstract_factory_(std::move(wavreader_abstract_factory)),
-          valid_(false) {
+    : timing_(timing),
+      audiotracks_path_(audiotracks_path),
+      wavreader_abstract_factory_(std::move(wavreader_abstract_factory)),
+      valid_(false) {
   FindSpeakerNames();
   if (CreateAudioTrackReaders())
     valid_ = CheckTiming();
@@ -49,8 +51,8 @@ bool MultiEndCall::CreateAudioTrackReaders() {
       continue;
 
     // Instance Pathname to retrieve the full path to the audiotrack file.
-    const rtc::Pathname audiotrack_file_path(
-        audiotracks_path_, turn.audiotrack_file_name);
+    const rtc::Pathname audiotrack_file_path(audiotracks_path_,
+                                             turn.audiotrack_file_name);
 
     // Map the audiotrack file name to a new instance of WavReaderInterface.
     std::unique_ptr<WavReaderInterface> wavreader =
@@ -59,17 +61,18 @@ bool MultiEndCall::CreateAudioTrackReaders() {
     if (sample_rate_hz_ == 0) {
       sample_rate_hz_ = wavreader->SampleRate();
     } else if (sample_rate_hz_ != wavreader->SampleRate()) {
-      LOG(LS_ERROR) << "All the audio tracks should have the same sample rate.";
+      RTC_LOG(LS_ERROR)
+          << "All the audio tracks should have the same sample rate.";
       return false;
     }
 
     if (wavreader->NumChannels() != 1) {
-      LOG(LS_ERROR) << "Only mono audio tracks supported.";
+      RTC_LOG(LS_ERROR) << "Only mono audio tracks supported.";
       return false;
     }
 
-    audiotrack_readers_.emplace(
-        turn.audiotrack_file_name, std::move(wavreader));
+    audiotrack_readers_.emplace(turn.audiotrack_file_name,
+                                std::move(wavreader));
   }
 
   return true;
@@ -100,10 +103,9 @@ bool MultiEndCall::CheckTiming() {
   // detect self cross-talk).
   std::map<std::string, std::vector<size_t>> speaking_turn_indices;
   for (const std::string& speaker_name : speaker_names_) {
-    speaking_turn_indices.emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(speaker_name),
-        std::forward_as_tuple());
+    speaking_turn_indices.emplace(std::piecewise_construct,
+                                  std::forward_as_tuple(speaker_name),
+                                  std::forward_as_tuple());
   }
 
   // Parse turns.
@@ -114,33 +116,32 @@ bool MultiEndCall::CheckTiming() {
         << "Audio track reader not created";
 
     // Begin and end timestamps for the current turn.
-    int offset_samples = millisecond_to_samples(
-        turn.offset, it->second->SampleRate());
+    int offset_samples =
+        millisecond_to_samples(turn.offset, it->second->SampleRate());
     std::size_t begin_timestamp = last_turn.end + offset_samples;
     std::size_t end_timestamp = begin_timestamp + it->second->NumSamples();
-    LOG(LS_INFO) << "turn #" << turn_index << " " << begin_timestamp
-        << "-" << end_timestamp << " ms";
+    RTC_LOG(LS_INFO) << "turn #" << turn_index << " " << begin_timestamp << "-"
+                     << end_timestamp << " ms";
 
     // The order is invalid if the offset is negative and its absolute value is
     // larger then the duration of the previous turn.
-    if (offset_samples < 0 && -offset_samples > static_cast<int>(
-        last_turn.end - last_turn.begin)) {
-      LOG(LS_ERROR) << "invalid order";
+    if (offset_samples < 0 &&
+        -offset_samples > static_cast<int>(last_turn.end - last_turn.begin)) {
+      RTC_LOG(LS_ERROR) << "invalid order";
       return false;
     }
 
     // Cross-talk with 3 or more speakers occurs when the beginning of the
     // current interval falls in the last two turns.
-    if (turn_index > 1 && in_interval(begin_timestamp, last_turn)
-        && in_interval(begin_timestamp, second_last_turn)) {
-      LOG(LS_ERROR) << "cross-talk with 3+ speakers";
+    if (turn_index > 1 && in_interval(begin_timestamp, last_turn) &&
+        in_interval(begin_timestamp, second_last_turn)) {
+      RTC_LOG(LS_ERROR) << "cross-talk with 3+ speakers";
       return false;
     }
 
     // Append turn.
-    speaking_turns_.emplace_back(
-        turn.speaker_name, turn.audiotrack_file_name,
-        begin_timestamp, end_timestamp);
+    speaking_turns_.emplace_back(turn.speaker_name, turn.audiotrack_file_name,
+                                 begin_timestamp, end_timestamp, turn.gain);
 
     // Save speaking turn index for self cross-talk detection.
     RTC_DCHECK_EQ(speaking_turns_.size(), turn_index + 1);
@@ -158,15 +159,15 @@ bool MultiEndCall::CheckTiming() {
 
   // Detect self cross-talk.
   for (const std::string& speaker_name : speaker_names_) {
-    LOG(LS_INFO) << "checking self cross-talk for <"
-        << speaker_name << ">";
+    RTC_LOG(LS_INFO) << "checking self cross-talk for <" << speaker_name << ">";
 
     // Copy all turns for this speaker to new vector.
     std::vector<SpeakingTurn> speaking_turns_for_name;
     std::copy_if(speaking_turns_.begin(), speaking_turns_.end(),
                  std::back_inserter(speaking_turns_for_name),
-                 [&speaker_name](const SpeakingTurn& st){
-                   return st.speaker_name == speaker_name; });
+                 [&speaker_name](const SpeakingTurn& st) {
+                   return st.speaker_name == speaker_name;
+                 });
 
     // Check for overlap between adjacent elements.
     // This is a sufficient condition for self cross-talk since the intervals
@@ -174,10 +175,11 @@ bool MultiEndCall::CheckTiming() {
     auto overlap = std::adjacent_find(
         speaking_turns_for_name.begin(), speaking_turns_for_name.end(),
         [](const SpeakingTurn& a, const SpeakingTurn& b) {
-            return a.end > b.begin; });
+          return a.end > b.begin;
+        });
 
     if (overlap != speaking_turns_for_name.end()) {
-      LOG(LS_ERROR) << "Self cross-talk detected";
+      RTC_LOG(LS_ERROR) << "Self cross-talk detected";
       return false;
     }
   }

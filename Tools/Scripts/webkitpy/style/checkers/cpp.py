@@ -529,9 +529,6 @@ class _FunctionState(object):
         self.is_declaration = clean_lines.elided[body_start_position.row][body_start_position.column] == ';'
         self.parameter_start_position = parameter_start_position
         self.parameter_end_position = parameter_end_position
-        self.is_final = False
-        self.is_override = False
-        self.is_pure = False
         characters_after_parameters = SingleLineView(clean_lines.elided, parameter_end_position, body_start_position).single_line
         self.is_final = bool(search(r'\bfinal\b', characters_after_parameters))
         self.is_override = bool(search(r'\boverride\b', characters_after_parameters))
@@ -549,6 +546,11 @@ class _FunctionState(object):
 
     def is_virtual(self):
         return bool(search(r'\bvirtual\b', self.modifiers_and_return_type()))
+
+    def export_macro(self):
+        export_match = match(
+            r'\b(WTF_EXPORT|WTF_EXPORT_PRIVATE|PAL_EXPORT|JS_EXPORT_PRIVATE|WEBCORE_EXPORT)\b', self.modifiers_and_return_type())
+        return export_match.group(1) if export_match else None
 
     def parameter_list(self):
         if not self._parameter_list:
@@ -1086,9 +1088,10 @@ def check_invalid_increment(clean_lines, line_number, error):
 class _ClassInfo(object):
     """Stores information about a class."""
 
-    def __init__(self, name, line_number):
+    def __init__(self, name, line_number, export_macro):
         self.name = name
         self.line_number = line_number
+        self.export_macro = export_macro
         self.seen_open_brace = False
         self.is_derived = False
         self.virtual_method_line_number = None
@@ -1241,14 +1244,14 @@ class _EnumState(object):
 
 def regex_for_lambdas_and_blocks(line, line_number, file_state, error):
     cpp_result = search(r'\s\[.*?\]\s', line)
-    objc_result = search(r'(\s\^\s?\(.*?\)\s|\^\s?\{|:\^\s?\(.*?\)\s\{)', line)
+    objc_result = search(r'(\s\^\s?\(.*?\)\s?|\^\s*\{|:\^(\s|\w+)?\(.*?\)\s\{)', line)
     if cpp_result:
         group = cpp_result.group()
         targ_error = None
 
         if search(r'(\[\s|\s\]|\s,)', group):
             targ_error = [line_number, 'whitespace/brackets', 4,
-              'Extra space in capture list.']
+              'Extra space in capture list.',line]
 
         if targ_error and regex_for_lambdas_and_blocks.__last_error != targ_error:
             error(targ_error[0], targ_error[1], targ_error[2], targ_error[3])
@@ -1261,13 +1264,13 @@ def regex_for_lambdas_and_blocks(line, line_number, file_state, error):
 
         if search(r'(\(\s|\s\)|\s,)', group):
             targ_error = [line_number, 'whitespace/brackets', 4,
-              'Extra space in block arguments.']
-        if search(r'\^\{', group):
+              'Extra space in block arguments.',line]
+        if search(r'\^\s+\{', group):
             targ_error = [line_number, 'whitespace/brackets', 4,
-              'No space between ^ and block definition.']
+              'Extra space between ^ and block definition.',line]
         if search(r'\^\s\(', group):
             targ_error = [line_number, 'whitespace/brackets', 4,
-              'Extra space between ^ and block arguments.']
+              'Extra space between ^ and block arguments.',line]
 
         if targ_error and regex_for_lambdas_and_blocks.__last_error != targ_error:
             error(targ_error[0], targ_error[1], targ_error[2], targ_error[3])
@@ -1357,9 +1360,9 @@ def check_for_non_standard_constructs(clean_lines, line_number,
     classinfo_stack = class_state.classinfo_stack
     # Look for a class declaration
     class_decl_match = match(
-        r'\s*(template\s*<[\w\s<>,:]*>\s*)?(class|struct)\s+(\w+(::\w+)*)', line)
+        r'\s*(template\s*<[\w\s<>,:]*>\s*)?(class|struct)(\s+(WTF_EXPORT|WTF_EXPORT_PRIVATE|PAL_EXPORT|JS_EXPORT_PRIVATE|WEBCORE_EXPORT))?\s+(\w+(::\w+)*)', line)
     if class_decl_match:
-        classinfo_stack.append(_ClassInfo(class_decl_match.group(3), line_number))
+        classinfo_stack.append(_ClassInfo(class_decl_match.group(5), line_number, class_decl_match.group(4)))
 
     # Everything else in this function uses the top of the stack if it's
     # not empty.
@@ -1660,7 +1663,7 @@ def _error_redundant_specifier(line_number, redundant_specifier, good_specifier,
           % (redundant_specifier, good_specifier))
 
 
-def check_function_definition(filename, file_extension, clean_lines, line_number, function_state, error):
+def check_function_definition(filename, file_extension, clean_lines, line_number, class_state, function_state, error):
     """Check that function definitions for style issues.
 
     Specifically, check that parameter names in declarations add information.
@@ -1701,6 +1704,22 @@ def check_function_definition(filename, file_extension, clean_lines, line_number
 
     if function_state.is_override and function_state.is_final:
         _error_redundant_specifier(line_number, 'override', 'final', error)
+
+    if not function_state.is_declaration:
+        if (function_state.export_macro()
+                and not function_state.export_macro() == 'JS_EXPORT_PRIVATE'):
+            error(line_number, 'build/webcore_export', 4,
+                  'Inline functions should not be annotated with %s. Remove the macro, or '
+                  'move the inline function definition out-of-line.' %
+                  function_state.export_macro())
+        elif (class_state.classinfo_stack
+                and class_state.classinfo_stack[-1].export_macro
+                and not class_state.classinfo_stack[-1].export_macro == 'JS_EXPORT_PRIVATE'):
+            error(line_number, 'build/webcore_export', 4,
+                  'Inline functions should not be in classes annotated with %s. Remove the '
+                  'macro from the class and apply it to each appropriate method, or move '
+                  'the inline function definition out-of-line.' %
+                  class_state.classinfo_stack[-1].export_macro)
 
 
 def check_for_leaky_patterns(clean_lines, line_number, function_state, error):
@@ -1870,9 +1889,9 @@ def check_spacing(file_extension, clean_lines, line_number, file_state, error):
 
     # Don't try to do spacing checks for operator methods
     line = sub(r'operator(==|!=|<|<<|<=|>=|>>|>|\+=|-=|\*=|/=|%=|&=|\|=|^=|<<=|>>=|/)\(', 'operator\(', line)
-    # Don't try to do spacing checks for #include, #import, or #if statements at
+    # Don't try to do spacing checks for #include, #import, #if, or #elif statements at
     # minimum because it messes up checks for spacing around /
-    if match(r'\s*#\s*(?:include|import|if)', line):
+    if match(r'\s*#\s*(?:include|import|if|elif)', line):
         return
     if not is_objective_c_property and not is_objective_c_synthesize and search(r'[\w.]=[\w.]', line):
         error(line_number, 'whitespace/operators', 4,
@@ -1970,11 +1989,11 @@ def check_spacing(file_extension, clean_lines, line_number, file_state, error):
     # Next we will look for issues with function calls.
     check_spacing_for_function_call(line, line_number, file_state, error)
 
-    # Except after an opening paren, ^ for blocks, or @ for Objective-C
-    # literal NSDictionary, you should have spaces before your braces.
-    # Since you should never have braces at the beginning of a line, this
-    # is an easy test.
-    if search(r'[^ ({\^@]{', line):
+    # Except after an opening paren, ^ for blocks, @ for Objective-C literal
+    # NSDictionary, or os_log format parameters, you should have spaces before
+    # your braces. Since you should never have braces at the beginning of a
+    # line, this is an easy test.
+    if search(r'[^ ({\^@%]{', line):
         error(line_number, 'whitespace/braces', 5,
               'Missing space before {')
 
@@ -2431,17 +2450,17 @@ def check_braces(clean_lines, line_number, file_state, error):
         # We also allow '#' for #endif and '=' for array initialization,
         # and '- (' and '+ (' for Objective-C methods.
         previous_line = get_previous_non_blank_line(clean_lines, line_number)[0]
-        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override)\s*)?(->\s*\S+)?\s*$', previous_line)
-             or search(r'\b(if|for|while|switch|else|NS_ENUM)\b', previous_line)
+        if ((not search(r'[;:}{)=]\s*$|\)\s*((const|override|const override|final|const final)\s*)?(->\s*\S+)?\s*$', previous_line)
+             or search(r'\b(if|for|while|switch|else|CF_OPTIONS|NS_ENUM|NS_ERROR_ENUM|NS_OPTIONS)\b', previous_line)
              or regex_for_lambdas_and_blocks(previous_line, line_number, file_state, error))
             and previous_line.find('#') < 0
             and previous_line.find('- (') != 0
             and previous_line.find('+ (') != 0):
             error(line_number, 'whitespace/braces', 4,
                   'This { should be at the end of the previous line')
-    elif (search(r'\)\s*(((const|override)\s*)*\s*)?{\s*$', line)
+    elif (search(r'\)\s*(((const|override|final)\s*)*\s*)?{\s*$', line)
           and line.count('(') == line.count(')')
-          and not search(r'(\s*(if|for|while|switch|NS_ENUM|@synchronized)|} @catch)\b', line)
+          and not search(r'(\s*(if|for|while|switch|CF_OPTIONS|NS_ENUM|NS_ERROR_ENUM|NS_OPTIONS|@synchronized)|} @catch)\b', line)
           and not regex_for_lambdas_and_blocks(line, line_number, file_state, error)
           and line.find("](") < 0
           and not match(r'\s+[A-Z_][A-Z_0-9]+\b', line)):
@@ -2768,6 +2787,27 @@ def get_line_width(line):
     return len(line)
 
 
+def check_min_versions_of_wk_api_available(clean_lines, line_number, error):
+    """Checks the min version numbers of WK_API_AVAILABLE
+
+    Args:
+      clean_lines: A CleansedLines instance containing the file.
+      line_number: The number of the line to check.
+      error: The function to call with any errors found.
+    """
+
+    line = clean_lines.elided[line_number]  # Get rid of comments and strings.
+
+    wk_api_available = search(r'WK_API_AVAILABLE\(macosx\(([^\)]+)\), ios\(([^\)]+)\)\)', line)
+    if wk_api_available:
+        macosxMinVersion = wk_api_available.group(1)
+        if not match(r'^([\d\.]+|WK_MAC_TBA)$', macosxMinVersion):
+            error(line_number, 'build/wk_api_available', 5, '%s is neither a version number nor WK_MAC_TBA' % macosxMinVersion)
+
+        iosMinVersion = wk_api_available.group(2)
+        if not match(r'^([\d\.]+|WK_IOS_TBA)$', iosMinVersion):
+            error(line_number, 'build/wk_api_available', 5, '%s is neither a version number nor WK_IOS_TBA' % iosMinVersion)
+
 def check_style(clean_lines, line_number, file_extension, class_state, file_state, enum_state, error):
     """Checks rules from the 'C++ style rules' section of cppguide.html.
 
@@ -2843,6 +2883,7 @@ def check_style(clean_lines, line_number, file_extension, class_state, file_stat
     check_soft_link_class_alloc(clean_lines, line_number, error)
     check_indentation_amount(clean_lines, line_number, error)
     check_enum_casing(clean_lines, line_number, enum_state, error)
+    check_min_versions_of_wk_api_available(clean_lines, line_number, error)
 
 
 _RE_PATTERN_INCLUDE_NEW_STYLE = re.compile(r'#(?:include|import) +"[^/]+\.h"')
@@ -3059,7 +3100,7 @@ def check_include_line(filename, file_extension, clean_lines, line_number, inclu
             previous_line_number -= 1
             previous_line = clean_lines.lines[previous_line_number]
             previous_match = _RE_PATTERN_INCLUDE.search(previous_line)
-        if previous_match:
+        if previous_match and previous_line_number in include_state.header_types:
             previous_header_type = include_state.header_types[previous_line_number]
             if previous_header_type == _OTHER_HEADER:
                 if '<' in previous_line and '"' in line:
@@ -3189,6 +3230,13 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
               'If you can, use sizeof(%s) instead of %s as the 2nd arg '
               'to snprintf.' % (matched.group(1), matched.group(2)))
 
+    # Warn when Debug ASSERT_WITH_SECURITY_IMPLICATION() is used.
+    if filename != 'Source/WTF/wtf/Assertions.h':
+        if search(r'\bASSERT_WITH_SECURITY_IMPLICATION\b\(', line):
+            error(line_number, 'security/assertion', 5,
+                'Please replace ASSERT_WITH_SECURITY_IMPLICATION() with '
+                'RELEASE_ASSERT_WITH_SECURITY_IMPLICATION().')
+
     # Check if some verboten C functions are being used.
     if search(r'\bsprintf\b', line):
         error(line_number, 'security/printf', 5,
@@ -3205,6 +3253,10 @@ def check_language(filename, clean_lines, line_number, file_extension, include_s
     if search(r'\bmktemp\b', line):
         error(line_number, 'security/temp_file', 5,
               'Never use mktemp.  Use mkstemp or mkostemp instead.')
+
+    if search(r'\bdispatch_set_target_queue\b', line):
+        error(line_number, 'runtime/dispatch_set_target_queue', 5,
+              'Never use dispatch_set_target_queue.  Use dispatch_queue_create_with_target instead.')
 
     # Check for suspicious usage of "if" like
     # } if (a == b) {
@@ -3802,7 +3854,7 @@ def process_line(filename, file_extension,
     asm_state.process_line(raw_lines[line])
     if asm_state.is_in_asm():  # Ignore further checks because asm blocks formatted differently.
         return
-    check_function_definition(filename, file_extension, clean_lines, line, function_state, error)
+    check_function_definition(filename, file_extension, clean_lines, line, class_state, function_state, error)
     check_for_leaky_patterns(clean_lines, line, function_state, error)
     check_for_multiline_comments_and_strings(clean_lines, line, error)
     check_style(clean_lines, line, file_extension, class_state, file_state, enum_state, error)
@@ -3898,6 +3950,8 @@ class CppChecker(object):
         'build/using_std',
         'build/using_namespace',
         'build/cpp_comment',
+        'build/webcore_export',
+        'build/wk_api_available',
         'legal/copyright',
         'readability/braces',
         'readability/casting',
@@ -3924,6 +3978,7 @@ class CppChecker(object):
         'runtime/bitfields',
         'runtime/casting',
         'runtime/ctype_function',
+        'runtime/dispatch_set_target_queue',
         'runtime/enum_bitfields',
         'runtime/explicit',
         'runtime/init',
@@ -3943,6 +3998,7 @@ class CppChecker(object):
         'runtime/unsigned',
         'runtime/virtual',
         'runtime/wtf_move',
+        'security/assertion',
         'security/printf',
         'security/temp_file',
         'whitespace/blank_line',

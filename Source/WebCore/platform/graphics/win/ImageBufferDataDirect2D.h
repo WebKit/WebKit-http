@@ -25,7 +25,7 @@
 
 #include "Image.h"
 #include "IntSize.h"
-#include <runtime/Uint8ClampedArray.h>
+#include <JavaScriptCore/Uint8ClampedArray.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
@@ -43,8 +43,8 @@ struct ImageBufferData {
     std::unique_ptr<GraphicsContext> context;
     ID2D1RenderTarget* m_compatibleTarget { nullptr };
 
-    RefPtr<Uint8ClampedArray> getData(const IntRect&, const IntSize&, bool accelerateRendering, bool unmultiplied, float resolutionScale) const;
-    void putData(Uint8ClampedArray*& source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, const IntSize&, bool accelerateRendering, bool unmultiplied, float resolutionScale);
+    RefPtr<Uint8ClampedArray> getData(AlphaPremultiplication, const IntRect&, const IntSize&, bool accelerateRendering, float resolutionScale) const;
+    void putData(const Uint8ClampedArray& source, AlphaPremultiplication sourceFormat, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, const IntSize&, bool accelerateRendering, float resolutionScale);
 };
 
 } // namespace WebCore

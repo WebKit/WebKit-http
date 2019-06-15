@@ -26,8 +26,12 @@
 #include "config.h"
 
 #include "MoveOnly.h"
+#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
+#include <wtf/ListHashSet.h>
 #include <wtf/Vector.h>
-#include <wtf/text/CString.h>
+#include <wtf/text/StringHash.h>
+#include <wtf/text/WTFString.h>
 
 namespace TestWebKitAPI {
 
@@ -93,6 +97,51 @@ TEST(WTF_Vector, InitializerList)
     EXPECT_EQ(2, vector[1]);
     EXPECT_EQ(3, vector[2]);
     EXPECT_EQ(4, vector[3]);
+}
+
+TEST(WTF_Vector, ConstructWithFrom)
+{
+    auto vector = Vector<int>::from(1, 2, 3, 4, 5);
+    EXPECT_EQ(5U, vector.size());
+    EXPECT_EQ(5U, vector.capacity());
+
+    EXPECT_EQ(1, vector[0]);
+    EXPECT_EQ(2, vector[1]);
+    EXPECT_EQ(3, vector[2]);
+    EXPECT_EQ(4, vector[3]);
+    EXPECT_EQ(5, vector[4]);
+}
+
+TEST(WTF_Vector, ConstructWithFromString)
+{
+    String s1 = "s1";
+    String s2 = "s2";
+    String s3 = s1;
+    auto vector = Vector<String>::from(s1, s2, WTFMove(s3));
+    EXPECT_EQ(3U, vector.size());
+    EXPECT_EQ(3U, vector.capacity());
+
+    EXPECT_TRUE(s1 == vector[0]);
+    EXPECT_TRUE(s2 == vector[1]);
+    EXPECT_TRUE(s1 == vector[2]);
+    EXPECT_TRUE(s3.isNull());
+}
+
+TEST(WTF_Vector, ConstructWithFromMoveOnly)
+{
+    auto vector1 = Vector<MoveOnly>::from(MoveOnly(1));
+    auto vector3 = Vector<MoveOnly>::from(MoveOnly(1), MoveOnly(2), MoveOnly(3));
+
+    EXPECT_EQ(1U, vector1.size());
+    EXPECT_EQ(1U, vector1.capacity());
+
+    EXPECT_EQ(3U, vector3.size());
+    EXPECT_EQ(3U, vector3.capacity());
+
+    EXPECT_EQ(1U, vector1[0].value());
+    EXPECT_EQ(1U, vector3[0].value());
+    EXPECT_EQ(2U, vector3[1].value());
+    EXPECT_EQ(3U, vector3[2].value());
 }
 
 TEST(WTF_Vector, InitializeFromOtherInitialCapacity)
@@ -346,16 +395,16 @@ TEST(WTF_Vector, VectorOfVectorsOfVectorsInlineCapacitySwap)
 
     EXPECT_EQ(1U, x.size());
     EXPECT_EQ(42, x[0]);
-    
+
     Vector<Vector<int, 1>, 1> y;
     y.append(x);
-    
+
     EXPECT_EQ(1U, x.size());
     EXPECT_EQ(42, x[0]);
     EXPECT_EQ(1U, y.size());
     EXPECT_EQ(1U, y[0].size());
     EXPECT_EQ(42, y[0][0]);
-    
+
     a.append(y);
 
     EXPECT_EQ(1U, x.size());
@@ -367,7 +416,7 @@ TEST(WTF_Vector, VectorOfVectorsOfVectorsInlineCapacitySwap)
     EXPECT_EQ(1U, a[0].size());
     EXPECT_EQ(1U, a[0][0].size());
     EXPECT_EQ(42, a[0][0][0]);
-    
+
     a.swap(b);
 
     EXPECT_EQ(0U, a.size());
@@ -380,7 +429,7 @@ TEST(WTF_Vector, VectorOfVectorsOfVectorsInlineCapacitySwap)
     EXPECT_EQ(1U, b[0].size());
     EXPECT_EQ(1U, b[0][0].size());
     EXPECT_EQ(42, b[0][0][0]);
-    
+
     b.swap(c);
 
     EXPECT_EQ(0U, a.size());
@@ -394,7 +443,7 @@ TEST(WTF_Vector, VectorOfVectorsOfVectorsInlineCapacitySwap)
     EXPECT_EQ(1U, c[0].size());
     EXPECT_EQ(1U, c[0][0].size());
     EXPECT_EQ(42, c[0][0][0]);
-    
+
     y[0][0] = 24;
 
     EXPECT_EQ(1U, x.size());
@@ -402,7 +451,7 @@ TEST(WTF_Vector, VectorOfVectorsOfVectorsInlineCapacitySwap)
     EXPECT_EQ(1U, y.size());
     EXPECT_EQ(1U, y[0].size());
     EXPECT_EQ(24, y[0][0]);
-    
+
     a.append(y);
 
     EXPECT_EQ(1U, x.size());
@@ -651,4 +700,199 @@ TEST(WTF_Vector, RemoveAllMatching)
     EXPECT_EQ(0U, v.size());
 }
 
+static int multiplyByTwo(int value)
+{
+    return 2 * value;
+}
+
+TEST(WTF_Vector, MapStaticFunction)
+{
+    Vector<int> vector { 2, 3, 4 };
+
+    auto mapped = WTF::map(vector, multiplyByTwo);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_EQ(4, mapped[0]);
+    EXPECT_EQ(6, mapped[1]);
+    EXPECT_EQ(8, mapped[2]);
+}
+
+static MoveOnly multiplyByTwoMoveOnly(const MoveOnly& value)
+{
+    return MoveOnly(2 * value.value());
+}
+
+TEST(WTF_Vector, MapStaticFunctionMoveOnly)
+{
+    Vector<MoveOnly> vector;
+
+    vector.reserveInitialCapacity(3);
+    for (unsigned i = 0; i < 3; ++i)
+        vector.uncheckedAppend(MoveOnly { i });
+
+    auto mapped = WTF::map(vector, multiplyByTwoMoveOnly);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_EQ(0U, mapped[0].value());
+    EXPECT_EQ(2U, mapped[1].value());
+    EXPECT_EQ(4U, mapped[2].value());
+}
+
+TEST(WTF_Vector, MapLambda)
+{
+    Vector<int> vector { 2, 3, 4 };
+
+    int counter = 0;
+    auto mapped = WTF::map(vector, [&] (int item) {
+        counter += 2;
+        return counter <= item;
+    });
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0]);
+    EXPECT_FALSE(mapped[1]);
+    EXPECT_FALSE(mapped[2]);
+}
+
+TEST(WTF_Vector, MapLambdaMove)
+{
+    Vector<MoveOnly> vector;
+
+    vector.reserveInitialCapacity(3);
+    for (unsigned i = 0; i < 3; ++i)
+        vector.uncheckedAppend(MoveOnly { i });
+
+
+    unsigned counter = 0;
+    auto mapped = WTF::map(WTFMove(vector), [&] (MoveOnly&& item) {
+        item = item.value() + ++counter;
+        return WTFMove(item);
+    });
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_EQ(1U, mapped[0].value());
+    EXPECT_EQ(3U, mapped[1].value());
+    EXPECT_EQ(5U, mapped[2].value());
+}
+
+TEST(WTF_Vector, MapFromHashMap)
+{
+    HashMap<String, String> map;
+    map.set(String { "k1" }, String { "v1" });
+    map.set(String { "k2" }, String { "v2" });
+    map.set(String { "k3" }, String { "v3" });
+
+    auto mapped = WTF::map(map, [&] (KeyValuePair<String, String>& pair) -> String {
+        return pair.value;
+    });
+    std::sort(mapped.begin(), mapped.end(), WTF::codePointCompareLessThan);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0] == "v1");
+    EXPECT_TRUE(mapped[1] == "v2");
+    EXPECT_TRUE(mapped[2] == "v3");
+
+    mapped = WTF::map(map, [&] (const auto& pair) -> String {
+        return pair.key;
+    });
+    std::sort(mapped.begin(), mapped.end(), WTF::codePointCompareLessThan);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0] == "k1");
+    EXPECT_TRUE(mapped[1] == "k2");
+    EXPECT_TRUE(mapped[2] == "k3");
+
+    mapped = WTF::map(WTFMove(map), [&] (KeyValuePair<String, String>&& pair) -> String {
+        return WTFMove(pair.value);
+    });
+    std::sort(mapped.begin(), mapped.end(), WTF::codePointCompareLessThan);
+
+    EXPECT_EQ(3U, mapped.size());
+    EXPECT_TRUE(mapped[0] == "v1");
+    EXPECT_TRUE(mapped[1] == "v2");
+    EXPECT_TRUE(mapped[2] == "v3");
+
+    EXPECT_TRUE(map.contains("k1"));
+    EXPECT_TRUE(map.contains("k2"));
+    EXPECT_TRUE(map.contains("k3"));
+
+    EXPECT_TRUE(map.get("k1").isNull());
+    EXPECT_TRUE(map.get("k2").isNull());
+    EXPECT_TRUE(map.get("k3").isNull());
+
+}
+
+TEST(WTF_Vector, CopyToVector)
+{
+    HashSet<int> intSet { 1, 2, 3 };
+
+    auto vector = copyToVector(intSet);
+    EXPECT_EQ(3U, vector.size());
+
+    std::sort(vector.begin(), vector.end());
+    EXPECT_EQ(1, vector[0]);
+    EXPECT_EQ(2, vector[1]);
+    EXPECT_EQ(3, vector[2]);
+}
+
+TEST(WTF_Vector, CopyToVectorOrderPreserving)
+{
+    ListHashSet<int> orderedIntSet;
+    orderedIntSet.add(1);
+    orderedIntSet.add(2);
+    orderedIntSet.add(3);
+
+    auto vector = copyToVector(orderedIntSet);
+    EXPECT_EQ(3U, vector.size());
+
+    EXPECT_EQ(1, vector[0]);
+    EXPECT_EQ(2, vector[1]);
+    EXPECT_EQ(3, vector[2]);
+}
+
+TEST(WTF_Vector, CopyToVectorOf)
+{
+    HashSet<int> intSet { 1, 2, 3 };
+
+    Vector<float> vector = copyToVectorOf<float>(intSet);
+    EXPECT_EQ(3U, vector.size());
+
+    std::sort(vector.begin(), vector.end());
+    EXPECT_FLOAT_EQ(1, vector[0]);
+    EXPECT_FLOAT_EQ(2, vector[1]);
+    EXPECT_FLOAT_EQ(3, vector[2]);
+}
+
+TEST(WTF_Vector, CopyToVectorSizeRangeIterator)
+{
+    HashMap<int, float> map {
+        { 1, 9 },
+        { 2, 8 },
+        { 3, 7 }
+    };
+
+    auto keysVector = copyToVector(map.keys());
+    EXPECT_EQ(3U, keysVector.size());
+
+    std::sort(keysVector.begin(), keysVector.end());
+    EXPECT_EQ(1, keysVector[0]);
+    EXPECT_EQ(2, keysVector[1]);
+    EXPECT_EQ(3, keysVector[2]);
+
+    auto valuesVector = copyToVector(map.values());
+    EXPECT_EQ(3U, valuesVector.size());
+
+    std::sort(valuesVector.begin(), valuesVector.end());
+    EXPECT_FLOAT_EQ(7, valuesVector[0]);
+    EXPECT_FLOAT_EQ(8, valuesVector[1]);
+    EXPECT_FLOAT_EQ(9, valuesVector[2]);
+}
+
+TEST(WTF_Vector, StringComparison)
+{
+    Vector<String> a = {{ "a" }};
+    Vector<String> b = {{ "a" }};
+    EXPECT_TRUE(a == b);
+}
+    
 } // namespace TestWebKitAPI

@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     If a particular API exists (document.createElement, as happens to
     exist in a browser environment), check if the form objects it makes
     obey the constraints that even host objects must obey. In this
@@ -12,10 +12,12 @@ es5id: 15.2.3.6_A1
 description: Do getters on HTMLFormElements disappear?
 ---*/
 
-function getter() { return 'gotten'; }
+function getter() {
+  return 'gotten';
+}
 
 if (typeof document !== 'undefined' &&
-    typeof document.createElement === 'function') {
+  typeof document.createElement === 'function') {
   var f = document.createElement("form");
   var refused = false;
   try {

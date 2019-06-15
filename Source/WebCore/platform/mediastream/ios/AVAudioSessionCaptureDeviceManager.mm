@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 #if ENABLE(MEDIA_STREAM) && PLATFORM(IOS)
 
 #include "AVAudioSessionCaptureDevice.h"
+#include "RealtimeMediaSourceCenter.h"
 #include <AVFoundation/AVAudioSession.h>
 #include <wtf/SoftLinking.h>
 #include <wtf/Vector.h>
@@ -84,11 +85,21 @@ AVAudioSessionCaptureDeviceManager::~AVAudioSessionCaptureDeviceManager()
     m_listener = nullptr;
 }
 
-Vector<CaptureDevice>& AVAudioSessionCaptureDeviceManager::captureDevices()
+const Vector<CaptureDevice>& AVAudioSessionCaptureDeviceManager::captureDevices()
 {
     if (!m_devices)
         refreshAudioCaptureDevices();
     return m_devices.value();
+}
+
+std::optional<CaptureDevice> AVAudioSessionCaptureDeviceManager::captureDeviceWithPersistentID(CaptureDevice::DeviceType type, const String& deviceID)
+{
+    ASSERT_UNUSED(type, type == CaptureDevice::DeviceType::Microphone);
+    for (auto& device : captureDevices()) {
+        if (device.persistentId() == deviceID)
+            return device;
+    }
+    return std::nullopt;
 }
 
 Vector<AVAudioSessionCaptureDevice>& AVAudioSessionCaptureDeviceManager::audioSessionCaptureDevices()
@@ -131,8 +142,7 @@ void AVAudioSessionCaptureDeviceManager::refreshAudioCaptureDevices()
     m_audioSessionCaptureDevices = WTFMove(newAudioDevices);
     m_devices = WTFMove(newDevices);
 
-    for (auto& observer : m_observers.values())
-        observer();
+    deviceChanged();
 }
 
 } // namespace WebCore

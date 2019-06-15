@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,10 +59,10 @@ public:
 
     // NOTE: The call that this returns is already going to be linked by the JIT using addLinkTask(),
     // so there is no need for you to link it yourself.
-    SlowPathCall makeCall(VM&, void* callTarget);
+    SlowPathCall makeCall(VM&, FunctionPtr<CFunctionPtrTag> callTarget);
 
 private:
-    SlowPathCallKey keyWithTarget(void* callTarget) const;
+    SlowPathCallKey keyWithTarget(FunctionPtr<CFunctionPtrTag> callTarget) const;
     
     RegisterSet m_argumentRegisters;
     RegisterSet m_callingConventionRegisters;
@@ -78,13 +78,13 @@ private:
 template<typename... ArgumentTypes>
 SlowPathCall callOperation(
     VM& vm, const RegisterSet& usedRegisters, CCallHelpers& jit, CCallHelpers::JumpList* exceptionTarget,
-    FunctionPtr function, GPRReg resultGPR, ArgumentTypes... arguments)
+    FunctionPtr<CFunctionPtrTag> function, GPRReg resultGPR, ArgumentTypes... arguments)
 {
     SlowPathCall call;
     {
         SlowPathCallContext context(usedRegisters, jit, sizeof...(ArgumentTypes) + 1, resultGPR);
-        jit.setupArgumentsWithExecState(arguments...);
-        call = context.makeCall(vm, function.value());
+        jit.setupArguments<void(ExecState*, ArgumentTypes...)>(arguments...);
+        call = context.makeCall(vm, function);
     }
     if (exceptionTarget)
         exceptionTarget->append(jit.emitExceptionCheck(vm));
@@ -94,7 +94,7 @@ SlowPathCall callOperation(
 template<typename... ArgumentTypes>
 SlowPathCall callOperation(
     VM& vm, const RegisterSet& usedRegisters, CCallHelpers& jit, CallSiteIndex callSiteIndex,
-    CCallHelpers::JumpList* exceptionTarget, FunctionPtr function, GPRReg resultGPR,
+    CCallHelpers::JumpList* exceptionTarget, FunctionPtr<CFunctionPtrTag> function, GPRReg resultGPR,
     ArgumentTypes... arguments)
 {
     if (callSiteIndex) {
@@ -110,7 +110,7 @@ CallSiteIndex callSiteIndexForCodeOrigin(State&, CodeOrigin);
 template<typename... ArgumentTypes>
 SlowPathCall callOperation(
     State& state, const RegisterSet& usedRegisters, CCallHelpers& jit, CodeOrigin codeOrigin,
-    CCallHelpers::JumpList* exceptionTarget, FunctionPtr function, GPRReg result, ArgumentTypes... arguments)
+    CCallHelpers::JumpList* exceptionTarget, FunctionPtr<CFunctionPtrTag> function, GPRReg result, ArgumentTypes... arguments)
 {
     return callOperation(
         state.vm(), usedRegisters, jit, callSiteIndexForCodeOrigin(state, codeOrigin), exceptionTarget, function,

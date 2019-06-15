@@ -40,14 +40,18 @@ static GdkAtom uriListAtom;
 static GdkAtom smartPasteAtom;
 static GdkAtom unknownAtom;
 
-static const String gMarkupPrefix = ASCIILiteral("<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">");
+static const String& markupPrefix()
+{
+    static NeverDestroyed<const String> prefix(MAKE_STATIC_STRING_IMPL("<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">"));
+    return prefix.get();
+}
 
 static void removeMarkupPrefix(String& markup)
 {
     // The markup prefix is not harmful, but we remove it from the string anyway, so that
     // we can have consistent results with other ports during the layout tests.
-    if (markup.startsWith(gMarkupPrefix))
-        markup.remove(0, gMarkupPrefix.length());
+    if (markup.startsWith(markupPrefix()))
+        markup.remove(0, markupPrefix().length());
 }
 
 PasteboardHelper& PasteboardHelper::singleton()
@@ -74,9 +78,7 @@ PasteboardHelper::PasteboardHelper()
     gtk_target_list_add(m_targetList.get(), unknownAtom, 0, PasteboardHelper::TargetTypeUnknown);
 }
 
-PasteboardHelper::~PasteboardHelper()
-{
-}
+PasteboardHelper::~PasteboardHelper() = default;
 
 GtkTargetList* PasteboardHelper::targetList() const
 {
@@ -165,7 +167,7 @@ void PasteboardHelper::fillSelectionData(const SelectionData& selection, unsigne
     else if (info == TargetTypeMarkup) {
         // Some Linux applications refuse to accept pasted markup unless it is
         // prefixed by a content-type meta tag.
-        CString markup = String(gMarkupPrefix + selection.markup()).utf8();
+        CString markup = makeString(markupPrefix(), selection.markup()).utf8();
         gtk_selection_data_set(selectionData, markupAtom, 8, reinterpret_cast<const guchar*>(markup.data()), markup.length());
 
     } else if (info == TargetTypeURIList) {
@@ -209,7 +211,7 @@ void PasteboardHelper::fillSelectionData(const SelectionData& selection, unsigne
 
 void PasteboardHelper::fillSelectionData(GtkSelectionData* data, unsigned /* info */, SelectionData& selection)
 {
-    if (!gtk_selection_data_get_length(data))
+    if (gtk_selection_data_get_length(data) < 0)
         return;
 
     GdkAtom target = gtk_selection_data_get_target(data);
@@ -223,16 +225,15 @@ void PasteboardHelper::fillSelectionData(GtkSelectionData* data, unsigned /* inf
         selection.setURIList(selectionDataToUTF8String(data));
     } else if (target == netscapeURLAtom) {
         String urlWithLabel(selectionDataToUTF8String(data));
-        Vector<String> pieces;
-        urlWithLabel.split('\n', pieces);
+        Vector<String> pieces = urlWithLabel.split('\n');
 
         // Give preference to text/uri-list here, as it can hold more
         // than one URI but still take  the label if there is one.
-        if (!selection.hasURIList())
+        if (!selection.hasURIList() && !pieces.isEmpty())
             selection.setURIList(pieces[0]);
         if (pieces.size() > 1)
             selection.setText(pieces[1]);
-    } else if (target == unknownAtom) {
+    } else if (target == unknownAtom && gtk_selection_data_get_length(data)) {
         GRefPtr<GVariant> variant = g_variant_new_parsed(reinterpret_cast<const char*>(gtk_selection_data_get_data(data)));
 
         GUniqueOutPtr<gchar> key;
@@ -274,9 +275,7 @@ struct ClipboardSetData {
     {
     }
 
-    ~ClipboardSetData()
-    {
-    }
+    ~ClipboardSetData() = default;
 
     Ref<SelectionData> selectionData;
     WTF::Function<void()> selectionClearedCallback;

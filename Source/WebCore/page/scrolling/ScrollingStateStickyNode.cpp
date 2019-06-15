@@ -31,7 +31,7 @@
 #include "GraphicsLayer.h"
 #include "Logging.h"
 #include "ScrollingStateTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -51,9 +51,7 @@ ScrollingStateStickyNode::ScrollingStateStickyNode(const ScrollingStateStickyNod
 {
 }
 
-ScrollingStateStickyNode::~ScrollingStateStickyNode()
-{
-}
+ScrollingStateStickyNode::~ScrollingStateStickyNode() = default;
 
 Ref<ScrollingStateNode> ScrollingStateStickyNode::clone(ScrollingStateTree& adoptiveTree)
 {
@@ -65,17 +63,21 @@ void ScrollingStateStickyNode::updateConstraints(const StickyPositionViewportCon
     if (m_constraints == constraints)
         return;
 
+    LOG_WITH_STREAM(Scrolling, stream << "ScrollingStateStickyNode " << scrollingNodeID() << " updateConstraints with constraining rect " << constraints.constrainingRectAtLastLayout() << " sticky offset " << constraints.stickyOffsetAtLastLayout() << " layer pos at last layout " << constraints.layerPositionAtLastLayout());
+
     m_constraints = constraints;
     setPropertyChanged(ViewportConstraints);
 }
 
 void ScrollingStateStickyNode::reconcileLayerPositionForViewportRect(const LayoutRect& viewportRect, ScrollingLayerPositionAction action)
 {
+    ScrollingStateNode::reconcileLayerPositionForViewportRect(viewportRect, action);
+
     FloatPoint position = m_constraints.layerPositionForConstrainingRect(viewportRect);
     if (layer().representsGraphicsLayer()) {
-        GraphicsLayer* graphicsLayer = static_cast<GraphicsLayer*>(layer());
+        auto* graphicsLayer = static_cast<GraphicsLayer*>(layer());
 
-        LOG_WITH_STREAM(Compositing, stream << "ScrollingStateStickyNode::reconcileLayerPositionForViewportRect setting position of layer " << graphicsLayer->primaryLayerID() << " to " << position);
+        LOG_WITH_STREAM(Compositing, stream << "ScrollingStateStickyNode " << scrollingNodeID() << " reconcileLayerPositionForViewportRect " << action << " position of layer " << graphicsLayer->primaryLayerID() << " to " << position << " sticky offset " << m_constraints.stickyOffsetAtLastLayout());
         
         switch (action) {
         case ScrollingLayerPositionAction::Set:

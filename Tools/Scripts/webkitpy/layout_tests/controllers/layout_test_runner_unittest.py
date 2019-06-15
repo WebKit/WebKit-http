@@ -122,8 +122,10 @@ class LayoutTestRunnerTests(unittest.TestCase):
         # Reftests expected to be image mismatch should be respected when pixel_tests=False.
         runner = self._runner()
         runner._options.pixel_tests = False
+        runner._options.world_leaks = False
         test = 'failures/expected/reftest.html'
-        expectations = TestExpectations(runner._port, tests=[test])
+        leak_test = 'failures/expected/leak.html'
+        expectations = TestExpectations(runner._port, tests=[test, leak_test])
         expectations.parse_all_expectations()
         runner._expectations = expectations
 
@@ -138,6 +140,12 @@ class LayoutTestRunnerTests(unittest.TestCase):
         runner._update_summary_with_result(run_results, result)
         self.assertEqual(0, run_results.expected)
         self.assertEqual(1, run_results.unexpected)
+
+        run_results = TestRunResults(expectations, 1)
+        result = TestResult(test_name=leak_test, failures=[])
+        runner._update_summary_with_result(run_results, result)
+        self.assertEqual(1, run_results.expected)
+        self.assertEqual(0, run_results.unexpected)
 
     def test_servers_started(self):
 
@@ -159,6 +167,15 @@ class LayoutTestRunnerTests(unittest.TestCase):
         def stop_web_platform_test_server():
             self.web_platform_test_server_stopped = True
 
+        def is_http_server_running():
+            return self.http_started and not self.http_stopped
+
+        def is_websocket_server_running():
+            return self.websocket_started and not self.websocket_stopped
+
+        def is_wpt_server_running():
+            return self.websocket_started and not self.web_platform_test_server_stopped
+
         host = MockHost()
         port = host.port_factory.get('test-mac-leopard')
         port.start_http_server = start_http_server
@@ -167,6 +184,9 @@ class LayoutTestRunnerTests(unittest.TestCase):
         port.stop_http_server = stop_http_server
         port.stop_websocket_server = stop_websocket_server
         port.stop_web_platform_test_server = stop_web_platform_test_server
+        port.is_http_server_running = is_http_server_running
+        port.is_websocket_server_running = is_websocket_server_running
+        port.is_wpt_server_running = is_wpt_server_running
 
         self.http_started = self.http_stopped = self.websocket_started = self.websocket_stopped = False
         self.web_platform_test_server_started = self.web_platform_test_server_stopped = False

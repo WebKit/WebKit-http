@@ -32,6 +32,7 @@ class FormAssociatedElement;
 class HTMLFormControlsCollection;
 
 class HTMLFieldSetElement final : public HTMLFormControlElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLFieldSetElement);
 public:
     static Ref<HTMLFieldSetElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
@@ -40,7 +41,8 @@ public:
     Ref<HTMLFormControlsCollection> elements();
     Ref<HTMLCollection> elementsForNativeBindings();
 
-    const Vector<FormAssociatedElement*>& associatedElements() const;
+    const Vector<FormAssociatedElement*>& unsafeAssociatedElements() const;
+    Vector<Ref<FormAssociatedElement>> copyAssociatedElementsVector() const;
     unsigned length() const;
 
     void addInvalidDescendant(const HTMLFormControlElement&);

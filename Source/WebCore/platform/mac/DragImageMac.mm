@@ -29,8 +29,7 @@
 #if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 
 #import "BitmapImage.h"
-#import "CoreGraphicsSPI.h"
-#import "CoreTextSPI.h"
+#import "ColorMac.h"
 #import "Element.h"
 #import "FloatRoundedRect.h"
 #import "FontCascade.h"
@@ -38,16 +37,19 @@
 #import "FontSelector.h"
 #import "GraphicsContext.h"
 #import "Image.h"
-#import "LinkPresentationSPI.h"
+#import "LocalDefaultSystemAppearance.h"
+#import "Page.h"
 #import "StringTruncator.h"
 #import "TextIndicator.h"
-#import "TextRun.h"
 #import "URL.h"
-#import <wtf/NeverDestroyed.h>
+#import "WebKitNSImageExtras.h"
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/CoreTextSPI.h>
+#import <pal/spi/cocoa/URLFormattingSPI.h>
 #import <wtf/SoftLinking.h>
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-SOFT_LINK_PRIVATE_FRAMEWORK(LinkPresentation)
+#if !HAVE(URL_FORMATTING) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(LinkPresentation)
 #endif
 
 namespace WebCore {
@@ -200,11 +202,12 @@ LinkImageLayout::LinkImageLayout(URL& url, const String& titleString)
     NSURL *cocoaURL = url;
     NSString *absoluteURLString = [cocoaURL absoluteString];
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-    LinkPresentationLibrary();
-    NSString *domain = [cocoaURL _lp_simplifiedDisplayString];
-#else
     NSString *domain = absoluteURLString;
+#if HAVE(URL_FORMATTING)
+    domain = [cocoaURL _lp_simplifiedDisplayString];
+#elif __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+    if (LinkPresentationLibrary())
+        domain = [cocoaURL _lp_simplifiedDisplayString];
 #endif
 
     if ([title isEqualToString:absoluteURLString])
@@ -287,25 +290,38 @@ LinkImageLayout::LinkImageLayout(URL& url, const String& titleString)
     currentY += linkImagePadding;
 
     boundingRect = FloatRect(0, 0, maximumUsedTextWidth + linkImagePadding * 2, currentY);
+
+    // To work around blurry drag images on 1x displays, make the width and height a multiple of 2.
+    // FIXME: remove this workaround when <rdar://problem/33059739> is fixed.
+    boundingRect.setWidth((static_cast<int>(boundingRect.width()) / 2) * 2);
+    boundingRect.setHeight((static_cast<int>(boundingRect.height() / 2) * 2));
 }
 
-DragImageRef createDragImageForLink(Element&, URL& url, const String& title, TextIndicatorData&, FontRenderingMode, float)
+DragImageRef createDragImageForLink(Element& element, URL& url, const String& title, TextIndicatorData&, FontRenderingMode, float deviceScaleFactor)
 {
     LinkImageLayout layout(url, title);
+
+    Page* page = element.document().page();
+
+    LocalDefaultSystemAppearance localAppearance(true, page ? page->useDarkAppearance() : false);
 
     auto imageSize = layout.boundingRect.size();
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     imageSize.expand(2 * linkImageShadowRadius, 2 * linkImageShadowRadius - linkImageShadowOffsetY);
 #endif
     RetainPtr<NSImage> dragImage = adoptNS([[NSImage alloc] initWithSize:imageSize]);
-    [dragImage lockFocus];
+    [dragImage _web_lockFocusWithDeviceScaleFactor:deviceScaleFactor];
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     GraphicsContext context((CGContextRef)[NSGraphicsContext currentContext].graphicsPort);
+#pragma clang diagnostic pop
+
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     context.translate(linkImageShadowRadius, linkImageShadowRadius - linkImageShadowOffsetY);
     context.setShadow({ 0, linkImageShadowOffsetY }, linkImageShadowRadius, { 0.f, 0.f, 0.f, .25 });
 #endif
-    context.fillRoundedRect(FloatRoundedRect(layout.boundingRect, FloatRoundedRect::Radii(linkImageCornerRadius)), Color::white);
+    context.fillRoundedRect(FloatRoundedRect(layout.boundingRect, FloatRoundedRect::Radii(linkImageCornerRadius)), colorFromNSColor([NSColor controlBackgroundColor]));
 #if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     context.clearShadow();
 #endif
@@ -315,6 +331,26 @@ DragImageRef createDragImageForLink(Element&, URL& url, const String& title, Tex
         context.translate(label.origin.x(), layout.boundingRect.height() - label.origin.y() - linkImagePadding);
         CTFrameDraw(label.frame.get(), context.platformContext());
     }
+
+    [dragImage unlockFocus];
+
+    return dragImage;
+}
+
+DragImageRef createDragImageForColor(const Color& color, const FloatRect&, float, Path&)
+{
+    auto dragImage = adoptNS([[NSImage alloc] initWithSize:NSMakeSize(ColorSwatchWidth, ColorSwatchWidth)]);
+
+    [dragImage lockFocus];
+
+    NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:NSMakeRect(0, 0, ColorSwatchWidth, ColorSwatchWidth) xRadius:ColorSwatchCornerRadius yRadius:ColorSwatchCornerRadius];
+    [path setLineWidth:ColorSwatchStrokeSize];
+
+    [nsColor(color) setFill];
+    [path fill];
+
+    [[NSColor quaternaryLabelColor] setStroke];
+    [path stroke];
 
     [dragImage unlockFocus];
 

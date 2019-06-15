@@ -33,6 +33,7 @@
 namespace WebCore {
 
 class SpinButtonElement final : public HTMLDivElement, public PopupOpeningObserver {
+    WTF_MAKE_ISO_ALLOCATED(SpinButtonElement);
 public:
     enum UpDownState {
         Indeterminate, // Hovered, but the event is not handled.
@@ -42,7 +43,7 @@ public:
 
     class SpinButtonOwner {
     public:
-        virtual ~SpinButtonOwner() { }
+        virtual ~SpinButtonOwner() = default;
         virtual void focusAndSelectSpinButtonOwner() = 0;
         virtual bool shouldSpinButtonRespondToMouseEvents() = 0;
         virtual bool shouldSpinButtonRespondToWheelEvents() = 0;

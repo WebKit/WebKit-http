@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The String prototype object is itself a String object (its [[Class]] is "String")
 es5id: 15.5.4_A1
 description: >
@@ -15,8 +15,8 @@ delete String.prototype.toString;
 
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
-if (String.prototype.toString() !== "[object "+"String"+"]") {
-  $ERROR('#1: delete String.prototype.toString; String.prototype.toString() === "[object "+"String"+"]". Actual: String.prototype.toString() ==='+String.prototype.toString() );
+if (String.prototype.toString() !== "[object " + "String" + "]") {
+  $ERROR('#1: delete String.prototype.toString; String.prototype.toString() === "[object "+"String"+"]". Actual: String.prototype.toString() ===' + String.prototype.toString());
 }
 //
 //////////////////////////////////////////////////////////////////////////////

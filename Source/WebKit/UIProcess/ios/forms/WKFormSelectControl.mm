@@ -76,7 +76,7 @@ CGFloat adjustedFontSize(CGFloat textWidth, UIFont *font, CGFloat initialFontSiz
         }
     }
 
-    if (UICurrentUserInterfaceIdiomIsPad())
+    if (currentUserInterfaceIdiomIsPad())
         _control = adoptNS([[WKSelectPopover alloc] initWithView:view hasGroups:hasGroups]);
     else if (view.assistedNodeInformation.isMultiSelect || hasGroups)
         _control = adoptNS([[WKMultipleSelectPicker alloc] initWithView:view]);
@@ -109,6 +109,14 @@ CGFloat adjustedFontSize(CGFloat textWidth, UIFont *font, CGFloat initialFontSiz
 {
     if ([_control respondsToSelector:@selector(selectRow:inComponent:extendingSelection:)])
         [id<WKSelectTesting>(_control.get()) selectRow:rowIndex inComponent:componentIndex extendingSelection:extendingSelection];
+}
+
+- (NSString *)selectFormPopoverTitle
+{
+    if (![_control isKindOfClass:[WKSelectPopover class]])
+        return nil;
+
+    return [(WKSelectPopover *)_control.get() tableViewController].title;
 }
 
 @end

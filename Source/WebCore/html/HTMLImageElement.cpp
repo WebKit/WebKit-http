@@ -26,22 +26,29 @@
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "CachedImage.h"
+#include "ElementIterator.h"
 #include "FrameView.h"
+#include "HTMLAnchorElement.h"
+#include "HTMLAttachmentElement.h"
 #include "HTMLDocument.h"
 #include "HTMLFormElement.h"
 #include "HTMLParserIdioms.h"
 #include "HTMLPictureElement.h"
+#include "HTMLMapElement.h"
 #include "HTMLSourceElement.h"
 #include "HTMLSrcsetParser.h"
+#include "Logging.h"
 #include "MIMETypeRegistry.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
 #include "NodeTraversal.h"
 #include "RenderImage.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SizesAttributeParser.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/StringBuilder.h>
 
 #if ENABLE(SERVICE_CONTROLS)
@@ -49,6 +56,8 @@
 #endif
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLImageElement);
 
 using namespace HTMLNames;
 
@@ -143,12 +152,12 @@ void HTMLImageElement::setBestFitURLAndDPRFromImageCandidate(const ImageCandidat
 
 ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
 {
-    auto* picture = pictureElement();
+    auto picture = makeRefPtr(pictureElement());
     if (!picture)
         return { };
     picture->clearViewportDependentResults();
     document().removeViewportDependentPicture(*picture);
-    for (Node* child = picture->firstChild(); child && child != this; child = child->nextSibling()) {
+    for (RefPtr<Node> child = picture->firstChild(); child && child != this; child = child->nextSibling()) {
         if (!is<HTMLSourceElement>(*child))
             continue;
         auto& source = downcast<HTMLSourceElement>(*child);
@@ -162,13 +171,14 @@ ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
             String type = typeAttribute.string();
             type.truncate(type.find(';'));
             type = stripLeadingAndTrailingHTMLSpaces(type);
-            if (!type.isEmpty() && !MIMETypeRegistry::isSupportedImageOrSVGMIMEType(type))
+            if (!type.isEmpty() && !MIMETypeRegistry::isSupportedImageVideoOrSVGMIMEType(type))
                 continue;
         }
 
-        auto* documentElement = document().documentElement();
+        auto documentElement = makeRefPtr(document().documentElement());
         MediaQueryEvaluator evaluator { document().printing() ? "print" : "screen", document(), documentElement ? documentElement->computedStyle() : nullptr };
-        auto* queries = source.parsedMediaAttribute();
+        auto* queries = source.parsedMediaAttribute(document());
+        LOG(MediaQueries, "HTMLImageElement %p bestFitSourceFromPictureElement evaluating media queries", this);
         auto evaluation = !queries || evaluator.evaluate(*queries, picture->viewportDependentResults());
         if (picture->hasViewportDependentResults())
             document().addViewportDependentPicture(*picture);
@@ -205,15 +215,15 @@ void HTMLImageElement::parseAttribute(const QualifiedName& name, const AtomicStr
         selectImageSource();
     else if (name == usemapAttr) {
         if (isConnected() && !m_parsedUsemap.isNull())
-            document().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
+            treeScope().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
         m_parsedUsemap = parseHTMLHashNameReference(value);
 
         if (isConnected() && !m_parsedUsemap.isNull())
-            document().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
+            treeScope().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
     } else if (name == compositeAttr) {
         // FIXME: images don't support blend modes in their compositing attribute.
-        BlendMode blendOp = BlendModeNormal;
+        BlendMode blendOp = BlendMode::Normal;
         if (!parseCompositeAndBlendOperator(value, m_compositeOperator, blendOp))
             m_compositeOperator = CompositeSourceOver;
 #if ENABLE(SERVICE_CONTROLS)
@@ -291,7 +301,7 @@ void HTMLImageElement::didAttachRenderers()
         renderImage.setImageSizeForAltText();
 }
 
-Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLImageElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
     if (m_formSetByParser) {
         m_form = m_formSetByParser;
@@ -311,10 +321,10 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
     }
     // Insert needs to complete first, before we start updating the loader. Loader dispatches events which could result
     // in callbacks back to this node.
-    Node::InsertionNotificationRequest insertNotificationRequest = HTMLElement::insertedInto(insertionPoint);
+    Node::InsertedIntoAncestorResult insertNotificationRequest = HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 
-    if (insertionPoint.isConnected() && !m_parsedUsemap.isNull())
-        document().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
+    if (insertionType.connectedToDocument && !m_parsedUsemap.isNull())
+        treeScope().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
     if (is<HTMLPictureElement>(parentNode())) {
         setPictureElement(&downcast<HTMLPictureElement>(*parentNode()));
@@ -323,35 +333,35 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
 
     // If we have been inserted from a renderer-less document,
     // our loader may have not fetched the image, so do it now.
-    if (insertionPoint.isConnected() && !m_imageLoader.image())
+    if (insertionType.connectedToDocument && !m_imageLoader.image())
         m_imageLoader.updateFromElement();
 
     return insertNotificationRequest;
 }
 
-void HTMLImageElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLImageElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
     if (m_form)
         m_form->removeImgElement(this);
 
-    if (insertionPoint.isConnected() && !m_parsedUsemap.isNull())
-        document().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
-    
+    if (removalType.disconnectedFromDocument && !m_parsedUsemap.isNull())
+        oldParentOfRemovedTree.treeScope().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
+
     if (is<HTMLPictureElement>(parentNode()))
         setPictureElement(nullptr);
-    
+
     m_form = nullptr;
-    HTMLElement::removedFrom(insertionPoint);
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 HTMLPictureElement* HTMLImageElement::pictureElement() const
 {
     if (!gPictureOwnerMap || !gPictureOwnerMap->contains(this))
         return nullptr;
-    HTMLPictureElement* result = gPictureOwnerMap->get(this).get();
+    auto result = gPictureOwnerMap->get(this);
     if (!result)
         gPictureOwnerMap->remove(this);
-    return result;
+    return result.get();
 }
     
 void HTMLImageElement::setPictureElement(HTMLPictureElement* pictureElement)
@@ -364,7 +374,7 @@ void HTMLImageElement::setPictureElement(HTMLPictureElement* pictureElement)
     
     if (!gPictureOwnerMap)
         gPictureOwnerMap = new PictureOwnerMap();
-    gPictureOwnerMap->add(this, pictureElement->createWeakPtr());
+    gPictureOwnerMap->add(this, makeWeakPtr(*pictureElement));
 }
     
 unsigned HTMLImageElement::width(bool ignorePendingStylesheets)
@@ -478,6 +488,11 @@ bool HTMLImageElement::matchesUsemap(const AtomicStringImpl& name) const
     return m_parsedUsemap.impl() == &name;
 }
 
+HTMLMapElement* HTMLImageElement::associatedMapElement() const
+{
+    return treeScope().getImageMap(m_parsedUsemap);
+}
+
 const AtomicString& HTMLImageElement::alt() const
 {
     return attributeWithoutSynchronization(altAttr);
@@ -536,6 +551,21 @@ bool HTMLImageElement::complete() const
     return m_imageLoader.imageComplete();
 }
 
+DecodingMode HTMLImageElement::decodingMode() const
+{
+    const AtomicString& decodingMode = attributeWithoutSynchronization(decodingAttr);
+    if (equalLettersIgnoringASCIICase(decodingMode, "sync"))
+        return DecodingMode::Synchronous;
+    if (equalLettersIgnoringASCIICase(decodingMode, "async"))
+        return DecodingMode::Asynchronous;
+    return DecodingMode::Auto;
+}
+    
+void HTMLImageElement::decode(Ref<DeferredPromise>&& promise)
+{
+    return m_imageLoader.decode(WTFMove(promise));
+}
+
 void HTMLImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLElement::addSubresourceAttributeURLs(urls);
@@ -575,6 +605,35 @@ String HTMLImageElement::crossOrigin() const
     return parseCORSSettingsAttribute(attributeWithoutSynchronization(crossoriginAttr));
 }
 
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void HTMLImageElement::setAttachmentElement(Ref<HTMLAttachmentElement>&& attachment)
+{
+    if (auto existingAttachment = attachmentElement())
+        existingAttachment->remove();
+
+    attachment->setInlineStyleProperty(CSSPropertyDisplay, CSSValueNone, true);
+    ensureUserAgentShadowRoot().appendChild(WTFMove(attachment));
+}
+
+RefPtr<HTMLAttachmentElement> HTMLImageElement::attachmentElement() const
+{
+    if (auto shadowRoot = userAgentShadowRoot())
+        return childrenOfType<HTMLAttachmentElement>(*shadowRoot).first();
+
+    return nullptr;
+}
+
+const String& HTMLImageElement::attachmentIdentifier() const
+{
+    if (auto attachment = attachmentElement())
+        return attachment->uniqueIdentifier();
+
+    return nullAtom();
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
+
 #if ENABLE(SERVICE_CONTROLS)
 void HTMLImageElement::updateImageControls()
 {
@@ -612,11 +671,11 @@ void HTMLImageElement::tryCreateImageControls()
 
 void HTMLImageElement::destroyImageControls()
 {
-    ShadowRoot* shadowRoot = userAgentShadowRoot();
+    auto shadowRoot = userAgentShadowRoot();
     if (!shadowRoot)
         return;
 
-    if (Node* node = shadowRoot->firstChild()) {
+    if (RefPtr<Node> node = shadowRoot->firstChild()) {
         ASSERT_WITH_SECURITY_IMPLICATION(node->isImageControlsRootElement());
         shadowRoot->removeChild(*node);
     }
@@ -630,8 +689,8 @@ void HTMLImageElement::destroyImageControls()
 
 bool HTMLImageElement::hasImageControls() const
 {
-    if (ShadowRoot* shadowRoot = userAgentShadowRoot()) {
-        Node* node = shadowRoot->firstChild();
+    if (auto shadowRoot = userAgentShadowRoot()) {
+        RefPtr<Node> node = shadowRoot->firstChild();
         ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isImageControlsRootElement());
         return node;
     }
@@ -653,6 +712,21 @@ bool HTMLImageElement::willRespondToMouseClickEvents()
     if (!renderer || renderer->style().touchCalloutEnabled())
         return true;
     return HTMLElement::willRespondToMouseClickEvents();
+}
+#endif
+
+#if USE(SYSTEM_PREVIEW)
+bool HTMLImageElement::isSystemPreviewImage() const
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().systemPreviewEnabled())
+        return false;
+
+    const auto* parent = parentElement();
+    if (is<HTMLAnchorElement>(parent))
+        return downcast<HTMLAnchorElement>(parent)->isSystemPreviewLink();
+    if (is<HTMLPictureElement>(parent))
+        return downcast<HTMLPictureElement>(parent)->isSystemPreviewImage();
+    return false;
 }
 #endif
 

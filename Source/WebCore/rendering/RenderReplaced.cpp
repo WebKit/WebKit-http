@@ -32,17 +32,19 @@
 #include "InlineElementBox.h"
 #include "LayoutRepainter.h"
 #include "RenderBlock.h"
-#include "RenderFlowThread.h"
+#include "RenderFragmentedFlow.h"
 #include "RenderImage.h"
 #include "RenderLayer.h"
-#include "RenderNamedFlowFragment.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "VisiblePosition.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderReplaced);
 
 const int cDefaultWidth = 300;
 const int cDefaultHeight = 150;
@@ -68,9 +70,7 @@ RenderReplaced::RenderReplaced(Document& document, RenderStyle&& style, const La
     setReplaced(true);
 }
 
-RenderReplaced::~RenderReplaced()
-{
-}
+RenderReplaced::~RenderReplaced() = default;
 
 void RenderReplaced::willBeDestroyed()
 {
@@ -104,7 +104,7 @@ void RenderReplaced::layout()
 
     // Now that we've calculated our preferred layout, we check to see
     // if we should further constrain sizing to the intrinsic aspect ratio.
-    if (style().aspectRatioType() == AspectRatioFromIntrinsic && !m_intrinsicSize.isEmpty()) {
+    if (style().aspectRatioType() == AspectRatioType::FromIntrinsic && !m_intrinsicSize.isEmpty()) {
         float aspectRatio = m_intrinsicSize.aspectRatio();
         LayoutSize frameSize = size();
         float frameAspectRatio = frameSize.aspectRatio();
@@ -170,29 +170,29 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
     LayoutPoint adjustedPaintOffset = paintOffset + location();
     
-    if (hasVisibleBoxDecorations() && paintInfo.phase == PaintPhaseForeground)
+    if (hasVisibleBoxDecorations() && paintInfo.phase == PaintPhase::Foreground)
         paintBoxDecorations(paintInfo, adjustedPaintOffset);
     
-    if (paintInfo.phase == PaintPhaseMask) {
+    if (paintInfo.phase == PaintPhase::Mask) {
         paintMask(paintInfo, adjustedPaintOffset);
         return;
     }
 
     LayoutRect paintRect = LayoutRect(adjustedPaintOffset, size());
-    if (paintInfo.phase == PaintPhaseOutline || paintInfo.phase == PaintPhaseSelfOutline) {
+    if (paintInfo.phase == PaintPhase::Outline || paintInfo.phase == PaintPhase::SelfOutline) {
         if (style().outlineWidth())
             paintOutline(paintInfo, paintRect);
         return;
     }
 
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseSelection)
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection)
         return;
     
     if (!paintInfo.shouldPaintWithinRoot(*this))
         return;
     
     bool drawSelectionTint = shouldDrawSelectionTint();
-    if (paintInfo.phase == PaintPhaseSelection) {
+    if (paintInfo.phase == PaintPhase::Selection) {
         if (selectionState() == SelectionNone)
             return;
         drawSelectionTint = false;
@@ -231,25 +231,23 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
 bool RenderReplaced::shouldPaint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    if ((paintInfo.paintBehavior & PaintBehaviorExcludeSelection) && isSelected())
+    if ((paintInfo.paintBehavior.contains(PaintBehavior::ExcludeSelection)) && isSelected())
         return false;
 
-    if (paintInfo.phase != PaintPhaseForeground && paintInfo.phase != PaintPhaseOutline && paintInfo.phase != PaintPhaseSelfOutline 
-            && paintInfo.phase != PaintPhaseSelection && paintInfo.phase != PaintPhaseMask)
+    if (paintInfo.phase != PaintPhase::Foreground
+        && paintInfo.phase != PaintPhase::Outline
+        && paintInfo.phase != PaintPhase::SelfOutline
+        && paintInfo.phase != PaintPhase::Selection
+        && paintInfo.phase != PaintPhase::Mask)
         return false;
 
     if (!paintInfo.shouldPaintWithinRoot(*this))
         return false;
         
     // if we're invisible or haven't received a layout yet, then just bail.
-    if (style().visibility() != VISIBLE)
+    if (style().visibility() != Visibility::Visible)
         return false;
     
-    RenderNamedFlowFragment* namedFlowFragment = currentRenderNamedFlowFragment();
-    // Check our region range to make sure we need to be painting in this region.
-    if (namedFlowFragment && !namedFlowFragment->flowThread()->objectShouldFragmentInFlowRegion(this, namedFlowFragment))
-        return false;
-
     LayoutPoint adjustedPaintOffset = paintOffset + location();
 
     // Early exit if the element touches the edges.
@@ -333,7 +331,7 @@ bool RenderReplaced::setNeedsLayoutIfNeededAfterIntrinsicSizeChange()
         || style().logicalMaxWidth().isPercentOrCalculated()
         || style().logicalMinWidth().isPercentOrCalculated();
     
-    bool layoutSizeDependsOnIntrinsicSize = style().aspectRatioType() == AspectRatioFromIntrinsic;
+    bool layoutSizeDependsOnIntrinsicSize = style().aspectRatioType() == AspectRatioType::FromIntrinsic;
     
     if (!imageSizeIsConstrained || containingBlockNeedsToRecomputePreferredSize || layoutSizeDependsOnIntrinsicSize) {
         setNeedsLayout();
@@ -397,17 +395,17 @@ LayoutRect RenderReplaced::replacedContentRect(const LayoutSize& intrinsicSize) 
 
     LayoutRect finalRect = contentRect;
     switch (objectFit) {
-    case ObjectFitContain:
-    case ObjectFitScaleDown:
-    case ObjectFitCover:
-        finalRect.setSize(finalRect.size().fitToAspectRatio(intrinsicSize, objectFit == ObjectFitCover ? AspectRatioFitGrow : AspectRatioFitShrink));
-        if (objectFit != ObjectFitScaleDown || finalRect.width() <= intrinsicSize.width())
+    case ObjectFit::Contain:
+    case ObjectFit::ScaleDown:
+    case ObjectFit::Cover:
+        finalRect.setSize(finalRect.size().fitToAspectRatio(intrinsicSize, objectFit == ObjectFit::Cover ? AspectRatioFitGrow : AspectRatioFitShrink));
+        if (objectFit != ObjectFit::ScaleDown || finalRect.width() <= intrinsicSize.width())
             break;
         FALLTHROUGH;
-    case ObjectFitNone:
+    case ObjectFit::None:
         finalRect.setSize(intrinsicSize);
         break;
-    case ObjectFitFill:
+    case ObjectFit::Fill:
         break;
     }
 
@@ -583,7 +581,7 @@ void RenderReplaced::computePreferredLogicalWidths()
     setPreferredLogicalWidthsDirty(false);
 }
 
-VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point, const RenderRegion* region)
+VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point, const RenderFragmentContainer* fragment)
 {
     // FIXME: This code is buggy if the replaced element is relative positioned.
     InlineBox* box = inlineBoxWrapper();
@@ -607,7 +605,7 @@ VisiblePosition RenderReplaced::positionForPoint(const LayoutPoint& point, const
         return createVisiblePosition(1, DOWNSTREAM);
     }
 
-    return RenderBox::positionForPoint(point, region);
+    return RenderBox::positionForPoint(point, fragment);
 }
 
 LayoutRect RenderReplaced::selectionRectForRepaint(const RenderLayerModelObject* repaintContainer, bool clipToVisibleContent)
@@ -650,30 +648,29 @@ void RenderReplaced::setSelectionState(SelectionState state)
 
 bool RenderReplaced::isSelected() const
 {
-    SelectionState s = selectionState();
-    if (s == SelectionNone)
+    SelectionState state = selectionState();
+    if (state == SelectionNone)
         return false;
-    if (s == SelectionInside)
+    if (state == SelectionInside)
         return true;
 
-    unsigned selectionStart, selectionEnd;
-    selectionStartEnd(selectionStart, selectionEnd);
-    if (s == SelectionStart)
-        return selectionStart == 0;
-        
+    auto selectionStart = view().selection().startPosition();
+    auto selectionEnd = view().selection().endPosition();
+    if (state == SelectionStart)
+        return !selectionStart;
+
     unsigned end = element()->hasChildNodes() ? element()->countChildNodes() : 1;
-    if (s == SelectionEnd)
+    if (state == SelectionEnd)
         return selectionEnd == end;
-    if (s == SelectionBoth)
-        return selectionStart == 0 && selectionEnd == end;
-        
+    if (state == SelectionBoth)
+        return !selectionStart && selectionEnd == end;
     ASSERT_NOT_REACHED();
     return false;
 }
 
 LayoutRect RenderReplaced::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
-    if (style().visibility() != VISIBLE && !enclosingLayer()->hasVisibleContent())
+    if (style().visibility() != Visibility::Visible && !enclosingLayer()->hasVisibleContent())
         return LayoutRect();
 
     // The selectionRect can project outside of the overflowRect, so take their union
@@ -681,7 +678,7 @@ LayoutRect RenderReplaced::clippedOverflowRectForRepaint(const RenderLayerModelO
     LayoutRect r = unionRect(localSelectionRect(false), visualOverflowRect());
     // FIXME: layoutDelta needs to be applied in parts before/after transforms and
     // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
-    r.move(view().layoutDelta());
+    r.move(view().frameView().layoutContext().layoutDelta());
     return computeRectForRepaint(r, repaintContainer);
 }
 

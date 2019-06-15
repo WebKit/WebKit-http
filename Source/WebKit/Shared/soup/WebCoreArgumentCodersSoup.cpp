@@ -36,9 +36,8 @@
 #include <WebCore/SoupNetworkProxySettings.h>
 #include <wtf/text/CString.h>
 
-using namespace WebCore;
-
 namespace IPC {
+using namespace WebCore;
 
 void ArgumentCoder<ResourceRequest>::encodePlatformData(Encoder& encoder, const ResourceRequest& resourceRequest)
 {
@@ -102,10 +101,6 @@ bool ArgumentCoder<CertificateInfo>::decode(Decoder& decoder, CertificateInfo& c
 
 void ArgumentCoder<ResourceError>::encodePlatformData(Encoder& encoder, const ResourceError& resourceError)
 {
-    encoder.encodeEnum(resourceError.type());
-    if (resourceError.isNull())
-        return;
-
     encoder << resourceError.domain();
     encoder << resourceError.errorCode();
     encoder << resourceError.failingURL().string();
@@ -116,14 +111,6 @@ void ArgumentCoder<ResourceError>::encodePlatformData(Encoder& encoder, const Re
 
 bool ArgumentCoder<ResourceError>::decodePlatformData(Decoder& decoder, ResourceError& resourceError)
 {
-    ResourceErrorBase::Type errorType;
-    if (!decoder.decodeEnum(errorType))
-        return false;
-    if (errorType == ResourceErrorBase::Type::Null) {
-        resourceError = { };
-        return true;
-    }
-
     String domain;
     if (!decoder.decode(domain))
         return false;
@@ -141,7 +128,6 @@ bool ArgumentCoder<ResourceError>::decodePlatformData(Decoder& decoder, Resource
         return false;
 
     resourceError = ResourceError(domain, errorCode, URL(URL(), failingURL), localizedDescription);
-    resourceError.setType(errorType);
 
     CertificateInfo certificateInfo;
     if (!decoder.decode(certificateInfo))

@@ -167,6 +167,32 @@ class AnalysisTask extends LabeledObject {
         return category;
     }
 
+    async commitSetsFromTestGroupsAndMeasurementSet()
+    {
+
+        const platform = this.platform();
+        const metric = this.metric();
+        if (!platform || !metric)
+            return [];
+
+        const lastModified = platform.lastModified(metric);
+        const measurementSet = MeasurementSet.findSet(platform.id(), metric.id(), lastModified);
+        const fetchingMeasurementSetPromise = measurementSet.fetchBetween(this.startTime(), this.endTime());
+
+        const allTestGroupsInTask = await TestGroup.fetchForTask(this.id());
+        const allCommitSetsInTask = new Set;
+        for (const group of allTestGroupsInTask)
+            group.requestedCommitSets().forEach((commitSet) => allCommitSetsInTask.add(commitSet));
+
+        await fetchingMeasurementSetPromise;
+
+        const series = measurementSet.fetchedTimeSeries('current', false, false);
+        const startPoint = series.findById(this.startMeasurementId());
+        const endPoint = series.findById(this.endMeasurementId());
+
+        return Array.from(series.viewBetweenPoints(startPoint, endPoint)).map((point) => point.commitSet());
+    }
+
     static categories()
     {
         return [
@@ -176,9 +202,9 @@ class AnalysisTask extends LabeledObject {
         ];
     }
 
-    static fetchById(id)
+    static fetchById(id, noCache)
     {
-        return this._fetchSubset({id: id}).then(function (data) { return AnalysisTask.findById(id); });
+        return this._fetchSubset({id: id}, noCache).then((data) => AnalysisTask.findById(id));
     }
 
     static fetchByBuildRequestId(id)
@@ -222,7 +248,7 @@ class AnalysisTask extends LabeledObject {
 
     static _fetchSubset(params, noCache)
     {
-        if (this._fetchAllPromise)
+        if (this._fetchAllPromise && !noCache)
             return this._fetchAllPromise;
         return this.cachedFetch('/api/analysis-tasks', params, noCache).then(this._constructAnalysisTasksFromRawData.bind(this));
     }
@@ -277,13 +303,18 @@ class AnalysisTask extends LabeledObject {
         return results;
     }
 
-    static create(name, startRunId, endRunId)
+    static async create(name, startPoint, endPoint, testGroupName=null, repetitionCount=0, notifyOnCompletion=false)
     {
-        return PrivilegedAPI.sendRequest('create-analysis-task', {
-            name: name,
-            startRun: startRunId,
-            endRun: endRunId,
-        });
+        const parameters = {name, startRun: startPoint.id, endRun: endPoint.id};
+        if (testGroupName) {
+            console.assert(repetitionCount);
+            parameters['revisionSets'] = CommitSet.revisionSetsFromCommitSets([startPoint.commitSet(), endPoint.commitSet()]);
+            parameters['repetitionCount'] = repetitionCount;
+            parameters['testGroupName'] = testGroupName;
+            parameters['needsNotification'] = notifyOnCompletion;
+        }
+        const response = await PrivilegedAPI.sendRequest('create-analysis-task', parameters);
+        return AnalysisTask.fetchById(response.taskId, true);
     }
 }
 

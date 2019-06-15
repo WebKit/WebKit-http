@@ -8,18 +8,19 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_NETEQ_PACKET_BUFFER_H_
-#define WEBRTC_MODULES_AUDIO_CODING_NETEQ_PACKET_BUFFER_H_
+#ifndef MODULES_AUDIO_CODING_NETEQ_PACKET_BUFFER_H_
+#define MODULES_AUDIO_CODING_NETEQ_PACKET_BUFFER_H_
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/base/optional.h"
-#include "webrtc/modules/audio_coding/neteq/packet.h"
-#include "webrtc/modules/include/module_common_types.h"
-#include "webrtc/typedefs.h"
+#include "absl/types/optional.h"
+#include "modules/audio_coding/neteq/decoder_database.h"
+#include "modules/audio_coding/neteq/packet.h"
+#include "modules/include/module_common_types.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
 class DecoderDatabase;
+class StatisticsCalculator;
 class TickTimer;
 
 // This is the actual buffer holding the packets before decoding.
@@ -51,7 +52,7 @@ class PacketBuffer {
   // the packet object.
   // Returns PacketBuffer::kOK on success, PacketBuffer::kFlushed if the buffer
   // was flushed due to overfilling.
-  virtual int InsertPacket(Packet&& packet);
+  virtual int InsertPacket(Packet&& packet, StatisticsCalculator* stats);
 
   // Inserts a list of packets into the buffer. The buffer will take over
   // ownership of the packet objects.
@@ -64,8 +65,9 @@ class PacketBuffer {
   virtual int InsertPacketList(
       PacketList* packet_list,
       const DecoderDatabase& decoder_database,
-      rtc::Optional<uint8_t>* current_rtp_payload_type,
-      rtc::Optional<uint8_t>* current_cng_rtp_payload_type);
+      absl::optional<uint8_t>* current_rtp_payload_type,
+      absl::optional<uint8_t>* current_cng_rtp_payload_type,
+      StatisticsCalculator* stats);
 
   // Gets the timestamp for the first packet in the buffer and writes it to the
   // output variable |next_timestamp|.
@@ -87,27 +89,29 @@ class PacketBuffer {
 
   // Extracts the first packet in the buffer and returns it.
   // Returns an empty optional if the buffer is empty.
-  virtual rtc::Optional<Packet> GetNextPacket();
+  virtual absl::optional<Packet> GetNextPacket();
 
   // Discards the first packet in the buffer. The packet is deleted.
   // Returns PacketBuffer::kBufferEmpty if the buffer is empty,
   // PacketBuffer::kOK otherwise.
-  virtual int DiscardNextPacket();
+  virtual int DiscardNextPacket(StatisticsCalculator* stats);
 
   // Discards all packets that are (strictly) older than timestamp_limit,
   // but newer than timestamp_limit - horizon_samples. Setting horizon_samples
   // to zero implies that the horizon is set to half the timestamp range. That
   // is, if a packet is more than 2^31 timestamps into the future compared with
   // timestamp_limit (including wrap-around), it is considered old.
-  // Returns number of packets discarded.
-  virtual int DiscardOldPackets(uint32_t timestamp_limit,
-                                uint32_t horizon_samples);
+  virtual void DiscardOldPackets(uint32_t timestamp_limit,
+                                 uint32_t horizon_samples,
+                                 StatisticsCalculator* stats);
 
   // Discards all packets that are (strictly) older than timestamp_limit.
-  virtual int DiscardAllOldPackets(uint32_t timestamp_limit);
+  virtual void DiscardAllOldPackets(uint32_t timestamp_limit,
+                                    StatisticsCalculator* stats);
 
   // Removes all packets with a specific payload type from the buffer.
-  virtual void DiscardPacketsWithPayloadType(uint8_t payload_type);
+  virtual void DiscardPacketsWithPayloadType(uint8_t payload_type,
+                                             StatisticsCalculator* stats);
 
   // Returns the number of packets in the buffer, including duplicates and
   // redundant packets.
@@ -116,6 +120,10 @@ class PacketBuffer {
   // Returns the number of samples in the buffer, including samples carried in
   // duplicate and redundant packets.
   virtual size_t NumSamplesInBuffer(size_t last_decoded_length) const;
+
+  // Returns true if the packet buffer contains any DTX or CNG packets.
+  virtual bool ContainsDtxOrCngPacket(
+      const DecoderDatabase* decoder_database) const;
 
   virtual void BufferStat(int* num_packets, int* max_num_packets) const;
 
@@ -141,4 +149,4 @@ class PacketBuffer {
 };
 
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_AUDIO_CODING_NETEQ_PACKET_BUFFER_H_
+#endif  // MODULES_AUDIO_CODING_NETEQ_PACKET_BUFFER_H_

@@ -3,11 +3,15 @@
 
 /*---
 description: Expression not allowed in head's AssignmentExpression position
-info: >
+info: |
     IterationStatement :
         for ( var ForBinding of AssignmentExpression ) Statement
 es6id: 13.7
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 for (var x of [], []) {}

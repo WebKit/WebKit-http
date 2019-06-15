@@ -5,7 +5,7 @@
 es6id: B.2.3.3
 description: >
   String.prototype.big.name is "big".
-info: >
+info: |
   String.prototype.big ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.big.name, "big");
-
-verifyNotEnumerable(String.prototype.big, "name");
-verifyNotWritable(String.prototype.big, "name");
-verifyConfigurable(String.prototype.big, "name");
+verifyProperty(String.prototype.big, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "big"
+});

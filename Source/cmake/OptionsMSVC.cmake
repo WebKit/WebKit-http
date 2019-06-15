@@ -26,8 +26,9 @@ if (NOT COMPILER_IS_CLANG_CL)
     add_definitions(-D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1)
 endif ()
 
-# Turn off certain link features
-add_compile_options(/Gy- /openmp- /GF-)
+# Enable C++17
+# https://docs.microsoft.com/en-us/cpp/build/reference/std-specify-language-standard-version
+add_compile_options(/std:c++17)
 
 # Specify the source code encoding
 add_compile_options(/utf-8 /validate-charset)
@@ -55,17 +56,27 @@ if (NOT ${CMAKE_CXX_FLAGS} STREQUAL "")
     string(REGEX REPLACE "/W3" "/W4" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}) # Warnings are important
 endif ()
 
+if (MSVC_STATIC_RUNTIME)
+    message(STATUS "Using multithreaded, static version of the run-time library")
+    set(MSVC_RUNTIME_COMPILE_FLAG "/MT")
+    set(MSVC_RUNTIME_LINKER_FLAGS "/NODEFAULTLIB:MSVCRT /NODEFAULTLIB:MSVCRTD")
+else ()
+    message(STATUS "Using multithreaded, dynamic version of the run-time library")
+    set(MSVC_RUNTIME_COMPILE_FLAG "/MD")
+    # No linker flags are required
+endif ()
+
 foreach (flag_var
     CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
     CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO
     CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
     CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
     # Use the multithreaded static runtime library instead of the default DLL runtime.
-    string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+    string(REGEX REPLACE "/MD" "${MSVC_RUNTIME_COMPILE_FLAG}" ${flag_var} "${${flag_var}}")
 
     # No debug runtime, even in debug builds.
     if (NOT DEBUG_SUFFIX)
-        string(REGEX REPLACE "/MTd" "/MT" ${flag_var} "${${flag_var}}")
+        string(REGEX REPLACE "${MSVC_RUNTIME_COMPILE_FLAG}d" "${MSVC_RUNTIME_COMPILE_FLAG}" ${flag_var} "${${flag_var}}")
         string(REGEX REPLACE "/D_DEBUG" "" ${flag_var} "${${flag_var}}")
     endif ()
 endforeach ()
@@ -87,10 +98,11 @@ string(REPLACE "INCREMENTAL:YES" "INCREMENTAL:NO" replace_CMAKE_EXE_LINKER_FLAGS
 set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "${replace_CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO} /INCREMENTAL:NO")
 
 if (COMPILER_IS_CLANG_CL)
-    # FIXME: We need to set the msc-version above the one it defaults to
-    # when using clang-cl with VS2015. This might be unnecessary when moving to
-    # VS2017 as part of https://bugs.webkit.org/show_bug.cgi?id=172412
-    add_compile_options(-fmsc-version=190023918)
+    # FIXME: The clang-cl visual studio integration seemed to set
+    # this to 1900 explicitly even when building in VS2017 with the
+    # newest toolset option, but we want to be versioned to match
+    # VS2017.
+    add_compile_options(-fmsc-version=1911)
 
     # FIXME: Building with clang-cl seemed to fail with 128 bit int support
     set(HAVE_INT128_T OFF)

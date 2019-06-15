@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@
 #include "LinkBuffer.h"
 #include "PCToCodeOriginMap.h"
 #include "ScratchRegisterAllocator.h"
-#include <wtf/Function.h>
+#include <wtf/RecursableLambda.h>
 
 namespace JSC { namespace FTL {
 
@@ -71,7 +71,7 @@ void compile(State& state, Safepoint::Result& safepointResult)
 
     if (safepointResult.didGetCancelled())
         return;
-    RELEASE_ASSERT(!state.graph.m_vm.heap.collectorBelievesThatTheWorldIsStopped());
+    RELEASE_ASSERT(!state.graph.m_vm.heap.worldIsStopped());
     
     if (state.allocationFailed)
         return;
@@ -79,8 +79,8 @@ void compile(State& state, Safepoint::Result& safepointResult)
     std::unique_ptr<RegisterAtOffsetList> registerOffsets =
         std::make_unique<RegisterAtOffsetList>(state.proc->calleeSaveRegisterAtOffsetList());
     if (shouldDumpDisassembly())
-        dataLog("Unwind info for ", CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT), ": ", *registerOffsets, "\n");
-    state.graph.m_codeBlock->setCalleeSaveRegisters(WTFMove(registerOffsets));
+        dataLog("Unwind info for ", CodeBlockWithJITType(codeBlock, JITCode::FTLJIT), ": ", *registerOffsets, "\n");
+    codeBlock->setCalleeSaveRegisters(WTFMove(registerOffsets));
     ASSERT(!(state.proc->frameSize() % sizeof(EncodedJSValue)));
     state.jitCode->common.frameRegisterCount = state.proc->frameSize() / sizeof(EncodedJSValue);
 
@@ -98,9 +98,9 @@ void compile(State& state, Safepoint::Result& safepointResult)
         if (inlineCallFrame->argumentCountRegister.isValid())
             inlineCallFrame->argumentCountRegister += localsOffset;
         
-        for (unsigned argument = inlineCallFrame->arguments.size(); argument-- > 1;) {
-            inlineCallFrame->arguments[argument] =
-                inlineCallFrame->arguments[argument].withLocalsOffset(localsOffset);
+        for (unsigned argument = inlineCallFrame->argumentsWithFixup.size(); argument-- > 1;) {
+            inlineCallFrame->argumentsWithFixup[argument] =
+                inlineCallFrame->argumentsWithFixup[argument].withLocalsOffset(localsOffset);
         }
         
         if (inlineCallFrame->isClosureCall) {
@@ -131,17 +131,18 @@ void compile(State& state, Safepoint::Result& safepointResult)
 
     // Emit the exception handler.
     *state.exceptionHandler = jit.label();
-    jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(vm);
+    jit.copyCalleeSavesToEntryFrameCalleeSavesBuffer(vm.topEntryFrame);
     jit.move(MacroAssembler::TrustedImmPtr(&vm), GPRInfo::argumentGPR0);
     jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-    CCallHelpers::Call call = jit.call();
+    CCallHelpers::Call call = jit.call(OperationPtrTag);
     jit.jumpToExceptionHandler(vm);
     jit.addLinkTask(
         [=] (LinkBuffer& linkBuffer) {
-            linkBuffer.link(call, FunctionPtr(lookupExceptionHandler));
+            linkBuffer.link(call, FunctionPtr<OperationPtrTag>(lookupExceptionHandler));
         });
 
     state.finalizer->b3CodeLinkBuffer = std::make_unique<LinkBuffer>(jit, codeBlock, JITCompilationCanFail);
+
     if (state.finalizer->b3CodeLinkBuffer->didFailToAllocate()) {
         state.allocationFailed = true;
         return;
@@ -151,14 +152,23 @@ void compile(State& state, Safepoint::Result& safepointResult)
     if (vm.shouldBuilderPCToCodeOriginMapping())
         codeBlock->setPCToCodeOriginMap(std::make_unique<PCToCodeOriginMap>(PCToCodeOriginMapBuilder(vm, WTFMove(originMap)), *state.finalizer->b3CodeLinkBuffer));
 
-    state.generatedFunction = bitwise_cast<GeneratedFunction>(
-        state.finalizer->b3CodeLinkBuffer->entrypoint().executableAddress());
+    CodeLocationLabel<JSEntryPtrTag> label = state.finalizer->b3CodeLinkBuffer->locationOf<JSEntryPtrTag>(state.proc->entrypointLabel(0));
+    state.generatedFunction = label;
     state.jitCode->initializeB3Byproducts(state.proc->releaseByproducts());
+
+    for (auto pair : state.graph.m_entrypointIndexToCatchBytecodeOffset) {
+        unsigned catchBytecodeOffset = pair.value;
+        unsigned entrypointIndex = pair.key;
+        Vector<FlushFormat> argumentFormats = state.graph.m_argumentFormats[entrypointIndex];
+        state.jitCode->common.appendCatchEntrypoint(
+            catchBytecodeOffset, state.finalizer->b3CodeLinkBuffer->locationOf<ExceptionHandlerPtrTag>(state.proc->entrypointLabel(entrypointIndex)), WTFMove(argumentFormats));
+    }
+    state.jitCode->common.finalizeCatchEntrypoints();
 
     if (B3::Air::Disassembler* disassembler = state.proc->code().disassembler()) {
         PrintStream& out = WTF::dataFile();
 
-        out.print("Generated ", state.graph.m_plan.mode, " code for ", CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT), ", instruction count = ", state.graph.m_codeBlock->instructionCount(), ":\n");
+        out.print("Generated ", state.graph.m_plan.mode(), " code for ", CodeBlockWithJITType(state.graph.m_codeBlock, JITCode::FTLJIT), ", instruction count = ", state.graph.m_codeBlock->instructionCount(), ":\n");
 
         LinkBuffer& linkBuffer = *state.finalizer->b3CodeLinkBuffer;
         B3::Value* currentB3Value = nullptr;
@@ -205,25 +215,25 @@ void compile(State& state, Safepoint::Result& safepointResult)
             printDFGNode(bitwise_cast<Node*>(value->origin().data()));
 
             HashSet<B3::Value*> localPrintedValues;
-            WTF::Function<void(B3::Value*)> printValueRecursive = [&] (B3::Value* value) {
+            auto printValueRecursive = recursableLambda([&] (auto self, B3::Value* value) -> void {
                 if (printedValues.contains(value) || localPrintedValues.contains(value))
                     return;
 
                 localPrintedValues.add(value);
                 for (unsigned i = 0; i < value->numChildren(); i++)
-                    printValueRecursive(value->child(i));
+                    self(value->child(i));
                 out.print(b3Prefix);
                 value->deepDump(state.proc.get(), out);
                 out.print("\n");
-            };
+            });
 
             printValueRecursive(currentB3Value);
             printedValues.add(value);
         };
 
-        auto forEachInst = [&] (B3::Air::Inst& inst) {
+        auto forEachInst = scopedLambda<void(B3::Air::Inst&)>([&] (B3::Air::Inst& inst) {
             printB3Value(inst.origin);
-        };
+        });
 
         disassembler->dump(state.proc->code(), out, linkBuffer, airPrefix, asmPrefix, forEachInst);
         linkBuffer.didAlreadyDisassemble();

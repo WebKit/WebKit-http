@@ -8,19 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/frame_generator_capturer.h"
+#include "test/frame_generator_capturer.h"
 
 #include <utility>
 #include <vector>
 
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/platform_thread.h"
-#include "webrtc/base/task_queue.h"
-#include "webrtc/base/timeutils.h"
-#include "webrtc/system_wrappers/include/clock.h"
-#include "webrtc/test/frame_generator.h"
-#include "webrtc/video_send_stream.h"
+#include "call/video_send_stream.h"
+#include "rtc_base/criticalsection.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/platform_thread.h"
+#include "rtc_base/task_queue.h"
+#include "rtc_base/timeutils.h"
+#include "system_wrappers/include/clock.h"
 
 namespace webrtc {
 namespace test {
@@ -68,7 +67,7 @@ class FrameGeneratorCapturer::InsertFrameTask : public rtc::QueuedTask {
         } else {
           rtc::TaskQueue::Current()->PostDelayedTask(
               std::unique_ptr<rtc::QueuedTask>(this), 0);
-          LOG(LS_ERROR)
+          RTC_LOG(LS_ERROR)
               << "Frame Generator Capturer can't keep up with requested fps";
         }
         // Repost of this instance, make sure it is not deleted.
@@ -85,12 +84,17 @@ class FrameGeneratorCapturer::InsertFrameTask : public rtc::QueuedTask {
   int64_t intended_run_time_ms_;
 };
 
-FrameGeneratorCapturer* FrameGeneratorCapturer::Create(int width,
-                                                       int height,
-                                                       int target_fps,
-                                                       Clock* clock) {
+FrameGeneratorCapturer* FrameGeneratorCapturer::Create(
+    int width,
+    int height,
+    absl::optional<FrameGenerator::OutputType> type,
+    absl::optional<int> num_squares,
+    int target_fps,
+    Clock* clock) {
   std::unique_ptr<FrameGeneratorCapturer> capturer(new FrameGeneratorCapturer(
-      clock, FrameGenerator::CreateSquareGenerator(width, height), target_fps));
+      clock,
+      FrameGenerator::CreateSquareGenerator(width, height, type, num_squares),
+      target_fps));
   if (!capturer->Init())
     return nullptr;
 
@@ -114,6 +118,22 @@ FrameGeneratorCapturer* FrameGeneratorCapturer::CreateFromYuvFile(
   return capturer.release();
 }
 
+FrameGeneratorCapturer* FrameGeneratorCapturer::CreateSlideGenerator(
+    int width,
+    int height,
+    int frame_repeat_count,
+    int target_fps,
+    Clock* clock) {
+  std::unique_ptr<FrameGeneratorCapturer> capturer(new FrameGeneratorCapturer(
+      clock,
+      FrameGenerator::CreateSlideGenerator(width, height, frame_repeat_count),
+      target_fps));
+  if (!capturer->Init())
+    return nullptr;
+
+  return capturer.release();
+}
+
 FrameGeneratorCapturer::FrameGeneratorCapturer(
     Clock* clock,
     std::unique_ptr<FrameGenerator> frame_generator,
@@ -125,8 +145,7 @@ FrameGeneratorCapturer::FrameGeneratorCapturer(
       frame_generator_(std::move(frame_generator)),
       target_fps_(target_fps),
       first_frame_capture_time_(-1),
-      task_queue_("FrameGenCapQ",
-                  rtc::TaskQueue::Priority::HIGH) {
+      task_queue_("FrameGenCapQ", rtc::TaskQueue::Priority::HIGH) {
   RTC_DCHECK(frame_generator_);
   RTC_DCHECK_GT(target_fps, 0);
 }
@@ -167,7 +186,7 @@ void FrameGeneratorCapturer::InsertFrame() {
     }
 
     if (sink_) {
-      rtc::Optional<VideoFrame> out_frame = AdaptFrame(*frame);
+      absl::optional<VideoFrame> out_frame = AdaptFrame(*frame);
       if (out_frame)
         sink_->OnFrame(*out_frame);
     }

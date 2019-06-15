@@ -25,7 +25,6 @@
 
 #include "config.h"
 
-#if ENABLE(NETWORK_CACHE)
 #include "NetworkCacheStatistics.h"
 
 #include "Logging.h"
@@ -74,16 +73,17 @@ static bool executeSQLStatement(WebCore::SQLiteStatement& statement)
     return true;
 }
 
-std::unique_ptr<Statistics> Statistics::open(const String& cachePath)
+std::unique_ptr<Statistics> Statistics::open(Cache& cache, const String& cachePath)
 {
     ASSERT(RunLoop::isMain());
 
-    String databasePath = WebCore::pathByAppendingComponent(cachePath, StatisticsDatabaseName);
-    return std::make_unique<Statistics>(databasePath);
+    String databasePath = WebCore::FileSystem::pathByAppendingComponent(cachePath, StatisticsDatabaseName);
+    return std::make_unique<Statistics>(cache, databasePath);
 }
 
-Statistics::Statistics(const String& databasePath)
-    : m_serialBackgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Statistics.Background", WorkQueue::Type::Serial, WorkQueue::QOS::Background))
+Statistics::Statistics(Cache& cache, const String& databasePath)
+    : m_cache(cache)
+    , m_serialBackgroundIOQueue(WorkQueue::create("com.apple.WebKit.Cache.Statistics.Background", WorkQueue::Type::Serial, WorkQueue::QOS::Background))
     , m_writeTimer(*this, &Statistics::writeTimerFired)
 {
     initialize(databasePath);
@@ -93,12 +93,12 @@ void Statistics::initialize(const String& databasePath)
 {
     ASSERT(RunLoop::isMain());
 
-    auto startTime = std::chrono::system_clock::now();
+    auto startTime = WallTime::now();
 
-    serialBackgroundIOQueue().dispatch([this, databasePath = databasePath.isolatedCopy(), networkCachePath = singleton().recordsPath().isolatedCopy(), startTime] {
+    serialBackgroundIOQueue().dispatch([this, databasePath = databasePath.isolatedCopy(), networkCachePath = m_cache.recordsPath(), startTime] {
         WebCore::SQLiteTransactionInProgressAutoCounter transactionCounter;
 
-        if (!WebCore::makeAllDirectories(WebCore::directoryName(databasePath)))
+        if (!WebCore::FileSystem::makeAllDirectories(WebCore::FileSystem::directoryName(databasePath)))
             return;
 
         LOG(NetworkCache, "(NetworkProcess) Opening network cache statistics database at %s...", databasePath.utf8().data());
@@ -109,10 +109,10 @@ void Statistics::initialize(const String& databasePath)
             return;
         }
 
-        executeSQLCommand(m_database, ASCIILiteral("CREATE TABLE IF NOT EXISTS AlreadyRequested (hash TEXT PRIMARY KEY)"));
-        executeSQLCommand(m_database, ASCIILiteral("CREATE TABLE IF NOT EXISTS UncachedReason (hash TEXT PRIMARY KEY, reason INTEGER)"));
+        executeSQLCommand(m_database, "CREATE TABLE IF NOT EXISTS AlreadyRequested (hash TEXT PRIMARY KEY)"_s);
+        executeSQLCommand(m_database, "CREATE TABLE IF NOT EXISTS UncachedReason (hash TEXT PRIMARY KEY, reason INTEGER)"_s);
 
-        WebCore::SQLiteStatement statement(m_database, ASCIILiteral("SELECT count(*) FROM AlreadyRequested"));
+        WebCore::SQLiteStatement statement(m_database, "SELECT count(*) FROM AlreadyRequested"_s);
         if (statement.prepareAndStep() != SQLITE_ROW) {
             LOG_ERROR("Network cache statistics: Failed to count the number of rows in AlreadyRequested table");
             return;
@@ -121,20 +121,20 @@ void Statistics::initialize(const String& databasePath)
         m_approximateEntryCount = statement.getColumnInt(0);
 
 #if !LOG_DISABLED
-        auto elapsedMS = static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count());
+        auto elapsed = WallTime::now() - startTime;
 #else
         UNUSED_PARAM(startTime);
 #endif
-        LOG(NetworkCache, "(NetworkProcess) Network cache statistics database load complete, entries=%lu time=%" PRIi64 "ms", static_cast<size_t>(m_approximateEntryCount), elapsedMS);
+        LOG(NetworkCache, "(NetworkProcess) Network cache statistics database load complete, entries=%lu time=%" PRIi64 "ms", static_cast<size_t>(m_approximateEntryCount), elapsed.millisecondsAs<int64_t>());
 
         if (!m_approximateEntryCount) {
             bootstrapFromNetworkCache(networkCachePath);
 #if !LOG_DISABLED
-            elapsedMS = static_cast<int64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - startTime).count());
+            elapsed = WallTime::now() - startTime;
 #else
             UNUSED_PARAM(startTime);
 #endif
-            LOG(NetworkCache, "(NetworkProcess) Network cache statistics database bootstrapping complete, entries=%lu time=%" PRIi64 "ms", static_cast<size_t>(m_approximateEntryCount), elapsedMS);
+            LOG(NetworkCache, "(NetworkProcess) Network cache statistics database bootstrapping complete, entries=%lu time=%" PRIi64 "ms", static_cast<size_t>(m_approximateEntryCount), elapsed.millisecondsAs<int64_t>());
         }
     });
 }
@@ -146,7 +146,7 @@ void Statistics::bootstrapFromNetworkCache(const String& networkCachePath)
     LOG(NetworkCache, "(NetworkProcess) Bootstrapping the network cache statistics database from the network cache...");
 
     HashSet<String> hashes;
-    traverseRecordsFiles(networkCachePath, ASCIILiteral("Resource"), [&hashes](const String& fileName, const String& hashString, const String& type, bool isBodyBlob, const String& recordDirectoryPath) {
+    traverseRecordsFiles(networkCachePath, "Resource"_s, [&hashes](const String& fileName, const String& hashString, const String& type, bool isBodyBlob, const String& recordDirectoryPath) {
         if (isBodyBlob)
             return;
 
@@ -178,7 +178,7 @@ void Statistics::shrinkIfNeeded()
 
     clear();
 
-    serialBackgroundIOQueue().dispatch([this, networkCachePath = singleton().recordsPath().isolatedCopy()] {
+    serialBackgroundIOQueue().dispatch([this, networkCachePath = m_cache.recordsPath()] {
         bootstrapFromNetworkCache(networkCachePath);
         LOG(NetworkCache, "(NetworkProcess) statistics cache shrink completed m_approximateEntryCount=%lu", static_cast<size_t>(m_approximateEntryCount));
     });
@@ -373,14 +373,14 @@ void Statistics::queryWasEverRequested(const String& hash, NeedUncachedReason ne
         std::optional<StoreDecision> storeDecision;
         if (m_database.isOpen()) {
             if (!wasAlreadyRequested) {
-                WebCore::SQLiteStatement statement(m_database, ASCIILiteral("SELECT hash FROM AlreadyRequested WHERE hash=?"));
+                WebCore::SQLiteStatement statement(m_database, "SELECT hash FROM AlreadyRequested WHERE hash=?"_s);
                 if (statement.prepare() == SQLITE_OK) {
                     statement.bindText(1, query.hash);
                     wasAlreadyRequested = (statement.step() == SQLITE_ROW);
                 }
             }
             if (wasAlreadyRequested && query.needUncachedReason) {
-                WebCore::SQLiteStatement statement(m_database, ASCIILiteral("SELECT reason FROM UncachedReason WHERE hash=?"));
+                WebCore::SQLiteStatement statement(m_database, "SELECT reason FROM UncachedReason WHERE hash=?"_s);
                 storeDecision = StoreDecision::Yes;
                 if (statement.prepare() == SQLITE_OK) {
                     statement.bindText(1, query.hash);
@@ -405,8 +405,8 @@ void Statistics::clear()
             WebCore::SQLiteTransactionInProgressAutoCounter transactionCounter;
             WebCore::SQLiteTransaction deleteTransaction(m_database);
             deleteTransaction.begin();
-            executeSQLCommand(m_database, ASCIILiteral("DELETE FROM AlreadyRequested"));
-            executeSQLCommand(m_database, ASCIILiteral("DELETE FROM UncachedReason"));
+            executeSQLCommand(m_database, "DELETE FROM AlreadyRequested"_s);
+            executeSQLCommand(m_database, "DELETE FROM UncachedReason"_s);
             deleteTransaction.commit();
             m_approximateEntryCount = 0;
         }
@@ -419,7 +419,7 @@ void Statistics::addHashesToDatabase(const HashSet<String>& hashes)
     ASSERT(WebCore::SQLiteDatabaseTracker::hasTransactionInProgress());
     ASSERT(m_database.isOpen());
 
-    WebCore::SQLiteStatement statement(m_database, ASCIILiteral("INSERT OR IGNORE INTO AlreadyRequested (hash) VALUES (?)"));
+    WebCore::SQLiteStatement statement(m_database, "INSERT OR IGNORE INTO AlreadyRequested (hash) VALUES (?)"_s);
     if (statement.prepare() != SQLITE_OK)
         return;
 
@@ -437,7 +437,7 @@ void Statistics::addStoreDecisionsToDatabase(const HashMap<String, NetworkCache:
     ASSERT(WebCore::SQLiteDatabaseTracker::hasTransactionInProgress());
     ASSERT(m_database.isOpen());
 
-    WebCore::SQLiteStatement statement(m_database, ASCIILiteral("INSERT OR REPLACE INTO UncachedReason (hash, reason) VALUES (?, ?)"));
+    WebCore::SQLiteStatement statement(m_database, "INSERT OR REPLACE INTO UncachedReason (hash, reason) VALUES (?, ?)"_s);
     if (statement.prepare() != SQLITE_OK)
         return;
 
@@ -451,5 +451,3 @@ void Statistics::addStoreDecisionsToDatabase(const HashMap<String, NetworkCache:
 
 }
 }
-
-#endif // ENABLE(NETWORK_CACHE)

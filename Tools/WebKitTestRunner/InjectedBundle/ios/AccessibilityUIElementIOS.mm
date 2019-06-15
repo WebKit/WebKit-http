@@ -52,6 +52,7 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (NSString *)accessibilityPlaceholderValue;
 - (NSString *)stringForRange:(NSRange)range;
 - (NSAttributedString *)attributedStringForRange:(NSRange)range;
+- (NSAttributedString *)attributedStringForElement;
 - (NSArray *)elementsForRange:(NSRange)range;
 - (NSString *)selectionRangeString;
 - (CGPoint)accessibilityClickPoint;
@@ -79,6 +80,9 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
 - (BOOL)accessibilityIsExpanded;
 - (NSUInteger)accessibilityBlockquoteLevel;
 - (NSArray *)accessibilityFindMatchingObjects:(NSDictionary *)parameters;
+- (NSArray<NSString *> *)accessibilitySpeechHint;
+- (BOOL)_accessibilityIsStrongPasswordField;
+- (CGRect)accessibilityVisibleContentRect;
 
 // TextMarker related
 - (NSArray *)textMarkerRange;
@@ -105,13 +109,12 @@ typedef void (*AXPostedNotificationCallback)(id element, NSString* notification,
     if (!jsStringRef)
         return nil;
     
-    CFStringRef cfString = JSStringCopyCFString(kCFAllocatorDefault, jsStringRef);
-    return [(NSString *)cfString autorelease];
+    return CFBridgingRelease(JSStringCopyCFString(kCFAllocatorDefault, jsStringRef));
 }
 
 - (JSStringRef)createJSStringRef
 {
-    return JSStringCreateWithCFString((CFStringRef)self);
+    return JSStringCreateWithCFString((__bridge CFStringRef)self);
 }
 
 @end
@@ -143,8 +146,6 @@ AccessibilityUIElement::AccessibilityUIElement(PlatformUIElement element)
     : m_element(element)
     , m_notificationHandler(0)
 {
-    // FIXME: ap@webkit.org says ObjC objects need to be CFRetained/CFRelease to be GC-compliant on the mac.
-    [m_element retain];
 }
 
 AccessibilityUIElement::AccessibilityUIElement(const AccessibilityUIElement& other)
@@ -152,12 +153,10 @@ AccessibilityUIElement::AccessibilityUIElement(const AccessibilityUIElement& oth
     , m_element(other.m_element)
     , m_notificationHandler(0)
 {
-    [m_element retain];
 }
 
 AccessibilityUIElement::~AccessibilityUIElement()
 {
-    [m_element release];
 }
 
 bool AccessibilityUIElement::isEqual(AccessibilityUIElement* otherElement)
@@ -354,6 +353,12 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::stringAttributeValue(JSStringRe
     
     if (JSStringIsEqualToUTF8CString(attribute, "AXSortDirection"))
         return [[m_element accessibilitySortDirection] createJSStringRef];
+    
+    if (JSStringIsEqualToUTF8CString(attribute, "AXVisibleContentRect")) {
+        CGRect screenRect = [m_element accessibilityVisibleContentRect];
+        NSString *rectStr = [NSString stringWithFormat:@"{%.2f, %.2f, %.2f, %.2f}", screenRect.origin.x, screenRect.origin.y, screenRect.size.width, screenRect.size.height];
+        return [rectStr createJSStringRef];
+    }
 
     return JSStringCreateWithCharacters(0, 0);
 }
@@ -399,6 +404,8 @@ bool AccessibilityUIElement::boolAttributeValue(JSStringRef attribute)
 {
     if (JSStringIsEqualToUTF8CString(attribute, "AXHasTouchEventListener"))
         return [m_element _accessibilityHasTouchEventListener];
+    if (JSStringIsEqualToUTF8CString(attribute, "AXIsStrongPasswordField"))
+        return [m_element _accessibilityIsStrongPasswordField];
     return false;
 }
 
@@ -597,9 +604,9 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::classList() const
     return nullptr;
 }
 
-JSRetainPtr<JSStringRef> AccessibilityUIElement::speak()
+JSRetainPtr<JSStringRef> AccessibilityUIElement::speakAs()
 {
-    return nullptr;
+    return [[[m_element accessibilitySpeechHint] componentsJoinedByString:@", "] createJSStringRef];
 }
 
 bool AccessibilityUIElement::ariaIsGrabbed() const
@@ -649,6 +656,15 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForRange(unsign
         return nullptr;
     
     return [[stringForRange description] createJSStringRef];
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForElement()
+{
+    NSAttributedString *string = [m_element attributedStringForElement];
+    if (![string isKindOfClass:[NSAttributedString class]])
+        return nullptr;
+    
+    return [[string description] createJSStringRef];
 }
 
 bool AccessibilityUIElement::attributedStringRangeIsMisspelled(unsigned location, unsigned length)
@@ -833,6 +849,11 @@ void AccessibilityUIElement::press()
 {
     [m_element _accessibilityActivate];
 }
+    
+bool AccessibilityUIElement::dismiss()
+{
+    return [m_element accessibilityPerformEscape];
+}
 
 void AccessibilityUIElement::setSelectedChild(AccessibilityUIElement* element) const
 {
@@ -951,7 +972,6 @@ bool AccessibilityUIElement::removeNotificationListener()
     ASSERT(m_notificationHandler);
     
     [m_notificationHandler stopObserving];
-    [m_notificationHandler release];
     m_notificationHandler = nil;
     
     return true;
@@ -1038,41 +1058,41 @@ void AccessibilityUIElement::removeSelection()
 // Text markers
 RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::lineTextMarkerRangeForTextMarker(AccessibilityTextMarker* textMarker)
 {
-    id startTextMarker = [m_element lineStartMarkerForMarker:(id)textMarker->platformTextMarker()];
-    id endTextMarker = [m_element lineEndMarkerForMarker:(id)textMarker->platformTextMarker()];
+    id startTextMarker = [m_element lineStartMarkerForMarker:(__bridge id)textMarker->platformTextMarker()];
+    id endTextMarker = [m_element lineEndMarkerForMarker:(__bridge id)textMarker->platformTextMarker()];
     NSArray *textMarkers = [NSArray arrayWithObjects:startTextMarker, endTextMarker, nil];
     
     id textMarkerRange = [m_element textMarkerRangeForMarkers:textMarkers];
-    return AccessibilityTextMarkerRange::create(textMarkerRange);
+    return AccessibilityTextMarkerRange::create((__bridge PlatformTextMarkerRange)textMarkerRange);
 }
 
 RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::textMarkerRangeForElement(AccessibilityUIElement* element)
 {
     id textMarkerRange = [element->platformUIElement() textMarkerRange];
-    return AccessibilityTextMarkerRange::create(textMarkerRange);
+    return AccessibilityTextMarkerRange::create((__bridge PlatformTextMarkerRange)textMarkerRange);
 }
 
 int AccessibilityUIElement::textMarkerRangeLength(AccessibilityTextMarkerRange* range)
 {
-    id textMarkers = (id)range->platformTextMarkerRange();    
+    id textMarkers = (__bridge id)range->platformTextMarkerRange();
     return [m_element lengthForTextMarkers:textMarkers];
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::previousTextMarker(AccessibilityTextMarker* textMarker)
 {
-    id previousMarker = [m_element previousMarkerForMarker:(id)textMarker->platformTextMarker()];
-    return AccessibilityTextMarker::create(previousMarker);
+    id previousMarker = [m_element previousMarkerForMarker:(__bridge id)textMarker->platformTextMarker()];
+    return AccessibilityTextMarker::create((__bridge PlatformTextMarker)previousMarker);
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::nextTextMarker(AccessibilityTextMarker* textMarker)
 {
-    id nextMarker = [m_element nextMarkerForMarker:(id)textMarker->platformTextMarker()];
-    return AccessibilityTextMarker::create(nextMarker);
+    id nextMarker = [m_element nextMarkerForMarker:(__bridge id)textMarker->platformTextMarker()];
+    return AccessibilityTextMarker::create((__bridge PlatformTextMarker)nextMarker);
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::stringForTextMarkerRange(AccessibilityTextMarkerRange* markerRange)
 {
-    id textMarkers = (id)markerRange->platformTextMarkerRange();
+    id textMarkers = (__bridge id)markerRange->platformTextMarkerRange();
     if (!textMarkers || ![textMarkers isKindOfClass:[NSArray class]])
         return JSStringCreateWithCharacters(0, 0);
     return [[m_element stringForTextMarkers:textMarkers] createJSStringRef];
@@ -1080,23 +1100,23 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::stringForTextMarkerRange(Access
 
 RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::textMarkerRangeForMarkers(AccessibilityTextMarker* startMarker, AccessibilityTextMarker* endMarker)
 {
-    NSArray *textMarkers = [NSArray arrayWithObjects:(id)startMarker->platformTextMarker(), (id)endMarker->platformTextMarker(), nil];
+    NSArray *textMarkers = [NSArray arrayWithObjects:(__bridge id)startMarker->platformTextMarker(), (__bridge id)endMarker->platformTextMarker(), nil];
     id textMarkerRange = [m_element textMarkerRangeForMarkers:textMarkers];
-    return AccessibilityTextMarkerRange::create(textMarkerRange);
+    return AccessibilityTextMarkerRange::create((__bridge PlatformTextMarkerRange)textMarkerRange);
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::startTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange* range)
 {
-    id textMarkers = (id)range->platformTextMarkerRange();
+    id textMarkers = (__bridge id)range->platformTextMarkerRange();
     id textMarker = [m_element startOrEndTextMarkerForTextMarkers:textMarkers isStart:YES];
-    return AccessibilityTextMarker::create(textMarker);
+    return AccessibilityTextMarker::create((__bridge PlatformTextMarker)textMarker);
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarkerForTextMarkerRange(AccessibilityTextMarkerRange* range)
 {
-    id textMarkers = (id)range->platformTextMarkerRange();
+    id textMarkers = (__bridge id)range->platformTextMarkerRange();
     id textMarker = [m_element startOrEndTextMarkerForTextMarkers:textMarkers isStart:NO];
-    return AccessibilityTextMarker::create(textMarker);
+    return AccessibilityTextMarker::create((__bridge PlatformTextMarker)textMarker);
 }
 
 RefPtr<AccessibilityTextMarker> AccessibilityUIElement::endTextMarkerForBounds(int x, int y, int width, int height)
@@ -1116,9 +1136,19 @@ RefPtr<AccessibilityTextMarker> AccessibilityUIElement::textMarkerForPoint(int x
 
 RefPtr<AccessibilityUIElement> AccessibilityUIElement::accessibilityElementForTextMarker(AccessibilityTextMarker* marker)
 {
-    id obj = [m_element accessibilityObjectForTextMarker:(id)marker->platformTextMarker()];
+    id obj = [m_element accessibilityObjectForTextMarker:(__bridge id)marker->platformTextMarker()];
     if (obj)
         return AccessibilityUIElement::create(obj);
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForTextMarkerRange(AccessibilityTextMarkerRange* markerRange)
+{
+    return nullptr;
+}
+
+JSRetainPtr<JSStringRef> AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions(AccessibilityTextMarkerRange* markerRange, bool)
+{
     return nullptr;
 }
 
@@ -1206,9 +1236,9 @@ RefPtr<AccessibilityTextMarkerRange> AccessibilityUIElement::textMarkerRangeMatc
 {
     NSArray *textMarkers = nil;
     if (startMarker->platformTextMarker() && endMarker->platformTextMarker())
-        textMarkers = [NSArray arrayWithObjects:(id)startMarker->platformTextMarker(), (id)endMarker->platformTextMarker(), nil];
+        textMarkers = [NSArray arrayWithObjects:(__bridge id)startMarker->platformTextMarker(), (__bridge id)endMarker->platformTextMarker(), nil];
     id textMarkerRange = [m_element textMarkerRangeFromMarkers:textMarkers withText:[NSString stringWithJSStringRef:text]];
-    return AccessibilityTextMarkerRange::create(textMarkerRange);
+    return AccessibilityTextMarkerRange::create((__bridge PlatformTextMarkerRange)textMarkerRange);
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::mathPostscriptsDescription() const
@@ -1223,7 +1253,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::mathPrescriptsDescription() con
 
 static void _CGPathEnumerationIteration(void *info, const CGPathElement *element)
 {
-    NSMutableString *result = (NSMutableString *)info;
+    NSMutableString *result = (__bridge NSMutableString *)info;
     switch (element->type) {
     case kCGPathElementMoveToPoint:
         [result appendString:@"\tMove to point\n"];
@@ -1247,9 +1277,7 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::pathDescription() const
 {
     NSMutableString *result = [NSMutableString stringWithString:@"\nStart Path\n"];
     CGPathRef pathRef = [m_element _accessibilityPath];
-    
-    CGPathApply(pathRef, result, _CGPathEnumerationIteration);
-    
+    CGPathApply(pathRef, (__bridge void*)result, _CGPathEnumerationIteration);
     return [result createJSStringRef];
 }
 

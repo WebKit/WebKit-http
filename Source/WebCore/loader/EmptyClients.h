@@ -94,7 +94,6 @@ class EmptyChromeClient : public ChromeClient {
 
     bool selectItemWritingDirectionIsNatural() final { return false; }
     bool selectItemAlignmentFollowsMenuWritingDirection() final { return false; }
-    bool hasOpenedPopup() const final { return false; }
     RefPtr<PopupMenu> createPopupMenu(PopupMenuClient&) const final;
     RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient&) const final;
 
@@ -107,11 +106,6 @@ class EmptyChromeClient : public ChromeClient {
     void invalidateContentsForSlowScroll(const IntRect&) final { }
     void scroll(const IntSize&, const IntRect&, const IntRect&) final { }
 
-#if USE(COORDINATED_GRAPHICS)
-    void delegatedScrollRequested(const IntPoint&) final { }
-    void resetUpdateAtlasForTesting() final { }
-#endif
-
     IntPoint screenToRootView(const IntPoint& p) const final { return p; }
     IntRect rootViewToScreen(const IntRect& r) const final { return r; }
 
@@ -123,7 +117,6 @@ class EmptyChromeClient : public ChromeClient {
     PlatformPageClient platformPageClient() const final { return 0; }
     void contentsSizeChanged(Frame&, const IntSize&) const final { }
 
-    void scrollbarsModeDidChange() const final { }
     void mouseDidMoveOverElement(const HitTestResult&, unsigned) final { }
 
     void setToolTip(const String&, TextDirection) final { }
@@ -139,7 +132,12 @@ class EmptyChromeClient : public ChromeClient {
     std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient&, const Color&) final;
 #endif
 
+#if ENABLE(DATALIST_ELEMENT)
+    std::unique_ptr<DataListSuggestionPicker> createDataListSuggestionPicker(DataListSuggestionsClient&) final;
+#endif
+
     void runOpenPanel(Frame&, FileChooser&) final;
+    void showShareSheet(ShareDataWithParsedURL&, CompletionHandler<void(bool)>&&) final;
     void loadIconForFiles(const Vector<String>&, FileIconLoader&) final { }
 
     void elementDidFocus(Element&) final { }
@@ -184,7 +182,7 @@ class EmptyChromeClient : public ChromeClient {
     void removeScrollingLayer(Node*, PlatformLayer*, PlatformLayer*) final { }
 
     void webAppOrientationsUpdated() final { };
-    void showPlaybackTargetPicker(bool) final { };
+    void showPlaybackTargetPicker(bool, RouteSharingPolicy, const String&) final { };
 #endif // PLATFORM(IOS)
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -205,8 +203,11 @@ class EmptyChromeClient : public ChromeClient {
     RefPtr<Icon> createIconForFiles(const Vector<String>& /* filenames */) final { return nullptr; }
 };
 
-void fillWithEmptyClients(PageConfiguration&);
-UniqueRef<EditorClient> createEmptyEditorClient();
+WEBCORE_EXPORT void fillWithEmptyClients(PageConfiguration&);
+WEBCORE_EXPORT UniqueRef<EditorClient> createEmptyEditorClient();
 DiagnosticLoggingClient& emptyDiagnosticLoggingClient();
+
+class EmptyFrameNetworkingContext;
+WEBCORE_EXPORT Ref<FrameNetworkingContext> createEmptyFrameNetworkingContext();
 
 }

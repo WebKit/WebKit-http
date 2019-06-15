@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     When String is called as a function rather than as a constructor, it
     performs a type conversion
 es5id: 15.5.1.1_A1_T6
@@ -14,7 +14,7 @@ var __str = String(eval());
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#1
 if (typeof __str !== "string") {
-  $ERROR('#1: __str = String(eval()); typeof __str === "string". Actual: typeof __str ==='+typeof __str ); 
+  $ERROR('#1: __str = String(eval()); typeof __str === "string". Actual: typeof __str ===' + typeof __str);
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ if (typeof __str !== "string") {
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#2
 if (__str !== "undefined") {
-  $ERROR('#2: __str = String(eval()); __str === "undefined". Actual: __str ==='+__str ); 
+  $ERROR('#2: __str = String(eval()); __str === "undefined". Actual: __str ===' + __str);
 }
 //
 //////////////////////////////////////////////////////////////////////////////

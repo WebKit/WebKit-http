@@ -33,7 +33,6 @@
 #import <UIKit/UITouch.h>
 #import <WebCore/IntPoint.h>
 #import <WebCore/WAKAppKitStubs.h>
-#import <wtf/CurrentTime.h>
 
 namespace WebKit {
 
@@ -122,7 +121,7 @@ NativeWebTouchEvent::NativeWebTouchEvent(const _UIWebTouchEvent* event)
     : WebTouchEvent(
         webEventTypeForUIWebTouchEventType(event->type),
         static_cast<Modifiers>(0),
-        event->timestamp,
+        WallTime::fromRawSeconds(event->timestamp),
         extractWebTouchPoint(event),
         positionForCGPoint(event->locationInDocumentCoordinates),
 #if defined UI_WEB_TOUCH_EVENT_HAS_IS_POTENTIAL_TAP && UI_WEB_TOUCH_EVENT_HAS_IS_POTENTIAL_TAP

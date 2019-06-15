@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,8 @@
 
 #pragma once
 
+#include "BCompiler.h"
+
 #ifdef __APPLE__
 #include <Availability.h>
 #include <AvailabilityMacros.h>
@@ -42,21 +44,46 @@
 #define BOS_UNIX 1
 #endif
 
-#if BOS(DARWIN) && ((defined(TARGET_OS_EMBEDDED) && TARGET_OS_EMBEDDED) \
-    || (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE) \
-    || (defined(TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR))
+#ifdef __linux__
+#define BOS_LINUX 1
+#endif
+
+#if defined(WIN32) || defined(_WIN32)
+#define BOS_WINDOWS 1
+#endif
+
+#if BOS(DARWIN) && !defined(BUILDING_WITH_CMAKE)
+#if TARGET_OS_IPHONE
 #define BPLATFORM_IOS 1
-#if (defined(TARGET_IPHONE_SIMULATOR) && TARGET_IPHONE_SIMULATOR)
+#if TARGET_OS_SIMULATOR
 #define BPLATFORM_IOS_SIMULATOR 1
 #endif
-#elif BOS(DARWIN) && defined(TARGET_OS_MAC) && TARGET_OS_MAC
+#elif TARGET_OS_MAC
 #define BPLATFORM_MAC 1
+#endif
+#endif
+
+#if BPLATFORM(MAC) || BPLATFORM(IOS)
+#define BPLATFORM_COCOA 1
+#endif
+
+#if defined(TARGET_OS_WATCH) && TARGET_OS_WATCH
+#define BPLATFORM_WATCHOS 1
+#endif
+
+#if defined(TARGET_OS_TV) && TARGET_OS_TV
+#define BPLATFORM_APPLETV 1
 #endif
 
 /* ==== Policy decision macros: these define policy choices for a particular port. ==== */
 
 /* BUSE() - use a particular third-party library or optional OS service */
 #define BUSE(FEATURE) (defined BUSE_##FEATURE && BUSE_##FEATURE)
+
+/* ==== Compiler adaptation macros: these describe the capabilities of the compiler. ==== */
+
+/* BCOMPILER_SUPPORTS() - check for a compiler feature */
+#define BCOMPILER_SUPPORTS(FEATURE) (defined BCOMPILER_SUPPORTS_##FEATURE && BCOMPILER_SUPPORTS_##FEATURE)
 
 /* ==== Platform adaptation macros: these describe properties of the target environment. ==== */
 
@@ -198,3 +225,23 @@
 #if (BPLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || BPLATFORM(IOS)
 #define BUSE_OS_LOG 1
 #endif
+
+#if !defined(BUSE_EXPORT_MACROS) && (BPLATFORM(MAC) || BPLATFORM(IOS))
+#define BUSE_EXPORT_MACROS 1
+#endif
+
+/* BUNUSED_PARAM */
+#if !defined(BUNUSED_PARAM)
+#define BUNUSED_PARAM(variable) (void)variable
+#endif
+
+/* This is used for debugging when hacking on how bmalloc calculates its physical footprint. */
+#define ENABLE_PHYSICAL_PAGE_MAP 0
+
+#if ((BPLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000) || (BPLATFORM(WATCHOS) && __WATCH_OS_VERSION_MIN_REQUIRED >= 50000) || (BPLATFORM(APPLETV) && __TV_OS_VERSION_MIN_REQUIRED >= 120000)) \
+    && (BCPU(ARM64) || BCPU(ARM))
+#define BUSE_CHECK_NANO_MALLOC 1
+#else
+#define BUSE_CHECK_NANO_MALLOC 0
+#endif
+

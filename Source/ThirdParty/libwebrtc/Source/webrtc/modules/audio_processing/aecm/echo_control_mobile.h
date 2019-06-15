@@ -8,31 +8,27 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_AECM_ECHO_CONTROL_MOBILE_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_AECM_ECHO_CONTROL_MOBILE_H_
+#ifndef MODULES_AUDIO_PROCESSING_AECM_ECHO_CONTROL_MOBILE_H_
+#define MODULES_AUDIO_PROCESSING_AECM_ECHO_CONTROL_MOBILE_H_
 
-#include <stdlib.h>
+#include <stddef.h>
+#include <stdint.h>
 
-#include "webrtc/typedefs.h"
-
-enum {
-    AecmFalse = 0,
-    AecmTrue
-};
+enum { AecmFalse = 0, AecmTrue };
 
 // Errors
-#define AECM_UNSPECIFIED_ERROR           12000
-#define AECM_UNSUPPORTED_FUNCTION_ERROR  12001
-#define AECM_UNINITIALIZED_ERROR         12002
-#define AECM_NULL_POINTER_ERROR          12003
-#define AECM_BAD_PARAMETER_ERROR         12004
+#define AECM_UNSPECIFIED_ERROR 12000
+#define AECM_UNSUPPORTED_FUNCTION_ERROR 12001
+#define AECM_UNINITIALIZED_ERROR 12002
+#define AECM_NULL_POINTER_ERROR 12003
+#define AECM_BAD_PARAMETER_ERROR 12004
 
 // Warnings
-#define AECM_BAD_PARAMETER_WARNING       12100
+#define AECM_BAD_PARAMETER_WARNING 12100
 
 typedef struct {
-    int16_t cngMode;            // AECM_FALSE, AECM_TRUE (default)
-    int16_t echoMode;           // 0, 1, 2, 3 (default), 4
+  int16_t cngMode;   // AECM_FALSE, AECM_TRUE (default)
+  int16_t echoMode;  // 0, 1, 2, 3 (default), 4
 } AecmConfig;
 
 #ifdef __cplusplus
@@ -202,8 +198,7 @@ int32_t WebRtcAecm_GetEchoPath(void* aecmInst,
  */
 size_t WebRtcAecm_echo_path_size_bytes();
 
-
 #ifdef __cplusplus
 }
 #endif
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_AECM_ECHO_CONTROL_MOBILE_H_
+#endif  // MODULES_AUDIO_PROCESSING_AECM_ECHO_CONTROL_MOBILE_H_

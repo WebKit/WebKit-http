@@ -20,7 +20,6 @@
 #pragma once
 
 #include "SVGAnimatedStaticPropertyTearOff.h"
-#include "SVGException.h"
 #include "SVGPropertyTraits.h"
 
 namespace WebCore {
@@ -28,6 +27,8 @@ namespace WebCore {
 template<typename EnumType>
 class SVGAnimatedEnumerationPropertyTearOff final : public SVGAnimatedStaticPropertyTearOff<unsigned> {
 public:
+    using ContentType = EnumType;
+
     const unsigned& baseVal() final
     {
         const unsigned& baseVal = SVGAnimatedStaticPropertyTearOff::baseVal();
@@ -52,7 +53,7 @@ public:
     {
         // All SVG enumeration values, that are allowed to be set via SVG DOM start with 1, 0 corresponds to unknown and is not settable through SVG DOM.
         if (!property || property > SVGIDLEnumLimits<EnumType>::highestExposedEnumValue())
-            return Exception { SVGException::SVG_INVALID_VALUE_ERR };
+            return Exception { TypeError };
         return SVGAnimatedStaticPropertyTearOff<unsigned>::setBaseVal(property);
     }
 

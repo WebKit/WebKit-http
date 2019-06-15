@@ -32,11 +32,11 @@
 #include "GraphicsContext.h"
 #include "LayoutRect.h"
 #include "RotateTransformOperation.h"
-#include "TextStream.h"
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 #include <wtf/text/WTFString.h>
 
 #ifndef NDEBUG
@@ -112,12 +112,6 @@ bool GraphicsLayer::supportsContentsTiling()
 
 GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
     : m_client(client)
-    , m_anchorPoint(0.5f, 0.5f, 0)
-    , m_opacity(1)
-    , m_zPosition(0)
-#if ENABLE(CSS_COMPOSITING)
-    , m_blendMode(BlendModeNormal)
-#endif
     , m_type(type)
     , m_contentsOpaque(false)
     , m_supportsSubpixelAntialiasedText(false)
@@ -135,14 +129,6 @@ GraphicsLayer::GraphicsLayer(Type type, GraphicsLayerClient& client)
     , m_isTrackingDisplayListReplay(false)
     , m_userInteractionEnabled(true)
     , m_canDetachBackingStore(true)
-    , m_paintingPhase(GraphicsLayerPaintAllWithOverflowClip)
-    , m_contentsOrientation(CompositingCoordinatesTopDown)
-    , m_parent(nullptr)
-    , m_maskLayer(nullptr)
-    , m_replicaLayer(nullptr)
-    , m_replicatedLayer(nullptr)
-    , m_repaintCount(0)
-    , m_customAppearance(NoCustomAppearance)
 {
 #ifndef NDEBUG
     m_client.verifyNotPainting();
@@ -165,6 +151,11 @@ void GraphicsLayer::willBeDestroyed()
 
     if (m_replicatedLayer)
         m_replicatedLayer->setReplicatedByLayer(0);
+
+    if (m_maskLayer) {
+        m_maskLayer->setParent(nullptr);
+        m_maskLayer->setIsMaskLayer(false);
+    }
 
     removeAllChildren();
     removeFromParent();
@@ -301,6 +292,32 @@ void GraphicsLayer::removeFromParent()
     }
 }
 
+const TransformationMatrix& GraphicsLayer::transform() const
+{
+    return m_transform ? *m_transform : TransformationMatrix::identity;
+}
+
+void GraphicsLayer::setTransform(const TransformationMatrix& matrix)
+{
+    if (m_transform)
+        *m_transform = matrix;
+    else
+        m_transform = std::make_unique<TransformationMatrix>(matrix);
+}
+
+const TransformationMatrix& GraphicsLayer::childrenTransform() const
+{
+    return m_childrenTransform ? *m_childrenTransform : TransformationMatrix::identity;
+}
+
+void GraphicsLayer::setChildrenTransform(const TransformationMatrix& matrix)
+{
+    if (m_childrenTransform)
+        *m_childrenTransform = matrix;
+    else
+        m_childrenTransform = std::make_unique<TransformationMatrix>(matrix);
+}
+
 void GraphicsLayer::setMaskLayer(GraphicsLayer* layer)
 {
     if (layer == m_maskLayer)
@@ -341,7 +358,7 @@ WindRule GraphicsLayer::shapeLayerWindRule() const
 #if USE(CA)
     return m_shapeLayerWindRule;
 #else
-    return RULE_NONZERO;
+    return WindRule::NonZero;
 #endif
 }
 
@@ -418,7 +435,7 @@ void GraphicsLayer::setBackgroundColor(const Color& color)
     m_backgroundColor = color;
 }
 
-void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const FloatRect& clip, GraphicsLayerPaintFlags flags)
+void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const FloatRect& clip, GraphicsLayerPaintBehavior layerPaintBehavior)
 {
     FloatSize offset = offsetFromRenderer();
     context.translate(-offset);
@@ -426,7 +443,7 @@ void GraphicsLayer::paintGraphicsLayerContents(GraphicsContext& context, const F
     FloatRect clipRect(clip);
     clipRect.move(offset);
 
-    m_client.paintContents(this, context, m_paintingPhase, clipRect, flags);
+    m_client.paintContents(this, context, m_paintingPhase, clipRect, layerPaintBehavior);
 }
 
 String GraphicsLayer::animationNameForTransition(AnimatedPropertyID property)
@@ -439,7 +456,7 @@ String GraphicsLayer::animationNameForTransition(AnimatedPropertyID property)
     return id.toString();
 }
 
-void GraphicsLayer::suspendAnimations(double)
+void GraphicsLayer::suspendAnimations(MonotonicTime)
 {
 }
 
@@ -686,10 +703,9 @@ void GraphicsLayer::traverse(GraphicsLayer& layer, const WTF::Function<void (Gra
         traverse(*maskLayer, traversalFunc);
 }
 
-void GraphicsLayer::dumpLayer(TextStream& ts, int indent, LayerTreeAsTextBehavior behavior) const
+void GraphicsLayer::dumpLayer(TextStream& ts, LayerTreeAsTextBehavior behavior) const
 {
-    writeIndent(ts, indent);
-    ts << "(" << "GraphicsLayer";
+    ts << indent << "(" << "GraphicsLayer";
 
     if (behavior & LayerTreeAsTextDebug) {
         ts << " " << static_cast<void*>(const_cast<GraphicsLayer*>(this));
@@ -697,235 +713,193 @@ void GraphicsLayer::dumpLayer(TextStream& ts, int indent, LayerTreeAsTextBehavio
     }
 
     ts << "\n";
-    dumpProperties(ts, indent, behavior);
-    writeIndent(ts, indent);
-    ts << ")\n";
+    dumpProperties(ts, behavior);
+    ts << indent << ")\n";
 }
 
-static void dumpChildren(TextStream& ts, const Vector<GraphicsLayer*>& children, unsigned& totalChildCount, int indent, LayerTreeAsTextBehavior behavior)
+static void dumpChildren(TextStream& ts, const Vector<GraphicsLayer*>& children, unsigned& totalChildCount, LayerTreeAsTextBehavior behavior)
 {
     totalChildCount += children.size();
     for (auto* child : children) {
         if ((behavior & LayerTreeAsTextDebug) || !child->client().shouldSkipLayerInDump(child, behavior)) {
-            child->dumpLayer(ts, indent + 2, behavior);
+            TextStream::IndentScope indentScope(ts);
+            child->dumpLayer(ts, behavior);
             continue;
         }
 
         totalChildCount--;
-        dumpChildren(ts, child->children(), totalChildCount, indent, behavior);
+        dumpChildren(ts, child->children(), totalChildCount, behavior);
     }
 }
 
-void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBehavior behavior) const
+void GraphicsLayer::dumpProperties(TextStream& ts, LayerTreeAsTextBehavior behavior) const
 {
-    if (m_position != FloatPoint()) {
-        writeIndent(ts, indent + 1);
-        ts << "(position " << m_position.x() << " " << m_position.y() << ")\n";
-    }
+    TextStream::IndentScope indentScope(ts);
+    if (!m_offsetFromRenderer.isZero())
+        ts << indent << "(offsetFromRenderer " << m_offsetFromRenderer << ")\n";
 
-    if (m_approximatePosition) {
-        writeIndent(ts, indent + 1);
-        ts << "(approximate position " << m_approximatePosition.value().x() << " " << m_approximatePosition.value().y() << ")\n";
-    }
+    if (m_position != FloatPoint())
+        ts << indent << "(position " << m_position.x() << " " << m_position.y() << ")\n";
 
-    if (m_boundsOrigin != FloatPoint()) {
-        writeIndent(ts, indent + 1);
-        ts << "(bounds origin " << m_boundsOrigin.x() << " " << m_boundsOrigin.y() << ")\n";
-    }
+    if (m_approximatePosition)
+        ts << indent << "(approximate position " << m_approximatePosition.value().x() << " " << m_approximatePosition.value().y() << ")\n";
+
+    if (m_boundsOrigin != FloatPoint())
+        ts << indent << "(bounds origin " << m_boundsOrigin.x() << " " << m_boundsOrigin.y() << ")\n";
 
     if (m_anchorPoint != FloatPoint3D(0.5f, 0.5f, 0)) {
-        writeIndent(ts, indent + 1);
-        ts << "(anchor " << m_anchorPoint.x() << " " << m_anchorPoint.y();
+        ts << indent << "(anchor " << m_anchorPoint.x() << " " << m_anchorPoint.y();
         if (m_anchorPoint.z())
             ts << " " << m_anchorPoint.z();
         ts << ")\n";
     }
 
-    if (m_size != IntSize()) {
-        writeIndent(ts, indent + 1);
-        ts << "(bounds " << m_size.width() << " " << m_size.height() << ")\n";
-    }
+    if (m_size != IntSize())
+        ts << indent << "(bounds " << m_size.width() << " " << m_size.height() << ")\n";
 
-    if (m_opacity != 1) {
-        writeIndent(ts, indent + 1);
-        ts << "(opacity " << m_opacity << ")\n";
-    }
+    if (m_opacity != 1)
+        ts << indent << "(opacity " << m_opacity << ")\n";
 
 #if ENABLE(CSS_COMPOSITING)
-    if (m_blendMode != BlendModeNormal) {
-        writeIndent(ts, indent + 1);
-        ts << "(blendMode " << compositeOperatorName(CompositeSourceOver, m_blendMode) << ")\n";
-    }
+    if (m_blendMode != BlendMode::Normal)
+        ts << indent << "(blendMode " << compositeOperatorName(CompositeSourceOver, m_blendMode) << ")\n";
 #endif
 
-    if (type() == Type::Normal && tiledBacking()) {
-        writeIndent(ts, indent + 1);
-        ts << "(usingTiledLayer 1)\n";
-    }
+    if (type() == Type::Normal && tiledBacking())
+        ts << indent << "(usingTiledLayer 1)\n";
 
     bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack = m_client.needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(*this);
-    if (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack) {
-        writeIndent(ts, indent + 1);
-        ts << "(contentsOpaque " << (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack) << ")\n";
-    }
+    if (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack)
+        ts << indent << "(contentsOpaque " << (m_contentsOpaque || needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack) << ")\n";
 
-    if (m_supportsSubpixelAntialiasedText) {
-        writeIndent(ts, indent + 1);
-        ts << "(supports subpixel antialiased text " << m_supportsSubpixelAntialiasedText << ")\n";
-    }
+    if (m_supportsSubpixelAntialiasedText)
+        ts << indent << "(supports subpixel antialiased text " << m_supportsSubpixelAntialiasedText << ")\n";
 
-    if (m_preserves3D) {
-        writeIndent(ts, indent + 1);
-        ts << "(preserves3D " << m_preserves3D << ")\n";
-    }
+    if (m_preserves3D)
+        ts << indent << "(preserves3D " << m_preserves3D << ")\n";
 
-    if (m_drawsContent && m_client.shouldDumpPropertyForLayer(this, "drawsContent")) {
-        writeIndent(ts, indent + 1);
-        ts << "(drawsContent " << m_drawsContent << ")\n";
-    }
+    if (m_drawsContent && m_client.shouldDumpPropertyForLayer(this, "drawsContent"))
+        ts << indent << "(drawsContent " << m_drawsContent << ")\n";
 
-    if (!m_contentsVisible) {
-        writeIndent(ts, indent + 1);
-        ts << "(contentsVisible " << m_contentsVisible << ")\n";
-    }
+    if (!m_contentsVisible)
+        ts << indent << "(contentsVisible " << m_contentsVisible << ")\n";
 
-    if (!m_backfaceVisibility) {
-        writeIndent(ts, indent + 1);
-        ts << "(backfaceVisibility " << (m_backfaceVisibility ? "visible" : "hidden") << ")\n";
-    }
+    if (!m_backfaceVisibility)
+        ts << indent << "(backfaceVisibility " << (m_backfaceVisibility ? "visible" : "hidden") << ")\n";
 
     if (behavior & LayerTreeAsTextDebug) {
-        writeIndent(ts, indent + 1);
-        ts << "(primary-layer-id " << primaryLayerID() << ")\n";
-        writeIndent(ts, indent + 1);
-        ts << "(client " << static_cast<void*>(&m_client) << ")\n";
+        ts << indent << "(primary-layer-id " << primaryLayerID() << ")\n";
+        ts << indent << "(client " << static_cast<void*>(&m_client) << ")\n";
     }
 
-    if (m_backgroundColor.isValid() && m_client.shouldDumpPropertyForLayer(this, "backgroundColor")) {
-        writeIndent(ts, indent + 1);
-        ts << "(backgroundColor " << m_backgroundColor.nameForRenderTreeAsText() << ")\n";
-    }
+    if (m_backgroundColor.isValid() && m_client.shouldDumpPropertyForLayer(this, "backgroundColor"))
+        ts << indent << "(backgroundColor " << m_backgroundColor.nameForRenderTreeAsText() << ")\n";
 
-    if (behavior & LayerTreeAsTextIncludeAcceleratesDrawing && m_acceleratesDrawing) {
-        writeIndent(ts, indent + 1);
-        ts << "(acceleratesDrawing " << m_acceleratesDrawing << ")\n";
-    }
+    if (behavior & LayerTreeAsTextIncludeAcceleratesDrawing && m_acceleratesDrawing)
+        ts << indent << "(acceleratesDrawing " << m_acceleratesDrawing << ")\n";
 
-    if (behavior & LayerTreeAsTextIncludeBackingStoreAttached) {
-        writeIndent(ts, indent + 1);
-        ts << "(backingStoreAttached " << backingStoreAttached() << ")\n";
-    }
+    if (behavior & LayerTreeAsTextIncludeBackingStoreAttached)
+        ts << indent << "(backingStoreAttached " << backingStoreAttachedForTesting() << ")\n";
 
-    if (!m_transform.isIdentity()) {
-        writeIndent(ts, indent + 1);
-        ts << "(transform ";
-        ts << "[" << m_transform.m11() << " " << m_transform.m12() << " " << m_transform.m13() << " " << m_transform.m14() << "] ";
-        ts << "[" << m_transform.m21() << " " << m_transform.m22() << " " << m_transform.m23() << " " << m_transform.m24() << "] ";
-        ts << "[" << m_transform.m31() << " " << m_transform.m32() << " " << m_transform.m33() << " " << m_transform.m34() << "] ";
-        ts << "[" << m_transform.m41() << " " << m_transform.m42() << " " << m_transform.m43() << " " << m_transform.m44() << "])\n";
+    if (m_transform && !m_transform->isIdentity()) {
+        ts << indent << "(transform ";
+        ts << "[" << m_transform->m11() << " " << m_transform->m12() << " " << m_transform->m13() << " " << m_transform->m14() << "] ";
+        ts << "[" << m_transform->m21() << " " << m_transform->m22() << " " << m_transform->m23() << " " << m_transform->m24() << "] ";
+        ts << "[" << m_transform->m31() << " " << m_transform->m32() << " " << m_transform->m33() << " " << m_transform->m34() << "] ";
+        ts << "[" << m_transform->m41() << " " << m_transform->m42() << " " << m_transform->m43() << " " << m_transform->m44() << "])\n";
     }
 
     // Avoid dumping the sublayer transform on the root layer, because it's used for geometry flipping, whose behavior
     // differs between platforms.
-    if (parent() && !m_childrenTransform.isIdentity()) {
-        writeIndent(ts, indent + 1);
-        ts << "(childrenTransform ";
-        ts << "[" << m_childrenTransform.m11() << " " << m_childrenTransform.m12() << " " << m_childrenTransform.m13() << " " << m_childrenTransform.m14() << "] ";
-        ts << "[" << m_childrenTransform.m21() << " " << m_childrenTransform.m22() << " " << m_childrenTransform.m23() << " " << m_childrenTransform.m24() << "] ";
-        ts << "[" << m_childrenTransform.m31() << " " << m_childrenTransform.m32() << " " << m_childrenTransform.m33() << " " << m_childrenTransform.m34() << "] ";
-        ts << "[" << m_childrenTransform.m41() << " " << m_childrenTransform.m42() << " " << m_childrenTransform.m43() << " " << m_childrenTransform.m44() << "])\n";
+    if (parent() && m_childrenTransform && !m_childrenTransform->isIdentity()) {
+        ts << indent << "(childrenTransform ";
+        ts << "[" << m_childrenTransform->m11() << " " << m_childrenTransform->m12() << " " << m_childrenTransform->m13() << " " << m_childrenTransform->m14() << "] ";
+        ts << "[" << m_childrenTransform->m21() << " " << m_childrenTransform->m22() << " " << m_childrenTransform->m23() << " " << m_childrenTransform->m24() << "] ";
+        ts << "[" << m_childrenTransform->m31() << " " << m_childrenTransform->m32() << " " << m_childrenTransform->m33() << " " << m_childrenTransform->m34() << "] ";
+        ts << "[" << m_childrenTransform->m41() << " " << m_childrenTransform->m42() << " " << m_childrenTransform->m43() << " " << m_childrenTransform->m44() << "])\n";
     }
 
     if (m_maskLayer) {
-        writeIndent(ts, indent + 1);
-        ts << "(mask layer";
+        ts << indent << "(mask layer";
         if (behavior & LayerTreeAsTextDebug)
             ts << " " << m_maskLayer;
         ts << ")\n";
-        m_maskLayer->dumpLayer(ts, indent + 2, behavior);
+
+        TextStream::IndentScope indentScope(ts);
+        m_maskLayer->dumpLayer(ts, behavior);
     }
 
     if (m_replicaLayer) {
-        writeIndent(ts, indent + 1);
-        ts << "(replica layer";
+        ts << indent << "(replica layer";
         if (behavior & LayerTreeAsTextDebug)
             ts << " " << m_replicaLayer;
         ts << ")\n";
-        m_replicaLayer->dumpLayer(ts, indent + 2, behavior);
+
+        TextStream::IndentScope indentScope(ts);
+        m_replicaLayer->dumpLayer(ts, behavior);
     }
 
     if (m_replicatedLayer) {
-        writeIndent(ts, indent + 1);
-        ts << "(replicated layer";
+        ts << indent << "(replicated layer";
         if (behavior & LayerTreeAsTextDebug)
             ts << " " << m_replicatedLayer;
         ts << ")\n";
     }
 
     if (behavior & LayerTreeAsTextIncludeRepaintRects && repaintRectMap().contains(this) && !repaintRectMap().get(this).isEmpty() && m_client.shouldDumpPropertyForLayer(this, "repaintRects")) {
-        writeIndent(ts, indent + 1);
-        ts << "(repaint rects\n";
+        ts << indent << "(repaint rects\n";
         for (size_t i = 0; i < repaintRectMap().get(this).size(); ++i) {
             if (repaintRectMap().get(this)[i].isEmpty())
                 continue;
-            writeIndent(ts, indent + 2);
-            ts << "(rect ";
+
+            TextStream::IndentScope indentScope(ts);
+            ts << indent << "(rect ";
             ts << repaintRectMap().get(this)[i].x() << " ";
             ts << repaintRectMap().get(this)[i].y() << " ";
             ts << repaintRectMap().get(this)[i].width() << " ";
             ts << repaintRectMap().get(this)[i].height();
             ts << ")\n";
         }
-        writeIndent(ts, indent + 1);
-        ts << ")\n";
+        ts << indent << ")\n";
     }
 
     if (behavior & LayerTreeAsTextIncludePaintingPhases && paintingPhase()) {
-        writeIndent(ts, indent + 1);
-        ts << "(paintingPhases\n";
-        if (paintingPhase() & GraphicsLayerPaintBackground) {
-            writeIndent(ts, indent + 2);
-            ts << "GraphicsLayerPaintBackground\n";
-        }
-        if (paintingPhase() & GraphicsLayerPaintForeground) {
-            writeIndent(ts, indent + 2);
-            ts << "GraphicsLayerPaintForeground\n";
-        }
-        if (paintingPhase() & GraphicsLayerPaintMask) {
-            writeIndent(ts, indent + 2);
-            ts << "GraphicsLayerPaintMask\n";
-        }
-        if (paintingPhase() & GraphicsLayerPaintChildClippingMask) {
-            writeIndent(ts, indent + 2);
-            ts << "GraphicsLayerPaintChildClippingMask\n";
-        }
-        if (paintingPhase() & GraphicsLayerPaintOverflowContents) {
-            writeIndent(ts, indent + 2);
-            ts << "GraphicsLayerPaintOverflowContents\n";
-        }
-        if (paintingPhase() & GraphicsLayerPaintCompositedScroll) {
-            writeIndent(ts, indent + 2);
-            ts << "GraphicsLayerPaintCompositedScroll\n";
-        }
-        writeIndent(ts, indent + 1);
-        ts << ")\n";
+        ts << indent << "(paintingPhases\n";
+        TextStream::IndentScope indentScope(ts);
+        if (paintingPhase() & GraphicsLayerPaintBackground)
+            ts << indent << "GraphicsLayerPaintBackground\n";
+
+        if (paintingPhase() & GraphicsLayerPaintForeground)
+            ts << indent << "GraphicsLayerPaintForeground\n";
+
+        if (paintingPhase() & GraphicsLayerPaintMask)
+            ts << indent << "GraphicsLayerPaintMask\n";
+
+        if (paintingPhase() & GraphicsLayerPaintChildClippingMask)
+            ts << indent << "GraphicsLayerPaintChildClippingMask\n";
+
+        if (paintingPhase() & GraphicsLayerPaintOverflowContents)
+            ts << indent << "GraphicsLayerPaintOverflowContents\n";
+
+        if (paintingPhase() & GraphicsLayerPaintCompositedScroll)
+            ts << indent << "GraphicsLayerPaintCompositedScroll\n";
+
+        ts << indent << ")\n";
     }
 
-    dumpAdditionalProperties(ts, indent, behavior);
+    dumpAdditionalProperties(ts, behavior);
     
     if (m_children.size()) {
         TextStream childrenStream;
-
+        
+        childrenStream.increaseIndent(ts.indent());
         unsigned totalChildCount = 0;
-        dumpChildren(childrenStream, m_children, totalChildCount, indent, behavior);
-
-        writeIndent(childrenStream, indent + 1);
-        childrenStream << ")\n";
+        dumpChildren(childrenStream, m_children, totalChildCount, behavior);
 
         if (totalChildCount) {
-            writeIndent(ts, indent + 1);
-            ts << "(children " << totalChildCount << "\n";
+            ts << indent << "(children " << totalChildCount << "\n";
             ts << childrenStream.release();
+            ts << indent << ")\n";
         }
     }
 }
@@ -944,11 +918,11 @@ TextStream& operator<<(TextStream& ts, const Vector<GraphicsLayer::PlatformLayer
 TextStream& operator<<(TextStream& ts, const WebCore::GraphicsLayer::CustomAppearance& customAppearance)
 {
     switch (customAppearance) {
-    case GraphicsLayer::CustomAppearance::NoCustomAppearance: ts << "none"; break;
+    case GraphicsLayer::CustomAppearance::None: ts << "none"; break;
     case GraphicsLayer::CustomAppearance::ScrollingOverhang: ts << "scrolling-overhang"; break;
     case GraphicsLayer::CustomAppearance::ScrollingShadow: ts << "scrolling-shadow"; break;
-    case GraphicsLayer::CustomAppearance::LightBackdropAppearance: ts << "light-backdrop"; break;
-    case GraphicsLayer::CustomAppearance::DarkBackdropAppearance: ts << "dark-backdrop"; break;
+    case GraphicsLayer::CustomAppearance::LightBackdrop: ts << "light-backdrop"; break;
+    case GraphicsLayer::CustomAppearance::DarkBackdrop: ts << "dark-backdrop"; break;
     }
     return ts;
 }
@@ -957,7 +931,7 @@ String GraphicsLayer::layerTreeAsText(LayerTreeAsTextBehavior behavior) const
 {
     TextStream ts(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
 
-    dumpLayer(ts, 0, behavior);
+    dumpLayer(ts, behavior);
     return ts.release();
 }
 
@@ -969,7 +943,7 @@ void showGraphicsLayerTree(const WebCore::GraphicsLayer* layer)
     if (!layer)
         return;
 
-    String output = layer->layerTreeAsText(WebCore::LayerTreeAsTextDebug | WebCore::LayerTreeAsTextIncludeVisibleRects | WebCore::LayerTreeAsTextIncludeTileCaches | WebCore::LayerTreeAsTextIncludeContentLayers);
+    String output = layer->layerTreeAsText(WebCore::LayerTreeAsTextShowAll);
     fprintf(stderr, "%s\n", output.utf8().data());
 }
 #endif

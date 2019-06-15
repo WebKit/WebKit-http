@@ -28,7 +28,6 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "ExceptionCode.h"
 #include "ScriptExecutionContext.h"
 #include <pal/crypto/CryptoDigest.h>
 
@@ -52,27 +51,13 @@ void CryptoAlgorithmSHA256::digest(Vector<uint8_t>&& message, VectorCallback&& c
         return;
     }
 
-    context.ref();
-    workQueue.dispatch([digest = WTFMove(digest), message = WTFMove(message), callback = WTFMove(callback), &context]() mutable {
+    workQueue.dispatch([digest = WTFMove(digest), message = WTFMove(message), callback = WTFMove(callback), contextIdentifier = context.contextIdentifier()]() mutable {
         digest->addBytes(message.data(), message.size());
         auto result = digest->computeHash();
-        context.postTask([callback = WTFMove(callback), result = WTFMove(result)](ScriptExecutionContext& context) {
+        ScriptExecutionContext::postTaskTo(contextIdentifier, [callback = WTFMove(callback), result = WTFMove(result)](auto&) {
             callback(result);
-            context.deref();
         });
     });
-}
-
-ExceptionOr<void> CryptoAlgorithmSHA256::digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
-{
-    auto digest = PAL::CryptoDigest::create(PAL::CryptoDigest::Algorithm::SHA_256);
-    if (!digest) {
-        failureCallback();
-        return { };
-    }
-    digest->addBytes(data.first, data.second);
-    callback(digest->computeHash());
-    return { };
 }
 
 }

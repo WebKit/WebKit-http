@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.slice
 description: >
   Throws if O.constructor returns a non-Object and non-undefined value
-info: >
+info: |
   22.2.3.24 %TypedArray%.prototype.slice ( start, end )
 
   ...
@@ -25,7 +25,7 @@ info: >
   4. If Type(C) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

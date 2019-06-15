@@ -4,7 +4,7 @@
 esid: sec-%typedarray%.prototype.reduce
 description: >
   Returns last accumulator value
-info: >
+info: |
   22.2.3.20 %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] )
 
   %TypedArray%.prototype.reduce is a distinct function that implements the same
@@ -31,6 +31,7 @@ info: >
       kValue, k, O »).
   9. Return accumulator.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

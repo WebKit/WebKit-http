@@ -8,14 +8,13 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TMMBR_H_
-#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TMMBR_H_
+#ifndef MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TMMBR_H_
+#define MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TMMBR_H_
 
 #include <vector>
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/rtpfb.h"
-#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/tmmb_item.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/rtpfb.h"
+#include "modules/rtp_rtcp/source/rtcp_packet/tmmb_item.h"
 
 namespace webrtc {
 namespace rtcp {
@@ -42,7 +41,7 @@ class Tmmbr : public Rtpfb {
   bool Create(uint8_t* packet,
               size_t* index,
               size_t max_length,
-              RtcpPacket::PacketReadyCallback* callback) const override;
+              PacketReadyCallback callback) const override;
 
  private:
   // Media ssrc is unused, shadow base class setter.
@@ -52,4 +51,4 @@ class Tmmbr : public Rtpfb {
 };
 }  // namespace rtcp
 }  // namespace webrtc
-#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TMMBR_H_
+#endif  // MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_TMMBR_H_

@@ -17,6 +17,7 @@
 #import "RTCNV12TextureCache.h"
 #import "WebRTC/RTCLogging.h"
 #import "WebRTC/RTCVideoFrame.h"
+#import "WebRTC/RTCVideoFrameBuffer.h"
 
 // RTCDisplayLinkTimer wraps a CADisplayLink and is set to fire every two screen
 // refreshes, which should be 30fps. We wrap the display link in order to avoid
@@ -44,8 +45,11 @@
         [CADisplayLink displayLinkWithTarget:self
                                     selector:@selector(displayLinkDidFire:)];
     _displayLink.paused = YES;
-    // Set to half of screen refresh, which should be 30fps.
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_10_0
+    _displayLink.preferredFramesPerSecond = 30;
+#else
     [_displayLink setFrameInterval:2];
+#endif
     [_displayLink addToRunLoop:[NSRunLoop currentRunLoop]
                        forMode:NSRunLoopCommonModes];
   }
@@ -102,7 +106,9 @@
   id<RTCVideoViewShading> _shader;
   RTCNV12TextureCache *_nv12TextureCache;
   RTCI420TextureCache *_i420TextureCache;
-  RTCVideoFrame *_lastDrawnFrame;
+  // As timestamps should be unique between frames, will store last
+  // drawn frame timestamp instead of the whole frame to reduce memory usage.
+  int64_t _lastDrawnFrameTimeStampNs;
 }
 
 @synthesize delegate = _delegate;
@@ -120,7 +126,9 @@
 - (instancetype)initWithFrame:(CGRect)frame shader:(id<RTCVideoViewShading>)shader {
   if (self = [super initWithFrame:frame]) {
     _shader = shader;
-    [self configure];
+    if (![self configure]) {
+      return nil;
+    }
   }
   return self;
 }
@@ -128,16 +136,22 @@
 - (instancetype)initWithCoder:(NSCoder *)aDecoder shader:(id<RTCVideoViewShading>)shader {
   if (self = [super initWithCoder:aDecoder]) {
     _shader = shader;
-    [self configure];
+    if (![self configure]) {
+      return nil;
+    }
   }
   return self;
 }
 
-- (void)configure {
+- (BOOL)configure {
   EAGLContext *glContext =
     [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
   if (!glContext) {
     glContext = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+  }
+  if (!glContext) {
+    RTCLogError(@"Failed to create EAGLContext");
+    return NO;
   }
   _glContext = glContext;
 
@@ -174,7 +188,10 @@
       RTCEAGLVideoView *strongSelf = weakSelf;
       [strongSelf displayLinkTimerDidFire];
     }];
-  [self setupGL];
+  if ([[UIApplication sharedApplication] applicationState] == UIApplicationStateActive) {
+    [self setupGL];
+  }
+  return YES;
 }
 
 - (void)dealloc {
@@ -185,6 +202,8 @@
     [self teardownGL];
   }
   [_timer invalidate];
+  [self ensureGLContext];
+  _shader = nil;
   if (_glContext && [EAGLContext currentContext] == _glContext) {
     [EAGLContext setCurrentContext:nil];
   }
@@ -215,12 +234,12 @@
   // The renderer will draw the frame to the framebuffer corresponding to the
   // one used by |view|.
   RTCVideoFrame *frame = self.videoFrame;
-  if (!frame || frame == _lastDrawnFrame) {
+  if (!frame || frame.timeStampNs == _lastDrawnFrameTimeStampNs) {
     return;
   }
   [self ensureGLContext];
   glClear(GL_COLOR_BUFFER_BIT);
-  if (frame.nativeHandle) {
+  if ([frame.buffer isKindOfClass:[RTCCVPixelBuffer class]]) {
     if (!_nv12TextureCache) {
       _nv12TextureCache = [[RTCNV12TextureCache alloc] initWithContext:_glContext];
     }
@@ -232,6 +251,8 @@
                                       yPlane:_nv12TextureCache.yTexture
                                      uvPlane:_nv12TextureCache.uvTexture];
       [_nv12TextureCache releaseTextures];
+
+      _lastDrawnFrameTimeStampNs = self.videoFrame.timeStampNs;
     }
   } else {
     if (!_i420TextureCache) {
@@ -244,6 +265,8 @@
                                     yPlane:_i420TextureCache.yTexture
                                     uPlane:_i420TextureCache.uTexture
                                     vPlane:_i420TextureCache.vTexture];
+
+    _lastDrawnFrameTimeStampNs = self.videoFrame.timeStampNs;
   }
 }
 
@@ -267,7 +290,7 @@
 - (void)displayLinkTimerDidFire {
   // Don't render unless video frame have changed or the view content
   // has explicitly been marked dirty.
-  if (!_isDirty && _lastDrawnFrame == self.videoFrame) {
+  if (!_isDirty && _lastDrawnFrameTimeStampNs == self.videoFrame.timeStampNs) {
     return;
   }
 

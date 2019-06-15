@@ -3,7 +3,6 @@ add_definitions(-DQUARTZCORE_DLL -DDISABLE_COREIMAGE -DDISABLE_FRONTEND -DDISABL
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBKIT_LIBRARIES_DIR}/include"
-    "${WEBKIT_LIBRARIES_DIR}/include/zlib"
     "${WEBCORE_DIR}/loader/archive/cf"
     "${WEBCORE_DIR}/platform/graphics/avfoundation"
     "${WEBCORE_DIR}/platform/graphics/avfoundation/cf"
@@ -11,8 +10,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/ca/win"
     "${WEBCORE_DIR}/platform/graphics/cg"
     "${WEBCORE_DIR}/platform/network/cf"
-    "${WEBCORE_DIR}/platform/spi/cf"
-    "${WEBCORE_DIR}/platform/spi/cg"
 )
 
 if (${USE_DIRECT2D})
@@ -26,7 +23,6 @@ else ()
         "${WEBCORE_DIR}/platform/graphics/ca"
         "${WEBCORE_DIR}/platform/graphics/ca/win"
         "${WEBCORE_DIR}/platform/graphics/cg"
-        "${WEBCORE_DIR}/platform/spi/cg"
     )
 endif ()
 
@@ -35,13 +31,11 @@ list(APPEND WebCore_SOURCES
 
     page/CaptionUserPreferencesMediaAF.cpp
 
-    platform/cf/CoreMediaSoftLink.cpp
     platform/cf/MediaAccessibilitySoftLink.cpp
 
     platform/graphics/avfoundation/InbandMetadataTextTrackPrivateAVF.cpp
     platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp
     platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp
-    platform/graphics/avfoundation/MediaTimeAVFoundation.cpp
     platform/graphics/avfoundation/WebMediaSessionManagerMac.cpp
 
     platform/graphics/avfoundation/cf/CDMSessionAVFoundationCF.cpp
@@ -53,10 +47,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/FontCustomPlatformData.cpp
 
     platform/network/cf/AuthenticationCF.cpp
-    platform/network/cf/CookieJarCFNet.cpp
     platform/network/cf/CookieStorageCFNet.cpp
     platform/network/cf/CredentialStorageCFNet.cpp
-    platform/network/cf/DNSCFNet.cpp
+    platform/network/cf/DNSResolveQueueCFNet.cpp
     platform/network/cf/FormDataStreamCFNet.cpp
     platform/network/cf/LoaderRunLoopCF.cpp
     platform/network/cf/NetworkStorageSessionCFNet.cpp
@@ -65,11 +58,11 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/ResourceErrorCF.cpp
     platform/network/cf/ResourceHandleCFNet.cpp
     platform/network/cf/ResourceHandleCFURLConnectionDelegate.cpp
+    platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp
     platform/network/cf/ResourceRequestCFNet.cpp
     platform/network/cf/ResourceResponseCFNet.cpp
     platform/network/cf/SocketStreamHandleImplCFNet.cpp
     platform/network/cf/SynchronousLoaderClientCFNet.cpp
-    platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp
 )
 
 if (${USE_DIRECT2D})
@@ -126,7 +119,6 @@ else ()
         platform/graphics/cg/IOSurfacePool.cpp
         platform/graphics/cg/ImageBufferCG.cpp
         platform/graphics/cg/ImageBufferDataCG.cpp
-        platform/graphics/cg/ImageCG.cpp
         platform/graphics/cg/ImageDecoderCG.cpp
         platform/graphics/cg/ImageSourceCGWin.cpp
         platform/graphics/cg/IntPointCG.cpp
@@ -155,8 +147,6 @@ endif ()
 
 list(APPEND WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/network/cf
-
-    platform/spi/cf
 )
 
 if (${USE_DIRECT2D})
@@ -171,7 +161,5 @@ else ()
         platform/graphics/ca/win
 
         platform/network/cf
-
-        platform/spi/cg
     )
 endif ()

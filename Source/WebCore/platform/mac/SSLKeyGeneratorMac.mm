@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2005, 2008, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,15 +26,21 @@
 #import "config.h"
 #import "SSLKeyGenerator.h"
 
+#if PLATFORM(MAC)
+
 #import "LocalizedStrings.h"
 #import "URL.h"
 #import <Security/SecAsn1Coder.h>
 #import <Security/SecAsn1Templates.h>
 #import <Security/SecEncodeTransform.h>
+#import <wtf/ProcessPrivilege.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/Scope.h>
+#import <wtf/cf/TypeCastsCF.h>
 #import <wtf/spi/cocoa/SecuritySPI.h>
 #import <wtf/text/Base64.h>
+
+WTF_DECLARE_CF_TYPE_TRAIT(SecACL);
 
 namespace WebCore {
 
@@ -138,7 +144,7 @@ static String signedPublicKeyAndChallengeString(unsigned keySize, const CString&
         return String();
     RetainPtr<CFArrayRef> acls = adoptCF(aclsRef);
 
-    SecACLRef acl = (SecACLRef)(CFArrayGetValueAtIndex(acls.get(), 0));
+    SecACLRef acl = checked_cf_cast<SecACLRef>(CFArrayGetValueAtIndex(acls.get(), 0));
 
     // Passing nullptr to SecTrustedApplicationCreateFromPath tells that function to assume the application bundle.
     SecTrustedApplicationRef trustedAppRef { nullptr };
@@ -184,7 +190,7 @@ static String signedPublicKeyAndChallengeString(unsigned keySize, const CString&
 
     // Length needs to account for the null terminator.
     signedPublicKeyAndChallenge.publicKeyAndChallenge.challenge.Length = challenge.length() + 1;
-    signedPublicKeyAndChallenge.publicKeyAndChallenge.challenge.Data = (uint8_t*)challenge.data();
+    signedPublicKeyAndChallenge.publicKeyAndChallenge.challenge.Data = reinterpret_cast<uint8_t*>(const_cast<char*>(challenge.data()));
 
     CSSM_DATA encodedPublicKeyAndChallenge { 0, nullptr };
     if (SecAsn1EncodeItem(coder, &signedPublicKeyAndChallenge.publicKeyAndChallenge, publicKeyAndChallengeTemplate, &encodedPublicKeyAndChallenge) != noErr)
@@ -238,9 +244,11 @@ String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& ch
         return String();
     }
 
-    auto challenge = challengeString.containsOnlyASCII() ? challengeString.ascii() : "";
+    auto challenge = challengeString.isAllASCII() ? challengeString.ascii() : "";
 
-    return signedPublicKeyAndChallengeString(keySize, challenge, keygenKeychainItemName(url.host()));
+    return signedPublicKeyAndChallengeString(keySize, challenge, keygenKeychainItemName(url.host().toString()));
 }
 
 }
+
+#endif // PLATFORM(MAC)

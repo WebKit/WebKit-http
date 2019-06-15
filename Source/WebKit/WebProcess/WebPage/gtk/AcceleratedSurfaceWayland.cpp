@@ -32,9 +32,8 @@
 #include "WebProcess.h"
 #include <wayland-egl.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 std::unique_ptr<AcceleratedSurfaceWayland> AcceleratedSurfaceWayland::create(WebPage& webPage, Client& client)
 {
@@ -43,13 +42,17 @@ std::unique_ptr<AcceleratedSurfaceWayland> AcceleratedSurfaceWayland::create(Web
 
 AcceleratedSurfaceWayland::AcceleratedSurfaceWayland(WebPage& webPage, Client& client)
     : AcceleratedSurface(webPage, client)
-    , m_surface(WebProcess::singleton().waylandCompositorDisplay()->createSurface())
-    , m_window(wl_egl_window_create(m_surface.get(), std::max(1, m_size.width()), std::max(1, m_size.height())))
 {
+}
+
+void AcceleratedSurfaceWayland::initialize()
+{
+    m_surface = WebProcess::singleton().waylandCompositorDisplay()->createSurface();
+    m_window = wl_egl_window_create(m_surface.get(), std::max(1, m_size.width()), std::max(1, m_size.height()));
     WebProcess::singleton().waylandCompositorDisplay()->bindSurfaceToPage(m_surface.get(), m_webPage);
 }
 
-AcceleratedSurfaceWayland::~AcceleratedSurfaceWayland()
+void AcceleratedSurfaceWayland::finalize()
 {
     wl_egl_window_destroy(m_window);
 }

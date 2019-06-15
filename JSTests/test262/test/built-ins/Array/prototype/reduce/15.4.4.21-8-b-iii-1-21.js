@@ -2,32 +2,37 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-8-b-iii-1-21
 description: >
     Array.prototype.reduce - element to be retrieved is inherited
     accessor property without a get function on an Array-like object
 ---*/
 
-        var testResult = false;
-        function callbackfn(prevVal, curVal, idx, obj) {
-            if (idx === 1) {
-                testResult = (prevVal === undefined);
-            }
-        }
+var testResult = false;
 
-        var proto = { 1: 1, 2: 2 };
+function callbackfn(prevVal, curVal, idx, obj) {
+  if (idx === 1) {
+    testResult = (prevVal === undefined);
+  }
+}
 
-        Object.defineProperty(proto, "0", {
-            set: function () { },
-            configurable: true
-        });
+var proto = {
+  1: 1,
+  2: 2
+};
 
-        var Con = function () { };
-        Con.prototype = proto;
+Object.defineProperty(proto, "0", {
+  set: function() {},
+  configurable: true
+});
 
-        var child = new Con();
-        child.length = 3;
+var Con = function() {};
+Con.prototype = proto;
 
-        Array.prototype.reduce.call(child, callbackfn);
+var child = new Con();
+child.length = 3;
+
+Array.prototype.reduce.call(child, callbackfn);
 
 assert(testResult, 'testResult !== true');

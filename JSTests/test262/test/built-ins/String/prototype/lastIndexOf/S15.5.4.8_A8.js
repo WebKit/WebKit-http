@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     The String.prototype.lastIndexOf.length property has the attribute
     DontEnum
 es5id: 15.5.4.8_A8
@@ -14,7 +14,7 @@ description: >
 //////////////////////////////////////////////////////////////////////////////
 //CHECK#0
 if (!(String.prototype.lastIndexOf.hasOwnProperty('length'))) {
-  $ERROR('#0: String.prototype.lastIndexOf.hasOwnProperty(\'length\') return true. Actual: '+String.prototype.lastIndexOf.hasOwnProperty('length'));
+  $ERROR('#0: String.prototype.lastIndexOf.hasOwnProperty(\'length\') return true. Actual: ' + String.prototype.lastIndexOf.hasOwnProperty('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
@@ -23,21 +23,21 @@ if (!(String.prototype.lastIndexOf.hasOwnProperty('length'))) {
 //////////////////////////////////////////////////////////////////////////////
 // CHECK#1
 if (String.prototype.lastIndexOf.propertyIsEnumerable('length')) {
-  $ERROR('#1: String.prototype.lastIndexOf.propertyIsEnumerable(\'length\') return false. Actual: '+String.prototype.lastIndexOf.propertyIsEnumerable('length'));
+  $ERROR('#1: String.prototype.lastIndexOf.propertyIsEnumerable(\'length\') return false. Actual: ' + String.prototype.lastIndexOf.propertyIsEnumerable('length'));
 }
 //
 //////////////////////////////////////////////////////////////////////////////
 
 //////////////////////////////////////////////////////////////////////////////
 // CHECK#2
-var count=0;
+var count = 0;
 
-for (var p in String.prototype.lastIndexOf){
-  if (p==="length") count++;
+for (var p in String.prototype.lastIndexOf) {
+  if (p === "length") count++;
 }
 
 if (count !== 0) {
-  $ERROR('#2: count=0; for (p in String.prototype.lastIndexOf){if (p==="length") count++;}; count === 0. Actual: '+count );
+  $ERROR('#2: count=0; for (p in String.prototype.lastIndexOf){if (p==="length") count++;}; count === 0. Actual: ' + count);
 }
 //
 //////////////////////////////////////////////////////////////////////////////

@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/test/video_renderer.h"
+#include "test/video_renderer.h"
 
 namespace webrtc {
 namespace test {
@@ -18,5 +18,5 @@ VideoRenderer* VideoRenderer::CreatePlatformRenderer(const char* window_title,
                                                      size_t height) {
   return NULL;
 }
-}  // test
-}  // webrtc
+}  // namespace test
+}  // namespace webrtc

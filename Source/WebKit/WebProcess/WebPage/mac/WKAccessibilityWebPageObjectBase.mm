@@ -36,15 +36,13 @@
 #import "WKStringCF.h"
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/Document.h>
+#import <WebCore/Frame.h>
 #import <WebCore/FrameView.h>
-#import <WebCore/MainFrame.h>
 #import <WebCore/Page.h>
 #import <WebCore/ScrollView.h>
 #import <WebCore/Scrollbar.h>
-#import <WebKitSystemInterface.h>
 #import <wtf/ObjcRuntimeExtras.h>
 
-using namespace WebCore;
 using namespace WebKit;
 
 @implementation WKAccessibilityWebPageObjectBase
@@ -73,7 +71,7 @@ using namespace WebKit;
     if (!cache)
         return nil;
     
-    if (AccessibilityObject* root = cache->rootObject())
+    if (WebCore::AccessibilityObject* root = cache->rootObject())
         return root->wrapper();
     
     return nil;

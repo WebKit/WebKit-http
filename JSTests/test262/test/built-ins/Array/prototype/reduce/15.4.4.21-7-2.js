@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-7-2
 description: >
     Array.prototype.reduce returns initialValue if 'length' is 0 and
@@ -9,10 +10,11 @@ description: >
     null (type conversion))
 ---*/
 
-  foo.prototype = new Array(1, 2, 3);
-  function foo() {}
-  var f = new foo();
-  f.length = null;
-  
-  function cb(){}
-assert.sameValue(f.reduce(cb,1), 1, 'f.reduce(cb,1)');
+foo.prototype = new Array(1, 2, 3);
+
+function foo() {}
+var f = new foo();
+f.length = null;
+
+function cb() {}
+assert.sameValue(f.reduce(cb, 1), 1, 'f.reduce(cb,1)');

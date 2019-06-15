@@ -31,7 +31,6 @@
 #include <WebCore/FileSystem.h>
 #include <WebCore/URLParser.h>
 #include <wtf/Function.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -56,7 +55,7 @@ class Resource;
  */
 class Manager {
     WTF_MAKE_NONCOPYABLE(Manager);
-    friend class WTF::NeverDestroyed<Manager>;
+    friend NeverDestroyed<Manager>;
 
 public:
     enum RecordReplayMode {
@@ -80,7 +79,7 @@ public:
     void logLoadedResource(Resource&);
     void logPlayedBackResource(const WebCore::ResourceRequest&, bool wasCacheMiss);
 
-    WebCore::FileHandle openCacheFile(const String&, WebCore::FileOpenMode);
+    WebCore::FileHandle openCacheFile(const String&, WebCore::FileSystem::FileOpenMode);
 
     String requestToPath(const WebCore::ResourceRequest&);
     static String urlIdentifyingCommonDomain(const WebCore::URL&);

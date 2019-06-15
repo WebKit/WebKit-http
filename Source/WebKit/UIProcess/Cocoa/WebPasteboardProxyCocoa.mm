@@ -25,30 +25,54 @@
 
 #import "config.h"
 #import "WebPasteboardProxy.h"
-#import "WebProcessProxy.h"
 
+#import "SandboxExtension.h"
+#import "WebProcessProxy.h"
 #import <WebCore/Color.h>
+#import <WebCore/Pasteboard.h>
+#import <WebCore/PasteboardItemInfo.h>
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/URL.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void WebPasteboardProxy::getPasteboardTypes(const String& pasteboardName, Vector<String>& pasteboardTypes)
 {
     PlatformPasteboard(pasteboardName).getTypes(pasteboardTypes);
 }
 
-void WebPasteboardProxy::getPasteboardPathnamesForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& pathnames)
+void WebPasteboardProxy::getPasteboardPathnamesForType(IPC::Connection& connection, const String& pasteboardName, const String& pasteboardType,
+    Vector<String>& pathnames, SandboxExtension::HandleArray& sandboxExtensions)
 {
-    PlatformPasteboard(pasteboardName).getPathnamesForType(pathnames, pasteboardType);
+    for (auto* webProcessProxy : m_webProcessProxyList) {
+        if (!webProcessProxy->hasConnection(connection))
+            continue;
+
+        PlatformPasteboard(pasteboardName).getPathnamesForType(pathnames, pasteboardType);
+
+#if PLATFORM(MAC)
+        // On iOS, files are copied into app's container upon paste.
+        sandboxExtensions.allocate(pathnames.size());
+        for (size_t i = 0; i < pathnames.size(); i++) {
+            auto& filename = pathnames[i];
+            if (![[NSFileManager defaultManager] fileExistsAtPath:filename])
+                continue;
+            SandboxExtension::createHandle(filename, SandboxExtension::Type::ReadOnly, sandboxExtensions[i]);
+        }
+#endif
+    }
 }
 
 void WebPasteboardProxy::getPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, String& string)
 {
     string = PlatformPasteboard(pasteboardName).stringForType(pasteboardType);
+}
+
+void WebPasteboardProxy::getPasteboardStringsForType(const String& pasteboardName, const String& pasteboardType, Vector<String>& strings)
+{
+    strings = PlatformPasteboard(pasteboardName).allStringsForType(pasteboardType);
 }
 
 void WebPasteboardProxy::getPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, SharedMemory::Handle& handle, uint64_t& size)
@@ -57,6 +81,8 @@ void WebPasteboardProxy::getPasteboardBufferForType(const String& pasteboardName
     if (!buffer)
         return;
     size = buffer->size();
+    if (!size)
+        return;
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::allocate(size);
     if (!sharedMemoryBuffer)
         return;
@@ -99,23 +125,26 @@ void WebPasteboardProxy::setPasteboardTypes(const String& pasteboardName, const 
     newChangeCount = PlatformPasteboard(pasteboardName).setTypes(pasteboardTypes);
 }
 
-void WebPasteboardProxy::setPasteboardPathnamesForType(IPC::Connection& connection, const String& pasteboardName, const String& pasteboardType, const Vector<String>& pathnames, uint64_t& newChangeCount)
+void WebPasteboardProxy::setPasteboardURL(IPC::Connection& connection, const PasteboardURL& pasteboardURL, const String& pasteboardName, uint64_t& newChangeCount)
 {
     for (auto* webProcessProxy : m_webProcessProxyList) {
         if (!webProcessProxy->hasConnection(connection))
             continue;
-        
-        for (const auto& pathname : pathnames) {
-            if (!webProcessProxy->checkURLReceivedFromWebProcess(pathname)) {
-                connection.markCurrentlyDispatchedMessageAsInvalid();
-                newChangeCount = 0;
-                return;
-            }
+
+        if (!webProcessProxy->checkURLReceivedFromWebProcess(pasteboardURL.url.string())) {
+            newChangeCount = 0;
+            return;
         }
-        newChangeCount = PlatformPasteboard(pasteboardName).setPathnamesForType(pathnames, pasteboardType);
+
+        newChangeCount = PlatformPasteboard(pasteboardName).setURL(pasteboardURL);
         return;
     }
     newChangeCount = 0;
+}
+
+void WebPasteboardProxy::setPasteboardColor(const String& pasteboardName, const WebCore::Color& color, uint64_t& newChangeCount)
+{
+    newChangeCount = PlatformPasteboard(pasteboardName).setColor(color);
 }
 
 void WebPasteboardProxy::setPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, const String& string, uint64_t& newChangeCount)
@@ -137,6 +166,16 @@ void WebPasteboardProxy::setPasteboardBufferForType(const String& pasteboardName
 void WebPasteboardProxy::getNumberOfFiles(const String& pasteboardName, uint64_t& numberOfFiles)
 {
     numberOfFiles = PlatformPasteboard(pasteboardName).numberOfFiles();
+}
+
+void WebPasteboardProxy::typesSafeForDOMToReadAndWrite(const String& pasteboardName, const String& origin, Vector<String>& types)
+{
+    types = PlatformPasteboard(pasteboardName).typesSafeForDOMToReadAndWrite(origin);
+}
+
+void WebPasteboardProxy::writeCustomData(const WebCore::PasteboardCustomData& data, const String& pasteboardName, uint64_t& newChangeCount)
+{
+    newChangeCount = PlatformPasteboard(pasteboardName).write(data);
 }
 
 #if PLATFORM(IOS)
@@ -170,9 +209,9 @@ void WebPasteboardProxy::readStringFromPasteboard(uint64_t index, const String& 
     value = PlatformPasteboard(pasteboardName).readString(index, pasteboardType);
 }
 
-void WebPasteboardProxy::readURLFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, String& url, String& title)
+void WebPasteboardProxy::readURLFromPasteboard(uint64_t index, const String& pasteboardName, String& url, String& title)
 {
-    url = PlatformPasteboard(pasteboardName).readURL(index, pasteboardType, title);
+    url = PlatformPasteboard(pasteboardName).readURL(index, title);
 }
 
 void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& pasteboardType, const String& pasteboardName, SharedMemory::Handle& handle, uint64_t& size)
@@ -181,6 +220,8 @@ void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& 
     if (!buffer)
         return;
     size = buffer->size();
+    if (!size)
+        return;
     RefPtr<SharedMemory> sharedMemoryBuffer = SharedMemory::allocate(size);
     if (!sharedMemoryBuffer)
         return;
@@ -193,9 +234,14 @@ void WebPasteboardProxy::getPasteboardItemsCount(const String& pasteboardName, u
     itemsCount = PlatformPasteboard(pasteboardName).count();
 }
 
-void WebPasteboardProxy::getFilenamesForDataInteraction(const String& pasteboardName, Vector<String>& filenames)
+void WebPasteboardProxy::allPasteboardItemInfo(const String& pasteboardName, Vector<PasteboardItemInfo>& allInfo)
 {
-    filenames = PlatformPasteboard(pasteboardName).filenamesForDataInteraction();
+    allInfo = PlatformPasteboard(pasteboardName).allPasteboardItemInfo();
+}
+
+void WebPasteboardProxy::informationForItemAtIndex(int index, const String& pasteboardName, PasteboardItemInfo& info)
+{
+    info = PlatformPasteboard(pasteboardName).informationForItemAtIndex(index);
 }
 
 void WebPasteboardProxy::updateSupportedTypeIdentifiers(const Vector<String>& identifiers, const String& pasteboardName)

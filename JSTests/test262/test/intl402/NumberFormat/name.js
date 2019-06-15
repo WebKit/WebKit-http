@@ -5,7 +5,7 @@
 esid: sec-Intl.NumberFormat
 description: >
   Intl.NumberFormat.name is "NumberFormat".
-info: >
+info: |
   11.2.1 Intl.NumberFormat ([ locales [ , options ]])
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(Intl.NumberFormat.name, "NumberFormat");
-
-verifyNotEnumerable(Intl.NumberFormat, "name");
-verifyNotWritable(Intl.NumberFormat, "name");
-verifyConfigurable(Intl.NumberFormat, "name");
+verifyProperty(Intl.NumberFormat, 'name', {
+  value: 'NumberFormat',
+  writable: false,
+  enumerable: false,
+  configurable: true
+});

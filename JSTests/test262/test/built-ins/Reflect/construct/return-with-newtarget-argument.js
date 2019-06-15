@@ -4,7 +4,7 @@
 es6id: 26.1.2
 description: >
   Return target result using newTarget argument.
-info: >
+info: |
   26.1.2 Reflect.construct ( target, argumentsList [, newTarget] )
 
   ...
@@ -15,6 +15,7 @@ info: >
 
 var o = {};
 var internPrototype;
+
 function fn() {
   this.o = o;
   internPrototype = Object.getPrototypeOf(this);

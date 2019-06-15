@@ -32,9 +32,8 @@
 
 #pragma once
 
-#if ENABLE(WEB_TIMING)
-
 #include "ContextDestructionObserver.h"
+#include "DOMHighResTimeStamp.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
 #include "GenericTaskQueue.h"
@@ -58,7 +57,7 @@ public:
     static Ref<Performance> create(ScriptExecutionContext& context, MonotonicTime timeOrigin) { return adoptRef(*new Performance(context, timeOrigin)); }
     ~Performance();
 
-    double now() const;
+    DOMHighResTimeStamp now() const;
 
     PerformanceNavigation* navigation();
     PerformanceTiming* timing();
@@ -78,10 +77,13 @@ public:
 
     void addResourceTiming(ResourceTiming&&);
 
+    void removeAllObservers();
     void registerPerformanceObserver(PerformanceObserver&);
     void unregisterPerformanceObserver(PerformanceObserver&);
 
     static Seconds reduceTimeResolution(Seconds);
+
+    DOMHighResTimeStamp relativeTimeFromTimeOriginInReducedResolution(MonotonicTime) const;
 
     ScriptExecutionContext* scriptExecutionContext() const final { return ContextDestructionObserver::scriptExecutionContext(); }
 
@@ -99,6 +101,7 @@ private:
     void derefEventTarget() final { deref(); }
 
     bool isResourceTimingBufferFull() const;
+    void resourceTimingBufferFullTimerFired();
 
     void queueEntry(PerformanceEntry&);
 
@@ -109,6 +112,13 @@ private:
     Vector<RefPtr<PerformanceEntry>> m_resourceTimingBuffer;
     unsigned m_resourceTimingBufferSize { 150 };
 
+    Timer m_resourceTimingBufferFullTimer;
+    Vector<RefPtr<PerformanceEntry>> m_backupResourceTimingBuffer;
+
+    // https://w3c.github.io/resource-timing/#dfn-resource-timing-buffer-full-flag
+    bool m_resourceTimingBufferFullFlag { false };
+    bool m_waitingForBackupBufferToBeProcessed { false };
+
     MonotonicTime m_timeOrigin;
 
     std::unique_ptr<UserTiming> m_userTiming;
@@ -118,5 +128,3 @@ private:
 };
 
 }
-
-#endif // ENABLE(WEB_TIMING)

@@ -10,13 +10,12 @@
 
 #include <stdlib.h>
 
-#include "webrtc/common_audio/vad/vad_unittest.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/typedefs.h"
+#include "common_audio/vad/vad_unittest.h"
+#include "test/gtest.h"
 
 extern "C" {
-#include "webrtc/common_audio/vad/vad_core.h"
-#include "webrtc/common_audio/vad/vad_sp.h"
+#include "common_audio/vad/vad_core.h"
+#include "common_audio/vad/vad_sp.h"
 }
 
 namespace webrtc {
@@ -25,19 +24,17 @@ namespace test {
 TEST_F(VadTest, vad_sp) {
   VadInstT* self = reinterpret_cast<VadInstT*>(malloc(sizeof(VadInstT)));
   const size_t kMaxFrameLenSp = 960;  // Maximum frame length in this unittest.
-  int16_t zeros[kMaxFrameLenSp] = { 0 };
-  int32_t state[2] = { 0 };
+  int16_t zeros[kMaxFrameLenSp] = {0};
+  int32_t state[2] = {0};
   int16_t data_in[kMaxFrameLenSp];
   int16_t data_out[kMaxFrameLenSp];
 
   // We expect the first value to be 1600 as long as |frame_counter| is zero,
   // which is true for the first iteration.
   static const int16_t kReferenceMin[32] = {
-      1600, 720, 509, 512, 532, 552, 570, 588,
-       606, 624, 642, 659, 675, 691, 707, 723,
-      1600, 544, 502, 522, 542, 561, 579, 597,
-       615, 633, 651, 667, 683, 699, 715, 731
-  };
+      1600, 720, 509, 512, 532, 552,  570, 588, 606, 624, 642,
+      659,  675, 691, 707, 723, 1600, 544, 502, 522, 542, 561,
+      579,  597, 615, 633, 651, 667,  683, 699, 715, 731};
 
   // Construct a speech signal that will trigger the VAD in all modes. It is
   // known that (i * i) will wrap around, but that doesn't matter in this case.

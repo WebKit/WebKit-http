@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,7 +38,10 @@
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/TypeCasts.h>
-#include <wtf/Vector.h>
+
+namespace WTF {
+class MachSendRight;
+}
 
 namespace IPC {
 class Connection;
@@ -51,7 +54,6 @@ class Frame;
 class FrameView;
 class GraphicsLayer;
 class GraphicsLayerFactory;
-class MachSendRight;
 struct ViewportAttributes;
 }
 
@@ -92,9 +94,9 @@ public:
     virtual void setViewExposedRect(std::optional<WebCore::FloatRect>) = 0;
     virtual std::optional<WebCore::FloatRect> viewExposedRect() const = 0;
 
-    virtual void acceleratedAnimationDidStart(uint64_t /*layerID*/, const String& /*key*/, double /*startTime*/) { }
+    virtual void acceleratedAnimationDidStart(uint64_t /*layerID*/, const String& /*key*/, MonotonicTime /*startTime*/) { }
     virtual void acceleratedAnimationDidEnd(uint64_t /*layerID*/, const String& /*key*/) { }
-    virtual void addFence(const WebCore::MachSendRight&) { }
+    virtual void addFence(const WTF::MachSendRight&) { }
 #endif
 #if PLATFORM(IOS)
     virtual WebCore::FloatRect exposedContentRect() const = 0;
@@ -117,7 +119,7 @@ public:
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(WTF::Function<void ()>&&);
 
-    virtual void activityStateDidChange(WebCore::ActivityState::Flags, bool /* wantsDidUpdateActivityState */, const Vector<CallbackID>&) { }
+    virtual void activityStateDidChange(OptionSet<WebCore::ActivityState::Flag>, ActivityStateChangeID, const Vector<CallbackID>&) { }
     virtual void setLayerHostingMode(LayerHostingMode) { }
 
     virtual bool markLayersVolatileImmediatelyIfPossible() { return true; }
@@ -132,19 +134,24 @@ public:
 
 #if PLATFORM(COCOA)
     // Used by TiledCoreAnimationDrawingArea.
-    virtual void updateGeometry(const WebCore::IntSize& viewSize, const WebCore::IntSize& layerPosition, bool flushSynchronously, const WebCore::MachSendRight& fencePort) { }
+    virtual void updateGeometry(const WebCore::IntSize& viewSize, bool flushSynchronously, const WTF::MachSendRight& fencePort) { }
 #endif
 
     virtual void layerHostDidFlushLayers() { };
 
 #if USE(COORDINATED_GRAPHICS)
     virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) = 0;
-    virtual void resetUpdateAtlasForTesting() = 0;
 #endif
 
 #if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
     virtual void deviceOrPageScaleFactorChanged() = 0;
 #endif
+
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    void displayWasRefreshed();
+#endif
+
+    virtual void attachDrawingArea() { };
 
 protected:
     DrawingArea(DrawingAreaType, WebPage&);

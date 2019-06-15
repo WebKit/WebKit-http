@@ -102,9 +102,9 @@ void WKKeyValueStorageManagerGetStorageDetailsByOrigin(WKKeyValueStorageManagerR
 
             detailsMap.set(toImpl(WKKeyValueStorageManagerGetOriginKey())->string(), origin);
             if (originDetails.creationTime)
-                detailsMap.set(toImpl(WKKeyValueStorageManagerGetCreationTimeKey())->string(), API::Double::create(originDetails.creationTime.value_or(0)));
+                detailsMap.set(toImpl(WKKeyValueStorageManagerGetCreationTimeKey())->string(), API::Double::create(originDetails.creationTime.secondsSinceEpoch().value()));
             if (originDetails.modificationTime)
-                detailsMap.set(toImpl(WKKeyValueStorageManagerGetModificationTimeKey())->string(), API::Double::create(originDetails.modificationTime.value_or(0)));
+                detailsMap.set(toImpl(WKKeyValueStorageManagerGetModificationTimeKey())->string(), API::Double::create(originDetails.modificationTime.secondsSinceEpoch().value()));
 
             result.uncheckedAppend(API::Dictionary::create(WTFMove(detailsMap)));
         }
@@ -119,7 +119,7 @@ void WKKeyValueStorageManagerDeleteEntriesForOrigin(WKKeyValueStorageManagerRef 
     if (!storageManager)
         return;
 
-    storageManager->deleteLocalStorageEntriesForOrigin(WebCore::SecurityOriginData::fromSecurityOrigin(toImpl(origin)->securityOrigin()));
+    storageManager->deleteLocalStorageEntriesForOrigin(toImpl(origin)->securityOrigin().data());
 }
 
 void WKKeyValueStorageManagerDeleteAllEntries(WKKeyValueStorageManagerRef keyValueStorageManager)
@@ -128,5 +128,5 @@ void WKKeyValueStorageManagerDeleteAllEntries(WKKeyValueStorageManagerRef keyVal
     if (!storageManager)
         return;
 
-    storageManager->deleteLocalStorageOriginsModifiedSince(std::chrono::system_clock::time_point::min(), [] { });
+    storageManager->deleteLocalStorageOriginsModifiedSince(-WallTime::infinity(), [] { });
 }

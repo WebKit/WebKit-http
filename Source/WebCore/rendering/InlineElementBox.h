@@ -30,6 +30,7 @@
 namespace WebCore {
 
 class InlineElementBox : public InlineBox {
+    WTF_MAKE_ISO_ALLOCATED(InlineElementBox);
 public:
     explicit InlineElementBox(RenderBoxModelObject& renderer)
         : InlineBox(renderer)

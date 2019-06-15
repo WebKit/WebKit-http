@@ -50,42 +50,16 @@
 #endif
 
 #if PLATFORM(IOS)
-#include <wtf/Noncopyable.h>
+#include <wtf/Lock.h>
+#include <wtf/RecursiveLockAdapter.h>
 
-// FIXME: We may be able to simplify this code using C++11 threading primitives, including std::call_once().
-static pthread_mutex_t fontLock;
+static RecursiveLock fontLock;
 
-static void initFontCacheLockOnce()
-{
-    pthread_mutexattr_t mutexAttribute;
-    pthread_mutexattr_init(&mutexAttribute);
-    pthread_mutexattr_settype(&mutexAttribute, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&fontLock, &mutexAttribute);
-    pthread_mutexattr_destroy(&mutexAttribute);
-}
-
-static pthread_once_t initFontLockControl = PTHREAD_ONCE_INIT;
-
-class FontLocker {
-    WTF_MAKE_NONCOPYABLE(FontLocker);
-public:
-    FontLocker()
-    {
-        pthread_once(&initFontLockControl, initFontCacheLockOnce);
-        int lockcode = pthread_mutex_lock(&fontLock);
-        ASSERT_WITH_MESSAGE_UNUSED(lockcode, !lockcode, "fontLock lock failed with code:%d", lockcode);    
-    }
-    ~FontLocker()
-    {
-        int lockcode = pthread_mutex_unlock(&fontLock);
-        ASSERT_WITH_MESSAGE_UNUSED(lockcode, !lockcode, "fontLock unlock failed with code:%d", lockcode);
-    }
-};
 #endif // PLATFORM(IOS)
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 FontCache& FontCache::singleton()
 {
@@ -127,7 +101,7 @@ public:
             return true;
         if (m_family.isNull() || other.m_family.isNull())
             return false;
-        return ASCIICaseInsensitiveHash::equal(m_family, other.m_family);
+        return FontCascadeDescription::familyNamesAreEqual(m_family, other.m_family);
     }
 
     FontDescriptionKey m_fontDescriptionKey;
@@ -141,7 +115,7 @@ struct FontPlatformDataCacheKeyHash {
     static unsigned hash(const FontPlatformDataCacheKey& fontKey)
     {
         IntegerHasher hasher;
-        hasher.add(ASCIICaseInsensitiveHash::hash(fontKey.m_family));
+        hasher.add(FontCascadeDescription::familyNameHash(fontKey.m_family));
         hasher.add(fontKey.m_fontDescriptionKey.computeHash());
         hasher.add(fontKey.m_fontFaceFeatures.hash());
         hasher.add(fontKey.m_fontFaceVariantSettings.uniqueValue());
@@ -232,7 +206,7 @@ FontPlatformData* FontCache::getCachedFontPlatformData(const FontDescription& fo
     const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, bool checkingAlternateName)
 {
 #if PLATFORM(IOS)
-    FontLocker fontLocker;
+    auto locker = holdLock(fontLock);
 #endif
     
 #if OS(WINDOWS) && ENABLE(OPENTYPE_VERTICAL)
@@ -350,17 +324,16 @@ RefPtr<Font> FontCache::fontForFamily(const FontDescription& fontDescription, co
     if (!m_purgeTimer.isActive())
         m_purgeTimer.startOneShot(0_s);
 
-    FontPlatformData* platformData = getCachedFontPlatformData(fontDescription, family, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, checkingAlternateName);
-    if (!platformData)
-        return nullptr;
+    if (auto* platformData = getCachedFontPlatformData(fontDescription, family, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, checkingAlternateName))
+        return fontForPlatformData(*platformData);
 
-    return fontForPlatformData(*platformData);
+    return nullptr;
 }
 
 Ref<Font> FontCache::fontForPlatformData(const FontPlatformData& platformData)
 {
 #if PLATFORM(IOS)
-    FontLocker fontLocker;
+    auto locker = holdLock(fontLock);
 #endif
     
     auto addResult = cachedFonts().add(platformData, nullptr);
@@ -393,7 +366,7 @@ void FontCache::purgeInactiveFontData(unsigned purgeCount)
     pruneSystemFallbackFonts();
 
 #if PLATFORM(IOS)
-    FontLocker fontLocker;
+    auto locker = holdLock(fontLock);
 #endif
 
     while (purgeCount) {
@@ -437,7 +410,7 @@ size_t FontCache::fontCount()
 size_t FontCache::inactiveFontCount()
 {
 #if PLATFORM(IOS)
-    FontLocker fontLocker;
+    auto locker = holdLock(fontLock);
 #endif
     unsigned count = 0;
     for (auto& font : cachedFonts().values()) {

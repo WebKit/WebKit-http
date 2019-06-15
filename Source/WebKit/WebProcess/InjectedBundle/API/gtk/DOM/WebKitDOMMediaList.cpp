@@ -22,10 +22,9 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
+#include <WebCore/DOMException.h>
 #include <WebCore/Document.h>
-#include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMMediaListPrivate.h"
 #include "WebKitDOMPrivate.h"
 #include "ConvertToUTF8String.h"
@@ -37,6 +36,8 @@
 typedef struct _WebKitDOMMediaListPrivate {
     RefPtr<WebCore::MediaList> coreObject;
 } WebKitDOMMediaListPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -67,9 +68,9 @@ WebKitDOMMediaList* wrapMediaList(WebCore::MediaList* coreObject)
 G_DEFINE_TYPE(WebKitDOMMediaList, webkit_dom_media_list, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_MEDIA_TEXT,
-    PROP_LENGTH,
+    DOM_MEDIA_LIST_PROP_0,
+    DOM_MEDIA_LIST_PROP_MEDIA_TEXT,
+    DOM_MEDIA_LIST_PROP_LENGTH,
 };
 
 static void webkit_dom_media_list_finalize(GObject* object)
@@ -87,7 +88,7 @@ static void webkit_dom_media_list_set_property(GObject* object, guint propertyId
     WebKitDOMMediaList* self = WEBKIT_DOM_MEDIA_LIST(object);
 
     switch (propertyId) {
-    case PROP_MEDIA_TEXT:
+    case DOM_MEDIA_LIST_PROP_MEDIA_TEXT:
         webkit_dom_media_list_set_media_text(self, g_value_get_string(value), nullptr);
         break;
     default:
@@ -101,10 +102,10 @@ static void webkit_dom_media_list_get_property(GObject* object, guint propertyId
     WebKitDOMMediaList* self = WEBKIT_DOM_MEDIA_LIST(object);
 
     switch (propertyId) {
-    case PROP_MEDIA_TEXT:
+    case DOM_MEDIA_LIST_PROP_MEDIA_TEXT:
         g_value_take_string(value, webkit_dom_media_list_get_media_text(self));
         break;
-    case PROP_LENGTH:
+    case DOM_MEDIA_LIST_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_media_list_get_length(self));
         break;
     default:
@@ -135,7 +136,7 @@ static void webkit_dom_media_list_class_init(WebKitDOMMediaListClass* requestCla
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_MEDIA_TEXT,
+        DOM_MEDIA_LIST_PROP_MEDIA_TEXT,
         g_param_spec_string(
             "media-text",
             "MediaList:media-text",
@@ -145,7 +146,7 @@ static void webkit_dom_media_list_class_init(WebKitDOMMediaListClass* requestCla
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_MEDIA_LIST_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "MediaList:length",
@@ -180,8 +181,8 @@ void webkit_dom_media_list_delete_medium(WebKitDOMMediaList* self, const gchar* 
     WTF::String convertedOldMedium = WTF::String::fromUTF8(oldMedium);
     auto result = item->deleteMedium(convertedOldMedium);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -193,11 +194,7 @@ void webkit_dom_media_list_append_medium(WebKitDOMMediaList* self, const gchar* 
     g_return_if_fail(!error || !*error);
     WebCore::MediaList* item = WebKit::core(self);
     WTF::String convertedNewMedium = WTF::String::fromUTF8(newMedium);
-    auto result = item->appendMedium(convertedNewMedium);
-    if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
-    }
+    item->appendMedium(convertedNewMedium);
 }
 
 gchar* webkit_dom_media_list_get_media_text(WebKitDOMMediaList* self)
@@ -219,8 +216,8 @@ void webkit_dom_media_list_set_media_text(WebKitDOMMediaList* self, const gchar*
     WTF::String convertedValue = WTF::String::fromUTF8(value);
     auto result = item->setMediaText(convertedValue);
     if (result.hasException()) {
-        WebCore::ExceptionCodeDescription ecdesc(result.releaseException().code());
-        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), ecdesc.code, ecdesc.name);
+        auto description = WebCore::DOMException::description(result.releaseException().code());
+        g_set_error_literal(error, g_quark_from_string("WEBKIT_DOM"), description.legacyCode, description.name);
     }
 }
 
@@ -233,3 +230,4 @@ gulong webkit_dom_media_list_get_length(WebKitDOMMediaList* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

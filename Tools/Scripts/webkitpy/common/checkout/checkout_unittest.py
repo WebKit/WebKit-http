@@ -121,11 +121,11 @@ _changelog6 = u"""2014-06-23  Daniel Bates  <dabates@apple.com>
         Reverted changesets:
 
         "[Win] Build fix after r134209"
-        http://trac.webkit.org/changeset/170340
+        https://trac.webkit.org/changeset/170340
 
         "[Win] Clean up and refactor WinLauncher"
         https://bugs.webkit.org/show_bug.cgi?id=134209
-        http://trac.webkit.org/changeset/170339
+        https://trac.webkit.org/changeset/170339
 """
 
 
@@ -215,7 +215,7 @@ Reviewed by Darin Adler.
 WebKit.xcconfig file.
 """
 
-        self.changelog_paths = map(self.filesystem.abspath, [self.filesystem.join("Source/WebKit", "ChangeLog")])
+        self.changelog_paths = map(self.filesystem.abspath, [self.filesystem.join("Source/WebKitLegacy", "ChangeLog")])
 
         self.mock_changelog([_changelog3])
         checkout = self.mock_checkout_for_test()
@@ -231,7 +231,7 @@ WebKit.xcconfig file.
 Patch by David Kilzer <ddkilzer@apple.com> on 2014-07-17
 Reviewed by Darin Adler.
 
-Source/WebKit:
+Source/WebKitLegacy:
 
 * WebKit.xcodeproj/project.pbxproj: Remove references to unused
 WebKit.xcconfig file.
@@ -241,7 +241,7 @@ LayoutTests:
 * Path/To/Complicated/File: Added.
 """
 
-        self.changelog_paths = map(self.filesystem.abspath, (self.filesystem.join("Source/WebKit", "ChangeLog"), self.filesystem.join("LayoutTests", "ChangeLog")))
+        self.changelog_paths = map(self.filesystem.abspath, (self.filesystem.join("Source/WebKitLegacy", "ChangeLog"), self.filesystem.join("LayoutTests", "ChangeLog")))
 
         self.mock_changelog((_changelog3, _changelog4))
         checkout = self.mock_checkout_for_test()
@@ -257,7 +257,7 @@ LayoutTests:
 Patch by David Kilzer <ddkilzer@apple.com> on 2014-07-17
 Reviewed by Darin Adler.
 
-Source/WebKit:
+Source/WebKitLegacy:
 
 * WebKit.xcodeproj/project.pbxproj: Remove references to unused
 WebKit.xcconfig file.
@@ -269,7 +269,7 @@ Filler change.
 * Path/To/Complicated/File: Added.
 """
 
-        self.changelog_paths = map(self.filesystem.abspath, (self.filesystem.join("Source/WebKit", "ChangeLog"), self.filesystem.join("LayoutTests", "ChangeLog")))
+        self.changelog_paths = map(self.filesystem.abspath, (self.filesystem.join("Source/WebKitLegacy", "ChangeLog"), self.filesystem.join("LayoutTests", "ChangeLog")))
 
         self.mock_changelog((_changelog3, _changelog5))
         checkout = self.mock_checkout_for_test()
@@ -286,11 +286,11 @@ Changeset r170339 broke the Apple Windows Debug and Release builds.
 Reverted changesets:
 
 "[Win] Build fix after r134209"
-http://trac.webkit.org/changeset/170340
+https://trac.webkit.org/changeset/170340
 
 "[Win] Clean up and refactor WinLauncher"
 https://bugs.webkit.org/show_bug.cgi?id=134209
-http://trac.webkit.org/changeset/170339
+https://trac.webkit.org/changeset/170339
 
 Patch by Daniel Bates <dabates@apple.com> on 2014-06-23
 """
@@ -312,11 +312,11 @@ Changeset r170339 broke the Apple Windows Debug and Release builds.
 Reverted changesets:
 
 "[Win] Build fix after r134209"
-http://trac.webkit.org/changeset/170340
+https://trac.webkit.org/changeset/170340
 
 "[Win] Clean up and refactor WinLauncher"
 https://bugs.webkit.org/show_bug.cgi?id=134209
-http://trac.webkit.org/changeset/170339
+https://trac.webkit.org/changeset/170339
 
 Patch by Daniel Bates <dabates@apple.com> on 2014-06-23
 """
@@ -418,18 +418,22 @@ class CheckoutTest(unittest.TestCase):
 
     def test_suggested_reviewers(self):
         def mock_changelog_entries_for_revision(revision, changed_files=None):
+            if revision == 27:
+                return []
             if revision % 2 == 0:
                 return [ChangeLogEntry(_changelog1entry1)]
             return [ChangeLogEntry(_changelog1entry2)]
 
         def mock_revisions_changing_file(path, limit=5):
-            if path.endswith("ChangeLog"):
+            if path.endswith('ChangeLog'):
                 return [3]
+            if path.endswith('file_with_empty_changelog'):
+                return [27]
             return [4, 8]
 
         checkout = self._make_checkout()
-        checkout._scm.checkout_root = "/foo/bar"
-        checkout._scm.changed_files = lambda git_commit: ["file1", "file2", "relative/path/ChangeLog"]
+        checkout._scm.checkout_root = '/foo/bar'
+        checkout._scm.changed_files = lambda git_commit: ['file1', 'file2', 'relative/path/ChangeLog', 'file_with_empty_changelog']
         checkout._scm.revisions_changing_file = mock_revisions_changing_file
         checkout.changelog_entries_for_revision = mock_changelog_entries_for_revision
         reviewers = checkout.suggested_reviewers(git_commit=None)

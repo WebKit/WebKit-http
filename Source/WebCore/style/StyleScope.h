@@ -78,9 +78,7 @@ public:
     void removeStyleSheetCandidateNode(Node&);
 
     String preferredStylesheetSetName() const { return m_preferredStylesheetSetName; }
-    String selectedStylesheetSetName() const { return m_selectedStylesheetSetName; }
     void setPreferredStylesheetSetName(const String&);
-    void setSelectedStylesheetSetName(const String&);
 
     void addPendingSheet(const Element&);
     void removePendingSheet(const Element&);
@@ -97,6 +95,9 @@ public:
 
     bool activeStyleSheetsContains(const CSSStyleSheet*) const;
 
+    void evaluateMediaQueriesForViewportChange();
+    void evaluateMediaQueriesForAccessibilitySettingsChange();
+
     // This is called when some stylesheet becomes newly enabled or disabled.
     void didChangeActiveStyleSheetCandidates();
     // This is called when contents of a stylesheet is mutated.
@@ -108,9 +109,14 @@ public:
     bool hasPendingUpdate() const { return m_pendingUpdate || m_hasDescendantWithPendingUpdate; }
     void flushPendingUpdate();
 
+#if ENABLE(XSLT)
+    Vector<Ref<ProcessingInstruction>> collectXSLTransforms();
+#endif
+
     StyleResolver& resolver();
     StyleResolver* resolverIfExists();
     void clearResolver();
+    void releaseMemory();
 
     const Document& document() const { return m_document; }
 
@@ -125,6 +131,8 @@ private:
     enum class UpdateType { ActiveSet, ContentsOrInterpretation };
     void updateActiveStyleSheets(UpdateType);
     void scheduleUpdate(UpdateType);
+
+    template <typename TestFunction> void evaluateMediaQueries(TestFunction&&);
 
     WEBCORE_EXPORT void flushPendingSelfUpdate();
     WEBCORE_EXPORT void flushPendingDescendantUpdates();
@@ -168,7 +176,6 @@ private:
     ListHashSet<Node*> m_styleSheetCandidateNodes;
 
     String m_preferredStylesheetSetName;
-    String m_selectedStylesheetSetName;
 
     bool m_usesStyleBasedEditability { false };
     bool m_isUpdatingStyleResolver { false };

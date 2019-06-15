@@ -49,6 +49,8 @@ std::unique_ptr<RenderThemeGadget> RenderThemeGadget::create(const RenderThemeGa
         return std::make_unique<RenderThemeIconGadget>(info, parent, siblings, position);
     case RenderThemeGadget::Type::Scrollbar:
         return std::make_unique<RenderThemeScrollbarGadget>(info, parent, siblings, position);
+    case RenderThemeGadget::Type::Button:
+        return std::make_unique<RenderThemeButtonGadget>(info, parent, siblings, position);
     }
 
     ASSERT_NOT_REACHED();
@@ -85,9 +87,7 @@ RenderThemeGadget::RenderThemeGadget(const RenderThemeGadget::Info& info, Render
     m_context = createStyleContext(path.get(), parent ? parent->context() : nullptr);
 }
 
-RenderThemeGadget::~RenderThemeGadget()
-{
-}
+RenderThemeGadget::~RenderThemeGadget() = default;
 
 GtkBorder RenderThemeGadget::marginBox() const
 {
@@ -358,13 +358,13 @@ RenderThemeScrollbarGadget::RenderThemeScrollbarGadget(const RenderThemeGadget::
     gtk_style_context_get_style(m_context.get(), "has-backward-stepper", &hasBackward, "has-forward-stepper", &hasForward,
         "has-secondary-backward-stepper", &hasSecondaryBackward, "has-secondary-forward-stepper", &hasSecondaryForward, nullptr);
     if (hasBackward)
-        m_steppers |= Steppers::Backward;
+        m_steppers.add(Steppers::Backward);
     if (hasForward)
-        m_steppers |= Steppers::Forward;
+        m_steppers.add(Steppers::Forward);
     if (hasSecondaryBackward)
-        m_steppers |= Steppers::SecondaryBackward;
+        m_steppers.add(Steppers::SecondaryBackward);
     if (hasSecondaryForward)
-        m_steppers |= Steppers::SecondaryForward;
+        m_steppers.add(Steppers::SecondaryForward);
 }
 
 void RenderThemeScrollbarGadget::renderStepper(cairo_t* cr, const FloatRect& paintRect, RenderThemeGadget* stepperGadget, GtkOrientation orientation, Steppers stepper)
@@ -386,6 +386,17 @@ void RenderThemeScrollbarGadget::renderStepper(cairo_t* cr, const FloatRect& pai
     int stepperSize = std::max(contentsRect.width(), contentsRect.height());
     gtk_render_arrow(stepperGadget->context(), cr, angle, contentsRect.x() + (contentsRect.width() - stepperSize) / 2,
         contentsRect.y() + (contentsRect.height() - stepperSize) / 2, stepperSize);
+}
+
+RenderThemeButtonGadget::RenderThemeButtonGadget(const Info& info, RenderThemeGadget* parent, const Vector<RenderThemeGadget::Info> siblings, unsigned position)
+    : RenderThemeGadget(info, parent, siblings, position)
+{
+}
+
+IntSize RenderThemeButtonGadget::minimumSize() const
+{
+    // Allow buttons to be smaller than the minimum size
+    return IntSize();
 }
 
 } // namespace WebCore

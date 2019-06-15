@@ -8,13 +8,12 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_AUDIO_PROCESSING_VAD_VAD_AUDIO_PROC_H_
-#define WEBRTC_MODULES_AUDIO_PROCESSING_VAD_VAD_AUDIO_PROC_H_
+#ifndef MODULES_AUDIO_PROCESSING_VAD_VAD_AUDIO_PROC_H_
+#define MODULES_AUDIO_PROCESSING_VAD_VAD_AUDIO_PROC_H_
 
 #include <memory>
 
-#include "webrtc/modules/audio_processing/vad/common.h"
-#include "webrtc/typedefs.h"
+#include "modules/audio_processing/vad/common.h"
 
 namespace webrtc {
 
@@ -90,4 +89,4 @@ class VadAudioProc {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_MODULES_AUDIO_PROCESSING_VAD_VAD_AUDIO_PROC_H_
+#endif  // MODULES_AUDIO_PROCESSING_VAD_VAD_AUDIO_PROC_H_

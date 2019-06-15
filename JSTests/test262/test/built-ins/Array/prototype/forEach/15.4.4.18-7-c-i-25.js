@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18-7-c-i-25
 description: >
     Array.prototype.forEach - This object is the Arguments object
@@ -9,18 +10,18 @@ description: >
     is less than number of parameters)
 ---*/
 
-        var testResult = false;
+var testResult = false;
 
-        function callbackfn(val, idx, obj) {
-            if (idx === 0) {
-                testResult = (val === 11);
-            }
-        }
+function callbackfn(val, idx, obj) {
+  if (idx === 0) {
+    testResult = (val === 11);
+  }
+}
 
-        var func = function (a, b) {
-            return Array.prototype.forEach.call(arguments, callbackfn);
-        };
+var func = function(a, b) {
+  return Array.prototype.forEach.call(arguments, callbackfn);
+};
 
-        func(11);
+func(11);
 
 assert(testResult, 'testResult !== true');

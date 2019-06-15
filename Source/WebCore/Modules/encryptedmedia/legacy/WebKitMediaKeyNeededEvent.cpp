@@ -28,12 +28,12 @@
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-#include <runtime/Uint8Array.h>
+#include <JavaScriptCore/Uint8Array.h>
 
 namespace WebCore {
 
 WebKitMediaKeyNeededEvent::WebKitMediaKeyNeededEvent(const AtomicString& type, Uint8Array* initData)
-    : Event(type, false, false)
+    : Event(type, CanBubble::No, IsCancelable::No)
     , m_initData(initData)
 {
 }
@@ -44,9 +44,7 @@ WebKitMediaKeyNeededEvent::WebKitMediaKeyNeededEvent(const AtomicString& type, c
 {
 }
 
-WebKitMediaKeyNeededEvent::~WebKitMediaKeyNeededEvent()
-{
-}
+WebKitMediaKeyNeededEvent::~WebKitMediaKeyNeededEvent() = default;
 
 EventInterface WebKitMediaKeyNeededEvent::eventInterface() const
 {

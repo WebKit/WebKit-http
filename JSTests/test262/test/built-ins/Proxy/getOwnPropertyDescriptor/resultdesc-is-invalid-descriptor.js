@@ -5,7 +5,7 @@ es6id: 9.5.5
 description: >
     Throws a TypeError exception if trap result and target property descriptors
     are not compatible.
-info: >
+info: |
     [[GetOwnProperty]] (P)
 
     ...
@@ -17,15 +17,17 @@ info: >
 var target = {};
 
 var p = new Proxy(target, {
-    getOwnPropertyDescriptor: function(t, prop) {
-        var foo = { bar: 1 };
+  getOwnPropertyDescriptor: function(t, prop) {
+    var foo = {
+      bar: 1
+    };
 
-        return Object.getOwnPropertyDescriptor(foo, "bar");
-    }
+    return Object.getOwnPropertyDescriptor(foo, "bar");
+  }
 });
 
 Object.preventExtensions(target);
 
 assert.throws(TypeError, function() {
-    Object.getOwnPropertyDescriptor(p, "bar");
+  Object.getOwnPropertyDescriptor(p, "bar");
 });

@@ -8,19 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_P2P_BASE_RELAYSERVER_H_
-#define WEBRTC_P2P_BASE_RELAYSERVER_H_
+#ifndef P2P_BASE_RELAYSERVER_H_
+#define P2P_BASE_RELAYSERVER_H_
 
 #include <map>
 #include <string>
 #include <vector>
 
-#include "webrtc/p2p/base/port.h"
-#include "webrtc/p2p/base/stun.h"
-#include "webrtc/base/asyncudpsocket.h"
-#include "webrtc/base/socketaddresspair.h"
-#include "webrtc/base/thread.h"
-#include "webrtc/base/timeutils.h"
+#include "p2p/base/port.h"
+#include "p2p/base/stun.h"
+#include "rtc_base/asyncudpsocket.h"
+#include "rtc_base/random.h"
+#include "rtc_base/socketaddresspair.h"
+#include "rtc_base/thread.h"
+#include "rtc_base/timeutils.h"
 
 namespace cricket {
 
@@ -29,12 +30,11 @@ class RelayServerConnection;
 
 // Relays traffic between connections to the server that are "bound" together.
 // All connections created with the same username/password are bound together.
-class RelayServer : public rtc::MessageHandler,
-                    public sigslot::has_slots<> {
+class RelayServer : public rtc::MessageHandler, public sigslot::has_slots<> {
  public:
   // Creates a server, which will use this thread to post messages to itself.
   explicit RelayServer(rtc::Thread* thread);
-  ~RelayServer();
+  ~RelayServer() override;
 
   rtc::Thread* thread() { return thread_; }
 
@@ -69,13 +69,13 @@ class RelayServer : public rtc::MessageHandler,
 
  private:
   typedef std::vector<rtc::AsyncPacketSocket*> SocketList;
-  typedef std::map<rtc::AsyncSocket*,
-                   cricket::ProtocolType> ServerSocketMap;
+  typedef std::map<rtc::AsyncSocket*, cricket::ProtocolType> ServerSocketMap;
   typedef std::map<std::string, RelayServerBinding*> BindingMap;
-  typedef std::map<rtc::SocketAddressPair,
-                   RelayServerConnection*> ConnectionMap;
+  typedef std::map<rtc::SocketAddressPair, RelayServerConnection*>
+      ConnectionMap;
 
   rtc::Thread* thread_;
+  webrtc::Random random_;
   bool log_bindings_;
   SocketList internal_sockets_;
   SocketList external_sockets_;
@@ -86,25 +86,31 @@ class RelayServer : public rtc::MessageHandler,
 
   // Called when a packet is received by the server on one of its sockets.
   void OnInternalPacket(rtc::AsyncPacketSocket* socket,
-                        const char* bytes, size_t size,
+                        const char* bytes,
+                        size_t size,
                         const rtc::SocketAddress& remote_addr,
                         const rtc::PacketTime& packet_time);
   void OnExternalPacket(rtc::AsyncPacketSocket* socket,
-                        const char* bytes, size_t size,
+                        const char* bytes,
+                        size_t size,
                         const rtc::SocketAddress& remote_addr,
                         const rtc::PacketTime& packet_time);
 
   void OnReadEvent(rtc::AsyncSocket* socket);
 
   // Processes the relevant STUN request types from the client.
-  bool HandleStun(const char* bytes, size_t size,
+  bool HandleStun(const char* bytes,
+                  size_t size,
                   const rtc::SocketAddress& remote_addr,
                   rtc::AsyncPacketSocket* socket,
-                  std::string* username, StunMessage* msg);
-  void HandleStunAllocate(const char* bytes, size_t size,
+                  std::string* username,
+                  StunMessage* msg);
+  void HandleStunAllocate(const char* bytes,
+                          size_t size,
                           const rtc::SocketAddressPair& ap,
                           rtc::AsyncPacketSocket* socket);
-  void HandleStun(RelayServerConnection* int_conn, const char* bytes,
+  void HandleStun(RelayServerConnection* int_conn,
+                  const char* bytes,
                   size_t size);
   void HandleStunAllocate(RelayServerConnection* int_conn,
                           const StunMessage& msg);
@@ -116,7 +122,7 @@ class RelayServer : public rtc::MessageHandler,
   void RemoveBinding(RelayServerBinding* binding);
 
   // Handle messages in our thread.
-  void OnMessage(rtc::Message *pmsg);
+  void OnMessage(rtc::Message* pmsg) override;
 
   // Called when the timer for checking lifetime times out.
   void OnTimeout(RelayServerBinding* binding);
@@ -147,8 +153,7 @@ class RelayServerConnection {
   // Sends a packet to the connected client.  If an address is provided, then
   // we make sure the internal client receives it, wrapping if necessary.
   void Send(const char* data, size_t size);
-  void Send(const char* data, size_t size,
-            const rtc::SocketAddress& ext_addr);
+  void Send(const char* data, size_t size, const rtc::SocketAddress& ext_addr);
 
   // Sends a STUN message to the connected client with no wrapping.
   void SendStun(const StunMessage& msg);
@@ -185,7 +190,7 @@ class RelayServerBinding : public rtc::MessageHandler {
                      const std::string& username,
                      const std::string& password,
                      int lifetime);
-  virtual ~RelayServerBinding();
+  ~RelayServerBinding() override;
 
   RelayServer* server() { return server_; }
   int lifetime() { return lifetime_; }
@@ -214,7 +219,7 @@ class RelayServerBinding : public rtc::MessageHandler {
       const rtc::SocketAddress& ext_addr);
 
   // MessageHandler:
-  void OnMessage(rtc::Message *pmsg);
+  void OnMessage(rtc::Message* pmsg) override;
 
  private:
   RelayServer* server_;
@@ -228,9 +233,9 @@ class RelayServerBinding : public rtc::MessageHandler {
 
   int lifetime_;
   int64_t last_used_;
-  // TODO: bandwidth
+  // TODO(?): bandwidth
 };
 
 }  // namespace cricket
 
-#endif  // WEBRTC_P2P_BASE_RELAYSERVER_H_
+#endif  // P2P_BASE_RELAYSERVER_H_

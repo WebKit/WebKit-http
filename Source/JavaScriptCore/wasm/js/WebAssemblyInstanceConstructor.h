@@ -36,7 +36,7 @@ class JSWebAssemblyInstance;
 class JSWebAssemblyModule;
 class WebAssemblyInstancePrototype;
 
-class WebAssemblyInstanceConstructor : public InternalFunction {
+class WebAssemblyInstanceConstructor final : public InternalFunction {
 public:
     typedef InternalFunction Base;
     static const unsigned StructureFlags = Base::StructureFlags | HasStaticPropertyTable;
@@ -53,8 +53,6 @@ protected:
 
 private:
     WebAssemblyInstanceConstructor(VM&, Structure*);
-    static ConstructType getConstructData(JSCell*, ConstructData&);
-    static CallType getCallData(JSCell*, CallData&);
 };
 
 } // namespace JSC

@@ -22,6 +22,8 @@
 
 #include "BidiContext.h"
 #include "InlineFlowBox.h"
+#include "RenderBox.h"
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -29,12 +31,13 @@ class EllipsisBox;
 class HitTestResult;
 class LogicalSelectionOffsetCaches;
 class RenderBlockFlow;
-class RenderRegion;
+class RenderFragmentContainer;
 
 struct BidiStatus;
 struct GapRects;
 
-class RootInlineBox : public InlineFlowBox {
+class RootInlineBox : public InlineFlowBox, public CanMakeWeakPtr<RootInlineBox> {
+    WTF_MAKE_ISO_ALLOCATED(RootInlineBox);
 public:
     explicit RootInlineBox(RenderBlockFlow&);
     virtual ~RootInlineBox();
@@ -63,11 +66,11 @@ public:
     LayoutUnit paginatedLineWidth() const { return m_paginatedLineWidth; }
     void setPaginatedLineWidth(LayoutUnit width) { m_paginatedLineWidth = width; }
 
-    // It should not be assumed the containingRegion() is always valid.
-    // It can also be nullptr if the flow has no region chain.
-    RenderRegion* containingRegion() const;
-    void setContainingRegion(RenderRegion&);
-    void clearContainingRegion();
+    // It should not be assumed the containingFragment() is always valid.
+    // It can also be nullptr if the flow has no fragment chain.
+    RenderFragmentContainer* containingFragment() const;
+    void setContainingFragment(RenderFragmentContainer&);
+    void clearContainingFragment();
 
     LayoutUnit selectionTop() const;
     LayoutUnit selectionBottom() const;
@@ -87,7 +90,7 @@ public:
         m_lineBottomWithLeading = bottomWithLeading;
     }
 
-    RenderObject* lineBreakObj() const { return m_lineBreakObj; }
+    RenderObject* lineBreakObj() const { return m_lineBreakObj.get(); }
     BidiStatus lineBreakBidiStatus() const;
     void setLineBreakInfo(RenderObject*, unsigned breakPos, const BidiStatus&);
 
@@ -135,13 +138,14 @@ public:
     InlineBox* closestLeafChildForPoint(const IntPoint&, bool onlyEditableLeaves);
     InlineBox* closestLeafChildForLogicalLeftPosition(int, bool onlyEditableLeaves = false);
 
+    using CleanLineFloatList = Vector<WeakPtr<RenderBox>>;
     void appendFloat(RenderBox& floatingBox)
     {
         ASSERT(!isDirty());
         if (m_floats)
-            m_floats->append(&floatingBox);
+            m_floats->append(makeWeakPtr(floatingBox));
         else
-            m_floats = std::make_unique<Vector<RenderBox*>>(1, &floatingBox);
+            m_floats = std::make_unique<CleanLineFloatList>(1, makeWeakPtr(floatingBox));
     }
 
     void removeFloat(RenderBox& floatingBox)
@@ -151,7 +155,7 @@ public:
         m_floats->remove(m_floats->find(&floatingBox));
     }
 
-    Vector<RenderBox*>* floatsPtr() { ASSERT(!isDirty()); return m_floats.get(); }
+    CleanLineFloatList* floatsPtr() { ASSERT(!isDirty()); return m_floats.get(); }
 
     void extractLineBoxFromRenderObject() final;
     void attachLineBoxToRenderObject() final;
@@ -207,12 +211,9 @@ private:
 
     LayoutUnit beforeAnnotationsAdjustment() const;
 
-    // This folds into the padding at the end of InlineFlowBox on 64-bit.
-    unsigned m_lineBreakPos;
-
     // Where this line ended.  The exact object and the position within that object are stored so that
     // we can create an InlineIterator beginning just after the end of this line.
-    RenderObject* m_lineBreakObj;
+    WeakPtr<RenderObject> m_lineBreakObj;
     RefPtr<BidiContext> m_lineBreakContext;
 
     LayoutUnit m_lineTop;
@@ -226,7 +227,9 @@ private:
 
     // Floats hanging off the line are pushed into this vector during layout. It is only
     // good for as long as the line has not been marked dirty.
-    std::unique_ptr<Vector<RenderBox*>> m_floats;
+    std::unique_ptr<CleanLineFloatList> m_floats;
+
+    unsigned m_lineBreakPos { 0 };
 };
 
 inline RootInlineBox* RootInlineBox::nextRootBox() const

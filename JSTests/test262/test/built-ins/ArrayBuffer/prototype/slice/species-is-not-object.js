@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer.prototype.slice
 es6id: 24.1.4.3
 description: >
   Throws a TypeError if species constructor is not an object.
-info: >
+info: |
   ArrayBuffer.prototype.slice ( start, end )
 
   ...
@@ -28,7 +29,9 @@ var speciesConstructor = {};
 var arrayBuffer = new ArrayBuffer(8);
 arrayBuffer.constructor = speciesConstructor;
 
-function callSlice() { arrayBuffer.slice(); }
+function callSlice() {
+  arrayBuffer.slice();
+}
 
 speciesConstructor[Symbol.species] = true;
 assert.throws(TypeError, callSlice, "`constructor[Symbol.species]` value is Boolean");

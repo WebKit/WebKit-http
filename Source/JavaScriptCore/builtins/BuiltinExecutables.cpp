@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,24 +36,38 @@ namespace JSC {
 
 BuiltinExecutables::BuiltinExecutables(VM& vm)
     : m_vm(vm)
-#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
+#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, overrideName, length) , m_##name##Source(makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
     JSC_FOREACH_BUILTIN_CODE(INITIALIZE_BUILTIN_SOURCE_MEMBERS)
 #undef EXPOSE_BUILTIN_STRINGS
 {
 }
 
+SourceCode BuiltinExecutables::defaultConstructorSourceCode(ConstructorKind constructorKind)
+{
+    switch (constructorKind) {
+    case ConstructorKind::None:
+        break;
+    case ConstructorKind::Base: {
+        static NeverDestroyed<const String> baseConstructorCode(MAKE_STATIC_STRING_IMPL("(function () { })"));
+        return makeSource(baseConstructorCode, { });
+    }
+    case ConstructorKind::Extends: {
+        static NeverDestroyed<const String> derivedConstructorCode(MAKE_STATIC_STRING_IMPL("(function (...args) { super(...args); })"));
+        return makeSource(derivedConstructorCode, { });
+    }
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return SourceCode();
+}
+
 UnlinkedFunctionExecutable* BuiltinExecutables::createDefaultConstructor(ConstructorKind constructorKind, const Identifier& name)
 {
-    static NeverDestroyed<const String> baseConstructorCode(MAKE_STATIC_STRING_IMPL("(function () { })"));
-    static NeverDestroyed<const String> derivedConstructorCode(MAKE_STATIC_STRING_IMPL("(function (...args) { super(...args); })"));
-
     switch (constructorKind) {
     case ConstructorKind::None:
         break;
     case ConstructorKind::Base:
-        return createExecutable(m_vm, makeSource(baseConstructorCode, { }), name, constructorKind, ConstructAbility::CanConstruct);
     case ConstructorKind::Extends:
-        return createExecutable(m_vm, makeSource(derivedConstructorCode, { }), name, constructorKind, ConstructAbility::CanConstruct);
+        return createExecutable(m_vm, defaultConstructorSourceCode(constructorKind), name, constructorKind, ConstructAbility::CanConstruct);
     }
     ASSERT_NOT_REACHED();
     return nullptr;
@@ -71,41 +85,174 @@ UnlinkedFunctionExecutable* createBuiltinExecutable(VM& vm, const SourceCode& co
 
 UnlinkedFunctionExecutable* BuiltinExecutables::createExecutable(VM& vm, const SourceCode& source, const Identifier& name, ConstructorKind constructorKind, ConstructAbility constructAbility)
 {
-    JSTextPosition positionBeforeLastNewline;
-    ParserError error;
-    bool isParsingDefaultConstructor = constructorKind != ConstructorKind::None;
-    JSParserBuiltinMode builtinMode = isParsingDefaultConstructor ? JSParserBuiltinMode::NotBuiltin : JSParserBuiltinMode::Builtin;
-    UnlinkedFunctionKind kind = isParsingDefaultConstructor ? UnlinkedNormalFunction : UnlinkedBuiltinFunction;
-    SourceCode parentSourceOverride = isParsingDefaultConstructor ? source : SourceCode();
-    std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
-        &vm, source, Identifier(), builtinMode,
-        JSParserStrictMode::NotStrict, JSParserScriptMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error,
-        &positionBeforeLastNewline, constructorKind);
+    // Someone should get mad at me for writing this code. But, it prevents us from recursing into
+    // the parser, and hence, from throwing stack overflow when parsing a builtin.
+    StringView view = source.view();
+    RELEASE_ASSERT(!view.isNull());
+    RELEASE_ASSERT(view.is8Bit());
+    auto* characters = view.characters8();
+    RELEASE_ASSERT(view.length() >= 15); // strlen("(function (){})") == 15
+    RELEASE_ASSERT(characters[0] ==  '(');
+    RELEASE_ASSERT(characters[1] ==  'f');
+    RELEASE_ASSERT(characters[2] ==  'u');
+    RELEASE_ASSERT(characters[3] ==  'n');
+    RELEASE_ASSERT(characters[4] ==  'c');
+    RELEASE_ASSERT(characters[5] ==  't');
+    RELEASE_ASSERT(characters[6] ==  'i');
+    RELEASE_ASSERT(characters[7] ==  'o');
+    RELEASE_ASSERT(characters[8] ==  'n');
+    RELEASE_ASSERT(characters[9] ==  ' ');
+    RELEASE_ASSERT(characters[10] == '(');
 
-    if (!program) {
-        dataLog("Fatal error compiling builtin function '", name.string(), "': ", error.message());
-        CRASH();
+    JSTokenLocation start;
+    start.line = -1;
+    start.lineStartOffset = std::numeric_limits<unsigned>::max();
+    start.startOffset = 10;
+    start.endOffset = std::numeric_limits<unsigned>::max();
+
+    JSTokenLocation end;
+    end.line = 1;
+    end.lineStartOffset = 0;
+    end.startOffset = 1;
+    end.endOffset = std::numeric_limits<unsigned>::max();
+
+    unsigned startColumn = 10; // strlen("function (") == 10
+    int functionKeywordStart = 1; // (f
+    int functionNameStart = 10;
+    int parametersStart = 10;
+    bool isInStrictContext = false;
+    bool isArrowFunctionBodyExpression = false;
+
+    unsigned parameterCount;
+    {
+        unsigned i = 11;
+        unsigned commas = 0;
+        bool sawOneParam = false;
+        bool hasRestParam = false;
+        while (true) {
+            ASSERT(i < view.length());
+            if (characters[i] == ')')
+                break;
+
+            if (characters[i] == ',')
+                ++commas;
+            else if (!Lexer<LChar>::isWhiteSpace(characters[i]))
+                sawOneParam = true;
+
+            if (i + 2 < view.length() && characters[i] == '.' && characters[i + 1] == '.' && characters[i + 2] == '.') {
+                hasRestParam = true;
+                i += 2;
+            }
+
+            ++i;
+        }
+
+        if (commas)
+            parameterCount = commas + 1;
+        else if (sawOneParam)
+            parameterCount = 1;
+        else
+            parameterCount = 0;
+
+        if (hasRestParam) {
+            RELEASE_ASSERT(parameterCount);
+            --parameterCount;
+        }
     }
 
-    StatementNode* exprStatement = program->singleStatement();
-    RELEASE_ASSERT(exprStatement);
-    RELEASE_ASSERT(exprStatement->isExprStatement());
-    ExpressionNode* funcExpr = static_cast<ExprStatementNode*>(exprStatement)->expr();
-    RELEASE_ASSERT(funcExpr);
-    RELEASE_ASSERT(funcExpr->isFuncExprNode());
-    FunctionMetadataNode* metadata = static_cast<FuncExprNode*>(funcExpr)->metadata();
-    RELEASE_ASSERT(!program->hasCapturedVariables());
-    
-    metadata->setEndPosition(positionBeforeLastNewline);
-    RELEASE_ASSERT(metadata);
-    RELEASE_ASSERT(metadata->ident().isNull());
-    
-    // This function assumes an input string that would result in a single anonymous function expression.
-    metadata->setEndPosition(positionBeforeLastNewline);
-    RELEASE_ASSERT(metadata);
-    metadata->overrideName(name);
+    unsigned lineCount = 0;
+    unsigned endColumn = 0;
+    unsigned offsetOfLastNewline = 0;
+    std::optional<unsigned> offsetOfSecondToLastNewline;
+    for (unsigned i = 0; i < view.length(); ++i) {
+        if (characters[i] == '\n') {
+            if (lineCount)
+                offsetOfSecondToLastNewline = offsetOfLastNewline;
+            ++lineCount;
+            endColumn = 0;
+            offsetOfLastNewline = i;
+        } else
+            ++endColumn;
+
+        if (!isInStrictContext && (characters[i] == '"' || characters[i] == '\'')) {
+            const unsigned useStrictLength = strlen("use strict");
+            if (i + 1 + useStrictLength < view.length()) {
+                if (!memcmp(characters + i + 1, "use strict", useStrictLength)) {
+                    isInStrictContext = true;
+                    i += 1 + useStrictLength;
+                }
+            }
+        }
+    }
+
+    unsigned positionBeforeLastNewlineLineStartOffset = offsetOfSecondToLastNewline ? *offsetOfSecondToLastNewline + 1 : 0;
+
+    int closeBraceOffsetFromEnd = 1;
+    while (true) {
+        if (characters[view.length() - closeBraceOffsetFromEnd] == '}')
+            break;
+        ++closeBraceOffsetFromEnd;
+    }
+
+    JSTextPosition positionBeforeLastNewline;
+    positionBeforeLastNewline.line = lineCount;
+    positionBeforeLastNewline.offset = offsetOfLastNewline;
+    positionBeforeLastNewline.lineStartOffset = positionBeforeLastNewlineLineStartOffset;
+
+    SourceCode newSource = source.subExpression(10, view.length() - closeBraceOffsetFromEnd, 0, 10);
+    bool isBuiltinDefaultClassConstructor = constructorKind != ConstructorKind::None;
+    UnlinkedFunctionKind kind = isBuiltinDefaultClassConstructor ? UnlinkedNormalFunction : UnlinkedBuiltinFunction;
+
+    FunctionMetadataNode metadata(
+        start, end, startColumn, endColumn, functionKeywordStart, functionNameStart, parametersStart,
+        isInStrictContext, constructorKind, constructorKind == ConstructorKind::Extends ? SuperBinding::Needed : SuperBinding::NotNeeded,
+        parameterCount, SourceParseMode::NormalFunctionMode, isArrowFunctionBodyExpression);
+
+    metadata.finishParsing(newSource, Identifier(), FunctionMode::FunctionExpression);
+    metadata.overrideName(name);
+    metadata.setEndPosition(positionBeforeLastNewline);
+
+    if (!ASSERT_DISABLED || Options::validateBytecode()) {
+        JSTextPosition positionBeforeLastNewlineFromParser;
+        ParserError error;
+        JSParserBuiltinMode builtinMode = isBuiltinDefaultClassConstructor ? JSParserBuiltinMode::NotBuiltin : JSParserBuiltinMode::Builtin;
+        std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
+            &vm, source, Identifier(), builtinMode,
+            JSParserStrictMode::NotStrict, JSParserScriptMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error,
+            &positionBeforeLastNewlineFromParser, constructorKind);
+
+        if (program) {
+            StatementNode* exprStatement = program->singleStatement();
+            RELEASE_ASSERT(exprStatement);
+            RELEASE_ASSERT(exprStatement->isExprStatement());
+            ExpressionNode* funcExpr = static_cast<ExprStatementNode*>(exprStatement)->expr();
+            RELEASE_ASSERT(funcExpr);
+            RELEASE_ASSERT(funcExpr->isFuncExprNode());
+            FunctionMetadataNode* metadataFromParser = static_cast<FuncExprNode*>(funcExpr)->metadata();
+            RELEASE_ASSERT(!program->hasCapturedVariables());
+            
+            metadataFromParser->setEndPosition(positionBeforeLastNewlineFromParser);
+            RELEASE_ASSERT(metadataFromParser);
+            RELEASE_ASSERT(metadataFromParser->ident().isNull());
+            
+            // This function assumes an input string that would result in a single anonymous function expression.
+            metadataFromParser->setEndPosition(positionBeforeLastNewlineFromParser);
+            RELEASE_ASSERT(metadataFromParser);
+            metadataFromParser->overrideName(name);
+            metadataFromParser->setEndPosition(positionBeforeLastNewlineFromParser);
+
+            if (metadata != *metadataFromParser || positionBeforeLastNewlineFromParser != positionBeforeLastNewline) {
+                WTFLogAlways("Metadata of parser and hand rolled parser don't match\n");
+                CRASH();
+            }
+        } else {
+            RELEASE_ASSERT(error.isValid());
+            RELEASE_ASSERT(error.type() == ParserError::StackOverflow);
+        }
+    }
+
     VariableEnvironment dummyTDZVariables;
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, kind, constructAbility, JSParserScriptMode::Classic, dummyTDZVariables, DerivedContextType::None, WTFMove(parentSourceOverride));
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, &metadata, kind, constructAbility, JSParserScriptMode::Classic, dummyTDZVariables, DerivedContextType::None, isBuiltinDefaultClassConstructor);
     return functionExecutable;
 }
 
@@ -114,11 +261,15 @@ void BuiltinExecutables::finalize(Handle<Unknown>, void* context)
     static_cast<Weak<UnlinkedFunctionExecutable>*>(context)->clear();
 }
 
-#define DEFINE_BUILTIN_EXECUTABLES(name, functionName, length) \
+#define DEFINE_BUILTIN_EXECUTABLES(name, functionName, overrideName, length) \
 UnlinkedFunctionExecutable* BuiltinExecutables::name##Executable() \
 {\
-    if (!m_##name##Executable)\
-        m_##name##Executable = Weak<UnlinkedFunctionExecutable>(createBuiltinExecutable(m_##name##Source, m_vm.propertyNames->builtinNames().functionName##PublicName(), s_##name##ConstructAbility), this, &m_##name##Executable);\
+    if (!m_##name##Executable) {\
+        Identifier executableName = m_vm.propertyNames->builtinNames().functionName##PublicName();\
+        if (overrideName)\
+            executableName = Identifier::fromString(&m_vm, overrideName);\
+        m_##name##Executable = Weak<UnlinkedFunctionExecutable>(createBuiltinExecutable(m_##name##Source, executableName, s_##name##ConstructAbility), this, &m_##name##Executable);\
+    }\
     return m_##name##Executable.get();\
 }
 JSC_FOREACH_BUILTIN_CODE(DEFINE_BUILTIN_EXECUTABLES)

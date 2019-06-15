@@ -32,12 +32,12 @@
 #import <AVFoundation/AVMetadataItem.h>
 #import <Foundation/NSString.h>
 #import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/ArrayBuffer.h>
+#import <JavaScriptCore/JSArrayBuffer.h>
 #import <JavaScriptCore/JSContextRef.h>
 #import <JavaScriptCore/JSObjectRef.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <objc/runtime.h>
-#import <runtime/ArrayBuffer.h>
-#import <runtime/JSArrayBuffer.h>
 #import <wtf/SoftLinking.h>
 #import <wtf/text/Base64.h>
 
@@ -190,7 +190,7 @@ static JSValue *jsValueWithDictionaryInContext(NSDictionary *dictionary, JSConte
         if (!value)
             continue;
 
-        JSStringRef name = JSStringCreateWithCFString((CFStringRef)key);
+        JSStringRef name = JSStringCreateWithCFString((__bridge CFStringRef)key);
         JSObjectSetProperty([context JSGlobalContextRef], resultObject, name, [value JSValueRef], 0, &exception);
         JSStringRelease(name);
         if (exception)

@@ -3,8 +3,11 @@
 
 /*---
 info: array.forEach can be frozen while in progress
+esid: sec-array.prototype.foreach
 es5id: 15.4.4.18_A1
 description: Freezes array.forEach during a forEach to see if it works
 ---*/
 
-['z'].forEach(function(){ Object.freeze(Array.prototype.forEach); });
+['z'].forEach(function() {
+  Object.freeze(Array.prototype.forEach);
+});

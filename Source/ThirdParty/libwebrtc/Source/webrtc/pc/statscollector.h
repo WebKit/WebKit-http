@@ -11,21 +11,21 @@
 // This file contains a class used for gathering statistics from an ongoing
 // libjingle PeerConnection.
 
-#ifndef WEBRTC_PC_STATSCOLLECTOR_H_
-#define WEBRTC_PC_STATSCOLLECTOR_H_
+#ifndef PC_STATSCOLLECTOR_H_
+#define PC_STATSCOLLECTOR_H_
 
 #include <map>
+#include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
-#include "webrtc/api/mediastreaminterface.h"
-#include "webrtc/api/peerconnectioninterface.h"
-#include "webrtc/api/statstypes.h"
-#include "webrtc/pc/webrtcsession.h"
+#include "api/mediastreaminterface.h"
+#include "api/peerconnectioninterface.h"
+#include "api/statstypes.h"
+#include "pc/peerconnectioninternal.h"
 
 namespace webrtc {
-
-class PeerConnection;
 
 // Conversion function to convert candidate type string to the corresponding one
 // from  enum RTCStatsIceCandidateType.
@@ -43,12 +43,13 @@ class StatsCollector {
  public:
   // The caller is responsible for ensuring that the pc outlives the
   // StatsCollector instance.
-  explicit StatsCollector(PeerConnection* pc);
+  explicit StatsCollector(PeerConnectionInternal* pc);
   virtual ~StatsCollector();
 
   // Adds a MediaStream with tracks that can be used as a |selector| in a call
   // to GetStats.
   void AddStream(MediaStreamInterface* stream);
+  void AddTrack(MediaStreamTrackInterface* track);
 
   // Adds a local audio track that is used for getting some voice statistics.
   void AddLocalAudioTrack(AudioTrackInterface* audio_track, uint32_t ssrc);
@@ -68,8 +69,7 @@ class StatsCollector {
   // of filling in |reports|.  As is, there's a requirement that the caller
   // uses |reports| immediately without allowing any async activity on
   // the thread (message handling etc) and then discard the results.
-  void GetStats(MediaStreamTrackInterface* track,
-                StatsReports* reports);
+  void GetStats(MediaStreamTrackInterface* track, StatsReports* reports);
 
   // Prepare a local or remote SSRC report for the given ssrc. Used internally
   // in the ExtractStatsFromList template.
@@ -96,33 +96,35 @@ class StatsCollector {
 
   // Helper method for creating IceCandidate report. |is_local| indicates
   // whether this candidate is local or remote.
-  StatsReport* AddCandidateReport(const cricket::Candidate& candidate,
-                                  bool local);
+  StatsReport* AddCandidateReport(
+      const cricket::CandidateStats& candidate_stats,
+      bool local);
 
   // Adds a report for this certificate and every certificate in its chain, and
-  // returns the leaf certificate's report (|cert|'s report).
-  StatsReport* AddCertificateReports(const rtc::SSLCertificate* cert);
+  // returns the leaf certificate's report (|cert_stats|'s report).
+  StatsReport* AddCertificateReports(
+      std::unique_ptr<rtc::SSLCertificateStats> cert_stats);
 
   StatsReport* AddConnectionInfoReport(const std::string& content_name,
-      int component, int connection_id,
-      const StatsReport::Id& channel_report_id,
-      const cricket::ConnectionInfo& info);
+                                       int component,
+                                       int connection_id,
+                                       const StatsReport::Id& channel_report_id,
+                                       const cricket::ConnectionInfo& info);
 
   void ExtractDataInfo();
   void ExtractSessionInfo();
   void ExtractBweInfo();
-  void ExtractVoiceInfo();
-  void ExtractVideoInfo(PeerConnectionInterface::StatsOutputLevel level);
+  void ExtractMediaInfo();
   void ExtractSenderInfo();
-  void BuildSsrcToTransportId();
   webrtc::StatsReport* GetReport(const StatsReport::StatsType& type,
                                  const std::string& id,
                                  StatsReport::Direction direction);
 
   // Helper method to get stats from the local audio tracks.
-  void UpdateStatsFromExistingLocalAudioTracks();
+  void UpdateStatsFromExistingLocalAudioTracks(bool has_remote_tracks);
   void UpdateReportFromAudioTrack(AudioTrackInterface* track,
-                                  StatsReport* report);
+                                  StatsReport* report,
+                                  bool has_remote_tracks);
 
   // Helper method to get the id for the track identified by ssrc.
   // |direction| tells if the track is for sending or receiving.
@@ -137,9 +139,8 @@ class StatsCollector {
   StatsCollection reports_;
   TrackIdMap track_ids_;
   // Raw pointer to the peer connection the statistics are gathered from.
-  PeerConnection* const pc_;
+  PeerConnectionInternal* const pc_;
   double stats_gathering_started_;
-  ProxyTransportMap proxy_to_transport_;
 
   // TODO(tommi): We appear to be holding on to raw pointers to reference
   // counted objects?  We should be using scoped_refptr here.
@@ -150,4 +151,4 @@ class StatsCollector {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_PC_STATSCOLLECTOR_H_
+#endif  // PC_STATSCOLLECTOR_H_

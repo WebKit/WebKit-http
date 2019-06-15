@@ -35,7 +35,6 @@
 #include <WebCore/FrameView.h>
 #include <WebCore/GraphicsLayerTextureMapper.h>
 #include <WebCore/HWndDC.h>
-#include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
 #include <WebCore/Settings.h>
 #include <WebCore/SystemInfo.h>
@@ -43,7 +42,7 @@
 #include <WebCore/TextureMapperGL.h>
 #include <WebCore/TextureMapperLayer.h>
 
-#if USE(OPENGL_ES_2)
+#if USE(OPENGL_ES)
 #define GL_GLEXT_PROTOTYPES 1
 #include <GLES2/gl2.h>
 #else
@@ -319,8 +318,7 @@ bool AcceleratedCompositingContext::acceleratedCompositingAvailable()
     IntRect targetRect(0, 0, width, height);
     IntPoint offset(0, 0);
     int bytesPerLine = width * 4;
-    BitmapTexture::UpdateContentsFlag flags = BitmapTexture::UpdateCanModifyOriginalImageData;
-    texture->updateContents(data, targetRect, offset, bytesPerLine, flags);
+    texture->updateContents(data, targetRect, offset, bytesPerLine);
 
     // Render texture.
     textureMapper->beginPainting();
@@ -403,7 +401,7 @@ void AcceleratedCompositingContext::layerFlushTimerFired()
         scheduleLayerFlush();
 }
 
-void AcceleratedCompositingContext::paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& rectToPaint, GraphicsLayerPaintFlags)
+void AcceleratedCompositingContext::paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& rectToPaint, GraphicsLayerPaintBehavior)
 {
     context.save();
     context.clip(rectToPaint);

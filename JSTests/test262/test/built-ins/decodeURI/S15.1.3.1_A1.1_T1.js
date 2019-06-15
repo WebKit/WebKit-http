@@ -4,6 +4,8 @@
 /*---
 info: If string.charAt(k) equal "%" and k + 2 >= string.length, throw URIError
 es5id: 15.1.3.1_A1.1_T1
+es6id: 18.2.6.2
+esid: sec-decodeuri-encodeduri
 description: Complex tests
 ---*/
 
@@ -13,7 +15,7 @@ var result = true;
 try {
   decodeURI("%");
   result = false;
-} catch(e) {
+} catch (e) {
   if ((e instanceof URIError) !== true) {
     result = false;
   }
@@ -23,7 +25,7 @@ try {
 try {
   decodeURI("%A");
   result = false;
-} catch(e) {
+} catch (e) {
   if ((e instanceof URIError) !== true) {
     result = false;
   }
@@ -33,7 +35,7 @@ try {
 try {
   decodeURI("%1");
   result = false;
-} catch(e) {
+} catch (e) {
   if ((e instanceof URIError) !== true) {
     result = false;
   }
@@ -43,7 +45,7 @@ try {
 try {
   decodeURI("% ");
   result = false;
-} catch(e) {
+} catch (e) {
   if ((e instanceof URIError) !== true) {
     result = false;
   }

@@ -2,14 +2,18 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Check For Statement for automatic semicolon insertion.
     If automatic insertion semicolon would become one of the two semicolons in the header of a For Statement.
     Don`t use semicolons
 es5id: 7.9_A6.3_T1
 description: For header is (\n)
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 //CHECK#1
 for(

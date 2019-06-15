@@ -33,7 +33,9 @@
 
 namespace JSC {
 
+namespace ShadowChickenInternal {
 static const bool verbose = false;
+}
 
 void ShadowChicken::Packet::dump(PrintStream& out) const
 {
@@ -86,7 +88,7 @@ void ShadowChicken::log(VM& vm, ExecState* exec, const Packet& packet)
 
 void ShadowChicken::update(VM& vm, ExecState* exec)
 {
-    if (verbose) {
+    if (ShadowChickenInternal::verbose) {
         dataLog("Running update on: ", *this, "\n");
         WTFReportBacktrace();
     }
@@ -112,13 +114,13 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
         }
     }
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("Highest point since last time: ", RawPointer(highestPointSinceLastTime), "\n");
     
     while (!m_stack.isEmpty() && (m_stack.last().frame < highestPointSinceLastTime || m_stack.last().isTailDeleted))
         m_stack.removeLast();
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Revised stack: ", listDump(m_stack), "\n");
     
     // It's possible that the top of stack is now tail-deleted. The stack no longer contains any
@@ -141,7 +143,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
     }
 
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Revised stack: ", listDump(m_stack), "\n");
     
     // The log-based and exec-based rules require that ShadowChicken was enabled. The point of
@@ -169,7 +171,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
             });
         stackRightNow.reverse();
         
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Stack right now: ", listDump(stackRightNow), "\n");
         
         unsigned shadowIndex = 0;
@@ -194,7 +196,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
         }
         m_stack.resize(shadowIndex);
         
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Revised stack: ", listDump(m_stack), "\n");
     }
     
@@ -208,17 +210,17 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
         }
     }
     
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Highest point since last time: ", RawPointer(highestPointSinceLastTime), "\n");
     
     // Set everything up so that we know where the top frame is in the log.
     unsigned indexInLog = logCursorIndex;
     
     auto advanceIndexInLogTo = [&] (CallFrame* frame, JSObject* callee, CallFrame* callerFrame) -> bool {
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Advancing to frame = ", RawPointer(frame), " from indexInLog = ", indexInLog, "\n");
         if (indexInLog > logCursorIndex) {
-            if (verbose)
+            if (ShadowChickenInternal::verbose)
                 dataLog("    Bailing.\n");
             return false;
         }
@@ -244,7 +246,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
             if (packet.isPrologue() && packet.frame == frame
                 && (!callee || packet.callee == callee)
                 && (!callerFrame || packet.callerFrame == callerFrame)) {
-                if (verbose)
+                if (ShadowChickenInternal::verbose)
                     dataLog("    Found at indexInLog = ", indexInLog, "\n");
                 return true;
             }
@@ -266,7 +268,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
         // It seems like the latter option is less harmful, so that's what we do.
         indexInLog = oldIndexInLog;
         
-        if (verbose)
+        if (ShadowChickenInternal::verbose)
             dataLog("    Didn't find it.\n");
         return false;
     };
@@ -286,10 +288,10 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
             }
 
             CallFrame* callFrame = visitor->callFrame();
-            if (verbose)
+            if (ShadowChickenInternal::verbose)
                 dataLog("    Examining ", RawPointer(callFrame), "\n");
             if (callFrame == highestPointSinceLastTime) {
-                if (verbose)
+                if (ShadowChickenInternal::verbose)
                     dataLog("    Bailing at ", RawPointer(callFrame), " because it's the highest point since last time.\n");
                 return StackVisitor::Done;
             }
@@ -298,13 +300,16 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
             bool isTailDeleted = false;
             JSScope* scope = nullptr;
             CodeBlock* codeBlock = callFrame->codeBlock();
-            if (codeBlock && codeBlock->wasCompiledWithDebuggingOpcodes() && codeBlock->scopeRegister().isValid()) {
-                scope = callFrame->scope(codeBlock->scopeRegister().offset());
-                RELEASE_ASSERT(scope->inherits(vm, JSScope::info()));
+            JSValue scopeValue = callFrame->bytecodeOffset() && codeBlock && codeBlock->scopeRegister().isValid()
+                ? callFrame->registers()[codeBlock->scopeRegister().offset()].jsValue()
+                : jsUndefined();
+            if (!scopeValue.isUndefined() && codeBlock->wasCompiledWithDebuggingOpcodes()) {
+                scope = jsCast<JSScope*>(scopeValue.asCell());
+                RELEASE_ASSERT(scope->inherits<JSScope>(vm));
             } else if (foundFrame) {
                 scope = m_log[indexInLog].scope;
                 if (scope)
-                    RELEASE_ASSERT(scope->inherits(vm, JSScope::info()));
+                    RELEASE_ASSERT(scope->inherits<JSScope>(vm));
             }
             toPush.append(Frame(jsCast<JSObject*>(visitor->callee().asCell()), callFrame, isTailDeleted, callFrame->thisValue(), scope, codeBlock, callFrame->callSiteIndex()));
 
@@ -312,7 +317,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
                 // This condition protects us from the case where advanceIndexInLogTo didn't find
                 // anything.
                 && m_log[indexInLog].frame == toPush.last().frame) {
-                if (verbose)
+                if (ShadowChickenInternal::verbose)
                     dataLog("    Going to loop through to find tail deleted frames with indexInLog = ", indexInLog, " and push-stack top = ", toPush.last(), "\n");
                 for (;;) {
                     ASSERT(m_log[indexInLog].frame == toPush.last().frame);
@@ -337,7 +342,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
                     indexInLog--; // Skip over the tail packet.
                     
                     if (!advanceIndexInLogTo(tailPacket.frame, nullptr, nullptr)) {
-                        if (verbose)
+                        if (ShadowChickenInternal::verbose)
                             dataLog("Can't find prologue packet for tail: ", RawPointer(tailPacket.frame), "\n");
                         // We were unable to locate the prologue packet for this tail packet.
                         // This is rare but can happen in a situation like:
@@ -349,7 +354,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
                     }
                     Packet packet = m_log[indexInLog];
                     bool isTailDeleted = true;
-                    RELEASE_ASSERT(tailPacket.scope->inherits(vm, JSScope::info()));
+                    RELEASE_ASSERT(tailPacket.scope->inherits<JSScope>(vm));
                     toPush.append(Frame(packet.callee, packet.frame, isTailDeleted, tailPacket.thisValue, tailPacket.scope, tailPacket.codeBlock, tailPacket.callSiteIndex));
                 }
             }
@@ -357,7 +362,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
             return StackVisitor::Continue;
         });
 
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    Pushing: ", listDump(toPush), "\n");
     
     for (unsigned i = toPush.size(); i--;)
@@ -373,7 +378,7 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
     } else
         m_logCursor = m_log;
 
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    After pushing: ", *this, "\n");
 
     // Remove tail frames until the number of tail deleted frames is small enough.
@@ -395,11 +400,11 @@ void ShadowChicken::update(VM& vm, ExecState* exec)
                 }
                 m_stack[dstIndex++] = frame;
             }
-            m_stack.resize(dstIndex);
+            m_stack.shrink(dstIndex);
         }
     }
 
-    if (verbose)
+    if (ShadowChickenInternal::verbose)
         dataLog("    After clean-up: ", *this, "\n");
 }
 

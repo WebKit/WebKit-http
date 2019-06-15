@@ -1,3 +1,1563 @@
+2018-09-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Allow port specific options on gtest
+        https://bugs.webkit.org/show_bug.cgi?id=189313
+
+        Reviewed by Alex Christensen.
+
+        Allows a port to configure options within gtest for its platform.
+        The library type can be set otherwise it defaults to shared. Also the
+        compile definitions are propogated to TestWebKitAPI through a global
+        property.
+
+        * gtest/CMakeLists.txt:
+        * gtest/PlatformWin.cmake: Added.
+
+2018-09-04  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Update googletest
+        https://bugs.webkit.org/show_bug.cgi?id=175722
+
+        Reviewed by Brent Fulgham.
+
+        * gtest/:
+        Update to 1.8.1.
+
+        * gtest/CMakeLists.txt:
+        * gtest/xcode/:
+        Keep our versions of these build files, making any necessary additive updates
+        and removing WTF/JSC dependencies so that we stop forking third-party source.
+
+2018-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Update xdgmime
+        https://bugs.webkit.org/show_bug.cgi?id=187727
+
+        Reviewed by Carlos Garcia Campos.
+
+        * xdgmime/README:
+        * xdgmime/README.webkit:
+        * xdgmime/src/xdgmime.c:
+        (_xdg_mime_mime_type_subclass):
+        * xdgmime/src/xdgmimecache.c:
+        (_xdg_mime_cache_new_from_file):
+        (_xdg_mime_cache_get_mime_type_for_file):
+        (_xdg_mime_cache_mime_type_subclass):
+
+2018-07-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Another memory issue in xdgmime
+        https://bugs.webkit.org/show_bug.cgi?id=187239
+
+        Reviewed by Carlos Garcia Campos.
+
+        Sync the end of xdg_mime_get_mime_type_for_file() with _xdg_mime_cache_get_mime_type_for_file()
+        to avoid a memory issue.
+
+        I'm pretty sure this code is never executed by either Chromium or WebKit, but I'm not
+        comfortable with leaving it broken.
+
+        * xdgmime/README.webkit:
+        * xdgmime/src/xdgmime.c:
+        (xdg_mime_get_mime_type_for_file):
+
+2018-06-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix off-by-one error in xdg_mime_get_simple_globs
+        https://bugs.webkit.org/show_bug.cgi?id=186554
+
+        Reviewed by Daniel Bates.
+
+        We have an off-by-one error here in some code that was added for WebKit. (This is not an
+        issue with upstream xdgmime.)
+
+        No new tests. This problem is caught by TestDownloads, but only when running with ASan
+        enabled.
+
+        * xdgmime/src/xdgmimecache.c:
+        (get_simple_globs):
+        * xdgmime/src/xdgmimeglob.c:
+        (get_simple_globs):
+
+2018-06-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        MIME type subclass check should guard against small strings
+        https://bugs.webkit.org/show_bug.cgi?id=186977
+
+        Reviewed by Carlos Garcia Campos.
+
+        Sadly, this code is duplicated between two different files because it is not good.
+
+        * xdgmime/README.webkit:
+        * xdgmime/src/xdgmime.c:
+        (ends_with):
+        (xdg_mime_is_super_type):
+        * xdgmime/src/xdgmimecache.c:
+        (ends_with):
+        (is_super_type):
+
+2018-06-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Update xdgmime
+        https://bugs.webkit.org/show_bug.cgi?id=186907
+
+        Reviewed by Carlos Garcia Campos.
+
+        Only one change, fixes https://bugs.freedesktop.org/show_bug.cgi?id=97372.
+
+        * xdgmime/README.webkit:
+        * xdgmime/src/xdgmimeint.c:
+        (_xdg_binary_or_text_fallback):
+
+2018-05-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r232052.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Use more C++17"
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+        https://trac.webkit.org/changeset/232052
+
+2018-05-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use more C++17
+        https://bugs.webkit.org/show_bug.cgi?id=185176
+
+        Reviewed by JF Bastien.
+
+        * gtest/xcode/Config/General.xcconfig:
+
+2018-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Use C++17 in MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=185232
+
+        Reviewed by Alex Christensen.
+
+        Use std::tuple instead of std::tr1::tuple since std::tr1::tuple is removed in C++17 MSVC.
+        In a subsequent patch, we will upgrade gtest too.
+
+        * gtest/include/gtest/internal/gtest-param-util-generated.h:
+        (testing::internal::CartesianProductHolder2::operator ParamGenerator< ::std::tuple<T1, T2> > const):
+        (testing::internal::CartesianProductHolder3::operator ParamGenerator< ::std::tuple<T1, T2, T3> > const):
+        (testing::internal::CartesianProductHolder4::operator ParamGenerator< ::std::tuple<T1, T2, T3, T4> > const):
+        (testing::internal::CartesianProductHolder5::operator ParamGenerator< ::std::tuple<T1, T2, T3, T4, T5> > const):
+        (testing::internal::CartesianProductHolder6::operator ParamGenerator< ::std::tuple<T1, T2, T3, T4, T5, T6> > const):
+        (testing::internal::CartesianProductHolder7:: const):
+        (testing::internal::CartesianProductHolder8:: const):
+        (testing::internal::CartesianProductHolder9:: const):
+        (testing::internal::CartesianProductHolder10:: const):
+        (testing::internal::CartesianProductHolder2::operator ParamGenerator< ::std::tr1::tuple<T1, T2> > const): Deleted.
+        (testing::internal::CartesianProductHolder3::operator ParamGenerator< ::std::tr1::tuple<T1, T2, T3> > const): Deleted.
+        (testing::internal::CartesianProductHolder4::operator ParamGenerator< ::std::tr1::tuple<T1, T2, T3, T4> > const): Deleted.
+        (testing::internal::CartesianProductHolder5::operator ParamGenerator< ::std::tr1::tuple<T1, T2, T3, T4, T5> > const): Deleted.
+        (testing::internal::CartesianProductHolder6::operator ParamGenerator< ::std::tr1::tuple<T1, T2, T3, T4, T5, T6> > const): Deleted.
+        * gtest/include/gtest/internal/gtest-tuple.h:
+
+2018-05-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix some -Wstring-op-truncation warnings
+        https://bugs.webkit.org/show_bug.cgi?id=185496
+
+        Reviewed by Alex Christensen.
+
+        Disable this warning when building gtest.
+
+        * gtest/CMakeLists.txt:
+
+2018-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build cleanly with GCC 8 and ICU 60
+        https://bugs.webkit.org/show_bug.cgi?id=185462
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * xdgmime/CMakeLists.txt: Silence -Wno-cast-function-type. I'm not fighting xdg-mime.
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK][JSCONLY] Use capstone disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=185283
+
+        Reviewed by Michael Catanzaro.
+
+        Add capstone to ThirdParty. We build capstone as a static library,
+        and link it against JSC. We only build disassembler for target architecture.
+        So for MIPS target, we only enable MIPS part of capstone.
+
+        We also remove unnecessary architectures in capstone, XCore, PowerPC, SystemZ, etc.
+        This is simply done by deleting these architecture directories.
+
+        We pick "next" branch instead of "master" branch since "next" branch is actively
+        developed.
+
+        * capstone/CMakeLists.txt: Added.
+        * capstone/Source/.appveyor.yml: Added.
+        * capstone/Source/.gitattributes: Added.
+        * capstone/Source/.gitignore: Added.
+        * capstone/Source/.travis.yml: Added.
+        * capstone/Source/CMakeLists.txt: Added.
+        * capstone/Source/COMPILE.TXT: Added.
+        * capstone/Source/COMPILE_CMAKE.TXT: Added.
+        * capstone/Source/COMPILE_MSVC.TXT: Added.
+        * capstone/Source/CREDITS.TXT: Added.
+        * capstone/Source/ChangeLog-capstone: Added.
+        * capstone/Source/HACK.TXT: Added.
+        * capstone/Source/LEB128.h: Added.
+        (decodeULEB128):
+        * capstone/Source/LICENSE.TXT: Added.
+        * capstone/Source/LICENSE_LLVM.TXT: Added.
+        * capstone/Source/MCDisassembler.h: Added.
+        * capstone/Source/MCFixedLenDisassembler.h: Added.
+        * capstone/Source/MCInst.c: Added.
+        (MCInst_Init):
+        (MCInst_clear):
+        (MCInst_insert0):
+        (MCInst_setOpcode):
+        (MCInst_setOpcodePub):
+        (MCInst_getOpcode):
+        (MCInst_getOpcodePub):
+        (MCInst_getOperand):
+        (MCInst_getNumOperands):
+        (MCInst_addOperand2):
+        (MCOperand_Init):
+        (MCOperand_isValid):
+        (MCOperand_isReg):
+        (MCOperand_isImm):
+        (MCOperand_isFPImm):
+        (MCOperand_getReg):
+        (MCOperand_setReg):
+        (MCOperand_getImm):
+        (MCOperand_setImm):
+        (MCOperand_getFPImm):
+        (MCOperand_setFPImm):
+        (MCOperand_CreateReg1):
+        (MCOperand_CreateReg0):
+        (MCOperand_CreateImm1):
+        (MCOperand_CreateImm0):
+        * capstone/Source/MCInst.h: Added.
+        * capstone/Source/MCInstrDesc.c: Added.
+        (MCOperandInfo_isPredicate):
+        (MCOperandInfo_isOptionalDef):
+        * capstone/Source/MCInstrDesc.h: Added.
+        * capstone/Source/MCRegisterInfo.c: Added.
+        (MCRegisterInfo_InitMCRegisterInfo):
+        (DiffListIterator_init):
+        (DiffListIterator_getVal):
+        (DiffListIterator_next):
+        (DiffListIterator_isValid):
+        (MCRegisterInfo_getMatchingSuperReg):
+        (MCRegisterInfo_getSubReg):
+        (MCRegisterInfo_getRegClass):
+        (MCRegisterClass_contains):
+        * capstone/Source/MCRegisterInfo.h: Added.
+        * capstone/Source/Makefile: Added.
+        * capstone/Source/MathExtras.h: Added.
+        (Hi_32):
+        (Lo_32):
+        (isUIntN):
+        (isMask_32):
+        (isMask_64):
+        (isShiftedMask_32):
+        (isShiftedMask_64):
+        (isPowerOf2_32):
+        (CountLeadingZeros_32):
+        (CountLeadingOnes_32):
+        (CountLeadingZeros_64):
+        (CountLeadingOnes_64):
+        (CountTrailingZeros_32):
+        (CountTrailingOnes_32):
+        (CountTrailingZeros_64):
+        (CountTrailingOnes_64):
+        (CountPopulation_32):
+        (CountPopulation_64):
+        (Log2_32):
+        (Log2_64):
+        (Log2_32_Ceil):
+        (Log2_64_Ceil):
+        (GreatestCommonDivisor64):
+        (BitsToDouble):
+        (BitsToFloat):
+        (DoubleToBits):
+        (FloatToBits):
+        (MinAlign):
+        (NextPowerOf2):
+        (RoundUpToAlignment):
+        (OffsetToAlignment):
+        (abs64):
+        (SignExtend32):
+        (SignExtend64):
+        (countLeadingZeros):
+        * capstone/Source/README.md: Added.
+        * capstone/Source/RELEASE_NOTES: Added.
+        * capstone/Source/SStream.c: Added.
+        (SStream_Init):
+        (SStream_concat0):
+        (SStream_concat):
+        (printInt64Bang):
+        (printUInt64Bang):
+        (printInt64):
+        (printInt32BangDec):
+        (printInt32Bang):
+        (printInt32):
+        (printUInt32Bang):
+        (printUInt32):
+        * capstone/Source/SStream.h: Added.
+        * capstone/Source/TODO: Added.
+        * capstone/Source/arch/ARM/ARMAddressingModes.h: Added.
+        (ARM_AM_getAddrOpcStr):
+        (ARM_AM_getShiftOpcStr):
+        (ARM_AM_getShiftOpcEncoding):
+        (ARM_AM_getAMSubModeStr):
+        (rotr32):
+        (rotl32):
+        (getSORegOpc):
+        (getSORegOffset):
+        (ARM_AM_getSORegShOp):
+        (getSOImmValImm):
+        (getSOImmValRot):
+        (getSOImmValRotate):
+        (getSOImmVal):
+        (isSOImmTwoPartVal):
+        (getSOImmTwoPartFirst):
+        (getSOImmTwoPartSecond):
+        (getThumbImmValShift):
+        (isThumbImmShiftedVal):
+        (getThumbImm16ValShift):
+        (isThumbImm16ShiftedVal):
+        (getThumbImmNonShiftedVal):
+        (getT2SOImmValSplatVal):
+        (getT2SOImmValRotateVal):
+        (getT2SOImmVal):
+        (getT2SOImmValRotate):
+        (isT2SOImmTwoPartVal):
+        (getT2SOImmTwoPartFirst):
+        (getT2SOImmTwoPartSecond):
+        (ARM_AM_getAM2Opc):
+        (getAM2Offset):
+        (getAM2Op):
+        (getAM2ShiftOpc):
+        (getAM2IdxMode):
+        (getAM3Opc):
+        (getAM3Offset):
+        (getAM3Op):
+        (getAM3IdxMode):
+        (getAM4SubMode):
+        (getAM4ModeImm):
+        (ARM_AM_getAM5Opc):
+        (ARM_AM_getAM5Offset):
+        (ARM_AM_getAM5Op):
+        (createNEONModImm):
+        (getNEONModImmOpCmode):
+        (getNEONModImmVal):
+        (ARM_AM_decodeNEONModImm):
+        (getFPImmFloat):
+        * capstone/Source/arch/ARM/ARMBaseInfo.h: Added.
+        (ARMCC_getOppositeCondition):
+        (ARMCC_ARMCondCodeToString):
+        (ARM_PROC_IFlagsToString):
+        (ARM_PROC_IModToString):
+        (ARM_MB_MemBOptToString):
+        (ARM_ISB_InstSyncBOptToString):
+        (isARMLowRegister):
+        (ARMII_AddrModeToString):
+        * capstone/Source/arch/ARM/ARMDisassembler.c: Added.
+        (ITStatus_push_back):
+        (ITStatus_instrInITBlock):
+        (ITStatus_instrLastInITBlock):
+        (ITStatus_getITCC):
+        (ITStatus_advanceITState):
+        (ITStatus_setITState):
+        (Check):
+        (ARM_getFeatureBits):
+        (DecodePredicateOperand):
+        (ARM_init):
+        (checkDecodedInstruction):
+        (_ARM_getInstruction):
+        (AddThumb1SBit):
+        (AddThumbPredicate):
+        (UpdateThumbVFPPredicate):
+        (_Thumb_getInstruction):
+        (Thumb_getInstruction):
+        (ARM_getInstruction):
+        (DecodeGPRnopcRegisterClass):
+        (DecodeGPRwithAPSRRegisterClass):
+        (DecodetGPRRegisterClass):
+        (DecodetcGPRRegisterClass):
+        (DecoderGPRRegisterClass):
+        (DecodeDPRRegisterClass):
+        (DecodeDPR_8RegisterClass):
+        (DecodeDPR_VFP2RegisterClass):
+        (DecodeDPairRegisterClass):
+        (DecodeCCOutOperand):
+        (DecodeSORegImmOperand):
+        (DecodeSORegRegOperand):
+        (DecodeRegListOperand):
+        (DecodeSPRRegListOperand):
+        (DecodeDPRRegListOperand):
+        (DecodeBitfieldMaskOperand):
+        (DecodeCopMemInstruction):
+        (DecodeAddrMode2IdxInstruction):
+        (DecodeSORegMemOperand):
+        (DecodeAddrMode3Instruction):
+        (DecodeRFEInstruction):
+        (DecodeQADDInstruction):
+        (DecodeMemMultipleWritebackInstruction):
+        (DecodeCPSInstruction):
+        (DecodeT2CPSInstruction):
+        (DecodeT2MOVTWInstruction):
+        (DecodeArmMOVTWInstruction):
+        (DecodeSMLAInstruction):
+        (DecodeAddrModeImm12Operand):
+        (DecodeAddrMode5Operand):
+        (DecodeAddrMode7Operand):
+        (DecodeT2BInstruction):
+        (DecodeBranchImmInstruction):
+        (DecodeAddrMode6Operand):
+        (DecodeVLDInstruction):
+        (DecodeVLDST1Instruction):
+        (DecodeVLDST2Instruction):
+        (DecodeVLDST3Instruction):
+        (DecodeVLDST4Instruction):
+        (DecodeVSTInstruction):
+        (DecodeVLD1DupInstruction):
+        (DecodeVLD2DupInstruction):
+        (DecodeVLD3DupInstruction):
+        (DecodeVLD4DupInstruction):
+        (DecodeNEONModImmInstruction):
+        (DecodeVSHLMaxInstruction):
+        (DecodeShiftRight8Imm):
+        (DecodeShiftRight16Imm):
+        (DecodeShiftRight32Imm):
+        (DecodeShiftRight64Imm):
+        (DecodeTBLInstruction):
+        (DecodeThumbAddSpecialReg):
+        (DecodeThumbBROperand):
+        (DecodeT2BROperand):
+        (DecodeThumbCmpBROperand):
+        (DecodeThumbAddrModeRR):
+        (DecodeThumbAddrModeIS):
+        (DecodeThumbAddrModePC):
+        (DecodeThumbAddrModeSP):
+        (DecodeT2AddrModeSOReg):
+        (DecodeT2LoadShift):
+        (DecodeT2LoadImm8):
+        (DecodeT2LoadImm12):
+        (DecodeT2LoadT):
+        (DecodeT2LoadLabel):
+        (DecodeT2Imm8S4):
+        (DecodeT2AddrModeImm8s4):
+        (DecodeT2AddrModeImm0_1020s4):
+        (DecodeT2Imm8):
+        (DecodeT2AddrModeImm8):
+        (DecodeT2LdStPre):
+        (DecodeT2AddrModeImm12):
+        (DecodeThumbAddSPImm):
+        (DecodeThumbAddSPReg):
+        (DecodeThumbCPS):
+        (DecodePostIdxReg):
+        (DecodeThumbBLXOffset):
+        (DecodeCoprocessor):
+        (DecodeThumbTableBranch):
+        (DecodeThumb2BCCInstruction):
+        (DecodeT2SOImm):
+        (DecodeThumbBCCTargetOperand):
+        (DecodeThumbBLTargetOperand):
+        (DecodeMemBarrierOption):
+        (DecodeInstSyncBarrierOption):
+        (DecodeMSRMask):
+        (DecodeBankedReg):
+        (DecodeDoubleRegLoad):
+        (DecodeDoubleRegStore):
+        (DecodeLDRPreImm):
+        (DecodeLDRPreReg):
+        (DecodeSTRPreImm):
+        (DecodeSTRPreReg):
+        (DecodeVLD1LN):
+        (DecodeVST1LN):
+        (DecodeVLD2LN):
+        (DecodeVST2LN):
+        (DecodeVLD3LN):
+        (DecodeVST3LN):
+        (DecodeVLD4LN):
+        (DecodeVST4LN):
+        (DecodeVMOVSRR):
+        (DecodeVMOVRRS):
+        (DecodeIT):
+        (DecodeT2LDRDPreInstruction):
+        (DecodeT2STRDPreInstruction):
+        (DecodeT2Adr):
+        (DecodeT2ShifterImmOperand):
+        (DecodeSwap):
+        (DecodeVCVTD):
+        (DecodeVCVTQ):
+        (DecodeLDR):
+        (DecodeMRRC2):
+        * capstone/Source/arch/ARM/ARMDisassembler.h: Added.
+        * capstone/Source/arch/ARM/ARMGenAsmWriter.inc: Added.
+        * capstone/Source/arch/ARM/ARMGenDisassemblerTables.inc: Added.
+        * capstone/Source/arch/ARM/ARMGenInstrInfo.inc: Added.
+        * capstone/Source/arch/ARM/ARMGenRegisterInfo.inc: Added.
+        * capstone/Source/arch/ARM/ARMGenSubtargetInfo.inc: Added.
+        * capstone/Source/arch/ARM/ARMInstPrinter.c: Added.
+        (get_op_access):
+        (set_mem_access):
+        (op_addImm):
+        (ARM_getRegName):
+        (translateShiftImm):
+        (printRegImmShift):
+        (printRegName):
+        (ARM_printInst):
+        (printOperand):
+        (printThumbLdrLabelOperand):
+        (printSORegRegOperand):
+        (printSORegImmOperand):
+        (printAM2PreOrOffsetIndexOp):
+        (printAddrModeTBB):
+        (printAddrModeTBH):
+        (printAddrMode2Operand):
+        (printAddrMode2OffsetOperand):
+        (printAM3PreOrOffsetIndexOp):
+        (printAddrMode3Operand):
+        (printAddrMode3OffsetOperand):
+        (printPostIdxImm8Operand):
+        (printPostIdxRegOperand):
+        (printPostIdxImm8s4Operand):
+        (printAddrMode5Operand):
+        (printAddrMode6Operand):
+        (printAddrMode7Operand):
+        (printAddrMode6OffsetOperand):
+        (printBitfieldInvMaskImmOperand):
+        (printMemBOption):
+        (printInstSyncBOption):
+        (printShiftImmOperand):
+        (printPKHLSLShiftImm):
+        (printPKHASRShiftImm):
+        (printRegisterList):
+        (printGPRPairOperand):
+        (printSetendOperand):
+        (printCPSIMod):
+        (printCPSIFlag):
+        (printMSRMaskOperand):
+        (printBankedRegOperand):
+        (printPredicateOperand):
+        (printMandatoryPredicateOperand):
+        (printSBitModifierOperand):
+        (printNoHashImmediate):
+        (printPImmediate):
+        (printCImmediate):
+        (printCoprocOptionImm):
+        (printAdrLabelOperand):
+        (printThumbS4ImmOperand):
+        (printThumbSRImm):
+        (printThumbITMask):
+        (printThumbAddrModeRROperand):
+        (printThumbAddrModeImm5SOperand):
+        (printThumbAddrModeImm5S1Operand):
+        (printThumbAddrModeImm5S2Operand):
+        (printThumbAddrModeImm5S4Operand):
+        (printThumbAddrModeSPOperand):
+        (printT2SOOperand):
+        (printAddrModeImm12Operand):
+        (printT2AddrModeImm8Operand):
+        (printT2AddrModeImm8s4Operand):
+        (printT2AddrModeImm0_1020s4Operand):
+        (printT2AddrModeImm8OffsetOperand):
+        (printT2AddrModeImm8s4OffsetOperand):
+        (printT2AddrModeSoRegOperand):
+        (printFPImmOperand):
+        (printNEONModImmOperand):
+        (printImmPlusOneOperand):
+        (printRotImmOperand):
+        (printModImmOperand):
+        (printFBits16):
+        (printFBits32):
+        (printVectorIndex):
+        (printVectorListOne):
+        (printVectorListTwo):
+        (printVectorListTwoSpaced):
+        (printVectorListThree):
+        (printVectorListFour):
+        (printVectorListOneAllLanes):
+        (printVectorListTwoAllLanes):
+        (printVectorListThreeAllLanes):
+        (printVectorListFourAllLanes):
+        (printVectorListTwoSpacedAllLanes):
+        (printVectorListThreeSpacedAllLanes):
+        (printVectorListFourSpacedAllLanes):
+        (printVectorListThreeSpaced):
+        (printVectorListFourSpaced):
+        (ARM_addVectorDataType):
+        (ARM_addVectorDataSize):
+        (ARM_addReg):
+        (ARM_addUserMode):
+        (ARM_addSysReg):
+        * capstone/Source/arch/ARM/ARMInstPrinter.h: Added.
+        * capstone/Source/arch/ARM/ARMMapping.c: Added.
+        (ARM_reg_name2):
+        (ARM_insn_name):
+        (ARM_rel_branch):
+        (ARM_blx_to_arm_mode):
+        (ARM_reg_access):
+        * capstone/Source/arch/ARM/ARMMapping.h: Added.
+        * capstone/Source/arch/ARM/ARMMappingInsn.inc: Added.
+        * capstone/Source/arch/ARM/ARMMappingInsnOp.inc: Added.
+        * capstone/Source/arch/ARM/ARMModule.c: Added.
+        (init):
+        (option):
+        (ARM_enable):
+        * capstone/Source/arch/Mips/MipsDisassembler.c: Added.
+        (getFeatureBits):
+        (Mips_init):
+        (readInstruction16):
+        (readInstruction32):
+        (MipsDisassembler_getInstruction):
+        (Mips_getInstruction):
+        (getReg):
+        (DecodeINSVE_DF_4):
+        (DecodeAddiGroupBranch_4):
+        (DecodeDaddiGroupBranch_4):
+        (DecodeBlezlGroupBranch_4):
+        (DecodeBgtzlGroupBranch_4):
+        (DecodeBgtzGroupBranch_4):
+        (DecodeBlezGroupBranch_4):
+        (DecodeCPU16RegsRegisterClass):
+        (DecodeGPR64RegisterClass):
+        (DecodeGPRMM16RegisterClass):
+        (DecodeGPRMM16ZeroRegisterClass):
+        (DecodeGPRMM16MovePRegisterClass):
+        (DecodeGPR32RegisterClass):
+        (DecodePtrRegisterClass):
+        (DecodeDSPRRegisterClass):
+        (DecodeFGR64RegisterClass):
+        (DecodeFGR32RegisterClass):
+        (DecodeCCRRegisterClass):
+        (DecodeFCCRegisterClass):
+        (DecodeCCRegisterClass):
+        (DecodeFGRCCRegisterClass):
+        (DecodeMem):
+        (DecodeCacheOp):
+        (DecodeCacheOpMM):
+        (DecodeCacheOpR6):
+        (DecodeSyncI):
+        (DecodeMSA128Mem):
+        (DecodeMemMMImm4):
+        (DecodeMemMMSPImm5Lsl2):
+        (DecodeMemMMGPImm7Lsl2):
+        (DecodeMemMMReglistImm4Lsl2):
+        (DecodeMemMMImm12):
+        (DecodeMemMMImm16):
+        (DecodeFMem):
+        (DecodeFMem2):
+        (DecodeFMem3):
+        (DecodeFMemCop2R6):
+        (DecodeSpecial3LlSc):
+        (DecodeHWRegsRegisterClass):
+        (DecodeAFGR64RegisterClass):
+        (DecodeACC64DSPRegisterClass):
+        (DecodeHI32DSPRegisterClass):
+        (DecodeLO32DSPRegisterClass):
+        (DecodeMSA128BRegisterClass):
+        (DecodeMSA128HRegisterClass):
+        (DecodeMSA128WRegisterClass):
+        (DecodeMSA128DRegisterClass):
+        (DecodeMSACtrlRegisterClass):
+        (DecodeCOP2RegisterClass):
+        (DecodeBranchTarget):
+        (DecodeJumpTarget):
+        (DecodeBranchTarget21):
+        (DecodeBranchTarget26):
+        (DecodeBranchTarget7MM):
+        (DecodeBranchTarget10MM):
+        (DecodeBranchTargetMM):
+        (DecodeJumpTargetMM):
+        (DecodeAddiur2Simm7):
+        (DecodeUImm6Lsl2):
+        (DecodeLiSimm7):
+        (DecodeSimm4):
+        (DecodeSimm16):
+        (DecodeLSAImm):
+        (DecodeInsSize):
+        (DecodeExtSize):
+        (DecodeSimm19Lsl2):
+        (DecodeSimm18Lsl3):
+        (DecodeSimm9SP):
+        (DecodeANDI16Imm):
+        (DecodeUImm5lsl2):
+        (DecodeRegListOperand):
+        (DecodeRegListOperand16):
+        (DecodeMovePRegPair):
+        (DecodeSimm23Lsl2):
+        * capstone/Source/arch/Mips/MipsDisassembler.h: Added.
+        * capstone/Source/arch/Mips/MipsGenAsmWriter.inc: Added.
+        * capstone/Source/arch/Mips/MipsGenDisassemblerTables.inc: Added.
+        * capstone/Source/arch/Mips/MipsGenInstrInfo.inc: Added.
+        * capstone/Source/arch/Mips/MipsGenRegisterInfo.inc: Added.
+        * capstone/Source/arch/Mips/MipsGenSubtargetInfo.inc: Added.
+        * capstone/Source/arch/Mips/MipsInstPrinter.c: Added.
+        (set_mem_access):
+        (isReg):
+        (MipsFCCToString):
+        (printRegName):
+        (Mips_printInst):
+        (printOperand):
+        (printUnsignedImm):
+        (printUnsignedImm8):
+        (printMemOperand):
+        (printMemOperandEA):
+        (printFCCOperand):
+        (printRegisterPair):
+        (printAlias1):
+        (printAlias2):
+        (printAlias):
+        (printRegisterList):
+        * capstone/Source/arch/Mips/MipsInstPrinter.h: Added.
+        * capstone/Source/arch/Mips/MipsMapping.c: Added.
+        (Mips_get_insn_id):
+        (Mips_group_name):
+        (Mips_map_insn):
+        (Mips_map_register):
+        * capstone/Source/arch/Mips/MipsMapping.h: Added.
+        * capstone/Source/arch/Mips/MipsMappingInsn.inc: Added.
+        * capstone/Source/arch/Mips/MipsModule.c: Added.
+        (init):
+        (option):
+        (Mips_enable):
+        * capstone/Source/capstone.pc.in: Added.
+        * capstone/Source/config.mk: Added.
+        * capstone/Source/cs.c: Added.
+        (cs_kern_os_calloc):
+        (cs_version):
+        (cs_support):
+        (cs_errno):
+        (cs_strerror):
+        (cs_open):
+        (cs_close):
+        (fill_insn):
+        (skipdata_size):
+        (cs_option):
+        (skipdata_opstr):
+        (cs_disasm):
+        (cs_disasm_ex):
+        (cs_free):
+        (cs_malloc):
+        (cs_disasm_iter):
+        (cs_reg_name):
+        (cs_insn_name):
+        (cs_group_name):
+        (cs_insn_group):
+        (cs_reg_read):
+        (cs_reg_write):
+        (cs_op_count):
+        (cs_op_index):
+        (cs_regs_access):
+        * capstone/Source/cs_priv.h: Added.
+        * capstone/Source/functions.mk: Added.
+        * capstone/Source/include/capstone/arm.h: Added.
+        * capstone/Source/include/capstone/arm64.h: Added.
+        * capstone/Source/include/capstone/capstone.h: Added.
+        * capstone/Source/include/capstone/evm.h: Added.
+        * capstone/Source/include/capstone/m680x.h: Added.
+        * capstone/Source/include/capstone/m68k.h: Added.
+        * capstone/Source/include/capstone/mips.h: Added.
+        * capstone/Source/include/capstone/platform.h: Added.
+        * capstone/Source/include/capstone/ppc.h: Added.
+        * capstone/Source/include/capstone/sparc.h: Added.
+        * capstone/Source/include/capstone/systemz.h: Added.
+        * capstone/Source/include/capstone/tms320c64x.h: Added.
+        * capstone/Source/include/capstone/x86.h: Added.
+        * capstone/Source/include/capstone/xcore.h: Added.
+        * capstone/Source/include/windowsce/intrin.h: Added.
+        * capstone/Source/include/windowsce/stdint.h: Added.
+        * capstone/Source/make.sh: Added.
+        * capstone/Source/nmake-x86.bat: Added.
+        * capstone/Source/nmake.bat: Added.
+        * capstone/Source/pkgconfig.mk: Added.
+        * capstone/Source/utils.c: Added.
+        (make_id2insn):
+        (insn_find):
+        (name2id):
+        (id2name):
+        (count_positive):
+        (count_positive8):
+        (cs_strdup):
+        (cs_snprintf):
+        (arr_exist8):
+        (arr_exist):
+        * capstone/Source/utils.h: Added.
+        * capstone/capstone-Revision.txt: Added.
+
+2018-03-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Split JSC header copying into public and private targets
+        https://bugs.webkit.org/show_bug.cgi?id=183251
+
+        Reviewed by Konstantin Tokarev.
+
+        * gtest/CMakeLists.txt:
+
+2018-02-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove WebCore/ForwardingHeaders directory
+        https://bugs.webkit.org/show_bug.cgi?id=182347
+
+        Reviewed by Keith Miller.
+
+        * gtest/CMakeLists.txt:
+        * gtest/include/gtest/internal/gtest-port.h:
+
+2018-02-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, silence -Wimplicit-fallthrough in openvr
+        https://bugs.webkit.org/show_bug.cgi?id=182117
+
+        * openvr/patches/cmake-build.patch:
+        * openvr/src/CMakeLists.txt:
+
+2018-02-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Lots of build warnings from Source/ThirdParty/openvr
+        https://bugs.webkit.org/show_bug.cgi?id=182117
+
+        Reviewed by Michael Catanzaro.
+
+        Suppress OpenVR compiler warnings by listing -Wno-unknown-pragmas,
+        -Wno-unused-parameter and -Wno-unused-variable options among the
+        libopenvr_api.so CXX flags.
+
+        CMake configuration warning about default project variables for the
+        openvr_api project is avoided by removing the openvr_api project and
+        instead setting the OPENVR_SOURCE_DIR to the path of the OpenVR
+        source directory under Source/ThirdParty/.
+
+        Another compiler warning is removed by fixing the return condition in
+        the Path_WriteBinaryFile() function to perform an equality comparison
+        instead of an assignment. This has already been fixed upstream.
+
+        All changes to the OpenVR code are reflected in the separately-managed
+        patch files kept in the patches/ directory.
+
+        * openvr/README.webkit:
+        * openvr/patches/Path_WriteBinaryFile-fix-return-condition.patch: Added.
+        * openvr/patches/cmake-build.patch:
+        * openvr/src/CMakeLists.txt:
+        * openvr/src/vrcommon/pathtools_public.cpp:
+        (Path_WriteBinaryFile):
+
+2018-01-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make WTF headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182274
+
+        Reviewed by Alex Christensen.
+
+        * gtest/CMakeLists.txt:
+
+2018-01-27  Dan Bernstein  <mitz@apple.com>
+
+        HaveInternalSDK includes should be "#include?"
+        https://bugs.webkit.org/show_bug.cgi?id=179670
+
+        * gtest/xcode/Config/General.xcconfig:
+
+2018-01-18  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebVR] Add OpenVR to the tree and to the build
+        https://bugs.webkit.org/show_bug.cgi?id=177298
+
+        Reviewed by Žan Doberšek.
+
+        Adding the required parts of OpenVR library to the tree. This will be used as a backend for
+        the eventual WebVR implementation.
+
+        * openvr/CMakeLists.txt: Added.
+        * openvr/LICENSE: Added.
+        * openvr/README.md: Added.
+        * openvr/README.webkit: Added. Includes specifics changes made to the original library to
+        accommodate it to the WebKit build system.
+        * openvr/Toolchain-clang.cmake: Added.
+        * openvr/headers/openvr.h: Added.
+        (vr::ButtonMaskFromId):
+        (vr::NotificationBitmap_t::NotificationBitmap_t):
+        (vr::VRToken):
+        (vr::COpenVRContext::COpenVRContext):
+        (vr::COpenVRContext::CheckClear):
+        (vr::COpenVRContext::VRSystem):
+        (vr::COpenVRContext::VRChaperone):
+        (vr::COpenVRContext::VRChaperoneSetup):
+        (vr::COpenVRContext::VRCompositor):
+        (vr::COpenVRContext::VROverlay):
+        (vr::COpenVRContext::VRResources):
+        (vr::COpenVRContext::VRScreenshots):
+        (vr::COpenVRContext::VRRenderModels):
+        (vr::COpenVRContext::VRExtendedDisplay):
+        (vr::COpenVRContext::VRSettings):
+        (vr::COpenVRContext::VRApplications):
+        (vr::COpenVRContext::VRTrackedCamera):
+        (vr::COpenVRContext::VRDriverManager):
+        (vr::OpenVRInternal_ModuleContext):
+        (vr::VRSystem):
+        (vr::VRChaperone):
+        (vr::VRChaperoneSetup):
+        (vr::VRCompositor):
+        (vr::VROverlay):
+        (vr::VRScreenshots):
+        (vr::VRRenderModels):
+        (vr::VRApplications):
+        (vr::VRSettings):
+        (vr::VRResources):
+        (vr::VRExtendedDisplay):
+        (vr::VRTrackedCamera):
+        (vr::VRDriverManager):
+        (vr::COpenVRContext::Clear):
+        (vr::VR_Init):
+        (vr::VR_Shutdown):
+        * openvr/headers/openvr_api.cs: Added.
+        * openvr/headers/openvr_api.json: Added.
+        * openvr/headers/openvr_capi.h: Added.
+        * openvr/headers/openvr_driver.h: Added.
+        (vr::ButtonMaskFromId):
+        (vr::IVRDriverDirectModeComponent::CreateSwapTextureSet):
+        (vr::IVRDriverDirectModeComponent::DestroySwapTextureSet):
+        (vr::IVRDriverDirectModeComponent::DestroyAllSwapTextureSets):
+        (vr::IVRDriverDirectModeComponent::GetNextSwapTextureSetIndex):
+        (vr::IVRDriverDirectModeComponent::SubmitLayer):
+        (vr::IVRDriverDirectModeComponent::Present):
+        (vr::CVRPropertyHelpers::CVRPropertyHelpers):
+        (vr::CVRPropertyHelpers::TrackedDeviceToPropertyContainer):
+        (vr::CVRPropertyHelpers::GetProperty):
+        (vr::CVRPropertyHelpers::SetProperty):
+        (vr::CVRPropertyHelpers::GetStringProperty):
+        (vr::CVRPropertyHelpers::SetStringProperty):
+        (vr::CVRPropertyHelpers::GetPropertyHelper):
+        (vr::CVRPropertyHelpers::GetBoolProperty):
+        (vr::CVRPropertyHelpers::GetFloatProperty):
+        (vr::CVRPropertyHelpers::GetInt32Property):
+        (vr::CVRPropertyHelpers::GetUint64Property):
+        (vr::CVRPropertyHelpers::SetBoolProperty):
+        (vr::CVRPropertyHelpers::SetFloatProperty):
+        (vr::CVRPropertyHelpers::SetInt32Property):
+        (vr::CVRPropertyHelpers::SetUint64Property):
+        (vr::CVRPropertyHelpers::SetPropertyError):
+        (vr::CVRPropertyHelpers::EraseProperty):
+        (vr::CVRHiddenAreaHelpers::CVRHiddenAreaHelpers):
+        (vr::CVRHiddenAreaHelpers::GetPropertyEnum):
+        (vr::CVRHiddenAreaHelpers::SetHiddenArea):
+        (vr::CVRHiddenAreaHelpers::GetHiddenArea):
+        (vr::VRDriverContext):
+        (vr::COpenVRDriverContext::COpenVRDriverContext):
+        (vr::COpenVRDriverContext::VRSettings):
+        (vr::COpenVRDriverContext::VRPropertiesRaw):
+        (vr::COpenVRDriverContext::VRProperties):
+        (vr::COpenVRDriverContext::VRHiddenArea):
+        (vr::COpenVRDriverContext::VRServerDriverHost):
+        (vr::COpenVRDriverContext::VRWatchdogHost):
+        (vr::COpenVRDriverContext::VRDriverLog):
+        (vr::COpenVRDriverContext::VRDriverHandle):
+        (vr::OpenVRInternal_ModuleServerDriverContext):
+        (vr::VRSettings):
+        (vr::VRPropertiesRaw):
+        (vr::VRProperties):
+        (vr::VRHiddenArea):
+        (vr::VRDriverLog):
+        (vr::VRServerDriverHost):
+        (vr::VRWatchdogHost):
+        (vr::VRDriverHandle):
+        (vr::COpenVRDriverContext::Clear):
+        (vr::COpenVRDriverContext::InitServer):
+        (vr::COpenVRDriverContext::InitWatchdog):
+        (vr::InitServerDriverContext):
+        (vr::InitWatchdogDriverContext):
+        (vr::CleanupDriverContext):
+        * openvr/patches/cmake-build.patch: Added.
+        * openvr/src/CMakeLists.txt: Added.
+        * openvr/src/Info.plist: Added.
+        * openvr/src/README: Added.
+        * openvr/src/ivrclientcore.h: Added.
+        * openvr/src/json/json-forwards.h: Added.
+        * openvr/src/json/json.h: Added.
+        (std::swap):
+        * openvr/src/jsoncpp.cpp: Added.
+        (Json::codePointToUTF8):
+        (Json::isControlCharacter):
+        (Json::uintToString):
+        (Json::fixNumericLocale):
+        (Json::Features::Features):
+        (Json::Features::all):
+        (Json::Features::strictMode):
+        (Json::containsNewLine):
+        (Json::Reader::Reader):
+        (Json::Reader::parse):
+        (Json::Reader::readValue):
+        (Json::Reader::skipCommentTokens):
+        (Json::Reader::readToken):
+        (Json::Reader::skipSpaces):
+        (Json::Reader::match):
+        (Json::Reader::readComment):
+        (Json::normalizeEOL):
+        (Json::Reader::addComment):
+        (Json::Reader::readCStyleComment):
+        (Json::Reader::readCppStyleComment):
+        (Json::Reader::readNumber):
+        (Json::Reader::readString):
+        (Json::Reader::readObject):
+        (Json::Reader::readArray):
+        (Json::Reader::decodeNumber):
+        (Json::Reader::decodeDouble):
+        (Json::Reader::decodeString):
+        (Json::Reader::decodeUnicodeCodePoint):
+        (Json::Reader::decodeUnicodeEscapeSequence):
+        (Json::Reader::addError):
+        (Json::Reader::recoverFromError):
+        (Json::Reader::addErrorAndRecover):
+        (Json::Reader::currentValue):
+        (Json::Reader::getNextChar):
+        (Json::Reader::getLocationLineAndColumn const):
+        (Json::Reader::getLocationSnippet const):
+        (Json::Reader::getFormatedErrorMessages const):
+        (Json::Reader::getFormattedErrorMessages const):
+        (Json::Reader::getStructuredErrors const):
+        (Json::Reader::pushError):
+        (Json::Reader::good const):
+        (Json::OurFeatures::all):
+        (Json::OurReader::OurReader):
+        (Json::OurReader::parse):
+        (Json::OurReader::readValue):
+        (Json::OurReader::skipCommentTokens):
+        (Json::OurReader::readToken):
+        (Json::OurReader::skipSpaces):
+        (Json::OurReader::match):
+        (Json::OurReader::readComment):
+        (Json::OurReader::addComment):
+        (Json::OurReader::readCStyleComment):
+        (Json::OurReader::readCppStyleComment):
+        (Json::OurReader::readNumber):
+        (Json::OurReader::readString):
+        (Json::OurReader::readStringSingleQuote):
+        (Json::OurReader::readObject):
+        (Json::OurReader::readArray):
+        (Json::OurReader::decodeNumber):
+        (Json::OurReader::decodeDouble):
+        (Json::OurReader::decodeString):
+        (Json::OurReader::decodeUnicodeCodePoint):
+        (Json::OurReader::decodeUnicodeEscapeSequence):
+        (Json::OurReader::addError):
+        (Json::OurReader::recoverFromError):
+        (Json::OurReader::addErrorAndRecover):
+        (Json::OurReader::currentValue):
+        (Json::OurReader::getNextChar):
+        (Json::OurReader::getLocationLineAndColumn const):
+        (Json::OurReader::getFormattedErrorMessages const):
+        (Json::OurReader::getStructuredErrors const):
+        (Json::OurReader::pushError):
+        (Json::OurReader::good const):
+        (Json::OurCharReader::OurCharReader):
+        (Json::OurCharReader::parse):
+        (Json::CharReaderBuilder::CharReaderBuilder):
+        (Json::CharReaderBuilder::~CharReaderBuilder):
+        (Json::CharReaderBuilder::newCharReader const):
+        (Json::getValidReaderKeys):
+        (Json::CharReaderBuilder::validate const):
+        (Json::CharReaderBuilder::operator[]):
+        (Json::CharReaderBuilder::strictMode):
+        (Json::CharReaderBuilder::setDefaults):
+        (Json::parseFromStream):
+        (Json::operator>>):
+        (Json::ValueIteratorBase::ValueIteratorBase):
+        (Json::ValueIteratorBase::deref const):
+        (Json::ValueIteratorBase::increment):
+        (Json::ValueIteratorBase::decrement):
+        (Json::ValueIteratorBase::computeDistance const):
+        (Json::ValueIteratorBase::isEqual const):
+        (Json::ValueIteratorBase::copy):
+        (Json::ValueIteratorBase::key const):
+        (Json::ValueIteratorBase::index const):
+        (Json::ValueIteratorBase::name const):
+        (Json::ValueIteratorBase::memberName const):
+        (Json::ValueConstIterator::ValueConstIterator):
+        (Json::operator=):
+        (Json::ValueIterator::ValueIterator):
+        (Json::ValueIterator::operator=):
+        (Json::InRange):
+        (Json::integerToDouble):
+        (Json::duplicateStringValue):
+        (Json::duplicateAndPrefixStringValue):
+        (Json::decodePrefixedString):
+        (Json::releaseStringValue):
+        (Json::Exception::Exception):
+        (Json::throw):
+        (Json::RuntimeError::RuntimeError):
+        (Json::LogicError::LogicError):
+        (Json::throwRuntimeError):
+        (Json::throwLogicError):
+        (Json::Value::CommentInfo::CommentInfo):
+        (Json::Value::CommentInfo::~CommentInfo):
+        (Json::Value::CommentInfo::setComment):
+        (Json::Value::CZString::CZString):
+        (Json::Value::CZString::~CZString):
+        (Json::Value::CZString::swap):
+        (Json::Value::CZString::operator=):
+        (Json::Value::CZString::operator< const):
+        (Json::Value::CZString::operator== const):
+        (Json::Value::CZString::index const):
+        (Json::Value::CZString::data const):
+        (Json::Value::CZString::length const):
+        (Json::Value::CZString::isStaticString const):
+        (Json::Value::Value):
+        (Json::Value::~Value):
+        (Json::Value::operator=):
+        (Json::Value::swapPayload):
+        (Json::Value::swap):
+        (Json::Value::type const):
+        (Json::Value::compare const):
+        (Json::Value::operator< const):
+        (Json::Value::operator<= const):
+        (Json::Value::operator>= const):
+        (Json::Value::operator> const):
+        (Json::Value::operator== const):
+        (Json::Value::operator!= const):
+        (Json::Value::asCString const):
+        (Json::Value::getString const):
+        (Json::Value::asString const):
+        (Json::Value::asConstString const):
+        (Json::Value::asInt const):
+        (Json::Value::asUInt const):
+        (Json::Value::asInt64 const):
+        (Json::Value::asUInt64 const):
+        (Json::Value::asLargestInt const):
+        (Json::Value::asLargestUInt const):
+        (Json::Value::asDouble const):
+        (Json::Value::asFloat const):
+        (Json::Value::asBool const):
+        (Json::Value::isConvertibleTo const):
+        (Json::Value::size const):
+        (Json::Value::empty const):
+        (Json::Value::operator! const):
+        (Json::Value::clear):
+        (Json::Value::resize):
+        (Json::Value::operator[]):
+        (Json::Value::operator[] const):
+        (Json::Value::initBasic):
+        (Json::Value::resolveReference):
+        (Json::Value::get const):
+        (Json::Value::isValidIndex const):
+        (Json::Value::find const):
+        (Json::Value::append):
+        (Json::Value::removeMember):
+        (Json::Value::removeIndex):
+        (Json::Value::isMember const):
+        (Json::Value::getMemberNames const):
+        (Json::IsIntegral):
+        (Json::Value::isNull const):
+        (Json::Value::isBool const):
+        (Json::Value::isInt const):
+        (Json::Value::isUInt const):
+        (Json::Value::isInt64 const):
+        (Json::Value::isUInt64 const):
+        (Json::Value::isIntegral const):
+        (Json::Value::isDouble const):
+        (Json::Value::isNumeric const):
+        (Json::Value::isString const):
+        (Json::Value::isArray const):
+        (Json::Value::isObject const):
+        (Json::Value::setComment):
+        (Json::Value::hasComment const):
+        (Json::Value::getComment const):
+        (Json::Value::setOffsetStart):
+        (Json::Value::setOffsetLimit):
+        (Json::Value::getOffsetStart const):
+        (Json::Value::getOffsetLimit const):
+        (Json::Value::toStyledString const):
+        (Json::Value::begin const):
+        (Json::Value::end const):
+        (Json::Value::begin):
+        (Json::Value::end):
+        (Json::PathArgument::PathArgument):
+        (Json::Path::Path):
+        (Json::Path::makePath):
+        (Json::Path::addPathInArg):
+        (Json::Path::invalidPath):
+        (Json::Path::resolve const):
+        (Json::Path::make const):
+        (Json::containsControlCharacter):
+        (Json::containsControlCharacter0):
+        (Json::valueToString):
+        (Json::valueToQuotedString):
+        (Json::strnpbrk):
+        (Json::valueToQuotedStringN):
+        (Json::Writer::~Writer):
+        (Json::FastWriter::FastWriter):
+        (Json::FastWriter::enableYAMLCompatibility):
+        (Json::FastWriter::dropNullPlaceholders):
+        (Json::FastWriter::omitEndingLineFeed):
+        (Json::FastWriter::write):
+        (Json::FastWriter::writeValue):
+        (Json::StyledWriter::StyledWriter):
+        (Json::StyledWriter::write):
+        (Json::StyledWriter::writeValue):
+        (Json::StyledWriter::writeArrayValue):
+        (Json::StyledWriter::isMultineArray):
+        (Json::StyledWriter::pushValue):
+        (Json::StyledWriter::writeIndent):
+        (Json::StyledWriter::writeWithIndent):
+        (Json::StyledWriter::indent):
+        (Json::StyledWriter::unindent):
+        (Json::StyledWriter::writeCommentBeforeValue):
+        (Json::StyledWriter::writeCommentAfterValueOnSameLine):
+        (Json::StyledWriter::hasCommentForValue):
+        (Json::StyledStreamWriter::StyledStreamWriter):
+        (Json::StyledStreamWriter::write):
+        (Json::StyledStreamWriter::writeValue):
+        (Json::StyledStreamWriter::writeArrayValue):
+        (Json::StyledStreamWriter::isMultineArray):
+        (Json::StyledStreamWriter::pushValue):
+        (Json::StyledStreamWriter::writeIndent):
+        (Json::StyledStreamWriter::writeWithIndent):
+        (Json::StyledStreamWriter::indent):
+        (Json::StyledStreamWriter::unindent):
+        (Json::StyledStreamWriter::writeCommentBeforeValue):
+        (Json::StyledStreamWriter::writeCommentAfterValueOnSameLine):
+        (Json::StyledStreamWriter::hasCommentForValue):
+        (Json::BuiltStyledStreamWriter::BuiltStyledStreamWriter):
+        (Json::BuiltStyledStreamWriter::write):
+        (Json::BuiltStyledStreamWriter::writeValue):
+        (Json::BuiltStyledStreamWriter::writeArrayValue):
+        (Json::BuiltStyledStreamWriter::isMultineArray):
+        (Json::BuiltStyledStreamWriter::pushValue):
+        (Json::BuiltStyledStreamWriter::writeIndent):
+        (Json::BuiltStyledStreamWriter::writeWithIndent):
+        (Json::BuiltStyledStreamWriter::indent):
+        (Json::BuiltStyledStreamWriter::unindent):
+        (Json::BuiltStyledStreamWriter::writeCommentBeforeValue):
+        (Json::BuiltStyledStreamWriter::writeCommentAfterValueOnSameLine):
+        (Json::BuiltStyledStreamWriter::hasCommentForValue):
+        (Json::StreamWriter::StreamWriter):
+        (Json::StreamWriter::~StreamWriter):
+        (Json::StreamWriter::Factory::~Factory):
+        (Json::StreamWriterBuilder::StreamWriterBuilder):
+        (Json::StreamWriterBuilder::~StreamWriterBuilder):
+        (Json::StreamWriterBuilder::newStreamWriter const):
+        (Json::getValidWriterKeys):
+        (Json::StreamWriterBuilder::validate const):
+        (Json::StreamWriterBuilder::operator[]):
+        (Json::StreamWriterBuilder::setDefaults):
+        (Json::writeString):
+        (Json::operator<<):
+        * openvr/src/openvr_api_public.cpp: Added.
+        (vr::VR_GetInitToken):
+        (vr::VR_InitInternal2):
+        (vr::VR_InitInternal):
+        (vr::VR_ShutdownInternal):
+        (vr::VR_LoadHmdSystemInternal):
+        (vr::VR_GetGenericInterface):
+        (vr::VR_IsInterfaceVersionValid):
+        (vr::VR_IsHmdPresent):
+        (vr::VR_IsRuntimeInstalled):
+        (vr::VR_RuntimePath):
+        (vr::VR_GetVRInitErrorAsSymbol):
+        (vr::VR_GetVRInitErrorAsEnglishDescription):
+        (vr::VR_GetStringForHmdError):
+        * openvr/src/vrcommon/dirtools_public.cpp: Added.
+        (BCreateDirectoryRecursive):
+        (BCreateDirectory):
+        * openvr/src/vrcommon/dirtools_public.h: Added.
+        * openvr/src/vrcommon/envvartools_public.cpp: Added.
+        (GetEnvironmentVariable):
+        (SetEnvironmentVariable):
+        * openvr/src/vrcommon/envvartools_public.h: Added.
+        * openvr/src/vrcommon/hmderrors_public.cpp: Added.
+        (GetEnglishStringForHmdError):
+        (GetIDForVRInitError):
+        * openvr/src/vrcommon/hmderrors_public.h: Added.
+        * openvr/src/vrcommon/pathtools_public.cpp: Added.
+        (Path_GetExecutablePath):
+        (Path_GetWorkingDirectory):
+        (Path_SetWorkingDirectory):
+        (Path_StripFilename):
+        (Path_StripDirectory):
+        (Path_StripExtension):
+        (Path_GetExtension):
+        (Path_IsAbsolute):
+        (Path_MakeAbsolute):
+        (Path_FixSlashes):
+        (Path_GetSlash):
+        (Path_Join):
+        (Path_RemoveTrailingSlash):
+        (Path_Compact):
+        (Path_GetThisModulePath):
+        (Path_IsDirectory):
+        (Path_IsAppBundle):
+        (Path_Exists):
+        (Path_FindParentDirectoryRecursively):
+        (Path_FindParentSubDirectoryRecursively):
+        (Path_ReadBinaryFile):
+        (Path_WriteBinaryFile):
+        (Path_ReadTextFile):
+        (Path_WriteStringToTextFile):
+        (Path_WriteStringToTextFileAtomic):
+        (Path_FilePathToUrl):
+        (Path_UrlToFilePath):
+        (GetUserDocumentsPath):
+        * openvr/src/vrcommon/pathtools_public.h: Added.
+        * openvr/src/vrcommon/sharedlibtools_public.cpp: Added.
+        (SharedLib_Load):
+        (SharedLib_GetFunction):
+        (SharedLib_Unload):
+        * openvr/src/vrcommon/sharedlibtools_public.h: Added.
+        * openvr/src/vrcommon/strtools_public.cpp: Added.
+        (StringHasPrefix):
+        (StringHasPrefixCaseSensitive):
+        (StringHasSuffix):
+        (StringHasSuffixCaseSensitive):
+        (UTF16to8):
+        (UTF8to16):
+        (strcpy_safe):
+        (StringToUpper):
+        (StringToLower):
+        (ReturnStdString):
+        (BufferToStdString):
+        (Uint64ToString):
+        (StringToUint64):
+        (cIntToHexDigit):
+        (iHexCharToInt):
+        (V_URLEncodeInternal):
+        (V_URLDecodeInternal):
+        (V_URLEncode):
+        (V_URLDecode):
+        (V_StripExtension):
+        * openvr/src/vrcommon/strtools_public.h: Added.
+        (stricmp):
+        (strnicmp):
+        (wcsncpy_s):
+        (strncpy_s):
+        (strtoull):
+        * openvr/src/vrcommon/vrpathregistry_public.cpp: Added.
+        (GetAppSettingsPath):
+        (CVRPathRegistry_Public::CVRPathRegistry_Public):
+        (CVRPathRegistry_Public::GetOpenVRConfigPath):
+        (CVRPathRegistry_Public::GetVRPathRegistryFilename):
+        (ParseStringListFromJson):
+        (StringListToJson):
+        (CVRPathRegistry_Public::ToJsonString):
+        (CVRPathRegistry_Public::BLoadFromFile):
+        (CVRPathRegistry_Public::BSaveToFile const):
+        (CVRPathRegistry_Public::GetRuntimePath const):
+        (CVRPathRegistry_Public::GetConfigPath const):
+        (CVRPathRegistry_Public::GetLogPath const):
+        (CVRPathRegistry_Public::GetPaths):
+        * openvr/src/vrcommon/vrpathregistry_public.h: Added.
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wstrict-prototypes for WebKit
+        <https://webkit.org/b/180757>
+        <rdar://problem/36024132>
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * gtest/xcode/Config/General.xcconfig:
+        (WARNING_CFLAGS): Add semicolon.
+        (CLANG_WARN_STRICT_PROTOTYPES): Add. Set to YES.
+
+2017-10-05  Frederic Wang  <fwang@igalia.com>
+
+        Remove WOFF2 from Source/ThirdParty.
+        https://bugs.webkit.org/show_bug.cgi?id=177862
+
+        Reviewed by Michael Catanzaro.
+
+        * woff2/CMakeLists.txt: Removed.
+        * woff2/LICENSE: Removed.
+        * woff2/README.webkit: Removed.
+        * woff2/include/woff2/decode.h: Removed.
+        * woff2/include/woff2/encode.h: Removed.
+        * woff2/include/woff2/output.h: Removed.
+        * woff2/src/buffer.h: Removed.
+        * woff2/src/convert_woff2ttf_*.cc: Removed.
+        * woff2/src/file.h: Removed.
+        * woff2/src/font.cc: Removed.
+        * woff2/src/font.h: Removed.
+        * woff2/src/glyph.cc: Removed.
+        * woff2/src/glyph.h: Removed.
+        * woff2/src/normalize.cc: Removed.
+        * woff2/src/normalize.h: Removed.
+        * woff2/src/port.h: Removed.
+        * woff2/src/round.h: Removed.
+        * woff2/src/store_bytes.h: Removed.
+        * woff2/src/table_tags.cc: Removed.
+        * woff2/src/table_tags.h: Removed.
+        * woff2/src/transform.cc: Removed.
+        * woff2/src/transform.h: Removed.
+        * woff2/src/variable_length.cc: Removed.
+        * woff2/src/variable_length.h: Removed.
+        * woff2/src/woff2_common.cc: Removed.
+        * woff2/src/woff2_common.h: Removed.
+        * woff2/src/woff2_compress.cc: Removed.
+        * woff2/src/woff2_dec.cc: Removed.
+        * woff2/src/woff2_decompress.cc: Removed.
+        * woff2/src/woff2_enc.cc: Removed.
+        * woff2/src/woff2_info.cc: Removed.
+        * woff2/src/woff2_out.cc: Removed.
+        * woff2/update.sh: Removed.
+
+2017-10-05  Frederic Wang  <fwang@igalia.com>
+
+        Update Source/ThirdParty/woff2 to 22c256bc457777744ba14b7325a6e8e0e7dec91c
+        https://bugs.webkit.org/show_bug.cgi?id=177994
+
+        Reviewed by Michael Catanzaro.
+
+        * woff2/CMakeLists.txt: Also consider the directory for public headers.
+        * woff2/README.webkit:
+        * woff2/include/woff2/decode.h: Renamed from Source/ThirdParty/woff2/src/woff2_dec.h.
+        * woff2/include/woff2/encode.h: Renamed from Source/ThirdParty/woff2/src/woff2_enc.h.
+        (woff2::WOFF2Params::WOFF2Params):
+        * woff2/include/woff2/output.h: Renamed from Source/ThirdParty/woff2/src/woff2_out.h.
+        (woff2::WOFF2Out::~WOFF2Out):
+        (woff2::WOFF2StringOut::MaxSize):
+        * woff2/src/buffer.h:
+        * woff2/src/convert_woff2ttf_*.cc:
+        * woff2/src/file.h:
+        * woff2/src/font.cc:
+        * woff2/src/font.h:
+        * woff2/src/glyph.cc:
+        * woff2/src/glyph.h:
+        * woff2/src/normalize.cc:
+        * woff2/src/normalize.h:
+        * woff2/src/port.h:
+        * woff2/src/round.h:
+        * woff2/src/store_bytes.h:
+        * woff2/src/table_tags.cc:
+        * woff2/src/table_tags.h:
+        * woff2/src/transform.cc:
+        * woff2/src/transform.h:
+        * woff2/src/variable_length.cc:
+        * woff2/src/variable_length.h:
+        * woff2/src/woff2_common.cc:
+        * woff2/src/woff2_common.h:
+        * woff2/src/woff2_compress.cc:
+        * woff2/src/woff2_dec.cc:
+        * woff2/src/woff2_decompress.cc:
+        * woff2/src/woff2_enc.cc:
+        * woff2/src/woff2_info.cc:
+        * woff2/src/woff2_out.cc:
+        * woff2/update.sh: Also consider directory for public headers.
+
+2017-10-03  Frederic Wang  <fwang@igalia.com>
+
+        Remove Brotli from Source/ThirdParty
+        https://bugs.webkit.org/show_bug.cgi?id=177804
+
+        Reviewed by Michael Catanzaro.
+
+        * brotli/CMakeLists.txt: Removed.
+        * brotli/LICENSE: Removed.
+        * brotli/README.webkit: Removed.
+        * brotli/common/constants.h: Removed.
+        * brotli/common/dictionary.bin: Removed.
+        * brotli/common/dictionary.c: Removed.
+        * brotli/common/dictionary.h: Removed.
+        * brotli/common/version.h: Removed.
+        * brotli/dec/bit_reader.c: Removed.
+        * brotli/dec/bit_reader.h: Removed.
+        * brotli/dec/context.h: Removed.
+        * brotli/dec/decode.c: Removed.
+        * brotli/dec/huffman.c: Removed.
+        * brotli/dec/huffman.h: Removed.
+        * brotli/dec/port.h: Removed.
+        * brotli/dec/prefix.h: Removed.
+        * brotli/dec/state.c: Removed.
+        * brotli/dec/state.h: Removed.
+        * brotli/dec/transform.h: Removed.
+        * brotli/include/brotli/decode.h: Removed.
+        * brotli/include/brotli/encode.h: Removed.
+        * brotli/include/brotli/port.h: Removed.
+        * brotli/include/brotli/types.h: Removed.
+        * brotli/update.sh: Removed.
+        * woff2/CMakeLists.txt: Use Brotli's include and library paths found by CMake.
+
+2017-10-05  Frederic Wang  <fwang@igalia.com>
+
+        Upgrade Brotli to version 1.0.1 and WOFF2 to latest upstream
+        https://bugs.webkit.org/show_bug.cgi?id=177768
+
+        Reviewed by Michael Catanzaro.
+
+        * brotli/CMakeLists.txt:
+        * brotli/README.webkit:
+        * brotli/common/constants.h: Added.
+        * brotli/common/dictionary.bin: Added.
+        * brotli/common/dictionary.c: Added.
+        * brotli/common/dictionary.h: Added.
+        * brotli/common/version.h: Added.
+        * brotli/dec/Makefile: Removed.
+        * brotli/dec/bit_reader.c:
+        * brotli/dec/bit_reader.h:
+        * brotli/dec/context.h:
+        * brotli/dec/decode.c:
+        * brotli/dec/decode.h: Removed.
+        * brotli/dec/dictionary.c: Removed.
+        * brotli/dec/dictionary.h: Removed.
+        * brotli/dec/huffman.c:
+        * brotli/dec/huffman.h:
+        * brotli/dec/port.h:
+        (BrotliDump):
+        (BrotliRBit):
+        * brotli/dec/prefix.h:
+        * brotli/dec/state.c:
+        * brotli/dec/state.h:
+        * brotli/dec/transform.h:
+        * brotli/dec/types.h: Removed.
+        * brotli/include/brotli/decode.h: Added.
+        * brotli/include/brotli/encode.h: Added.
+        * brotli/include/brotli/port.h: Added.
+        * brotli/include/brotli/types.h: Added.
+        * brotli/update.sh:
+        * woff2/CMakeLists.txt:
+        * woff2/README.webkit:
+        * woff2/src/buffer.h:
+        (woff2::Buffer::Buffer):
+        (woff2::Buffer::Read):
+        * woff2/src/convert_woff2ttf_*.cc: Added.
+        * woff2/src/font.cc:
+        * woff2/src/glyph.cc:
+        * woff2/src/normalize.cc:
+        * woff2/src/port.h:
+        * woff2/src/store_bytes.h:
+        (woff2::Store16):
+        * woff2/src/variable_length.cc:
+        * woff2/src/woff2_common.cc:
+        * woff2/src/woff2_dec.cc:
+        * woff2/src/woff2_decompress.cc:
+        * woff2/src/woff2_enc.cc:
+        * woff2/src/woff2_info.cc: Added.
+
+2017-08-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Properly test if compiler supports compiler flags
+        https://bugs.webkit.org/show_bug.cgi?id=174490
+
+        Reviewed by Konstantin Tokarev.
+
+        * brotli/CMakeLists.txt:
+        * gtest/CMakeLists.txt:
+        * woff2/CMakeLists.txt:
+        * xdgmime/CMakeLists.txt:
+
+2017-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Macros in WebKitMacros.cmake should be prefixed with WEBKIT_ namespace
+        https://bugs.webkit.org/show_bug.cgi?id=174547
+
+        Reviewed by Alex Christensen.
+
+        * brotli/CMakeLists.txt:
+        * woff2/CMakeLists.txt:
+        * xdgmime/CMakeLists.txt:
+
 2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Fix compiler warnings when building with GCC 7

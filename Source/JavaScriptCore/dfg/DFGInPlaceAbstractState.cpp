@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,10 +34,13 @@
 #include "JSCInlines.h"
 #include "PutByIdStatus.h"
 #include "StringObject.h"
+#include "SuperSampler.h"
 
 namespace JSC { namespace DFG {
 
+namespace DFGInPlaceAbstractStateInternal {
 static const bool verbose = false;
+}
 
 InPlaceAbstractState::InPlaceAbstractState(Graph& graph)
     : m_graph(graph)
@@ -58,25 +61,28 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
     ASSERT(basicBlock->variablesAtHead.numberOfLocals() == basicBlock->variablesAtTail.numberOfLocals());
 
     m_abstractValues.resize();
-    
-    for (size_t i = 0; i < basicBlock->size(); i++) {
-        NodeFlowProjection::forEach(
-            basicBlock->at(i), [&] (NodeFlowProjection nodeProjection) {
-                forNode(nodeProjection).clear();
-            });
-    }
 
-    m_variables = basicBlock->valuesAtHead;
+    AbstractValueClobberEpoch epoch = AbstractValueClobberEpoch::first(basicBlock->cfaStructureClobberStateAtHead);
+    m_epochAtHead = epoch;
+    m_effectEpoch = epoch;
+
+    m_block = basicBlock;
+
+    m_activeVariables.clearRange(0, std::min(m_variables.size(), m_activeVariables.size()));
+    if (m_variables.size() > m_activeVariables.size())
+        m_activeVariables.resize(m_variables.size());
     
     if (m_graph.m_form == SSA) {
         for (NodeAbstractValuePair& entry : basicBlock->ssa->valuesAtHead) {
-            if (entry.node.isStillValid())
-                forNode(entry.node) = entry.value;
+            if (entry.node.isStillValid()) {
+                AbstractValue& value = m_abstractValues.at(entry.node);
+                value = entry.value;
+                value.m_effectEpoch = epoch;
+            }
         }
     }
     basicBlock->cfaShouldRevisit = false;
     basicBlock->cfaHasVisited = true;
-    m_block = basicBlock;
     m_isValid = true;
     m_foundConstants = false;
     m_branchDirection = InvalidBranchDirection;
@@ -85,62 +91,84 @@ void InPlaceAbstractState::beginBasicBlock(BasicBlock* basicBlock)
 
 static void setLiveValues(Vector<NodeAbstractValuePair>& values, const Vector<NodeFlowProjection>& live)
 {
-    values.resize(0);
+    values.shrink(0);
     values.reserveCapacity(live.size());
     for (NodeFlowProjection node : live)
         values.uncheckedAppend(NodeAbstractValuePair { node, AbstractValue() });
 }
 
+Operands<AbstractValue>& InPlaceAbstractState::variablesForDebugging()
+{
+    activateAllVariables();
+    return m_variables;
+}
+
+void InPlaceAbstractState::activateAllVariables()
+{
+    for (size_t i = m_variables.size(); i--;)
+        activateVariableIfNecessary(i);
+}
+
 void InPlaceAbstractState::initialize()
 {
-    BasicBlock* root = m_graph.block(0);
-    root->cfaShouldRevisit = true;
-    root->cfaHasVisited = false;
-    root->cfaFoundConstants = false;
-    root->cfaStructureClobberStateAtHead = StructuresAreWatched;
-    root->cfaStructureClobberStateAtTail = StructuresAreWatched;
-    for (size_t i = 0; i < root->valuesAtHead.numberOfArguments(); ++i) {
-        root->valuesAtTail.argument(i).clear();
+    for (BasicBlock* entrypoint : m_graph.m_roots) {
+        entrypoint->cfaShouldRevisit = true;
+        entrypoint->cfaHasVisited = false;
+        entrypoint->cfaFoundConstants = false;
+        entrypoint->cfaStructureClobberStateAtHead = StructuresAreWatched;
+        entrypoint->cfaStructureClobberStateAtTail = StructuresAreWatched;
 
-        FlushFormat format;
-        if (m_graph.m_form == SSA)
-            format = m_graph.m_argumentFormats[i];
-        else {
-            Node* node = m_graph.m_arguments[i];
-            if (!node)
-                format = FlushedJSValue;
-            else {
-                ASSERT(node->op() == SetArgument);
-                format = node->variableAccessData()->flushFormat();
+        if (m_graph.m_form == SSA)  {
+            for (size_t i = 0; i < entrypoint->valuesAtHead.numberOfArguments(); ++i) {
+                entrypoint->valuesAtHead.argument(i).clear();
+                entrypoint->valuesAtTail.argument(i).clear();
+            }
+        } else {
+            const ArgumentsVector& arguments = m_graph.m_rootToArguments.find(entrypoint)->value;
+            for (size_t i = 0; i < entrypoint->valuesAtHead.numberOfArguments(); ++i) {
+                entrypoint->valuesAtTail.argument(i).clear();
+
+                FlushFormat format;
+                Node* node = arguments[i];
+                if (!node)
+                    format = FlushedJSValue;
+                else {
+                    ASSERT(node->op() == SetArgument);
+                    format = node->variableAccessData()->flushFormat();
+                }
+
+                switch (format) {
+                case FlushedInt32:
+                    entrypoint->valuesAtHead.argument(i).setNonCellType(SpecInt32Only);
+                    break;
+                case FlushedBoolean:
+                    entrypoint->valuesAtHead.argument(i).setNonCellType(SpecBoolean);
+                    break;
+                case FlushedCell:
+                    entrypoint->valuesAtHead.argument(i).setType(m_graph, SpecCellCheck);
+                    break;
+                case FlushedJSValue:
+                    entrypoint->valuesAtHead.argument(i).makeBytecodeTop();
+                    break;
+                default:
+                    DFG_CRASH(m_graph, nullptr, "Bad flush format for argument");
+                    break;
+                }
             }
         }
-        
-        switch (format) {
-        case FlushedInt32:
-            root->valuesAtHead.argument(i).setType(SpecInt32Only);
-            break;
-        case FlushedBoolean:
-            root->valuesAtHead.argument(i).setType(SpecBoolean);
-            break;
-        case FlushedCell:
-            root->valuesAtHead.argument(i).setType(m_graph, SpecCell);
-            break;
-        case FlushedJSValue:
-            root->valuesAtHead.argument(i).makeBytecodeTop();
-            break;
-        default:
-            DFG_CRASH(m_graph, nullptr, "Bad flush format for argument");
-            break;
+
+        for (size_t i = 0; i < entrypoint->valuesAtHead.numberOfLocals(); ++i) {
+            entrypoint->valuesAtHead.local(i).clear();
+            entrypoint->valuesAtTail.local(i).clear();
         }
     }
-    for (size_t i = 0; i < root->valuesAtHead.numberOfLocals(); ++i) {
-        root->valuesAtHead.local(i).clear();
-        root->valuesAtTail.local(i).clear();
-    }
-    for (BlockIndex blockIndex = 1 ; blockIndex < m_graph.numBlocks(); ++blockIndex) {
-        BasicBlock* block = m_graph.block(blockIndex);
-        if (!block)
+
+    for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
+        if (m_graph.isRoot(block)) {
+            // We bootstrapped the CFG roots above.
             continue;
+        }
+
         ASSERT(block->isReachable);
         block->cfaShouldRevisit = false;
         block->cfaHasVisited = false;
@@ -156,6 +184,7 @@ void InPlaceAbstractState::initialize()
             block->valuesAtTail.local(i).clear();
         }
     }
+
     if (m_graph.m_form == SSA) {
         for (BlockIndex blockIndex = 0; blockIndex < m_graph.numBlocks(); ++blockIndex) {
             BasicBlock* block = m_graph.block(blockIndex);
@@ -182,31 +211,88 @@ bool InPlaceAbstractState::endBasicBlock()
         return false;
     }
 
-    block->cfaStructureClobberStateAtTail = m_structureClobberState;
+    AbstractValueClobberEpoch epochAtHead = m_epochAtHead;
+    AbstractValueClobberEpoch currentEpoch = m_effectEpoch;
 
+    block->cfaStructureClobberStateAtTail = m_structureClobberState;
+    
     switch (m_graph.m_form) {
     case ThreadedCPS: {
-        for (size_t argument = 0; argument < block->variablesAtTail.numberOfArguments(); ++argument) {
-            AbstractValue& destination = block->valuesAtTail.argument(argument);
-            mergeStateAtTail(destination, m_variables.argument(argument), block->variablesAtTail.argument(argument));
-        }
+        ASSERT(block->variablesAtTail.size() == block->valuesAtTail.size());
+        ASSERT(block->variablesAtTail.size() == m_variables.size());
+        for (size_t index = m_variables.size(); index--;) {
+            Node* node = block->variablesAtTail[index];
+            if (!node)
+                continue;
+            AbstractValue& destination = block->valuesAtTail[index];
+            
+            if (!m_activeVariables[index]) {
+                destination = block->valuesAtHead[index];
+                destination.fastForwardFromTo(epochAtHead, currentEpoch);
+                continue;
+            }
+            
+            switch (node->op()) {
+            case Phi:
+            case SetArgument:
+            case PhantomLocal:
+            case Flush: {
+                // The block transfers the value from head to tail.
+                destination = variableAt(index);
+                break;
+            }
+                
+            case GetLocal: {
+                // The block refines the value with additional speculations.
+                destination = forNode(node);
 
-        for (size_t local = 0; local < block->variablesAtTail.numberOfLocals(); ++local) {
-            AbstractValue& destination = block->valuesAtTail.local(local);
-            mergeStateAtTail(destination, m_variables.local(local), block->variablesAtTail.local(local));
+                // We need to make sure that we don't broaden the type beyond what the flush
+                // format says it will be. The value may claim to have changed abstract state
+                // but it's type cannot change without a store. For example:
+                //
+                // Block #1:
+                // 0: GetLocal(loc42, FlushFormatInt32)
+                // 1: PutStructure(Check: Cell: @0, ArrayStructure)
+                // ...
+                // 2: Branch(T: #1, F: #2)
+                //
+                // In this case the AbstractState of @0 will say it's an SpecArray but the only
+                // reason that would have happened is because we would have exited the cell check.
+
+                FlushFormat flushFormat = node->variableAccessData()->flushFormat();
+                destination.filter(typeFilterFor(flushFormat));
+                break;
+            }
+            case SetLocal: {
+                // The block sets the variable, and potentially refines it, both
+                // before and after setting it.
+                destination = forNode(node->child1());
+                break;
+            }
+                
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+            }
         }
         break;
     }
 
     case SSA: {
-        for (size_t i = 0; i < block->valuesAtTail.size(); ++i)
-            block->valuesAtTail[i].merge(m_variables[i]);
+        for (size_t i = 0; i < block->valuesAtTail.size(); ++i) {
+            AbstractValue& destination = block->valuesAtTail[i];
 
-        for (NodeAbstractValuePair& valueAtTail : block->ssa->valuesAtTail) {
-            AbstractValue& valueAtNode = forNode(valueAtTail.node);
-            valueAtTail.value.merge(valueAtNode);
-            valueAtNode = valueAtTail.value;
+            if (!m_activeVariables[i]) {
+                destination = block->valuesAtHead[i];
+                destination.fastForwardFromTo(epochAtHead, currentEpoch);
+                continue;
+            }
+            
+            block->valuesAtTail[i] = variableAt(i);
         }
+
+        for (NodeAbstractValuePair& valueAtTail : block->ssa->valuesAtTail)
+            valueAtTail.value = forNode(valueAtTail.node);
         break;
     }
 
@@ -227,45 +313,17 @@ void InPlaceAbstractState::reset()
     m_structureClobberState = StructuresAreWatched;
 }
 
-void InPlaceAbstractState::mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node* node)
+void InPlaceAbstractState::activateVariable(size_t variableIndex)
 {
-    if (!node)
-        return;
-
-    const AbstractValue* source = nullptr;
-    
-    switch (node->op()) {
-    case Phi:
-    case SetArgument:
-    case PhantomLocal:
-    case Flush:
-        // The block transfers the value from head to tail.
-        source = &inVariable;
-        break;
-            
-    case GetLocal:
-        // The block refines the value with additional speculations.
-        source = &forNode(node);
-        break;
-            
-    case SetLocal:
-        // The block sets the variable, and potentially refines it, both
-        // before and after setting it.
-        source = &forNode(node->child1());
-        if (node->variableAccessData()->flushFormat() == FlushedDouble)
-            RELEASE_ASSERT(!(source->m_type & ~SpecFullDouble));
-        break;
-        
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-        break;
-    }
-    destination = *source;
+    AbstractValue& value = m_variables[variableIndex];
+    value = m_block->valuesAtHead[variableIndex];
+    value.m_effectEpoch = m_epochAtHead;
+    m_activeVariables[variableIndex] = true;
 }
 
 bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
 {
-    if (verbose)
+    if (DFGInPlaceAbstractStateInternal::verbose)
         dataLog("   Merging from ", pointerDump(from), " to ", pointerDump(to), "\n");
     ASSERT(from->variablesAtTail.numberOfArguments() == to->variablesAtHead.numberOfArguments());
     ASSERT(from->variablesAtTail.numberOfLocals() == to->variablesAtHead.numberOfLocals());
@@ -296,7 +354,7 @@ bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
 
         for (NodeAbstractValuePair& entry : to->ssa->valuesAtHead) {
             NodeFlowProjection node = entry.node;
-            if (verbose)
+            if (DFGInPlaceAbstractStateInternal::verbose)
                 dataLog("      Merging for ", node, ": from ", forNode(node), " to ", entry.value, "\n");
 #ifndef NDEBUG
             unsigned valueCountInFromBlock = 0;
@@ -311,7 +369,7 @@ bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
 
             changed |= entry.value.merge(forNode(node));
 
-            if (verbose)
+            if (DFGInPlaceAbstractStateInternal::verbose)
                 dataLog("         Result: ", entry.value, "\n");
         }
         break;
@@ -325,7 +383,7 @@ bool InPlaceAbstractState::merge(BasicBlock* from, BasicBlock* to)
     if (!to->cfaHasVisited)
         changed = true;
     
-    if (verbose)
+    if (DFGInPlaceAbstractStateInternal::verbose)
         dataLog("      Will revisit: ", changed, "\n");
     to->cfaShouldRevisit |= changed;
     
@@ -364,13 +422,23 @@ inline bool InPlaceAbstractState::mergeToSuccessors(BasicBlock* basicBlock)
             changed |= merge(basicBlock, data->cases[i].target.block);
         return changed;
     }
-        
+    
+    case EntrySwitch: {
+        EntrySwitchData* data = terminal->entrySwitchData();
+        bool changed = false;
+        for (unsigned i = data->cases.size(); i--;)
+            changed |= merge(basicBlock, data->cases[i]);
+        return changed;
+    }
+
     case Return:
     case TailCall:
     case DirectTailCall:
     case TailCallVarargs:
     case TailCallForwardVarargs:
     case Unreachable:
+    case Throw:
+    case ThrowStaticError:
         ASSERT(basicBlock->cfaBranchDirection == InvalidBranchDirection);
         return false;
 

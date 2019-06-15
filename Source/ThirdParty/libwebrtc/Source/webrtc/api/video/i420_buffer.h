@@ -8,15 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_API_VIDEO_I420_BUFFER_H_
-#define WEBRTC_API_VIDEO_I420_BUFFER_H_
+#ifndef API_VIDEO_I420_BUFFER_H_
+#define API_VIDEO_I420_BUFFER_H_
 
 #include <memory>
 
-#include "webrtc/api/video/video_rotation.h"
-#include "webrtc/api/video/video_frame_buffer.h"
-#include "webrtc/base/export.h"
-#include "webrtc/system_wrappers/include/aligned_malloc.h"
+#include "api/video/video_frame_buffer.h"
+#include "api/video/video_rotation.h"
+#include "rtc_base/memory/aligned_malloc.h"
 
 namespace webrtc {
 
@@ -37,14 +36,17 @@ class I420Buffer : public I420BufferInterface {
     return Copy(*buffer.GetI420());
   }
 
-  static rtc::scoped_refptr<I420Buffer> Copy(
-      int width, int height,
-      const uint8_t* data_y, int stride_y,
-      const uint8_t* data_u, int stride_u,
-      const uint8_t* data_v, int stride_v);
+  static rtc::scoped_refptr<I420Buffer> Copy(int width,
+                                             int height,
+                                             const uint8_t* data_y,
+                                             int stride_y,
+                                             const uint8_t* data_u,
+                                             int stride_u,
+                                             const uint8_t* data_v,
+                                             int stride_v);
 
   // Returns a rotated copy of |src|.
-  WEBRTC_DYLIB_EXPORT static rtc::scoped_refptr<I420Buffer> Rotate(const I420BufferInterface& src,
+  static rtc::scoped_refptr<I420Buffer> Rotate(const I420BufferInterface& src,
                                                VideoRotation rotation);
   // Deprecated.
   static rtc::scoped_refptr<I420Buffer> Rotate(const VideoFrameBuffer& src,
@@ -53,7 +55,7 @@ class I420Buffer : public I420BufferInterface {
   }
 
   // Sets the buffer to all black.
-  WEBRTC_DYLIB_EXPORT static void SetBlack(I420Buffer* buffer);
+  static void SetBlack(I420Buffer* buffer);
 
   // Sets all three planes to all zeros. Used to work around for
   // quirks in memory checkers
@@ -109,4 +111,4 @@ class I420Buffer : public I420BufferInterface {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_VIDEO_I420_BUFFER_H_
+#endif  // API_VIDEO_I420_BUFFER_H_

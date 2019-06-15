@@ -4,7 +4,7 @@
 /*---
 esid: sec-%typedarray%.prototype.includes
 description: handle Infinity values for fromIndex
-info: >
+info: |
   22.2.3.13 %TypedArray%.prototype.includes ( searchElement [ , fromIndex ] )
 
   %TypedArray%.prototype.includes is a distinct function that implements the
@@ -26,6 +26,7 @@ info: >
     ...
   8. Return false.
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

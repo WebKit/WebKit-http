@@ -60,7 +60,9 @@ from error_handlers import DefaultStyleErrorHandler
 from filter import FilterConfiguration
 from optparser import ArgumentParser
 from optparser import DefaultCommandOptionValues
+from webkitpy.common.host import Host
 from webkitpy.common.system.logutils import configure_logging as _configure_logging
+from webkitpy.port.config import apple_additions
 
 
 _log = logging.getLogger(__name__)
@@ -147,7 +149,7 @@ _PATH_RULES_SPECIFIER = [
       "-readability/parameter_name",
       "-whitespace/braces",
       "-whitespace/comments"]),
-    ([# There is no clean way to avoid "yy_*" names used by flex.
+    ([  # There is no clean way to avoid "yy_*" names used by flex.
       os.path.join('Source', 'WebCore', 'css', 'CSSParser.cpp'),
       # TestWebKitAPI uses funny macros like EXPECT_WK_STREQ.
       os.path.join('Tools', 'TestWebKitAPI'),
@@ -176,58 +178,67 @@ _PATH_RULES_SPECIFIER = [
        "Tools/MiniBrowser/qt/raw"],
       ["-build/include"]),
 
-    ([# The GTK+ and WPE APIs use upper case, underscore separated, words in
+    ([
+      # The GTK+ and WPE APIs use upper case, underscore separated, words in
       # certain types of enums (e.g. signals, properties).
-      os.path.join('Source', 'WebKit2', 'Shared', 'API', 'glib'),
-      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'glib'),
-      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk'),
-      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'glib'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe')],
+      os.path.join('Source', 'JavaScriptCore', 'API', 'glib'),
+      os.path.join('Source', 'WebKit', 'Shared', 'API', 'glib'),
+      os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'glib'),
+      os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk'),
+      os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'wpe'),
+      os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'glib'),
+      os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk'),
+      os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe')],
      ["-readability/enum_casing"]),
 
-    ([# To use GStreamer GL without conflicts of GL symbols,
+    ([
+      # To use GStreamer GL without conflicts of GL symbols,
       # we should include gst/gl/gl.h before including OpenGL[ES]Shims
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'MediaPlayerPrivateGStreamerBase.cpp')],
      ["-build/include_order"]),
 
-    ([# Header files in ForwardingHeaders have no header guards or
+    ([
+      # Header files in ForwardingHeaders have no header guards or
       # exceptional header guards (e.g., WebCore_FWD_Debugger_h).
       os.path.join(os.path.sep, 'ForwardingHeaders')],
      ["-build/header_guard"]),
-    ([# assembler has lots of opcodes that use underscores, so
+    ([
+      # Assembler has lots of opcodes that use underscores, so
       # we don't check for underscores in that directory.
       os.path.join('Source', 'JavaScriptCore', 'assembler'),
       os.path.join('Source', 'JavaScriptCore', 'jit', 'JIT')],
      ["-readability/naming/underscores"]),
-    ([# JITStubs has an usual syntax which causes false alarms for a few checks.
+    ([  # JITStubs has an usual syntax which causes false alarms for a few checks.
       os.path.join('JavaScriptCore', 'jit', 'JITStubs.cpp')],
      ["-readability/parameter_name",
       "-whitespace/parens"]),
 
-    # WebKit2 rules:
-    # WebKit2 and certain directories have idiosyncracies.
-    ([# NPAPI has function names with underscores.
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'Plugins', 'Netscape')],
+    # WebKit rules:
+    # WebKit and certain directories have idiosyncracies.
+    ([  # NPAPI has function names with underscores.
+      os.path.join('Source', 'WebKit', 'WebProcess', 'Plugins', 'Netscape')],
      ["-readability/naming"]),
-    ([# The WebKit2 C API has names with underscores and whitespace-aligned
+    ([
+      # The WebKit C API has names with underscores and whitespace-aligned
       # struct members. Also, we allow unnecessary parameter names in
-      # WebKit2 APIs because we're matching CF's header style.
+      # WebKit APIs because we're matching CF's header style.
       # Additionally, we use word which starts with non-capital letter 'k'
       # for types of enums.
-      os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'C'),
-      os.path.join('Source', 'WebKit2', 'Shared', 'API', 'c'),
-      os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'c')],
+      os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'C'),
+      os.path.join('Source', 'WebKit', 'Shared', 'API', 'c'),
+      os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'c')],
      ["-readability/enum_casing",
       "-readability/naming",
       "-readability/parameter_name",
       "-whitespace/declaration"]),
-    ([# These files define GObjects, which implies some definitions of
+    ([
+      # These files define GObjects, which implies some definitions of
       # variables and functions containing underscores.
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'VideoSinkGStreamer.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'WebKitWebSourceGStreamer.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'audio', 'gstreamer', 'WebKitWebAudioSourceGStreamer.cpp'),
+      os.path.join('Source', 'WebCore', 'platform', 'mediastream', 'gstreamer', 'GStreamerMediaStreamSource.h'),
+      os.path.join('Source', 'WebCore', 'platform', 'mediastream', 'gstreamer', 'GStreamerMediaStreamSource.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'network', 'soup', 'ProxyResolverSoup.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'network', 'soup', 'ProxyResolverSoup.h')],
      ["-readability/naming",
@@ -241,28 +252,45 @@ _PATH_RULES_SPECIFIER = [
     #
     ([os.path.join('webkitpy', 'thirdparty'),
       os.path.join('Source', 'ThirdParty', 'ANGLE'),
-      os.path.join('Source', 'ThirdParty', 'brotli'),
-      os.path.join('Source', 'ThirdParty', 'woff2'),
-      os.path.join('Source', 'ThirdParty', 'xdgmime')],
+      os.path.join('Source', 'ThirdParty', 'libwebrtc'),
+      os.path.join('Source', 'ThirdParty', 'openvr'),
+      os.path.join('Source', 'ThirdParty', 'xdgmime'),
+      os.path.join('Tools', 'WebGPUAPIStructure')],
      ["-",
       "+pep8/W191",  # Tabs
       "+pep8/W291",  # Trailing white space
       "+whitespace/carriage_return"]),
 
-    ([# Source/JavaScriptCore/disassembler/udis86/ is generated code.
+    ([  # Source/JavaScriptCore/disassembler/udis86/ is generated code.
       os.path.join('Source', 'JavaScriptCore', 'disassembler', 'udis86')],
      ["-readability/naming/underscores",
       "-whitespace/declaration",
       "-whitespace/indent"]),
 
-    ([# There is no way to avoid the symbols __jit_debug_register_code
+    ([
+      # There is no way to avoid the symbols __jit_debug_register_code
       # and __jit_debug_descriptor when integrating with gdb.
       os.path.join('Source', 'JavaScriptCore', 'jit', 'GDBInterface.cpp')],
      ["-readability/naming"]),
 
-    ([# On some systems the trailing CR is causing parser failure.
+    ([  # On some systems the trailing CR is causing parser failure.
       os.path.join('Source', 'JavaScriptCore', 'parser', 'Keywords.table')],
      ["+whitespace/carriage_return"]),
+
+    ([  # DataDetectorsCoreSPI.h declares enum bitfields as CFIndex.
+      os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi', 'cocoa', 'DataDetectorsCoreSPI.h')],
+     ["-runtime/enum_bitfields"]),
+
+    ([
+      # PassKitSPI.h imports "PassKit.h" at two lines depending on the build configuration,
+      # which causes a false positive error.
+      os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi', 'cocoa', 'PassKitSPI.h')],
+     ["-build/include"]),
+
+    ([  # libwebrtc source and some SPI headers have identifier names with underscores.
+      os.path.join('Source', 'ThirdParty', 'libwebrtc', 'Source', 'webrtc'),
+      os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi')],
+     ["-readability/naming/underscores"]),
 ]
 
 
@@ -340,19 +368,23 @@ _NEVER_SKIPPED_FILES = _NEVER_SKIPPED_JS_FILES + [
 _SKIPPED_FILES_WITH_WARNING = [
     os.path.join('Tools', 'TestWebKitAPI', 'Tests', 'WebKitGtk'),
 
-    # WebKit*.h files in Source/WebKit2/UIProcess/API/[gtk|wpe], except those ending in Private.h are API headers, which do not follow WebKit coding style.
-    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
-    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
-    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
-    re.compile(re.escape(os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    # WebKit*.h and JSC*.h files in, except those ending in Private.h are API headers, which do not follow WebKit coding style.
+    re.compile(re.escape(os.path.join('Source', 'JavaScriptCore', 'API', 'glib') + os.path.sep) + r'JSC(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+    re.compile(re.escape(os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe', 'DOM') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
 
     # GObject DOM bindings copied from generated code using different coding style.
-    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'DOM'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'DOM'),
 
-    os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
-    os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'wpe', 'webkit.h'),
-    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h'),
-    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'wpe', 'webkit-web-extension.h')]
+    os.path.join('Source', 'JavaScriptCore', 'API', 'glib', 'jsc.h'),
+    os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
+    os.path.join('Source', 'WebKit', 'UIProcess', 'API', 'wpe', 'webkit.h'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe', 'webkit-web-extension.h'),
+    os.path.join('Source', 'WebKit', 'WebProcess', 'InjectedBundle', 'API', 'wpe', 'DOM', 'webkitdom.h')]
 
 # Files to skip that are more common or obvious.
 #
@@ -361,13 +393,15 @@ _SKIPPED_FILES_WITH_WARNING = [
 _SKIPPED_FILES_WITHOUT_WARNING = [
     "LayoutTests" + os.path.sep,
 
+    "WebDriverTests" + os.path.sep,
+
     # Files generated by the bindings script should not be checked for style.
     os.path.join('Source', 'WebCore', 'bindings', 'scripts', 'test'),
 
     # ICU headers are imported.
     os.path.join('Source', 'JavaScriptCore', 'icu'),
     os.path.join('Source', 'WebCore', 'icu'),
-    os.path.join('Source', 'WebKit', 'mac', 'icu'),
+    os.path.join('Source', 'WebKitLegacy', 'mac', 'icu'),
     os.path.join('Source', 'WTF', 'icu'),
     ]
 
@@ -403,6 +437,9 @@ def _all_categories():
     #        (which validate the consistency of the configuration
     #        settings against the known categories, etc).
     categories = categories.union(["pep8/W191", "pep8/W291", "pep8/E501"])
+
+    if apple_additions():
+        categories = categories.union(apple_additions().all_categories())
 
     return categories
 
@@ -673,7 +710,10 @@ class CheckerDispatcher(object):
             else:
                 checker = JSONChecker(file_path, handle_style_error)
         elif file_type == FileType.PYTHON:
-            checker = PythonChecker(file_path, handle_style_error)
+            if apple_additions():
+                checker = apple_additions().python_checker(file_path, handle_style_error)
+            else:
+                checker = PythonChecker(file_path, handle_style_error)
         elif file_type == FileType.XML:
             checker = XMLChecker(file_path, handle_style_error)
         elif file_type == FileType.XCODEPROJ:
@@ -834,6 +874,22 @@ class ProcessorBase(object):
         """
         raise NotImplementedError('Subclasses should implement.')
 
+    def do_association_check(self, files, cwd, host=Host()):
+        """It may be the case that changes in a file cause style errors to
+        occur elsewhere in the modified file or in other files (most notably,
+        this is the case for the test expectations linter). The association check
+        is designed to take find issues which require parsing of files outside
+        those provided to the processor.
+
+        Args:
+            files: A dictionary of file names to lists of lines modified in the provided
+            file.  Files which have been removed will also be in the dictionary, they
+            will map to 'None'
+            cwd: Current working directory, assumed to be the root of the scm repository
+            host: Current host for testing
+        """
+        raise NotImplementedError('Subclasses should implement.')
+
 
 class StyleProcessor(ProcessorBase):
 
@@ -941,3 +997,7 @@ class StyleProcessor(ProcessorBase):
         _log.debug("Using class: " + checker.__class__.__name__)
 
         checker.check(lines)
+
+    def do_association_check(self, files, cwd, host=Host()):
+        _log.debug("Running TestExpectations linter")
+        TestExpectationsChecker.lint_test_expectations(files, self._configuration, cwd, self._increment_error_count, host=host)

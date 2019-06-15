@@ -33,6 +33,7 @@
 #include "NotImplemented.h"
 #include <CoreAudio/AudioHardware.h>
 #include <wtf/MainThread.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -64,9 +65,7 @@ AudioSession::AudioSession()
 {
 }
 
-AudioSession::~AudioSession()
-{
-}
+AudioSession::~AudioSession() = default;
 
 AudioSession::CategoryType AudioSession::category() const
 {
@@ -133,13 +132,23 @@ bool AudioSession::tryToSetActive(bool)
     return true;
 }
 
+RouteSharingPolicy AudioSession::routeSharingPolicy() const
+{
+    return RouteSharingPolicy::Default;
+}
+
+String AudioSession::routingContextUID() const
+{
+    return emptyString();
+}
+
 size_t AudioSession::preferredBufferSize() const
 {
     UInt32 bufferSize;
     UInt32 bufferSizeSize = sizeof(bufferSize);
 
     AudioObjectPropertyAddress preferredBufferSizeAddress = {
-        kAudioDevicePropertyBufferFrameSizeRange,
+        kAudioDevicePropertyBufferFrameSize,
         kAudioObjectPropertyScopeGlobal,
         kAudioObjectPropertyElementMaster };
     OSStatus result = AudioObjectGetPropertyData(defaultDevice(), &preferredBufferSizeAddress, 0, 0, &bufferSizeSize, &bufferSize);

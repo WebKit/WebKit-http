@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,17 +25,15 @@
 
 #pragma once
 
-#include "JSCell.h"
+#include "JSCPoison.h"
+#include "JSCast.h"
 #include "PropertySlot.h"
 #include "PutPropertySlot.h"
 #include "Structure.h"
 
 namespace JSC {
-namespace DOMJIT {
-class GetterSetter;
-}
 
-class CustomGetterSetter final : public JSCell {
+class CustomGetterSetter : public JSCell {
 public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
@@ -43,16 +41,15 @@ public:
     typedef PropertySlot::GetValueFunc CustomGetter;
     typedef PutPropertySlot::PutValueFunc CustomSetter;
 
-    static CustomGetterSetter* create(VM& vm, CustomGetter customGetter, CustomSetter customSetter, DOMJIT::GetterSetter* domJIT = nullptr)
+    static CustomGetterSetter* create(VM& vm, CustomGetter customGetter, CustomSetter customSetter)
     {
-        CustomGetterSetter* customGetterSetter = new (NotNull, allocateCell<CustomGetterSetter>(vm.heap)) CustomGetterSetter(vm, customGetter, customSetter, domJIT);
+        CustomGetterSetter* customGetterSetter = new (NotNull, allocateCell<CustomGetterSetter>(vm.heap)) CustomGetterSetter(vm, vm.customGetterSetterStructure.get(), customGetter, customSetter);
         customGetterSetter->finishCreation(vm);
         return customGetterSetter;
     }
 
-    CustomGetterSetter::CustomGetter getter() const { return m_getter; }
-    CustomGetterSetter::CustomSetter setter() const { return m_setter; }
-    DOMJIT::GetterSetter* domJIT() const { return m_domJIT; }
+    CustomGetterSetter::CustomGetter getter() const { return m_getter.unpoisoned(); }
+    CustomGetterSetter::CustomSetter setter() const { return m_setter.unpoisoned(); }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
@@ -61,18 +58,20 @@ public:
         
     DECLARE_EXPORT_INFO;
 
-private:
-    CustomGetterSetter(VM& vm, CustomGetter getter, CustomSetter setter, DOMJIT::GetterSetter* domJIT)
-        : JSCell(vm, vm.customGetterSetterStructure.get())
+protected:
+    CustomGetterSetter(VM& vm, Structure* structure, CustomGetter getter, CustomSetter setter)
+        : JSCell(vm, structure)
         , m_getter(getter)
         , m_setter(setter)
-        , m_domJIT(domJIT)
     {
     }
 
-    CustomGetter m_getter;
-    CustomSetter m_setter;
-    DOMJIT::GetterSetter* m_domJIT;
+private:
+    template<typename T>
+    using PoisonedAccessor = Poisoned<NativeCodePoison, T>;
+
+    PoisonedAccessor<CustomGetter> m_getter;
+    PoisonedAccessor<CustomSetter> m_setter;
 };
 
 JS_EXPORT_PRIVATE bool callCustomSetter(ExecState*, CustomGetterSetter::CustomSetter, bool isAccessor, JSValue thisValue, JSValue);

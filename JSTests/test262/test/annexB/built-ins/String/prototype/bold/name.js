@@ -5,7 +5,7 @@
 es6id: B.2.3.5
 description: >
   String.prototype.bold.name is "bold".
-info: >
+info: |
   String.prototype.bold ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(String.prototype.bold.name, "bold");
-
-verifyNotEnumerable(String.prototype.bold, "name");
-verifyNotWritable(String.prototype.bold, "name");
-verifyConfigurable(String.prototype.bold, "name");
+verifyProperty(String.prototype.bold, "name", {
+  enumerable: false,
+  writable: false,
+  configurable: true,
+  value: "bold"
+});

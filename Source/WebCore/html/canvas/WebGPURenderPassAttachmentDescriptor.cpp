@@ -30,67 +30,50 @@
 
 #include "GPURenderPassAttachmentDescriptor.h"
 #include "GPUTexture.h"
-#include "WebGPURenderingContext.h"
 #include "WebGPUTexture.h"
 
 namespace WebCore {
 
-WebGPURenderPassAttachmentDescriptor::WebGPURenderPassAttachmentDescriptor(WebGPURenderingContext* context, GPURenderPassAttachmentDescriptor* descriptor)
-    : WebGPUObject(context)
-    , m_renderPassAttachmentDescriptor(descriptor)
+WebGPURenderPassAttachmentDescriptor::WebGPURenderPassAttachmentDescriptor()
 {
 }
 
-WebGPURenderPassAttachmentDescriptor::~WebGPURenderPassAttachmentDescriptor()
+WebGPURenderPassAttachmentDescriptor::~WebGPURenderPassAttachmentDescriptor() = default;
+
+unsigned WebGPURenderPassAttachmentDescriptor::loadAction() const
 {
+    return descriptor().loadAction();
 }
 
-unsigned long WebGPURenderPassAttachmentDescriptor::loadAction() const
+void WebGPURenderPassAttachmentDescriptor::setLoadAction(unsigned newLoadAction)
 {
-    if (!m_renderPassAttachmentDescriptor)
-        return 0; // FIXME: probably a real value for unknown
-
-    return m_renderPassAttachmentDescriptor->loadAction();
+    descriptor().setLoadAction(newLoadAction);
 }
 
-void WebGPURenderPassAttachmentDescriptor::setLoadAction(unsigned long newLoadAction)
+unsigned WebGPURenderPassAttachmentDescriptor::storeAction() const
 {
-    if (!m_renderPassAttachmentDescriptor)
-        return;
-
-    m_renderPassAttachmentDescriptor->setLoadAction(newLoadAction);
+    return descriptor().storeAction();
 }
 
-unsigned long WebGPURenderPassAttachmentDescriptor::storeAction() const
+void WebGPURenderPassAttachmentDescriptor::setStoreAction(unsigned newStoreAction)
 {
-    if (!m_renderPassAttachmentDescriptor)
-        return 0; // FIXME: probably a real value for unknown
-
-    return m_renderPassAttachmentDescriptor->storeAction();
+    descriptor().setStoreAction(newStoreAction);
 }
 
-void WebGPURenderPassAttachmentDescriptor::setStoreAction(unsigned long newStoreAction)
+WebGPUTexture* WebGPURenderPassAttachmentDescriptor::texture() const
 {
-    if (!m_renderPassAttachmentDescriptor)
-        return;
-
-    m_renderPassAttachmentDescriptor->setStoreAction(newStoreAction);
+    return m_texture.get();
 }
 
-RefPtr<WebGPUTexture> WebGPURenderPassAttachmentDescriptor::texture() const
+void WebGPURenderPassAttachmentDescriptor::setTexture(RefPtr<WebGPUTexture>&& newTexture)
 {
-    return m_texture;
-}
-
-void WebGPURenderPassAttachmentDescriptor::setTexture(RefPtr<WebGPUTexture> newTexture)
-{
+    // FIXME: Why can't we set this to null?
     if (!newTexture)
         return;
     
-    m_texture = newTexture;
-    
-    if (m_renderPassAttachmentDescriptor)
-        m_renderPassAttachmentDescriptor->setTexture(newTexture->texture());
+    m_texture = WTFMove(newTexture);
+
+    descriptor().setTexture(m_texture->texture());
 }
 
 } // namespace WebCore

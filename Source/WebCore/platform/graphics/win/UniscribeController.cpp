@@ -32,11 +32,11 @@
 #include "TextRun.h"
 #include <wtf/MathExtras.h>
 
+
+namespace WebCore {
 using namespace WTF;
 using namespace Unicode;
 using namespace std;
-
-namespace WebCore {
 
 // FIXME: Rearchitect this to be more like WidthIterator in Font.cpp.  Have an advance() method
 // that does stuff in that method instead of doing everything in the constructor.  Have advance()
@@ -364,8 +364,13 @@ bool UniscribeController::shapeAndPlaceItem(const UChar* cp, unsigned i, const F
         // as well, so that when the time comes to draw those glyphs, we can apply the appropriate
         // translation.
         if (glyphBuffer) {
-            FloatSize size(offsetX, -offsetY);
-            glyphBuffer->add(glyph, fontData, advance, GlyphBuffer::noOffset, &size);
+            GlyphBufferAdvance origin(offsetX, -offsetY);
+            if (!glyphBuffer->advancesCount())
+                glyphBuffer->setInitialAdvance(origin);
+            else
+                glyphBuffer->expandLastAdvance(origin);
+            GlyphBufferAdvance glyphAdvance(-origin.width() + advance, -origin.height());
+            glyphBuffer->add(glyph, fontData, glyphAdvance);
         }
 
         FloatRect glyphBounds = fontData->boundsForGlyph(glyph);

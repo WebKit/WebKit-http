@@ -26,7 +26,8 @@
 #include "stdafx.h"
 #include "AccessibilityDelegate.h"
 
-#include <WebKit/WebKitCOMAPI.h>
+#include "WebKitLegacyBrowserWindow.h"
+#include <WebKitLegacy/WebKitCOMAPI.h>
 #include <commctrl.h>
 #include <commdlg.h>
 #include <objbase.h>
@@ -52,16 +53,12 @@ HRESULT AccessibilityDelegate::QueryInterface(_In_ REFIID riid, _COM_Outptr_ voi
 
 ULONG AccessibilityDelegate::AddRef()
 {
-    return ++m_refCount;
+    return m_client.AddRef();
 }
 
 ULONG AccessibilityDelegate::Release()
 {
-    ULONG newRef = --m_refCount;
-    if (!newRef)
-        delete this;
-
-    return newRef;
+    return m_client.Release();
 }
 
 HRESULT AccessibilityDelegate::fireFrameLoadStartedEvents()

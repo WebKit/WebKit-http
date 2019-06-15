@@ -31,26 +31,34 @@
 
 #if USE(COCOA_EVENT_LOOP)
 #include <dispatch/dispatch.h>
-#include <wtf/DispatchPtr.h>
+#include <wtf/OSObjectPtr.h>
+#endif
+
+#if USE(GLIB)
+#include <gio/gio.h>
+#include <wtf/glib/GRefPtr.h>
 #endif
 
 namespace WebCore {
 
 class FileMonitor {
 public:
-    enum class FileChangeType {
-        Modification,
-        Removal
-    };
+    enum class FileChangeType { Modification, Removal };
 
     WEBCORE_EXPORT FileMonitor(const String&, Ref<WorkQueue>&& handlerQueue, WTF::Function<void(FileChangeType)>&& modificationHandler);
     WEBCORE_EXPORT ~FileMonitor();
 
 private:
 #if USE(COCOA_EVENT_LOOP)
-    DispatchPtr<dispatch_source_t> m_platformMonitor;
+    OSObjectPtr<dispatch_source_t> m_platformMonitor;
+#endif
+#if USE(GLIB)
+    static void fileChangedCallback(GFileMonitor*, GFile*, GFile*, GFileMonitorEvent, FileMonitor*);
+    void didChange(FileChangeType);
+    Ref<WorkQueue> m_handlerQueue;
+    Function<void(FileChangeType)> m_modificationHandler;
+    GRefPtr<GFileMonitor> m_platformMonitor;
 #endif
 };
 
 } // namespace WebCore
-

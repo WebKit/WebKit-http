@@ -35,7 +35,6 @@
 #import <WebCore/DatabaseManager.h>
 #import <WebCore/DatabaseTracker.h>
 #import <WebCore/SecurityOrigin.h>
-#import <wtf/NeverDestroyed.h>
 
 #if ENABLE(INDEXED_DATABASE)
 #import "WebDatabaseProvider.h"
@@ -107,7 +106,7 @@ static NSString *databasesDirectoryPath();
 {
     if (!origin)
         return nil;
-    Vector<String> nameVector = DatabaseTracker::singleton().databaseNames(SecurityOriginData::fromSecurityOrigin(*[origin _core]));
+    Vector<String> nameVector = DatabaseTracker::singleton().databaseNames([origin _core]->data());
     NSMutableArray *names = [[NSMutableArray alloc] initWithCapacity:nameVector.size()];
     for (auto& name : nameVector)
         [names addObject:(NSString *)name];
@@ -119,16 +118,15 @@ static NSString *databasesDirectoryPath();
     if (!origin)
         return nil;
 
-    DatabaseDetails details = DatabaseManager::singleton().detailsForNameAndOrigin(databaseIdentifier, *[origin _core]);
+    auto details = DatabaseManager::singleton().detailsForNameAndOrigin(databaseIdentifier, *[origin _core]);
     if (details.name().isNull())
         return nil;
-        
-    static const id keys[3] = { WebDatabaseDisplayNameKey, WebDatabaseExpectedSizeKey, WebDatabaseUsageKey };
-    id objects[3];
-    objects[0] = details.displayName().isEmpty() ? databaseIdentifier : (NSString *)details.displayName();
-    objects[1] = [NSNumber numberWithUnsignedLongLong:details.expectedUsage()];
-    objects[2] = [NSNumber numberWithUnsignedLongLong:details.currentUsage()];
-    return [[[NSDictionary alloc] initWithObjects:objects forKeys:keys count:3] autorelease];
+
+    return @{
+        WebDatabaseDisplayNameKey: details.displayName().isEmpty() ? databaseIdentifier : (NSString *)details.displayName(),
+        WebDatabaseExpectedSizeKey: @(details.expectedUsage()),
+        WebDatabaseUsageKey: @(details.currentUsage()),
+    };
 }
 
 - (void)deleteAllDatabases
@@ -143,12 +141,12 @@ static NSString *databasesDirectoryPath();
 
 - (BOOL)deleteOrigin:(WebSecurityOrigin *)origin
 {
-    return origin && DatabaseTracker::singleton().deleteOrigin(SecurityOriginData::fromSecurityOrigin(*[origin _core]));
+    return origin && DatabaseTracker::singleton().deleteOrigin([origin _core]->data());
 }
 
 - (BOOL)deleteDatabase:(NSString *)databaseIdentifier withOrigin:(WebSecurityOrigin *)origin
 {
-    return origin && DatabaseTracker::singleton().deleteDatabase(SecurityOriginData::fromSecurityOrigin(*[origin _core]), databaseIdentifier);
+    return origin && DatabaseTracker::singleton().deleteDatabase([origin _core]->data(), databaseIdentifier);
 }
 
 // For DumpRenderTree support only

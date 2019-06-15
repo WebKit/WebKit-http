@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,7 +30,6 @@
 #include "URL.h"
 #include <limits>
 #include <wtf/MathExtras.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/dtoa.h>
 
 namespace WebCore {
@@ -210,7 +209,7 @@ Expected<unsigned, HTMLIntegerParsingError> parseHTMLNonNegativeInteger(StringVi
 {
     auto optionalSignedResult = parseHTMLInteger(input);
     if (!optionalSignedResult)
-        return optionalSignedResult.getUnexpected();
+        return makeUnexpected(WTFMove(optionalSignedResult.error()));
 
     if (optionalSignedResult.value() < 0)
         return makeUnexpected(HTMLIntegerParsingError::NegativeOverflow);
@@ -350,8 +349,8 @@ String parseCORSSettingsAttribute(const AtomicString& value)
     if (value.isNull())
         return String();
     if (equalIgnoringASCIICase(value, "use-credentials"))
-        return ASCIILiteral("use-credentials");
-    return ASCIILiteral("anonymous");
+        return "use-credentials"_s;
+    return "anonymous"_s;
 }
 
 // https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh
@@ -361,26 +360,35 @@ static bool parseHTTPRefreshInternal(const CharacterType* position, const Charac
     while (position < end && isHTMLSpace(*position))
         ++position;
 
+    unsigned time = 0;
+
     const CharacterType* numberStart = position;
     while (position < end && isASCIIDigit(*position))
         ++position;
 
-    auto optionalNumber = parseHTMLNonNegativeInteger(StringView(numberStart, position - numberStart));
-    if (!optionalNumber)
-        return false;
+    StringView timeString(numberStart, position - numberStart);
+    if (timeString.isEmpty()) {
+        if (position >= end || *position != '.')
+            return false;
+    } else {
+        auto optionalNumber = parseHTMLNonNegativeInteger(timeString);
+        if (!optionalNumber)
+            return false;
+        time = optionalNumber.value();
+    }
 
     while (position < end && (isASCIIDigit(*position) || *position == '.'))
         ++position;
 
     if (position == end) {
-        parsedDelay = optionalNumber.value();
+        parsedDelay = time;
         return true;
     }
 
     if (*position != ';' && *position != ',' && !isHTMLSpace(*position))
         return false;
 
-    parsedDelay = optionalNumber.value();
+    parsedDelay = time;
 
     while (position < end && isHTMLSpace(*position))
         ++position;

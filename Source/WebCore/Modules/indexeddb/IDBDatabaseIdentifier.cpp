@@ -35,10 +35,10 @@
 
 namespace WebCore {
 
-IDBDatabaseIdentifier::IDBDatabaseIdentifier(const String& databaseName, const SecurityOrigin& openingOrigin, const SecurityOrigin& mainFrameOrigin)
+IDBDatabaseIdentifier::IDBDatabaseIdentifier(const String& databaseName, SecurityOriginData&& openingOrigin, SecurityOriginData&& mainFrameOrigin)
     : m_databaseName(databaseName)
-    , m_openingOrigin(SecurityOriginData::fromSecurityOrigin(openingOrigin))
-    , m_mainFrameOrigin(SecurityOriginData::fromSecurityOrigin(mainFrameOrigin))
+    , m_openingOrigin(WTFMove(openingOrigin))
+    , m_mainFrameOrigin(WTFMove(mainFrameOrigin))
 
 {
     // The empty string is a valid database name, but a null string is not.
@@ -63,13 +63,13 @@ String IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(const String& root
 
 String IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(const SecurityOriginData& topLevelOrigin, const SecurityOriginData& openingOrigin, const String& rootDirectory)
 {
-    String mainFrameDirectory = pathByAppendingComponent(rootDirectory, topLevelOrigin.databaseIdentifier());
+    String mainFrameDirectory = FileSystem::pathByAppendingComponent(rootDirectory, topLevelOrigin.databaseIdentifier());
 
     // If the opening origin and main frame origins are the same, there is no partitioning.
     if (openingOrigin == topLevelOrigin)
         return mainFrameDirectory;
 
-    return pathByAppendingComponent(mainFrameDirectory, openingOrigin.databaseIdentifier());
+    return FileSystem::pathByAppendingComponent(mainFrameDirectory, openingOrigin.databaseIdentifier());
 }
 
 #if !LOG_DISABLED

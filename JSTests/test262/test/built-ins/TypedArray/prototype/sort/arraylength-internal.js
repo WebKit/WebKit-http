@@ -3,12 +3,13 @@
 /*---
 esid: sec-%typedarray%.prototype.sort
 description: Use internal ArrayLength instead of getting a length property
-info: >
+info: |
   22.2.3.26 %TypedArray%.prototype.sort ( comparefn )
 
   ...
   3. Let len be the value of obj's [[ArrayLength]] internal slot.
 includes: [testTypedArray.js, compareArray.js]
+features: [TypedArray]
 ---*/
 
 var getCalls = 0;

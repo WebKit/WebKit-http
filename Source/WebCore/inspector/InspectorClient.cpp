@@ -31,17 +31,16 @@
 #include "config.h"
 #include "InspectorClient.h"
 
+#include "Frame.h"
 #include "InspectorController.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
-#include <interpreter/FrameTracers.h>
-
-using namespace JSC;
-using namespace Inspector;
+#include <JavaScriptCore/FrameTracers.h>
 
 namespace WebCore {
+using namespace JSC;
+using namespace Inspector;
 
 void InspectorClient::doDispatchMessageOnFrontendPage(Page* frontendPage, const String& message)
 {

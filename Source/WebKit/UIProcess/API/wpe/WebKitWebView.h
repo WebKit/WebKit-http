@@ -2,7 +2,7 @@
  * Copyright (C) 2007 Holger Hans Peter Freyther
  * Copyright (C) 2007, 2008 Alp Toker <alp@atoker.com>
  * Copyright (C) 2008 Collabora Ltd.
- * Copyright (C) 2011 Igalia S.L.
+ * Copyright (C) 2011, 2017 Igalia S.L.
  * Portions Copyright (c) 2011 Motorola Mobility, Inc.  All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -28,7 +28,6 @@
 #ifndef WebKitWebView_h
 #define WebKitWebView_h
 
-#include <JavaScriptCore/JSBase.h>
 #include <wpe/WebKitAuthenticationRequest.h>
 #include <wpe/WebKitBackForwardList.h>
 #include <wpe/WebKitContextMenu.h>
@@ -49,6 +48,7 @@
 #include <wpe/WebKitUserContentManager.h>
 #include <wpe/WebKitWebContext.h>
 #include <wpe/WebKitWebResource.h>
+#include <wpe/WebKitWebViewBackend.h>
 #include <wpe/WebKitWebViewSessionState.h>
 #include <wpe/WebKitWindowProperties.h>
 
@@ -153,35 +153,18 @@ typedef enum {
 } WebKitInsecureContentEvent;
 
 /**
- * WebKitSnapshotOptions:
- * @WEBKIT_SNAPSHOT_OPTIONS_NONE: Do not include any special options.
- * @WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING: Whether to include in the
- * snapshot the highlight of the selected content.
- * @WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND: Do not fill the background with white before
- * rendering the snapshot. Since 2.8
+ * WebKitWebProcessTerminationReason:
+ * @WEBKIT_WEB_PROCESS_CRASHED: the web process crashed.
+ * @WEBKIT_WEB_PROCESS_EXCEEDED_MEMORY_LIMIT: the web process exceeded the memory limit.
  *
- * Enum values used to specify options when taking a snapshot
- * from a #WebKitWebView.
+ * Enum values used to specify the reason why the web process terminated abnormally.
+ *
+ * Since: 2.20
  */
 typedef enum {
-  WEBKIT_SNAPSHOT_OPTIONS_NONE = 0,
-  WEBKIT_SNAPSHOT_OPTIONS_INCLUDE_SELECTION_HIGHLIGHTING = 1 << 0,
-  WEBKIT_SNAPSHOT_OPTIONS_TRANSPARENT_BACKGROUND = 1 << 1,
-} WebKitSnapshotOptions;
-
-/**
- * WebKitSnapshotRegion:
- * @WEBKIT_SNAPSHOT_REGION_VISIBLE: Specifies a snapshot only for the area that is
- * visible in the webview
- * @WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT: A snapshot of the entire document.
- *
- * Enum values used to specify the region from which to get a #WebKitWebView
- * snapshot
- */
-typedef enum {
-  WEBKIT_SNAPSHOT_REGION_VISIBLE = 0,
-  WEBKIT_SNAPSHOT_REGION_FULL_DOCUMENT,
-} WebKitSnapshotRegion;
+    WEBKIT_WEB_PROCESS_CRASHED,
+    WEBKIT_WEB_PROCESS_EXCEEDED_MEMORY_LIMIT
+} WebKitWebProcessTerminationReason;
 
 struct _WebKitWebView {
     GObject parent;
@@ -243,6 +226,8 @@ struct _WebKitWebViewClass {
                                                     GTlsCertificateFlags         errors);
     gboolean       (* show_notification)           (WebKitWebView               *web_view,
                                                     WebKitNotification          *notification);
+    void           (* web_process_terminated)      (WebKitWebView               *web_view,
+                                                    WebKitWebProcessTerminationReason reason);
 
     void (*_webkit_reserved0) (void);
     void (*_webkit_reserved1) (void);
@@ -252,26 +237,32 @@ struct _WebKitWebViewClass {
     void (*_webkit_reserved5) (void);
     void (*_webkit_reserved6) (void);
     void (*_webkit_reserved7) (void);
-    void (*_webkit_reserved8) (void);
 };
 
 WEBKIT_API GType
 webkit_web_view_get_type                             (void);
 
 WEBKIT_API WebKitWebView *
-webkit_web_view_new                                  (void);
+webkit_web_view_new                                  (WebKitWebViewBackend      *backend);
 
 WEBKIT_API WebKitWebView *
-webkit_web_view_new_with_context                     (WebKitWebContext          *context);
+webkit_web_view_new_with_context                     (WebKitWebViewBackend      *backend,
+                                                      WebKitWebContext          *context);
 
 WEBKIT_API WebKitWebView *
-webkit_web_view_new_with_settings                    (WebKitSettings            *settings);
+webkit_web_view_new_with_settings                    (WebKitWebViewBackend      *backend,
+                                                      WebKitSettings            *settings);
 
 WEBKIT_API WebKitWebView *
-webkit_web_view_new_with_related_view                (WebKitWebView             *web_view);
+webkit_web_view_new_with_related_view                (WebKitWebViewBackend      *backend,
+                                                      WebKitWebView             *web_view);
 
 WEBKIT_API WebKitWebView *
-webkit_web_view_new_with_user_content_manager        (WebKitUserContentManager  *user_content_manager);
+webkit_web_view_new_with_user_content_manager        (WebKitWebViewBackend      *backend,
+                                                      WebKitUserContentManager  *user_content_manager);
+
+WEBKIT_API WebKitWebViewBackend *
+webkit_web_view_get_backend                          (WebKitWebView             *web_view);
 
 WEBKIT_API gboolean
 webkit_web_view_is_ephemeral                         (WebKitWebView             *web_view);
@@ -361,9 +352,6 @@ webkit_web_view_go_to_back_forward_list_item         (WebKitWebView             
 WEBKIT_API const gchar *
 webkit_web_view_get_uri                              (WebKitWebView             *web_view);
 
-WEBKIT_API cairo_surface_t *
-webkit_web_view_get_favicon                          (WebKitWebView             *web_view);
-
 WEBKIT_API const gchar *
 webkit_web_view_get_custom_charset                   (WebKitWebView             *web_view);
 
@@ -411,9 +399,6 @@ webkit_web_view_execute_editing_command_with_argument(WebKitWebView             
 WEBKIT_API WebKitFindController *
 webkit_web_view_get_find_controller                  (WebKitWebView             *web_view);
 
-WEBKIT_API JSGlobalContextRef
-webkit_web_view_get_javascript_global_context        (WebKitWebView             *web_view);
-
 WEBKIT_API void
 webkit_web_view_run_javascript                       (WebKitWebView             *web_view,
                                                       const gchar               *script,
@@ -422,6 +407,18 @@ webkit_web_view_run_javascript                       (WebKitWebView             
                                                       gpointer                   user_data);
 WEBKIT_API WebKitJavascriptResult *
 webkit_web_view_run_javascript_finish                (WebKitWebView             *web_view,
+                                                      GAsyncResult              *result,
+                                                      GError                   **error);
+
+WEBKIT_API void
+webkit_web_view_run_javascript_in_world              (WebKitWebView             *web_view,
+                                                      const gchar               *script,
+                                                      const gchar               *world_name,
+                                                      GCancellable              *cancellable,
+                                                      GAsyncReadyCallback        callback,
+                                                      gpointer                   user_data);
+WEBKIT_API WebKitJavascriptResult *
+webkit_web_view_run_javascript_in_world_finish       (WebKitWebView             *web_view,
                                                       GAsyncResult              *result,
                                                       GError                   **error);
 
@@ -477,18 +474,6 @@ WEBKIT_API gboolean
 webkit_web_view_get_tls_info                         (WebKitWebView             *web_view,
                                                       GTlsCertificate          **certificate,
                                                       GTlsCertificateFlags      *errors);
-WEBKIT_API void
-webkit_web_view_get_snapshot                         (WebKitWebView             *web_view,
-                                                      WebKitSnapshotRegion       region,
-                                                      WebKitSnapshotOptions      options,
-                                                      GCancellable              *cancellable,
-                                                      GAsyncReadyCallback        callback,
-                                                      gpointer                   user_data);
-
-WEBKIT_API cairo_surface_t *
-webkit_web_view_get_snapshot_finish                  (WebKitWebView             *web_view,
-                                                      GAsyncResult              *result,
-                                                      GError                   **error);
 
 WEBKIT_API WebKitUserContentManager *
 webkit_web_view_get_user_content_manager             (WebKitWebView             *web_view);

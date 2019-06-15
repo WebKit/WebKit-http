@@ -8,6 +8,7 @@
  * Copyright (C) 2009 Jeff Schiller <codedread@gmail.com>
  * Copyright (C) 2011 Renata Hodovan <reni@webkit.org>
  * Copyright (C) 2011 University of Szeged
+ * Copyright (C) 2018 Adobe Systems Incorporated. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -32,6 +33,7 @@
 #include "FloatQuad.h"
 #include "GraphicsContext.h"
 #include "HitTestRequest.h"
+#include "HitTestResult.h"
 #include "LayoutRepainter.h"
 #include "PointerEventsHitRules.h"
 #include "RenderSVGResourceMarker.h"
@@ -42,9 +44,12 @@
 #include "SVGResourcesCache.h"
 #include "SVGURIReference.h"
 #include "StrokeStyleApplier.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGShape);
 
 class BoundingRectStrokeStyleApplier final : public StrokeStyleApplier {
 public:
@@ -70,16 +75,11 @@ RenderSVGShape::RenderSVGShape(SVGGraphicsElement& element, RenderStyle&& style)
 {
 }
 
-RenderSVGShape::~RenderSVGShape()
-{
-}
+RenderSVGShape::~RenderSVGShape() = default;
 
 void RenderSVGShape::updateShapeFromElement()
 {
-    m_path = std::make_unique<Path>();
-    ASSERT(RenderSVGShape::isEmpty());
-
-    updatePathFromGraphicsElement(&graphicsElement(), path());
+    m_path = std::make_unique<Path>(pathFromGraphicsElement(&graphicsElement()));
     processMarkerPositions();
 
     m_fillBoundingBox = calculateObjectBoundingBox();
@@ -111,12 +111,12 @@ void RenderSVGShape::strokeShape(GraphicsContext& context) const
     context.strokePath(*usePath);
 }
 
-bool RenderSVGShape::shapeDependentStrokeContains(const FloatPoint& point)
+bool RenderSVGShape::shapeDependentStrokeContains(const FloatPoint& point, PointCoordinateSpace pointCoordinateSpace)
 {
     ASSERT(m_path);
     BoundingRectStrokeStyleApplier applier(*this);
 
-    if (hasNonScalingStroke()) {
+    if (hasNonScalingStroke() && pointCoordinateSpace != LocalCoordinateSpace) {
         AffineTransform nonScalingTransform = nonScalingStrokeTransform();
         Path* usePath = nonScalingStrokePath(m_path.get(), nonScalingTransform);
 
@@ -235,12 +235,12 @@ void RenderSVGShape::fillShape(const RenderStyle& style, GraphicsContext& origin
     Color fallbackColor;
     if (RenderSVGResource* fillPaintingResource = RenderSVGResource::fillPaintingResource(*this, style, fallbackColor)) {
         if (fillPaintingResource->applyResource(*this, style, context, RenderSVGResourceMode::ApplyToFill))
-            fillPaintingResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToFill, 0, this);
+            fillPaintingResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToFill, nullptr, this);
         else if (fallbackColor.isValid()) {
             RenderSVGResourceSolidColor* fallbackResource = RenderSVGResource::sharedSolidPaintingResource();
             fallbackResource->setColor(fallbackColor);
             if (fallbackResource->applyResource(*this, style, context, RenderSVGResourceMode::ApplyToFill))
-                fallbackResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToFill, 0, this);
+                fallbackResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToFill, nullptr, this);
         }
     }
 }
@@ -251,12 +251,12 @@ void RenderSVGShape::strokeShape(const RenderStyle& style, GraphicsContext& orig
     Color fallbackColor;
     if (RenderSVGResource* strokePaintingResource = RenderSVGResource::strokePaintingResource(*this, style, fallbackColor)) {
         if (strokePaintingResource->applyResource(*this, style, context, RenderSVGResourceMode::ApplyToStroke))
-            strokePaintingResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToStroke, 0, this);
+            strokePaintingResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToStroke, nullptr, this);
         else if (fallbackColor.isValid()) {
             RenderSVGResourceSolidColor* fallbackResource = RenderSVGResource::sharedSolidPaintingResource();
             fallbackResource->setColor(fallbackColor);
             if (fallbackResource->applyResource(*this, style, context, RenderSVGResourceMode::ApplyToStroke))
-                fallbackResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToStroke, 0, this);
+                fallbackResource->postApplyResource(*this, context, RenderSVGResourceMode::ApplyToStroke, nullptr, this);
         }
     }
 }
@@ -296,8 +296,8 @@ void RenderSVGShape::fillStrokeMarkers(PaintInfo& childPaintInfo)
 
 void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
 {
-    if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhaseForeground
-        || style().visibility() == HIDDEN || isEmpty())
+    if (paintInfo.context().paintingDisabled() || paintInfo.phase != PaintPhase::Foreground
+        || style().visibility() == Visibility::Hidden || isEmpty())
         return;
     FloatRect boundingBox = repaintRectInLocalCoordinates();
     if (!SVGRenderSupport::paintInfoIntersectsRepaintRect(boundingBox, m_localTransform, paintInfo))
@@ -307,12 +307,12 @@ void RenderSVGShape::paint(PaintInfo& paintInfo, const LayoutPoint&)
     GraphicsContextStateSaver stateSaver(childPaintInfo.context());
     childPaintInfo.applyTransform(m_localTransform);
 
-    if (childPaintInfo.phase == PaintPhaseForeground) {
+    if (childPaintInfo.phase == PaintPhase::Foreground) {
         SVGRenderingContext renderingContext(*this, childPaintInfo);
 
         if (renderingContext.isRenderingPrepared()) {
             const SVGRenderStyle& svgStyle = style().svgStyle();
-            if (svgStyle.shapeRendering() == SR_CRISPEDGES)
+            if (svgStyle.shapeRendering() == ShapeRendering::CrispEdges)
                 childPaintInfo.context().setShouldAntialias(false);
 
             fillStrokeMarkers(childPaintInfo);
@@ -332,6 +332,36 @@ void RenderSVGShape::addFocusRingRects(Vector<LayoutRect>& rects, const LayoutPo
         rects.append(rect);
 }
 
+bool RenderSVGShape::isPointInFill(const FloatPoint& point)
+{
+    return shapeDependentFillContains(point, style().svgStyle().fillRule());
+}
+
+bool RenderSVGShape::isPointInStroke(const FloatPoint& point)
+{
+    if (!style().svgStyle().hasStroke())
+        return false;
+
+    return shapeDependentStrokeContains(point, LocalCoordinateSpace);
+}
+
+float RenderSVGShape::getTotalLength() const
+{
+    if (m_path)
+        return m_path->length();
+
+    return 0;
+}
+
+void RenderSVGShape::getPointAtLength(FloatPoint& point, float distance) const
+{
+    if (!m_path)
+        return;
+
+    bool isValid;
+    point = m_path->pointAtLength(distance, isValid);
+}
+
 bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResult& result, const FloatPoint& pointInParent, HitTestAction hitTestAction)
 {
     // We only draw in the forground phase, so we only hit-test then.
@@ -344,7 +374,7 @@ bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
         return false;
 
     PointerEventsHitRules hitRules(PointerEventsHitRules::SVG_PATH_HITTESTING, request, style().pointerEvents());
-    bool isVisible = (style().visibility() == VISIBLE);
+    bool isVisible = (style().visibility() == Visibility::Visible);
     if (isVisible || !hitRules.requireVisible) {
         const SVGRenderStyle& svgStyle = style().svgStyle();
         WindRule fillRule = svgStyle.fillRule();
@@ -353,7 +383,8 @@ bool RenderSVGShape::nodeAtFloatPoint(const HitTestRequest& request, HitTestResu
         if ((hitRules.canHitStroke && (svgStyle.hasStroke() || !hitRules.requireStroke) && strokeContains(localPoint, hitRules.requireStroke))
             || (hitRules.canHitFill && (svgStyle.hasFill() || !hitRules.requireFill) && fillContains(localPoint, hitRules.requireFill, fillRule))) {
             updateHitTestResult(result, LayoutPoint(localPoint));
-            return true;
+            if (result.addNodeToListBasedTestResult(&graphicsElement(), request, localPoint) == HitTestProgress::Stop)
+                return true;
         }
     }
     return false;

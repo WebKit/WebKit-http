@@ -29,20 +29,11 @@
 #if USE(CFURLCONNECTION)
 
 #include "AuthenticationCF.h"
-#include "CFNetworkSPI.h"
 #include "Credential.h"
 #include "ProtectionSpace.h"
-#include <wtf/RetainPtr.h>
-
-#if PLATFORM(COCOA)
-#include "WebCoreSystemInterface.h"
-#elif PLATFORM(WIN)
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
-#endif
-
-#if PLATFORM(IOS)
-#include <CFNetwork/CFURLCredentialStorage.h>
-#endif
+#include <pal/spi/cf/CFNetworkSPI.h>
+#include <wtf/RetainPtr.h>
 
 namespace WebCore {
     
@@ -54,14 +45,9 @@ static inline CFURLCredentialRef copyCredentialFromProtectionSpace(CFURLProtecti
 
 Credential CredentialStorage::getFromPersistentStorage(const ProtectionSpace& protectionSpace)
 {
-#if PLATFORM(COCOA)
-    auto credentialCF = adoptCF(copyCredentialFromProtectionSpace(protectionSpace.cfSpace()));
-    return Credential(credentialCF.get());
-#else
     auto protectionSpaceCF = adoptCF(createCF(protectionSpace));
     auto credentialCF = adoptCF(copyCredentialFromProtectionSpace(protectionSpaceCF.get()));
     return core(credentialCF.get());
-#endif
 }
 
 } // namespace WebCore

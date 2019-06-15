@@ -3,14 +3,14 @@
 /*---
 esid: sec-%typedarray%.prototype.filter
 description: Throws TypeError if callbackfn is not callable
-info: >
+info: |
   22.2.3.9 %TypedArray%.prototype.filter ( callbackfn [ , thisArg ] )
 
   ...
   4. If IsCallable(callbackfn) is false, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 testWithTypedArrayConstructors(function(TA) {

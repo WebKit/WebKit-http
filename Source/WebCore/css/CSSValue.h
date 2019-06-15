@@ -30,6 +30,7 @@
 namespace WebCore {
 
 class CSSCustomPropertyValue;
+class CSSStyleDeclaration;
 class CachedResource;
 class DeprecatedCSSOMValue;
 class StyleSheetContents;
@@ -80,8 +81,8 @@ public:
     bool isFontValue() const { return m_classType == FontClass; }
     bool isFontStyleValue() const { return m_classType == FontStyleClass; }
     bool isFontStyleRangeValue() const { return m_classType == FontStyleRangeClass; }
-    bool isImageGeneratorValue() const { return m_classType >= CanvasClass && m_classType <= RadialGradientClass; }
-    bool isGradientValue() const { return m_classType >= LinearGradientClass && m_classType <= RadialGradientClass; }
+    bool isImageGeneratorValue() const { return m_classType >= CanvasClass && m_classType <= ConicGradientClass; }
+    bool isGradientValue() const { return m_classType >= LinearGradientClass && m_classType <= ConicGradientClass; }
     bool isNamedImageValue() const { return m_classType == NamedImageClass; }
     bool isImageSetValue() const { return m_classType == ImageSetClass; }
     bool isImageValue() const { return m_classType == ImageClass; }
@@ -90,14 +91,17 @@ public:
     bool isInitialValue() const { return m_classType == InitialClass; }
     bool isUnsetValue() const { return m_classType == UnsetClass; }
     bool isRevertValue() const { return m_classType == RevertClass; }
+    bool isGlobalKeyword() const { return isInheritedValue() || isInitialValue() || isUnsetValue() || isRevertValue(); }
     bool treatAsInitialValue(CSSPropertyID) const;
     bool treatAsInheritedValue(CSSPropertyID) const;
     bool isLinearGradientValue() const { return m_classType == LinearGradientClass; }
     bool isRadialGradientValue() const { return m_classType == RadialGradientClass; }
+    bool isConicGradientValue() const { return m_classType == ConicGradientClass; }
     bool isReflectValue() const { return m_classType == ReflectClass; }
     bool isShadowValue() const { return m_classType == ShadowClass; }
     bool isCubicBezierTimingFunctionValue() const { return m_classType == CubicBezierTimingFunctionClass; }
     bool isStepsTimingFunctionValue() const { return m_classType == StepsTimingFunctionClass; }
+    bool isFramesTimingFunctionValue() const { return m_classType == FramesTimingFunctionClass; }
     bool isSpringTimingFunctionValue() const { return m_classType == SpringTimingFunctionClass; }
     bool isLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
     bool isCalcValue() const {return m_classType == CalculationClass; }
@@ -118,7 +122,7 @@ public:
     
     bool hasVariableReferences() const { return isVariableReferenceValue() || isPendingSubstitutionValue(); }
 
-    Ref<DeprecatedCSSOMValue> createDeprecatedCSSOMWrapper() const;
+    Ref<DeprecatedCSSOMValue> createDeprecatedCSSOMWrapper(CSSStyleDeclaration&) const;
 
     bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
@@ -142,10 +146,12 @@ protected:
         FilterImageClass,
         LinearGradientClass,
         RadialGradientClass,
+        ConicGradientClass,
 
         // Timing function classes.
         CubicBezierTimingFunctionClass,
         StepsTimingFunctionClass,
+        FramesTimingFunctionClass,
         SpringTimingFunctionClass,
 
         // Other class types.
@@ -217,7 +223,7 @@ protected:
     // NOTE: This class is non-virtual for memory and performance reasons.
     // Don't go making it virtual again unless you know exactly what you're doing!
 
-    ~CSSValue() { }
+    ~CSSValue() = default;
 
 private:
     WEBCORE_EXPORT void destroy();

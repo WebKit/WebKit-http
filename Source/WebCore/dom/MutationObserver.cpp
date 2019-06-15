@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -33,16 +34,19 @@
 #include "MutationObserver.h"
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "HTMLSlotElement.h"
 #include "Microtasks.h"
 #include "MutationCallback.h"
 #include "MutationObserverRegistration.h"
 #include "MutationRecord.h"
 #include <algorithm>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(MutationObserver);
 
 static unsigned s_observerPriority = 0;
 
@@ -232,7 +236,9 @@ void MutationObserver::deliver()
     Vector<Ref<MutationRecord>> records;
     records.swap(m_records);
 
-    m_callback->call(records, this);
+    // FIXME: Keep mutation observer callback as long as its observed nodes are alive. See https://webkit.org/b/179224.
+    if (m_callback->hasCallback())
+        m_callback->handleEvent(*this, records, *this);
 }
 
 void MutationObserver::notifyMutationObservers()
@@ -248,9 +254,7 @@ void MutationObserver::notifyMutationObservers()
     deliveryInProgress = true;
 
     if (!suspendedMutationObservers().isEmpty()) {
-        Vector<RefPtr<MutationObserver>> suspended;
-        copyToVector(suspendedMutationObservers(), suspended);
-        for (auto& observer : suspended) {
+        for (auto& observer : copyToVector(suspendedMutationObservers())) {
             if (!observer->canDeliver())
                 continue;
 
@@ -261,8 +265,7 @@ void MutationObserver::notifyMutationObservers()
 
     while (!activeMutationObservers().isEmpty() || !signalSlotList().isEmpty()) {
         // 2. Let notify list be a copy of unit of related similar-origin browsing contexts' list of MutationObserver objects.
-        Vector<RefPtr<MutationObserver>> notifyList;
-        copyToVector(activeMutationObservers(), notifyList);
+        auto notifyList = copyToVector(activeMutationObservers());
         activeMutationObservers().clear();
         std::sort(notifyList.begin(), notifyList.end(), [](auto& lhs, auto& rhs) {
             return lhs->m_priority < rhs->m_priority;

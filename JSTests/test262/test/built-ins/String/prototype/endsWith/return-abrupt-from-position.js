@@ -4,7 +4,7 @@
 es6id: 21.1.3.6
 description: >
   Returns abrupt from ToInteger(endPosition).
-info: >
+info: |
   21.1.3.6 String.prototype.endsWith ( searchString [ , endPosition] )
 
   ...
@@ -12,6 +12,7 @@ info: >
   ToInteger(endPosition).
   11. ReturnIfAbrupt(pos).
   ...
+features: [String.prototype.endsWith]
 ---*/
 
 var position = {

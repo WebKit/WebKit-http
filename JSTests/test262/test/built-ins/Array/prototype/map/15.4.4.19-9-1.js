@@ -2,18 +2,19 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.map
 es5id: 15.4.4.19-9-1
 description: >
     Array.prototype.map doesn't mutate the Array on which it is called
     on
 ---*/
 
-  function callbackfn(val, idx, obj)
-  {
-    return true;
-  }
-  var srcArr = [1,2,3,4,5];
-  srcArr.map(callbackfn);
+function callbackfn(val, idx, obj)
+{
+  return true;
+}
+var srcArr = [1, 2, 3, 4, 5];
+srcArr.map(callbackfn);
 
 assert.sameValue(srcArr[0], 1, 'srcArr[0]');
 assert.sameValue(srcArr[1], 2, 'srcArr[1]');

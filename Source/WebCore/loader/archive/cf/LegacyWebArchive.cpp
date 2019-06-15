@@ -41,7 +41,6 @@
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
 #include "HTMLObjectElement.h"
-#include "IconDatabase.h"
 #include "Image.h"
 #include "URLHash.h"
 #include "Logging.h"
@@ -514,7 +513,7 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
                 }
 
                 ResourceRequest request(subresourceURL);
-                request.setDomainForCachePartition(frame.document()->topOrigin().domainForCachePartition());
+                request.setDomainForCachePartition(frame.document()->domainForCachePartition());
 
                 if (auto* cachedResource = MemoryCache::singleton().resourceForRequest(request, frame.page()->sessionID())) {
                     if (auto resource = ArchiveResource::create(cachedResource->resourceBuffer(), subresourceURL, cachedResource->response())) {
@@ -529,14 +528,13 @@ RefPtr<LegacyWebArchive> LegacyWebArchive::create(const String& markupString, Fr
         }
     }
 
-    // Add favicon if one exists for this page, if we are archiving the entire page.
-    if (!nodes.isEmpty() && nodes[0]->isDocumentNode() && iconDatabase().isEnabled()) {
-        auto iconURL = iconDatabase().synchronousIconURLForPageURL(responseURL);
-        if (!iconURL.isEmpty() && iconDatabase().synchronousIconDataKnownForIconURL(iconURL)) {
-            if (auto* iconImage = iconDatabase().synchronousIconForPageURL(responseURL, IntSize(16, 16))) {
-                if (auto resource = ArchiveResource::create(iconImage->data(), URL(ParsedURLString, iconURL), "image/x-icon", "", ""))
-                    subresources.append(resource.releaseNonNull());
-            }
+    // If we are archiving the entire page, add any link icons that we have data for.
+    if (!nodes.isEmpty() && nodes[0]->isDocumentNode()) {
+        auto* documentLoader = frame.loader().documentLoader();
+        ASSERT(documentLoader);
+        for (auto& icon : documentLoader->linkIcons()) {
+            if (auto resource = documentLoader->subresource(icon.url))
+                subresources.append(resource.releaseNonNull());
         }
     }
 

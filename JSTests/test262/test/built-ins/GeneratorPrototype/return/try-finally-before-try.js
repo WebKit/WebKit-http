@@ -6,15 +6,15 @@ description: >
     When a generator is paused before a `try..finally` statement, `return`
     should interrupt control flow as if a `return` statement had appeared at
     that location in the function body.
+features: [generators]
 ---*/
 
 var unreachable = 0;
+
 function* g() {
   yield;
   unreachable += 1;
-  try {
-  } finally {
-  }
+  try {} finally {}
 }
 var iter = g();
 var result;

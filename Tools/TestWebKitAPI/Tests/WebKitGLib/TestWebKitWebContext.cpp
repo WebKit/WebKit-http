@@ -51,11 +51,11 @@ static void testWebContextEphemeral(Test* test, gconstpointer)
     g_assert(WEBKIT_IS_WEBSITE_DATA_MANAGER(manager));
     g_assert(!webkit_website_data_manager_is_ephemeral(manager));
 
-    auto webView = Test::adoptView(webkit_web_view_new());
+    auto webView = Test::adoptView(Test::createWebView());
     g_assert(!webkit_web_view_is_ephemeral(webView.get()));
     g_assert(webkit_web_view_get_website_data_manager(webView.get()) == webkit_web_context_get_website_data_manager(webkit_web_context_get_default()));
 
-    webView = Test::adoptView(webkit_web_view_new_with_context(test->m_webContext.get()));
+    webView = Test::adoptView(Test::createWebView(test->m_webContext.get()));
     g_assert(!webkit_web_view_is_ephemeral(webView.get()));
     g_assert(webkit_web_view_get_website_data_manager(webView.get()) == manager);
 
@@ -66,7 +66,7 @@ static void testWebContextEphemeral(Test* test, gconstpointer)
     g_assert(webkit_website_data_manager_is_ephemeral(manager));
     g_assert(webkit_web_view_get_website_data_manager(webView.get()) != manager);
 
-    webView = Test::adoptView(webkit_web_view_new_with_context(context.get()));
+    webView = Test::adoptView(Test::createWebView(context.get()));
     g_assert(webkit_web_view_is_ephemeral(webView.get()));
     g_assert(webkit_web_view_get_website_data_manager(webView.get()) == manager);
 
@@ -580,11 +580,11 @@ static void testWebContextSecurityPolicy(SecurityPolicyTest* test, gconstpointer
         | SecurityPolicyTest::CORSEnabled | SecurityPolicyTest::EmptyDocument);
 }
 
-static void consoleMessageReceivedCallback(WebKitUserContentManager*, WebKitJavascriptResult* message, WebKitJavascriptResult** result)
+static void consoleMessageReceivedCallback(WebKitUserContentManager*, WebKitJavascriptResult* message, Vector<WebKitJavascriptResult*>* result)
 {
+    g_assert(message);
     g_assert(result);
-    g_assert(!*result);
-    *result = webkit_javascript_result_ref(message);
+    result->append(webkit_javascript_result_ref(message));
 }
 
 static void testWebContextSecurityFileXHR(WebViewTest* test, gconstpointer)
@@ -596,30 +596,33 @@ static void testWebContextSecurityFileXHR(WebViewTest* test, gconstpointer)
     GUniquePtr<char> jsonURL(g_strdup_printf("file://%s/simple.json", Test::getResourcesDir().data()));
     GUniquePtr<char> xhr(g_strdup_printf("var xhr = new XMLHttpRequest; xhr.open(\"GET\", \"%s\"); xhr.send();", jsonURL.get()));
 
-    WebKitJavascriptResult* consoleMessage = nullptr;
+    Vector<WebKitJavascriptResult*> consoleMessages;
     webkit_user_content_manager_register_script_message_handler(test->m_userContentManager.get(), "console");
-    g_signal_connect(test->m_userContentManager.get(), "script-message-received::console", G_CALLBACK(consoleMessageReceivedCallback), &consoleMessage);
+    g_signal_connect(test->m_userContentManager.get(), "script-message-received::console", G_CALLBACK(consoleMessageReceivedCallback), &consoleMessages);
 
     // By default file access is not allowed, this will show a console message with a cross-origin error.
     GUniqueOutPtr<GError> error;
     WebKitJavascriptResult* javascriptResult = test->runJavaScriptAndWaitUntilFinished(xhr.get(), &error.outPtr());
     g_assert(javascriptResult);
     g_assert(!error);
-    g_assert(consoleMessage);
-    GUniquePtr<char> messageString(WebViewTest::javascriptResultToCString(consoleMessage));
-    GRefPtr<GVariant> variant = g_variant_parse(G_VARIANT_TYPE("(uusus)"), messageString.get(), nullptr, nullptr, nullptr);
-    g_assert(variant.get());
-    unsigned level;
-    const char* messageText;
-    g_variant_get(variant.get(), "(uu&su&s)", nullptr, &level, &messageText, nullptr, nullptr);
-    g_assert_cmpuint(level, ==, 3); // Console error message.
-    GUniquePtr<char> expectedErrorMessage(g_strdup_printf("XMLHttpRequest cannot load %s. Cross origin requests are only supported for HTTP.", jsonURL.get()));
-    g_assert_cmpstr(messageText, ==, expectedErrorMessage.get());
-    webkit_javascript_result_unref(consoleMessage);
-    consoleMessage = nullptr;
-    level = 0;
-    messageText = nullptr;
-    variant = nullptr;
+    g_assert_cmpuint(consoleMessages.size(), ==, 2);
+    Vector<GUniquePtr<char>, 2> expectedMessages;
+    expectedMessages.append(g_strdup("Cross origin requests are only supported for HTTP."));
+    expectedMessages.append(g_strdup_printf("XMLHttpRequest cannot load %s due to access control checks.", jsonURL.get()));
+    unsigned i = 0;
+    for (auto* consoleMessage : consoleMessages) {
+        g_assert(consoleMessage);
+        GUniquePtr<char> messageString(WebViewTest::javascriptResultToCString(consoleMessage));
+        GRefPtr<GVariant> variant = g_variant_parse(G_VARIANT_TYPE("(uusus)"), messageString.get(), nullptr, nullptr, nullptr);
+        g_assert(variant.get());
+        unsigned level;
+        const char* messageText;
+        g_variant_get(variant.get(), "(uu&su&s)", nullptr, &level, &messageText, nullptr, nullptr);
+        g_assert_cmpuint(level, ==, 3); // Console error message.
+        g_assert_cmpstr(messageText, ==, expectedMessages[i++].get());
+        webkit_javascript_result_unref(consoleMessage);
+    }
+    consoleMessages.clear();
 
     // Allow file access from file URLs.
     webkit_settings_set_allow_file_access_from_file_urls(webkit_web_view_get_settings(test->m_webView), TRUE);
@@ -635,15 +638,22 @@ static void testWebContextSecurityFileXHR(WebViewTest* test, gconstpointer)
     javascriptResult = test->runJavaScriptAndWaitUntilFinished(xhr.get(), &error.outPtr());
     g_assert(javascriptResult);
     g_assert(!error);
-    g_assert(consoleMessage);
-    variant = g_variant_parse(G_VARIANT_TYPE("(uusus)"), messageString.get(), nullptr, nullptr, nullptr);
-    g_assert(variant.get());
-    g_variant_get(variant.get(), "(uu&su&s)", nullptr, &level, &messageText, nullptr, nullptr);
-    g_assert_cmpuint(level, ==, 3); // Console error message.
-    g_assert_cmpstr(messageText, ==, expectedErrorMessage.get());
-    webkit_javascript_result_unref(consoleMessage);
+    i = 0;
+    for (auto* consoleMessage : consoleMessages) {
+        g_assert(consoleMessage);
+        GUniquePtr<char> messageString(WebViewTest::javascriptResultToCString(consoleMessage));
+        GRefPtr<GVariant> variant = g_variant_parse(G_VARIANT_TYPE("(uusus)"), messageString.get(), nullptr, nullptr, nullptr);
+        g_assert(variant.get());
+        unsigned level;
+        const char* messageText;
+        g_variant_get(variant.get(), "(uu&su&s)", nullptr, &level, &messageText, nullptr, nullptr);
+        g_assert_cmpuint(level, ==, 3); // Console error message.
+        g_assert_cmpstr(messageText, ==, expectedMessages[i++].get());
+        webkit_javascript_result_unref(consoleMessage);
+    }
+    consoleMessages.clear();
 
-    g_signal_handlers_disconnect_matched(test->m_userContentManager.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, &consoleMessage);
+    g_signal_handlers_disconnect_matched(test->m_userContentManager.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, &consoleMessages);
     webkit_user_content_manager_unregister_script_message_handler(test->m_userContentManager.get(), "console");
 
     webkit_settings_set_allow_file_access_from_file_urls(webkit_web_view_get_settings(test->m_webView), FALSE);
@@ -652,6 +662,19 @@ static void testWebContextSecurityFileXHR(WebViewTest* test, gconstpointer)
 class ProxyTest : public WebViewTest {
 public:
     MAKE_GLIB_TEST_FIXTURE(ProxyTest);
+
+#if SOUP_CHECK_VERSION(2, 61, 90)
+    enum class WebSocketServerType {
+        Unknown,
+        NoProxy,
+        Proxy
+    };
+
+    static void webSocketProxyServerCallback(SoupServer*, SoupWebsocketConnection*, const char* path, SoupClientContext*, gpointer userData)
+    {
+        static_cast<ProxyTest*>(userData)->webSocketConnected(ProxyTest::WebSocketServerType::Proxy);
+    }
+#endif
 
     ProxyTest()
     {
@@ -662,6 +685,10 @@ public:
         // work, not whether we can write a soup proxy server.
         m_proxyServer.run(serverCallback);
         g_assert(m_proxyServer.baseURI());
+#if SOUP_CHECK_VERSION(2, 61, 90)
+        m_proxyServer.addWebSocketHandler(webSocketProxyServerCallback, this);
+        g_assert(m_proxyServer.baseWebSocketURI());
+#endif
     }
 
     CString loadURIAndGetMainResourceData(const char* uri)
@@ -679,8 +706,36 @@ public:
         return port;
     }
 
+#if SOUP_CHECK_VERSION(2, 61, 90)
+    void webSocketConnected(WebSocketServerType serverType)
+    {
+        m_webSocketRequestReceived = serverType;
+        quitMainLoop();
+    }
+
+    WebSocketServerType createWebSocketAndWaitUntilConnected()
+    {
+        m_webSocketRequestReceived = WebSocketServerType::Unknown;
+        GUniquePtr<char> createWebSocket(g_strdup_printf("var ws = new WebSocket('%s');", kServer->getWebSocketURIForPath("/foo").data()));
+        webkit_web_view_run_javascript(m_webView, createWebSocket.get(), nullptr, nullptr, nullptr);
+        g_main_loop_run(m_mainLoop);
+        return m_webSocketRequestReceived;
+    }
+#endif
+
     WebKitTestServer m_proxyServer;
+
+#if SOUP_CHECK_VERSION(2, 61, 90)
+    WebSocketServerType m_webSocketRequestReceived { WebSocketServerType::Unknown };
+#endif
 };
+
+#if SOUP_CHECK_VERSION(2, 61, 90)
+static void webSocketServerCallback(SoupServer*, SoupWebsocketConnection*, const char*, SoupClientContext*, gpointer userData)
+{
+    static_cast<ProxyTest*>(userData)->webSocketConnected(ProxyTest::WebSocketServerType::NoProxy);
+}
+#endif
 
 static void ephemeralViewloadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent, WebViewTest* test)
 {
@@ -697,6 +752,13 @@ static void testWebContextProxySettings(ProxyTest* test, gconstpointer)
     auto mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
     ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
 
+#if SOUP_CHECK_VERSION(2, 61, 90)
+    // WebSocket requests should also be received by kServer.
+    kServer->addWebSocketHandler(webSocketServerCallback, test);
+    auto serverType = test->createWebSocketAndWaitUntilConnected();
+    g_assert(serverType == ProxyTest::WebSocketServerType::NoProxy);
+#endif
+
     // Set default proxy URI to point to proxyServer. Requests to kServer should be received by proxyServer instead.
     GUniquePtr<char> proxyURI(soup_uri_to_string(test->m_proxyServer.baseURI(), FALSE));
     WebKitNetworkProxySettings* settings = webkit_network_proxy_settings_new(proxyURI.get(), nullptr);
@@ -706,8 +768,17 @@ static void testWebContextProxySettings(ProxyTest* test, gconstpointer)
     ASSERT_CMP_CSTRING(mainResourceData, ==, proxyServerPortAsString.get());
     webkit_network_proxy_settings_free(settings);
 
+#if SOUP_CHECK_VERSION(2, 61, 90)
+    // WebSocket requests should also be received by proxyServer.
+    serverType = test->createWebSocketAndWaitUntilConnected();
+    g_assert(serverType == ProxyTest::WebSocketServerType::Proxy);
+#endif
+
     // Proxy settings also affect ephemeral web views.
     auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
         "web-context", test->m_webContext.get(),
         "is-ephemeral", TRUE,
         nullptr));
@@ -763,6 +834,10 @@ static void testWebContextProxySettings(ProxyTest* test, gconstpointer)
     webkit_web_context_set_network_proxy_settings(test->m_webContext.get(), WEBKIT_NETWORK_PROXY_MODE_DEFAULT, nullptr);
     mainResourceData = test->loadURIAndGetMainResourceData(kServer->getURIForPath("/echoPort").data());
     ASSERT_CMP_CSTRING(mainResourceData, ==, serverPortAsString.get());
+
+#if SOUP_CHECK_VERSION(2, 61, 90)
+    kServer->removeWebSocketHandler();
+#endif
 }
 
 void beforeAll()

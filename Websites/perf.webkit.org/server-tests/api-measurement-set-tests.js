@@ -65,7 +65,7 @@ describe("/api/measurement-set", function () {
 
     const reportWithRevision = [{
         "buildNumber": "124",
-        "buildTime": "2013-02-28T15:34:51",
+        "buildTime": "2013-02-28T15:34:51Z",
         "revisions": {
             "WebKit": {
                 "revision": "144000",
@@ -87,7 +87,7 @@ describe("/api/measurement-set", function () {
 
     const reportWithNewRevision = [{
         "buildNumber": "125",
-        "buildTime": "2013-02-28T21:45:17",
+        "buildTime": "2013-02-28T21:45:17Z",
         "revisions": {
             "WebKit": {
                 "revision": "160609",
@@ -109,7 +109,7 @@ describe("/api/measurement-set", function () {
 
     const reportWithAncentRevision = [{
         "buildNumber": "126",
-        "buildTime": "2013-02-28T23:07:25",
+        "buildTime": "2013-02-28T23:07:25Z",
         "revisions": {
             "WebKit": {
                 "revision": "137793",
@@ -325,7 +325,7 @@ describe("/api/measurement-set", function () {
                sum: 65,
                squareSum: 855,
                markedOutlier: false,
-               revisions: [[1, repositoryId, '144000', revisionTime]],
+               revisions: [[1, repositoryId, '144000', null, revisionTime]],
                commitTime: revisionTime,
                buildTime: revisionBuildTime,
                buildNumber: '124' });
@@ -393,7 +393,7 @@ describe("/api/measurement-set", function () {
                sum: 15,
                squareSum: 55,
                markedOutlier: false,
-               revisions: [[3, 1, 'macOS 16C68', 0]],
+               revisions: [[3, 1, 'macOS 16C68', 1, 0]],
                commitTime: +Date.UTC(2017, 0, 19, 15, 28, 1),
                buildTime: +Date.UTC(2017, 0, 19, 15, 28, 1),
                buildNumber: '1001' });
@@ -403,7 +403,7 @@ describe("/api/measurement-set", function () {
                 sum: 35,
                 squareSum: 255,
                 markedOutlier: false,
-                revisions: [[2, 1, 'macOS 16A323', 0]],
+                revisions: [[2, 1, 'macOS 16A323', 0, 0]],
                 commitTime: +Date.UTC(2017, 0, 19, 19, 46, 37),
                 buildTime: +Date.UTC(2017, 0, 19, 19, 46, 37),
                 buildNumber: '1002' });
@@ -498,6 +498,51 @@ describe("/api/measurement-set", function () {
                 assert.equal(platform.lastModified(metric), primaryCluster['lastModified']);
             });
         });
+    });
+
+    async function reportAfterAddingBuilderAndAggregatorsWithResponse(report)
+    {
+        await addBuilderForReport(report);
+        const db = TestServer.database();
+        await Promise.all([
+            db.insert('aggregators', {name: 'Arithmetic'}),
+            db.insert('aggregators', {name: 'Geometric'}),
+        ]);
+        return await TestServer.remoteAPI().postJSON('/api/report/', [report]);
+    }
+
+    const reportWithBuildRequest = {
+        "buildNumber": "123",
+        "buildTime": "2013-02-28T10:12:03.388304",
+        "builderName": "someBuilder",
+        "builderPassword": "somePassword",
+        "platform": "Mountain Lion",
+        "buildRequest": "700",
+        "tests": {
+            "test": {
+                "metrics": {"FrameRate": { "current": [[[0, 4], [100, 5], [205, 3]]] }}
+            },
+        },
+        "revisions": {
+            "macOS": {
+                "revision": "10.8.2 12C60"
+            },
+            "WebKit": {
+                "revision": "141977",
+                "timestamp": "2013-02-06T08:55:20.9Z"
+            }
+        }
+    };
+
+    it("should allow to report a build request", async () => {
+        await MockData.addMockData(TestServer.database());
+        let response = await reportAfterAddingBuilderAndAggregatorsWithResponse(reportWithBuildRequest);
+        assert.equal(response['status'], 'OK');
+        response = await TestServer.remoteAPI().getJSONWithStatus('/api/measurement-set/?analysisTask=500');
+        assert.equal(response['status'], 'OK');
+        assert.deepEqual(response['measurements'], [[1, 4, 3, 12, 50, [
+                ['1', '9', '10.8.2 12C60', null, 0], ['2', '11', '141977', null, 1360140920900]],
+            1, 1362046323388, '123', 1, 1, 'current']]);
     });
 
 });

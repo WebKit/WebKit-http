@@ -38,7 +38,7 @@ static RefPtr<DocumentFragment> createFragmentFromPasteboardData(Pasteboard& pas
 {
     chosePlainText = false;
 
-    Vector<String> types = pasteboard.types();
+    Vector<String> types = pasteboard.typesForLegacyUnsafeBindings();
     if (types.isEmpty())
         return nullptr;
 

@@ -183,6 +183,8 @@ interface IWebPreferencesPrivate3 : IWebPreferencesPrivate2
     HRESULT setCustomElementsEnabled([in] BOOL enabled);
     HRESULT modernMediaControlsEnabled([out, retval] BOOL* enabled);
     HRESULT setModernMediaControlsEnabled([in] BOOL enabled);
+    HRESULT webAnimationsCSSIntegrationEnabled([out, retval] BOOL* enabled);
+    HRESULT setWebAnimationsCSSIntegrationEnabled([in] BOOL enabled);
 }
 
 [uuid(F9582D72-6348-45B1-AB09-39E33459B5B9)]
@@ -208,4 +210,32 @@ interface IWebPreferencesPrivate5 : IWebPreferencesPrivate4
 {
     HRESULT isSecureContextAttributeEnabled([out, retval] BOOL*);
     HRESULT setIsSecureContextAttributeEnabled([in] BOOL enabled);
+}
+
+[uuid(B8BC62C9-1CA9-4FD1-B328-CB0BD171249F)]
+interface IWebPreferencesPrivate6 : IWebPreferencesPrivate5
+{
+    HRESULT dataTransferItemsEnabled([out, retval] BOOL*);
+    HRESULT setDataTransferItemsEnabled([in] BOOL enabled);
+    HRESULT inspectorAdditionsEnabled([out, retval] BOOL*);
+    HRESULT setInspectorAdditionsEnabled([in] BOOL enabled);
+    HRESULT visualViewportAPIEnabled([out, retval] BOOL*);
+    HRESULT setVisualViewportAPIEnabled([in] BOOL enabled);
+    HRESULT CSSOMViewScrollingAPIEnabled([out, retval] BOOL*);
+    HRESULT setCSSOMViewScrollingAPIEnabled([in] BOOL enabled);
+    HRESULT fetchAPIKeepAliveEnabled([out, retval] BOOL* enabled);
+    HRESULT setFetchAPIKeepAliveEnabled([in] BOOL enabled);
+    HRESULT spatialNavigationEnabled([out, retval] BOOL *enabled);
+    HRESULT setSpatialNavigationEnabled([in] BOOL enabled);
+    HRESULT menuItemElementEnabled([out, retval] BOOL* enabled);
+    HRESULT setMenuItemElementEnabled([in] BOOL enabled);
+    HRESULT serverTimingEnabled([out, retval] BOOL* enabled);
+    HRESULT setServerTimingEnabled([in] BOOL enabled);
+}
+
+[uuid(9A49D1DE-53DD-11E8-95E6-003EE1C28AB6)]
+interface IWebPreferencesPrivate7 : IWebPreferencesPrivate6
+{
+    HRESULT crossOriginWindowPolicySupportEnabled([out, retval] BOOL* enabled);
+    HRESULT setCrossOriginWindowPolicySupportEnabled([in] BOOL enabled);
 }

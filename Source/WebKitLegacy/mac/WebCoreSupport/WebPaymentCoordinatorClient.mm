@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,11 @@ bool WebPaymentCoordinatorClient::supportsVersion(unsigned)
     return false;
 }
 
+std::optional<String> WebPaymentCoordinatorClient::validatedPaymentNetwork(const String&)
+{
+    return std::nullopt;
+}
+
 bool WebPaymentCoordinatorClient::canMakePayments()
 {
     return false;
@@ -62,7 +67,7 @@ void WebPaymentCoordinatorClient::openPaymentSetup(const String&, const String&,
     });
 }
 
-bool WebPaymentCoordinatorClient::showPaymentUI(const WebCore::URL&, const Vector<WebCore::URL>&, const WebCore::PaymentRequest&)
+bool WebPaymentCoordinatorClient::showPaymentUI(const WebCore::URL&, const Vector<WebCore::URL>&, const WebCore::ApplePaySessionPaymentRequest&)
 {
     return false;
 }

@@ -1,3 +1,0 @@
-
-FAIL XMLHttpRequest: open() in document that is not fully active (but may be active) should throw assert_throws: function "function () { client.open("GET", "...") }" did not throw
-

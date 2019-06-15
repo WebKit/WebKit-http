@@ -23,22 +23,22 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.ProtocolTrace = class ProtocolTrace extends WebInspector.Object
+WI.ProtocolTrace = class ProtocolTrace
 {
     constructor()
     {
-        super();
-
         this._entries = [];
     }
 
     // Public
 
-    addEntry(entry) {
+    addEntry(entry)
+    {
         this._entries.push(entry);
     }
 
-    get saveData() {
+    get saveData()
+    {
         let now = new Date();
         let YYYY = now.getFullYear();
         let MM = now.getMonth() + 1;
@@ -50,7 +50,7 @@ WebInspector.ProtocolTrace = class ProtocolTrace extends WebInspector.Object
         // This follows the file name of screen shots on OS X (en-US):
         // "Protocol Trace 2015-12-31 at 12.43.04.json".
         // When the Intl API is implemented, we can do a better job.
-        let filename = WebInspector.unlocalizedString(`Protocol Trace at ${YYYY}-${MM}-${DD} ${hh}.${mm}.${ss}.json`);
+        let filename = WI.unlocalizedString(`Protocol Trace at ${YYYY}-${MM}-${DD} ${hh}.${mm}.${ss}.json`);
         return {url: "web-inspector:///" + encodeURIComponent(filename), content: JSON.stringify(this._entries)};
     }
 };

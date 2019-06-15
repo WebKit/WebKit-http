@@ -1,0 +1,6 @@
+
+PASS Test document.getAnimations for non-animated content 
+PASS Test document.getAnimations for script-generated animations 
+PASS Test the order of document.getAnimations with script generated animations 
+PASS Test document.getAnimations with null target 
+

@@ -53,7 +53,6 @@
 #import "WKWebProcessPlugInPageGroupInternal.h"
 #import "WKWebProcessPlugInRangeHandleInternal.h"
 #import "WKWebProcessPlugInScriptWorldInternal.h"
-#import "WeakObjCPtr.h"
 #import "WebPage.h"
 #import "WebProcess.h"
 #import "_WKRemoteObjectRegistryInternal.h"
@@ -64,17 +63,15 @@
 #import <WebCore/Frame.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLInputElement.h>
-#import <WebCore/MainFrame.h>
-
-using namespace WebCore;
-using namespace WebKit;
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
+#import <wtf/WeakObjCPtr.h>
 
 @interface NSObject (WKDeprecatedDelegateMethods)
 - (void)webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller didSameDocumentNavigationForFrame:(WKWebProcessPlugInFrame *)frame;
 @end
 
 @implementation WKWebProcessPlugInBrowserContextController {
-    API::ObjectStorage<WebPage> _page;
+    API::ObjectStorage<WebKit::WebPage> _page;
     WeakObjCPtr<id <WKWebProcessPlugInLoadDelegate>> _loadDelegate;
     WeakObjCPtr<id <WKWebProcessPlugInFormDelegatePrivate>> _formDelegate;
     WeakObjCPtr<id <WKWebProcessPlugInEditingDelegate>> _editingDelegate;
@@ -84,160 +81,159 @@ using namespace WebKit;
 
 static void didStartProvisionalLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userDataRef, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didStartProvisionalLoadForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didStartProvisionalLoadForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didStartProvisionalLoadForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didReceiveServerRedirectForProvisionalLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef *userDataRef, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didReceiveServerRedirectForProvisionalLoadForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didReceiveServerRedirectForProvisionalLoadForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didReceiveServerRedirectForProvisionalLoadForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didFinishLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFinishLoadForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishLoadForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishLoadForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void globalObjectIsAvailableForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKBundleScriptWorldRef scriptWorld, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:globalObjectIsAvailableForFrame:inScriptWorld:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController globalObjectIsAvailableForFrame:wrapper(*toImpl(frame)) inScriptWorld:wrapper(*toImpl(scriptWorld))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController globalObjectIsAvailableForFrame:wrapper(*WebKit::toImpl(frame)) inScriptWorld:wrapper(*WebKit::toImpl(scriptWorld))];
 }
 
 static void didRemoveFrameFromHierarchy(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didRemoveFrameFromHierarchy:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didRemoveFrameFromHierarchy:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didRemoveFrameFromHierarchy:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didCommitLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didCommitLoadForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didCommitLoadForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didCommitLoadForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didFinishDocumentLoadForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFinishDocumentLoadForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishDocumentLoadForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFinishDocumentLoadForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didFailProvisionalLoadWithErrorForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKErrorRef wkError, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFailProvisionalLoadWithErrorForFrame:error:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFailProvisionalLoadWithErrorForFrame:wrapper(*toImpl(frame)) error:wrapper(*toImpl(wkError))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFailProvisionalLoadWithErrorForFrame:wrapper(*WebKit::toImpl(frame)) error:wrapper(*WebKit::toImpl(wkError))];
 }
 
 static void didFailLoadWithErrorForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKErrorRef wkError, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFailLoadWithErrorForFrame:error:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFailLoadWithErrorForFrame:wrapper(*toImpl(frame)) error:wrapper(*toImpl(wkError))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFailLoadWithErrorForFrame:wrapper(*WebKit::toImpl(frame)) error:wrapper(*WebKit::toImpl(wkError))];
 }
 
 static void didSameDocumentNavigationForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKSameDocumentNavigationType type, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didSameDocumentNavigation:forFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigation:toWKSameDocumentNavigationType(toSameDocumentNavigationType(type)) forFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigation:toWKSameDocumentNavigationType(WebKit::toSameDocumentNavigationType(type)) forFrame:wrapper(*WebKit::toImpl(frame))];
     else {
         // FIXME: Remove this once clients switch to implementing the above delegate method.
         if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didSameDocumentNavigationForFrame:)])
-            [(NSObject *)loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigationForFrame:wrapper(*toImpl(frame))];
+            [(NSObject *)loadDelegate webProcessPlugInBrowserContextController:pluginContextController didSameDocumentNavigationForFrame:wrapper(*WebKit::toImpl(frame))];
     }
 }
 
 static void didLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didLayoutForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didLayoutForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didLayoutForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didReachLayoutMilestone(WKBundlePageRef page, WKLayoutMilestones milestones, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:renderingProgressDidChange:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController renderingProgressDidChange:renderingProgressEvents(toLayoutMilestones(milestones))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController renderingProgressDidChange:renderingProgressEvents(WebKit::toLayoutMilestones(milestones))];
 }
 
 static void didFirstVisuallyNonEmptyLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, WKTypeRef* userData, const void *clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didFirstVisuallyNonEmptyLayoutForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFirstVisuallyNonEmptyLayoutForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didFirstVisuallyNonEmptyLayoutForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static void didHandleOnloadEventsForFrame(WKBundlePageRef page, WKBundleFrameRef frame, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:didHandleOnloadEventsForFrame:)])
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didHandleOnloadEventsForFrame:wrapper(*toImpl(frame))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didHandleOnloadEventsForFrame:wrapper(*WebKit::toImpl(frame))];
 }
 
 static WKStringRef userAgentForURL(WKBundleFrameRef frame, WKURLRef url, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
     
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:userAgentForURL:)]) {
-        WKWebProcessPlugInFrame *newFrame = wrapper(*toImpl(frame));
-        NSString *string = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:newFrame userAgentForURL:wrapper(*toImpl(url))];
+        WKWebProcessPlugInFrame *newFrame = wrapper(*WebKit::toImpl(frame));
+        NSString *string = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:newFrame userAgentForURL:wrapper(*WebKit::toImpl(url))];
         if (!string)
             return nullptr;
 
-        WKStringRef wkString = WKStringCreateWithCFString((CFStringRef)string);
-        return wkString;
+        return WKStringCreateWithCFString((__bridge CFStringRef)string);
     }
     
     return nullptr;
 }
 
-static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *contextController, WebPage& page)
+static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *contextController, WebKit::WebPage& page)
 {
-    WKBundlePageLoaderClientV8 client;
+    WKBundlePageLoaderClientV9 client;
     memset(&client, 0, sizeof(client));
 
     client.base.version = 8;
-    client.base.clientInfo = contextController;
+    client.base.clientInfo = (__bridge void*)contextController;
     client.didStartProvisionalLoadForFrame = didStartProvisionalLoadForFrame;
     client.didReceiveServerRedirectForProvisionalLoadForFrame = didReceiveServerRedirectForProvisionalLoadForFrame;
     client.didCommitLoadForFrame = didCommitLoadForFrame;
@@ -260,20 +256,20 @@ static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *co
 
 static WKURLRequestRef willSendRequestForFrame(WKBundlePageRef, WKBundleFrameRef frame, uint64_t resourceIdentifier, WKURLRequestRef request, WKURLResponseRef redirectResponse, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:willSendRequestForResource:request:redirectResponse:)]) {
-        NSURLRequest *originalRequest = wrapper(*toImpl(request));
-        RetainPtr<NSURLRequest> substituteRequest = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*toImpl(frame)) willSendRequestForResource:resourceIdentifier
-            request:originalRequest redirectResponse:toImpl(redirectResponse)->resourceResponse().nsURLResponse()];
+        NSURLRequest *originalRequest = wrapper(*WebKit::toImpl(request));
+        RetainPtr<NSURLRequest> substituteRequest = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*WebKit::toImpl(frame)) willSendRequestForResource:resourceIdentifier
+            request:originalRequest redirectResponse:WebKit::toImpl(redirectResponse)->resourceResponse().nsURLResponse()];
 
         if (substituteRequest != originalRequest)
             return substituteRequest ? WKURLRequestCreateWithNSURLRequest(substituteRequest.get()) : nullptr;
     } else if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:willSendRequest:redirectResponse:)]) {
-        NSURLRequest *originalRequest = wrapper(*toImpl(request));
-        RetainPtr<NSURLRequest> substituteRequest = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*toImpl(frame)) willSendRequest:originalRequest
-            redirectResponse:toImpl(redirectResponse)->resourceResponse().nsURLResponse()];
+        NSURLRequest *originalRequest = wrapper(*WebKit::toImpl(request));
+        RetainPtr<NSURLRequest> substituteRequest = [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*WebKit::toImpl(frame)) willSendRequest:originalRequest
+            redirectResponse:WebKit::toImpl(redirectResponse)->resourceResponse().nsURLResponse()];
 
         if (substituteRequest != originalRequest)
             return substituteRequest ? WKURLRequestCreateWithNSURLRequest(substituteRequest.get()) : nullptr;
@@ -285,49 +281,44 @@ static WKURLRequestRef willSendRequestForFrame(WKBundlePageRef, WKBundleFrameRef
 
 static void didInitiateLoadForResource(WKBundlePageRef, WKBundleFrameRef frame, uint64_t resourceIdentifier, WKURLRequestRef request, bool pageIsProvisionallyLoading, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:didInitiateLoadForResource:request:pageIsProvisionallyLoading:)]) {
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*toImpl(frame)) didInitiateLoadForResource:resourceIdentifier request:wrapper(*toImpl(request))
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*WebKit::toImpl(frame)) didInitiateLoadForResource:resourceIdentifier request:wrapper(*WebKit::toImpl(request))
             pageIsProvisionallyLoading:pageIsProvisionallyLoading];
     } else if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:didInitiateLoadForResource:request:)]) {
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*toImpl(frame)) didInitiateLoadForResource:resourceIdentifier request:wrapper(*toImpl(request))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*WebKit::toImpl(frame)) didInitiateLoadForResource:resourceIdentifier request:wrapper(*WebKit::toImpl(request))];
     }
 }
 
 static void didFinishLoadForResource(WKBundlePageRef, WKBundleFrameRef frame, uint64_t resourceIdentifier, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:didFinishLoadForResource:)]) {
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController
-                                                         frame:wrapper(*toImpl(frame))
-                                      didFinishLoadForResource:resourceIdentifier];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*WebKit::toImpl(frame)) didFinishLoadForResource:resourceIdentifier];
     }
 }
 
 static void didFailLoadForResource(WKBundlePageRef, WKBundleFrameRef frame, uint64_t resourceIdentifier, WKErrorRef error, const void* clientInfo)
 {
-    WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
+    auto pluginContextController = (__bridge WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
 
     if ([loadDelegate respondsToSelector:@selector(webProcessPlugInBrowserContextController:frame:didFailLoadForResource:error:)]) {
-        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController
-                                                         frame:wrapper(*toImpl(frame))
-                                        didFailLoadForResource:resourceIdentifier
-                                                         error:wrapper(*toImpl(error))];
+        [loadDelegate webProcessPlugInBrowserContextController:pluginContextController frame:wrapper(*WebKit::toImpl(frame)) didFailLoadForResource:resourceIdentifier error:wrapper(*WebKit::toImpl(error))];
     }
 }
 
-static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *contextController, WebPage& page)
+static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *contextController, WebKit::WebPage& page)
 {
     WKBundlePageResourceLoadClientV1 client;
     memset(&client, 0, sizeof(client));
 
     client.base.version = 1;
-    client.base.clientInfo = contextController;
+    client.base.clientInfo = (__bridge void*) contextController;
     client.willSendRequestForFrame = willSendRequestForFrame;
     client.didInitiateLoadForResource = didInitiateLoadForResource;
     client.didFinishLoadForResource = didFinishLoadForResource;
@@ -357,7 +348,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 - (void)dealloc
 {
     if (_remoteObjectRegistry) {
-        WebProcess::singleton().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID());
+        WebKit::WebProcess::singleton().removeMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID());
         [_remoteObjectRegistry _invalidate];
     }
 
@@ -368,29 +359,25 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
 - (WKDOMDocument *)mainFrameDocument
 {
-    Frame* webCoreMainFrame = _page->mainFrame();
+    WebCore::Frame* webCoreMainFrame = _page->mainFrame();
     if (!webCoreMainFrame)
         return nil;
 
-    return toWKDOMDocument(webCoreMainFrame->document());
+    return WebKit::toWKDOMDocument(webCoreMainFrame->document());
 }
 
 - (WKDOMRange *)selectedRange
 {
-    RefPtr<Range> range = _page->currentSelectionAsRange();
+    RefPtr<WebCore::Range> range = _page->currentSelectionAsRange();
     if (!range)
         return nil;
 
-    return toWKDOMRange(range.get());
+    return WebKit::toWKDOMRange(range.get());
 }
 
 - (WKWebProcessPlugInFrame *)mainFrame
 {
-    WebFrame *webKitMainFrame = _page->mainWebFrame();
-    if (!webKitMainFrame)
-        return nil;
-
-    return wrapper(*webKitMainFrame);
+    return wrapper(_page->mainWebFrame());
 }
 
 - (WKWebProcessPlugInPageGroup *)pageGroup
@@ -421,18 +408,14 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
 + (instancetype)lookUpBrowsingContextFromHandle:(WKBrowsingContextHandle *)handle
 {
-    WebPage* webPage = WebProcess::singleton().webPage(handle.pageID);
-    if (!webPage)
-        return nil;
-
-    return wrapper(*webPage);
+    return wrapper(WebKit::WebProcess::singleton().webPage(handle.pageID));
 }
 
 - (_WKRemoteObjectRegistry *)_remoteObjectRegistry
 {
     if (!_remoteObjectRegistry) {
-        _remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithMessageSender:*_page]);
-        WebProcess::singleton().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
+        _remoteObjectRegistry = adoptNS([[_WKRemoteObjectRegistry alloc] _initWithWebPage:*_page]);
+        WebKit::WebProcess::singleton().addMessageReceiver(Messages::RemoteObjectRegistry::messageReceiverName(), _page->pageID(), [_remoteObjectRegistry remoteObjectRegistry]);
     }
 
     return _remoteObjectRegistry.get();
@@ -456,15 +439,15 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
 
         virtual ~FormClient() { }
 
-        void didFocusTextField(WebPage*, HTMLInputElement* inputElement, WebFrame* frame) override
+        void didFocusTextField(WebKit::WebPage*, WebCore::HTMLInputElement* inputElement, WebKit::WebFrame* frame) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
             if ([formDelegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:didFocusTextField:inFrame:)])
-                [formDelegate _webProcessPlugInBrowserContextController:m_controller didFocusTextField:wrapper(*InjectedBundleNodeHandle::getOrCreate(inputElement).get()) inFrame:wrapper(*frame)];
+                [formDelegate _webProcessPlugInBrowserContextController:m_controller didFocusTextField:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(inputElement).get()) inFrame:wrapper(*frame)];
         }
 
-        void willSendSubmitEvent(WebPage*, HTMLFormElement* formElement, WebFrame* targetFrame, WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values) override
+        void willSendSubmitEvent(WebKit::WebPage*, WebCore::HTMLFormElement* formElement, WebKit::WebFrame* targetFrame, WebKit::WebFrame* sourceFrame, const Vector<std::pair<String, String>>& values) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
@@ -473,7 +456,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
                 for (const auto& pair : values)
                     [valueMap setObject:pair.second forKey:pair.first];
 
-                [formDelegate _webProcessPlugInBrowserContextController:m_controller willSendSubmitEventToForm:wrapper(*InjectedBundleNodeHandle::getOrCreate(formElement).get())
+                [formDelegate _webProcessPlugInBrowserContextController:m_controller willSendSubmitEventToForm:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(formElement).get())
                     inFrame:wrapper(*sourceFrame) targetFrame:wrapper(*targetFrame) values:valueMap.get()];
             }
         }
@@ -483,9 +466,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
             if (!userObject)
                 return;
 
-            auto data = adoptNS([[NSMutableData alloc] init]);
-            auto archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
-            [archiver setRequiresSecureCoding:YES];
+            auto archiver = secureArchiver();
             @try {
                 [archiver encodeObject:userObject forKey:@"userObject"];
             } @catch (NSException *exception) {
@@ -494,10 +475,10 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
             }
             [archiver finishEncoding];
 
-            userData = API::Data::createWithoutCopying(WTFMove(data));
+            userData = API::Data::createWithoutCopying(archiver.get().encodedData);
         }
 
-        void willSubmitForm(WebPage*, HTMLFormElement* formElement, WebFrame* frame, WebFrame* sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& values, RefPtr<API::Object>& userData) override
+        void willSubmitForm(WebKit::WebPage*, WebCore::HTMLFormElement* formElement, WebKit::WebFrame* frame, WebKit::WebFrame* sourceFrame, const Vector<std::pair<WTF::String, WTF::String>>& values, RefPtr<API::Object>& userData) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
@@ -506,12 +487,12 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
                 for (const auto& pair : values)
                     [valueMap setObject:pair.second forKey:pair.first];
 
-                NSObject <NSSecureCoding> *userObject = [formDelegate _webProcessPlugInBrowserContextController:m_controller willSubmitForm:wrapper(*InjectedBundleNodeHandle::getOrCreate(formElement).get()) toFrame:wrapper(*frame) fromFrame:wrapper(*sourceFrame) withValues:valueMap.get()];
+                NSObject <NSSecureCoding> *userObject = [formDelegate _webProcessPlugInBrowserContextController:m_controller willSubmitForm:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(formElement).get()) toFrame:wrapper(*frame) fromFrame:wrapper(*sourceFrame) withValues:valueMap.get()];
                 encodeUserObject(userObject, userData);
             }
         }
 
-        void textDidChangeInTextField(WebPage*, HTMLInputElement* inputElement, WebFrame* frame, bool initiatedByUserTyping) override
+        void textDidChangeInTextField(WebKit::WebPage*, WebCore::HTMLInputElement* inputElement, WebKit::WebFrame* frame, bool initiatedByUserTyping) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
@@ -519,7 +500,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
                 [formDelegate _webProcessPlugInBrowserContextController:m_controller textDidChangeInTextField:wrapper(*WebKit::InjectedBundleNodeHandle::getOrCreate(inputElement)) inFrame:wrapper(*frame) initiatedByUserTyping:initiatedByUserTyping];
         }
 
-        void willBeginInputSession(WebPage*, Element* element, WebFrame* frame, RefPtr<API::Object>& userData, bool userIsInteracting) override
+        void willBeginInputSession(WebKit::WebPage*, WebCore::Element* element, WebKit::WebFrame* frame, bool userIsInteracting, RefPtr<API::Object>& userData) override
         {
             auto formDelegate = m_controller->_formDelegate.get();
 
@@ -574,14 +555,14 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
     return _editingDelegate.getAutoreleased();
 }
 
-static inline WKEditorInsertAction toWK(EditorInsertAction action)
+static inline WKEditorInsertAction toWK(WebCore::EditorInsertAction action)
 {
     switch (action) {
-    case EditorInsertAction::Typed:
+    case WebCore::EditorInsertAction::Typed:
         return WKEditorInsertActionTyped;
-    case EditorInsertAction::Pasted:
+    case WebCore::EditorInsertAction::Pasted:
         return WKEditorInsertActionPasted;
-    case EditorInsertAction::Dropped:
+    case WebCore::EditorInsertAction::Dropped:
         return WKEditorInsertActionDropped;
     }
 }
@@ -599,15 +580,15 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
         }
 
     private:
-        bool shouldInsertText(WebPage&, StringImpl* text, Range* rangeToReplace, EditorInsertAction action) final
+        bool shouldInsertText(WebKit::WebPage&, StringImpl* text, WebCore::Range* rangeToReplace, WebCore::EditorInsertAction action) final
         {
             if (!m_delegateMethods.shouldInsertText)
                 return true;
 
-            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller shouldInsertText:String(text) replacingRange:wrapper(*InjectedBundleRangeHandle::getOrCreate(rangeToReplace)) givenAction:toWK(action)];
+            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller shouldInsertText:String(text) replacingRange:wrapper(*WebKit::InjectedBundleRangeHandle::getOrCreate(rangeToReplace)) givenAction:toWK(action)];
         }
 
-        bool shouldChangeSelectedRange(WebPage&, Range* fromRange, Range* toRange, EAffinity affinity, bool stillSelecting) final
+        bool shouldChangeSelectedRange(WebKit::WebPage&, WebCore::Range* fromRange, WebCore::Range* toRange, WebCore::EAffinity affinity, bool stillSelecting) final
         {
             if (!m_delegateMethods.shouldChangeSelectedRange)
                 return true;
@@ -615,9 +596,9 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             auto apiFromRange = fromRange ? adoptNS([[WKDOMRange alloc] _initWithImpl:fromRange]) : nil;
             auto apiToRange = toRange ? adoptNS([[WKDOMRange alloc] _initWithImpl:toRange]) : nil;
 #if PLATFORM(IOS)
-            UITextStorageDirection apiAffinity = affinity == UPSTREAM ? UITextStorageDirectionBackward : UITextStorageDirectionForward;
+            UITextStorageDirection apiAffinity = affinity == WebCore::UPSTREAM ? UITextStorageDirectionBackward : UITextStorageDirectionForward;
 #else
-            NSSelectionAffinity apiAffinity = affinity == UPSTREAM ? NSSelectionAffinityUpstream : NSSelectionAffinityDownstream;
+            NSSelectionAffinity apiAffinity = affinity == WebCore::UPSTREAM ? NSSelectionAffinityUpstream : NSSelectionAffinityDownstream;
 #endif
 
             return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller shouldChangeSelectedRange:apiFromRange.get() toRange:apiToRange.get() affinity:apiAffinity stillSelecting:stillSelecting];
@@ -636,7 +617,7 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             if (!m_delegateMethods.willWriteToPasteboard)
                 return;
 
-            [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller willWriteRangeToPasteboard:wrapper(*InjectedBundleRangeHandle::getOrCreate(range).get())];
+            [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller willWriteRangeToPasteboard:wrapper(*WebKit::InjectedBundleRangeHandle::getOrCreate(range).get())];
         }
 
         void getPasteboardDataForRange(WebKit::WebPage&, WebCore::Range* range, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final
@@ -644,10 +625,10 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             if (!m_delegateMethods.getPasteboardDataForRange)
                 return;
 
-            auto dataByType = [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller pasteboardDataForRange:wrapper(*InjectedBundleRangeHandle::getOrCreate(range).get())];
+            auto dataByType = [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller pasteboardDataForRange:wrapper(*WebKit::InjectedBundleRangeHandle::getOrCreate(range).get())];
             for (NSString *type in dataByType) {
                 pasteboardTypes.append(type);
-                pasteboardData.append(SharedBuffer::create(dataByType[type]));
+                pasteboardData.append(WebCore::SharedBuffer::create(dataByType[type]));
             };
         }
 
@@ -664,9 +645,19 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             if (!m_delegateMethods.performTwoStepDrop)
                 return false;
 
-            auto rangeHandle = InjectedBundleRangeHandle::getOrCreate(&range);
-            auto nodeHandle = InjectedBundleNodeHandle::getOrCreate(&fragment);
+            auto rangeHandle = WebKit::InjectedBundleRangeHandle::getOrCreate(&range);
+            auto nodeHandle = WebKit::InjectedBundleNodeHandle::getOrCreate(&fragment);
             return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller performTwoStepDrop:wrapper(*nodeHandle) atDestination:wrapper(*rangeHandle) isMove:isMove];
+        }
+
+        WTF::String replacementURLForResource(WebKit::WebPage&, Ref<WebCore::SharedBuffer>&& resourceData, const WTF::String& mimeType)
+        {
+            if (!m_delegateMethods.replacementURLForResource)
+                return { };
+
+            NSString *type = (NSString *)mimeType;
+            auto data = resourceData->createNSData();
+            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller replacementURLForResource:data.get() mimeType:type];
         }
 
         WKWebProcessPlugInBrowserContextController *m_controller;
@@ -679,6 +670,7 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
                 , getPasteboardDataForRange([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:pasteboardDataForRange:)])
                 , didWriteToPasteboard([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextControllerDidWriteToPasteboard:)])
                 , performTwoStepDrop([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:performTwoStepDrop:atDestination:isMove:)])
+                , replacementURLForResource([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:replacementURLForResource:mimeType:)])
             {
             }
 
@@ -689,6 +681,7 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             bool getPasteboardDataForRange;
             bool didWriteToPasteboard;
             bool performTwoStepDrop;
+            bool replacementURLForResource;
         } m_delegateMethods;
     };
 

@@ -30,7 +30,8 @@
 from webkitpy.thirdparty.mock import Mock
 from webkitpy.common.host import Host
 from webkitpy.common.host_mock import MockHost
-from webkitpy.common.net.bindingstestresults import BindingsTestResults
+from webkitpy.common.net.generictestresults import BindingsTestResults
+from webkitpy.common.net.generictestresults import WebkitpyTestResults
 from webkitpy.common.net.jsctestresults import JSCTestResults
 from webkitpy.common.net.layouttestresults import LayoutTestResults
 from webkitpy.common.system.outputcapture import OutputCapture
@@ -61,6 +62,12 @@ class TestBindingsEWS(AbstractEarlyWarningSystem):
     port_name = "mac"
     _build_style = None
     _group = "bindings"
+
+
+class TestWebkitpyEWS(AbstractEarlyWarningSystem):
+    port_name = "mac"
+    _build_style = None
+    _group = "webkitpy"
 
 
 class AbstractEarlyWarningSystemTest(QueuesTest):
@@ -94,6 +101,12 @@ class AbstractEarlyWarningSystemTest(QueuesTest):
         message = "New failing tests:\n(JS) TestMapLike.idl\n(JS) TestNode.idl"
         self._test_message(ews, results, message)
 
+    def test_failing_webkitpy_tests_message(self):
+        ews = TestWebkitpyEWS()
+        results = lambda a: WebkitpyTestResults(["webkitpy.tool.commands.earlywarningsystem_unittest.EarlyWarningSystemTest.test_ews_name"])
+        message = "New failing tests:\nwebkitpy.tool.commands.earlywarningsystem_unittest.EarlyWarningSystemTest.test_ews_name"
+        self._test_message(ews, results, message)
+
 
 class MockEarlyWarningSystemTaskForInconclusiveJSCResults(EarlyWarningSystemTask):
     def _test_patch(self):
@@ -109,53 +122,65 @@ class MockAbstractEarlyWarningSystemForInconclusiveJSCResults(AbstractEarlyWarni
 
 
 class EarlyWarningSystemTest(QueuesTest):
-    def _default_expected_logs(self, ews, conclusive):
+    def _default_expected_logs(self, ews, conclusive, work_item, will_fetch_from_status_server=False):
         string_replacements = {
             "name": ews.name,
             "port": ews.port_name,
             "architecture": " --architecture=%s" % ews.architecture if ews.architecture else "",
             "build_style": ews.build_style(),
             "group": ews.group(),
+            'patch_id': work_item.id() if work_item else QueuesTest.mock_work_item.id(),
         }
 
+        if will_fetch_from_status_server:
+            status_server_fetch_line = 'MOCK: fetch_attachment: %(patch_id)s\n' % string_replacements
+        else:
+            status_server_fetch_line = ''
+        string_replacements['status_server_fetch_line'] = status_server_fetch_line
+
         if ews.should_build:
-            build_line = "Running: webkit-patch --status-host=example.com build --no-clean --no-update --build-style=%(build_style)s --group=%(group)s --port=%(port)s%(architecture)s\n" % string_replacements
+            build_line = "%(status_server_fetch_line)sRunning: webkit-patch --status-host=example.com build --no-clean --no-update --build-style=%(build_style)s --group=%(group)s --port=%(port)s%(architecture)s\nMOCK: update_status: %(name)s Built patch\n" % string_replacements
         else:
             build_line = ""
         string_replacements['build_line'] = build_line
 
         if ews.run_tests:
-            run_tests_line = "Running: webkit-patch --status-host=example.com build-and-test --no-clean --no-update --test --non-interactive --build-style=%(build_style)s --group=%(group)s --port=%(port)s%(architecture)s\n" % string_replacements
+            run_tests_line = "%(status_server_fetch_line)sRunning: webkit-patch --status-host=example.com build-and-test --no-clean --no-update --test --non-interactive --build-style=%(build_style)s --group=%(group)s --port=%(port)s%(architecture)s\nMOCK: update_status: %(name)s Passed tests\n" % string_replacements
         else:
             run_tests_line = ""
         string_replacements['run_tests_line'] = run_tests_line
 
         if conclusive:
-            result_lines = "MOCK: update_status: %(name)s Pass\nMOCK: release_work_item: %(name)s 10000\n" % string_replacements
+            result_lines = "MOCK: update_status: %(name)s Pass\nMOCK: release_work_item: %(name)s %(patch_id)s\n" % string_replacements
         else:
-            result_lines = "MOCK: release_lock: %(name)s 10000\n" % string_replacements
+            result_lines = "MOCK: release_lock: %(name)s %(patch_id)s\n" % string_replacements
         string_replacements['result_lines'] = result_lines
 
         expected_logs = {
             "begin_work_queue": self._default_begin_work_queue_logs(ews.name),
             "process_work_item": """MOCK: update_status: %(name)s Started processing patch
-Running: webkit-patch --status-host=example.com clean --port=%(port)s%(architecture)s
-Running: webkit-patch --status-host=example.com update --port=%(port)s%(architecture)s
-Running: webkit-patch --status-host=example.com apply-attachment --no-update --non-interactive 10000 --port=%(port)s%(architecture)s
-Running: webkit-patch --status-host=example.com check-patch-relevance --quiet --group=%(group)s --port=%(port)s%(architecture)s
+%(status_server_fetch_line)sRunning: webkit-patch --status-host=example.com clean --port=%(port)s%(architecture)s
+MOCK: update_status: %(name)s Cleaned working directory
+%(status_server_fetch_line)sRunning: webkit-patch --status-host=example.com update --port=%(port)s%(architecture)s
+MOCK: update_status: %(name)s Updated working directory
+%(status_server_fetch_line)sRunning: webkit-patch --status-host=example.com apply-attachment --no-update --non-interactive %(patch_id)s --port=%(port)s%(architecture)s
+MOCK: update_status: %(name)s Applied patch
+%(status_server_fetch_line)sRunning: webkit-patch --status-host=example.com check-patch-relevance --quiet --group=%(group)s --port=%(port)s%(architecture)s
+MOCK: update_status: %(name)s Checked relevance of patch
 %(build_line)s%(run_tests_line)s%(result_lines)s""" % string_replacements,
             "handle_unexpected_error": "Mock error message\n",
             "handle_script_error": "ScriptError error message\n\nMOCK output\n",
         }
         return expected_logs
 
-    def _test_ews(self, ews, results_are_conclusive=True):
+    def _test_ews(self, ews, results_are_conclusive=True, use_security_sensitive_patch=False):
         ews.bind_to_tool(MockTool())
         ews.host = MockHost()
         options = Mock()
         options.port = None
         options.run_tests = ews.run_tests
-        self.assert_queue_outputs(ews, expected_logs=self._default_expected_logs(ews, results_are_conclusive), options=options)
+        work_item = MockTool().bugs.fetch_attachment(10008) if use_security_sensitive_patch else None
+        self.assert_queue_outputs(ews, work_item=work_item, expected_logs=self._default_expected_logs(ews, results_are_conclusive, work_item, will_fetch_from_status_server=bool(use_security_sensitive_patch)), options=options)
 
     def test_ewses(self):
         classes = AbstractEarlyWarningSystem.load_ews_classes()
@@ -163,6 +188,13 @@ Running: webkit-patch --status-host=example.com check-patch-relevance --quiet --
         self.maxDiff = None
         for ews_class in classes:
             self._test_ews(ews_class())
+
+    def test_ewses_with_security_sensitive_patch(self):
+        classes = AbstractEarlyWarningSystem.load_ews_classes()
+        self.assertTrue(classes)
+        self.maxDiff = None
+        for ews_class in classes:
+            self._test_ews(ews_class(), use_security_sensitive_patch=True)
 
     def test_inconclusive_jsc_test_results(self):
         classes = MockAbstractEarlyWarningSystemForInconclusiveJSCResults.load_ews_classes()
@@ -175,17 +207,20 @@ Running: webkit-patch --status-host=example.com check-patch-relevance --quiet --
     def test_ews_name(self):
         # These are the names EWS's infrastructure expects, check that they work
         expected_names = {
+            'bindings-ews',
             'gtk-wk2-ews',
-            'win-ews',
             'ios-ews',
             'ios-sim-ews',
+            'jsc-ews',
+            'jsc-mips-ews',
+            'mac-32bit-ews',
+            'mac-debug-ews',
             'mac-ews',
             'mac-wk2-ews',
-            'mac-debug-ews',
-            'mac-32bit-ews',
-            'bindings-ews',
-            'jsc-ews',
+            'webkitpy-ews',
+            'win-ews',
             'wpe-ews',
+            'wincairo-ews',
         }
         classes = AbstractEarlyWarningSystem.load_ews_classes()
         names = {cls.name for cls in classes}

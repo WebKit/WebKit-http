@@ -26,7 +26,6 @@
 #include "config.h"
 #include "Base64Utilities.h"
 
-#include "ExceptionCode.h"
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
@@ -36,8 +35,8 @@ ExceptionOr<String> Base64Utilities::btoa(const String& stringToEncode)
     if (stringToEncode.isNull())
         return String();
 
-    if (!stringToEncode.containsOnlyLatin1())
-        return Exception { INVALID_CHARACTER_ERR };
+    if (!stringToEncode.isAllLatin1())
+        return Exception { InvalidCharacterError };
 
     return base64Encode(stringToEncode.latin1());
 }
@@ -49,7 +48,7 @@ ExceptionOr<String> Base64Utilities::atob(const String& encodedString)
 
     Vector<char> out;
     if (!base64Decode(encodedString, out, Base64ValidatePadding | Base64IgnoreSpacesAndNewLines))
-        return Exception { INVALID_CHARACTER_ERR };
+        return Exception { InvalidCharacterError };
 
     return String(out.data(), out.size());
 }

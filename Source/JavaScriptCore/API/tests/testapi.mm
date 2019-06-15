@@ -23,16 +23,27 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#import "config.h"
+#import "JSExportMacros.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 
+#undef NS_AVAILABLE
+#define NS_AVAILABLE(_mac, _ios)
+
 #import "CurrentThisInsideBlockGetterTest.h"
+#import "DFGWorklist.h"
 #import "DateTests.h"
 #import "JSExportTests.h"
+#import "JSVirtualMachinePrivate.h"
+#import "JSWrapperMapTests.h"
 #import "Regress141275.h"
 #import "Regress141809.h"
 
 #import <pthread.h>
 #import <vector>
+#import <wtf/MemoryFootprint.h>
+#import <wtf/Optional.h>
+#import <wtf/DataLog.h>
 
 extern "C" void JSSynchronousGarbageCollectForDebugging(JSContextRef);
 extern "C" void JSSynchronousEdenCollectForDebugging(JSContextRef);
@@ -510,8 +521,43 @@ static void* multiVMThreadMain(void* okPtr)
     return nullptr;
 }
 
+static void runJITThreadLimitTests()
+{
+#if ENABLE(DFG_JIT)
+    auto testDFG = [] {
+        unsigned defaultNumberOfThreads = JSC::Options::numberOfDFGCompilerThreads();
+        unsigned targetNumberOfThreads = 1;
+        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:1];
+        checkResult(@"Initial number of DFG threads should be the value provided through Options", initialNumberOfThreads == defaultNumberOfThreads);
+        unsigned updatedNumberOfThreads = [JSVirtualMachine setNumberOfDFGCompilerThreads:initialNumberOfThreads];
+        checkResult(@"Number of DFG threads should have been updated", updatedNumberOfThreads == targetNumberOfThreads);
+    };
+
+    auto testFTL = [] {
+        unsigned defaultNumberOfThreads = JSC::Options::numberOfFTLCompilerThreads();
+        unsigned targetNumberOfThreads = 3;
+        unsigned initialNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:1];
+        checkResult(@"Initial number of FTL threads should be the value provided through Options", initialNumberOfThreads == defaultNumberOfThreads);
+        unsigned updatedNumberOfThreads = [JSVirtualMachine setNumberOfFTLCompilerThreads:initialNumberOfThreads];
+        checkResult(@"Number of FTL threads should have been updated", updatedNumberOfThreads == targetNumberOfThreads);
+    };
+
+    checkResult(@"runJITThreadLimitTests() must run at the very beginning to test the case where the global JIT worklist was not initialized yet", !JSC::DFG::existingGlobalDFGWorklistOrNull() && !JSC::DFG::existingGlobalFTLWorklistOrNull());
+
+    testDFG();
+    JSC::DFG::ensureGlobalDFGWorklist();
+    testDFG();
+
+    testFTL();
+    JSC::DFG::ensureGlobalFTLWorklist();
+    testFTL();
+#endif // ENABLE(DFG_JIT)
+}
+
 static void testObjectiveCAPIMain()
 {
+    runJITThreadLimitTests();
+
     @autoreleasepool {
         JSVirtualMachine* vm = [[JSVirtualMachine alloc] init];
         JSContext* context = [[JSContext alloc] initWithVirtualMachine:vm];
@@ -580,6 +626,105 @@ static void testObjectiveCAPIMain()
         JSContext *context = [[JSContext alloc] init];
         JSValue *result = [context evaluateScript:@"new Date"];
         checkResult(@"new Date", result.isDate);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *symbol = [context evaluateScript:@"Symbol('dope');"];
+        JSValue *notSymbol = [context evaluateScript:@"'dope'"];
+        checkResult(@"Should be a symbol value", symbol.isSymbol);
+        checkResult(@"Should not be a symbol value", !notSymbol.isSymbol);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *symbol = [JSValue valueWithNewSymbolFromDescription:@"dope" inContext:context];
+        checkResult(@"Should be a created from Obj-C", symbol.isSymbol);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *arrayIterator = [context evaluateScript:@"Array.prototype[Symbol.iterator]"];
+        JSValue *iteratorSymbol = context[@"Symbol"][@"iterator"];
+        JSValue *array = [JSValue valueWithNewArrayInContext:context];
+        checkResult(@"Looking up by subscript with symbol should work", [array[iteratorSymbol] isEqual:arrayIterator]);
+        checkResult(@"Looking up by method with symbol should work", [[array valueForProperty:iteratorSymbol] isEqual:arrayIterator]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *iteratorSymbol = context[@"Symbol"][@"iterator"];
+        JSValue *object = [JSValue valueWithNewObjectInContext:context];
+        JSValue *theAnswer = [JSValue valueWithUInt32:42 inContext:context];
+        object[iteratorSymbol] = theAnswer;
+        checkResult(@"Setting by subscript with symbol should work", [object[iteratorSymbol] isEqual:theAnswer]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *iteratorSymbol = context[@"Symbol"][@"iterator"];
+        JSValue *object = [JSValue valueWithNewObjectInContext:context];
+        JSValue *theAnswer = [JSValue valueWithUInt32:42 inContext:context];
+        [object setValue:theAnswer forProperty:iteratorSymbol];
+        checkResult(@"Setting by method with symbol should work", [object[iteratorSymbol] isEqual:theAnswer]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *iteratorSymbol = context[@"Symbol"][@"iterator"];
+        JSValue *object = [JSValue valueWithNewObjectInContext:context];
+        JSValue *theAnswer = [JSValue valueWithUInt32:42 inContext:context];
+        object[iteratorSymbol] = theAnswer;
+        checkResult(@"has property with symbol should work", [object hasProperty:iteratorSymbol]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *iteratorSymbol = context[@"Symbol"][@"iterator"];
+        JSValue *object = [JSValue valueWithNewObjectInContext:context];
+        JSValue *theAnswer = [JSValue valueWithUInt32:42 inContext:context];
+        checkResult(@"delete property with symbol should work without property", [object deleteProperty:iteratorSymbol]);
+        object[iteratorSymbol] = theAnswer;
+        checkResult(@"delete property with symbol should work with property", [object deleteProperty:iteratorSymbol]);
+        checkResult(@"delete should be false with non-configurable property", ![context[@"Array"] deleteProperty:@"prototype"]);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *object = [JSValue valueWithNewObjectInContext:context];
+        NSObject *objCObject = [[NSObject alloc] init];
+        JSValue *result = object[objCObject];
+        checkResult(@"getting a non-convertable object should return undefined", [result isUndefined]);
+        object[objCObject] = @(1);
+        result = object[objCObject];
+        checkResult(@"getting a non-convertable object should return the stored value", [result toUInt32] == 1);
+    }
+
+    @autoreleasepool {
+        JSContext *context = [[JSContext alloc] init];
+        JSValue *object = [JSValue valueWithNewObjectInContext:context];
+        JSValue *iteratorSymbol = context[@"Symbol"][@"iterator"];
+        object[@"value"] = @(1);
+        context[@"object"] = object;
+
+        object[iteratorSymbol] = ^{
+            JSValue *result = [JSValue valueWithNewObjectInContext:context];
+            result[@"object"] = [JSContext currentThis];
+            result[@"next"] = ^{
+                JSValue *result = [JSValue valueWithNewObjectInContext:context];
+                JSValue *value = [JSContext currentThis][@"object"][@"value"];
+                [[JSContext currentThis][@"object"] deleteProperty:@"value"];
+                result[@"value"] = value;
+                result[@"done"] = [JSValue valueWithBool:[value isUndefined] inContext:context];
+                return result;
+            };
+            return result;
+        };
+
+
+        JSValue *count = [context evaluateScript:@"let count = 0; for (let v of object) { if (v !== 1) throw new Error(); count++; } count;"];
+        checkResult(@"iterator should not throw", ![context exception]);
+        checkResult(@"iteration count should be 1", [count toUInt32] == 1);
     }
 
     @autoreleasepool {
@@ -702,7 +847,7 @@ static void testObjectiveCAPIMain()
         context.exceptionHandler = ^(JSContext *, JSValue *exception) {
             exceptionSourceURL = [exception[@"sourceURL"] toString];
         };
-        NSURL *url = [NSURL fileURLWithPath:@"/foo/bar.js"];
+        NSURL *url = [NSURL fileURLWithPath:@"/foo/bar.js" isDirectory:NO];
         [context evaluateScript:@"!@#$%^&*() THIS IS NOT VALID JAVASCRIPT SYNTAX !@#$%^&*()" withSourceURL:url];
         checkResult(@"evaluateScript:withSourceURL: exception has expected sourceURL", [exceptionSourceURL isEqualToString:[url absoluteString]]);
     }
@@ -1472,6 +1617,7 @@ static void testObjectiveCAPIMain()
     currentThisInsideBlockGetterTest();
     runDateTests();
     runJSExportTests();
+    runJSWrapperMapTests();
     runRegress141275();
     runRegress141809();
 }

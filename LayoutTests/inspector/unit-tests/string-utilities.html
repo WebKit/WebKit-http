@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
 <head>
+<meta charset="utf-8">
 <script src="../../http/tests/inspector/resources/inspector-test.js"></script>
 <script>
 function test()
@@ -49,6 +50,66 @@ function test()
             InspectorTest.expectEqual("a10".extendedLocaleCompare("a2"), 1, `"a10" > "a2"`);
             InspectorTest.expectEqual("a1".extendedLocaleCompare("a10"), -1, `"a1" < "a10"`);
             InspectorTest.expectEqual("a10".extendedLocaleCompare("a1"), 1, `"a10" > "a1"`);
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.get lineCount",
+        test() {
+            InspectorTest.expectEqual("1\n2\n3".lineCount, 3, "A string with two line breaks should have three lines.");
+            InspectorTest.expectEqual("1\n\n3".lineCount, 3, "A string with two consecutive line breaks should have three lines.");
+            InspectorTest.expectEqual("1\n".lineCount, 2, "A string with a traling line breaks should have two lines.");
+            InspectorTest.expectEqual("".lineCount, 1, "An empty string is one line.");
+
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.get lastLine",
+        test() {
+            InspectorTest.expectEqual("single line".lastLine, "single line", "Last line of one line string is the same string.");
+            InspectorTest.expectEqual("1\n2\n3".lastLine, "3", "Last line of a three line string should be the third line.");
+            InspectorTest.expectEqual("1\n".lastLine, "", "Last line of a string with a traling line break should be empty.");
+            InspectorTest.expectEqual("".lastLine, "", "Last line of an empty string is the same empty string.");
+
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.truncateMiddle",
+        test() {
+            const ellipsis = "\u2026";
+            InspectorTest.expectEqual("abcdef".truncateMiddle(6), "abcdef", "String stays the same.");
+            InspectorTest.expectEqual("abcdef".truncateMiddle(5), `ab${ellipsis}ef`, "Ellipsis is inserted in the middle.");
+            InspectorTest.expectEqual("abcdef".truncateMiddle(4), `ab${ellipsis}f`, "Ellipsis is inserted after the second character.");
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.truncateEnd",
+        test() {
+            const ellipsis = "\u2026";
+            InspectorTest.expectEqual("abcdef".truncateEnd(6), "abcdef", "String stays the same.");
+            InspectorTest.expectEqual("abcdef".truncateEnd(5), "abcd" + ellipsis, "Ellipsis is inserted in the middle.");
+            InspectorTest.expectEqual("abcdef".truncateEnd(4), "abc" + ellipsis, "Ellipsis is inserted after the third character.");
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "String.prototype.escapeCharacters",
+        test() {
+            InspectorTest.expectEqual("abcdef".escapeCharacters(), "abcdef", "String stays the same with no escape characters.");
+            InspectorTest.expectEqual("abcdef".escapeCharacters(""), "abcdef", "String stays the same with empty escape characters.");
+            InspectorTest.expectEqual("abcdef".escapeCharacters("g"), "abcdef", "String stays the same with no matching escape characters.");
+            InspectorTest.expectEqual("abcdef".escapeCharacters("c"), "ab\\cdef", "The letter 'c' is escaped.");
+            InspectorTest.expectEqual("abcdef".escapeCharacters("ce"), "ab\\cd\\ef", "The letter 'c' and 'e' are escaped.");
+            InspectorTest.expectEqual("abcdef".escapeCharacters("cee"), "ab\\cd\\ef", "The letter 'c' and 'e' are escaped.");
+            InspectorTest.expectEqual("abcdef".escapeCharacters("ced"), "ab\\c\\d\\ef", "The letter 'c', 'd', and 'e' are escaped.");
             return true;
         }
     });

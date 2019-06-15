@@ -3,7 +3,7 @@
 /*---
 es6id: 25.4.5.3
 description: PerformPromiseThen on a fulfilled promise
-info: >
+info: |
     7. Return PerformPromiseThen(promise, onFulfilled, onRejected,
        resultCapability).
 
@@ -20,14 +20,16 @@ flags: [async]
 ---*/
 
 var value = {};
-var p = new Promise(function(resolve) { resolve(value); });
+var p = new Promise(function(resolve) {
+  resolve(value);
+});
 
 p.then(function(x) {
-    if (x !== value) {
-      $DONE('The `onFulfilled` handler should be invoked with the promise result.');
-      return;
-    }
-    $DONE();
-  }, function() {
-    $DONE('The `onRejected` handler should not be invoked.');
-  });
+  if (x !== value) {
+    $DONE('The `onFulfilled` handler should be invoked with the promise result.');
+    return;
+  }
+  $DONE();
+}, function() {
+  $DONE('The `onRejected` handler should not be invoked.');
+});

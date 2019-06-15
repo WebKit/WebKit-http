@@ -2,12 +2,16 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Punctuator cannot be expressed as a Unicode escape sequence consisting of
     six characters, namely \u plus four hexadecimal digits
 es5id: 7.7_A2_T8
 description: Try to use -  as a Unicode \u002D
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 1\u002D2;

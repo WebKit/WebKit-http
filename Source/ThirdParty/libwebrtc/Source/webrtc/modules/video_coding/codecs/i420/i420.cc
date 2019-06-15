@@ -8,13 +8,14 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/video_coding/codecs/i420/include/i420.h"
+#include "modules/video_coding/codecs/i420/include/i420.h"
 
 #include <limits>
 #include <string>
 
-#include "webrtc/api/video/i420_buffer.h"
-#include "webrtc/common_video/libyuv/include/webrtc_libyuv.h"
+#include "api/video/i420_buffer.h"
+#include "common_video/libyuv/include/webrtc_libyuv.h"
+#include "third_party/libyuv/include/libyuv.h"
 
 namespace {
 const size_t kI420HeaderSize = 4;
@@ -138,11 +139,7 @@ int I420Encoder::RegisterEncodeCompleteCallback(
   return WEBRTC_VIDEO_CODEC_OK;
 }
 
-I420Decoder::I420Decoder()
-    : _width(0),
-      _height(0),
-      _inited(false),
-      _decodeCompleteCallback(NULL) {}
+I420Decoder::I420Decoder() : _decodeCompleteCallback(NULL) {}
 
 I420Decoder::~I420Decoder() {
   Release();
@@ -150,20 +147,11 @@ I420Decoder::~I420Decoder() {
 
 int I420Decoder::InitDecode(const VideoCodec* codecSettings,
                             int /*numberOfCores */) {
-  if (codecSettings == NULL) {
-    return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
-  } else if (codecSettings->width < 1 || codecSettings->height < 1) {
-    return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
-  }
-  _width = codecSettings->width;
-  _height = codecSettings->height;
-  _inited = true;
   return WEBRTC_VIDEO_CODEC_OK;
 }
 
 int I420Decoder::Decode(const EncodedImage& inputImage,
                         bool /*missingFrames*/,
-                        const RTPFragmentationHeader* /*fragmentation*/,
                         const CodecSpecificInfo* /*codecSpecificInfo*/,
                         int64_t /*renderTimeMs*/) {
   if (inputImage._buffer == NULL) {
@@ -178,34 +166,36 @@ int I420Decoder::Decode(const EncodedImage& inputImage,
   if (inputImage._completeFrame == false) {
     return WEBRTC_VIDEO_CODEC_ERR_PARAMETER;
   }
-  if (!_inited) {
-    return WEBRTC_VIDEO_CODEC_UNINITIALIZED;
-  }
   if (inputImage._length < kI420HeaderSize) {
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
 
   const uint8_t* buffer = inputImage._buffer;
   uint16_t width, height;
-
   buffer = ExtractHeader(buffer, &width, &height);
-  _width = width;
-  _height = height;
 
   // Verify that the available length is sufficient:
   size_t req_length =
-      CalcBufferSize(VideoType::kI420, _width, _height) + kI420HeaderSize;
+      CalcBufferSize(VideoType::kI420, width, height) + kI420HeaderSize;
 
   if (req_length > inputImage._length) {
     return WEBRTC_VIDEO_CODEC_ERROR;
   }
   // Set decoded image parameters.
   rtc::scoped_refptr<webrtc::I420Buffer> frame_buffer =
-      I420Buffer::Create(_width, _height);
+      I420Buffer::Create(width, height);
 
   // Converting from raw buffer I420Buffer.
-  int ret = ConvertToI420(VideoType::kI420, buffer, 0, 0, _width, _height, 0,
-                          kVideoRotation_0, frame_buffer.get());
+  int y_stride = 16 * ((width + 15) / 16);
+  int uv_stride = 16 * ((width + 31) / 32);
+  int y_size = y_stride * height;
+  int u_size = uv_stride * frame_buffer->ChromaHeight();
+  int ret = libyuv::I420Copy(
+      buffer, y_stride, buffer + y_size, uv_stride, buffer + y_size + u_size,
+      uv_stride, frame_buffer.get()->MutableDataY(),
+      frame_buffer.get()->StrideY(), frame_buffer.get()->MutableDataU(),
+      frame_buffer.get()->StrideU(), frame_buffer.get()->MutableDataV(),
+      frame_buffer.get()->StrideV(), width, height);
   if (ret < 0) {
     return WEBRTC_VIDEO_CODEC_MEMORY;
   }
@@ -234,7 +224,6 @@ int I420Decoder::RegisterDecodeCompleteCallback(
 }
 
 int I420Decoder::Release() {
-  _inited = false;
   return WEBRTC_VIDEO_CODEC_OK;
 }
 }  // namespace webrtc

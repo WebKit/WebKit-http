@@ -37,7 +37,7 @@ WebKeyboardEvent::WebKeyboardEvent()
 
 #if USE(APPKIT)
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool handledByInputMethod, const Vector<WebCore::KeypressCommand>& commands, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool handledByInputMethod, const Vector<WebCore::KeypressCommand>& commands, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, WallTime timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(unmodifiedText)
@@ -62,7 +62,7 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
 
 #elif PLATFORM(GTK)
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool handledByInputMethod, Vector<String>&& commands, bool isKeypad, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool handledByInputMethod, Vector<String>&& commands, bool isKeypad, Modifiers modifiers, WallTime timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(text)
@@ -83,7 +83,7 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
 
 #elif PLATFORM(IOS)
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, WallTime timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(unmodifiedText)
@@ -104,9 +104,28 @@ WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& 
     ASSERT(isKeyboardEventType(type));
 }
 
+#elif PLATFORM(WPE)
+
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& key, const String& code, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, bool isKeypad, Modifiers modifiers, WallTime timestamp)
+    : WebEvent(type, modifiers, timestamp)
+    , m_text(text)
+    , m_unmodifiedText(text)
+    , m_key(key)
+    , m_code(code)
+    , m_keyIdentifier(keyIdentifier)
+    , m_windowsVirtualKeyCode(windowsVirtualKeyCode)
+    , m_nativeVirtualKeyCode(nativeVirtualKeyCode)
+    , m_macCharCode(0)
+    , m_isAutoRepeat(false)
+    , m_isKeypad(isKeypad)
+    , m_isSystemKey(false)
+{
+    ASSERT(isKeyboardEventType(type));
+}
+
 #else
 
-WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, double timestamp)
+WebKeyboardEvent::WebKeyboardEvent(Type type, const String& text, const String& unmodifiedText, const String& keyIdentifier, int windowsVirtualKeyCode, int nativeVirtualKeyCode, int macCharCode, bool isAutoRepeat, bool isKeypad, bool isSystemKey, Modifiers modifiers, WallTime timestamp)
     : WebEvent(type, modifiers, timestamp)
     , m_text(text)
     , m_unmodifiedText(unmodifiedText)

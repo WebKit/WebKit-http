@@ -28,11 +28,19 @@ namespace WebCore {
 
 class RenderLayer;
 
+struct RepaintLayoutRects {
+    LayoutRect m_repaintRect; // This rect is clipped by enclosing objects (e.g., overflow:hidden).
+    LayoutRect m_outlineBox; // This rect is unclipped.
+
+    RepaintLayoutRects(const RenderLayerModelObject& renderer, const RenderLayerModelObject* repaintContainer, const RenderGeometryMap* = nullptr);
+    RepaintLayoutRects() { };
+};
+
 class RenderLayerModelObject : public RenderElement {
+    WTF_MAKE_ISO_ALLOCATED(RenderLayerModelObject);
 public:
     virtual ~RenderLayerModelObject();
 
-    // Called by RenderObject::willBeDestroyed() and is the only way layers should ever be destroyed
     void destroyLayer();
 
     bool hasSelfPaintingLayer() const;
@@ -51,6 +59,14 @@ public:
     virtual bool isScrollableOrRubberbandableBox() const { return false; }
 
     bool shouldPlaceBlockDirectionScrollbarOnLeft() const;
+    
+    void computeRepaintLayoutRects(const RenderLayerModelObject* repaintContainer, const RenderGeometryMap* = nullptr);
+
+    RepaintLayoutRects repaintLayoutRects() const;
+    
+    bool hasRepaintLayoutRects() const;
+    void setRepaintLayoutRects(const RepaintLayoutRects&);
+    void clearRepaintLayoutRects();
 
 protected:
     RenderLayerModelObject(Element&, RenderStyle&&, BaseTypeFlags);

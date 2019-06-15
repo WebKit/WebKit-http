@@ -133,7 +133,9 @@ void RemoteInspector::updateClientCapabilities()
         m_clientCapabilities = std::nullopt;
     else {
         RemoteInspector::Client::Capabilities updatedCapabilities = {
-            m_client->remoteAutomationAllowed() // remoteAutomationAllowed
+            m_client->remoteAutomationAllowed(),
+            m_client->browserName(),
+            m_client->browserVersion()
         };
 
         m_clientCapabilities = updatedCapabilities;
@@ -236,6 +238,10 @@ void RemoteInspector::updateHasActiveDebugSession()
 
     // FIXME: Expose some way to access this state in an embedder.
     // Legacy iOS WebKit 1 had a notification. This will need to be smarter with WebKit2.
+}
+
+RemoteInspector::Client::~Client()
+{
 }
 
 } // namespace Inspector

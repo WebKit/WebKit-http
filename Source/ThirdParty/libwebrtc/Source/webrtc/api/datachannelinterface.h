@@ -11,21 +11,19 @@
 // This file contains interfaces for DataChannels
 // http://dev.w3.org/2011/webrtc/editor/webrtc.html#rtcdatachannel
 
-#ifndef WEBRTC_API_DATACHANNELINTERFACE_H_
-#define WEBRTC_API_DATACHANNELINTERFACE_H_
+#ifndef API_DATACHANNELINTERFACE_H_
+#define API_DATACHANNELINTERFACE_H_
 
 #include <string>
 
-#include "webrtc/base/basictypes.h"
-#include "webrtc/base/checks.h"
-#include "webrtc/base/copyonwritebuffer.h"
-#include "webrtc/base/refcount.h"
-
+#include "rtc_base/checks.h"
+#include "rtc_base/copyonwritebuffer.h"
+#include "rtc_base/refcount.h"
 
 namespace webrtc {
 
 // C++ version of: https://www.w3.org/TR/webrtc/#idl-def-rtcdatachannelinit
-// TODO(deadbeef): Use rtc::Optional for the "-1 if unset" things.
+// TODO(deadbeef): Use absl::optional for the "-1 if unset" things.
 struct DataChannelInit {
   // Deprecated. Reliability is assumed, and channel will be unreliable if
   // maxRetransmitTime or MaxRetransmits is set.
@@ -63,14 +61,10 @@ struct DataChannelInit {
 // as binary or text.
 struct DataBuffer {
   DataBuffer(const rtc::CopyOnWriteBuffer& data, bool binary)
-      : data(data),
-        binary(binary) {
-  }
+      : data(data), binary(binary) {}
   // For convenience for unit tests.
   explicit DataBuffer(const std::string& text)
-      : data(text.data(), text.length()),
-        binary(false) {
-  }
+      : data(text.data(), text.length()), binary(false) {}
   size_t size() const { return data.size(); }
 
   rtc::CopyOnWriteBuffer data;
@@ -91,10 +85,10 @@ class DataChannelObserver {
   //  A data buffer was successfully received.
   virtual void OnMessage(const DataBuffer& buffer) = 0;
   // The data channel's buffered_amount has changed.
-  virtual void OnBufferedAmountChange(uint64_t) {}
+  virtual void OnBufferedAmountChange(uint64_t previous_amount) {}
 
  protected:
-  virtual ~DataChannelObserver() {}
+  virtual ~DataChannelObserver() = default;
 };
 
 class DataChannelInterface : public rtc::RefCountInterface {
@@ -140,11 +134,11 @@ class DataChannelInterface : public rtc::RefCountInterface {
   // TODO(deadbeef): Remove these dummy implementations when all classes have
   // implemented these APIs. They should all just return the values the
   // DataChannel was created with.
-  virtual bool ordered() const { return false; }
-  virtual uint16_t maxRetransmitTime() const { return 0; }
-  virtual uint16_t maxRetransmits() const { return 0; }
-  virtual std::string protocol() const { return std::string(); }
-  virtual bool negotiated() const { return false; }
+  virtual bool ordered() const;
+  virtual uint16_t maxRetransmitTime() const;
+  virtual uint16_t maxRetransmits() const;
+  virtual std::string protocol() const;
+  virtual bool negotiated() const;
 
   // Returns the ID from the DataChannelInit, if it was negotiated out-of-band.
   // If negotiated in-band, this ID will be populated once the DTLS role is
@@ -176,9 +170,9 @@ class DataChannelInterface : public rtc::RefCountInterface {
   virtual bool Send(const DataBuffer& buffer) = 0;
 
  protected:
-  virtual ~DataChannelInterface() {}
+  ~DataChannelInterface() override = default;
 };
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_API_DATACHANNELINTERFACE_H_
+#endif  // API_DATACHANNELINTERFACE_H_

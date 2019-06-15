@@ -31,7 +31,6 @@
 
 #include "DOMWindow.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "NavigationScheduler.h"
@@ -95,7 +94,7 @@ String Location::hostname() const
     if (!m_frame)
         return String();
 
-    return url().host();
+    return url().host().toString();
 }
 
 String Location::port() const
@@ -164,7 +163,7 @@ ExceptionOr<void> Location::setProtocol(DOMWindow& activeWindow, DOMWindow& firs
         return { };
     URL url = m_frame->document()->url();
     if (!url.setProtocol(protocol))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     return setLocation(activeWindow, firstWindow, url.string());
 }
 
@@ -270,7 +269,7 @@ void Location::reload(DOMWindow& activeWindow)
     // Other location operations simply block use of JavaScript URLs cross origin.
     if (!activeDocument.securityOrigin().canAccess(targetDocument.securityOrigin())) {
         auto& targetWindow = *targetDocument.domWindow();
-        targetWindow.printErrorMessage(targetWindow.crossDomainAccessErrorMessage(activeWindow));
+        targetWindow.printErrorMessage(targetWindow.crossDomainAccessErrorMessage(activeWindow, IncludeTargetOrigin::Yes));
         return;
     }
 
@@ -284,7 +283,7 @@ ExceptionOr<void> Location::setLocation(DOMWindow& activeWindow, DOMWindow& firs
 {
     ASSERT(m_frame);
     if (!activeWindow.document()->canNavigate(m_frame))
-        return Exception { SECURITY_ERR };
+        return Exception { SecurityError };
     ASSERT(m_frame->document());
     ASSERT(m_frame->document()->domWindow());
     m_frame->document()->domWindow()->setLocation(activeWindow, firstWindow, url);

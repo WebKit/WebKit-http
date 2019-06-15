@@ -1,5 +1,4 @@
-add_definitions("-ObjC++ -std=c++14")
-link_directories(../../WebKitLibraries)
+add_definitions("-ObjC++ -std=c++17")
 find_library(APPLICATIONSERVICES_LIBRARY ApplicationServices)
 find_library(CARBON_LIBRARY Carbon)
 find_library(QUARTZ_LIBRARY Quartz)
@@ -10,25 +9,25 @@ add_definitions(-iframework ${CARBON_LIBRARY}/Frameworks)
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
 add_definitions(-DWK_XPC_SERVICE_SUFFIX=".Development")
 
-list(APPEND WebKit2_LIBRARIES
-    PRIVATE WebKit
+list(APPEND WebKit_LIBRARIES
+    WebKitLegacy
     ${APPLICATIONSERVICES_LIBRARY}
 )
 
 if (NOT AVFAUDIO_LIBRARY-NOTFOUND)
-    list(APPEND WebKit2_LIBRARIES ${AVFAUDIO_LIBRARY})
+    list(APPEND WebKit_LIBRARIES ${AVFAUDIO_LIBRARY})
 endif ()
 
-list(APPEND WebKit2_SOURCES
-    DatabaseProcess/mac/DatabaseProcessMac.mm
+list(APPEND WebKit_SOURCES
+    NetworkProcess/Cookies/mac/WebCookieManagerMac.mm
+
+    NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
 
     NetworkProcess/CustomProtocols/Cocoa/LegacyCustomProtocolManagerCocoa.mm
 
     NetworkProcess/Downloads/PendingDownload.cpp
 
     NetworkProcess/Downloads/cocoa/DownloadCocoa.mm
-
-    NetworkProcess/Downloads/mac/DownloadMac.mm
 
     NetworkProcess/cache/NetworkCacheCodersCocoa.cpp
     NetworkProcess/cache/NetworkCacheDataCocoa.mm
@@ -38,7 +37,6 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/cocoa/NetworkProcessCocoa.mm
     NetworkProcess/cocoa/NetworkSessionCocoa.mm
 
-    NetworkProcess/mac/NetworkLoadMac.mm
     NetworkProcess/mac/NetworkProcessMac.mm
     NetworkProcess/mac/RemoteNetworkingContext.mm
 
@@ -48,6 +46,8 @@ list(APPEND WebKit2_SOURCES
     Platform/cf/ModuleCF.cpp
 
     Platform/cg/CGUtilities.cpp
+
+    Platform/cocoa/WKCrashReporter.mm
 
     Platform/classifier/ResourceLoadStatisticsClassifier.cpp
 
@@ -70,8 +70,6 @@ list(APPEND WebKit2_SOURCES
 
     Shared/APIWebArchive.mm
     Shared/APIWebArchiveResource.mm
-
-    Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm
 
     Shared/API/Cocoa/RemoteObjectInvocation.mm
     Shared/API/Cocoa/RemoteObjectRegistry.mm
@@ -124,9 +122,14 @@ list(APPEND WebKit2_SOURCES
 
     Shared/Plugins/mac/PluginSandboxProfile.mm
 
-    Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp
+    Shared/RemoteLayerTree/RemoteLayerBackingStore.mm
+    Shared/RemoteLayerTree/RemoteLayerBackingStoreCollection.mm
+    Shared/RemoteLayerTree/RemoteLayerTreePropertyApplier.mm
+    Shared/RemoteLayerTree/RemoteLayerTreeTransaction.mm
+    Shared/RemoteLayerTree/RemoteScrollingCoordinatorTransaction.cpp
 
     Shared/cf/ArgumentCodersCF.cpp
+    Shared/cf/CookieStorageUtilsCF.mm
 
     Shared/cg/ShareableBitmapCG.cpp
 
@@ -135,7 +138,6 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/ChildProcessMac.mm
     Shared/mac/CodeSigning.mm
     Shared/mac/ColorSpaceData.mm
-    Shared/mac/CookieStorageShim.mm
     Shared/mac/CookieStorageShimLibrary.cpp
     Shared/mac/HangDetectionDisablerMac.mm
     Shared/mac/NativeWebGestureEventMac.mm
@@ -146,10 +148,6 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/PDFKitImports.mm
     Shared/mac/PasteboardTypes.mm
     Shared/mac/PrintInfoMac.mm
-    Shared/mac/RemoteLayerBackingStore.mm
-    Shared/mac/RemoteLayerBackingStoreCollection.mm
-    Shared/mac/RemoteLayerTreePropertyApplier.mm
-    Shared/mac/RemoteLayerTreeTransaction.mm
     Shared/mac/SandboxExtensionMac.mm
     Shared/mac/SandboxInitialiationParametersMac.mm
     Shared/mac/SandboxUtilities.mm
@@ -162,9 +160,10 @@ list(APPEND WebKit2_SOURCES
     Shared/mac/WebHitTestResultData.mm
     Shared/mac/WebMemorySampler.mac.mm
 
+    StorageProcess/mac/StorageProcessMac.mm
+
     UIProcess/HighPerformanceGraphicsUsageSampler.cpp
     UIProcess/PerActivityStateCPUUsageSampler.cpp
-    UIProcess/WebContextMenuListenerProxy.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
     UIProcess/WebResourceLoadStatisticsTelemetry.cpp
 
@@ -220,7 +219,10 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/WKWebsiteDataStore.mm
     UIProcess/API/Cocoa/WKWindowFeatures.mm
     UIProcess/API/Cocoa/_WKActivatedElementInfo.mm
+    UIProcess/API/Cocoa/_WKApplicationManifest.mm
+    UIProcess/API/Cocoa/_WKAttachment.mm
     UIProcess/API/Cocoa/_WKAutomationSession.mm
+    UIProcess/API/Cocoa/_WKAutomationSessionConfiguration.mm
     UIProcess/API/Cocoa/_WKContextMenuElementInfo.mm
     UIProcess/API/Cocoa/_WKDownload.mm
     UIProcess/API/Cocoa/_WKElementAction.mm
@@ -236,7 +238,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/_WKUserContentWorld.mm
     UIProcess/API/Cocoa/_WKUserInitiatedAction.mm
     UIProcess/API/Cocoa/_WKUserStyleSheet.mm
-    UIProcess/API/Cocoa/_WKVisitedLinkProvider.mm
     UIProcess/API/Cocoa/_WKVisitedLinkStore.mm
     UIProcess/API/Cocoa/_WKWebsiteDataSize.mm
     UIProcess/API/Cocoa/_WKWebsiteDataStore.mm
@@ -253,7 +254,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/IconLoadingDelegate.mm
     UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
     UIProcess/Cocoa/NavigationState.mm
-    UIProcess/Cocoa/RemoteLayerTreeScrollingPerformanceData.mm
+    UIProcess/Cocoa/PageClientImplCocoa.mm
     UIProcess/Cocoa/SessionStateCoding.mm
     UIProcess/Cocoa/UIDelegate.mm
     UIProcess/Cocoa/VersionChecks.mm
@@ -264,12 +265,13 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
     UIProcess/Cocoa/WebProcessPoolCocoa.mm
     UIProcess/Cocoa/WebProcessProxyCocoa.mm
-    UIProcess/Cocoa/WebResourceLoadStatisticsManagerCocoa.mm
     UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm
     UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm
     UIProcess/Cocoa/WebViewImpl.mm
 
     UIProcess/Launcher/mac/ProcessLauncherMac.mm
+
+    UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.cpp
 
     UIProcess/Network/mac/NetworkProcessProxyMac.mm
 
@@ -277,18 +279,19 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/mac/PluginProcessManagerMac.mm
     UIProcess/Plugins/mac/PluginProcessProxyMac.mm
 
-    UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp
-    UIProcess/Scrolling/RemoteScrollingTree.cpp
+    UIProcess/RemoteLayerTree/RemoteLayerTreeScrollingPerformanceData.mm
+    UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp
+    UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp
+    UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.mm
+    UIProcess/RemoteLayerTree/RemoteLayerTreeHost.mm
 
-    UIProcess/Storage/StorageManager.cpp
+    UIProcess/WebStorage/StorageManager.cpp
 
     UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm
 
     UIProcess/mac/CorrectionPanel.mm
     UIProcess/mac/LegacySessionStateCoding.cpp
-    UIProcess/mac/PageClientImpl.mm
-    UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm
-    UIProcess/mac/RemoteLayerTreeHost.mm
+    UIProcess/mac/PageClientImplMac.mm
     UIProcess/mac/RemoteWebInspectorProxyMac.mm
     UIProcess/mac/SecItemShimProxy.cpp
     UIProcess/mac/ServicesController.mm
@@ -299,12 +302,14 @@ list(APPEND WebKit2_SOURCES
     UIProcess/mac/WKFullKeyboardAccessWatcher.mm
     UIProcess/mac/WKFullScreenWindowController.mm
     UIProcess/mac/WKImmediateActionController.mm
+    UIProcess/mac/WKInspectorViewController.mm
+    UIProcess/mac/WKInspectorWKWebView.mm
+    UIProcess/mac/WKInspectorWindow.mm
     UIProcess/mac/WKPrintingView.mm
     UIProcess/mac/WKSharingServicePickerDelegate.mm
     UIProcess/mac/WKTextFinderClient.mm
     UIProcess/mac/WKTextInputWindowController.mm
     UIProcess/mac/WKViewLayoutStrategy.mm
-    UIProcess/mac/WKWebInspectorWKWebView.mm
     UIProcess/mac/WebColorPickerMac.mm
     UIProcess/mac/WebContextMenuProxyMac.mm
     UIProcess/mac/WebCookieManagerProxyMac.mm
@@ -314,8 +319,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/mac/WebPreferencesMac.mm
     UIProcess/mac/WebProcessProxyMac.mm
     UIProcess/mac/WindowServerConnection.mm
-
-    WebProcess/Cookies/mac/WebCookieManagerMac.mm
 
     WebProcess/InjectedBundle/API/Cocoa/WKWebProcessBundleParameters.mm
     WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm
@@ -348,7 +351,15 @@ list(APPEND WebKit2_SOURCES
     WebProcess/Plugins/PDF/PDFPluginPasswordField.mm
     WebProcess/Plugins/PDF/PDFPluginTextAnnotation.mm
 
-    WebProcess/Scrolling/RemoteScrollingCoordinator.mm
+    WebProcess/WebPage/RemoteLayerTree/GraphicsLayerCARemote.cpp
+    WebProcess/WebPage/RemoteLayerTree/PlatformCAAnimationRemote.mm
+    WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.cpp
+    WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteCustom.mm
+    WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteTiledBacking.cpp
+    WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeContext.mm
+    WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDisplayRefreshMonitor.mm
+    WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm
+    WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.mm
 
     WebProcess/WebCoreSupport/WebPasteboardOverrides.cpp
     WebProcess/WebCoreSupport/WebValidationMessageClient.cpp
@@ -359,21 +370,12 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/mac/WebEditorClientMac.mm
     WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm
     WebProcess/WebCoreSupport/mac/WebPopupMenuMac.mm
-    WebProcess/WebCoreSupport/mac/WebSystemInterface.mm
 
     WebProcess/WebPage/ViewGestureGeometryCollector.cpp
 
-    WebProcess/WebPage/Cocoa/RemoteLayerTreeDisplayRefreshMonitor.mm
     WebProcess/WebPage/Cocoa/WebPageCocoa.mm
 
-    WebProcess/WebPage/mac/GraphicsLayerCARemote.cpp
     WebProcess/WebPage/mac/PageBannerMac.mm
-    WebProcess/WebPage/mac/PlatformCAAnimationRemote.mm
-    WebProcess/WebPage/mac/PlatformCALayerRemote.cpp
-    WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm
-    WebProcess/WebPage/mac/PlatformCALayerRemoteTiledBacking.cpp
-    WebProcess/WebPage/mac/RemoteLayerTreeContext.mm
-    WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm
     WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm
     WebProcess/WebPage/mac/WKAccessibilityWebPageObjectBase.mm
     WebProcess/WebPage/mac/WKAccessibilityWebPageObjectMac.mm
@@ -385,50 +387,49 @@ list(APPEND WebKit2_SOURCES
     WebProcess/mac/SecItemShimLibrary.mm
 )
 
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
-
-list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${PAL_DIR}"
-    "${WEBKIT2_DIR}/NetworkProcess/cocoa"
-    "${WEBKIT2_DIR}/NetworkProcess/mac"
-    "${WEBKIT2_DIR}/PluginProcess/mac"
-    "${WEBKIT2_DIR}/UIProcess/mac"
-    "${WEBKIT2_DIR}/UIProcess/API/C/mac"
-    "${WEBKIT2_DIR}/UIProcess/API/Cocoa"
-    "${WEBKIT2_DIR}/UIProcess/API/mac"
-    "${WEBKIT2_DIR}/UIProcess/Cocoa"
-    "${WEBKIT2_DIR}/UIProcess/Launcher/mac"
-    "${WEBKIT2_DIR}/UIProcess/Scrolling"
-    "${WEBKIT2_DIR}/UIProcess/ios"
-    "${WEBKIT2_DIR}/Platform/cg"
-    "${WEBKIT2_DIR}/Platform/classifier"
-    "${WEBKIT2_DIR}/Platform/classifier/cocoa"
-    "${WEBKIT2_DIR}/Platform/mac"
-    "${WEBKIT2_DIR}/Platform/unix"
-    "${WEBKIT2_DIR}/Platform/spi/Cocoa"
-    "${WEBKIT2_DIR}/Platform/spi/mac"
-    "${WEBKIT2_DIR}/Platform/IPC/mac"
-    "${WEBKIT2_DIR}/Platform/spi/Cocoa"
-    "${WEBKIT2_DIR}/Shared/API/Cocoa"
-    "${WEBKIT2_DIR}/Shared/API/c/cf"
-    "${WEBKIT2_DIR}/Shared/API/c/cg"
-    "${WEBKIT2_DIR}/Shared/API/c/mac"
-    "${WEBKIT2_DIR}/Shared/cf"
-    "${WEBKIT2_DIR}/Shared/Cocoa"
-    "${WEBKIT2_DIR}/Shared/EntryPointUtilities/mac/XPCService"
-    "${WEBKIT2_DIR}/Shared/mac"
-    "${WEBKIT2_DIR}/Shared/Plugins/mac"
-    "${WEBKIT2_DIR}/Shared/Scrolling"
-    "${WEBKIT2_DIR}/WebProcess/cocoa"
-    "${WEBKIT2_DIR}/WebProcess/mac"
-    "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/Cocoa"
-    "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/mac"
-    "${WEBKIT2_DIR}/WebProcess/Plugins/PDF"
-    "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/mac"
-    "${WEBKIT2_DIR}/WebProcess/Scrolling"
-    "${WEBKIT2_DIR}/WebProcess/WebPage/Cocoa"
-    "${WEBKIT2_DIR}/WebProcess/WebPage/mac"
-    "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/mac"
+list(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${WEBKIT_DIR}/NetworkProcess/cocoa"
+    "${WEBKIT_DIR}/NetworkProcess/mac"
+    "${WEBKIT_DIR}/PluginProcess/mac"
+    "${WEBKIT_DIR}/UIProcess/mac"
+    "${WEBKIT_DIR}/UIProcess/API/C/mac"
+    "${WEBKIT_DIR}/UIProcess/API/Cocoa"
+    "${WEBKIT_DIR}/UIProcess/API/mac"
+    "${WEBKIT_DIR}/UIProcess/Cocoa"
+    "${WEBKIT_DIR}/UIProcess/Launcher/mac"
+    "${WEBKIT_DIR}/UIProcess/RemoteLayerTree"
+    "${WEBKIT_DIR}/UIProcess/RemoteLayerTree/ios"
+    "${WEBKIT_DIR}/UIProcess/ios"
+    "${WEBKIT_DIR}/Platform/cg"
+    "${WEBKIT_DIR}/Platform/classifier"
+    "${WEBKIT_DIR}/Platform/classifier/cocoa"
+    "${WEBKIT_DIR}/Platform/cocoa"
+    "${WEBKIT_DIR}/Platform/mac"
+    "${WEBKIT_DIR}/Platform/unix"
+    "${WEBKIT_DIR}/Platform/spi/Cocoa"
+    "${WEBKIT_DIR}/Platform/spi/mac"
+    "${WEBKIT_DIR}/Platform/IPC/mac"
+    "${WEBKIT_DIR}/Platform/spi/Cocoa"
+    "${WEBKIT_DIR}/Shared/API/Cocoa"
+    "${WEBKIT_DIR}/Shared/API/c/cf"
+    "${WEBKIT_DIR}/Shared/API/c/cg"
+    "${WEBKIT_DIR}/Shared/API/c/mac"
+    "${WEBKIT_DIR}/Shared/cf"
+    "${WEBKIT_DIR}/Shared/Cocoa"
+    "${WEBKIT_DIR}/Shared/EntryPointUtilities/mac/XPCService"
+    "${WEBKIT_DIR}/Shared/mac"
+    "${WEBKIT_DIR}/Shared/Plugins/mac"
+    "${WEBKIT_DIR}/Shared/Scrolling"
+    "${WEBKIT_DIR}/WebProcess/cocoa"
+    "${WEBKIT_DIR}/WebProcess/mac"
+    "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/Cocoa"
+    "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/mac"
+    "${WEBKIT_DIR}/WebProcess/Plugins/PDF"
+    "${WEBKIT_DIR}/WebProcess/Plugins/Netscape/mac"
+    "${WEBKIT_DIR}/WebProcess/WebPage/Cocoa"
+    "${WEBKIT_DIR}/WebProcess/WebPage/RemoteLayerTree"
+    "${WEBKIT_DIR}/WebProcess/WebPage/mac"
+    "${WEBKIT_DIR}/WebProcess/WebCoreSupport/mac"
     "${FORWARDING_HEADERS_DIR}/WebCore"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
 )
@@ -453,18 +454,21 @@ list(APPEND NetworkProcess_SOURCES
     ${XPCService_SOURCES}
 )
 
-list(APPEND DatabaseProcess_SOURCES
-    DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm
+list(APPEND StorageProcess_SOURCES
+    StorageProcess/EntryPoint/mac/XPCService/StorageServiceEntryPoint.mm
     ${XPCService_SOURCES}
 )
 
 # FIXME: These should not have Development in production builds.
-set(WebKit2_WebProcess_OUTPUT_NAME com.apple.WebKit.WebContent.Development)
-set(WebKit2_NetworkProcess_OUTPUT_NAME com.apple.WebKit.Networking.Development)
+set(WebKit_WebProcess_OUTPUT_NAME com.apple.WebKit.WebContent.Development)
+set(WebKit_NetworkProcess_OUTPUT_NAME com.apple.WebKit.Networking.Development)
+set(WebKit_StorageProcess_OUTPUT_NAME com.apple.WebKit.Storage.Development)
 
 add_definitions("-include WebKit2Prefix.h")
 
-set(WebKit2_FORWARDING_HEADERS_FILES
+set(WebKit_FORWARDING_HEADERS_FILES
+    Platform/cocoa/WKCrashReporter.h
+
     Shared/API/c/WKDiagnosticLoggingResultType.h
 
     UIProcess/API/C/WKPageDiagnosticLoggingClient.h
@@ -472,20 +476,25 @@ set(WebKit2_FORWARDING_HEADERS_FILES
     UIProcess/API/C/WKPageRenderingProgressEvents.h
 )
 
-list(APPEND WebKit2_MESSAGES_IN_FILES
+list(APPEND WebKit_MESSAGES_IN_FILES
+    NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
+
     Shared/API/Cocoa/RemoteObjectRegistry.messages.in
 
+    UIProcess/Cocoa/VideoFullscreenManagerProxy.messages.in
     UIProcess/Cocoa/ViewGestureController.messages.in
-    UIProcess/Cocoa/WebVideoFullscreenManagerProxy.messages.in
 
-    UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.messages.in
+    UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.messages.in
+
+    UIProcess/RemoteLayerTree/RemoteLayerTreeDrawingAreaProxy.messages.in
+
     UIProcess/mac/SecItemShimProxy.messages.in
 
-    WebProcess/Scrolling/RemoteScrollingCoordinator.messages.in
+    WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.messages.in
     WebProcess/WebPage/ViewGestureGeometryCollector.messages.in
 )
 
-set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
+set(WebKit_FORWARDING_HEADERS_DIRECTORIES
     Platform
     Shared
 
@@ -502,6 +511,7 @@ set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
     Shared/API/c/cf
     Shared/API/c/mac
 
+    UIProcess
     UIProcess/Cocoa
 
     UIProcess/API/C
@@ -517,7 +527,7 @@ set(WebKit2_FORWARDING_HEADERS_DIRECTORIES
     WebProcess/InjectedBundle/API/mac
 )
 
-WEBKIT_CREATE_FORWARDING_HEADERS(WebKit FILES ${WebKit2_FORWARDING_HEADERS_FILES} DIRECTORIES ${WebKit2_FORWARDING_HEADERS_DIRECTORIES})
+WEBKIT_CREATE_FORWARDING_HEADERS(WebKit FILES ${WebKit_FORWARDING_HEADERS_FILES} DIRECTORIES ${WebKit_FORWARDING_HEADERS_DIRECTORIES})
 
 # This is needed right now to import ObjC headers instead of including them.
 # FIXME: Forwarding headers should be copies of actual headers.
@@ -525,7 +535,7 @@ file(GLOB ObjCHeaders UIProcess/API/Cocoa/*.h)
 foreach (_file ${ObjCHeaders})
     get_filename_component(_name ${_file} NAME)
     if (NOT EXISTS ${FORWARDING_HEADERS_DIR}/WebKit/${_name})
-        file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/${_name} "#import <WebKit2/UIProcess/API/Cocoa/${_name}>")
+        file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/${_name} "#import <WebKit/UIProcess/API/Cocoa/${_name}>")
     endif ()
 endforeach ()
 
@@ -542,6 +552,7 @@ set(WebKitLegacyForwardingHeaders
     WebCoreStatistics.h
     WebDOMOperations.h
     WebDOMOperationsPrivate.h
+    WebDatabaseManagerPrivate.h
     WebDataSource.h
     WebDataSourcePrivate.h
     WebDefaultPolicyDelegate.h
@@ -577,6 +588,7 @@ set(WebKitLegacyForwardingHeaders
     WebQuotaManager.h
     WebScriptWorld.h
     WebSecurityOriginPrivate.h
+    WebStorageManagerPrivate.h
     WebTypesInternal.h
     WebUIDelegate.h
     WebUIDelegatePrivate.h
@@ -732,15 +744,58 @@ foreach (_file ${ObjCForwardingHeaders})
     file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/${_file} "#import <WebKitLegacy/${_file}>")
 endforeach ()
 
-list(APPEND WebKit2_AUTOMATION_PROTOCOL_GENERATOR_EXTRA_FLAGS
+list(APPEND WebKit_AUTOMATION_PROTOCOL_GENERATOR_EXTRA_FLAGS
     --platform=macOS
 )
 
 # FIXME: These should not be necessary.
-file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/WKImageCG.h "#import <WebKit2/Shared/API/c/cg/WKImageCG.h>")
-file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/WebStorageManagerPrivate.h "#import <WebKit/mac/Storage/WebStorageManagerPrivate.h>")
-file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/WebDatabaseManagerPrivate.h "#import <WebKit/mac/Storage/WebDatabaseManagerPrivate.h>")
+file(WRITE ${FORWARDING_HEADERS_DIR}/WebKit/WKImageCG.h "#import <WebKit/Shared/API/c/cg/WKImageCG.h>")
 
 set(CMAKE_SHARED_LINKER_FLAGS ${CMAKE_SHARED_LINKER_FLAGS} "-compatibility_version 1 -current_version ${WEBKIT_MAC_VERSION}")
 
-set(WebKit2_OUTPUT_NAME WebKit)
+set(WebKit_OUTPUT_NAME WebKit)
+
+# XPC Services
+
+function(WEBKIT_DEFINE_XPC_SERVICES)
+    set(WebKit_XPC_SERVICE_DIR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/Versions/A/XPCServices)
+    WEBKIT_CREATE_SYMLINK(WebProcess ${WebKit_XPC_SERVICE_DIR} ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/XPCServices)
+
+    function(WEBKIT_XPC_SERVICE _target _bundle_identifier _info_plist _executable_name)
+        set(_service_dir ${WebKit_XPC_SERVICE_DIR}/${_bundle_identifier}.xpc/Contents)
+        make_directory(${_service_dir}/MacOS)
+        make_directory(${_service_dir}/_CodeSignature)
+        make_directory(${_service_dir}/Resources)
+
+        # FIXME: These version strings don't match Xcode's.
+        set(BUNDLE_VERSION ${WEBKIT_VERSION})
+        set(SHORT_VERSION_STRING ${WEBKIT_VERSION_MAJOR})
+        set(BUNDLE_VERSION ${WEBKIT_VERSION})
+        set(EXECUTABLE_NAME ${_executable_name})
+        set(PRODUCT_BUNDLE_IDENTIFIER ${_bundle_identifier})
+        set(PRODUCT_NAME ${_bundle_identifier})
+        configure_file(${_info_plist} ${_service_dir}/Info.plist)
+
+        set_target_properties(${_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_service_dir}/MacOS")
+    endfunction()
+
+    WEBKIT_XPC_SERVICE(WebProcess
+        "com.apple.WebKit.WebContent"
+        ${WEBKIT_DIR}/WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist
+        ${WebKit_WebProcess_OUTPUT_NAME})
+
+    WEBKIT_XPC_SERVICE(NetworkProcess
+        "com.apple.WebKit.Networking"
+        ${WEBKIT_DIR}/NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-OSX.plist
+        ${WebKit_NetworkProcess_OUTPUT_NAME})
+
+    WEBKIT_XPC_SERVICE(StorageProcess
+        "com.apple.WebKit.Storage"
+        ${WEBKIT_DIR}/StorageProcess/EntryPoint/mac/XPCService/StorageService/Info.plist
+        ${WebKit_StorageProcess_OUTPUT_NAME})
+
+    add_custom_target(WebContentProcessNib COMMAND
+        ibtool --compile ${WebKit_XPC_SERVICE_DIR}/com.apple.WebKit.WebContent.xpc/Contents/Resources/WebContentProcess.nib ${WEBKIT_DIR}/Resources/WebContentProcess.xib
+        VERBATIM)
+    add_dependencies(WebKit WebContentProcessNib)
+endfunction()

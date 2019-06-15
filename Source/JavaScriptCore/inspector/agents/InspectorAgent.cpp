@@ -33,13 +33,12 @@
 
 #include "InspectorEnvironment.h"
 #include "InspectorFrontendRouter.h"
-#include "InspectorValues.h"
-#include "ScriptValue.h"
+#include <wtf/JSONValues.h>
 
 namespace Inspector {
 
 InspectorAgent::InspectorAgent(AgentContext& context)
-    : InspectorAgentBase(ASCIILiteral("Inspector"))
+    : InspectorAgentBase("Inspector"_s)
     , m_environment(context.environment)
     , m_frontendDispatcher(std::make_unique<InspectorFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(InspectorBackendDispatcher::create(context.backendDispatcher, this))
@@ -90,7 +89,7 @@ void InspectorAgent::initialized(ErrorString&)
     m_environment.frontendInitialized();
 }
 
-void InspectorAgent::inspect(RefPtr<Protocol::Runtime::RemoteObject>&& objectToInspect, RefPtr<InspectorObject>&& hints)
+void InspectorAgent::inspect(RefPtr<Protocol::Runtime::RemoteObject>&& objectToInspect, RefPtr<JSON::Object>&& hints)
 {
     if (m_enabled) {
         m_frontendDispatcher->inspect(objectToInspect, hints);
@@ -116,12 +115,12 @@ void InspectorAgent::activateExtraDomain(const String& domainName)
 {
     if (!m_enabled) {
         if (!m_pendingExtraDomainsData)
-            m_pendingExtraDomainsData = Inspector::Protocol::Array<String>::create();
+            m_pendingExtraDomainsData = JSON::ArrayOf<String>::create();
         m_pendingExtraDomainsData->addItem(domainName);
         return;
     }
 
-    auto domainNames = Inspector::Protocol::Array<String>::create();
+    auto domainNames = JSON::ArrayOf<String>::create();
     domainNames->addItem(domainName);
     m_frontendDispatcher->activateExtraDomains(WTFMove(domainNames));
 }
@@ -131,7 +130,7 @@ void InspectorAgent::activateExtraDomains(const Vector<String>& extraDomains)
     if (extraDomains.isEmpty())
         return;
 
-    auto domainNames = Inspector::Protocol::Array<String>::create();
+    auto domainNames = JSON::ArrayOf<String>::create();
     for (auto domainName : extraDomains)
         domainNames->addItem(domainName);
 

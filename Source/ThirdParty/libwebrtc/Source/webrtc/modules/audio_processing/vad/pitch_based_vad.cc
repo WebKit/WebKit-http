@@ -8,16 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/vad/pitch_based_vad.h"
+#include "modules/audio_processing/vad/pitch_based_vad.h"
 
 #include <math.h>
 #include <string.h>
 
-#include "webrtc/modules/audio_processing/vad/vad_circular_buffer.h"
-#include "webrtc/modules/audio_processing/vad/common.h"
-#include "webrtc/modules/audio_processing/vad/noise_gmm_tables.h"
-#include "webrtc/modules/audio_processing/vad/voice_gmm_tables.h"
-#include "webrtc/modules/include/module_common_types.h"
+#include "modules/audio_processing/vad/common.h"
+#include "modules/audio_processing/vad/noise_gmm_tables.h"
+#include "modules/audio_processing/vad/vad_circular_buffer.h"
+#include "modules/audio_processing/vad/voice_gmm_tables.h"
 
 namespace webrtc {
 
@@ -59,8 +58,7 @@ PitchBasedVad::PitchBasedVad()
   voice_gmm_.covar_inverse = &kVoiceGmmCovarInverse[0][0][0];
 }
 
-PitchBasedVad::~PitchBasedVad() {
-}
+PitchBasedVad::~PitchBasedVad() {}
 
 int PitchBasedVad::VoicingProbability(const AudioFeatures& features,
                                       double* p_combined) {

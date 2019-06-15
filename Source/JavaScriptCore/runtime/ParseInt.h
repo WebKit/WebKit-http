@@ -217,11 +217,16 @@ static ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(StringView)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSString* string = value.toStringOrNull(exec);
+    EXCEPTION_ASSERT(!!scope.exception() == !string);
     if (UNLIKELY(!string))
         return { };
     auto viewWithString = string->viewWithUnderlyingString(exec);
     RETURN_IF_EXCEPTION(scope, { });
+    scope.release();
     return callback(viewWithString.view);
 }
+
+// Mapping from integers 0..35 to digit identifying this value, for radix 2..36.
+const char radixDigits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 } // namespace JSC

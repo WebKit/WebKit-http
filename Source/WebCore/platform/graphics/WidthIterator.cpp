@@ -29,10 +29,10 @@
 #include "SurrogatePairAwareTextIterator.h"
 #include <wtf/MathExtras.h>
 
-using namespace WTF;
-using namespace Unicode;
 
 namespace WebCore {
+using namespace WTF;
+using namespace Unicode;
 
 WidthIterator::WidthIterator(const FontCascade* font, const TextRun& run, HashSet<const Font*>* fallbackFonts, bool accountForGlyphBounds, bool forTextEmphasis)
     : m_font(font)
@@ -53,7 +53,7 @@ WidthIterator::WidthIterator(const FontCascade* font, const TextRun& run, HashSe
     if (!m_expansion)
         m_expansionPerOpportunity = 0;
     else {
-        unsigned expansionOpportunityCount = FontCascade::expansionOpportunityCount(m_run.text(), m_run.ltr() ? LTR : RTL, run.expansionBehavior()).first;
+        unsigned expansionOpportunityCount = FontCascade::expansionOpportunityCount(m_run.text(), m_run.ltr() ? TextDirection::LTR : TextDirection::RTL, run.expansionBehavior()).first;
 
         if (!expansionOpportunityCount)
             m_expansionPerOpportunity = 0;
@@ -113,6 +113,9 @@ inline float WidthIterator::applyFontTransforms(GlyphBuffer* glyphBuffer, bool l
         glyphBuffer->reverse(lastGlyphCount, glyphBufferSize - lastGlyphCount);
 
     font->applyTransforms(glyphBuffer->glyphs(lastGlyphCount), advances + lastGlyphCount, glyphBufferSize - lastGlyphCount, m_enableKerning, m_requiresShaping);
+
+    for (unsigned i = lastGlyphCount; i < glyphBufferSize; ++i)
+        advances[i].setHeight(-advances[i].height());
 
     if (!ltr)
         glyphBuffer->reverse(lastGlyphCount, glyphBufferSize - lastGlyphCount);
@@ -342,7 +345,7 @@ inline unsigned WidthIterator::advanceInternal(TextIterator& textIterator, Glyph
         previousCharacter = character;
     }
 
-    if (leftoverJustificationWidth) {
+    if (glyphBuffer && leftoverJustificationWidth) {
         if (m_forTextEmphasis)
             glyphBuffer->add(lastFontData->zeroWidthSpaceGlyph(), lastFontData, leftoverJustificationWidth, m_run.length() - 1);
         else

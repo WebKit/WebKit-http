@@ -28,6 +28,7 @@ class ProgressValueElement;
 class RenderProgress;
 
 class HTMLProgressElement final : public LabelableElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLProgressElement);
 public:
     static const double IndeterminatePosition;
     static const double InvalidPosition;
@@ -58,7 +59,7 @@ private:
     void didAttachRenderers() final;
 
     void didElementStateChange();
-    void didAddUserAgentShadowRoot(ShadowRoot*) final;
+    void didAddUserAgentShadowRoot(ShadowRoot&) final;
     bool isDeterminate() const;
 
     bool canContainRangeEndPoint() const final { return false; }

@@ -54,13 +54,15 @@ private:
     void willWriteSelectionToPasteboard(WebCore::Range*) final;
     void didWriteSelectionToPasteboard() final;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
+    String replacementURLForResource(Ref<WebCore::SharedBuffer>&&, const String&) final;
 
+    void didEndUserTriggeredSelectionChanges() final { }
     void respondToChangedContents() final;
     void respondToChangedSelection(WebCore::Frame*) final;
-    void didChangeSelectionAndUpdateLayout() final { }
     void updateEditorStateAfterLayoutIfEditabilityChanged() final { } 
     void canceledComposition() final;
     void discardedComposition(WebCore::Frame*) final;
+    void didUpdateComposition() final { }
 
     bool shouldDeleteRange(WebCore::Range*) final;
 

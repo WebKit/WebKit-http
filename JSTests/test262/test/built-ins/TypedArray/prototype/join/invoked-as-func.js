@@ -1,9 +1,9 @@
 // Copyright (C) 2016 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
-es6id: 22.2.3.14
+esid: sec-%typedarray%.prototype.join
 description: Throws a TypeError exception when invoked as a function
-info: >
+info: |
   22.2.3.14 %TypedArray%.prototype.join ( separator )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -17,6 +17,7 @@ info: >
   exception.
   ...
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
 var join = TypedArray.prototype.join;

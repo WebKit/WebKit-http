@@ -32,9 +32,8 @@
 #include <wtf/Vector.h>
 #include <wtf/glib/GUniquePtr.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 void InputMethodFilter::handleCommitCallback(InputMethodFilter* filter, const char* compositionString)
 {
@@ -82,15 +81,31 @@ InputMethodFilter::~InputMethodFilter()
     g_signal_handlers_disconnect_matched(m_context.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
 }
 
+bool InputMethodFilter::isViewFocused() const
+{
+#if ENABLE(API_TESTS)
+    ASSERT(m_page || m_testingMode);
+    if (m_testingMode)
+        return true;
+#else
+    ASSERT(m_page);
+#endif
+    return m_page->isViewFocused();
+}
+
 void InputMethodFilter::setEnabled(bool enabled)
 {
+#if ENABLE(API_TESTS)
+    ASSERT(m_page || m_testingMode);
+#else
     ASSERT(m_page);
+#endif
 
     // Notify focus out before changing the m_enabled.
     if (!enabled)
         notifyFocusedOut();
     m_enabled = enabled;
-    if (enabled)
+    if (enabled && isViewFocused())
         notifyFocusedIn();
 }
 
@@ -153,7 +168,7 @@ void InputMethodFilter::handleKeyboardEventWithCompositionResults(GdkEventKey* e
         m_page->confirmComposition(m_confirmedComposition, -1, 0);
 
     if (resultsToSend & Preedit && !m_preedit.isNull()) {
-        m_page->setComposition(m_preedit, Vector<CompositionUnderline>{ CompositionUnderline(0, m_preedit.length(), Color(1, 1, 1), false) },
+        m_page->setComposition(m_preedit, Vector<CompositionUnderline> { CompositionUnderline(0, m_preedit.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false) },
             m_cursorOffset, m_cursorOffset, 0 /* replacement start */, 0 /* replacement end */);
     }
 }
@@ -260,7 +275,7 @@ void InputMethodFilter::updatePreedit()
     }
 #endif
     // FIXME: We should parse the PangoAttrList that we get from the IM context here.
-    m_page->setComposition(m_preedit, Vector<CompositionUnderline>{ CompositionUnderline(0, m_preedit.length(), Color(1, 1, 1), false) },
+    m_page->setComposition(m_preedit, Vector<CompositionUnderline> { CompositionUnderline(0, m_preedit.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false) },
         m_cursorOffset, m_cursorOffset, 0 /* replacement start */, 0 /* replacement end */);
     m_preeditChanged = false;
 }
@@ -312,6 +327,14 @@ void InputMethodFilter::confirmCurrentComposition()
 {
     if (!m_composingTextCurrently)
         return;
+
+#if ENABLE(API_TESTS)
+    if (m_testingMode) {
+        m_composingTextCurrently = false;
+        return;
+    }
+#endif
+
     m_page->confirmComposition(String(), -1, 0);
     m_composingTextCurrently = false;
 }
@@ -431,7 +454,7 @@ void InputMethodFilter::logHandleKeyboardEventWithCompositionResultsForTesting(G
 {
     const char* eventType = event->type == GDK_KEY_RELEASE ? "release" : "press";
     const char* fakedString = faked == EventFaked ? " (faked)" : "";
-    m_events.append(String::format("sendKeyEventWithCompositionResults type=%s keycode=%u%s", eventType, event->keyval, fakedString));
+    m_events.append(String::format("sendKeyEventWithCompositionResults type=%s keycode=%x%s", eventType, event->keyval, fakedString));
 
     if (resultsToSend & Composition && !m_confirmedComposition.isNull())
         logConfirmCompositionForTesting();

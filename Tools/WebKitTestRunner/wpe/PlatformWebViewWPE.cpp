@@ -39,8 +39,8 @@ PlatformWebView::PlatformWebView(WKPageConfigurationRef configuration, const Tes
     : m_windowIsKey(true)
     , m_options(options)
 {
-    m_window = new HeadlessViewBackend;
-    m_view = WKViewCreateWithViewBackend(m_window->backend(), configuration);
+    m_window = new WPEToolingBackends::HeadlessViewBackend(800, 600);
+    m_view = WKViewCreate(m_window->backend(), configuration);
 }
 
 PlatformWebView::~PlatformWebView()
@@ -106,7 +106,7 @@ cairo_surface_t* PlatformWebView::windowSnapshotImage()
             TimeoutTimer()
                 : timer(RunLoop::main(), this, &TimeoutTimer::fired)
             {
-                timer.startOneShot(1.0 / 60);
+                timer.startOneShot(1_s / 60);
             }
 
             void fired() { RunLoop::main().stop(); }
@@ -129,6 +129,15 @@ void PlatformWebView::setNavigationGesturesEnabled(bool)
 }
 
 void PlatformWebView::forceWindowFramesChanged()
+{
+}
+
+bool PlatformWebView::drawsBackground() const
+{
+    return false;
+}
+
+void PlatformWebView::setDrawsBackground(bool)
 {
 }
 

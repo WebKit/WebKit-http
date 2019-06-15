@@ -39,7 +39,6 @@
 #include "FrameLoaderStateMachine.h"
 #include "FrameView.h"
 #include "MIMETypeRegistry.h"
-#include "MainFrame.h"
 #include "PluginDocument.h"
 #include "RawDataDocumentParser.h"
 #include "ScriptController.h"
@@ -109,9 +108,9 @@ void DocumentWriter::clear()
         m_encoding = String();
 }
 
-void DocumentWriter::begin()
+bool DocumentWriter::begin()
 {
-    begin(URL());
+    return begin(URL());
 }
 
 Ref<Document> DocumentWriter::createDocument(const URL& url)
@@ -127,7 +126,7 @@ Ref<Document> DocumentWriter::createDocument(const URL& url)
     return DOMImplementation::createDocument(m_mimeType, m_frame, url);
 }
 
-void DocumentWriter::begin(const URL& urlReference, bool dispatch, Document* ownerDocument)
+bool DocumentWriter::begin(const URL& urlReference, bool dispatch, Document* ownerDocument)
 {
     // We grab a local copy of the URL because it's easy for callers to supply
     // a URL that will be deallocated during the execution of this function.
@@ -155,7 +154,7 @@ void DocumentWriter::begin(const URL& urlReference, bool dispatch, Document* own
     // requests in new navigation contexts. Although this information is present when we construct the
     // Document object, it is discard in the subsequent 'clear' statements below. So, we must capture it
     // so we can restore it.
-    HashSet<RefPtr<SecurityOrigin>> insecureNavigationRequestsToUpgrade;
+    HashSet<SecurityOriginData> insecureNavigationRequestsToUpgrade;
     if (auto* existingDocument = m_frame->document())
         insecureNavigationRequestsToUpgrade = existingDocument->contentSecurityPolicy()->takeNavigationRequestsToUpgrade();
     
@@ -165,7 +164,7 @@ void DocumentWriter::begin(const URL& urlReference, bool dispatch, Document* own
     // m_frame->loader().clear() might fire unload event which could remove the view of the document.
     // Bail out if document has no view.
     if (!document->view())
-        return;
+        return false;
 
     if (!shouldReuseDefaultView)
         m_frame->script().updatePlatformScriptObjects();
@@ -196,6 +195,7 @@ void DocumentWriter::begin(const URL& urlReference, bool dispatch, Document* own
         m_frame->view()->setContentsSize(IntSize());
 
     m_state = StartedWritingState;
+    return true;
 }
 
 TextResourceDecoder* DocumentWriter::createDecoderIfNeeded()
@@ -251,6 +251,14 @@ void DocumentWriter::addData(const char* bytes, size_t length)
 
     ASSERT(m_parser);
     m_parser->appendBytes(*this, bytes, length);
+}
+
+void DocumentWriter::insertDataSynchronously(const String& markup)
+{
+    ASSERT(m_state != NotStartedWritingState);
+    ASSERT(m_state != FinishedWritingState);
+    ASSERT(m_parser);
+    m_parser->insert(markup);
 }
 
 void DocumentWriter::end()

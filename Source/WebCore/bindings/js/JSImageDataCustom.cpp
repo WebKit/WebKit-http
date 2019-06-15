@@ -28,24 +28,26 @@
 
 #include "JSDOMConvertBufferSource.h"
 #include "JSDOMWrapperCache.h"
-#include <heap/HeapInlines.h>
-#include <runtime/IdentifierInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/IdentifierInlines.h>
+#include <JavaScriptCore/JSObjectInlines.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
 
-using namespace JSC;
 
 namespace WebCore {
+using namespace JSC;
 
 JSValue toJSNewlyCreated(ExecState* state, JSDOMGlobalObject* globalObject, Ref<ImageData>&& imageData)
 {
+    VM& vm = state->vm();
     auto* data = imageData->data();
     auto* wrapper = createWrapper<ImageData>(globalObject, WTFMove(imageData));
     Identifier dataName = Identifier::fromString(state, "data");
-    wrapper->putDirect(state->vm(), dataName, toJS(state, globalObject, data), DontDelete | ReadOnly);
+    wrapper->putDirect(vm, dataName, toJS(state, globalObject, data), PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
     // https://bugs.webkit.org/show_bug.cgi?id=142595
-    state->heap()->deprecatedReportExtraMemory(data->length());
+    vm.heap.deprecatedReportExtraMemory(data->length());
     
     return wrapper;
 }

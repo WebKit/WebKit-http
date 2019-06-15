@@ -35,11 +35,14 @@ namespace IPC {
 class DataReference;
 }
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
-class SessionID;
 }
 
 namespace WebKit {
@@ -70,10 +73,13 @@ private:
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     void didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames);
+    void didFinishPingLoad(uint64_t pingLoadIdentifier, WebCore::ResourceError&&, WebCore::ResourceResponse&&);
+    void didFinishPreconnection(uint64_t preconnectionIdentifier, WebCore::ResourceError&&);
+    void setOnLineState(bool isOnLine);
 
 #if ENABLE(SHAREABLE_RESOURCE)
     // Message handlers.
-    void didCacheResource(const WebCore::ResourceRequest&, const ShareableResource::Handle&, WebCore::SessionID);
+    void didCacheResource(const WebCore::ResourceRequest&, const ShareableResource::Handle&, PAL::SessionID);
 #endif
 
     // The connection from the web process to the network process.

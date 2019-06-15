@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduceright
 es5id: 15.4.4.22-8-b-iii-1-27
 description: >
     Array.prototype.reduceRight - This object is the Arguments object
@@ -9,17 +10,18 @@ description: >
     is greater than number of parameters)
 ---*/
 
-        var testResult = false;
-        function callbackfn(prevVal, curVal, idx, obj) {
-            if (idx === 2) {
-                testResult = (prevVal === 3);
-            }
-        }
+var testResult = false;
 
-        var func = function (a, b, c) {
-            Array.prototype.reduceRight.call(arguments, callbackfn);
-        };
+function callbackfn(prevVal, curVal, idx, obj) {
+  if (idx === 2) {
+    testResult = (prevVal === 3);
+  }
+}
 
-        func(0, 1, 2, 3);
+var func = function(a, b, c) {
+  Array.prototype.reduceRight.call(arguments, callbackfn);
+};
+
+func(0, 1, 2, 3);
 
 assert(testResult, 'testResult !== true');

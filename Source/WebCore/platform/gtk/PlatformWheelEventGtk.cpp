@@ -29,11 +29,12 @@
 #include "PlatformWheelEvent.h"
 
 #include "FloatPoint.h"
+#include "GtkUtilities.h"
 #include "PlatformKeyboardEvent.h"
 #include "Scrollbar.h"
 #include <gdk/gdk.h>
 #include <gtk/gtk.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 namespace WebCore {
 
@@ -43,18 +44,18 @@ PlatformWheelEvent::PlatformWheelEvent(GdkEventScroll* event)
     static const float delta = 1;
 
     m_type = PlatformEvent::Wheel;
-    m_timestamp = currentTime();
+    m_timestamp = wallTimeForEvent(event);
 
     if (event->state & GDK_SHIFT_MASK)
-        m_modifiers |= Modifier::ShiftKey;
+        m_modifiers.add(Modifier::ShiftKey);
     if (event->state & GDK_CONTROL_MASK)
-        m_modifiers |= Modifier::CtrlKey;
+        m_modifiers.add(Modifier::CtrlKey);
     if (event->state & GDK_MOD1_MASK)
-        m_modifiers |= Modifier::AltKey;
+        m_modifiers.add(Modifier::AltKey);
     if (event->state & GDK_META_MASK)
-        m_modifiers |= Modifier::MetaKey;
+        m_modifiers.add(Modifier::MetaKey);
     if (PlatformKeyboardEvent::modifiersContainCapsLock(event->state))
-        m_modifiers |= PlatformEvent::Modifier::CapsLockKey;
+        m_modifiers.add(PlatformEvent::Modifier::CapsLockKey);
 
     m_deltaX = 0;
     m_deltaY = 0;

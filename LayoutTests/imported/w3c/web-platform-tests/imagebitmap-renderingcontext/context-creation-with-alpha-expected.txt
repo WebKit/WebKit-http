@@ -1,0 +1,5 @@
+
+FAIL Test that an ImageBitmapRenderingContext with alpha disabled makes the canvas opaque assert_array_equals: property 1, expected 127 but got 255
+PASS Test that an ImageBitmapRenderingContext with alpha enabled preserves the alpha 
+PASS Test that the 'alpha' context creation attribute is true by default 
+

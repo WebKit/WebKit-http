@@ -37,8 +37,8 @@
 #import "WebFramePrivate.h"
 #import "WebHTMLView.h"
 #import "WebView.h"
-#import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/WAKWindow.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 #endif
 
 using namespace WebCore;
@@ -187,6 +187,7 @@ using namespace WebCore;
     [notificationCenter removeObserver:self name:NSViewBoundsDidChangeNotification object:nil];
 
     [[_highlightWindow parentWindow] removeChildWindow:_highlightWindow];
+    [_highlightWindow close];
 
     [_highlightWindow release];
     _highlightWindow = nil;

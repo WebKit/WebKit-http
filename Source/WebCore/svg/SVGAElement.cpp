@@ -2,7 +2,7 @@
  * Copyright (C) 2004, 2005, 2008 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2007 Rob Buis <buis@kde.org>
  * Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -40,26 +40,19 @@
 #include "SVGNames.h"
 #include "SVGSMILElement.h"
 #include "XLinkNames.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
 
-// Animated property definitions
-DEFINE_ANIMATED_STRING(SVGAElement, SVGNames::targetAttr, SVGTarget, svgTarget)
-DEFINE_ANIMATED_STRING(SVGAElement, XLinkNames::hrefAttr, Href, href)
-DEFINE_ANIMATED_BOOLEAN(SVGAElement, SVGNames::externalResourcesRequiredAttr, ExternalResourcesRequired, externalResourcesRequired)
-
-BEGIN_REGISTER_ANIMATED_PROPERTIES(SVGAElement)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(svgTarget)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(href)
-    REGISTER_LOCAL_ANIMATED_PROPERTY(externalResourcesRequired)
-    REGISTER_PARENT_ANIMATED_PROPERTIES(SVGGraphicsElement)
-END_REGISTER_ANIMATED_PROPERTIES
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGAElement);
 
 inline SVGAElement::SVGAElement(const QualifiedName& tagName, Document& document)
     : SVGGraphicsElement(tagName, document)
+    , SVGExternalResourcesRequired(this)
+    , SVGURIReference(this)
 {
     ASSERT(hasTagName(SVGNames::aTag));
-    registerAnimatedPropertiesForSVGAElement();
+    registerAttributes();
 }
 
 Ref<SVGAElement> SVGAElement::create(const QualifiedName& tagName, Document& document)
@@ -78,10 +71,18 @@ String SVGAElement::title() const
     return SVGElement::title();
 }
 
+void SVGAElement::registerAttributes()
+{
+    auto& registry = attributeRegistry();
+    if (!registry.isEmpty())
+        return;
+    registry.registerAttribute<SVGNames::targetAttr, &SVGAElement::m_target>();
+}
+
 void SVGAElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::targetAttr) {
-        setSVGTargetBaseValue(value);
+        m_target.setValue(value);
         return;
     }
 
@@ -99,9 +100,11 @@ void SVGAElement::svgAttributeChanged(const QualifiedName& attrName)
             InstanceInvalidationGuard guard(*this);
             invalidateStyleForSubtree();
         }
+        return;
     }
 
     SVGGraphicsElement::svgAttributeChanged(attrName);
+    SVGExternalResourcesRequired::svgAttributeChanged(attrName);
 }
 
 RenderPtr<RenderElement> SVGAElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -125,7 +128,7 @@ void SVGAElement::defaultEventHandler(Event& event)
             String url = stripLeadingAndTrailingHTMLSpaces(href());
 
             if (url[0] == '#') {
-                Element* targetElement = treeScope().getElementById(url.substringSharingImpl(1));
+                auto targetElement = makeRefPtr(treeScope().getElementById(url.substringSharingImpl(1)));
                 if (is<SVGSMILElement>(targetElement)) {
                     downcast<SVGSMILElement>(*targetElement).beginByLinkActivation();
                     event.setDefaultHandled();
@@ -141,7 +144,7 @@ void SVGAElement::defaultEventHandler(Event& event)
                 target = "_blank";
             event.setDefaultHandled();
 
-            Frame* frame = document().frame();
+            auto frame = makeRefPtr(document().frame());
             if (!frame)
                 return;
             frame->loader().urlSelected(document().completeURL(url), target, &event, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());
@@ -166,17 +169,9 @@ bool SVGAElement::supportsFocus() const
     return isLink() || Element::supportsFocus();
 }
 
-bool SVGAElement::isFocusable() const
-{
-    if (renderer() && renderer()->absoluteClippedOverflowRect().isEmpty())
-        return false;
-    
-    return SVGElement::isFocusable();
-}
-
 bool SVGAElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute.name().localName() == XLinkNames::hrefAttr || SVGGraphicsElement::isURLAttribute(attribute);
+    return SVGURIReference::isKnownAttribute(attribute.name()) || SVGGraphicsElement::isURLAttribute(attribute);
 }
 
 bool SVGAElement::isMouseFocusable() const
@@ -189,7 +184,7 @@ bool SVGAElement::isMouseFocusable() const
     return SVGElement::isMouseFocusable();
 }
 
-bool SVGAElement::isKeyboardFocusable(KeyboardEvent& event) const
+bool SVGAElement::isKeyboardFocusable(KeyboardEvent* event) const
 {
     if (isFocusable() && Element::supportsFocus())
         return SVGElement::isKeyboardFocusable(event);

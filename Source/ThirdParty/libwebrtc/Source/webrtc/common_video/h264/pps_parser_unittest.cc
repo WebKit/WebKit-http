@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/common_video/h264/pps_parser.h"
+#include "common_video/h264/pps_parser.h"
 
 #include <limits>
 #include <memory>
 
-#include "webrtc/base/bitbuffer.h"
-#include "webrtc/base/buffer.h"
-#include "webrtc/common_video/h264/h264_common.h"
-#include "webrtc/test/gtest.h"
+#include "common_video/h264/h264_common.h"
+#include "rtc_base/bitbuffer.h"
+#include "rtc_base/buffer.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -140,7 +140,7 @@ void WritePps(const PpsParser::PpsState& pps,
 class PpsParserTest : public ::testing::Test {
  public:
   PpsParserTest() {}
-  virtual ~PpsParserTest() {}
+  ~PpsParserTest() override {}
 
   void RunTest() {
     VerifyParsing(generated_pps_, 0, 1, 0);
@@ -192,7 +192,7 @@ class PpsParserTest : public ::testing::Test {
 
   PpsParser::PpsState generated_pps_;
   rtc::Buffer buffer_;
-  rtc::Optional<PpsParser::PpsState> parsed_pps_;
+  absl::optional<PpsParser::PpsState> parsed_pps_;
 };
 
 TEST_F(PpsParserTest, ZeroPps) {
@@ -215,7 +215,7 @@ TEST_F(PpsParserTest, MaxPps) {
 }
 
 TEST_F(PpsParserTest, PpsIdFromSlice) {
-  rtc::Optional<uint32_t> pps_id = PpsParser::ParsePpsIdFromSlice(
+  absl::optional<uint32_t> pps_id = PpsParser::ParsePpsIdFromSlice(
       kH264BitstreamChunk, sizeof(kH264BitstreamChunk));
   ASSERT_TRUE(pps_id);
   EXPECT_EQ(2u, *pps_id);

@@ -28,8 +28,8 @@
 #if USE(LIBWEBRTC)
 
 #include <WebCore/LibWebRTCMacros.h>
-#include <webrtc/base/network.h>
-#include <wtf/Forward.h>
+#include <webrtc/rtc_base/network.h>
+#include <wtf/Optional.h>
 
 namespace IPC {
 class Decoder;
@@ -45,14 +45,14 @@ struct RTCNetwork {
     rtc::Network value() const;
 
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, RTCNetwork&);
+    static std::optional<RTCNetwork> decode(IPC::Decoder&);
 
     struct IPAddress {
         IPAddress() = default;
         explicit IPAddress(const rtc::IPAddress& address): value(address) { }
 
         void encode(IPC::Encoder&) const;
-        static bool decode(IPC::Decoder&, IPAddress&);
+        static std::optional<IPAddress> decode(IPC::Decoder&);
 
         rtc::IPAddress value;
     };
@@ -64,7 +64,7 @@ struct RTCNetwork {
         explicit SocketAddress(const rtc::SocketAddress& address): value(address) { }
 
         void encode(IPC::Encoder&) const;
-        static bool decode(IPC::Decoder&, SocketAddress&);
+        static std::optional<SocketAddress> decode(IPC::Decoder&);
 
         rtc::SocketAddress value;
     };

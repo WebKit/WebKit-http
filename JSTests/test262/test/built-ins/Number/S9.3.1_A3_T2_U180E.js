@@ -5,7 +5,7 @@
 esid: sec-tonumber-applied-to-the-string-type
 description: >
   Ensure U+180E is not recognized as whitespace, test ToNumber with dynamic string
-info: >
+info: |
   7.1.3.1 ToNumber Applied to the String Type
 
   If the grammar cannot interpret the String as an expansion of
@@ -28,9 +28,10 @@ info: >
     <USP>
   <USP> ::
     Other category “Zs” code points
+features: [u180e]
 ---*/
 
-function dynaString(s1, s2){
+function dynaString(s1, s2) {
   return String(s1) + String(s2);
 }
 

@@ -9,12 +9,13 @@ class TestGroup extends LabeledObject {
         this._authorName = object.author;
         this._createdAt = new Date(object.createdAt);
         this._isHidden = object.hidden;
+        this._needsNotification = object.needsNotification;
         this._buildRequests = [];
         this._orderBuildRequestsLazily = new LazilyEvaluatedFunction((...buildRequests) => {
             return buildRequests.sort((a, b) => a.order() - b.order());
         });
         this._repositories = null;
-        this._computeRequestedCommitSetsLazily = new LazilyEvaluatedFunction(this._computeRequestedCommitSets.bind(this));
+        this._computeRequestedCommitSetsLazily = new LazilyEvaluatedFunction(TestGroup._computeRequestedCommitSets);
         this._requestedCommitSets = null;
         this._commitSetToLabel = new Map;
         console.assert(!object.platform || object.platform instanceof Platform);
@@ -30,12 +31,17 @@ class TestGroup extends LabeledObject {
         console.assert(this._platform == object.platform);
 
         this._isHidden = object.hidden;
+        this._needsNotification = object.needsNotification;
+        this._notificationSentAt = object.notificationSentAt ? new Date(object.notificationSentAt) : null;
     }
 
     task() { return AnalysisTask.findById(this._taskId); }
     createdAt() { return this._createdAt; }
     isHidden() { return this._isHidden; }
     buildRequests() { return this._buildRequests; }
+    needsNotification() { return this._needsNotification; }
+    notificationSentAt() { return this._notificationSentAt; }
+    author() { return this._authorName; }
     addBuildRequest(request)
     {
         this._buildRequests.push(request);
@@ -47,6 +53,13 @@ class TestGroup extends LabeledObject {
     {
         const request = this._lastRequest();
         return request ? request.test() : null;
+    }
+
+    async fetchTask()
+    {
+        if (this.task())
+            return this.task();
+        return await AnalysisTask.fetchById(this._taskId);
     }
 
     platform() { return this._platform; }
@@ -80,7 +93,7 @@ class TestGroup extends LabeledObject {
         return this._computeRequestedCommitSetsLazily.evaluate(...this._orderedBuildRequests());
     }
 
-    _computeRequestedCommitSets(...orderedBuildRequests)
+    static _computeRequestedCommitSets(...orderedBuildRequests)
     {
         const requestedCommitSets = [];
         const commitSetLabelMap = new Map;
@@ -121,42 +134,57 @@ class TestGroup extends LabeledObject {
         return this._buildRequests.some(function (request) { return request.isPending(); });
     }
 
-    compareTestResults(metric, beforeValues, afterValues)
+    compareTestResults(metric, beforeMeasurements, afterMeasurements)
     {
         console.assert(metric);
+        const beforeValues = beforeMeasurements.map((measurment) => measurment.value);
+        const afterValues = afterMeasurements.map((measurement) => measurement.value);
         const beforeMean = Statistics.sum(beforeValues) / beforeValues.length;
         const afterMean = Statistics.sum(afterValues) / afterValues.length;
 
-        var result = {changeType: null, status: 'failed', label: 'Failed', fullLabel: 'Failed', isStatisticallySignificant: false};
+        const result = {changeType: null, status: 'failed', label: 'Failed', fullLabelForMean: 'Failed',
+            isStatisticallySignificantForMean: false, fullLabelForIndividual: 'Failed', isStatisticallySignificantForIndividual: false,
+            probabilityRangeForMean: [null, null], probabilityRangeForIndividual: [null, null]};
 
-        var hasCompleted = this.hasFinished();
+        const hasCompleted = this.hasFinished();
         if (!hasCompleted) {
             if (this.hasStarted()) {
                 result.status = 'running';
                 result.label = 'Running';
-                result.fullLabel = 'Running';
+                result.fullLabelForMean = 'Running';
+                result.fullLabelForIndividual = 'Running';
             } else {
                 console.assert(result.changeType === null);
                 result.status = 'pending';
                 result.label = 'Pending';
-                result.fullLabel = 'Pending';
+                result.fullLabelForMean = 'Pending';
+                result.fullLabelForIndividual = 'Pending';
             }
         }
 
         if (beforeValues.length && afterValues.length) {
-            var diff = afterMean - beforeMean;
-            var smallerIsBetter = metric.isSmallerBetter();
-            var changeType = diff < 0 == smallerIsBetter ? 'better' : 'worse';
-            var changeLabel = Math.abs(diff / beforeMean * 100).toFixed(2) + '% ' + changeType;
-            var isSignificant = Statistics.testWelchsT(beforeValues, afterValues);
-            var significanceLabel = isSignificant ? 'significant' : 'insignificant';
+            const summary = metric.labelForDifference(beforeMean, afterMean, 'better', 'worse');
+            result.changeType = summary.changeType;
+            result.label = summary.changeLabel;
 
-            result.changeType = changeType;
-            result.label = changeLabel;
+
+            const constructSignificanceLabel = (probabilityRange) => !!probabilityRange.range[0] ? `significant with ${(probabilityRange.range[0] * 100).toFixed()}% probability` : 'insignificant';
+
+            const probabilityRangeForMean = Statistics.probabilityRangeForWelchsT(beforeValues, afterValues);
+            const significanceLabelForMean = constructSignificanceLabel(probabilityRangeForMean);
+            result.fullLabelForMean = `${result.label} (${significanceLabelForMean})`;
+            result.isStatisticallySignificantForMean = !!probabilityRangeForMean.range[0];
+            result.probabilityRangeForMean = probabilityRangeForMean.range;
+
+            const adaptMeasurementToSamples = (measurement) => ({sum: measurement.sum, squareSum: measurement.squareSum, sampleSize: measurement.iterationCount});
+            const probabilityRangeForIndividual = Statistics.probabilityRangeForWelchsTForMultipleSamples(beforeMeasurements.map(adaptMeasurementToSamples), afterMeasurements.map(adaptMeasurementToSamples));
+            const significanceLabelForIndividual = constructSignificanceLabel(probabilityRangeForIndividual);
+            result.fullLabelForIndividual = `${result.label} (${significanceLabelForIndividual})`;
+            result.isStatisticallySignificantForIndividual = !!probabilityRangeForIndividual.range[0];
+            result.probabilityRangeForIndividual = probabilityRangeForIndividual.range;
+
             if (hasCompleted)
-                result.status = isSignificant ? result.changeType : 'unchanged';
-            result.fullLabel = `${result.label} (statistically ${significanceLabel})`;
-            result.isStatisticallySignificant = isSignificant;
+                result.status = result.isStatisticallySignificantForMean ? result.changeType : 'unchanged';
         }
 
         return result;
@@ -188,57 +216,51 @@ class TestGroup extends LabeledObject {
         });
     }
 
-    static createWithTask(taskName, platform, test, groupName, repetitionCount, commitSets)
+    async didSendNotification()
+    {
+        const id = this.id();
+        await PrivilegedAPI.sendRequest('update-test-group', {
+            group: id,
+            needsNotification: false,
+            notificationSentAt: (new Date).toISOString()
+        });
+        const data = await TestGroup.cachedFetch(`/api/test-groups/${id}`, {}, true);
+        return TestGroup._createModelsFromFetchedTestGroups(data);
+    }
+
+    static createWithTask(taskName, platform, test, groupName, repetitionCount, commitSets, notifyOnCompletion)
     {
         console.assert(commitSets.length == 2);
-        const revisionSets = this._revisionSetsFromCommitSets(commitSets);
-        const params = {taskName, name: groupName, platform: platform.id(), test: test.id(), repetitionCount, revisionSets};
+        const revisionSets = CommitSet.revisionSetsFromCommitSets(commitSets);
+        const params = {taskName, name: groupName, platform: platform.id(), test: test.id(), repetitionCount, revisionSets, needsNotification: !!notifyOnCompletion};
         return PrivilegedAPI.sendRequest('create-test-group', params).then((data) => {
-            return AnalysisTask.fetchById(data['taskId']);
+            return AnalysisTask.fetchById(data['taskId'], true);
         }).then((task) => {
             return this.fetchForTask(task.id()).then(() => task);
         });
     }
 
-    static createWithCustomConfiguration(task, platform, test, groupName, repetitionCount, commitSets)
+    static createWithCustomConfiguration(task, platform, test, groupName, repetitionCount, commitSets, notifyOnCompletion)
     {
         console.assert(commitSets.length == 2);
-        const revisionSets = this._revisionSetsFromCommitSets(commitSets);
-        const params = {task: task.id(), name: groupName, platform: platform.id(), test: test.id(), repetitionCount, revisionSets};
+        const revisionSets = CommitSet.revisionSetsFromCommitSets(commitSets);
+        const params = {task: task.id(), name: groupName, platform: platform.id(), test: test.id(), repetitionCount, revisionSets, needsNotification: !!notifyOnCompletion};
         return PrivilegedAPI.sendRequest('create-test-group', params).then((data) => {
-            return this.fetchForTask(task.id(), true);
+            return this.fetchForTask(data['taskId'], true);
         });
     }
 
-    static createAndRefetchTestGroups(task, name, repetitionCount, commitSets)
+    static createAndRefetchTestGroups(task, name, repetitionCount, commitSets, notifyOnCompletion)
     {
         console.assert(commitSets.length == 2);
-        const revisionSets = this._revisionSetsFromCommitSets(commitSets);
+        const revisionSets = CommitSet.revisionSetsFromCommitSets(commitSets);
         return PrivilegedAPI.sendRequest('create-test-group', {
             task: task.id(),
             name: name,
             repetitionCount: repetitionCount,
             revisionSets: revisionSets,
+            needsNotification: !!notifyOnCompletion,
         }).then((data) => this.fetchForTask(data['taskId'], true));
-    }
-
-    static _revisionSetsFromCommitSets(commitSets)
-    {
-        return commitSets.map((commitSet) => {
-            console.assert(commitSet instanceof CustomCommitSet || commitSet instanceof CommitSet);
-            const revisionSet = {};
-            for (let repository of commitSet.repositories()) {
-                const patchFile = commitSet.patchForRepository(repository);
-                revisionSet[repository.id()] = {
-                    revision: commitSet.revisionForRepository(repository),
-                    patch: patchFile ? patchFile.id() : null,
-                };
-            }
-            const customRoots = commitSet.customRoots();
-            if (customRoots && customRoots.length)
-                revisionSet['customRoots'] = customRoots.map((uploadedFile) => uploadedFile.id());
-            return revisionSet;
-        });
     }
 
     static findAllByTask(taskId)
@@ -249,6 +271,11 @@ class TestGroup extends LabeledObject {
     static fetchForTask(taskId, ignoreCache = false)
     {
         return this.cachedFetch('/api/test-groups', {task: taskId}, ignoreCache).then(this._createModelsFromFetchedTestGroups.bind(this));
+    }
+
+    static fetchAllWithNotificationReady()
+    {
+        return this.cachedFetch('/api/test-groups/ready-for-notification', null, true).then(this._createModelsFromFetchedTestGroups.bind(this));
     }
 
     static _createModelsFromFetchedTestGroups(data)

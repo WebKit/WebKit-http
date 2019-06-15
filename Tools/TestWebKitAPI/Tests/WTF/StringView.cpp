@@ -289,13 +289,37 @@ TEST(WTF, StringViewSplitBasic)
 TEST(WTF, StringViewSplitWithConsecutiveSeparators)
 {
     String referenceHolder;
-    StringView a = stringViewFromUTF8(referenceHolder, "This     is  a       sentence.");
+    StringView a = stringViewFromUTF8(referenceHolder, " This     is  a       sentence. ");
 
     Vector<String> actual = vectorFromSplitResult(a.split(' '));
     Vector<String> expected({ "This", "is", "a", "sentence." });
     ASSERT_EQ(expected.size(), actual.size());
     for (size_t i = 0; i < actual.size(); ++i)
         EXPECT_STREQ(expected[i].utf8().data(), actual[i].utf8().data()) << "Vectors differ at index " << i;
+
+    actual = vectorFromSplitResult(a.splitAllowingEmptyEntries(' '));
+    expected = { "", "This", "", "", "", "", "is", "", "a", "", "", "", "", "", "", "sentence.", "" };
+    ASSERT_EQ(expected.size(), actual.size());
+    for (size_t i = 0; i < actual.size(); ++i)
+        EXPECT_STREQ(expected[i].utf8().data(), actual[i].utf8().data()) << "Vectors differ at index " << i;
+}
+
+TEST(WTF, StringViewEqualBasic)
+{
+    String referenceHolder;
+    StringView a = stringViewFromUTF8(referenceHolder, "Hello World!");
+    EXPECT_TRUE(a == "Hello World!");
+    EXPECT_FALSE(a == "Hello World");
+    EXPECT_FALSE(a == "Hello World!!");
+
+    auto test = "Hell\0";
+    a = StringView { (const LChar*)test, 5 };
+    EXPECT_FALSE(a == "Hell\0");
+    EXPECT_FALSE(a == "Hell");
+
+    StringView test3 = "Hello";
+    EXPECT_TRUE(test3 == "Hello\0");
+    EXPECT_TRUE(test3 == "Hello");
 }
 
 TEST(WTF, StringViewEqualIgnoringASCIICaseBasic)
@@ -923,6 +947,28 @@ TEST(WTF, StringViewReverseFindBasic)
     EXPECT_EQ(reference.reverseFind('c', 6), 6U);
     EXPECT_EQ(reference.reverseFind('c', 5), 5U);
     EXPECT_EQ(reference.reverseFind('c', 4), notFound);
+}
+
+TEST(WTF, StringViewStripLeadingAndTrailingMatchedCharacters)
+{
+    auto isA = [] (UChar c) { 
+        return c == 'A';
+    };
+
+    EXPECT_TRUE(stringViewFromLiteral("AAABBBAAA").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("BBB"));
+    EXPECT_TRUE(stringViewFromLiteral("AAABBBCCC").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("BBBCCC"));
+    EXPECT_TRUE(stringViewFromLiteral("CCCBBBAAA").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("CCCBBB"));
+    EXPECT_TRUE(stringViewFromLiteral("CCCBBBCCC").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("CCCBBBCCC"));
+    EXPECT_TRUE(stringViewFromLiteral("AAAAAACCC").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("CCC"));
+    EXPECT_TRUE(stringViewFromLiteral("BBBAAAAAA").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("BBB"));
+    EXPECT_TRUE(stringViewFromLiteral("CCCAAABBB").stripLeadingAndTrailingMatchedCharacters(isA) == stringViewFromLiteral("CCCAAABBB"));
+    EXPECT_TRUE(stringViewFromLiteral("AAAAAAAAA").stripLeadingAndTrailingMatchedCharacters(isA) == StringView::empty());
+
+    StringView emptyView = StringView::empty();
+    EXPECT_TRUE(emptyView.stripLeadingAndTrailingMatchedCharacters(isA) == emptyView);
+
+    StringView nullView;
+    EXPECT_TRUE(nullView.stripLeadingAndTrailingMatchedCharacters(isA) == nullView);
 }
 
 } // namespace TestWebKitAPI

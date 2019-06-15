@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -81,13 +81,71 @@ bool Node::hasVariableAccessData(Graph& graph)
     }
 }
 
-void Node::remove()
+void Node::remove(Graph& graph)
 {
-    ASSERT(!(flags() & NodeHasVarArgs));
-    
-    children = children.justChecks();
-    
+    switch (op()) {
+    case MultiGetByOffset: {
+        MultiGetByOffsetData& data = multiGetByOffsetData();
+        StructureSet set;
+        for (MultiGetByOffsetCase& getCase : data.cases) {
+            getCase.set().forEach(
+                [&] (RegisteredStructure structure) {
+                    set.add(structure.get());
+                });
+        }
+        convertToCheckStructure(graph.addStructureSet(set));
+        return;
+    }
+        
+    case MatchStructure: {
+        MatchStructureData& data = matchStructureData();
+        RegisteredStructureSet set;
+        for (MatchStructureVariant& variant : data.variants)
+            set.add(variant.structure);
+        convertToCheckStructure(graph.addStructureSet(set));
+        return;
+    }
+        
+    default:
+        if (flags() & NodeHasVarArgs) {
+            unsigned targetIndex = 0;
+            for (unsigned i = 0; i < numChildren(); ++i) {
+                Edge& edge = graph.varArgChild(this, i);
+                if (!edge)
+                    continue;
+                if (edge.willHaveCheck()) {
+                    Edge& dst = graph.varArgChild(this, targetIndex++);
+                    std::swap(dst, edge);
+                    continue;
+                }
+                edge = Edge();
+            }
+            setOpAndDefaultFlags(CheckVarargs);
+            children.setNumChildren(targetIndex);
+        } else {
+            children = children.justChecks();
+            setOpAndDefaultFlags(Check);
+        }
+        return;
+    }
+}
+
+void Node::removeWithoutChecks()
+{
+    children = AdjacencyList();
     setOpAndDefaultFlags(Check);
+}
+
+void Node::replaceWith(Graph& graph, Node* other)
+{
+    remove(graph);
+    setReplacement(other);
+}
+
+void Node::replaceWithWithoutChecks(Node* other)
+{
+    removeWithoutChecks();
+    setReplacement(other);
 }
 
 void Node::convertToIdentity()
@@ -102,6 +160,7 @@ void Node::convertToIdentity()
 void Node::convertToIdentityOn(Node* child)
 {
     children.reset();
+    clearFlags(NodeHasVarArgs);
     child1() = child->defaultEdge();
     NodeFlags output = canonicalResultRepresentation(this->result());
     NodeFlags input = canonicalResultRepresentation(child->result());
@@ -164,39 +223,6 @@ void Node::convertToLazyJSConstant(Graph& graph, LazyJSValue value)
     children.reset();
 }
 
-void Node::convertToPutHint(const PromotedLocationDescriptor& descriptor, Node* base, Node* value)
-{
-    m_op = PutHint;
-    m_opInfo = descriptor.imm1();
-    m_opInfo2 = descriptor.imm2();
-    child1() = base->defaultEdge();
-    child2() = value->defaultEdge();
-    child3() = Edge();
-}
-
-void Node::convertToPutStructureHint(Node* structure)
-{
-    ASSERT(m_op == PutStructure);
-    ASSERT(structure->castConstant<Structure*>(*structure->asCell()->vm()) == transition()->next.get());
-    convertToPutHint(StructurePLoc, child1().node(), structure);
-}
-
-void Node::convertToPutByOffsetHint()
-{
-    ASSERT(m_op == PutByOffset);
-    convertToPutHint(
-        PromotedLocationDescriptor(NamedPropertyPLoc, storageAccessData().identifierNumber),
-        child2().node(), child3().node());
-}
-
-void Node::convertToPutClosureVarHint()
-{
-    ASSERT(m_op == PutClosureVar);
-    convertToPutHint(
-        PromotedLocationDescriptor(ClosureVarPLoc, scopeOffset().offset()),
-        child1().node(), child2().node());
-}
-
 void Node::convertToDirectCall(FrozenValue* executable)
 {
     NodeType newOp = LastNodeType;
@@ -240,6 +266,26 @@ void Node::convertToCallDOM(Graph& graph)
 
     if (!signature()->effect.mustGenerate())
         clearFlags(NodeMustGenerate);
+}
+
+void Node::convertToRegExpExecNonGlobalOrStickyWithoutChecks(FrozenValue* regExp)
+{
+    ASSERT(op() == RegExpExec);
+    setOpAndDefaultFlags(RegExpExecNonGlobalOrSticky);
+    children.child1() = Edge(children.child1().node(), KnownCellUse);
+    children.child2() = Edge(children.child3().node(), KnownStringUse);
+    children.child3() = Edge();
+    m_opInfo = regExp;
+}
+
+void Node::convertToRegExpMatchFastGlobalWithoutChecks(FrozenValue* regExp)
+{
+    ASSERT(op() == RegExpMatchFast);
+    setOpAndDefaultFlags(RegExpMatchFastGlobal);
+    children.child1() = Edge(children.child1().node(), KnownCellUse);
+    children.child2() = Edge(children.child3().node(), KnownStringUse);
+    children.child3() = Edge();
+    m_opInfo = regExp;
 }
 
 String Node::tryGetString(Graph& graph)

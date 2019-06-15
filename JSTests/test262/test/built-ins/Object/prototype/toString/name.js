@@ -5,7 +5,7 @@
 es6id: 19.1.3.6
 description: >
   Object.prototype.toString.name is "toString".
-info: >
+info: |
   Object.prototype.toString ( )
 
   17 ECMAScript Standard Built-in Objects:
@@ -19,8 +19,9 @@ info: >
 includes: [propertyHelper.js]
 ---*/
 
-assert.sameValue(Object.prototype.toString.name, "toString");
-
-verifyNotEnumerable(Object.prototype.toString, "name");
-verifyNotWritable(Object.prototype.toString, "name");
-verifyConfigurable(Object.prototype.toString, "name");
+verifyProperty(Object.prototype.toString, "name", {
+  value: "toString",
+  writable: false,
+  enumerable: false,
+  configurable: true,
+});

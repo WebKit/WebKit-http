@@ -1,3 +1,84 @@
+2018-06-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Enable WebKit iOS 12 build
+        https://bugs.webkit.org/show_bug.cgi?id=187024
+        <rdar://problem/39759057>
+
+        Reviewed by David Kilzer.
+
+        * WebKitPrivateFrameworkStubs/iOS/12: Added.
+
+2018-05-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [iOS] Hard link AppSupport instead of soft linking
+        https://bugs.webkit.org/show_bug.cgi?id=185959
+        <rdar://problem/40506538>
+
+        Reviewed by Timothy Horton.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/AppSupport.framework/AppSupport.tbd:
+        * WebKitPrivateFrameworkStubs/iOS/11/AppSupport.framework/AppSupport.tbd:
+        Add stub for ObjC Class CPNetworkObserver.
+
+2018-03-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement authenticatorMakeCredential
+        https://bugs.webkit.org/show_bug.cgi?id=183527
+        <rdar://problem/35275886>
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitPrivateFrameworkStubs/iOS/11/DeviceIdentity.framework/DeviceIdentity.tbd: Added.
+
+2018-02-20  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce HAVE(IOSURFACE_ACCELERATOR)
+        https://bugs.webkit.org/show_bug.cgi?id=182955
+        <rdar://problem/37699510>
+
+        Reviewed by Sam Weinig.
+
+        * WebKitPrivateFrameworkStubs/iOS/10/IOSurface.framework/IOSurface.tbd:
+        * WebKitPrivateFrameworkStubs/iOS/10/IOSurfaceAccelerator.framework/IOSurfaceAccelerator.tbd: Added.
+        * WebKitPrivateFrameworkStubs/iOS/11/IOSurfaceAccelerator.framework/IOSurfaceAccelerator.tbd: Added.
+        Switch IOSurfaceAccelerator symbols over to the still-private IOSurfaceAccelerator framework.
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r227211.
+
+        Breaks iOS Simulator tests.
+
+        Reverted changeset:
+
+        "Expose Safe Browsing SPI"
+        https://bugs.webkit.org/show_bug.cgi?id=181804
+        https://trac.webkit.org/changeset/227211
+
+2017-12-22  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2018
+        https://bugs.webkit.org/show_bug.cgi?id=181141
+
+        Reviewed by Dan Bernstein.
+
+        * win/tools/scripts/COPYRIGHT-END-YEAR:
+
+2017-10-05  Darin Adler  <darin@apple.com>
+
+        Remove additional WebKitSystemInterface remnants
+        https://bugs.webkit.org/show_bug.cgi?id=177948
+
+        Reviewed by Andy Estes.
+
+        * libWebKitSystemInterfaceElCapitan.a: Removed.
+        * libWebKitSystemInterfaceIOSDevice10.a: Removed.
+        * libWebKitSystemInterfaceIOSDevice11.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator10.a: Removed.
+        * libWebKitSystemInterfaceIOSSimulator11.a: Removed.
+        * libWebKitSystemInterfaceOSX10.12.a: Removed.
+        * libWebKitSystemInterfaceOSX10.13.a: Removed.
+
 2017-07-05  Jonathan Bedard  <jbedard@apple.com>
 
         Add WebKitPrivateFrameworkStubs for iOS 11

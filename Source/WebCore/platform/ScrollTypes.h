@@ -108,8 +108,7 @@ enum ScrollGranularity : uint8_t {
     ScrollByLine,
     ScrollByPage,
     ScrollByDocument,
-    ScrollByPixel,
-    ScrollByPrecisePixel
+    ScrollByPixel
 };
 
 enum ScrollElasticity {
@@ -175,6 +174,11 @@ enum ScrollPinningBehavior {
     DoNotPin,
     PinToTop,
     PinToBottom
+};
+
+enum class ScrollClamping {
+    Unclamped,
+    Clamped
 };
 
 enum ScrollBehaviorForFixedElements {

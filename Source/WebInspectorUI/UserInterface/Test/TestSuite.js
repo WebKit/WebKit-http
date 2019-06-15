@@ -23,7 +23,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-TestSuite = class TestSuite extends WebInspector.Object
+TestSuite = class TestSuite
 {
     constructor(harness, name) {
         if (!(harness instanceof TestHarness))
@@ -31,8 +31,6 @@ TestSuite = class TestSuite extends WebInspector.Object
 
         if (typeof name !== "string" || !name.trim().length)
             throw new Error("Tried to create TestSuite without string suite name.");
-
-        super();
 
         this.name = name;
         this._harness = harness;
@@ -141,6 +139,8 @@ AsyncTestSuite = class AsyncTestSuite extends TestSuite
             if (testcase.setup) {
                 chain = chain.then(() => {
                     this._harness.log("-- Running test setup.");
+                    if (testcase.setup[Symbol.toStringTag] === "AsyncFunction")
+                        return testcase.setup();
                     return new Promise(testcase.setup);
                 });
             }
@@ -152,12 +152,16 @@ AsyncTestSuite = class AsyncTestSuite extends TestSuite
                 priorLogCount = this._harness.logCount;
                 this._harness.log(`-- Running test case: ${testcase.name}`);
                 this.runCount++;
+                if (testcase.test[Symbol.toStringTag] === "AsyncFunction")
+                    return testcase.test();
                 return new Promise(testcase.test);
             });
 
             if (testcase.teardown) {
                 chain = chain.then(() => {
                     this._harness.log("-- Running test teardown.");
+                    if (testcase.teardown[Symbol.toStringTag] === "AsyncFunction")
+                        return testcase.teardown();
                     return new Promise(testcase.teardown);
                 });
             }
@@ -175,6 +179,14 @@ AsyncTestSuite = class AsyncTestSuite extends TestSuite
 
 SyncTestSuite = class SyncTestSuite extends TestSuite
 {
+    addTestCase(testcase)
+    {
+        if ([testcase.setup, testcase.teardown, testcase.test].some((fn) => fn && fn[Symbol.toStringTag] === "AsyncFunction"))
+            throw new Error("Tried to pass a test case with an async `setup`, `test`, or `teardown` function, but this is a synchronous test suite.")
+
+        super.addTestCase(testcase);
+    }
+
     runTestCasesAndFinish()
     {
         this.runTestCases();

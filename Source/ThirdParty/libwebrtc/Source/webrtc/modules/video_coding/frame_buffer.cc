@@ -8,15 +8,15 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/video_coding/frame_buffer.h"
+#include "modules/video_coding/frame_buffer.h"
 
 #include <assert.h>
 #include <string.h>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/base/logging.h"
-#include "webrtc/base/trace_event.h"
-#include "webrtc/modules/video_coding/packet.h"
+#include "modules/video_coding/packet.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/logging.h"
+#include "rtc_base/trace_event.h"
 
 namespace webrtc {
 
@@ -24,16 +24,6 @@ VCMFrameBuffer::VCMFrameBuffer()
     : _state(kStateEmpty), _nackCount(0), _latestPacketTimeMs(-1) {}
 
 VCMFrameBuffer::~VCMFrameBuffer() {}
-
-VCMFrameBuffer::VCMFrameBuffer(const VCMFrameBuffer& rhs)
-    : VCMEncodedFrame(rhs),
-      _state(rhs._state),
-      _sessionInfo(),
-      _nackCount(rhs._nackCount),
-      _latestPacketTimeMs(rhs._latestPacketTimeMs) {
-  _sessionInfo = rhs._sessionInfo;
-  _sessionInfo.UpdateDataPointers(rhs._buffer, _buffer);
-}
 
 webrtc::FrameType VCMFrameBuffer::FrameType() const {
   return _sessionInfo.FrameType();
@@ -61,10 +51,6 @@ bool VCMFrameBuffer::LayerSync() const {
 
 int VCMFrameBuffer::Tl0PicId() const {
   return _sessionInfo.Tl0PicId();
-}
-
-bool VCMFrameBuffer::NonReference() const {
-  return _sessionInfo.NonReference();
 }
 
 std::vector<NaluInfo> VCMFrameBuffer::GetNaluInfos() const {
@@ -122,8 +108,8 @@ VCMFrameBufferEnum VCMFrameBuffer::InsertPacket(
         (requiredSizeBytes % kBufferIncStepSizeBytes > 0);
     const uint32_t newSize = _size + increments * kBufferIncStepSizeBytes;
     if (newSize > kMaxJBFrameSizeBytes) {
-      LOG(LS_ERROR) << "Failed to insert packet due to frame being too "
-                       "big.";
+      RTC_LOG(LS_ERROR) << "Failed to insert packet due to frame being too "
+                           "big.";
       return kSizeError;
     }
     VerifyAndAllocate(newSize);
@@ -164,8 +150,7 @@ VCMFrameBufferEnum VCMFrameBuffer::InsertPacket(
     rotation_ = packet.video_header.rotation;
     _rotation_set = true;
     content_type_ = packet.video_header.content_type;
-    if (packet.video_header.video_timing.is_timing_frame) {
-      timing_.is_timing_frame = true;
+    if (packet.video_header.video_timing.flags != VideoSendTiming::kInvalid) {
       timing_.encode_start_ms =
           ntp_time_ms_ + packet.video_header.video_timing.encode_start_delta_ms;
       timing_.encode_finish_ms =
@@ -178,13 +163,12 @@ VCMFrameBufferEnum VCMFrameBuffer::InsertPacket(
           ntp_time_ms_ + packet.video_header.video_timing.pacer_exit_delta_ms;
       timing_.network_timestamp_ms =
           ntp_time_ms_ +
-          packet.video_header.video_timing.network_timstamp_delta_ms;
+          packet.video_header.video_timing.network_timestamp_delta_ms;
       timing_.network2_timestamp_ms =
           ntp_time_ms_ +
-          packet.video_header.video_timing.network2_timstamp_delta_ms;
-    } else {
-      timing_.is_timing_frame = false;
+          packet.video_header.video_timing.network2_timestamp_delta_ms;
     }
+    timing_.flags = packet.video_header.video_timing.flags;
   }
 
   if (packet.is_first_packet_in_frame) {
@@ -219,11 +203,6 @@ int16_t VCMFrameBuffer::GetNackCount() const {
 bool VCMFrameBuffer::HaveFirstPacket() const {
   TRACE_EVENT0("webrtc", "VCMFrameBuffer::HaveFirstPacket");
   return _sessionInfo.HaveFirstPacket();
-}
-
-bool VCMFrameBuffer::HaveLastPacket() const {
-  TRACE_EVENT0("webrtc", "VCMFrameBuffer::HaveLastPacket");
-  return _sessionInfo.HaveLastPacket();
 }
 
 int VCMFrameBuffer::NumPackets() const {
@@ -278,17 +257,6 @@ void VCMFrameBuffer::SetState(VCMFrameBufferStateEnum state) {
 // Get current state of frame
 VCMFrameBufferStateEnum VCMFrameBuffer::GetState() const {
   return _state;
-}
-
-// Get current state of frame
-VCMFrameBufferStateEnum VCMFrameBuffer::GetState(uint32_t& timeStamp) const {
-  TRACE_EVENT0("webrtc", "VCMFrameBuffer::GetState");
-  timeStamp = TimeStamp();
-  return GetState();
-}
-
-bool VCMFrameBuffer::IsRetransmitted() const {
-  return _sessionInfo.session_nack();
 }
 
 void VCMFrameBuffer::PrepareForDecode(bool continuous) {

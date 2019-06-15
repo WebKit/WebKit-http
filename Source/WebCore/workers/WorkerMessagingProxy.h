@@ -20,14 +20,16 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #pragma once
 
 #include "WorkerGlobalScopeProxy.h"
+#include "WorkerDebuggerProxy.h"
 #include "WorkerLoaderProxy.h"
 #include "WorkerObjectProxy.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace WebCore {
@@ -35,7 +37,7 @@ namespace WebCore {
 class DedicatedWorkerThread;
 class WorkerInspectorProxy;
 
-class WorkerMessagingProxy final : public ThreadSafeRefCounted<WorkerMessagingProxy>, public WorkerGlobalScopeProxy, public WorkerObjectProxy, public WorkerLoaderProxy {
+class WorkerMessagingProxy final : public ThreadSafeRefCounted<WorkerMessagingProxy>, public WorkerGlobalScopeProxy, public WorkerObjectProxy, public WorkerLoaderProxy, public WorkerDebuggerProxy {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit WorkerMessagingProxy(Worker&);
@@ -44,28 +46,33 @@ public:
 private:
     // Implementations of WorkerGlobalScopeProxy.
     // (Only use these functions in the worker object thread.)
-    void startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, MonotonicTime timeOrigin, JSC::RuntimeFlags) final;
+    void startWorkerGlobalScope(const URL& scriptURL, const String& name, const String& userAgent, bool isOnline, const String& sourceCode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, MonotonicTime timeOrigin, JSC::RuntimeFlags, PAL::SessionID) final;
     void terminateWorkerGlobalScope() final;
-    void postMessageToWorkerGlobalScope(RefPtr<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>) final;
+    void postMessageToWorkerGlobalScope(MessageWithMessagePorts&&) final;
     bool hasPendingActivity() const final;
     void workerObjectDestroyed() final;
     void notifyNetworkStateChange(bool isOnline) final;
 
-    // Implementations of WorkerObjectProxy.
+    // Implementation of WorkerObjectProxy.
     // (Only use these functions in the worker context thread.)
-    void postMessageToWorkerObject(RefPtr<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>) final;
+    void postMessageToWorkerObject(MessageWithMessagePorts&&) final;
     void postExceptionToWorkerObject(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL) final;
-    void postMessageToPageInspector(const String&) final;
     void confirmMessageFromWorkerObject(bool hasPendingActivity) final;
     void reportPendingActivity(bool hasPendingActivity) final;
     void workerGlobalScopeClosed() final;
     void workerGlobalScopeDestroyed() final;
+
+    // Implementation of WorkerDebuggerProxy.
+    // (Only use these functions in the worker context thread.)
+    void postMessageToDebugger(const String&) final;
+    void setResourceCachingDisabled(bool) final;
 
     // Implementation of WorkerLoaderProxy.
     // These functions are called on different threads to schedule loading
     // requests and to send callbacks back to WorkerGlobalScope.
     void postTaskToLoader(ScriptExecutionContext::Task&&) final;
     bool postTaskForModeToWorkerGlobalScope(ScriptExecutionContext::Task&&, const String& mode) final;
+    Ref<CacheStorageConnection> createCacheStorageConnection() final;
 
     void workerThreadCreated(DedicatedWorkerThread&);
 

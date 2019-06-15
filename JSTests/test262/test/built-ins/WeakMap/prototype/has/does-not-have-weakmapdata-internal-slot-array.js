@@ -2,9 +2,10 @@
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
 es6id: 23.3.3.4
+esid: sec-weakmap.prototype.has
 description: >
   Throws TypeError if `this` doesn't have a [[WeakMapData]] internal slot.
-info: >
+info: |
   WeakMap.prototype.has ( value )
 
   ...

@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.lastindexof
 es5id: 15.4.4.15-5-24
 description: >
     Array.prototype.lastIndexOf throws TypeError exception when value
@@ -9,23 +10,23 @@ description: >
     than don't return primitive value
 ---*/
 
-        var toStringAccessed = false;
-        var valueOfAccessed = false;
+var toStringAccessed = false;
+var valueOfAccessed = false;
 
-        var fromIndex = {
-            toString: function () {
-                toStringAccessed = true;
-                return {};
-            },
+var fromIndex = {
+  toString: function() {
+    toStringAccessed = true;
+    return {};
+  },
 
-            valueOf: function () {
-                valueOfAccessed = true;
-                return {};
-            }
-        };
+  valueOf: function() {
+    valueOfAccessed = true;
+    return {};
+  }
+};
 
 assert.throws(TypeError, function() {
-            [0, null].lastIndexOf(null, fromIndex);
+  [0, null].lastIndexOf(null, fromIndex);
 });
 
 assert(toStringAccessed, 'toStringAccessed');

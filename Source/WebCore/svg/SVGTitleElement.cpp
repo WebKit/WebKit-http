@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2004, 2005 Nikolas Zimmermann <zimmermann@kde.org>
  * Copyright (C) 2004, 2005, 2006 Rob Buis <buis@kde.org>
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -24,9 +24,11 @@
 
 #include "Document.h"
 #include "SVGNames.h"
-#include "Text.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGTitleElement);
 
 inline SVGTitleElement::SVGTitleElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
@@ -39,22 +41,17 @@ Ref<SVGTitleElement> SVGTitleElement::create(const QualifiedName& tagName, Docum
     return adoptRef(*new SVGTitleElement(tagName, document));
 }
 
-Node::InsertionNotificationRequest SVGTitleElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGTitleElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(rootParent);
-    if (!rootParent.isConnected())
-        return InsertionDone;
-
-    if (firstChild() && document().isSVGDocument())
-        document().titleElementAdded(*this);
-    return InsertionDone;
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    document().titleElementAdded(*this);
+    return InsertedIntoAncestorResult::Done;
 }
 
-void SVGTitleElement::removedFrom(ContainerNode& rootParent)
+void SVGTitleElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGElement::removedFrom(rootParent);
-    if (rootParent.isConnected() && document().isSVGDocument())
-        document().titleElementRemoved(*this);
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    document().titleElementRemoved(*this);
 }
 
 void SVGTitleElement::childrenChanged(const ChildChange& change)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,24 +26,31 @@
 #include "config.h"
 #include "Lock.h"
 
+#include <wtf/LockAlgorithmInlines.h>
+#include <wtf/StackShotProfiler.h>
+
 namespace WTF {
 
-void LockBase::lockSlow()
+static constexpr bool profileLockContention = false;
+
+void Lock::lockSlow()
 {
+    if (profileLockContention)
+        STACK_SHOT_PROFILE(4, 2, 5);
     DefaultLockAlgorithm::lockSlow(m_byte);
 }
 
-void LockBase::unlockSlow()
+void Lock::unlockSlow()
 {
     DefaultLockAlgorithm::unlockSlow(m_byte, DefaultLockAlgorithm::Unfair);
 }
 
-void LockBase::unlockFairlySlow()
+void Lock::unlockFairlySlow()
 {
     DefaultLockAlgorithm::unlockSlow(m_byte, DefaultLockAlgorithm::Fair);
 }
 
-void LockBase::safepointSlow()
+void Lock::safepointSlow()
 {
     DefaultLockAlgorithm::safepointSlow(m_byte);
 }

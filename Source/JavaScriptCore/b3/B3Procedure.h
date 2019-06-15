@@ -48,10 +48,13 @@
 
 namespace JSC { namespace B3 {
 
+class BackwardsCFG;
+class BackwardsDominators;
 class BasicBlock;
 class BlockInsertionSet;
 class CFG;
 class Dominators;
+class NaturalLoops;
 class StackSlot;
 class Value;
 class Variable;
@@ -175,13 +178,16 @@ public:
     CFG& cfg() const { return *m_cfg; }
 
     Dominators& dominators();
+    NaturalLoops& naturalLoops();
+    BackwardsCFG& backwardsCFG();
+    BackwardsDominators& backwardsDominators();
 
     void addFastConstant(const ValueKey&);
     bool isFastConstant(const ValueKey&);
     
     unsigned numEntrypoints() const { return m_numEntrypoints; }
-    void setNumEntrypoints(unsigned numEntrypoints) { m_numEntrypoints = numEntrypoints; }
-    
+    JS_EXPORT_PRIVATE void setNumEntrypoints(unsigned);
+
     // Only call this after code generation is complete. Note that the label for the 0th entrypoint
     // should point to exactly where the code generation cursor was before you started generating
     // code.
@@ -271,6 +277,9 @@ private:
     SparseCollection<Value> m_values;
     std::unique_ptr<CFG> m_cfg;
     std::unique_ptr<Dominators> m_dominators;
+    std::unique_ptr<NaturalLoops> m_naturalLoops;
+    std::unique_ptr<BackwardsCFG> m_backwardsCFG;
+    std::unique_ptr<BackwardsDominators> m_backwardsDominators;
     HashSet<ValueKey> m_fastConstants;
     unsigned m_numEntrypoints { 1 };
     const char* m_lastPhaseName;

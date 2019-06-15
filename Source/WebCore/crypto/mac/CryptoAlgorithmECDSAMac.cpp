@@ -33,8 +33,6 @@
 #include "CryptoAlgorithmEcdsaParams.h"
 #include "CryptoDigestAlgorithm.h"
 #include "CryptoKeyEC.h"
-#include "ExceptionCode.h"
-#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
@@ -153,52 +151,14 @@ static ExceptionOr<bool> verifyECDSA(CryptoAlgorithmIdentifier hash, const Platf
     return valid;
 }
 
-void CryptoAlgorithmECDSA::platformSign(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<Vector<uint8_t>> CryptoAlgorithmECDSA::platformSign(const CryptoAlgorithmEcdsaParams& parameters, const CryptoKeyEC& key, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch([parameters = WTFMove(parameters), key = WTFMove(key), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& ecKey = downcast<CryptoKeyEC>(key.get());
-        auto& ecParameters = downcast<CryptoAlgorithmEcdsaParams>(*parameters);
-
-        auto result = signECDSA(ecParameters.hashIdentifier, ecKey.platformKey(), ecKey.keySizeInBits() / 8, data);
-        if (result.hasException()) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), ec = result.releaseException().code(), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(ec);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = result.releaseReturnValue(), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
+    return signECDSA(parameters.hashIdentifier, key.platformKey(), key.keySizeInBits() / 8, data);
 }
 
-void CryptoAlgorithmECDSA::platformVerify(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+ExceptionOr<bool> CryptoAlgorithmECDSA::platformVerify(const CryptoAlgorithmEcdsaParams& parameters, const CryptoKeyEC& key, const Vector<uint8_t>& signature, const Vector<uint8_t>& data)
 {
-    context.ref();
-    workQueue.dispatch([parameters = WTFMove(parameters), key = WTFMove(key), signature = WTFMove(signature), data = WTFMove(data), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
-        auto& ecKey = downcast<CryptoKeyEC>(key.get());
-        auto& ecParameters = downcast<CryptoAlgorithmEcdsaParams>(*parameters);
-
-        auto result = verifyECDSA(ecParameters.hashIdentifier, ecKey.platformKey(), ecKey.keySizeInBits() / 8, signature, data);
-        if (result.hasException()) {
-            // We should only dereference callbacks after being back to the Document/Worker threads.
-            context.postTask([exceptionCallback = WTFMove(exceptionCallback), ec = result.releaseException().code(), callback = WTFMove(callback)](ScriptExecutionContext& context) {
-                exceptionCallback(ec);
-                context.deref();
-            });
-            return;
-        }
-        // We should only dereference callbacks after being back to the Document/Worker threads.
-        context.postTask([callback = WTFMove(callback), result = result.releaseReturnValue(), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
-            callback(result);
-            context.deref();
-        });
-    });
+    return verifyECDSA(parameters.hashIdentifier, key.platformKey(), key.keySizeInBits() / 8, signature, data);
 }
 
 } // namespace WebCore

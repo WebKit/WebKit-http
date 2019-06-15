@@ -6,8 +6,12 @@
       `yield` expressions are not LogicalOrExpressions.
   features: [generators]
   es6id: 12.1.1
-  negative: SyntaxError
+  negative:
+    phase: parse
+    type: SyntaxError
  ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 class A {
   *g() {

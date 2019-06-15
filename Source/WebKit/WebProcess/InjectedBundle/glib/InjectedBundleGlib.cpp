@@ -32,13 +32,12 @@
 #include <WebCore/FileSystem.h>
 #include <wtf/text/CString.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 bool InjectedBundle::initialize(const WebProcessCreationParameters&, API::Object* initializationUserData)
 {
-    m_platformBundle = g_module_open(fileSystemRepresentation(m_path).data(), G_MODULE_BIND_LOCAL);
+    m_platformBundle = g_module_open(FileSystem::fileSystemRepresentation(m_path).data(), G_MODULE_BIND_LOCAL);
     if (!m_platformBundle) {
         g_warning("Error loading the injected bundle (%s): %s", m_path.utf8().data(), g_module_error());
         return false;

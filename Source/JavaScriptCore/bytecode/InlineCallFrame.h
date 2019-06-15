@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -175,11 +175,12 @@ struct InlineCallFrame {
         return caller ? caller->inlineCallFrame : nullptr;
     }
     
-    Vector<ValueRecovery> arguments; // Includes 'this'.
+    Vector<ValueRecovery> argumentsWithFixup; // Includes 'this' and arity fixups.
     WriteBarrier<CodeBlock> baselineCodeBlock;
     ValueRecovery calleeRecovery;
     CodeOrigin directCaller;
 
+    unsigned argumentCountIncludingThis; // Do not include fixups.
     signed stackOffset : 28;
     unsigned kind : 3; // real type is Kind
     bool isClosureCall : 1; // If false then we know that callee/scope are constants and the DFG won't treat them as variables, i.e. they have to be recovered manually.
@@ -189,7 +190,8 @@ struct InlineCallFrame {
     // InlineCallFrame's fields. This constructor is here just to reduce confusion if
     // we forgot to initialize explicitly.
     InlineCallFrame()
-        : stackOffset(0)
+        : argumentCountIncludingThis(0)
+        , stackOffset(0)
         , kind(Call)
         , isClosureCall(false)
     {
@@ -253,6 +255,13 @@ inline void CodeOrigin::walkUpInlineStack(const Function& function)
             break;
         codeOrigin = codeOrigin.inlineCallFrame->directCaller;
     }
+}
+
+ALWAYS_INLINE VirtualRegister remapOperand(InlineCallFrame* inlineCallFrame, VirtualRegister reg)
+{
+    if (inlineCallFrame)
+        return VirtualRegister(reg.offset() + inlineCallFrame->stackOffset);
+    return reg;
 }
 
 } // namespace JSC

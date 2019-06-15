@@ -4,7 +4,7 @@
 es6id: 23.1.3.1
 description: >
   The existing [[MapData]] List is preserved.
-info: >
+info: |
   The existing [[MapData]] List is preserved because there may be existing
   MapIterator objects that are suspended midway through iterating over that
   List.
@@ -20,7 +20,11 @@ info: >
   6. Return undefined.
 ---*/
 
-var m = new Map([[1,1], [2,2], [3,3]]);
+var m = new Map([
+  [1, 1],
+  [2, 2],
+  [3, 3]
+]);
 var e = m.entries();
 
 e.next();

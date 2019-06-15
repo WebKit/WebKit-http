@@ -2,10 +2,11 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-arraybuffer.prototype.slice
 es6id: 24.1.4.3
 description: >
   ArrayBuffer.prototype.slice is not a constructor function.
-info: >
+info: |
   ArrayBuffer.prototype.slice ( start, end )
 
   17 ECMAScript Standard Built-in Objects:
@@ -17,4 +18,6 @@ info: >
 assert.sameValue(Object.prototype.hasOwnProperty.call(ArrayBuffer.prototype.slice, "prototype"), false);
 
 var arrayBuffer = new ArrayBuffer(8);
-assert.throws(TypeError, function() { new arrayBuffer.slice(); });
+assert.throws(TypeError, function() {
+  new arrayBuffer.slice();
+});

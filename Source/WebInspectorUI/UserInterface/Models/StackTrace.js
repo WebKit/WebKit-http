@@ -23,13 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.StackTrace = class StackTrace extends WebInspector.Object
+WI.StackTrace = class StackTrace
 {
     constructor(callFrames, topCallFrameIsBoundary, truncated, parentStackTrace)
     {
-        super();
-
-        console.assert(callFrames && callFrames.every((callFrame) => callFrame instanceof WebInspector.CallFrame));
+        console.assert(callFrames && callFrames.every((callFrame) => callFrame instanceof WI.CallFrame));
 
         this._callFrames = callFrames;
         this._topCallFrameIsBoundary = topCallFrameIsBoundary || false;
@@ -45,8 +43,8 @@ WebInspector.StackTrace = class StackTrace extends WebInspector.Object
         let previousStackTrace = null;
 
         while (payload) {
-            let callFrames = payload.callFrames.map((x) => WebInspector.CallFrame.fromPayload(target, x));
-            let stackTrace = new WebInspector.StackTrace(callFrames, payload.topCallFrameIsBoundary, payload.truncated);
+            let callFrames = payload.callFrames.map((x) => WI.CallFrame.fromPayload(target, x));
+            let stackTrace = new WI.StackTrace(callFrames, payload.topCallFrameIsBoundary, payload.truncated);
             if (!result)
                 result = stackTrace;
             if (previousStackTrace)
@@ -61,8 +59,8 @@ WebInspector.StackTrace = class StackTrace extends WebInspector.Object
 
     static fromString(target, stack)
     {
-        let callFrames = WebInspector.StackTrace._parseStackTrace(stack);
-        return WebInspector.StackTrace.fromPayload(target, {callFrames});
+        let callFrames = WI.StackTrace._parseStackTrace(stack);
+        return WI.StackTrace.fromPayload(target, {callFrames});
     }
 
     // May produce false negatives; must not produce any false positives.
@@ -82,11 +80,11 @@ WebInspector.StackTrace = class StackTrace extends WebInspector.Object
         if (/^[^a-z$_]/i.test(stack[0]))
             return false;
 
+        const reasonablyLongProtocolLength = 10;
         const reasonablyLongLineLength = 500;
         const reasonablyLongNativeMethodLength = 120;
-        const stackTraceLine = `(.{1,${reasonablyLongLineLength}}:\\d+:\\d+|eval code|.{1,${reasonablyLongNativeMethodLength}}@\\[native code\\])`;
-        const stackTrace = new RegExp(`^${stackTraceLine}(\\n${stackTraceLine})*$`, "g");
-
+        const stackTraceLine = `(global code|eval code|module code|\\w+)?([^:]{1,${reasonablyLongProtocolLength}}://[^:]{1,${reasonablyLongLineLength}}:\\d+:\\d+|[^@]{1,${reasonablyLongNativeMethodLength}}@\\[native code\\])`;
+        const stackTrace = new RegExp(`^${stackTraceLine}([\\n\\r]${stackTraceLine})+$`, "g");
         return stackTrace.test(stack);
     }
 
@@ -104,9 +102,9 @@ WebInspector.StackTrace = class StackTrace extends WebInspector.Object
 
             if (atIndex !== -1) {
                 functionName = line.slice(0, atIndex);
-                ({url, lineNumber, columnNumber} = WebInspector.StackTrace._parseLocation(line.slice(atIndex + 1)));
+                ({url, lineNumber, columnNumber} = WI.StackTrace._parseLocation(line.slice(atIndex + 1)));
             } else if (line.includes("/"))
-                ({url, lineNumber, columnNumber} = WebInspector.StackTrace._parseLocation(line));
+                ({url, lineNumber, columnNumber} = WI.StackTrace._parseLocation(line));
             else
                 functionName = line;
 
@@ -160,7 +158,7 @@ WebInspector.StackTrace = class StackTrace extends WebInspector.Object
                 continue;
             if (frame.sourceCodeLocation) {
                 let sourceCode = frame.sourceCodeLocation.sourceCode;
-                if (sourceCode instanceof WebInspector.Script && sourceCode.anonymous)
+                if (sourceCode instanceof WI.Script && sourceCode.anonymous)
                     continue;
             }
             return frame;

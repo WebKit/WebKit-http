@@ -26,43 +26,21 @@
 #include "config.h"
 #include "MapIteratorPrototype.h"
 
-#include "IteratorOperations.h"
+#include "JSCBuiltins.h"
 #include "JSCInlines.h"
-#include "JSMapIterator.h"
 
 namespace JSC {
 
 const ClassInfo MapIteratorPrototype::s_info = { "Map Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(MapIteratorPrototype) };
 
-static EncodedJSValue JSC_HOST_CALL MapIteratorPrototypeFuncNext(ExecState*);
-
 void MapIteratorPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(vm, info()));
-    vm.prototypeMap.addPrototype(this);
+    didBecomePrototype();
 
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->next, MapIteratorPrototypeFuncNext, DontEnum, 0);
-    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Map Iterator"), DontEnum | ReadOnly);
+    JSC_BUILTIN_FUNCTION_WITHOUT_TRANSITION("next", mapIteratorPrototypeNextCodeGenerator, static_cast<unsigned>(PropertyAttribute::DontEnum));
+    putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Map Iterator"), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
 }
-
-EncodedJSValue JSC_HOST_CALL MapIteratorPrototypeFuncNext(CallFrame* callFrame)
-{
-    VM& vm = callFrame->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSMapIterator* iterator = jsDynamicCast<JSMapIterator*>(vm, callFrame->thisValue());
-    if (!iterator)
-        return JSValue::encode(throwTypeError(callFrame, scope, ASCIILiteral("Cannot call MapIterator.next() on a non-MapIterator object")));
-
-    JSValue result;
-    if (iterator->next(callFrame, result)) {
-        scope.release();
-        return JSValue::encode(createIteratorResultObject(callFrame, result, false));
-    }
-    scope.release();
-    return JSValue::encode(createIteratorResultObject(callFrame, jsUndefined(), true));
-}
-
 
 }

@@ -44,6 +44,13 @@ typedef uint32_t WKWebsiteAutoplayQuirk;
 enum {
     kWKWebsiteAutoplayQuirkSynthesizedPauseEvents = 1 << 0,
     kWKWebsiteAutoplayQuirkInheritedUserGestures = 1 << 1,
+    kWKWebsiteAutoplayQuirkArbitraryUserGestures = 1 << 2,
+};
+
+enum WKWebsitePopUpPolicy {
+    kWKWebsitePopUpPolicyDefault,
+    kWKWebsitePopUpPolicyAllow,
+    kWKWebsitePopUpPolicyBlock,
 };
 
 WK_EXPORT WKWebsitePoliciesRef WKWebsitePoliciesCreate();
@@ -51,11 +58,20 @@ WK_EXPORT WKWebsitePoliciesRef WKWebsitePoliciesCreate();
 WK_EXPORT bool WKWebsitePoliciesGetContentBlockersEnabled(WKWebsitePoliciesRef);
 WK_EXPORT void WKWebsitePoliciesSetContentBlockersEnabled(WKWebsitePoliciesRef, bool);
 
+WK_EXPORT WKDictionaryRef WKWebsitePoliciesCopyCustomHeaderFields(WKWebsitePoliciesRef);
+WK_EXPORT void WKWebsitePoliciesSetCustomHeaderFields(WKWebsitePoliciesRef, WKDictionaryRef);
+
 WK_EXPORT WKWebsiteAutoplayQuirk WKWebsitePoliciesGetAllowedAutoplayQuirks(WKWebsitePoliciesRef);
 WK_EXPORT void WKWebsitePoliciesSetAllowedAutoplayQuirks(WKWebsitePoliciesRef, WKWebsiteAutoplayQuirk);
 
 WK_EXPORT WKWebsiteAutoplayPolicy WKWebsitePoliciesGetAutoplayPolicy(WKWebsitePoliciesRef);
 WK_EXPORT void WKWebsitePoliciesSetAutoplayPolicy(WKWebsitePoliciesRef, WKWebsiteAutoplayPolicy);
+
+WK_EXPORT WKWebsitePopUpPolicy WKWebsitePoliciesGetPopUpPolicy(WKWebsitePoliciesRef);
+WK_EXPORT void WKWebsitePoliciesSetPopUpPolicy(WKWebsitePoliciesRef, WKWebsitePopUpPolicy);
+
+WK_EXPORT WKWebsiteDataStoreRef WKWebsitePoliciesGetDataStore(WKWebsitePoliciesRef);
+WK_EXPORT void WKWebsitePoliciesSetDataStore(WKWebsitePoliciesRef, WKWebsiteDataStoreRef);
 
 #ifdef __cplusplus
 }

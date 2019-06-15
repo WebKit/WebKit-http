@@ -32,7 +32,6 @@
 #include "AudioNodeInput.h"
 #include "AudioNodeOutput.h"
 #include "AudioParam.h"
-#include "ExceptionCode.h"
 #include <wtf/Atomics.h>
 #include <wtf/MainThread.h>
 
@@ -130,13 +129,13 @@ ExceptionOr<void> AudioNode::connect(AudioNode& destination, unsigned outputInde
 
     // Sanity check input and output indices.
     if (outputIndex >= numberOfOutputs())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     if (inputIndex >= destination.numberOfInputs())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     if (context() != destination.context())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     auto* input = destination.input(inputIndex);
     auto* output = this->output(outputIndex);
@@ -154,10 +153,10 @@ ExceptionOr<void> AudioNode::connect(AudioParam& param, unsigned outputIndex)
     AudioContext::AutoLocker locker(context());
 
     if (outputIndex >= numberOfOutputs())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     if (context() != param.context())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     auto* output = this->output(outputIndex);
     param.connect(output);
@@ -172,7 +171,7 @@ ExceptionOr<void> AudioNode::disconnect(unsigned outputIndex)
 
     // Sanity check input and output indices.
     if (outputIndex >= numberOfOutputs())
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     auto* output = this->output(outputIndex);
     output->disconnectAll();
@@ -191,7 +190,7 @@ ExceptionOr<void> AudioNode::setChannelCount(unsigned channelCount)
     AudioContext::AutoLocker locker(context());
 
     if (!(channelCount > 0 && channelCount <= AudioContext::maxNumberOfChannels()))
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     if (m_channelCount == channelCount)
         return { };
@@ -206,11 +205,11 @@ String AudioNode::channelCountMode()
 {
     switch (m_channelCountMode) {
     case Max:
-        return ASCIILiteral("max");
+        return "max"_s;
     case ClampedMax:
-        return ASCIILiteral("clamped-max");
+        return "clamped-max"_s;
     case Explicit:
-        return ASCIILiteral("explicit");
+        return "explicit"_s;
     }
     ASSERT_NOT_REACHED();
     return emptyString();
@@ -230,7 +229,7 @@ ExceptionOr<void> AudioNode::setChannelCountMode(const String& mode)
     else if (mode == "explicit")
         m_channelCountMode = Explicit;
     else
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     if (m_channelCountMode != oldMode)
         updateChannelsForInputs();
@@ -242,9 +241,9 @@ String AudioNode::channelInterpretation()
 {
     switch (m_channelInterpretation) {
     case AudioBus::Speakers:
-        return ASCIILiteral("speakers");
+        return "speakers"_s;
     case AudioBus::Discrete:
-        return ASCIILiteral("discrete");
+        return "discrete"_s;
     }
     ASSERT_NOT_REACHED();
     return emptyString();
@@ -260,7 +259,7 @@ ExceptionOr<void> AudioNode::setChannelInterpretation(const String& interpretati
     else if (interpretation == "discrete")
         m_channelInterpretation = AudioBus::Discrete;
     else
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     return { };
 }

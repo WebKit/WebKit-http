@@ -20,8 +20,9 @@
 #include "config.h"
 #include "WebProcessTest.h"
 
-#include <JavaScriptCore/JSRetainPtr.h>
+#include "WebKitWebExtensionPrivate.h"
 #include <gio/gio.h>
+#include <jsc/jsc.h>
 #include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/glib/GUniquePtr.h>
@@ -33,6 +34,19 @@ static TestsMap& testsMap()
 {
     static NeverDestroyed<TestsMap> s_testsMap;
     return s_testsMap;
+}
+
+static void checkLeaks()
+{
+    if (s_watchedObjects.isEmpty())
+        return;
+
+    g_print("Leaked objects in WebProcess:");
+    for (const auto object : s_watchedObjects)
+        g_print(" %s(%p)", g_type_name_from_instance(reinterpret_cast<GTypeInstance*>(object)), object);
+    g_print("\n");
+
+    g_assert(s_watchedObjects.isEmpty());
 }
 
 void WebProcessTest::add(const String& testName, std::function<std::unique_ptr<WebProcessTest> ()> closure)
@@ -54,68 +68,44 @@ std::unique_ptr<WebProcessTest> WebProcessTest::create(const String& testName)
     return testsMap().get(testName)();
 }
 
-static JSValueRef runTest(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+static gboolean runTest(WebKitWebPage* webPage, const char* testPath)
 {
-    JSRetainPtr<JSStringRef> stringValue(Adopt, JSValueToStringCopy(context, arguments[0], nullptr));
-    g_assert(stringValue);
-    size_t testPathLength = JSStringGetMaximumUTF8CStringSize(stringValue.get());
-    GUniquePtr<char> testPath(static_cast<char*>(g_malloc(testPathLength)));
-    JSStringGetUTF8CString(stringValue.get(), testPath.get(), testPathLength);
-
-    WebKitWebPage* webPage = WEBKIT_WEB_PAGE(JSObjectGetPrivate(thisObject));
     g_assert(WEBKIT_IS_WEB_PAGE(webPage));
-    // Test /WebKitDOMNode/dom-cache is an exception, because it's called 3 times, so
-    // the WebPage is destroyed after the third time.
-    if (g_str_equal(testPath.get(), "WebKitDOMNode/dom-cache")) {
-        static unsigned domCacheTestRunCount = 0;
-        if (++domCacheTestRunCount == 3)
-            WebProcessTest::assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webPage));
-    } else
-        WebProcessTest::assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webPage));
+    WebProcessTest::assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webPage));
+    g_assert(testPath);
 
-    std::unique_ptr<WebProcessTest> test = WebProcessTest::create(String::fromUTF8(testPath.get()));
-    return JSValueMakeBoolean(context, test->runTest(g_strrstr(testPath.get(), "/") + 1, webPage));
+    std::unique_ptr<WebProcessTest> test = WebProcessTest::create(String::fromUTF8(testPath));
+    return test->runTest(g_strrstr(testPath, "/") + 1, webPage);
 }
 
-static const JSStaticFunction webProcessTestRunnerStaticFunctions[] =
+static void webProcessTestRunnerFinalize(WebKitWebPage* webPage)
 {
-    { "runTest", runTest, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-    { nullptr, nullptr, 0 }
-};
-
-static void webProcessTestRunnerFinalize(JSObjectRef object)
-{
-    g_object_unref(JSObjectGetPrivate(object));
-
-    if (s_watchedObjects.isEmpty())
-        return;
-
-    g_print("Leaked objects in WebProcess:");
-    for (const auto object : s_watchedObjects)
-        g_print(" %s(%p)", g_type_name_from_instance(reinterpret_cast<GTypeInstance*>(object)), object);
-    g_print("\n");
-
-    g_assert(s_watchedObjects.isEmpty());
+    g_object_unref(webPage);
+    checkLeaks();
 }
 
 static void windowObjectClearedCallback(WebKitScriptWorld* world, WebKitWebPage* webPage, WebKitFrame* frame, WebKitWebExtension* extension)
 {
-    JSGlobalContextRef context = webkit_frame_get_javascript_context_for_script_world(frame, world);
-    JSObjectRef globalObject = JSContextGetGlobalObject(context);
+    if (g_strcmp0(webkit_web_page_get_uri(webPage), "webprocess://test"))
+        return;
 
-    JSClassDefinition classDefinition = kJSClassDefinitionEmpty;
-    classDefinition.className = "WebProcessTestRunner";
-    classDefinition.staticFunctions = webProcessTestRunnerStaticFunctions;
-    classDefinition.finalize = webProcessTestRunnerFinalize;
-
-    JSClassRef jsClass = JSClassCreate(&classDefinition);
-    JSObjectRef classObject = JSObjectMake(context, jsClass, g_object_ref(webPage));
-    JSRetainPtr<JSStringRef> propertyString(Adopt, JSStringCreateWithUTF8CString("WebProcessTestRunner"));
-    JSObjectSetProperty(context, globalObject, propertyString.get(), classObject, kJSPropertyAttributeNone, nullptr);
-    JSClassRelease(jsClass);
+    GRefPtr<JSCContext> context = adoptGRef(webkit_frame_get_js_context_for_script_world(frame, world));
+    WebProcessTest::assertObjectIsDeletedWhenTestFinishes(G_OBJECT(context.get()));
+    auto* jsClass = jsc_context_register_class(context.get(), "WebProcessTestRunner", nullptr, nullptr, reinterpret_cast<GDestroyNotify>(webProcessTestRunnerFinalize));
+    WebProcessTest::assertObjectIsDeletedWhenTestFinishes(G_OBJECT(jsClass));
+    jsc_class_add_method(jsClass, "runTest", G_CALLBACK(runTest), NULL, NULL, G_TYPE_BOOLEAN, 1, G_TYPE_STRING);
+    GRefPtr<JSCValue> testRunner = adoptGRef(jsc_value_new_object(context.get(), g_object_ref(webPage), jsClass));
+    WebProcessTest::assertObjectIsDeletedWhenTestFinishes(G_OBJECT(testRunner.get()));
+    jsc_context_set_value(context.get(), "WebProcessTestRunner", testRunner.get());
 }
 
 extern "C" void webkit_web_extension_initialize(WebKitWebExtension* extension)
 {
+    webkitWebExtensionSetGarbageCollectOnPageDestroy(extension);
     g_signal_connect(webkit_script_world_get_default(), "window-object-cleared", G_CALLBACK(windowObjectClearedCallback), extension);
+}
+
+static void __attribute__((destructor)) checkLeaksAtExit()
+{
+    checkLeaks();
 }

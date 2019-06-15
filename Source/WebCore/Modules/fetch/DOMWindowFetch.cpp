@@ -30,22 +30,34 @@
 #include "config.h"
 #include "DOMWindowFetch.h"
 
-#if ENABLE(FETCH_API)
-
 #include "DOMWindow.h"
 #include "Document.h"
 #include "FetchResponse.h"
+#include "JSFetchResponse.h"
 
 namespace WebCore {
 
-void DOMWindowFetch::fetch(DOMWindow& window, FetchRequest& request, Ref<DeferredPromise>&& promise)
+using FetchResponsePromise = DOMPromiseDeferred<IDLInterface<FetchResponse>>;
+
+void DOMWindowFetch::fetch(DOMWindow& window, FetchRequest::Info&& input, FetchRequest::Init&& init, Ref<DeferredPromise>&& deferred)
 {
+    FetchResponsePromise promise = WTFMove(deferred);
+
     auto* document = window.document();
-    if (!document)
+    if (!document) {
+        promise.reject(InvalidStateError);
         return;
-    FetchResponse::fetch(*document, request, WTFMove(promise));
+    }
+
+    auto request = FetchRequest::create(*document, WTFMove(input), WTFMove(init));
+    if (request.hasException()) {
+        promise.reject(request.releaseException());
+        return;
+    }
+
+    FetchResponse::fetch(*document, request.releaseReturnValue().get(), [promise = WTFMove(promise)](ExceptionOr<FetchResponse&>&& result) mutable {
+        promise.settle(WTFMove(result));
+    });
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

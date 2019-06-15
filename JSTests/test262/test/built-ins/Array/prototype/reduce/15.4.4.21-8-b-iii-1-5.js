@@ -2,6 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.reduce
 es5id: 15.4.4.21-8-b-iii-1-5
 description: >
     Array.prototype.reduce - element to be retrieved is own data
@@ -9,33 +10,34 @@ description: >
     Array-like object
 ---*/
 
-        var testResult = false;
-        function callbackfn(prevVal, curVal, idx, obj) {
-            if (idx === 1) {
-                testResult = (prevVal === "9");
-            }
-        }
+var testResult = false;
 
-        var proto = {};
+function callbackfn(prevVal, curVal, idx, obj) {
+  if (idx === 1) {
+    testResult = (prevVal === "9");
+  }
+}
 
-        Object.defineProperty(proto, "0", {
-            get: function () {
-                return 0;
-            },
-            configurable: true
-        });
+var proto = {};
 
-        var Con = function () { };
-        Con.prototype = proto;
+Object.defineProperty(proto, "0", {
+  get: function() {
+    return 0;
+  },
+  configurable: true
+});
 
-        var child = new Con();
-        child.length = 2;
-        Object.defineProperty(child, "0", {
-            value: "9",
-            configurable: true
-        });
-        child[1] = "1";
+var Con = function() {};
+Con.prototype = proto;
 
-        Array.prototype.reduce.call(child, callbackfn);
+var child = new Con();
+child.length = 2;
+Object.defineProperty(child, "0", {
+  value: "9",
+  configurable: true
+});
+child[1] = "1";
+
+Array.prototype.reduce.call(child, callbackfn);
 
 assert(testResult, 'testResult !== true');

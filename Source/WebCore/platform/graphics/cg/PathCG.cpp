@@ -39,10 +39,6 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA)
-#include "WebCoreSystemInterface.h"
-#endif
-
 #if PLATFORM(WIN)
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #endif
@@ -117,12 +113,30 @@ Path::Path(const Path& other)
     m_path = other.m_path ? CGPathCreateMutableCopy(other.m_path) : 0;
 }
 
+Path::Path(Path&& other)
+{
+    m_path = other.m_path;
+    other.m_path = nullptr;
+}
+    
 Path& Path::operator=(const Path& other)
 {
-    CGMutablePathRef path = other.m_path ? CGPathCreateMutableCopy(other.m_path) : 0;
+    if (this == &other)
+        return *this;
     if (m_path)
         CGPathRelease(m_path);
-    m_path = path;
+    m_path = other.m_path ? CGPathCreateMutableCopy(other.m_path) : nullptr;
+    return *this;
+}
+
+Path& Path::operator=(Path&& other)
+{
+    if (this == &other)
+        return *this;
+    if (m_path)
+        CGPathRelease(m_path);
+    m_path = other.m_path;
+    other.m_path = nullptr;
     return *this;
 }
 
@@ -170,7 +184,7 @@ bool Path::contains(const FloatPoint &point, WindRule rule) const
 
     // CGPathContainsPoint returns false for non-closed paths, as a work-around, we copy and close the path first.  Radar 4758998 asks for a better CG API to use
     RetainPtr<CGMutablePathRef> path = adoptCF(copyCGPathClosingSubpaths(m_path));
-    bool ret = CGPathContainsPoint(path.get(), 0, point, rule == RULE_EVENODD ? true : false);
+    bool ret = CGPathContainsPoint(path.get(), 0, point, rule == WindRule::EvenOdd ? true : false);
     return ret;
 }
 

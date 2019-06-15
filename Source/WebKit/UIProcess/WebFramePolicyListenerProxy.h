@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,39 +25,47 @@
 
 #pragma once
 
-#include "WebFrameListenerProxy.h"
+#include "APIObject.h"
+#include <wtf/CompletionHandler.h>
+#include <wtf/Vector.h>
 
-#if PLATFORM(COCOA)
-#include "WKFoundation.h"
-#endif
+namespace API {
+class WebsitePolicies;
+}
 
-#define DELEGATE_REF_COUNTING_TO_COCOA (PLATFORM(COCOA) && WK_API_ENABLED)
+namespace WebCore {
+enum class PolicyAction;
+}
 
 namespace WebKit {
 
-class WebFramePolicyListenerProxy : public WebFrameListenerProxy {
+class SafeBrowsingResult;
+
+enum class ProcessSwapRequestedByClient { No, Yes };
+enum class ShouldExpectSafeBrowsingResult { No, Yes };
+
+class WebFramePolicyListenerProxy : public API::ObjectImpl<API::Object::Type::FramePolicyListener> {
 public:
-    static const Type APIType = Type::FramePolicyListener;
 
-    static Ref<WebFramePolicyListenerProxy> create(WebFrameProxy* frame, uint64_t listenerID)
+    using Reply = CompletionHandler<void(WebCore::PolicyAction, API::WebsitePolicies*, ProcessSwapRequestedByClient, Vector<SafeBrowsingResult>&&)>;
+    static Ref<WebFramePolicyListenerProxy> create(Reply&& reply, ShouldExpectSafeBrowsingResult expect)
     {
-        return adoptRef(*new WebFramePolicyListenerProxy(frame, listenerID));
+        return adoptRef(*new WebFramePolicyListenerProxy(WTFMove(reply), expect));
     }
+    ~WebFramePolicyListenerProxy();
 
-    void use(const WebsitePolicies&);
+    void use(API::WebsitePolicies* = nullptr, ProcessSwapRequestedByClient = ProcessSwapRequestedByClient::No);
     void download();
     void ignore();
+    
+    void didReceiveSafeBrowsingResults(Vector<SafeBrowsingResult>&&);
 
 private:
-    WebFramePolicyListenerProxy(WebFrameProxy*, uint64_t listenerID);
+    WebFramePolicyListenerProxy(Reply&&, ShouldExpectSafeBrowsingResult);
 
-    Type type() const override { return APIType; }
-
-#if DELEGATE_REF_COUNTING_TO_COCOA
-    void* operator new(size_t size) { return newObject(size, APIType); }
-#endif
+    std::optional<std::pair<RefPtr<API::WebsitePolicies>, ProcessSwapRequestedByClient>> m_policyResult;
+    std::optional<Vector<SafeBrowsingResult>> m_safeBrowsingResults;
+    Reply m_reply;
 };
 
 } // namespace WebKit
-
-#undef DELEGATE_REF_COUNTING_TO_COCOA

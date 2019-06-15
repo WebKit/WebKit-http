@@ -38,6 +38,7 @@ enum ImageSizeChangeType {
 };
 
 class RenderImage : public RenderReplaced {
+    WTF_MAKE_ISO_ALLOCATED(RenderImage);
 public:
     RenderImage(Element&, RenderStyle&&, StyleImage* = nullptr, const float = 1.0f);
     RenderImage(Document&, RenderStyle&&, StyleImage* = nullptr);
@@ -106,6 +107,7 @@ private:
     bool isRenderImage() const final { return true; }
 
     void paintReplaced(PaintInfo&, const LayoutPoint&) override;
+    void paintIncompleteImageOutline(PaintInfo&, LayoutPoint, LayoutUnit) const;
 
     bool computeBackgroundIsKnownToBeObscured(const LayoutPoint& paintOffset) final;
 

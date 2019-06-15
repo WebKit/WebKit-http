@@ -5,7 +5,7 @@
 esid: sec-white-space
 description: >
   Mongolian Vowel Separator is not recognized as white space.
-info: >
+info: |
   11.2 White Space
 
   WhiteSpace ::
@@ -20,8 +20,13 @@ info: >
     Other category “Zs” code points
 
   General Category of U+180E is “Cf” (Format).
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
+features: [u180e]
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 // U+180E between "var" and "foo"; UTF8(0x180E) = 0xE1 0xA0 0x8E
 var᠎foo;

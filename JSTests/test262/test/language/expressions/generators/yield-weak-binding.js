@@ -2,10 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-  description: >
-      `yield` expressions bind weakly
-  es6id: 14.4
-  negative: SyntaxError
- ---*/
+description: >
+    `yield` expressions bind weakly
+es6id: 14.4
+negative:
+  phase: parse
+  type: SyntaxError
+features: [generators]
+---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 var g = function*() { yield 3 + yield 4; };

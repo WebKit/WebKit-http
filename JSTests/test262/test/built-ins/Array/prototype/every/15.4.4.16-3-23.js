@@ -2,46 +2,47 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.every
 es5id: 15.4.4.16-3-23
 description: >
     Array.prototype.every uses inherited valueOf method when 'length'
     is an object with an own toString and inherited valueOf methods
 ---*/
 
-        function callbackfn1(val, idx, obj) {
-            return val > 10;
-        }
+function callbackfn1(val, idx, obj) {
+  return val > 10;
+}
 
-        function callbackfn2(val, idx, obj) {
-            return val > 11;
-        }
+function callbackfn2(val, idx, obj) {
+  return val > 11;
+}
 
-        var valueOfAccessed = false;
-        var toStringAccessed = false;
+var valueOfAccessed = false;
+var toStringAccessed = false;
 
-        var proto = {
-            valueOf: function () {
-                valueOfAccessed = true;
-                return 2;
-            }
-        };
+var proto = {
+  valueOf: function() {
+    valueOfAccessed = true;
+    return 2;
+  }
+};
 
-        var Con = function () { };
-        Con.prototype = proto;
+var Con = function() {};
+Con.prototype = proto;
 
-        var child = new Con();
+var child = new Con();
 
-        child.toString = function () {
-            toStringAccessed = true;
-            return '1';
-        };
+child.toString = function() {
+  toStringAccessed = true;
+  return '1';
+};
 
-        var obj = {
-            0: 12,
-            1: 11,
-            2: 9,
-            length: child
-        };
+var obj = {
+  0: 12,
+  1: 11,
+  2: 9,
+  length: child
+};
 
 assert(Array.prototype.every.call(obj, callbackfn1), 'Array.prototype.every.call(obj, callbackfn1) !== true');
 assert.sameValue(Array.prototype.every.call(obj, callbackfn2), false, 'Array.prototype.every.call(obj, callbackfn2)');

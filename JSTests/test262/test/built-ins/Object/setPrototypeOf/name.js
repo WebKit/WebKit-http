@@ -3,7 +3,7 @@
 /*---
 es6id: 19.1.2.18
 description: Object.setPrototypeOf '`name` property'
-info: >
+info: |
     ES6 Section 17:
 
     Every built-in Function object, including constructors, that is not
@@ -28,4 +28,3 @@ assert.sameValue(
 verifyNotEnumerable(Object.setPrototypeOf, 'name');
 verifyNotWritable(Object.setPrototypeOf, 'name');
 verifyConfigurable(Object.setPrototypeOf, 'name');
-

@@ -30,14 +30,18 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <sys/file.h>
+#include <wtf/EnumTraits.h>
 #include <wtf/UUID.h>
 #include <wtf/glib/GLibUtilities.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+namespace FileSystem {
 
 /* On linux file names are just raw bytes, so also strings that cannot be encoded in any way
  * are valid file names. This mean that we cannot just store a file name as-is in a String
@@ -122,6 +126,15 @@ static bool getFileStat(const String& path, GStatBuf* statBuffer)
     return g_stat(filename.get(), statBuffer) != -1;
 }
 
+static bool getFileLStat(const String& path, GStatBuf* statBuffer)
+{
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return false;
+
+    return g_lstat(filename.get(), statBuffer) != -1;
+}
+
 bool getFileSize(const String& path, long long& resultSize)
 {
     GStatBuf statResult;
@@ -154,16 +167,40 @@ bool getFileModificationTime(const String& path, time_t& modifiedTime)
     return true;
 }
 
-bool getFileMetadata(const String& path, FileMetadata& metadata)
+static FileMetadata::Type toFileMetataType(GStatBuf statResult)
+{
+    if (S_ISDIR(statResult.st_mode))
+        return FileMetadata::Type::Directory;
+    if (S_ISLNK(statResult.st_mode))
+        return FileMetadata::Type::SymbolicLink;
+    return FileMetadata::Type::File;
+}
+
+static std::optional<FileMetadata> fileMetadataUsingFunction(const String& path, bool (*statFunc)(const String&, GStatBuf*))
 {
     GStatBuf statResult;
-    if (!getFileStat(path, &statResult))
-        return false;
+    if (!statFunc(path, &statResult))
+        return std::nullopt;
 
-    metadata.modificationTime = statResult.st_mtime;
-    metadata.length = statResult.st_size;
-    metadata.type = S_ISDIR(statResult.st_mode) ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
-    return true;
+    String filename = pathGetFileName(path);
+    bool isHidden = !filename.isEmpty() && filename[0] == '.';
+
+    return FileMetadata {
+        static_cast<double>(statResult.st_mtime),
+        statResult.st_size,
+        isHidden,
+        toFileMetataType(statResult)
+    };
+}
+
+std::optional<FileMetadata> fileMetadata(const String& path)
+{
+    return fileMetadataUsingFunction(path, &getFileLStat);
+}
+
+std::optional<FileMetadata> fileMetadataFollowingSymlinks(const String& path)
+{
+    return fileMetadataUsingFunction(path, &getFileStat);
 }
 
 String pathByAppendingComponent(const String& path, const String& component)
@@ -171,6 +208,17 @@ String pathByAppendingComponent(const String& path, const String& component)
     if (path.endsWith(G_DIR_SEPARATOR_S))
         return path + component;
     return path + G_DIR_SEPARATOR_S + component;
+}
+
+String pathByAppendingComponents(StringView path, const Vector<StringView>& components)
+{
+    StringBuilder builder;
+    builder.append(path);
+    for (auto& component : components) {
+        builder.append(G_DIR_SEPARATOR_S);
+        builder.append(component);
+    }
+    return builder.toString();
 }
 
 bool makeAllDirectories(const String& path)
@@ -184,6 +232,19 @@ String homeDirectoryPath()
     return stringFromFileSystemRepresentation(g_get_home_dir());
 }
 
+bool createSymbolicLink(const String& targetPath, const String& symbolicLinkPath)
+{
+    CString targetPathFSRep = fileSystemRepresentation(targetPath);
+    if (!targetPathFSRep.data() || targetPathFSRep.data()[0] == '\0')
+        return false;
+
+    CString symbolicLinkPathFSRep = fileSystemRepresentation(symbolicLinkPath);
+    if (!symbolicLinkPathFSRep.data() || symbolicLinkPathFSRep.data()[0] == '\0')
+        return false;
+
+    return !symlink(targetPathFSRep.data(), symbolicLinkPathFSRep.data());
+}
+
 String pathGetFileName(const String& pathName)
 {
     GUniquePtr<gchar> tmpFilename = unescapedFilename(pathName);
@@ -192,45 +253,6 @@ String pathGetFileName(const String& pathName)
 
     GUniquePtr<gchar> baseName(g_path_get_basename(tmpFilename.get()));
     return String::fromUTF8(baseName.get());
-}
-
-CString applicationDirectoryPath()
-{
-    CString path = getCurrentExecutablePath();
-    if (!path.isNull())
-        return path;
-
-    // If the above fails, check the PATH env variable.
-    GUniquePtr<char> currentExePath(g_find_program_in_path(g_get_prgname()));
-    if (!currentExePath.get())
-        return CString();
-
-    GUniquePtr<char> dirname(g_path_get_dirname(currentExePath.get()));
-    return dirname.get();
-}
-
-CString sharedResourcesPath()
-{
-    static CString cachedPath;
-    if (!cachedPath.isNull())
-        return cachedPath;
-
-#if PLATFORM(WPE)
-    GUniquePtr<gchar> dataPath(g_build_filename(DATA_DIR, "wpe", nullptr));
-#elif PLATFORM(GTK)
-#if OS(WINDOWS)
-    HMODULE hmodule = 0;
-    GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<char*>(sharedResourcesPath), &hmodule);
-
-    GUniquePtr<gchar> runtimeDir(g_win32_get_package_installation_directory_of_module(hmodule));
-    GUniquePtr<gchar> dataPath(g_build_filename(runtimeDir.get(), "share", "webkitgtk-" WEBKITGTK_API_VERSION_STRING, NULL));
-#else
-    GUniquePtr<gchar> dataPath(g_build_filename(DATA_DIR, "webkitgtk-" WEBKITGTK_API_VERSION_STRING, NULL));
-#endif
-#endif
-
-    cachedPath = dataPath.get();
-    return cachedPath;
 }
 
 bool getVolumeFreeSpace(const String& path, uint64_t& freeSpace)
@@ -302,9 +324,9 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 
     GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(filename.get()));
     GFileIOStream* ioStream = 0;
-    if (mode == OpenForRead)
+    if (mode == FileOpenMode::Read)
         ioStream = g_file_open_readwrite(file.get(), 0, 0);
-    else if (mode == OpenForWrite) {
+    else if (mode == FileOpenMode::Write) {
         if (g_file_test(filename.get(), static_cast<GFileTest>(G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR)))
             ioStream = g_file_open_readwrite(file.get(), 0, 0);
         else
@@ -328,13 +350,13 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin o
 {
     GSeekType seekType = G_SEEK_SET;
     switch (origin) {
-    case SeekFromBeginning:
+    case FileSeekOrigin::Beginning:
         seekType = G_SEEK_SET;
         break;
-    case SeekFromCurrent:
+    case FileSeekOrigin::Current:
         seekType = G_SEEK_CUR;
         break;
-    case SeekFromEnd:
+    case FileSeekOrigin::End:
         seekType = G_SEEK_END;
         break;
     default:
@@ -420,13 +442,13 @@ std::optional<int32_t> getFileDeviceId(const CString& fsFile)
 }
 
 #if USE(FILE_LOCK)
-bool lockFile(PlatformFileHandle handle, FileLockMode lockMode)
+bool lockFile(PlatformFileHandle handle, OptionSet<FileLockMode> lockMode)
 {
-    COMPILE_ASSERT(LOCK_SH == LockShared, LockSharedEncodingIsAsExpected);
-    COMPILE_ASSERT(LOCK_EX == LockExclusive, LockExclusiveEncodingIsAsExpected);
-    COMPILE_ASSERT(LOCK_NB == LockNonBlocking, LockNonBlockingEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_SH == WTF::enumToUnderlyingType(FileLockMode::Shared), LockSharedEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_EX == WTF::enumToUnderlyingType(FileLockMode::Exclusive), LockExclusiveEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_NB == WTF::enumToUnderlyingType(FileLockMode::Nonblocking), LockNonblockingEncodingIsAsExpected);
     auto* inputStream = g_io_stream_get_input_stream(G_IO_STREAM(handle));
-    int result = flock(g_file_descriptor_based_get_fd(G_FILE_DESCRIPTOR_BASED(inputStream)), lockMode);
+    int result = flock(g_file_descriptor_based_get_fd(G_FILE_DESCRIPTOR_BASED(inputStream)), lockMode.toRaw());
     return result != -1;
 }
 
@@ -438,4 +460,5 @@ bool unlockFile(PlatformFileHandle handle)
 }
 #endif // USE(FILE_LOCK)
 
-}
+} // namespace FileSystem
+} // namespace WebCore

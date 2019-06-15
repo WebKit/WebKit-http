@@ -8,12 +8,10 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_COMMON_AUDIO_RESAMPLER_INCLUDE_PUSH_RESAMPLER_H_
-#define WEBRTC_COMMON_AUDIO_RESAMPLER_INCLUDE_PUSH_RESAMPLER_H_
+#ifndef COMMON_AUDIO_RESAMPLER_INCLUDE_PUSH_RESAMPLER_H_
+#define COMMON_AUDIO_RESAMPLER_INCLUDE_PUSH_RESAMPLER_H_
 
 #include <memory>
-
-#include "webrtc/typedefs.h"
 
 namespace webrtc {
 
@@ -29,7 +27,8 @@ class PushResampler {
 
   // Must be called whenever the parameters change. Free to be called at any
   // time as it is a no-op if parameters have not changed since the last call.
-  int InitializeIfNeeded(int src_sample_rate_hz, int dst_sample_rate_hz,
+  int InitializeIfNeeded(int src_sample_rate_hz,
+                         int dst_sample_rate_hz,
                          size_t num_channels);
 
   // Returns the total number of samples provided in destination (e.g. 32 kHz,
@@ -50,4 +49,4 @@ class PushResampler {
 
 }  // namespace webrtc
 
-#endif  // WEBRTC_COMMON_AUDIO_RESAMPLER_INCLUDE_PUSH_RESAMPLER_H_
+#endif  // COMMON_AUDIO_RESAMPLER_INCLUDE_PUSH_RESAMPLER_H_

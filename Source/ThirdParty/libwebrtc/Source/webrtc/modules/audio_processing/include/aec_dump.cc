@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/include/aec_dump.h"
+#include "modules/audio_processing/include/aec_dump.h"
 
 namespace webrtc {
 InternalAPMConfig::InternalAPMConfig() = default;
@@ -35,6 +35,9 @@ bool InternalAPMConfig::operator==(const InternalAPMConfig& other) {
          intelligibility_enhancer_enabled ==
              other.intelligibility_enhancer_enabled &&
          noise_robust_agc_enabled == other.noise_robust_agc_enabled &&
+         pre_amplifier_enabled == other.pre_amplifier_enabled &&
+         pre_amplifier_fixed_gain_factor ==
+             other.pre_amplifier_fixed_gain_factor &&
          experiments_description == other.experiments_description;
 }
 }  // namespace webrtc

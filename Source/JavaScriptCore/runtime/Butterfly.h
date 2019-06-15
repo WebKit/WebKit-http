@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,23 +26,21 @@
 #pragma once
 
 #include "IndexingHeader.h"
+#include "IndexingType.h"
 #include "PropertyStorage.h"
+#include <wtf/Gigacage.h>
 #include <wtf/Noncopyable.h>
 
 namespace JSC {
 
 class VM;
 class CopyVisitor;
+class GCDeferralContext;
 struct ArrayStorage;
 
-template <typename T> struct ContiguousData {
-    ContiguousData()
-        : m_data(0)
-#if !ASSERT_DISABLED
-        , m_length(0)
-#endif
-    {
-    }
+template <typename T>
+struct ContiguousData {
+    ContiguousData() = default;
     ContiguousData(T* data, size_t length)
         : m_data(data)
 #if !ASSERT_DISABLED
@@ -52,8 +50,63 @@ template <typename T> struct ContiguousData {
         UNUSED_PARAM(length);
     }
 
-    const T& operator[](size_t index) const { ASSERT(index < m_length); return m_data[index]; }
-    T& operator[](size_t index) { ASSERT(index < m_length); return m_data[index]; }
+    struct Data {
+        Data(T& location, IndexingType indexingMode)
+            : m_data(location)
+#if !ASSERT_DISABLED
+            , m_isWritable(!isCopyOnWrite(indexingMode))
+#endif
+        {
+            UNUSED_PARAM(indexingMode);
+        }
+
+        explicit operator bool() const { return !!m_data.get(); }
+
+        const T& operator=(const T& value)
+        {
+            ASSERT(m_isWritable);
+            m_data = value;
+            return value;
+        }
+
+        operator const T&() const { return m_data; }
+
+        // WriteBarrier forwarded methods.
+
+        void set(VM& vm, const JSCell* owner, const JSValue& value)
+        {
+            ASSERT(m_isWritable);
+            m_data.set(vm, owner, value);
+        }
+
+        void setWithoutWriteBarrier(const JSValue& value)
+        {
+            ASSERT(m_isWritable);
+            m_data.setWithoutWriteBarrier(value);
+        }
+
+        void clear()
+        {
+            ASSERT(m_isWritable);
+            m_data.clear();
+        }
+
+        JSValue get() const
+        {
+            return m_data.get();
+        }
+
+
+        T& m_data;
+#if !ASSERT_DISABLED
+        bool m_isWritable;
+#endif
+    };
+
+    const Data at(const JSCell* owner, size_t index) const;
+    Data at(const JSCell* owner, size_t index);
+
+    T& atUnsafe(size_t index) { ASSERT(index < m_length); return m_data[index]; }
 
     T* data() const { return m_data; }
 #if !ASSERT_DISABLED
@@ -61,9 +114,9 @@ template <typename T> struct ContiguousData {
 #endif
 
 private:
-    T* m_data;
+    T* m_data { nullptr };
 #if !ASSERT_DISABLED
-    size_t m_length;
+    size_t m_length { 0 };
 #endif
 };
 
@@ -107,28 +160,28 @@ public:
     static ptrdiff_t offsetOfArrayBuffer() { return offsetOfIndexingHeader() + IndexingHeader::offsetOfArrayBuffer(); }
     static ptrdiff_t offsetOfPublicLength() { return offsetOfIndexingHeader() + IndexingHeader::offsetOfPublicLength(); }
     static ptrdiff_t offsetOfVectorLength() { return offsetOfIndexingHeader() + IndexingHeader::offsetOfVectorLength(); }
-    
-    static Butterfly* createUninitialized(VM&, JSCell* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes);
 
-    static Butterfly* tryCreate(VM& vm, JSCell*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader& indexingHeader, size_t indexingPayloadSizeInBytes);
-    static Butterfly* create(VM&, JSCell* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader&, size_t indexingPayloadSizeInBytes);
-    static Butterfly* create(VM&, JSCell* intendedOwner, Structure*);
+    static Butterfly* tryCreateUninitialized(VM&, JSObject* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes, GCDeferralContext* = nullptr);
+    static Butterfly* createUninitialized(VM&, JSObject* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes);
+
+    static Butterfly* tryCreate(VM& vm, JSObject*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader& indexingHeader, size_t indexingPayloadSizeInBytes);
+    static Butterfly* create(VM&, JSObject* intendedOwner, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader&, size_t indexingPayloadSizeInBytes);
+    static Butterfly* create(VM&, JSObject* intendedOwner, Structure*);
     
     IndexingHeader* indexingHeader() { return IndexingHeader::from(this); }
     const IndexingHeader* indexingHeader() const { return IndexingHeader::from(this); }
     PropertyStorage propertyStorage() { return indexingHeader()->propertyStorage(); }
     ConstPropertyStorage propertyStorage() const { return indexingHeader()->propertyStorage(); }
     
-    uint32_t publicLength() { return indexingHeader()->publicLength(); }
-    uint32_t vectorLength() { return indexingHeader()->vectorLength(); }
+    uint32_t publicLength() const { return indexingHeader()->publicLength(); }
+    uint32_t vectorLength() const { return indexingHeader()->vectorLength(); }
     void setPublicLength(uint32_t value) { indexingHeader()->setPublicLength(value); }
     void setVectorLength(uint32_t value) { indexingHeader()->setVectorLength(value); }
-    
+
     template<typename T>
     T* indexingPayload() { return reinterpret_cast_ptr<T*>(this); }
     ArrayStorage* arrayStorage() { return indexingPayload<ArrayStorage>(); }
     ContiguousJSValues contiguousInt32() { return ContiguousJSValues(indexingPayload<WriteBarrier<Unknown>>(), vectorLength()); }
-
     ContiguousDoubles contiguousDouble() { return ContiguousDoubles(indexingPayload<double>(), vectorLength()); }
     ContiguousJSValues contiguous() { return ContiguousJSValues(indexingPayload<WriteBarrier<Unknown>>(), vectorLength()); }
     
@@ -152,7 +205,7 @@ public:
     void* base(Structure*);
 
     static Butterfly* createOrGrowArrayRight(
-        Butterfly*, VM&, JSCell* intendedOwner, Structure* oldStructure,
+        Butterfly*, VM&, JSObject* intendedOwner, Structure* oldStructure,
         size_t propertyCapacity, bool hadIndexingHeader,
         size_t oldIndexingPayloadSizeInBytes, size_t newIndexingPayloadSizeInBytes); 
 
@@ -161,11 +214,11 @@ public:
     // methods is not exhaustive and is not intended to encapsulate all possible allocation
     // modes of butterflies - there are code paths that allocate butterflies by calling
     // directly into Heap::tryAllocateStorage.
-    static Butterfly* createOrGrowPropertyStorage(Butterfly*, VM&, JSCell* intendedOwner, Structure*, size_t oldPropertyCapacity, size_t newPropertyCapacity);
-    Butterfly* growArrayRight(VM&, JSCell* intendedOwner, Structure* oldStructure, size_t propertyCapacity, bool hadIndexingHeader, size_t oldIndexingPayloadSizeInBytes, size_t newIndexingPayloadSizeInBytes); // Assumes that preCapacity is zero, and asserts as much.
-    Butterfly* growArrayRight(VM&, JSCell* intendedOwner, Structure*, size_t newIndexingPayloadSizeInBytes);
-    Butterfly* resizeArray(VM&, JSCell* intendedOwner, size_t propertyCapacity, bool oldHasIndexingHeader, size_t oldIndexingPayloadSizeInBytes, size_t newPreCapacity, bool newHasIndexingHeader, size_t newIndexingPayloadSizeInBytes);
-    Butterfly* resizeArray(VM&, JSCell* intendedOwner, Structure*, size_t newPreCapacity, size_t newIndexingPayloadSizeInBytes); // Assumes that you're not changing whether or not the object has an indexing header.
+    static Butterfly* createOrGrowPropertyStorage(Butterfly*, VM&, JSObject* intendedOwner, Structure*, size_t oldPropertyCapacity, size_t newPropertyCapacity);
+    Butterfly* growArrayRight(VM&, JSObject* intendedOwner, Structure* oldStructure, size_t propertyCapacity, bool hadIndexingHeader, size_t oldIndexingPayloadSizeInBytes, size_t newIndexingPayloadSizeInBytes); // Assumes that preCapacity is zero, and asserts as much.
+    Butterfly* growArrayRight(VM&, JSObject* intendedOwner, Structure*, size_t newIndexingPayloadSizeInBytes);
+    Butterfly* resizeArray(VM&, JSObject* intendedOwner, size_t propertyCapacity, bool oldHasIndexingHeader, size_t oldIndexingPayloadSizeInBytes, size_t newPreCapacity, bool newHasIndexingHeader, size_t newIndexingPayloadSizeInBytes);
+    Butterfly* resizeArray(VM&, JSObject* intendedOwner, Structure*, size_t newPreCapacity, size_t newIndexingPayloadSizeInBytes); // Assumes that you're not changing whether or not the object has an indexing header.
     Butterfly* unshift(Structure*, size_t numberOfSlots);
     Butterfly* shift(Structure*, size_t numberOfSlots);
 };

@@ -32,11 +32,11 @@
 #include "BlobBuilder.h"
 
 #include "Blob.h"
-#include "LineEnding.h"
 #include "TextEncoding.h"
-#include <runtime/ArrayBuffer.h>
-#include <runtime/ArrayBufferView.h>
+#include <JavaScriptCore/ArrayBuffer.h>
+#include <JavaScriptCore/ArrayBufferView.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/LineEnding.h>
 
 namespace WebCore {
 
@@ -49,14 +49,14 @@ void BlobBuilder::append(RefPtr<ArrayBuffer>&& arrayBuffer)
 {
     if (!arrayBuffer)
         return;
-    m_appendableData.append(static_cast<const char*>(arrayBuffer->data()), arrayBuffer->byteLength());
+    m_appendableData.append(static_cast<const uint8_t*>(arrayBuffer->data()), arrayBuffer->byteLength());
 }
 
 void BlobBuilder::append(RefPtr<ArrayBufferView>&& arrayBufferView)
 {
     if (!arrayBufferView)
         return;
-    m_appendableData.append(static_cast<const char*>(arrayBufferView->baseAddress()), arrayBufferView->byteLength());
+    m_appendableData.append(static_cast<const uint8_t*>(arrayBufferView->baseAddress()), arrayBufferView->byteLength());
 }
 
 void BlobBuilder::append(RefPtr<Blob>&& blob)
@@ -70,13 +70,16 @@ void BlobBuilder::append(RefPtr<Blob>&& blob)
 
 void BlobBuilder::append(const String& text)
 {
-    CString utf8Text = UTF8Encoding().encode(text, EntitiesForUnencodables);
+    auto bytes = UTF8Encoding().encode(text, UnencodableHandling::Entities);
 
     if (m_endings == BlobLineEndings::Native)
-        normalizeLineEndingsToNative(utf8Text, m_appendableData);
+        bytes = normalizeLineEndingsToNative(WTFMove(bytes));
+
+    if (m_appendableData.isEmpty())
+        m_appendableData = WTFMove(bytes);
     else {
-        ASSERT(m_endings == BlobLineEndings::Transparent);
-        m_appendableData.append(utf8Text.data(), utf8Text.length());
+        // FIXME: Would it be better to move multiple vectors into m_items instead of merging them into one?
+        m_appendableData.appendVector(bytes);
     }
 }
 

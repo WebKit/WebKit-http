@@ -1,9 +1,10 @@
 // Copyright (C) 2015 the V8 project authors. All rights reserved.
 // This code is governed by the BSD license found in the LICENSE file.
 /*---
+esid: sec-array.from
 es6id: 22.1.2.1
 description: Creating object with custom constructor (traversed via iterator)
-info: >
+info: |
     [...]
     6. If usingIterator is not undefined, then
        a. If IsConstructor(C) is true, then
@@ -26,7 +27,9 @@ var items = {};
 items[Symbol.iterator] = function() {
   return {
     next: function() {
-      return { done: true };
+      return {
+        done: true
+      };
     }
   };
 };

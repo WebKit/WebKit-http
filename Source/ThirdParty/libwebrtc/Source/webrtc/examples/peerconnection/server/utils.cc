@@ -8,18 +8,18 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/examples/peerconnection/server/utils.h"
+#include "examples/peerconnection/server/utils.h"
 
 #include <stdio.h>
 
-#include "webrtc/base/stringencode.h"
+#include "rtc_base/stringencode.h"
 
 using rtc::ToString;
 
 std::string int2str(int i) {
-  return ToString<int>(i);
+  return ToString(i);
 }
 
 std::string size_t2str(size_t i) {
-  return ToString<size_t>(i);
+  return ToString(i);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,18 @@
 #ifndef ToyLocks_h
 #define ToyLocks_h
 
+#include <mutex>
 #include <thread>
 #include <wtf/Atomics.h>
 #include <wtf/Lock.h>
 #include <wtf/ParkingLot.h>
+#include <wtf/Threading.h>
 #include <wtf/WordLock.h>
+
+#if __has_include(<os/lock.h>)
+#include <os/lock.h>
+#define HAS_UNFAIR_LOCK
+#endif
 
 #if defined(EXTRA_LOCKS) && EXTRA_LOCKS
 #include <synchronic>
@@ -52,7 +59,7 @@ public:
     void lock()
     {
         while (!m_lock.compareExchangeWeak(0, 1, std::memory_order_acquire))
-            std::this_thread::yield();
+            Thread::yield();
     }
 
     void unlock()
@@ -118,7 +125,7 @@ public:
                 : "memory");
             if (result)
                 return;
-            std::this_thread::yield();
+            Thread::yield();
         }
     }
 
@@ -215,7 +222,7 @@ private:
             if (currentState & hasParkedBit)
                 break;
             
-            std::this_thread::yield();
+            Thread::yield();
         }
         
         for (;;) {
@@ -292,7 +299,7 @@ private:
             if (currentState == LockedAndParked)
                 break;
             
-            std::this_thread::yield();
+            Thread::yield();
         }
         
         for (;;) {
@@ -361,7 +368,7 @@ private:
             if (currentState == LockedAndParked)
                 break;
             
-            std::this_thread::yield();
+            Thread::yield();
         }
         
         State desiredState = Locked;
@@ -467,6 +474,21 @@ private:
     Atomic<unsigned> m_state;
 };
 
+#ifdef HAS_UNFAIR_LOCK
+class UnfairLock {
+    os_unfair_lock l = OS_UNFAIR_LOCK_INIT;
+public:
+    void lock()
+    {
+        os_unfair_lock_lock(&l);
+    }
+    void unlock()
+    {
+        os_unfair_lock_unlock(&l);
+    }
+};
+#endif
+
 template<typename Benchmark>
 void runEverything(const char* what)
 {
@@ -498,8 +520,12 @@ void runEverything(const char* what)
         Benchmark::template run<CascadeLock<uint32_t>>("WordCascadeLock");
     if (!strcmp(what, "handofflock") || !strcmp(what, "all"))
         Benchmark::template run<HandoffLock>("HandoffLock");
+#ifdef HAS_UNFAIR_LOCK
+    if (!strcmp(what, "unfairlock") || !strcmp(what, "all"))
+        Benchmark::template run<UnfairLock>("UnfairLock");
+#endif
     if (!strcmp(what, "mutex") || !strcmp(what, "all"))
-        Benchmark::template run<Mutex>("PlatformMutex");
+        Benchmark::template run<std::mutex>("std::mutex");
 }
 
 } // anonymous namespace

@@ -3,9 +3,10 @@
 
 /*---
 es6id: 18.2.6.4
+esid: sec-encodeuri-uri
 description: >
   encodeURI.name is "encodeURI".
-info: >
+info: |
   encodeURI (uri)
 
   17 ECMAScript Standard Built-in Objects:

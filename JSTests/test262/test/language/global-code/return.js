@@ -12,7 +12,11 @@ info: |
 
   ScriptBody :
     StatementList[~Yield, ~Return]
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 return;

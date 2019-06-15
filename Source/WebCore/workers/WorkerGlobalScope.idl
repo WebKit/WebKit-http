@@ -28,15 +28,19 @@
     Exposed=Worker,
     JSCustomMarkFunction,
     JSLegacyParent=JSWorkerGlobalScopeBase,
+    ImplicitThis,
+    IsImmutablePrototypeExoticObject,
+    IsImmutablePrototypeExoticObjectOnPrototype,
 ] interface WorkerGlobalScope : EventTarget {
 
     readonly attribute WorkerGlobalScope self;
     readonly attribute WorkerLocation location;
-    void close();
 
     attribute EventHandler onerror;
     attribute EventHandler onoffline;
     attribute EventHandler ononline;
+    attribute EventHandler onrejectionhandled;
+    attribute EventHandler onunhandledrejection;
 
     // WorkerUtils
 

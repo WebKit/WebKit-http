@@ -18,6 +18,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
+typedef double DOMHighResTimeStamp;
+
 [
     Constructor(DOMString type, optional EventInit eventInitDict),
     CustomToJSObject,
@@ -48,11 +50,11 @@
     [EnabledAtRuntime=ShadowDOM] readonly attribute boolean composed;
 
     [Unforgeable] readonly attribute boolean isTrusted;
-    readonly attribute DOMTimeStamp timeStamp;
+    [CallWith=ScriptExecutionContext, ImplementedAs=timeStampForBindings] readonly attribute DOMHighResTimeStamp timeStamp;
 
     void initEvent(DOMString type, optional boolean bubbles = false, optional boolean cancelable = false); // Historical.
 
     // IE extensions that may get standardized (https://github.com/whatwg/dom/issues/334).
-    readonly attribute EventTarget srcElement;
+    [ImplementedAs=target] readonly attribute EventTarget srcElement;
     [ImplementedAs=legacyReturnValue] attribute boolean returnValue;
 };

@@ -143,9 +143,9 @@ public:
         {
             unsigned attributes = 0;
             if (isReadOnly())
-                attributes |= ReadOnly;
+                attributes |= PropertyAttribute::ReadOnly;
             if (isDontEnum())
-                attributes |= DontEnum;
+                attributes |= PropertyAttribute::DontEnum;
             return attributes;
         }
 
@@ -175,7 +175,7 @@ public:
         : m_bits(SlimFlag)
     {
         ASSERT(isValidVarOffset(offset));
-        pack(offset, true, attributes & ReadOnly, attributes & DontEnum);
+        pack(offset, true, attributes & PropertyAttribute::ReadOnly, attributes & PropertyAttribute::DontEnum);
     }
     
     ~SymbolTableEntry()
@@ -261,7 +261,7 @@ public:
     
     void setAttributes(unsigned attributes)
     {
-        pack(varOffset(), isWatchable(), attributes & ReadOnly, attributes & DontEnum);
+        pack(varOffset(), isWatchable(), attributes & PropertyAttribute::ReadOnly, attributes & PropertyAttribute::DontEnum);
     }
 
     bool isReadOnly() const
@@ -696,6 +696,12 @@ private:
 
     Map m_map;
     ScopeOffset m_maxScopeOffset;
+public:
+    mutable ConcurrentJSLock m_lock;
+private:
+    unsigned m_usesNonStrictEval : 1;
+    unsigned m_nestedLexicalScope : 1; // Non-function LexicalScope.
+    unsigned m_scopeType : 3; // ScopeType
     
     struct SymbolTableRareData {
         UniqueIDMap m_uniqueIDMap;
@@ -705,17 +711,10 @@ private:
     };
     std::unique_ptr<SymbolTableRareData> m_rareData;
 
-    bool m_usesNonStrictEval : 1;
-    bool m_nestedLexicalScope : 1; // Non-function LexicalScope.
-    unsigned m_scopeType : 3; // ScopeType
-    
     WriteBarrier<ScopedArgumentsTable> m_arguments;
     WriteBarrier<InferredValue> m_singletonScope;
     
     std::unique_ptr<LocalToEntryVec> m_localToEntry;
-
-public:
-    mutable ConcurrentJSLock m_lock;
 };
 
 } // namespace JSC

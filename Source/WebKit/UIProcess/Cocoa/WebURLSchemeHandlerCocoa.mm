@@ -32,10 +32,10 @@
 #import "WKURLSchemeTaskInternal.h"
 #import "WKWebViewInternal.h"
 #import "WebURLSchemeTask.h"
-
-using namespace WebCore;
+#import <wtf/RunLoop.h>
 
 namespace WebKit {
+using namespace WebCore;
 
 Ref<WebURLSchemeHandlerCocoa> WebURLSchemeHandlerCocoa::create(id <WKURLSchemeHandler> apiHandler)
 {
@@ -72,6 +72,17 @@ void WebURLSchemeHandlerCocoa::platformStopTask(WebPageProxy& page, WebURLScheme
     m_apiTasks.remove(iterator);
 #else
     UNUSED_PARAM(page);
+    UNUSED_PARAM(task);
+#endif
+}
+
+void WebURLSchemeHandlerCocoa::platformTaskCompleted(WebURLSchemeTask& task)
+{
+#if WK_API_ENABLED
+    // Release the last reference to this API task on the next spin of the runloop.
+    RunLoop::main().dispatch([takenTask = m_apiTasks.take(task.identifier())] {
+    });
+#else
     UNUSED_PARAM(task);
 #endif
 }

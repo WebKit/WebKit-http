@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include "Event.h"
 #include "EventQueue.h"
 #include <memory>
 #include <wtf/HashSet.h>
@@ -35,7 +36,6 @@
 namespace WebCore {
 
 class Document;
-class Event;
 class Node;
 
 class DocumentEventQueue final : public EventQueue {
@@ -48,6 +48,8 @@ public:
     void close() override;
 
     void enqueueOrDispatchScrollEvent(Node&);
+    void enqueueScrollEvent(EventTarget&, Event::CanBubble, Event::IsCancelable);
+    void enqueueResizeEvent(EventTarget&, Event::CanBubble, Event::IsCancelable);
 
 private:
     void pendingEventTimerFired();
@@ -58,7 +60,8 @@ private:
     Document& m_document;
     std::unique_ptr<Timer> m_pendingEventTimer;
     ListHashSet<RefPtr<Event>> m_queuedEvents;
-    HashSet<Node*> m_nodesWithQueuedScrollEvents;
+    HashSet<EventTarget*> m_targetsWithQueuedScrollEvents;
+    HashSet<EventTarget*> m_targetsWithQueuedResizeEvents;
     bool m_isClosed;
 };
 

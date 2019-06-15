@@ -11,7 +11,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "webrtc/base/checks.h"
+#include "rtc_base/checks.h"
 
 namespace webrtc {
 namespace test {

@@ -10,11 +10,13 @@
 
 #include <memory>
 
-#include "webrtc/base/gunit.h"
-#include "webrtc/media/base/fakemediaengine.h"
-#include "webrtc/ortc/ortcfactory.h"
-#include "webrtc/ortc/testrtpparameters.h"
-#include "webrtc/p2p/base/fakepackettransport.h"
+#include "api/audio_codecs/builtin_audio_decoder_factory.h"
+#include "api/audio_codecs/builtin_audio_encoder_factory.h"
+#include "media/base/fakemediaengine.h"
+#include "ortc/ortcfactory.h"
+#include "ortc/testrtpparameters.h"
+#include "p2p/base/fakepackettransport.h"
+#include "rtc_base/gunit.h"
 
 namespace webrtc {
 
@@ -31,10 +33,11 @@ class RtpTransportControllerTest : public testing::Test {
   RtpTransportControllerTest() {
     // Note: This doesn't need to use fake network classes, since it uses
     // FakePacketTransports.
-    auto result =
-        OrtcFactory::Create(nullptr, nullptr, nullptr, nullptr, nullptr,
-                            std::unique_ptr<cricket::MediaEngineInterface>(
-                                new cricket::FakeMediaEngine()));
+    auto result = OrtcFactory::Create(
+        nullptr, nullptr, nullptr, nullptr, nullptr,
+        std::unique_ptr<cricket::MediaEngineInterface>(
+            new cricket::FakeMediaEngine()),
+        CreateBuiltinAudioEncoderFactory(), CreateBuiltinAudioDecoderFactory());
     ortc_factory_ = result.MoveValue();
     rtp_transport_controller_ =
         ortc_factory_->CreateRtpTransportController().MoveValue();
@@ -182,6 +185,7 @@ TEST_F(RtpTransportControllerTest,
   auto video_sender_result = ortc_factory_->CreateRtpSender(
       cricket::MEDIA_TYPE_VIDEO, rtp_transport2.get());
   EXPECT_TRUE(video_sender_result.ok());
+
   auto video_receiver_result = ortc_factory_->CreateRtpReceiver(
       cricket::MEDIA_TYPE_VIDEO, rtp_transport1.get());
   EXPECT_EQ(RTCErrorType::UNSUPPORTED_OPERATION,

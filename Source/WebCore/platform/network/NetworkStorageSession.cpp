@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,27 +26,30 @@
 #include "config.h"
 #include "NetworkStorageSession.h"
 
-#include "SessionID.h"
+#include <pal/SessionID.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/ProcessPrivilege.h>
 
 namespace WebCore {
 
-HashMap<SessionID, std::unique_ptr<NetworkStorageSession>>& NetworkStorageSession::globalSessionMap()
+bool NetworkStorageSession::m_processMayUseCookieAPI = false;
+
+HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>& NetworkStorageSession::globalSessionMap()
 {
-    static NeverDestroyed<HashMap<SessionID, std::unique_ptr<NetworkStorageSession>>> map;
+    static NeverDestroyed<HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>> map;
     return map;
 }
 
-NetworkStorageSession* NetworkStorageSession::storageSession(SessionID sessionID)
+NetworkStorageSession* NetworkStorageSession::storageSession(PAL::SessionID sessionID)
 {
-    if (sessionID == SessionID::defaultSessionID())
+    if (sessionID == PAL::SessionID::defaultSessionID())
         return &defaultStorageSession();
     return globalSessionMap().get(sessionID);
 }
 
-void NetworkStorageSession::destroySession(SessionID sessionID)
+void NetworkStorageSession::destroySession(PAL::SessionID sessionID)
 {
-    ASSERT(sessionID != SessionID::defaultSessionID());
+    ASSERT(sessionID != PAL::SessionID::defaultSessionID());
     globalSessionMap().remove(sessionID);
 }
 
@@ -55,6 +58,20 @@ void NetworkStorageSession::forEach(const WTF::Function<void(const WebCore::Netw
     functor(defaultStorageSession());
     for (auto& storageSession : globalSessionMap().values())
         functor(*storageSession);
+}
+
+bool NetworkStorageSession::processMayUseCookieAPI()
+{
+    return m_processMayUseCookieAPI;
+};
+
+void NetworkStorageSession::permitProcessToUseCookieAPI(bool value)
+{
+    m_processMayUseCookieAPI = value;
+    if (m_processMayUseCookieAPI)
+        addProcessPrivilege(ProcessPrivilege::CanAccessRawCookies);
+    else
+        removeProcessPrivilege(ProcessPrivilege::CanAccessRawCookies);
 }
 
 }

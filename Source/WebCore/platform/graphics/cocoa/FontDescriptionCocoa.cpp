@@ -26,9 +26,9 @@
 #include "config.h"
 #include "FontDescription.h"
 
-#include "CoreTextSPI.h"
 #include "FontCache.h"
 #include "FontFamilySpecificationCoreText.h"
+#include <pal/spi/cocoa/CoreTextSPI.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashTraits.h>
 #include <wtf/text/AtomicString.h>
@@ -65,6 +65,7 @@ public:
                 && locale == other.locale
                 && weight == other.weight
                 && size == other.size
+                && allowUserInstalledFonts == other.allowUserInstalledFonts
                 && italic == other.italic;
         }
 
@@ -76,6 +77,7 @@ public:
             hasher.add(locale.isNull() ? 0 : locale.existingHash());
             hasher.add(weight);
             hasher.add(size);
+            hasher.add(static_cast<unsigned>(allowUserInstalledFonts));
             hasher.add(italic);
             return hasher.hash();
         }
@@ -96,6 +98,7 @@ public:
         AtomicString locale;
         CGFloat weight { 0 };
         float size { 0 };
+        AllowUserInstalledFonts allowUserInstalledFonts { AllowUserInstalledFonts::No };
         bool italic { false };
     };
 
@@ -116,8 +119,8 @@ public:
             if (clientUse == ClientUse::ForSystemUI) {
                 systemFont = adoptCF(CTFontCreateUIFontForLanguage(kCTFontUIFontSystem, parameters.size, localeString.get()));
                 ASSERT(systemFont);
-                // FIXME: Use applyWeightAndItalics() in both cases once <rdar://problem/33046041> is fixed.
-                systemFont = applyWeightAndItalics(systemFont.get(), parameters.weight, parameters.italic, parameters.size);
+                // FIXME: Use applyWeightItalicsAndFallbackBehavior() in both cases once <rdar://problem/33046041> is fixed.
+                systemFont = applyWeightItalicsAndFallbackBehavior(systemFont.get(), parameters.weight, parameters.italic, parameters.size, parameters.allowUserInstalledFonts);
             } else {
 #if PLATFORM(IOS)
                 ASSERT(clientUse == ClientUse::ForTextStyle);
@@ -125,7 +128,7 @@ public:
                 CTFontSymbolicTraits traits = (parameters.weight >= kCTFontWeightSemibold ? kCTFontTraitBold : 0) | (parameters.italic ? kCTFontTraitItalic : 0);
                 if (traits)
                     fontDescriptor = adoptCF(CTFontDescriptorCreateCopyWithSymbolicTraits(fontDescriptor.get(), traits, traits));
-                systemFont = adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), parameters.size, nullptr));
+                systemFont = createFontForInstalledFonts(fontDescriptor.get(), parameters.size, parameters.allowUserInstalledFonts);
 #else
                 ASSERT_NOT_REACHED();
 #endif
@@ -147,7 +150,7 @@ private:
     {
     }
 
-    static RetainPtr<CTFontRef> applyWeightAndItalics(CTFontRef font, CGFloat weight, bool italic, float size)
+    static RetainPtr<CTFontRef> applyWeightItalicsAndFallbackBehavior(CTFontRef font, CGFloat weight, bool italic, float size, AllowUserInstalledFonts allowUserInstalledFonts)
     {
         auto weightNumber = adoptCF(CFNumberCreate(kCFAllocatorDefault, kCFNumberCGFloatType, &weight));
         const float systemFontItalicSlope = 0.07;
@@ -156,9 +159,9 @@ private:
         CFTypeRef traitsKeys[] = { kCTFontWeightTrait, kCTFontSlantTrait, kCTFontUIFontDesignTrait };
         CFTypeRef traitsValues[] = { weightNumber.get(), italicsNumber.get(), kCFBooleanTrue };
         auto traitsDictionary = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, traitsKeys, traitsValues, WTF_ARRAY_LENGTH(traitsKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-        CFTypeRef modificationKeys[] = { kCTFontTraitsAttribute };
-        CFTypeRef modificationValues[] = { traitsDictionary.get() };
-        auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, modificationKeys, modificationValues, WTF_ARRAY_LENGTH(modificationKeys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        auto attributes = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+        CFDictionaryAddValue(attributes.get(), kCTFontTraitsAttribute, traitsDictionary.get());
+        addAttributesForInstalledFonts(attributes.get(), allowUserInstalledFonts);
         auto modification = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
         return adoptCF(CTFontCreateCopyWithAttributes(font, size, nullptr, modification.get()));
     }
@@ -181,9 +184,11 @@ private:
         Vector<RetainPtr<CTFontDescriptorRef>> result;
         // WebKit handles the cascade list, and WebKit 2's IPC code doesn't know how to serialize Core Text's cascade list.
         result.append(removeCascadeList(adoptCF(CTFontCopyFontDescriptor(font)).get()));
-        CFIndex arrayLength = CFArrayGetCount(cascadeList.get());
-        for (CFIndex i = 0; i < arrayLength; ++i)
-            result.append(static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(cascadeList.get(), i)));
+        if (cascadeList) {
+            CFIndex arrayLength = CFArrayGetCount(cascadeList.get());
+            for (CFIndex i = 0; i < arrayLength; ++i)
+                result.append(static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(cascadeList.get(), i)));
+        }
         return result;
     }
 
@@ -208,11 +213,6 @@ template<typename T, typename U, std::size_t size, std::size_t... indices> std::
 template<typename T, typename U, std::size_t size> inline std::array<T, size> convertArray(U (&array)[size])
 {
     return convertArray<T>(array, std::make_index_sequence<size> { });
-}
-
-template<typename T> inline NeverDestroyed<T> makeNeverDestroyed(T&& argument)
-{
-    return WTFMove(argument);
 }
 
 static inline bool isUIFontTextStyle(const AtomicString& string)
@@ -244,7 +244,7 @@ static inline bool isUIFontTextStyle(const AtomicString& string)
 }
 #endif
 
-static inline SystemFontDatabase::CoreTextCascadeListParameters systemFontParameters(const FontCascadeDescription& description, const AtomicString& familyName, SystemFontDatabase::ClientUse clientUse)
+static inline SystemFontDatabase::CoreTextCascadeListParameters systemFontParameters(const FontCascadeDescription& description, const AtomicString& familyName, SystemFontDatabase::ClientUse clientUse, AllowUserInstalledFonts allowUserInstalledFonts)
 {
     SystemFontDatabase::CoreTextCascadeListParameters result;
     result.locale = description.locale();
@@ -282,6 +282,8 @@ static inline SystemFontDatabase::CoreTextCascadeListParameters systemFontParame
         result.fontName = familyName;
     }
 
+    result.allowUserInstalledFonts = allowUserInstalledFonts;
+
     return result;
 }
 
@@ -290,9 +292,9 @@ void FontDescription::invalidateCaches()
     SystemFontDatabase::singleton().clear();
 }
 
-static inline Vector<RetainPtr<CTFontDescriptorRef>> systemFontCascadeList(const FontCascadeDescription& description, const AtomicString& cssFamily, SystemFontDatabase::ClientUse clientUse)
+static inline Vector<RetainPtr<CTFontDescriptorRef>> systemFontCascadeList(const FontCascadeDescription& description, const AtomicString& cssFamily, SystemFontDatabase::ClientUse clientUse, AllowUserInstalledFonts allowUserInstalledFonts)
 {
-    return SystemFontDatabase::singleton().systemFontCascadeList(systemFontParameters(description, cssFamily, clientUse), clientUse);
+    return SystemFontDatabase::singleton().systemFontCascadeList(systemFontParameters(description, cssFamily, clientUse, allowUserInstalledFonts), clientUse);
 }
 
 unsigned FontCascadeDescription::effectiveFamilyCount() const
@@ -302,10 +304,10 @@ unsigned FontCascadeDescription::effectiveFamilyCount() const
     for (unsigned i = 0; i < familyCount(); ++i) {
         const auto& cssFamily = familyAt(i);
         if (isSystemFontString(cssFamily))
-            result += systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForSystemUI).size();
+            result += systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForSystemUI, shouldAllowUserInstalledFonts()).size();
 #if PLATFORM(IOS)
         else if (isUIFontTextStyle(cssFamily))
-            result += systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForTextStyle).size();
+            result += systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForTextStyle, shouldAllowUserInstalledFonts()).size();
 #endif
         else
             ++result;
@@ -325,14 +327,14 @@ FontFamilySpecification FontCascadeDescription::effectiveFamilyAt(unsigned index
     for (unsigned i = 0; i < familyCount(); ++i) {
         const auto& cssFamily = familyAt(i);
         if (isSystemFontString(cssFamily)) {
-            auto cascadeList = systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForSystemUI);
+            auto cascadeList = systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForSystemUI, shouldAllowUserInstalledFonts());
             if (index < cascadeList.size())
                 return FontFamilySpecification(cascadeList[index].get());
             index -= cascadeList.size();
         }
 #if PLATFORM(IOS)
         else if (isUIFontTextStyle(cssFamily)) {
-            auto cascadeList = systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForTextStyle);
+            auto cascadeList = systemFontCascadeList(*this, cssFamily, SystemFontDatabase::ClientUse::ForTextStyle, shouldAllowUserInstalledFonts());
             if (index < cascadeList.size())
                 return FontFamilySpecification(cascadeList[index].get());
             index -= cascadeList.size();

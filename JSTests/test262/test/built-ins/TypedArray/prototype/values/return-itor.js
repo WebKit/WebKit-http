@@ -4,15 +4,16 @@
 es6id: 22.2.3.30
 esid: sec-%typedarray%.prototype.values
 description: Return an iterator for the values.
-info: >
+info: |
   22.2.3.30 %TypedArray%.prototype.values ( )
 
   ...
   3. Return CreateArrayIterator(O, "value").
 includes: [testTypedArray.js]
+features: [TypedArray]
 ---*/
 
-var sample = new Int8Array([0, 42, 64]);
+var sample = [0, 42, 64];
 
 testWithTypedArrayConstructors(function(TA) {
   var typedArray = new TA(sample);

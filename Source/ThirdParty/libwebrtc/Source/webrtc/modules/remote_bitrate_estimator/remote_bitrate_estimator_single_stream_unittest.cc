@@ -8,20 +8,20 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/base/constructormagic.h"
-#include "webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
-#include "webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_unittest_helper.h"
+#include "modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
+#include "modules/remote_bitrate_estimator/remote_bitrate_estimator_unittest_helper.h"
+#include "rtc_base/constructormagic.h"
 
 namespace webrtc {
 
-class RemoteBitrateEstimatorSingleTest :
-    public RemoteBitrateEstimatorTest {
+class RemoteBitrateEstimatorSingleTest : public RemoteBitrateEstimatorTest {
  public:
   RemoteBitrateEstimatorSingleTest() {}
   virtual void SetUp() {
     bitrate_estimator_.reset(new RemoteBitrateEstimatorSingleStream(
         bitrate_observer_.get(), &clock_));
   }
+
  protected:
   RTC_DISALLOW_COPY_AND_ASSIGN(RemoteBitrateEstimatorSingleTest);
 };

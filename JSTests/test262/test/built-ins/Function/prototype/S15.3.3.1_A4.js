@@ -2,7 +2,7 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Detects whether the value of a function's "prototype" property
     as seen by normal object operations might deviate from the value
     as seem by Object.getOwnPropertyDescriptor
@@ -15,8 +15,10 @@ description: >
 
 function foo() {}
 
-Object.defineProperty(foo, 'prototype', { value: {} });
+Object.defineProperty(foo, 'prototype', {
+  value: {}
+});
 if (foo.prototype !==
-    Object.getOwnPropertyDescriptor(foo, 'prototype').value) {
+  Object.getOwnPropertyDescriptor(foo, 'prototype').value) {
   $ERROR("A function.prototype's descriptor lies");
 }

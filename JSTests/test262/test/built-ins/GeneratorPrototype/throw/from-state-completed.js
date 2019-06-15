@@ -5,16 +5,20 @@ es6id: 25.3.1.4
 description: >
     Resuming abruptly from a generator in the 'completed' state should honor
     the abrupt completion and remain in the 'completed' state.
+features: [generators]
 ---*/
 
 function E() {}
+
 function* G() {}
 var iter;
 
 iter = G();
 iter.next();
 
-assert.throws(E, function() { iter.throw(new E()); });
+assert.throws(E, function() {
+  iter.throw(new E());
+});
 
 var result = iter.next();
 

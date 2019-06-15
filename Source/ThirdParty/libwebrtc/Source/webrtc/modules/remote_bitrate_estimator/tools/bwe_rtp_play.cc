@@ -12,12 +12,12 @@
 
 #include <memory>
 
-#include "webrtc/base/format_macros.h"
-#include "webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h"
-#include "webrtc/modules/remote_bitrate_estimator/tools/bwe_rtp.h"
-#include "webrtc/modules/rtp_rtcp/include/rtp_header_parser.h"
-#include "webrtc/modules/rtp_rtcp/include/rtp_payload_registry.h"
-#include "webrtc/test/rtp_file_reader.h"
+#include "modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h"
+#include "modules/remote_bitrate_estimator/tools/bwe_rtp.h"
+#include "modules/rtp_rtcp/include/rtp_header_parser.h"
+#include "modules/rtp_rtcp/include/rtp_payload_registry.h"
+#include "rtc_base/format_macros.h"
+#include "test/rtp_file_reader.h"
 
 class Observer : public webrtc::RemoteBitrateObserver {
  public:
@@ -38,7 +38,7 @@ class Observer : public webrtc::RemoteBitrateObserver {
   webrtc::Clock* clock_;
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char* argv[]) {
   webrtc::test::RtpFileReader* reader;
   webrtc::RemoteBitrateEstimator* estimator;
   webrtc::RtpHeaderParser* parser;
@@ -104,10 +104,8 @@ int main(int argc, char** argv) {
   printf("Parsed %d packets\nTime passed: %" PRId64 " ms\n", packet_counter,
          clock.TimeInMilliseconds());
   printf("Estimator used: %s\n", estimator_used.c_str());
-  printf("Packets with absolute send time: %d\n",
-         abs_send_time_count);
-  printf("Packets with timestamp offset: %d\n",
-         ts_offset_count);
+  printf("Packets with absolute send time: %d\n", abs_send_time_count);
+  printf("Packets with timestamp offset: %d\n", ts_offset_count);
   printf("Packets with no extension: %d\n",
          packet_counter - ts_offset_count - abs_send_time_count);
   return 0;

@@ -1,12 +1,12 @@
 {
     "domain": "Page",
     "description": "Actions and events related to the inspected page belong to the page domain.",
-    "availability": "web",
+    "availability": ["web"],
     "types": [
         {
             "id": "ResourceType",
             "type": "string",
-            "enum": ["Document", "Stylesheet", "Image", "Font", "Script", "XHR", "Fetch", "WebSocket", "Other"],
+            "enum": ["Document", "Stylesheet", "Image", "Font", "Script", "XHR", "Fetch", "Ping", "Beacon", "WebSocket", "Other"],
             "description": "Resource type as it was perceived by the rendering engine."
         },
         {
@@ -14,6 +14,12 @@
             "type": "string",
             "enum": ["Viewport", "Page"],
             "description": "Coordinate system used by supplied coordinates."
+        },
+        {
+            "id": "CookieSameSitePolicy",
+            "type": "string",
+            "enum": ["None", "Lax", "Strict"],
+            "description": "Same-Site policy of a cookie."
         },
         {
             "id": "Frame",
@@ -76,13 +82,9 @@
                 { "name": "size", "type": "integer", "description": "Cookie size." },
                 { "name": "httpOnly", "type": "boolean", "description": "True if cookie is http-only." },
                 { "name": "secure", "type": "boolean", "description": "True if cookie is secure." },
-                { "name": "session", "type": "boolean", "description": "True in case of session cookie." }
+                { "name": "session", "type": "boolean", "description": "True in case of session cookie." },
+                { "name": "sameSite", "$ref": "CookieSameSitePolicy", "description": "Cookie Same-Site policy." }
             ]
-        },
-        {
-            "id": "ScriptIdentifier",
-            "type": "string",
-            "description": "Unique script identifier."
         }
     ],
     "commands": [
@@ -98,9 +100,8 @@
             "name": "reload",
             "description": "Reloads the main frame of the inspected page.",
             "parameters": [
-                { "name": "ignoreCache", "type": "boolean", "optional": true, "description": "If true, browser cache is ignored (as if the user pressed Shift+refresh)." },
-                { "name": "revalidateAllResources", "type": "boolean", "optional": true, "description": "If true, all cached subresources will be revalidated when the main resource loads. Otherwise, only expired cached subresources will be revalidated (the default behavior for most WebKit clients)." },
-                { "name": "scriptToEvaluateOnLoad", "type": "string", "optional": true, "description": "If set, the script will be injected into all frames of the inspected page after reload." }
+                { "name": "ignoreCache", "type": "boolean", "optional": true, "description": "If true, the page is reloaded from its origin without using cached resources." },
+                { "name": "revalidateAllResources", "type": "boolean", "optional": true, "description": "If true, all cached subresources will be revalidated when the main resource loads. Otherwise, only expired cached subresources will be revalidated (the default behavior for most WebKit clients)." }
             ]
         },
         {
@@ -169,6 +170,13 @@
             ],
             "returns": [
                 { "name": "result", "type": "array", "items": { "$ref": "SearchResult" }, "description": "List of search results." }
+            ]
+        },
+        {
+            "name": "setShowRulers",
+            "description": "Requests that backend draw rulers in the inspector overlay",
+            "parameters": [
+                { "name": "result", "type": "boolean", "description": "True for showing rulers" }
             ]
         },
         {

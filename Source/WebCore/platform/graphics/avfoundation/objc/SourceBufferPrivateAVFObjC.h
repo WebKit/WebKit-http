@@ -55,6 +55,8 @@ typedef const struct opaqueCMFormatDescription *CMFormatDescriptionRef;
 
 namespace WebCore {
 
+class CDMInstance;
+class CDMInstanceFairPlayStreamingAVFObjC;
 class CDMSessionMediaSourceAVFObjC;
 class MediaSourcePrivateAVFObjC;
 class TimeRanges;
@@ -66,9 +68,13 @@ class WebCoreDecompressionSession;
 
 class SourceBufferPrivateAVFObjCErrorClient {
 public:
-    virtual ~SourceBufferPrivateAVFObjCErrorClient() { }
+    virtual ~SourceBufferPrivateAVFObjCErrorClient() = default;
     virtual void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *, bool& shouldIgnore) = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     virtual void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *, bool& shouldIgnore) = 0;
+#pragma clang diagnostic pop
 };
 
 class SourceBufferPrivateAVFObjC final : public SourceBufferPrivate {
@@ -103,13 +109,19 @@ public:
     int protectedTrackID() const { return m_protectedTrackID; }
     AVStreamDataParser* parser() const { return m_parser.get(); }
     void setCDMSession(CDMSessionMediaSourceAVFObjC*);
+    void setCDMInstance(CDMInstance*);
 
     void flush();
 
     void registerForErrorNotifications(SourceBufferPrivateAVFObjCErrorClient*);
     void unregisterForErrorNotifications(SourceBufferPrivateAVFObjCErrorClient*);
     void layerDidReceiveError(AVSampleBufferDisplayLayer *, NSError *);
+    void outputObscuredDueToInsufficientExternalProtectionChanged(bool);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void rendererDidReceiveError(AVSampleBufferAudioRenderer *, NSError *);
+#pragma clang diagnostic pop
 
     void setVideoLayer(AVSampleBufferDisplayLayer*);
     void setDecompressionSession(WebCoreDecompressionSession*);
@@ -121,7 +133,7 @@ private:
 
     // SourceBufferPrivate overrides
     void setClient(SourceBufferPrivateClient*) final;
-    void append(const unsigned char* data, unsigned length) final;
+    void append(Vector<unsigned char>&&) final;
     void abort() final;
     void resetParserState() final;
     void removedFromMediaSource() final;
@@ -132,6 +144,7 @@ private:
     bool isReadyForMoreSamples(const AtomicString& trackID) final;
     void setActive(bool) final;
     void notifyClientWhenReadyForMoreSamples(const AtomicString& trackID) final;
+    bool canSwitchToType(const ContentType&) final;
 
     void didBecomeReadyForMoreSamples(int trackID);
     void appendCompleted();
@@ -139,9 +152,13 @@ private:
     void destroyRenderers();
 
     void flushVideo();
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     void flush(AVSampleBufferAudioRenderer *);
+#pragma clang diagnostic pop
 
-    WeakPtr<SourceBufferPrivateAVFObjC> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
+    WeakPtr<SourceBufferPrivateAVFObjC> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
 
     Vector<RefPtr<VideoTrackPrivateMediaSourceAVFObjC>> m_videoTracks;
     Vector<RefPtr<AudioTrackPrivateMediaSourceAVFObjC>> m_audioTracks;
@@ -153,7 +170,11 @@ private:
     RetainPtr<AVStreamDataParser> m_parser;
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_displayLayer;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunknown-pragmas"
+#pragma clang diagnostic ignored "-Wunguarded-availability-new"
     HashMap<int, RetainPtr<AVSampleBufferAudioRenderer>> m_audioRenderers;
+#pragma clang diagnostic pop
     RetainPtr<WebAVStreamDataParserListener> m_delegate;
     RetainPtr<WebAVSampleBufferErrorListener> m_errorListener;
     RetainPtr<NSError> m_hdcpError;
@@ -166,11 +187,15 @@ private:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     CDMSessionMediaSourceAVFObjC* m_session { nullptr };
 #endif
+#if ENABLE(ENCRYPTED_MEDIA) && HAVE(AVCONTENTKEYSESSION)
+    RefPtr<CDMInstanceFairPlayStreamingAVFObjC> m_cdmInstance;
+#endif
 
     std::optional<FloatSize> m_cachedSize;
     FloatSize m_currentSize;
     bool m_parsingSucceeded { true };
     bool m_parserStateWasReset { false };
+    bool m_discardSamplesUntilNextInitializationSegment { false };
     int m_enabledVideoTrackID { -1 };
     int m_protectedTrackID { -1 };
 };

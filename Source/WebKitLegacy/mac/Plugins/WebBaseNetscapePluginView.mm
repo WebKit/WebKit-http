@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,12 +33,11 @@
 #import "WebFrameInternal.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
-#import "WebKitSystemInterface.h"
 #import "WebNSURLExtras.h"
 #import "WebNSURLRequestExtras.h"
 #import "WebView.h"
 #import "WebViewInternal.h"
-#import <WebCore/AuthenticationCF.h>
+#import <JavaScriptCore/InitializeThreading.h>
 #import <WebCore/AuthenticationMac.h>
 #import <WebCore/BitmapImage.h>
 #import <WebCore/Credential.h>
@@ -53,9 +52,8 @@
 #import <WebCore/RenderEmbeddedObject.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/SecurityOrigin.h>
-#import <WebCore/WebCoreObjCExtras.h>
 #import <WebKitLegacy/DOMPrivate.h>
-#import <runtime/InitializeThreading.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
 #import <wtf/RunLoop.h>
@@ -73,7 +71,7 @@ using namespace WebCore;
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();
     RunLoop::initializeMainRunLoop();
-    WKSendUserChangeNotifications();
+    WebKit::sendUserChangeNotifications();
 }
 
 - (id)initWithFrame:(NSRect)frame
@@ -134,21 +132,15 @@ using namespace WebCore;
     return YES;
 }
 
-- (NSURL *)URLWithCString:(const char *)URLCString
+- (NSURL *)URLWithCString:(const char *)cString
 {
-    if (!URLCString)
+    if (!cString)
         return nil;
     
-    CFStringRef string = CFStringCreateWithCString(kCFAllocatorDefault, URLCString, kCFStringEncodingISOLatin1);
-    ASSERT(string); // All strings should be representable in ISO Latin 1
-    
-    NSString *URLString = [(NSString *)string _web_stringByStrippingReturnCharacters];
-    NSURL *URL = [NSURL _web_URLWithDataAsString:URLString relativeToURL:_baseURL.get()];
-    CFRelease(string);
-    if (!URL)
-        return nil;
-    
-    return URL;
+    NSString *string = [NSString stringWithCString:cString encoding:NSISOLatin1StringEncoding];
+    string = [string stringByReplacingOccurrencesOfString:@"\r" withString:@""];
+    string = [string stringByReplacingOccurrencesOfString:@"\n" withString:@""];
+    return [NSURL _web_URLWithDataAsString:string relativeToURL:_baseURL.get()];
 }
 
 - (NSMutableURLRequest *)requestWithURLCString:(const char *)URLCString
@@ -173,7 +165,7 @@ using namespace WebCore;
 
 - (void)handleMouseMoved:(NSEvent *)event
 {
-    // This needs to be overriden by subclasses.
+    // This needs to be overridden by subclasses.
 }
 
 - (void)handleMouseEntered:(NSEvent *)event
@@ -856,11 +848,9 @@ using namespace WebCore;
 
 namespace WebKit {
 
-bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t port, const char* schemeStr, const char* realmStr,
-                           CString& username, CString& password)
+bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t port, const char* schemeStr, const char* realmStr, CString& username, CString& password)
 {
-    if (strcasecmp(protocolStr, "http") != 0 && 
-        strcasecmp(protocolStr, "https") != 0)
+    if (!equalLettersIgnoringASCIICase(protocolStr, "http") && !equalLettersIgnoringASCIICase(protocolStr, "https"))
         return false;
 
     NSString *host = [NSString stringWithUTF8String:hostStr];
@@ -876,10 +866,10 @@ bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t
         return NPERR_GENERIC_ERROR;
     
     NSString *authenticationMethod = NSURLAuthenticationMethodDefault;
-    if (!strcasecmp(protocolStr, "http")) {
-        if (!strcasecmp(schemeStr, "basic"))
+    if (equalLettersIgnoringASCIICase(protocolStr, "http")) {
+        if (equalLettersIgnoringASCIICase(schemeStr, "basic"))
             authenticationMethod = NSURLAuthenticationMethodHTTPBasic;
-        else if (!strcasecmp(schemeStr, "digest"))
+        else if (equalLettersIgnoringASCIICase(schemeStr, "digest"))
             authenticationMethod = NSURLAuthenticationMethodHTTPDigest;
     }
     
@@ -898,6 +888,23 @@ bool getAuthenticationInfo(const char* protocolStr, const char* hostStr, int32_t
     password = [[credential password] UTF8String];
     
     return true;
+}
+
+void sendUserChangeNotifications()
+{
+    auto consoleConnectionChangeNotifyProc = [](CGSNotificationType type, CGSNotificationData, CGSByteCount, CGSNotificationArg) {
+        NSString *notificationName = nil;
+        if (type == kCGSessionConsoleConnect)
+            notificationName = LoginWindowDidSwitchToUserNotification;
+        else if (type == kCGSessionConsoleDisconnect)
+            notificationName = LoginWindowDidSwitchFromUserNotification;
+        else
+            ASSERT_NOT_REACHED();
+        [[NSNotificationCenter defaultCenter] postNotificationName:notificationName object:nil];
+    };
+
+    CGSRegisterNotifyProc(consoleConnectionChangeNotifyProc, kCGSessionConsoleConnect, nullptr);
+    CGSRegisterNotifyProc(consoleConnectionChangeNotifyProc, kCGSessionConsoleDisconnect, nullptr);
 }
 
 } // namespace WebKit

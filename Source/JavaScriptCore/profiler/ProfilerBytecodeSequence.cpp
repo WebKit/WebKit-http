@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,7 @@ BytecodeSequence::BytecodeSequence(CodeBlock* codeBlock)
     
     for (unsigned i = 0; i < codeBlock->numberOfArgumentValueProfiles(); ++i) {
         ConcurrentJSLocker locker(codeBlock->m_lock);
-        CString description = codeBlock->valueProfileForArgument(i)->briefDescription(locker);
+        CString description = codeBlock->valueProfileForArgument(i).briefDescription(locker);
         if (!description.length())
             continue;
         out.reset();
@@ -49,12 +49,12 @@ BytecodeSequence::BytecodeSequence(CodeBlock* codeBlock)
         m_header.append(out.toCString());
     }
     
-    StubInfoMap stubInfos;
-    codeBlock->getStubInfoMap(stubInfos);
+    ICStatusMap statusMap;
+    codeBlock->getICStatusMap(statusMap);
     
     for (unsigned bytecodeIndex = 0; bytecodeIndex < codeBlock->instructions().size();) {
         out.reset();
-        codeBlock->dumpBytecode(out, bytecodeIndex, stubInfos);
+        codeBlock->dumpBytecode(out, bytecodeIndex, statusMap);
         OpcodeID opcodeID = Interpreter::getOpcodeID(codeBlock->instructions()[bytecodeIndex].u.opcode);
         m_sequence.append(Bytecode(bytecodeIndex, opcodeID, out.toCString()));
         bytecodeIndex += opcodeLength(opcodeID);
@@ -85,7 +85,7 @@ void BytecodeSequence::addSequenceProperties(ExecState* exec, JSObject* result) 
         header->putDirectIndex(exec, i, jsString(exec, String::fromUTF8(m_header[i])));
         RETURN_IF_EXCEPTION(scope, void());
     }
-    result->putDirect(vm, exec->propertyNames().header, header);
+    result->putDirect(vm, vm.propertyNames->header, header);
     
     JSArray* sequence = constructEmptyArray(exec, 0);
     RETURN_IF_EXCEPTION(scope, void());
@@ -93,7 +93,7 @@ void BytecodeSequence::addSequenceProperties(ExecState* exec, JSObject* result) 
         sequence->putDirectIndex(exec, i, m_sequence[i].toJS(exec));
         RETURN_IF_EXCEPTION(scope, void());
     }
-    result->putDirect(vm, exec->propertyNames().bytecode, sequence);
+    result->putDirect(vm, vm.propertyNames->bytecode, sequence);
 }
 
 } } // namespace JSC::Profiler

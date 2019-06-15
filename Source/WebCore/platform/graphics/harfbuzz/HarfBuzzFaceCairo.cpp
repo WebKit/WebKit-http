@@ -34,9 +34,9 @@
 
 #include "CairoUtilities.h"
 #include "Font.h"
+#include "FontCascade.h"
 #include "FontPlatformData.h"
 #include "GlyphBuffer.h"
-#include "HarfBuzzShaper.h"
 #include "TextEncoding.h"
 #include <cairo-ft.h>
 #include <cairo.h>
@@ -50,12 +50,8 @@
 namespace WebCore {
 
 struct HarfBuzzFontData {
-    HarfBuzzFontData(WTF::HashMap<uint32_t, uint16_t>* glyphCacheForFaceCacheEntry, cairo_scaled_font_t* cairoScaledFont)
-        : m_glyphCacheForFaceCacheEntry(glyphCacheForFaceCacheEntry)
-        , m_cairoScaledFont(cairoScaledFont)
-    { }
-    WTF::HashMap<uint32_t, uint16_t>* m_glyphCacheForFaceCacheEntry;
-    cairo_scaled_font_t* m_cairoScaledFont;
+    WTF::HashMap<uint32_t, uint16_t>& glyphCacheForFaceCacheEntry;
+    RefPtr<cairo_scaled_font_t> cairoScaledFont;
 };
 
 static hb_position_t floatToHarfBuzzPosition(float value)
@@ -91,19 +87,22 @@ static void CairoGetGlyphWidthAndExtents(cairo_scaled_font_t* scaledFont, hb_cod
 
 static hb_bool_t harfBuzzGetGlyph(hb_font_t*, void* fontData, hb_codepoint_t unicode, hb_codepoint_t, hb_codepoint_t* glyph, void*)
 {
-    HarfBuzzFontData* hbFontData = reinterpret_cast<HarfBuzzFontData*>(fontData);
-    cairo_scaled_font_t* scaledFont = hbFontData->m_cairoScaledFont;
+    auto& hbFontData = *static_cast<HarfBuzzFontData*>(fontData);
+    auto* scaledFont = hbFontData.cairoScaledFont.get();
     ASSERT(scaledFont);
 
-    WTF::HashMap<uint32_t, uint16_t>::AddResult result = hbFontData->m_glyphCacheForFaceCacheEntry->add(unicode, 0);
+    auto result = hbFontData.glyphCacheForFaceCacheEntry.add(unicode, 0);
     if (result.isNewEntry) {
         cairo_glyph_t* glyphs = 0;
         int numGlyphs = 0;
-        UChar ch = unicode;
-        CString utf8Codepoint = UTF8Encoding().encode(StringView(&ch, 1), QuestionMarksForUnencodables);
-        if (cairo_scaled_font_text_to_glyphs(scaledFont, 0, 0, utf8Codepoint.data(), utf8Codepoint.length(), &glyphs, &numGlyphs, 0, 0, 0) != CAIRO_STATUS_SUCCESS)
-            return false;
-        if (!numGlyphs)
+        char buffer[U8_MAX_LENGTH];
+        size_t bufferLength = 0;
+        if (FontCascade::treatAsSpace(unicode) && unicode != '\t')
+            unicode = ' ';
+        else if (FontCascade::treatAsZeroWidthSpaceInComplexScript(unicode))
+            unicode = zeroWidthSpace;
+        U8_APPEND_UNSAFE(buffer, bufferLength, unicode);
+        if (cairo_scaled_font_text_to_glyphs(scaledFont, 0, 0, buffer, bufferLength, &glyphs, &numGlyphs, nullptr, nullptr, nullptr) != CAIRO_STATUS_SUCCESS || !numGlyphs)
             return false;
         result.iterator->value = glyphs[0].index;
         cairo_glyph_free(glyphs);
@@ -114,8 +113,8 @@ static hb_bool_t harfBuzzGetGlyph(hb_font_t*, void* fontData, hb_codepoint_t uni
 
 static hb_position_t harfBuzzGetGlyphHorizontalAdvance(hb_font_t*, void* fontData, hb_codepoint_t glyph, void*)
 {
-    HarfBuzzFontData* hbFontData = reinterpret_cast<HarfBuzzFontData*>(fontData);
-    cairo_scaled_font_t* scaledFont = hbFontData->m_cairoScaledFont;
+    auto& hbFontData = *static_cast<HarfBuzzFontData*>(fontData);
+    auto* scaledFont = hbFontData.cairoScaledFont.get();
     ASSERT(scaledFont);
 
     hb_position_t advance = 0;
@@ -132,8 +131,8 @@ static hb_bool_t harfBuzzGetGlyphHorizontalOrigin(hb_font_t*, void*, hb_codepoin
 
 static hb_bool_t harfBuzzGetGlyphExtents(hb_font_t*, void* fontData, hb_codepoint_t glyph, hb_glyph_extents_t* extents, void*)
 {
-    HarfBuzzFontData* hbFontData = reinterpret_cast<HarfBuzzFontData*>(fontData);
-    cairo_scaled_font_t* scaledFont = hbFontData->m_cairoScaledFont;
+    auto& hbFontData = *static_cast<HarfBuzzFontData*>(fontData);
+    auto* scaledFont = hbFontData.cairoScaledFont.get();
     ASSERT(scaledFont);
 
     CairoGetGlyphWidthAndExtents(scaledFont, glyph, 0, extents);
@@ -159,7 +158,7 @@ static hb_font_funcs_t* harfBuzzCairoTextGetFontFuncs()
 
 static hb_blob_t* harfBuzzCairoGetTable(hb_face_t*, hb_tag_t tag, void* userData)
 {
-    cairo_scaled_font_t* scaledFont = reinterpret_cast<cairo_scaled_font_t*>(userData);
+    auto* scaledFont = static_cast<cairo_scaled_font_t*>(userData);
     if (!scaledFont)
         return 0;
 
@@ -186,36 +185,36 @@ static hb_blob_t* harfBuzzCairoGetTable(hb_face_t*, hb_tag_t tag, void* userData
     return hb_blob_create(reinterpret_cast<const char*>(buffer), tableSize, HB_MEMORY_MODE_WRITABLE, buffer, fastFree);
 }
 
-static void destroyHarfBuzzFontData(void* userData)
-{
-    HarfBuzzFontData* hbFontData = reinterpret_cast<HarfBuzzFontData*>(userData);
-    delete hbFontData;
-}
-
 hb_face_t* HarfBuzzFace::createFace()
 {
-    hb_face_t* face = hb_face_create_for_tables(harfBuzzCairoGetTable, m_platformData->scaledFont(), 0);
+    auto* scaledFont = m_platformData.scaledFont();
+    cairo_scaled_font_reference(scaledFont);
+
+    hb_face_t* face = hb_face_create_for_tables(harfBuzzCairoGetTable, scaledFont,
+        [](void* data)
+        {
+            cairo_scaled_font_destroy(static_cast<cairo_scaled_font_t*>(data));
+        });
     ASSERT(face);
     return face;
 }
 
 hb_font_t* HarfBuzzFace::createFont()
 {
-    hb_font_t* font = hb_font_create(m_face);
-    HarfBuzzFontData* hbFontData = new HarfBuzzFontData(m_glyphCacheForFaceCacheEntry, m_platformData->scaledFont());
-    hb_font_set_funcs(font, harfBuzzCairoTextGetFontFuncs(), hbFontData, destroyHarfBuzzFontData);
-    const float size = m_platformData->size();
+    hb_font_t* font = hb_font_create(m_cacheEntry->face());
+    hb_font_set_funcs(font, harfBuzzCairoTextGetFontFuncs(), new HarfBuzzFontData { m_cacheEntry->glyphCache(), m_platformData.scaledFont() },
+        [](void* data)
+        {
+            delete static_cast<HarfBuzzFontData*>(data);
+        });
+
+    const float size = m_platformData.size();
     if (floorf(size) == size)
         hb_font_set_ppem(font, size, size);
     int scale = floatToHarfBuzzPosition(size);
     hb_font_set_scale(font, scale, scale);
     hb_font_make_immutable(font);
     return font;
-}
-
-GlyphBufferAdvance HarfBuzzShaper::createGlyphBufferAdvance(float width, float height)
-{
-    return GlyphBufferAdvance(width, height);
 }
 
 } // namespace WebCore

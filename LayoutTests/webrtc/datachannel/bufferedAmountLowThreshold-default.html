@@ -23,14 +23,13 @@ function closeDataChannels() {
 }
 
 var longString = "abcdefgh";
-for (var cptr = 0; cptr < 14; ++cptr)
+for (var cptr = 0; cptr < 10; ++cptr)
     longString += longString;
 
 function sendMessages(channel)
 {
-    channel.send(longString);
-    channel.send(longString);
-    channel.send(longString);
+    while(channel.bufferedAmount < 1000)
+        channel.send(longString);
 }
 
 function receiveMessages(event) {

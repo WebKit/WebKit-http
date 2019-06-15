@@ -22,7 +22,7 @@ shouldThrow("Intl.Collator('en', null)", "'TypeError: null is not an object (eva
 var classPrefix = "class DerivedCollator extends Intl.Collator {};";
 shouldBeTrue(classPrefix + "(new DerivedCollator) instanceof DerivedCollator");
 shouldBeTrue(classPrefix + "(new DerivedCollator) instanceof Intl.Collator");
-shouldBeTrue(classPrefix + "new DerivedCollator().compare('a', 'b') === -1");
+shouldBeTrue(classPrefix + "new DerivedCollator('en').compare('a', 'b') === -1");
 shouldBeTrue(classPrefix + "Object.getPrototypeOf(new DerivedCollator) === DerivedCollator.prototype");
 shouldBeTrue(classPrefix + "Object.getPrototypeOf(Object.getPrototypeOf(new DerivedCollator)) === Intl.Collator.prototype");
 
@@ -45,7 +45,6 @@ var testCollator = function(collator, possibleOptionDifferences) {
 }
 
 // Locale is processed correctly.
-shouldBeTrue("testCollator(Intl.Collator(), [{locale: 'en-US'}])");
 shouldBeTrue("testCollator(Intl.Collator('en'), [{locale: 'en'}])");
 shouldBeTrue("testCollator(Intl.Collator('eN-uS'), [{locale: 'en-US'}])");
 shouldBeTrue("testCollator(Intl.Collator(['en', 'de']), [{locale: 'en'}])");
@@ -215,15 +214,26 @@ for (var validLanguageTag of validLanguageTags) {
 
 // 10.3 Properties of the Intl.Collator Prototype Object
 
-// is a plain object
-shouldBe("Intl.Collator.prototype.constructor", "Object");
+// The Intl.Collator prototype object is itself an ordinary object.
 shouldBe("Object.getPrototypeOf(Intl.Collator.prototype)", "Object.prototype");
+
+// 10.3.1 Intl.Collator.prototype.constructor
+// The initial value of Intl.Collator.prototype.constructor is the intrinsic object %Collator%.
+shouldBe("Intl.Collator.prototype.constructor", "Intl.Collator");
+
+// 10.3.2 Intl.Collator.prototype [ @@toStringTag ]
+// The initial value of the @@toStringTag property is the string value "Object".
+shouldBe("Intl.Collator.prototype[Symbol.toStringTag]", "'Object'");
 shouldBe("Object.prototype.toString.call(Intl.Collator.prototype)", "'[object Object]'");
+// This property has the attributes { [[Writable]]: false, [[Enumerable]]: false, [[Configurable]]: true }.
+shouldBeFalse("Object.getOwnPropertyDescriptor(Intl.Collator.prototype, Symbol.toStringTag).writable");
+shouldBeFalse("Object.getOwnPropertyDescriptor(Intl.Collator.prototype, Symbol.toStringTag).enumerable");
+shouldBeTrue("Object.getOwnPropertyDescriptor(Intl.Collator.prototype, Symbol.toStringTag).configurable");
 
 // 10.3.3 Intl.Collator.prototype.compare
 
 // This named accessor property returns a function that compares two strings according to the sort order of this Collator object.
-var defaultCollator = Intl.Collator();
+var defaultCollator = Intl.Collator("en");
 shouldBeType("defaultCollator.compare", "Function");
 
 // The value of the [[Get]] attribute is a function

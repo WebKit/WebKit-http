@@ -29,28 +29,13 @@
 #define USE_FILE_LOCK 1
 #endif
 
-#if PLATFORM(WIN) && !USE(WINGDI)
-#include "WebCoreHeaderDetection.h"
-#endif
-
 #include "PlatformExportMacros.h"
+#include <JavaScriptCore/JSExportMacros.h>
 #include <pal/ExportMacros.h>
-#include <runtime/JSExportMacros.h>
 
 #ifdef __APPLE__
 #define HAVE_FUNC_USLEEP 1
 #endif /* __APPLE__ */
-
-#if OS(WINDOWS)
-
-// CURL needs winsock, so don't prevent inclusion of it
-#if !USE(CURL)
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
-#endif
-#endif
-
-#endif /* OS(WINDOWS) */
 
 // Using CMake with Unix makefiles does not use prefix headers.
 #if PLATFORM(MAC) && defined(BUILDING_WITH_CMAKE)
@@ -71,29 +56,6 @@
 
 #include <wtf/DisallowCType.h>
 
-#if COMPILER(MSVC)
-#define SKIP_STATIC_CONSTRUCTORS_ON_MSVC 1
-#else
-#define SKIP_STATIC_CONSTRUCTORS_ON_GCC 1
-#endif
-
-#if PLATFORM(WIN)
-#if PLATFORM(WIN_CAIRO)
-#undef USE_CG
-#define USE_CURL 1
-#ifndef _WINSOCKAPI_
-#define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
-#endif
-#elif USE(DIRECT2D)
-#undef USE_CA
-#undef USE_CG
-#elif !USE(WINGDI)
-#define USE_CG 1
-#undef USE_CAIRO
-#undef USE_CURL
-#endif
-#endif
-
 #if PLATFORM(MAC) || PLATFORM(WPE)
 #define USE_NEW_THEME 1
 #endif
@@ -108,17 +70,3 @@ typedef float CGFloat;
 #define CGFLOAT_DEFINED 1
 #endif
 #endif /* USE(CG) */
-
-// FIXME: Move this to JavaScriptCore/wtf/Platform.h, which is where we define USE_AVFOUNDATION on the Mac.
-// https://bugs.webkit.org/show_bug.cgi?id=67334
-#if PLATFORM(WIN) && USE(CG) && HAVE(AVCF)
-#define USE_AVFOUNDATION 1
-
-#if HAVE(AVCF_LEGIBLE_OUTPUT)
-#define USE_AVFOUNDATION 1
-#define HAVE_AVFOUNDATION_MEDIA_SELECTION_GROUP 1
-#define HAVE_AVFOUNDATION_LEGIBLE_OUTPUT_SUPPORT 1
-#define HAVE_MEDIA_ACCESSIBILITY_FRAMEWORK 1
-#endif
-
-#endif

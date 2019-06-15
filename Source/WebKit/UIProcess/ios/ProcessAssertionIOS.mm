@@ -96,9 +96,8 @@ using WebKit::ProcessAssertionClient;
 - (void)_notifyClientsOfImminentSuspension
 {
     ASSERT(RunLoop::isMain());
-    Vector<ProcessAssertionClient*> clientsToNotify;
-    copyToVector(_clients, clientsToNotify);
-    for (auto* client : clientsToNotify)
+
+    for (auto* client : copyToVector(_clients))
         client->assertionWillExpireImminently();
 }
 
@@ -161,11 +160,10 @@ static BKSProcessAssertionFlags flagsForState(AssertionState assertionState)
 }
 
 ProcessAssertion::ProcessAssertion(pid_t pid, AssertionState assertionState, Function<void()>&& invalidationCallback)
-    : m_weakFactory(this)
-    , m_invalidationCallback(WTFMove(invalidationCallback))
+    : m_invalidationCallback(WTFMove(invalidationCallback))
     , m_assertionState(assertionState)
 {
-    auto weakThis = createWeakPtr();
+    auto weakThis = makeWeakPtr(*this);
     BKSProcessAssertionAcquisitionHandler handler = ^(BOOL acquired) {
         if (!acquired) {
             RELEASE_LOG_ERROR(ProcessSuspension, " %p - ProcessAssertion() Unable to acquire assertion for process with PID %d", this, pid);
@@ -177,7 +175,7 @@ ProcessAssertion::ProcessAssertion(pid_t pid, AssertionState assertionState, Fun
         }
     };
     RELEASE_LOG(ProcessSuspension, "%p - ProcessAssertion() Acquiring assertion for process with PID %d", this, pid);
-    m_assertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:pid flags:flagsForState(assertionState) reason:BKSProcessAssertionReasonExtension name:@"Web content visible" withHandler:handler]);
+    m_assertion = adoptNS([[BKSProcessAssertion alloc] initWithPID:pid flags:flagsForState(assertionState) reason:BKSProcessAssertionReasonExtension name:@"Web content visibility" withHandler:handler]);
     m_assertion.get().invalidationHandler = ^() {
         dispatch_async(dispatch_get_main_queue(), ^{
             RELEASE_LOG(ProcessSuspension, "%p - ProcessAssertion() Process assertion for process with PID %d was invalidated", this, pid);
@@ -203,7 +201,8 @@ void ProcessAssertion::markAsInvalidated()
     ASSERT(RunLoop::isMain());
 
     m_validity = Validity::No;
-    m_invalidationCallback();
+    if (m_invalidationCallback)
+        m_invalidationCallback();
 }
 
 void ProcessAssertion::setState(AssertionState assertionState)

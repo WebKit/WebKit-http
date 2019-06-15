@@ -32,13 +32,12 @@
 #include "CAAudioStreamDescription.h"
 #include "Logging.h"
 
-#include "CoreMediaSoftLink.h"
+#include <pal/cf/CoreMediaSoftLink.h>
+#include <pal/spi/cocoa/AudioToolboxSPI.h>
 
-#if ENABLE(VIDEO_TRACK)
+#if ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)
 
 namespace WebCore {
-
-const int renderBufferSize = 128;
 
 AudioTrackPrivateMediaStreamCocoa::AudioTrackPrivateMediaStreamCocoa(MediaStreamTrackPrivate& track)
     : AudioTrackPrivateMediaStream(track)
@@ -116,13 +115,13 @@ AudioComponentInstance AudioTrackPrivateMediaStreamCocoa::createAudioUnit(CAAudi
     AudioComponent ioComponent = AudioComponentFindNext(nullptr, &ioUnitDescription);
     ASSERT(ioComponent);
     if (!ioComponent) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnit(%p) unable to find remote IO unit component", this);
+        ERROR_LOG(LOGIDENTIFIER, "unable to find remote IO unit component");
         return nullptr;
     }
 
     OSStatus err = AudioComponentInstanceNew(ioComponent, &remoteIOUnit);
     if (err) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnit(%p) unable to open vpio unit, error %d (%.4s)", this, (int)err, (char*)&err);
+        ERROR_LOG(LOGIDENTIFIER, "unable to open vpio unit, error = ", err, " (", (const char*)&err, ")");
         return nullptr;
     }
 
@@ -130,7 +129,7 @@ AudioComponentInstance AudioTrackPrivateMediaStreamCocoa::createAudioUnit(CAAudi
     UInt32 param = 1;
     err = AudioUnitSetProperty(remoteIOUnit, kAudioOutputUnitProperty_EnableIO, kAudioUnitScope_Output, 0, &param, sizeof(param));
     if (err) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnit(%p) unable to enable vpio unit output, error %d (%.4s)", this, (int)err, (char*)&err);
+        ERROR_LOG(LOGIDENTIFIER, "unable to enable vpio unit output, error = ", err, " (", (const char*)&err, ")");
         return nullptr;
     }
 #endif
@@ -138,14 +137,14 @@ AudioComponentInstance AudioTrackPrivateMediaStreamCocoa::createAudioUnit(CAAudi
     AURenderCallbackStruct callback = { inputProc, this };
     err = AudioUnitSetProperty(remoteIOUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Global, 0, &callback, sizeof(callback));
     if (err) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnit(%p) unable to set vpio unit speaker proc, error %d (%.4s)", this, (int)err, (char*)&err);
+        ERROR_LOG(LOGIDENTIFIER, "unable to set vpio unit speaker proc, error = ", err, " (", (const char*)&err, ")");
         return nullptr;
     }
 
     UInt32 size = sizeof(outputDescription.streamDescription());
     err  = AudioUnitGetProperty(remoteIOUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &outputDescription.streamDescription(), &size);
     if (err) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnits(%p) unable to get input stream format, error %d (%.4s)", this, (int)err, (char*)&err);
+        ERROR_LOG(LOGIDENTIFIER, "unable to get input stream format, error = ", err, " (", (const char*)&err, ")");
         return nullptr;
     }
 
@@ -153,26 +152,22 @@ AudioComponentInstance AudioTrackPrivateMediaStreamCocoa::createAudioUnit(CAAudi
 
     err = AudioUnitSetProperty(remoteIOUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Input, 0, &outputDescription.streamDescription(), sizeof(outputDescription.streamDescription()));
     if (err) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnits(%p) unable to set input stream format, error %d (%.4s)", this, (int)err, (char*)&err);
+        ERROR_LOG(LOGIDENTIFIER, "unable to set input stream format, error = ", err, " (", (const char*)&err, ")");
         return nullptr;
     }
 
     err = AudioUnitInitialize(remoteIOUnit);
     if (err) {
-        LOG(Media, "AudioTrackPrivateMediaStreamCocoa::createAudioUnits(%p) AudioUnitInitialize() failed, error %d (%.4s)", this, (int)err, (char*)&err);
+        ERROR_LOG(LOGIDENTIFIER, "AudioUnitInitialize() failed, error = ", err, " (", (const char*)&err, ")");
         return nullptr;
     }
-
-    AudioSession::sharedSession().setPreferredBufferSize(renderBufferSize);
 
     return remoteIOUnit;
 }
 
+// May get called on a background thread.
 void AudioTrackPrivateMediaStreamCocoa::audioSamplesAvailable(const MediaTime& sampleTime, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t sampleCount)
 {
-    // This function is called on a background thread. The following protectedThis object ensures the object is not
-    // destroyed on the main thread before this function exits.
-    Ref<AudioTrackPrivateMediaStreamCocoa> protectedThis { *this };
     ASSERT(description.platformDescription().type == PlatformDescription::CAAudioStreamBasicType);
 
     if (!m_inputDescription || *m_inputDescription != description) {
@@ -196,11 +191,16 @@ void AudioTrackPrivateMediaStreamCocoa::audioSamplesAvailable(const MediaTime& s
         m_inputDescription = std::make_unique<CAAudioStreamDescription>(inputDescription);
         m_outputDescription = std::make_unique<CAAudioStreamDescription>(outputDescription);
 
-        if (!m_dataSource)
-            m_dataSource = AudioSampleDataSource::create(description.sampleRate() * 2);
+        m_dataSource = AudioSampleDataSource::create(description.sampleRate() * 2);
 
         if (m_dataSource->setInputFormat(inputDescription) || m_dataSource->setOutputFormat(outputDescription)) {
             AudioComponentInstanceDispose(remoteIOUnit);
+            return;
+        }
+
+        if (m_isPlaying && AudioOutputUnitStart(remoteIOUnit)) {
+            AudioComponentInstanceDispose(remoteIOUnit);
+            m_inputDescription = nullptr;
             return;
         }
 
@@ -244,4 +244,4 @@ OSStatus AudioTrackPrivateMediaStreamCocoa::inputProc(void* userData, AudioUnitR
 
 } // namespace WebCore
 
-#endif // ENABLE(VIDEO_TRACK)
+#endif // ENABLE(VIDEO_TRACK) && ENABLE(MEDIA_STREAM)

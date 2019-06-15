@@ -43,7 +43,7 @@
 @class WebView;
 @class WebEditorUndoTarget;
 
-class WebEditorClient final : public WebCore::EditorClient, public WebCore::TextCheckerClient {
+class WebEditorClient final : public WebCore::EditorClient, public WebCore::TextCheckerClient, public CanMakeWeakPtr<WebEditorClient> {
 public:
     WebEditorClient(WebView *);
     virtual ~WebEditorClient();
@@ -78,11 +78,9 @@ private:
     void willWriteSelectionToPasteboard(WebCore::Range*) final;
     void didWriteSelectionToPasteboard() final;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData) final;
+    String replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType) final;
 
-    NSString *userVisibleString(NSURL *) final;
     void setInsertionPasteboard(const String&) final;
-    NSURL *canonicalizeURL(NSURL *) final;
-    NSURL *canonicalizeURLString(NSString *) final;
 
 #if USE(APPKIT)
     void uppercaseWord() final;
@@ -110,10 +108,11 @@ private:
 
     void respondToChangedContents() final;
     void respondToChangedSelection(WebCore::Frame*) final;
-    void didChangeSelectionAndUpdateLayout() final { }
+    void didEndUserTriggeredSelectionChanges() final { }
     void updateEditorStateAfterLayoutIfEditabilityChanged() final;
     void discardedComposition(WebCore::Frame*) final;
     void canceledComposition() final;
+    void didUpdateComposition() final { }
 
     void registerUndoStep(WebCore::UndoStep&) final;
     void registerRedoStep(WebCore::UndoStep&) final;
@@ -141,14 +140,10 @@ private:
 #if PLATFORM(IOS)
     void startDelayingAndCoalescingContentChangeNotifications() final;
     void stopDelayingAndCoalescingContentChangeNotifications() final;
-    void writeDataToPasteboard(NSDictionary*) final;
-    NSArray* supportedPasteboardTypesForCurrentSelection() final;
-    NSArray* readDataFromPasteboard(NSString* type, int index) final;
     bool hasRichlyEditableSelection() final;
     int getPasteboardItemsCount() final;
     RefPtr<WebCore::DocumentFragment> documentFragmentFromDelegate(int index) final;
     bool performsTwoStepPaste(WebCore::DocumentFragment*) final;
-    int pasteboardChangeCount() final;
 #endif
 
     bool performTwoStepDrop(WebCore::DocumentFragment&, WebCore::Range& destination, bool isMove) final;
@@ -159,7 +154,7 @@ private:
     void checkSpellingOfString(StringView, int* misspellingLocation, int* misspellingLength) final;
     String getAutoCorrectSuggestionForMisspelledWord(const String&) final;
     void checkGrammarOfString(StringView, Vector<WebCore::GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
-    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, WebCore::TextCheckingTypeMask checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
+    Vector<WebCore::TextCheckingResult> checkTextOfParagraph(StringView, OptionSet<WebCore::TextCheckingType> checkingTypes, const WebCore::VisibleSelection& currentSelection) final;
     void updateSpellingUIWithGrammarString(const String&, const WebCore::GrammarDetail&) final;
     void updateSpellingUIWithMisspelledWord(const String&) final;
     void showSpellingUI(bool show) final;
@@ -198,8 +193,6 @@ private:
 
     enum class EditorStateIsContentEditable { No, Yes, Unset };
     EditorStateIsContentEditable m_lastEditorStateWasContentEditable { EditorStateIsContentEditable::Unset };
-
-    WeakPtrFactory<WebEditorClient> m_weakPtrFactory;
 };
 
 inline NSSelectionAffinity kit(WebCore::EAffinity affinity)
@@ -234,10 +227,6 @@ inline bool WebEditorClient::isGrammarCheckingEnabled()
 }
 
 inline void WebEditorClient::toggleGrammarChecking()
-{
-}
-
-inline void WebEditorClient::toggleContinuousSpellChecking()
 {
 }
 

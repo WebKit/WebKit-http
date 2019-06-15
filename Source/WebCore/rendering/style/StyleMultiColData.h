@@ -25,6 +25,7 @@
 #pragma once
 
 #include "BorderValue.h"
+#include "GapLength.h"
 #include "RenderStyleConstants.h"
 #include <wtf/RefCounted.h>
 
@@ -42,22 +43,20 @@ public:
 
     unsigned short ruleWidth() const
     {
-        if (rule.style() == BNONE || rule.style() == BHIDDEN)
+        if (rule.style() == BorderStyle::None || rule.style() == BorderStyle::Hidden)
             return 0; 
         return rule.width();
     }
 
     float width { 0 };
     unsigned short count;
-    float gap { 0 };
     BorderValue rule;
     Color visitedLinkColumnRuleColor;
 
     bool autoWidth : 1;
     bool autoCount : 1;
-    bool normalGap : 1;
     unsigned fill : 1; // ColumnFill
-    unsigned columnSpan : 1;
+    unsigned columnSpan : 1; // ColumnSpan
     unsigned axis : 2; // ColumnAxis
     unsigned progression : 2; // ColumnProgression
 

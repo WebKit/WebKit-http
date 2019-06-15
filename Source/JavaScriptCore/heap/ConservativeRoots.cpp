@@ -31,7 +31,7 @@
 #include "HeapInlines.h"
 #include "HeapUtil.h"
 #include "JITStubRoutineSet.h"
-#include "JSCell.h"
+#include "JSCast.h"
 #include "JSObject.h"
 #include "JSCInlines.h"
 #include "MarkedBlockInlines.h"
@@ -66,13 +66,16 @@ void ConservativeRoots::grow()
 }
 
 template<typename MarkHook>
-inline void ConservativeRoots::genericAddPointer(void* p, HeapVersion markingVersion, TinyBloomFilter filter, MarkHook& markHook)
+inline void ConservativeRoots::genericAddPointer(void* p, HeapVersion markingVersion, HeapVersion newlyAllocatedVersion, TinyBloomFilter filter, MarkHook& markHook)
 {
     markHook.mark(p);
 
     HeapUtil::findGCObjectPointersForMarking(
-        m_heap, markingVersion, filter, p,
-        [&] (void* p) {
+        m_heap, markingVersion, newlyAllocatedVersion, filter, p,
+        [&] (void* p, HeapCell::Kind cellKind) {
+            if (isJSCellKind(cellKind))
+                markHook.markKnownJSCell(static_cast<JSCell*>(p));
+            
             if (m_size == m_capacity)
                 grow();
             
@@ -95,24 +98,21 @@ void ConservativeRoots::genericAddSpan(void* begin, void* end, MarkHook& markHoo
 
     TinyBloomFilter filter = m_heap.objectSpace().blocks().filter(); // Make a local copy of filter to show the compiler it won't alias, and can be register-allocated.
     HeapVersion markingVersion = m_heap.objectSpace().markingVersion();
+    HeapVersion newlyAllocatedVersion = m_heap.objectSpace().newlyAllocatedVersion();
     for (char** it = static_cast<char**>(begin); it != static_cast<char**>(end); ++it)
-        genericAddPointer(*it, markingVersion, filter, markHook);
+        genericAddPointer(*it, markingVersion, newlyAllocatedVersion, filter, markHook);
 }
 
 class DummyMarkHook {
 public:
     void mark(void*) { }
+    void markKnownJSCell(JSCell*) { }
 };
 
 void ConservativeRoots::add(void* begin, void* end)
 {
     DummyMarkHook dummy;
     genericAddSpan(begin, end, dummy);
-}
-
-void ConservativeRoots::add(void* begin, void* end, JITStubRoutineSet& jitStubRoutines)
-{
-    genericAddSpan(begin, end, jitStubRoutines);
 }
 
 class CompositeMarkHook {
@@ -127,7 +127,12 @@ public:
     void mark(void* address)
     {
         m_stubRoutines.mark(address);
-        m_codeBlocks.mark(m_codeBlocksLocker, address);
+    }
+    
+    void markKnownJSCell(JSCell* cell)
+    {
+        if (cell->type() == CodeBlockType)
+            m_codeBlocks.mark(m_codeBlocksLocker, jsCast<CodeBlock*>(cell));
     }
 
 private:

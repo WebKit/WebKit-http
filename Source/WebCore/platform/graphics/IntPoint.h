@@ -64,16 +64,19 @@ class QPoint;
 QT_END_NAMESPACE
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class FloatPoint;
-class TextStream;
 
 class IntPoint {
 public:
     IntPoint() : m_x(0), m_y(0) { }
     IntPoint(int x, int y) : m_x(x), m_y(y) { }
-    WEBCORE_EXPORT explicit IntPoint(const IntSize& size) : m_x(size.width()), m_y(size.height()) { }
+    explicit IntPoint(const IntSize& size) : m_x(size.width()), m_y(size.height()) { }
     WEBCORE_EXPORT explicit IntPoint(const FloatPoint&); // don't do this implicitly since it's lossy
 
     static IntPoint zero() { return IntPoint(); }
@@ -217,7 +220,7 @@ inline int IntPoint::distanceSquaredToPoint(const IntPoint& point) const
     return ((*this) - point).diagonalLengthSquared();
 }
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const IntPoint&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const IntPoint&);
 
 } // namespace WebCore
 

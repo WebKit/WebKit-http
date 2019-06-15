@@ -66,6 +66,55 @@ StatementNode* SourceElements::singleStatement() const
     return m_head == m_tail ? m_head : nullptr;
 }
 
+StatementNode* SourceElements::lastStatement() const
+{
+    return m_tail;
+}
+
+bool SourceElements::hasCompletionValue() const
+{
+    for (StatementNode* statement = m_head; statement; statement = statement->next()) {
+        if (statement->hasCompletionValue())
+            return true;
+    }
+
+    return false;
+}
+
+bool SourceElements::hasEarlyBreakOrContinue() const
+{
+    for (StatementNode* statement = m_head; statement; statement = statement->next()) {
+        if (statement->isBreak() || statement->isContinue())
+            return true;
+        if (statement->hasCompletionValue())
+            return false;
+    }
+
+    return false;
+}
+
+// ------------------------------ BlockNode ------------------------------------
+
+StatementNode* BlockNode::lastStatement() const
+{
+    return m_statements ? m_statements->lastStatement() : nullptr;
+}
+
+StatementNode* BlockNode::singleStatement() const
+{
+    return m_statements ? m_statements->singleStatement() : nullptr;
+}
+
+bool BlockNode::hasCompletionValue() const
+{
+    return m_statements ? m_statements->hasCompletionValue() : false;
+}
+
+bool BlockNode::hasEarlyBreakOrContinue() const
+{
+    return m_statements ? m_statements->hasEarlyBreakOrContinue() : false;
+}
+
 // ------------------------------ ScopeNode -----------------------------
 
 ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, bool inStrictContext)
@@ -100,7 +149,17 @@ ScopeNode::ScopeNode(ParserArena& parserArena, const JSTokenLocation& startLocat
 
 StatementNode* ScopeNode::singleStatement() const
 {
-    return m_statements ? m_statements->singleStatement() : 0;
+    return m_statements ? m_statements->singleStatement() : nullptr;
+}
+
+bool ScopeNode::hasCompletionValue() const
+{
+    return m_statements ? m_statements->hasCompletionValue() : false;
+}
+
+bool ScopeNode::hasEarlyBreakOrContinue() const
+{
+    return m_statements ? m_statements->hasEarlyBreakOrContinue() : false;
 }
 
 // ------------------------------ ProgramNode -----------------------------
@@ -138,6 +197,11 @@ FunctionMetadataNode::FunctionMetadataNode(
     int functionKeywordStart, int functionNameStart, int parametersStart, bool isInStrictContext, 
     ConstructorKind constructorKind, SuperBinding superBinding, unsigned parameterCount, SourceParseMode mode, bool isArrowFunctionBodyExpression)
         : Node(endLocation)
+        , m_isInStrictContext(isInStrictContext)
+        , m_superBinding(static_cast<unsigned>(superBinding))
+        , m_constructorKind(static_cast<unsigned>(constructorKind))
+        , m_isArrowFunctionBodyExpression(isArrowFunctionBodyExpression)
+        , m_parseMode(mode)
         , m_startColumn(startColumn)
         , m_endColumn(endColumn)
         , m_functionKeywordStart(functionKeywordStart)
@@ -145,11 +209,29 @@ FunctionMetadataNode::FunctionMetadataNode(
         , m_parametersStart(parametersStart)
         , m_startStartOffset(startLocation.startOffset)
         , m_parameterCount(parameterCount)
-        , m_parseMode(mode)
+{
+    ASSERT(m_superBinding == static_cast<unsigned>(superBinding));
+    ASSERT(m_constructorKind == static_cast<unsigned>(constructorKind));
+}
+
+FunctionMetadataNode::FunctionMetadataNode(
+    const JSTokenLocation& startLocation, 
+    const JSTokenLocation& endLocation, unsigned startColumn, unsigned endColumn, 
+    int functionKeywordStart, int functionNameStart, int parametersStart, bool isInStrictContext, 
+    ConstructorKind constructorKind, SuperBinding superBinding, unsigned parameterCount, SourceParseMode mode, bool isArrowFunctionBodyExpression)
+        : Node(endLocation)
         , m_isInStrictContext(isInStrictContext)
         , m_superBinding(static_cast<unsigned>(superBinding))
         , m_constructorKind(static_cast<unsigned>(constructorKind))
         , m_isArrowFunctionBodyExpression(isArrowFunctionBodyExpression)
+        , m_parseMode(mode)
+        , m_startColumn(startColumn)
+        , m_endColumn(endColumn)
+        , m_functionKeywordStart(functionKeywordStart)
+        , m_functionNameStart(functionNameStart)
+        , m_parametersStart(parametersStart)
+        , m_startStartOffset(startLocation.startOffset)
+        , m_parameterCount(parameterCount)
 {
     ASSERT(m_superBinding == static_cast<unsigned>(superBinding));
     ASSERT(m_constructorKind == static_cast<unsigned>(constructorKind));
@@ -166,6 +248,55 @@ void FunctionMetadataNode::setEndPosition(JSTextPosition position)
 {
     m_lastLine = position.line;
     m_endColumn = position.offset - position.lineStartOffset;
+}
+
+bool FunctionMetadataNode::operator==(const FunctionMetadataNode& other) const
+{
+    return m_parseMode== other.m_parseMode
+        && m_isInStrictContext == other.m_isInStrictContext
+        && m_superBinding == other.m_superBinding
+        && m_constructorKind == other.m_constructorKind
+        && m_isArrowFunctionBodyExpression == other.m_isArrowFunctionBodyExpression
+        && m_ident == other.m_ident
+        && m_ecmaName == other.m_ecmaName
+        && m_inferredName == other.m_inferredName
+        && m_functionMode== other.m_functionMode
+        && m_startColumn== other.m_startColumn
+        && m_endColumn== other.m_endColumn
+        && m_functionKeywordStart== other.m_functionKeywordStart
+        && m_functionNameStart== other.m_functionNameStart
+        && m_parametersStart== other.m_parametersStart
+        && m_source== other.m_source
+        && m_classSource== other.m_classSource
+        && m_startStartOffset== other.m_startStartOffset
+        && m_parameterCount== other.m_parameterCount
+        && m_lastLine== other.m_lastLine
+        && m_position == other.m_position;
+}
+
+void FunctionMetadataNode::dump(PrintStream& stream) const
+{
+    stream.println("m_parseMode ", static_cast<uint32_t>(m_parseMode));
+    stream.println("m_isInStrictContext ", m_isInStrictContext);
+    stream.println("m_superBinding ", m_superBinding);
+    stream.println("m_constructorKind ", m_constructorKind);
+    stream.println("m_isArrowFunctionBodyExpression ", m_isArrowFunctionBodyExpression);
+    stream.println("m_ident ", m_ident);
+    stream.println("m_ecmaName ", m_ecmaName);
+    stream.println("m_inferredName ", m_inferredName);
+    stream.println("m_functionMode ", static_cast<uint32_t>(m_functionMode));
+    stream.println("m_startColumn ", m_startColumn);
+    stream.println("m_endColumn ", m_endColumn);
+    stream.println("m_functionKeywordStart ", m_functionKeywordStart);
+    stream.println("m_functionNameStart ", m_functionNameStart);
+    stream.println("m_parametersStart ", m_parametersStart);
+    stream.println("m_classSource.isNull() ", m_classSource.isNull());
+    stream.println("m_startStartOffset ", m_startStartOffset);
+    stream.println("m_parameterCount ", m_parameterCount);
+    stream.println("m_lastLine ", m_lastLine);
+    stream.println("position().line ", position().line);
+    stream.println("position().offset ", position().offset);
+    stream.println("position().lineStartOffset ", position().lineStartOffset);
 }
 
 // ------------------------------ FunctionNode -----------------------------
@@ -189,9 +320,11 @@ bool PropertyListNode::hasStaticallyNamedProperty(const Identifier& propName)
 {
     PropertyListNode* list = this;
     while (list) {
-        const Identifier* currentNodeName = list->m_node->name();
-        if (currentNodeName && *currentNodeName == propName)
-            return true;
+        if (list->m_node->isStaticClassProperty()) {
+            const Identifier* currentNodeName = list->m_node->name();
+            if (currentNodeName && *currentNodeName == propName)
+                return true;
+        }
         list = list->m_next;
     }
     return false;

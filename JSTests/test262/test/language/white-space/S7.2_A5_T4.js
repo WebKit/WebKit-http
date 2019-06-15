@@ -2,12 +2,16 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     White space cannot be expressed as a Unicode escape sequence consisting
     of six characters, namely \u plus four hexadecimal digits
 es5id: 7.2_A5_T4
 description: Use SPACE (U+0020)
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 var\u0020x;

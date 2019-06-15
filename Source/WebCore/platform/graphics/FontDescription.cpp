@@ -31,6 +31,7 @@
 #include "FontDescription.h"
 
 #include "LocaleToScriptMapping.h"
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
@@ -54,12 +55,12 @@ struct SameSizeAsFontCascadeDescription {
 COMPILE_ASSERT(sizeof(FontCascadeDescription) == sizeof(SameSizeAsFontCascadeDescription), FontCascadeDescription_should_stay_small);
 
 FontDescription::FontDescription()
-    : m_fontSelectionRequest(FontCascadeDescription::initialWeight(), FontCascadeDescription::initialStretch(), FontCascadeDescription::initialItalic())
-    , m_orientation(Horizontal)
+    : m_fontSelectionRequest { FontCascadeDescription::initialWeight(), FontCascadeDescription::initialStretch(), FontCascadeDescription::initialItalic() }
+    , m_orientation(static_cast<unsigned>(FontOrientation::Horizontal))
     , m_nonCJKGlyphOrientation(static_cast<unsigned>(NonCJKGlyphOrientation::Mixed))
-    , m_widthVariant(RegularWidth)
+    , m_widthVariant(static_cast<unsigned>(FontWidthVariant::RegularWidth))
     , m_renderingMode(static_cast<unsigned>(FontRenderingMode::Normal))
-    , m_textRendering(AutoTextRendering)
+    , m_textRendering(static_cast<unsigned>(TextRenderingMode::AutoTextRendering))
     , m_script(USCRIPT_COMMON)
     , m_fontSynthesis(FontSynthesisWeight | FontSynthesisStyle | FontSynthesisSmallCaps)
     , m_variantCommonLigatures(static_cast<unsigned>(FontVariantLigatures::Normal))
@@ -79,6 +80,7 @@ FontDescription::FontDescription()
     , m_variantEastAsianRuby(static_cast<unsigned>(FontVariantEastAsianRuby::Normal))
     , m_opticalSizing(static_cast<unsigned>(FontOpticalSizing::Enabled))
     , m_fontStyleAxis(FontCascadeDescription::initialFontStyleAxis() == FontStyleAxis::ital)
+    , m_shouldAllowUserInstalledFonts(static_cast<unsigned>(AllowUserInstalledFonts::Yes))
 {
 }
 
@@ -92,7 +94,7 @@ FontCascadeDescription::FontCascadeDescription()
     : m_isAbsoluteSize(false)
     , m_kerning(static_cast<unsigned>(Kerning::Auto))
     , m_keywordSize(0)
-    , m_fontSmoothing(AutoSmoothing)
+    , m_fontSmoothing(static_cast<unsigned>(FontSmoothingMode::AutoSmoothing))
     , m_isSpecifiedFont(false)
 {
 }
@@ -154,5 +156,32 @@ bool FontCascadeDescription::familiesEqualForTextAutoSizing(const FontCascadeDes
 }
 
 #endif // ENABLE(TEXT_AUTOSIZING)
+
+bool FontCascadeDescription::familyNamesAreEqual(const AtomicString& family1, const AtomicString& family2)
+{
+    // FIXME: <rdar://problem/33594253> CoreText matches dot-prefixed font names case sensitively. We should
+    // always take the case insensitive patch once this radar is fixed.
+    if (family1.startsWith('.'))
+        return StringHash::equal(family1.string(), family2.string());
+    return ASCIICaseInsensitiveHash::equal(family1, family2);
+}
+
+unsigned FontCascadeDescription::familyNameHash(const AtomicString& family)
+{
+    // FIXME: <rdar://problem/33594253> CoreText matches dot-prefixed font names case sensitively. We should
+    // always take the case insensitive patch once this radar is fixed.
+    if (family.startsWith('.'))
+        return StringHash::hash(family.string());
+    return ASCIICaseInsensitiveHash::hash(family);
+}
+
+String FontCascadeDescription::foldedFamilyName(const AtomicString& family)
+{
+    // FIXME: <rdar://problem/33594253> CoreText matches dot-prefixed font names case sensitively. We should
+    // always take the case insensitive patch once this radar is fixed.
+    if (family.startsWith('.'))
+        return family.string();
+    return family.string().foldCase();
+}
 
 } // namespace WebCore

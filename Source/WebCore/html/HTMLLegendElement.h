@@ -30,6 +30,7 @@ namespace WebCore {
 class HTMLFormControlElement;
 
 class HTMLLegendElement final : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLLegendElement);
 public:
     static Ref<HTMLLegendElement> create(const QualifiedName&, Document&);
 
@@ -39,7 +40,7 @@ private:
     HTMLLegendElement(const QualifiedName&, Document&);
 
     // Control in the legend's field set that gets focus and access key.
-    HTMLFormControlElement* associatedControl();
+    RefPtr<HTMLFormControlElement> associatedControl();
 
     void accessKeyAction(bool sendMouseEvents) final;
     void focus(bool restorePreviousSelection, FocusDirection) final;

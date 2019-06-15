@@ -26,17 +26,18 @@
 #include "Length.h"
 
 #include "CalculationValue.h"
-#include "TextStream.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/HashMap.h>
+#include <wtf/MallocPtr.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringView.h>
+#include <wtf/text/TextStream.h>
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 static Length parseLength(const UChar* data, unsigned length)
 {
@@ -88,7 +89,7 @@ static unsigned countCharacter(StringImpl& string, UChar character)
     return count;
 }
 
-std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
+UniqueArray<Length> newCoordsArray(const String& string, int& len)
 {
     unsigned length = string.length();
     StringBuffer<UChar> spacified(length);
@@ -104,7 +105,7 @@ std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
     str = str->simplifyWhiteSpace();
 
     len = countCharacter(*str, ' ') + 1;
-    auto r = std::make_unique<Length[]>(len);
+    auto r = makeUniqueArray<Length>(len);
 
     int i = 0;
     unsigned pos = 0;
@@ -122,7 +123,7 @@ std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
     return r;
 }
 
-std::unique_ptr<Length[]> newLengthArray(const String& string, int& len)
+UniqueArray<Length> newLengthArray(const String& string, int& len)
 {
     RefPtr<StringImpl> str = string.impl()->simplifyWhiteSpace();
     if (!str->length()) {
@@ -131,7 +132,7 @@ std::unique_ptr<Length[]> newLengthArray(const String& string, int& len)
     }
 
     len = countCharacter(*str, ',') + 1;
-    auto r = std::make_unique<Length[]>(len);
+    auto r = makeUniqueArray<Length>(len);
 
     int i = 0;
     unsigned pos = 0;
@@ -290,9 +291,11 @@ Length convertTo100PercentMinusLength(const Length& length)
         return Length(100 - length.value(), Percent);
     
     // Turn this into a calc expression: calc(100% - length)
-    auto lhs = std::make_unique<CalcExpressionLength>(Length(100, Percent));
-    auto rhs = std::make_unique<CalcExpressionLength>(length);
-    auto op = std::make_unique<CalcExpressionBinaryOperation>(WTFMove(lhs), WTFMove(rhs), CalcSubtract);
+    Vector<std::unique_ptr<CalcExpressionNode>> lengths;
+    lengths.reserveInitialCapacity(2);
+    lengths.uncheckedAppend(std::make_unique<CalcExpressionLength>(Length(100, Percent)));
+    lengths.uncheckedAppend(std::make_unique<CalcExpressionLength>(length));
+    auto op = std::make_unique<CalcExpressionOperation>(WTFMove(lengths), CalcOperator::Subtract);
     return Length(CalculationValue::create(WTFMove(op), ValueRangeAll));
 }
 
@@ -310,7 +313,10 @@ static Length blendMixedTypes(const Length& from, const Length& to, double progr
 
 Length blend(const Length& from, const Length& to, double progress)
 {
-    if (from.isAuto() || from.isUndefined() || to.isAuto() || to.isUndefined())
+    if (from.isAuto() || to.isAuto())
+        return progress < 0.5 ? from : to;
+
+    if (from.isUndefined() || to.isUndefined())
         return to;
 
     if (from.type() == Calculated || to.type() == Calculated)

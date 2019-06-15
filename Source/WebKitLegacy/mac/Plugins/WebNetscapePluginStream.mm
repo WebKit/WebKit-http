@@ -39,7 +39,7 @@
 #import "WebNetscapePluginView.h"
 #import "WebResourceLoadScheduler.h"
 #import <Foundation/NSURLResponse.h>
-#import <WebCore/CFNetworkSPI.h>
+#import <JavaScriptCore/JSLock.h>
 #import <WebCore/CommonVM.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
@@ -50,10 +50,9 @@
 #import <WebCore/PlatformStrategies.h>
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityPolicy.h>
-#import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
-#import <WebKitSystemInterface.h>
-#import <runtime/JSLock.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
+#import <wtf/CompletionHandler.h>
 #import <wtf/HashMap.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/StdLibExtras.h>
@@ -291,7 +290,9 @@ void WebNetscapePluginStream::start()
     ASSERT(!m_frameLoader);
     ASSERT(!m_loader);
 
-    m_loader = webResourceLoadScheduler().schedulePluginStreamLoad(*core([m_pluginView.get() webFrame]), *this, m_request.get());
+    webResourceLoadScheduler().schedulePluginStreamLoad(*core([m_pluginView.get() webFrame]), *this, m_request.get(), [this, protectedThis = makeRef(*this)] (RefPtr<WebCore::NetscapePlugInStreamLoader>&& loader) {
+        m_loader = WTFMove(loader);
+    });
 }
 
 void WebNetscapePluginStream::stop()
@@ -302,7 +303,7 @@ void WebNetscapePluginStream::stop()
         cancelLoadAndDestroyStreamWithError(m_loader->cancelledError());
 }
 
-void WebNetscapePluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, WTF::Function<void (WebCore::ResourceRequest&&)>&& callback)
+void WebNetscapePluginStream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse&, CompletionHandler<void(WebCore::ResourceRequest&&)>&& callback)
 {
     // FIXME: We should notify the plug-in with NPP_URLRedirectNotify here.
     callback(WTFMove(request));
@@ -536,7 +537,7 @@ void WebNetscapePluginStream::deliverData()
             deliveryBytes = std::min(deliveryBytes, totalBytes - totalBytesDelivered);
             NSData *subdata = [m_deliveryData.get() subdataWithRange:NSMakeRange(totalBytesDelivered, deliveryBytes)];
             PluginStopDeferrer deferrer(m_pluginView.get());
-            deliveryBytes = m_pluginFuncs->write(m_plugin, &m_stream, m_offset, [subdata length], (void *)[subdata bytes]);
+            deliveryBytes = m_pluginFuncs->write(m_plugin, &m_stream, m_offset, [subdata length], const_cast<void*>([subdata bytes]));
             if (deliveryBytes < 0) {
                 // Netscape documentation says that a negative result from NPP_Write means cancel the load.
                 cancelLoadAndDestroyStreamWithError(pluginCancelledConnectionError());
@@ -552,7 +553,7 @@ void WebNetscapePluginStream::deliverData()
     if (totalBytesDelivered > 0) {
         if (totalBytesDelivered < totalBytes) {
             NSMutableData *newDeliveryData = [[NSMutableData alloc] initWithCapacity:totalBytes - totalBytesDelivered];
-            [newDeliveryData appendBytes:(char *)[m_deliveryData.get() bytes] + totalBytesDelivered length:totalBytes - totalBytesDelivered];
+            [newDeliveryData appendBytes:static_cast<char*>(const_cast<void*>([m_deliveryData.get() bytes])) + totalBytesDelivered length:totalBytes - totalBytesDelivered];
             
             m_deliveryData = adoptNS(newDeliveryData);
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,12 @@
 #include "Encoder.h"
 #include "Logging.h"
 #include "MachPort.h"
-#include <WebCore/MachSendRight.h>
-#include <WebCore/MachVMSPI.h>
+#include <WebCore/SharedBuffer.h>
 #include <mach/mach_error.h>
 #include <mach/mach_port.h>
 #include <mach/vm_map.h>
+#include <pal/spi/cocoa/MachVMSPI.h>
+#include <wtf/MachSendRight.h>
 #include <wtf/RefPtr.h>
 
 namespace WebKit {
@@ -58,7 +59,7 @@ bool SharedMemory::Handle::isNull() const
 void SharedMemory::Handle::clear()
 {
     if (m_port)
-        mach_port_deallocate(mach_task_self(), m_port);
+        deallocateSendRightSafely(m_port);
 
     m_port = MACH_PORT_NULL;
     m_size = 0;
@@ -136,11 +137,11 @@ static inline vm_prot_t machProtection(SharedMemory::Protection protection)
     return VM_PROT_NONE;
 }
 
-static WebCore::MachSendRight makeMemoryEntry(size_t size, vm_offset_t offset, SharedMemory::Protection protection, mach_port_t parentEntry)
+static WTF::MachSendRight makeMemoryEntry(size_t size, vm_offset_t offset, SharedMemory::Protection protection, mach_port_t parentEntry)
 {
     memory_object_size_t memoryObjectSize = round_page(size);
 
-    mach_port_t port;
+    mach_port_t port = MACH_PORT_NULL;
     kern_return_t kr = mach_make_memory_entry_64(mach_task_self(), &memoryObjectSize, offset, machProtection(protection) | VM_PROT_IS_MASK | MAP_MEM_VM_SHARE, &port, parentEntry);
     if (kr != KERN_SUCCESS) {
 #if RELEASE_LOG_DISABLED
@@ -153,7 +154,7 @@ static WebCore::MachSendRight makeMemoryEntry(size_t size, vm_offset_t offset, S
 
     RELEASE_ASSERT(memoryObjectSize >= size);
 
-    return WebCore::MachSendRight::adopt(port);
+    return WTF::MachSendRight::adopt(port);
 }
 
 RefPtr<SharedMemory> SharedMemory::create(void* data, size_t size, Protection protection)
@@ -249,13 +250,13 @@ unsigned SharedMemory::systemPageSize()
     return vm_page_size;
 }
 
-WebCore::MachSendRight SharedMemory::createSendRight(Protection protection) const
+WTF::MachSendRight SharedMemory::createSendRight(Protection protection) const
 {
     ASSERT(m_protection == protection || m_protection == Protection::ReadWrite && protection == Protection::ReadOnly);
     ASSERT(!!m_data ^ !!m_port);
 
     if (m_port && m_protection == protection)
-        return WebCore::MachSendRight::create(m_port);
+        return WTF::MachSendRight::create(m_port);
 
     ASSERT(m_data);
     return makeMemoryEntry(m_size, toVMAddress(m_data), protection, MACH_PORT_NULL);

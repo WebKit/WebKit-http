@@ -2,14 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
+esid: sec-array.prototype.some
 es5id: 15.4.4.17-5-15
 description: Array.prototype.some - Date object can be used as thisArg
 ---*/
 
-        var objDate = new Date();
+var objDate = new Date();
 
-        function callbackfn(val, idx, obj) {
-            return this === objDate;
-        }
+function callbackfn(val, idx, obj) {
+  return this === objDate;
+}
 
 assert([11].some(callbackfn, objDate), '[11].some(callbackfn, objDate) !== true');

@@ -75,8 +75,12 @@ std::unique_ptr<Relations> commitRelationsToRenderStyle(RenderStyle& style, cons
             break;
         case Relation::AffectedByFocusWithin:
         case Relation::AffectedByPreviousSibling:
+        case Relation::DescendantsAffectedByPreviousSibling:
         case Relation::AffectsNextSibling:
+        case Relation::ChildrenAffectedByForwardPositionalRules:
+        case Relation::DescendantsAffectedByForwardPositionalRules:
         case Relation::ChildrenAffectedByBackwardPositionalRules:
+        case Relation::DescendantsAffectedByBackwardPositionalRules:
         case Relation::ChildrenAffectedByFirstChildRules:
         case Relation::ChildrenAffectedByPropertyBasedBackwardPositionalRules:
         case Relation::ChildrenAffectedByLastChildRules:
@@ -113,14 +117,26 @@ void commitRelations(std::unique_ptr<Relations> relations, Update& update)
         case Relation::AffectedByPreviousSibling:
             element.setStyleIsAffectedByPreviousSibling();
             break;
+        case Relation::DescendantsAffectedByPreviousSibling:
+            element.setDescendantsAffectedByPreviousSibling();
+            break;
         case Relation::AffectsNextSibling: {
             auto* sibling = &element;
             for (unsigned i = 0; i < relation.value && sibling; ++i, sibling = sibling->nextElementSibling())
                 sibling->setAffectsNextSiblingElementStyle();
             break;
         }
+        case Relation::ChildrenAffectedByForwardPositionalRules:
+            element.setChildrenAffectedByForwardPositionalRules();
+            break;
+        case Relation::DescendantsAffectedByForwardPositionalRules:
+            element.setDescendantsAffectedByForwardPositionalRules();
+            break;
         case Relation::ChildrenAffectedByBackwardPositionalRules:
             element.setChildrenAffectedByBackwardPositionalRules();
+            break;
+        case Relation::DescendantsAffectedByBackwardPositionalRules:
+            element.setDescendantsAffectedByBackwardPositionalRules();
             break;
         case Relation::ChildrenAffectedByFirstChildRules:
             element.setChildrenAffectedByFirstChildRules();

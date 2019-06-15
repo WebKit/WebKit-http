@@ -4,9 +4,11 @@
 
 
 /*---
+esid: sec-array.prototype.concat
 es6id: 22.1.3.1_3
 description: Array.prototype.concat small typed array
 includes: [compareArray.js]
+features: [Symbol.isConcatSpreadable]
 ---*/
 function concatTypedArray(type, elems, modulo) {
   var items = new Array(elems);
@@ -29,7 +31,9 @@ function concatTypedArray(type, elems, modulo) {
   var expected = new Array(4000);
   expected[0] = defValue;
 
-  Object.defineProperty(ta, "length", { value: 4000 });
+  Object.defineProperty(ta, "length", {
+    value: 4000
+  });
   ta[Symbol.isConcatSpreadable] = true;
   assert(compareArray([].concat(ta), expected));
 }

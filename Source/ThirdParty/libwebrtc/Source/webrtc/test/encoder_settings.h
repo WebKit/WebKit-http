@@ -7,13 +7,13 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#ifndef WEBRTC_TEST_ENCODER_SETTINGS_H_
-#define WEBRTC_TEST_ENCODER_SETTINGS_H_
+#ifndef TEST_ENCODER_SETTINGS_H_
+#define TEST_ENCODER_SETTINGS_H_
 
 #include <vector>
 
-#include "webrtc/video_receive_stream.h"
-#include "webrtc/video_send_stream.h"
+#include "call/video_receive_stream.h"
+#include "call/video_send_stream.h"
 
 namespace webrtc {
 namespace test {
@@ -45,12 +45,17 @@ std::vector<VideoStream> CreateVideoStreams(
     int height,
     const webrtc::VideoEncoderConfig& encoder_config);
 
-void FillEncoderConfiguration(size_t num_streams,
+void FillEncoderConfiguration(VideoCodecType codec_type,
+                              size_t num_streams,
                               VideoEncoderConfig* configuration);
 
 VideoReceiveStream::Decoder CreateMatchingDecoder(
-    const VideoSendStream::Config::EncoderSettings& encoder_settings);
+    int payload_type,
+    const std::string& payload_name);
+
+VideoReceiveStream::Decoder CreateMatchingDecoder(
+    const VideoSendStream::Config& config);
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // WEBRTC_TEST_ENCODER_SETTINGS_H_
+#endif  // TEST_ENCODER_SETTINGS_H_

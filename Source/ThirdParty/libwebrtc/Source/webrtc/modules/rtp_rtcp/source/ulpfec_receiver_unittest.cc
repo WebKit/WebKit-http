@@ -13,15 +13,15 @@
 #include <list>
 #include <memory>
 
-#include "webrtc/modules/rtp_rtcp/include/rtp_header_parser.h"
-#include "webrtc/modules/rtp_rtcp/include/ulpfec_receiver.h"
-#include "webrtc/modules/rtp_rtcp/mocks/mock_rtp_rtcp.h"
-#include "webrtc/modules/rtp_rtcp/mocks/mock_recovered_packet_receiver.h"
-#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
-#include "webrtc/modules/rtp_rtcp/source/fec_test_helper.h"
-#include "webrtc/modules/rtp_rtcp/source/forward_error_correction.h"
-#include "webrtc/test/gmock.h"
-#include "webrtc/test/gtest.h"
+#include "modules/rtp_rtcp/include/rtp_header_parser.h"
+#include "modules/rtp_rtcp/include/ulpfec_receiver.h"
+#include "modules/rtp_rtcp/mocks/mock_recovered_packet_receiver.h"
+#include "modules/rtp_rtcp/mocks/mock_rtp_rtcp.h"
+#include "modules/rtp_rtcp/source/byte_io.h"
+#include "modules/rtp_rtcp/source/fec_test_helper.h"
+#include "modules/rtp_rtcp/source/forward_error_correction.h"
+#include "test/gmock.h"
+#include "test/gtest.h"
 
 namespace webrtc {
 
@@ -48,8 +48,9 @@ class NullRecoveredPacketReceiver : public RecoveredPacketReceiver {
 class UlpfecReceiverTest : public ::testing::Test {
  protected:
   UlpfecReceiverTest()
-      : fec_(ForwardErrorCorrection::CreateUlpfec()),
-        receiver_fec_(UlpfecReceiver::Create(&recovered_packet_receiver_)),
+      : fec_(ForwardErrorCorrection::CreateUlpfec(kMediaSsrc)),
+        receiver_fec_(
+            UlpfecReceiver::Create(kMediaSsrc, &recovered_packet_receiver_)),
         packet_generator_(kMediaSsrc) {}
 
   // Generates |num_fec_packets| FEC packets, given |media_packets|.
@@ -179,7 +180,7 @@ void UlpfecReceiverTest::SurvivesMaliciousPacket(const uint8_t* data,
 
   NullRecoveredPacketReceiver null_callback;
   std::unique_ptr<UlpfecReceiver> receiver_fec(
-      UlpfecReceiver::Create(&null_callback));
+      UlpfecReceiver::Create(kMediaSsrc, &null_callback));
 
   receiver_fec->AddReceivedRedPacket(header, data, length, ulpfec_payload_type);
 }
@@ -350,8 +351,7 @@ TEST_F(UlpfecReceiverTest, PacketNotDroppedTooEarly) {
   EncodeFec(media_packets_batch1, kNumFecPacketsBatch1, &fec_packets);
 
   BuildAndAddRedMediaPacket(augmented_media_packets_batch1.front());
-  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _))
-      .Times(1);
+  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _)).Times(1);
   EXPECT_EQ(0, receiver_fec_->ProcessReceivedFec());
   delayed_fec = fec_packets.front();
 
@@ -366,15 +366,13 @@ TEST_F(UlpfecReceiverTest, PacketNotDroppedTooEarly) {
   for (auto it = augmented_media_packets_batch2.begin();
        it != augmented_media_packets_batch2.end(); ++it) {
     BuildAndAddRedMediaPacket(*it);
-    EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _))
-        .Times(1);
+    EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _)).Times(1);
     EXPECT_EQ(0, receiver_fec_->ProcessReceivedFec());
   }
 
   // Add the delayed FEC packet. One packet should be reconstructed.
   BuildAndAddRedFecPacket(delayed_fec);
-  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _))
-      .Times(1);
+  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _)).Times(1);
   EXPECT_EQ(0, receiver_fec_->ProcessReceivedFec());
 }
 
@@ -392,8 +390,7 @@ TEST_F(UlpfecReceiverTest, PacketDroppedWhenTooOld) {
   EncodeFec(media_packets_batch1, kNumFecPacketsBatch1, &fec_packets);
 
   BuildAndAddRedMediaPacket(augmented_media_packets_batch1.front());
-  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _))
-      .Times(1);
+  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _)).Times(1);
   EXPECT_EQ(0, receiver_fec_->ProcessReceivedFec());
   delayed_fec = fec_packets.front();
 
@@ -408,8 +405,7 @@ TEST_F(UlpfecReceiverTest, PacketDroppedWhenTooOld) {
   for (auto it = augmented_media_packets_batch2.begin();
        it != augmented_media_packets_batch2.end(); ++it) {
     BuildAndAddRedMediaPacket(*it);
-    EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _))
-        .Times(1);
+    EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _)).Times(1);
     EXPECT_EQ(0, receiver_fec_->ProcessReceivedFec());
   }
 
@@ -450,8 +446,7 @@ TEST_F(UlpfecReceiverTest, OldFecPacketDropped) {
   // and should have been dropped. Only the media packet we inserted will be
   // returned.
   BuildAndAddRedMediaPacket(augmented_media_packets.front());
-  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _))
-      .Times(1);
+  EXPECT_CALL(recovered_packet_receiver_, OnRecoveredPacket(_, _)).Times(1);
   EXPECT_EQ(0, receiver_fec_->ProcessReceivedFec());
 }
 

@@ -32,10 +32,42 @@ function testSyntaxError(script, message) {
 }
 
 (function testTopLevelAsyncAwaitSyntaxSloppyMode() {
+    testSyntax(`({async: 1})`);
     testSyntax(`var asyncFn = async function() { await 1; };`);
+
+    testSyntax(`var asyncFn = async function() { var t = !await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = ~await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = typeof await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = void await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = !(await 1); };`);
+    testSyntax(`var asyncFn = async function() { var t = ~(await 1); };`);
+    testSyntax(`var asyncFn = async function() { var t = typeof (await 1); };`);
+    testSyntax(`var asyncFn = async function() { var t = void (await 1); };`);
+
+
+    testSyntax(`var asyncFn = async function() { var t = !!await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = ~~await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = typeof typeof await 1; };`);
+    testSyntax(`var asyncFn = async function() { var t = void void await 1; };`);
+
     testSyntax(`var asyncFn = async function withName() { await 1; };`);
     testSyntax(`var asyncFn = async () => await 'test';`);
+
+    testSyntax(`var asyncFn = async () => !await 'test';`);
+    testSyntax(`var asyncFn = async () => ~await 'test';`);
+    testSyntax(`var asyncFn = async () => typeof await 'test';`);
+    testSyntax(`var asyncFn = async () => void await 'test';`);
+    testSyntax(`var asyncFn = async () => - await 'test';`);
+    testSyntax(`var asyncFn = async () => + await 'test';`);
+    testSyntax(`var asyncFn = async () => delete await 'test';`);
+
+    testSyntax(`var asyncFn = async () => !!await 'test';`);
+    testSyntax(`var asyncFn = async () => ~~await 'test';`);
+    testSyntax(`var asyncFn = async () => typeof typeof await 'test';`);
+    testSyntax(`var asyncFn = async () => void void await 'test';`);
+
     testSyntax(`var asyncFn = async x => await x + 'test';`);
+    testSyntax(`function foo(fn) { fn({ async: true }); }`);
     testSyntax(`async function asyncFn() { await 1; }`);
     testSyntax(`var O = { async method() { await 1; } };`);
     testSyntax(`var O = { async ['meth' + 'od']() { await 1; } };`);
@@ -65,10 +97,37 @@ function testSyntaxError(script, message) {
 })();
 
 (function testTopLevelAsyncAwaitSyntaxStrictMode() {
+    testSyntax(`"use strict"; ({async: 1})`);
     testSyntax(`"use strict"; var asyncFn = async function() { await 1; };`);
+
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = ~await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = +await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = -await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = typeof await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = void await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !(await 1); };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = ~(await 1); };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = -(await 1); };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = +(await 1); };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = typeof (await 1); };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = void (await 1); };`);
+
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !!await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = ~~await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = typeof typeof await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = void void await 1; };`);
+
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !!await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !~await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !typeof typeof await 1; };`);
+    testSyntax(`"use strict"; var asyncFn = async function() { var t = !void void await 1; };`);
+
+
     testSyntax(`"use strict"; var asyncFn = async function withName() { await 1; };`);
     testSyntax(`"use strict"; var asyncFn = async () => await 'test';`);
     testSyntax(`"use strict"; var asyncFn = async x => await x + 'test';`);
+    testSyntax(`"use strict"; function foo(fn) { fn({ async: true }); }`);
     testSyntax(`"use strict"; async function asyncFn() { await 1; }`);
     testSyntax(`"use strict"; var O = { async method() { await 1; } };`);
     testSyntax(`"use strict"; var O = { async ['meth' + 'od']() { await 1; } };`);
@@ -155,6 +214,9 @@ function testSyntaxError(script, message) {
 
 
 (function testTopLevelAsyncAwaitSyntaxSloppyMode() {
+    testSyntaxError(`({ async 
+        foo() {} })`);
+    testSyntaxError(`({async =  1})`);
     testSyntaxError(`var asyncFn = async function await() {}`);
     testSyntaxError(`var asyncFn = async () => var await = 'test';`);
     testSyntaxError(`var asyncFn = async () => { var await = 'test'; };`);
@@ -186,10 +248,7 @@ function testSyntaxError(script, message) {
 
     testSyntaxError(`var asyncArrowFn = async() => await;`);
 
-    testSyntaxError(`var asyncFn = async function*() {}`);
-    testSyntaxError(`async function* asyncGenerator() {}`);
     testSyntaxError(`var O = { *async asyncGeneratorMethod() {} };`);
-    testSyntaxError(`var O = { async *asyncGeneratorMethod() {} };`);
     testSyntaxError(`var O = { async asyncGeneratorMethod*() {} };`);
 
     testSyntaxError(`var asyncFn = async function(x = await 1) { return x; }`);
@@ -241,6 +300,9 @@ function testSyntaxError(script, message) {
 })();
 
 (function testTopLevelAsyncAwaitSyntaxStrictMode() {
+    testSyntaxError(`"use strict"; ({ async 
+        foo() {} })`);
+    testSyntaxError(`"use strict"; ({async =  1})`);
     testSyntaxError(`"use strict"; var asyncFn = async function await() {}`);
     testSyntaxError(`"use strict"; var asyncFn = async () => var await = 'test';`);
     testSyntaxError(`"use strict"; var asyncFn = async () => { var await = 'test'; };`);
@@ -257,10 +319,7 @@ function testSyntaxError(script, message) {
 
     testSyntaxError(`"use strict"; var asyncArrowFn = async() => await;`);
 
-    testSyntaxError(`"use strict"; var asyncFn = async function*() {}`);
-    testSyntaxError(`"use strict"; async function* asyncGenerator() {}`);
     testSyntaxError(`"use strict"; var O = { *async asyncGeneratorMethod() {} };`);
-    testSyntaxError(`"use strict"; var O = { async *asyncGeneratorMethod() {} };`);
     testSyntaxError(`"use strict"; var O = { async asyncGeneratorMethod*() {} };`);
 
     testSyntax(`"use strict"; var O = { async function() {} };`);

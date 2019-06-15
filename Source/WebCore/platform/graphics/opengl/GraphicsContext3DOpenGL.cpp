@@ -34,16 +34,15 @@
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 
 #include "GraphicsContext3D.h"
+
 #if PLATFORM(IOS)
 #include "GraphicsContext3DIOS.h"
 #endif
-
 #include "Extensions3DOpenGL.h"
 #include "IntRect.h"
 #include "IntSize.h"
 #include "NotImplemented.h"
 #include "TemporaryOpenGLSetting.h"
-
 #include <algorithm>
 #include <cstring>
 #include <wtf/MainThread.h>
@@ -53,18 +52,18 @@
 #include <Accelerate/Accelerate.h>
 #endif
 
-#if PLATFORM(IOS)
+#if PLATFORM(GTK) || PLATFORM(WIN)
+#include "OpenGLShims.h"
+#elif USE(OPENGL_ES)
 #import <OpenGLES/ES2/glext.h>
 // From <OpenGLES/glext.h>
 #define GL_RGBA32F_ARB                      0x8814
 #define GL_RGB32F_ARB                       0x8815
-#elif PLATFORM(MAC)
+#elif USE(OPENGL)
 #define GL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED
 #include <OpenGL/gl.h>
 #include <OpenGL/gl3.h>
 #undef GL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED
-#elif PLATFORM(GTK) || PLATFORM(WIN)
-#include "OpenGLShims.h"
 #endif
 
 #if PLATFORM(QT)
@@ -125,6 +124,17 @@ void GraphicsContext3D::releaseShaderCompiler()
 #endif
 }
 
+#if PLATFORM(MAC)
+static void wipeAlphaChannelFromPixels(int width, int height, unsigned char* pixels)
+{
+    // We can assume this doesn't overflow because the calling functions
+    // use checked arithmetic.
+    int totalBytes = width * height * 4;
+    for (int i = 0; i < totalBytes; i += 4)
+        pixels[i + 3] = 255;
+}
+#endif
+
 void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int width, int height, unsigned char* pixels)
 {
     // NVIDIA drivers have a bug where calling readPixels in BGRA can return the wrong values for the alpha channel when the alpha is off for the context.
@@ -169,6 +179,11 @@ void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int 
         ::glReadPixels(x, y, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
 #endif
     }
+
+#if PLATFORM(MAC)
+    if (!m_attrs.alpha)
+        wipeAlphaChannelFromPixels(width, height, pixels);
+#endif
 }
 
 void GraphicsContext3D::validateAttributes()
@@ -213,7 +228,7 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
         if (extensions.supports("GL_EXT_packed_depth_stencil"))
             internalDepthStencilFormat = GL_DEPTH24_STENCIL8_EXT;
         else
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA) && USE(OPENGL_ES)
             internalDepthStencilFormat = GL_DEPTH_COMPONENT16;
 #else
             internalDepthStencilFormat = GL_DEPTH_COMPONENT;
@@ -224,12 +239,12 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     if (m_attrs.antialias && !isGLES2Compliant()) {
         GLint maxSampleCount;
         ::glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSampleCount);
-        GLint sampleCount = std::min(8, maxSampleCount);
-        if (sampleCount > maxSampleCount)
-            sampleCount = maxSampleCount;
+        // Using more than 4 samples is slow on some hardware and is unlikely to
+        // produce a significantly better result.
+        GLint sampleCount = std::min(4, maxSampleCount);
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_multisampleFBO);
         ::glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_multisampleColorBuffer);
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA) && USE(OPENGL_ES)
         ::glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, sampleCount, GL_RGBA8_OES, width, height);
 #else
         ::glRenderbufferStorageMultisampleEXT(GL_RENDERBUFFER_EXT, sampleCount, m_internalColorFormat, width, height);
@@ -253,10 +268,16 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     // resize regular FBO
     ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_fbo);
     ASSERT(m_texture);
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA)
+#if USE(OPENGL_ES)
     ::glBindRenderbuffer(GL_RENDERBUFFER, m_texture);
     ::glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, m_texture);
     setRenderbufferStorageFromDrawable(m_currentWidth, m_currentHeight);
+#else
+    allocateIOSurfaceBackingStore(IntSize(width, height));
+    updateFramebufferTextureBackingStoreFromLayer();
+    ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_ARB, m_texture, 0);
+#endif // !USE(OPENGL_ES))
 #else
     ::glBindTexture(GL_TEXTURE_2D, m_texture);
     ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, pixelDataType, 0);
@@ -345,14 +366,14 @@ void GraphicsContext3D::resolveMultisamplingIfNecessary(const IntRect& rect)
     TemporaryOpenGLSetting scopedDepth(GL_DEPTH_TEST, GL_FALSE);
     TemporaryOpenGLSetting scopedStencil(GL_STENCIL_TEST, GL_FALSE);
 
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA) && USE(OPENGL_ES)
     GLint boundFrameBuffer;
     ::glGetIntegerv(GL_FRAMEBUFFER_BINDING, &boundFrameBuffer);
 #endif
 
     ::glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, m_multisampleFBO);
     ::glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, m_fbo);
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA) && USE(OPENGL_ES)
     UNUSED_PARAM(rect);
     ::glFlush();
     ::glResolveMultisampleFramebufferAPPLE();
@@ -371,7 +392,7 @@ void GraphicsContext3D::resolveMultisamplingIfNecessary(const IntRect& rect)
 void GraphicsContext3D::renderbufferStorage(GC3Denum target, GC3Denum internalformat, GC3Dsizei width, GC3Dsizei height)
 {
     makeContextCurrent();
-#if !PLATFORM(IOS)
+#if USE(OPENGL) || PLATFORM(QT)
 #if PLATFORM(QT)
     if (!isGLES2Compliant()) {
 #endif
@@ -411,7 +432,7 @@ void GraphicsContext3D::getIntegerv(GC3Denum pname, GC3Dint* value)
     }
 #endif
     switch (pname) {
-#if !PLATFORM(IOS)
+#if USE(OPENGL)
     case MAX_FRAGMENT_UNIFORM_VECTORS:
         ::glGetIntegerv(GL_MAX_FRAGMENT_UNIFORM_COMPONENTS, value);
         *value /= 4;
@@ -444,6 +465,20 @@ void GraphicsContext3D::getIntegerv(GC3Denum pname, GC3Dint* value)
         if (getExtensions().requiresRestrictedMaximumTextureSize())
             *value = std::min(1024, *value);
         break;
+#if PLATFORM(MAC)
+    // Some older hardware advertises a larger maximum than they
+    // can actually handle. Rather than detecting such devices, simply
+    // clamp the maximum to 8192, which is big enough for a 5K display.
+    case MAX_RENDERBUFFER_SIZE:
+        ::glGetIntegerv(MAX_RENDERBUFFER_SIZE, value);
+        *value = std::min(8192, *value);
+        break;
+    case MAX_VIEWPORT_DIMS:
+        ::glGetIntegerv(MAX_VIEWPORT_DIMS, value);
+        value[0] = std::min(8192, value[0]);
+        value[1] = std::min(8192, value[1]);
+        break;
+#endif
     default:
         ::glGetIntegerv(pname, value);
     }
@@ -496,7 +531,7 @@ bool GraphicsContext3D::texImage2D(GC3Denum target, GC3Dint level, GC3Denum inte
 
     GC3Denum openGLFormat = format;
     GC3Denum openGLInternalFormat = internalformat;
-#if !PLATFORM(IOS)
+#if USE(OPENGL) || PLATFORM(QT)
 #if PLATFORM(QT)
     if (!isGLES2Compliant()) {
 #endif
@@ -529,13 +564,30 @@ bool GraphicsContext3D::texImage2D(GC3Denum target, GC3Dint level, GC3Denum inte
 #endif
 #endif
 
-    if (m_usingCoreProfile && openGLInternalFormat == ALPHA) {
-        // We are using a core profile. This means that GL_ALPHA, which is a valid format in WebGL for texImage2D
-        // is not supported in OpenGL. It needs to be backed with a GL_RED plane. We change the formats to GL_RED
-        // (both need to be GL_ALPHA in WebGL) and instruct the texture to swizzle the red component values with
-        // the the alpha component values.
-        openGLInternalFormat = openGLFormat = RED;
-        texParameteri(target, TEXTURE_SWIZZLE_A, RED);
+    if (m_usingCoreProfile) {
+        // There are some format values used in WebGL that are deprecated when using a core profile, so we need
+        // to adapt them.
+        switch (openGLInternalFormat) {
+        case ALPHA:
+            // The format is a simple component containing an alpha value. It needs to be backed with a GL_RED plane.
+            // We change the formats to GL_RED (both need to be GL_ALPHA in WebGL) and instruct the texture to swizzle
+            // the red component values with the alpha component values.
+            openGLInternalFormat = openGLFormat = RED;
+            texParameteri(target, TEXTURE_SWIZZLE_A, RED);
+            break;
+        case LUMINANCE_ALPHA:
+            // The format has 2 components, an alpha one and a luminance one (same value for red, green and blue).
+            // It needs to be backed with a GL_RG plane, using the red component for the colors and the green component
+            // for alpha. We change the formats to GL_RG and swizzle the components.
+            openGLInternalFormat = openGLFormat = RG;
+            texParameteri(target, TEXTURE_SWIZZLE_R, RED);
+            texParameteri(target, TEXTURE_SWIZZLE_G, RED);
+            texParameteri(target, TEXTURE_SWIZZLE_B, RED);
+            texParameteri(target, TEXTURE_SWIZZLE_A, GREEN);
+            break;
+        default:
+            break;
+        }
     }
 
     texImage2DDirect(target, level, openGLInternalFormat, width, height, border, openGLFormat, type, pixels);
@@ -545,7 +597,7 @@ bool GraphicsContext3D::texImage2D(GC3Denum target, GC3Dint level, GC3Denum inte
 void GraphicsContext3D::depthRange(GC3Dclampf zNear, GC3Dclampf zFar)
 {
     makeContextCurrent();
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA) && USE(OPENGL_ES)
     ::glDepthRangef(static_cast<float>(zNear), static_cast<float>(zFar));
 #else
     ::glDepthRange(zNear, zFar);
@@ -555,7 +607,7 @@ void GraphicsContext3D::depthRange(GC3Dclampf zNear, GC3Dclampf zFar)
 void GraphicsContext3D::clearDepth(GC3Dclampf depth)
 {
     makeContextCurrent();
-#if PLATFORM(IOS)
+#if PLATFORM(COCOA) && USE(OPENGL_ES)
     ::glClearDepthf(static_cast<float>(depth));
 #else
     ::glClearDepth(depth);
@@ -586,6 +638,11 @@ void GraphicsContext3D::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsi
     ::glReadPixels(x, y, width, height, format, type, data);
     if (m_attrs.antialias && m_state.boundFBO == m_multisampleFBO)
         ::glBindFramebufferEXT(GraphicsContext3D::FRAMEBUFFER, m_multisampleFBO);
+
+#if PLATFORM(MAC)
+    if (!m_attrs.alpha && (format == GraphicsContext3D::RGBA || format == GraphicsContext3D::BGRA) && (m_state.boundFBO == m_fbo || (m_attrs.antialias && m_state.boundFBO == m_multisampleFBO)))
+        wipeAlphaChannelFromPixels(width, height, static_cast<unsigned char*>(data));
+#endif
 }
 
 }

@@ -32,18 +32,17 @@
 #include "Logging.h"
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
-#include "TextStream.h"
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
-ScrollingTreeFrameScrollingNode::ScrollingTreeFrameScrollingNode(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
-    : ScrollingTreeScrollingNode(scrollingTree, FrameScrollingNode, nodeID)
+ScrollingTreeFrameScrollingNode::ScrollingTreeFrameScrollingNode(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
+    : ScrollingTreeScrollingNode(scrollingTree, nodeType, nodeID)
 {
+    ASSERT(isFrameScrollingNode());
 }
 
-ScrollingTreeFrameScrollingNode::~ScrollingTreeFrameScrollingNode()
-{
-}
+ScrollingTreeFrameScrollingNode::~ScrollingTreeFrameScrollingNode() = default;
 
 void ScrollingTreeFrameScrollingNode::commitStateBeforeChildren(const ScrollingStateNode& stateNode)
 {

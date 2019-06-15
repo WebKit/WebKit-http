@@ -13,8 +13,8 @@
 #import "NSString+StdString.h"
 #import "WebRTC/RTCMediaStreamTrack.h"  // For "kind" strings.
 
-#include "webrtc/base/checks.h"
-#include "webrtc/media/base/mediaconstants.h"
+#include "media/base/mediaconstants.h"
+#include "rtc_base/checks.h"
 
 const NSString * const kRTCRtxCodecName = @(cricket::kRtxCodecName);
 const NSString * const kRTCRedCodecName = @(cricket::kRedCodecName);
@@ -41,6 +41,7 @@ const NSString * const kRTCH264CodecName = @(cricket::kH264CodecName);
 @synthesize kind = _kind;
 @synthesize clockRate = _clockRate;
 @synthesize numChannels = _numChannels;
+@synthesize parameters = _parameters;
 
 - (instancetype)init {
   return [super init];
@@ -68,6 +69,12 @@ const NSString * const kRTCH264CodecName = @(cricket::kH264CodecName);
     if (nativeParameters.num_channels) {
       _numChannels = [NSNumber numberWithInt:*nativeParameters.num_channels];
     }
+    NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
+    for (const auto &parameter : nativeParameters.parameters) {
+      [parameters setObject:[NSString stringForStdString:parameter.second]
+                     forKey:[NSString stringForStdString:parameter.first]];
+    }
+    _parameters = parameters;
   }
   return self;
 }
@@ -86,10 +93,15 @@ const NSString * const kRTCH264CodecName = @(cricket::kH264CodecName);
     RTC_NOTREACHED();
   }
   if (_clockRate != nil) {
-    parameters.clock_rate = rtc::Optional<int>(_clockRate.intValue);
+    parameters.clock_rate = absl::optional<int>(_clockRate.intValue);
   }
   if (_numChannels != nil) {
-    parameters.num_channels = rtc::Optional<int>(_numChannels.intValue);
+    parameters.num_channels = absl::optional<int>(_numChannels.intValue);
+  }
+  for (NSString *paramKey in _parameters.allKeys) {
+    std::string key = [NSString stdStringForString:paramKey];
+    std::string value = [NSString stdStringForString:_parameters[paramKey]];
+    parameters.parameters[key] = value;
   }
   return parameters;
 }

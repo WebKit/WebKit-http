@@ -56,6 +56,7 @@
 #include "CSSPropertyNames.h"
 #include "CommonVM.h"
 #include "CookieJar.h"
+#include "DOMWindow.h"
 #include "DocumentLoader.h"
 #include "DocumentType.h"
 #include "ElementChildIterator.h"
@@ -76,9 +77,12 @@
 #include "HashTools.h"
 #include "ScriptController.h"
 #include "StyleResolver.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/text/CString.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLDocument);
 
 using namespace HTMLNames;
 
@@ -88,21 +92,19 @@ HTMLDocument::HTMLDocument(Frame* frame, const URL& url, DocumentClassFlags docu
     clearXMLVersion();
 }
 
-HTMLDocument::~HTMLDocument()
-{
-}
+HTMLDocument::~HTMLDocument() = default;
 
 int HTMLDocument::width()
 {
     updateLayoutIgnorePendingStylesheets();
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     return frameView ? frameView->contentsWidth() : 0;
 }
 
 int HTMLDocument::height()
 {
     updateLayoutIgnorePendingStylesheets();
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     return frameView ? frameView->contentsHeight() : 0;
 }
 
@@ -111,68 +113,8 @@ Ref<DocumentParser> HTMLDocument::createParser()
     return HTMLDocumentParser::create(*this);
 }
 
-static void addLocalNameToSet(HashSet<AtomicStringImpl*>* set, const QualifiedName& qName)
-{
-    set->add(qName.localName().impl());
-}
-
-static HashSet<AtomicStringImpl*>* createHtmlCaseInsensitiveAttributesSet()
-{
-    // This is the list of attributes in HTML 4.01 with values marked as "[CI]" or case-insensitive
-    // Mozilla treats all other values as case-sensitive, thus so do we.
-    HashSet<AtomicStringImpl*>* attrSet = new HashSet<AtomicStringImpl*>;
-
-    addLocalNameToSet(attrSet, accept_charsetAttr);
-    addLocalNameToSet(attrSet, acceptAttr);
-    addLocalNameToSet(attrSet, alignAttr);
-    addLocalNameToSet(attrSet, alinkAttr);
-    addLocalNameToSet(attrSet, axisAttr);
-    addLocalNameToSet(attrSet, bgcolorAttr);
-    addLocalNameToSet(attrSet, charsetAttr);
-    addLocalNameToSet(attrSet, checkedAttr);
-    addLocalNameToSet(attrSet, clearAttr);
-    addLocalNameToSet(attrSet, codetypeAttr);
-    addLocalNameToSet(attrSet, colorAttr);
-    addLocalNameToSet(attrSet, compactAttr);
-    addLocalNameToSet(attrSet, declareAttr);
-    addLocalNameToSet(attrSet, deferAttr);
-    addLocalNameToSet(attrSet, dirAttr);
-    addLocalNameToSet(attrSet, disabledAttr);
-    addLocalNameToSet(attrSet, enctypeAttr);
-    addLocalNameToSet(attrSet, faceAttr);
-    addLocalNameToSet(attrSet, frameAttr);
-    addLocalNameToSet(attrSet, hreflangAttr);
-    addLocalNameToSet(attrSet, http_equivAttr);
-    addLocalNameToSet(attrSet, langAttr);
-    addLocalNameToSet(attrSet, languageAttr);
-    addLocalNameToSet(attrSet, linkAttr);
-    addLocalNameToSet(attrSet, mediaAttr);
-    addLocalNameToSet(attrSet, methodAttr);
-    addLocalNameToSet(attrSet, multipleAttr);
-    addLocalNameToSet(attrSet, nohrefAttr);
-    addLocalNameToSet(attrSet, noresizeAttr);
-    addLocalNameToSet(attrSet, noshadeAttr);
-    addLocalNameToSet(attrSet, nowrapAttr);
-    addLocalNameToSet(attrSet, readonlyAttr);
-    addLocalNameToSet(attrSet, relAttr);
-    addLocalNameToSet(attrSet, revAttr);
-    addLocalNameToSet(attrSet, rulesAttr);
-    addLocalNameToSet(attrSet, scopeAttr);
-    addLocalNameToSet(attrSet, scrollingAttr);
-    addLocalNameToSet(attrSet, selectedAttr);
-    addLocalNameToSet(attrSet, shapeAttr);
-    addLocalNameToSet(attrSet, targetAttr);
-    addLocalNameToSet(attrSet, textAttr);
-    addLocalNameToSet(attrSet, typeAttr);
-    addLocalNameToSet(attrSet, valignAttr);
-    addLocalNameToSet(attrSet, valuetypeAttr);
-    addLocalNameToSet(attrSet, vlinkAttr);
-
-    return attrSet;
-}
-
 // https://html.spec.whatwg.org/multipage/dom.html#dom-document-nameditem
-std::optional<Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>>> HTMLDocument::namedItem(const AtomicString& name)
+std::optional<Variant<RefPtr<WindowProxy>, RefPtr<Element>, RefPtr<HTMLCollection>>> HTMLDocument::namedItem(const AtomicString& name)
 {
     if (name.isNull() || !hasDocumentNamedItem(*name.impl()))
         return std::nullopt;
@@ -180,16 +122,16 @@ std::optional<Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>
     if (UNLIKELY(documentNamedItemContainsMultipleElements(*name.impl()))) {
         auto collection = documentNamedItems(name);
         ASSERT(collection->length() > 1);
-        return Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<HTMLCollection> { WTFMove(collection) } };
+        return Variant<RefPtr<WindowProxy>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<HTMLCollection> { WTFMove(collection) } };
     }
 
     auto& element = *documentNamedItem(*name.impl());
     if (UNLIKELY(is<HTMLIFrameElement>(element))) {
-        if (auto* domWindow = downcast<HTMLIFrameElement>(element).contentWindow())
-            return Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<DOMWindow> { domWindow } };
+        if (auto domWindow = makeRefPtr(downcast<HTMLIFrameElement>(element).contentWindow()))
+            return Variant<RefPtr<WindowProxy>, RefPtr<Element>, RefPtr<HTMLCollection>> { WTFMove(domWindow) };
     }
 
-    return Variant<RefPtr<DOMWindow>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<Element> { &element } };
+    return Variant<RefPtr<WindowProxy>, RefPtr<Element>, RefPtr<HTMLCollection>> { RefPtr<Element> { &element } };
 }
 
 Vector<AtomicString> HTMLDocument::supportedPropertyNames() const
@@ -235,9 +177,64 @@ void HTMLDocument::removeWindowNamedItem(const AtomicStringImpl& name, Element& 
 
 bool HTMLDocument::isCaseSensitiveAttribute(const QualifiedName& attributeName)
 {
-    static HashSet<AtomicStringImpl*>* htmlCaseInsensitiveAttributesSet = createHtmlCaseInsensitiveAttributesSet();
-    bool isPossibleHTMLAttr = !attributeName.hasPrefix() && (attributeName.namespaceURI() == nullAtom());
-    return !isPossibleHTMLAttr || !htmlCaseInsensitiveAttributesSet->contains(attributeName.localName().impl());
+    static const auto caseInsensitiveAttributeSet = makeNeverDestroyed([] {
+        // This is the list of attributes in HTML 4.01 with values marked as "[CI]" or case-insensitive
+        // Mozilla treats all other values as case-sensitive, thus so do we.
+        static const QualifiedName* const names[] = {
+            &accept_charsetAttr.get(),
+            &acceptAttr.get(),
+            &alignAttr.get(),
+            &alinkAttr.get(),
+            &axisAttr.get(),
+            &bgcolorAttr.get(),
+            &charsetAttr.get(),
+            &checkedAttr.get(),
+            &clearAttr.get(),
+            &codetypeAttr.get(),
+            &colorAttr.get(),
+            &compactAttr.get(),
+            &declareAttr.get(),
+            &deferAttr.get(),
+            &dirAttr.get(),
+            &disabledAttr.get(),
+            &enctypeAttr.get(),
+            &faceAttr.get(),
+            &frameAttr.get(),
+            &hreflangAttr.get(),
+            &http_equivAttr.get(),
+            &langAttr.get(),
+            &languageAttr.get(),
+            &linkAttr.get(),
+            &mediaAttr.get(),
+            &methodAttr.get(),
+            &multipleAttr.get(),
+            &nohrefAttr.get(),
+            &noresizeAttr.get(),
+            &noshadeAttr.get(),
+            &nowrapAttr.get(),
+            &readonlyAttr.get(),
+            &relAttr.get(),
+            &revAttr.get(),
+            &rulesAttr.get(),
+            &scopeAttr.get(),
+            &scrollingAttr.get(),
+            &selectedAttr.get(),
+            &shapeAttr.get(),
+            &targetAttr.get(),
+            &textAttr.get(),
+            &typeAttr.get(),
+            &valignAttr.get(),
+            &valuetypeAttr.get(),
+            &vlinkAttr.get(),
+        };
+        HashSet<AtomicString> set;
+        for (auto* name : names)
+            set.add(name->localName());
+        return set;
+    }());
+
+    bool isPossibleHTMLAttr = !attributeName.hasPrefix() && attributeName.namespaceURI().isNull();
+    return !isPossibleHTMLAttr || !caseInsensitiveAttributeSet.get().contains(attributeName.localName());
 }
 
 bool HTMLDocument::isFrameSet() const

@@ -48,7 +48,7 @@ JSGlobalObjectDebuggerAgent::JSGlobalObjectDebuggerAgent(JSAgentContext& context
 InjectedScript JSGlobalObjectDebuggerAgent::injectedScriptForEval(ErrorString& error, const int* executionContextId)
 {
     if (executionContextId) {
-        error = ASCIILiteral("Execution context id is not supported for JSContext inspection as there is only one execution context.");
+        error = "Execution context id is not supported for JSContext inspection as there is only one execution context."_s;
         return InjectedScript();
     }
 
@@ -58,7 +58,7 @@ InjectedScript JSGlobalObjectDebuggerAgent::injectedScriptForEval(ErrorString& e
 
 void JSGlobalObjectDebuggerAgent::breakpointActionLog(JSC::ExecState& state, const String& message)
 {
-    m_consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::JS, MessageType::Log, MessageLevel::Log, message, createScriptCallStack(&state, ScriptCallStack::maxCallStackSizeToCapture), 0));
+    m_consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::JS, MessageType::Log, MessageLevel::Log, message, createScriptCallStack(&state), 0));
 }
 
 } // namespace Inspector

@@ -3,12 +3,13 @@
 
 /*---
 info: The Date.prototype property "setUTCMonth" has { DontEnum } attributes
+esid: sec-date.prototype.setutcmonth
 es5id: 15.9.5.39_A1_T1
 description: Checking absence of ReadOnly attribute
 ---*/
 
 var x = Date.prototype.setUTCMonth;
-if(x === 1)
+if (x === 1)
   Date.prototype.setUTCMonth = 2;
 else
   Date.prototype.setUTCMonth = 1;

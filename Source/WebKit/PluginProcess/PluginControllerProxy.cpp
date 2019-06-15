@@ -91,15 +91,15 @@ PluginControllerProxy::~PluginControllerProxy()
         releaseNPObject(m_pluginElementNPObject);
 }
 
-void PluginControllerProxy::setInitializationReply(Ref<Messages::WebProcessConnection::CreatePlugin::DelayedReply>&& reply)
+void PluginControllerProxy::setInitializationReply(Messages::WebProcessConnection::CreatePlugin::DelayedReply&& reply)
 {
     ASSERT(!m_initializationReply);
     m_initializationReply = WTFMove(reply);
 }
 
-RefPtr<Messages::WebProcessConnection::CreatePlugin::DelayedReply> PluginControllerProxy::takeInitializationReply()
+Messages::WebProcessConnection::CreatePlugin::DelayedReply PluginControllerProxy::takeInitializationReply()
 {
-    return m_initializationReply;
+    return std::exchange(m_initializationReply, nullptr);
 }
 
 bool PluginControllerProxy::initialize(const PluginCreationParameters& creationParameters)
@@ -646,7 +646,7 @@ void PluginControllerProxy::getFormValue(bool& returnValue, String& formValue)
     returnValue = m_plugin->getFormValue(formValue);
 }
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
 uint64_t PluginControllerProxy::createPluginContainer()
 {
     uint64_t windowID = 0;

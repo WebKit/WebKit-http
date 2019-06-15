@@ -30,8 +30,6 @@
 
 #pragma once
 
-#if ENABLE(WEB_SOCKETS)
-
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "ExceptionOr.h"
@@ -54,9 +52,6 @@ class ThreadableWebSocketChannel;
 
 class WebSocket final : public RefCounted<WebSocket>, public EventTargetWithInlineData, public ActiveDOMObject, private WebSocketChannelClient {
 public:
-    static void setIsAvailable(bool);
-    static bool isAvailable();
-
     static const char* subprotocolSeparator();
 
     static ExceptionOr<Ref<WebSocket>> create(ScriptExecutionContext&, const String& url);
@@ -65,7 +60,7 @@ public:
     virtual ~WebSocket();
 
     static HashSet<WebSocket*>& allActiveWebSockets(const LockHolder&);
-    static StaticLock& allActiveWebSocketsMutex();
+    static Lock& allActiveWebSocketsMutex();
 
     enum State {
         CONNECTING = 0,
@@ -151,5 +146,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(WEB_SOCKETS)

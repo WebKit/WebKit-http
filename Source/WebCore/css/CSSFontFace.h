@@ -76,8 +76,9 @@ public:
     bool setVariantAlternates(CSSValue&);
     bool setVariantEastAsian(CSSValue&);
     void setFeatureSettings(CSSValue&);
+    void setLoadingBehavior(CSSValue&);
 
-    enum class Status;
+    enum class Status : uint8_t;
     struct UnicodeRange;
     const CSSValueList* families() const { return m_families.get(); }
     FontSelectionRange weight() const { return m_fontSelectionCapabilities.computeWeight(); }
@@ -87,6 +88,7 @@ public:
     const Vector<UnicodeRange>& ranges() const { return m_ranges; }
     const FontFeatureSettings& featureSettings() const { return m_featureSettings; }
     const FontVariantSettings& variantSettings() const { return m_variantSettings; }
+    FontLoadingBehavior loadingBehavior() const { return m_loadingBehavior; }
     void setVariantSettings(const FontVariantSettings& variantSettings) { m_variantSettings = variantSettings; }
     void setWeight(FontSelectionRange weight) { m_fontSelectionCapabilities.weight = weight; }
     void setStretch(FontSelectionRange stretch) { m_fontSelectionCapabilities.width = stretch; }
@@ -100,7 +102,9 @@ public:
     void addClient(Client&);
     void removeClient(Client&);
 
-    bool allSourcesFailed() const;
+    bool computeFailureState() const;
+
+    void opportunisticallyStartFontDataURLLoading(CSSFontSelector&);
 
     void adoptSource(std::unique_ptr<CSSFontFaceSource>&&);
     void sourcesPopulated() { m_sourcesPopulated = true; }
@@ -115,7 +119,7 @@ public:
 
     class Client {
     public:
-        virtual ~Client() { }
+        virtual ~Client() = default;
         virtual void fontLoaded(CSSFontFace&) { }
         virtual void fontStateChanged(CSSFontFace&, Status /*oldState*/, Status /*newState*/) { }
         virtual void fontPropertyChanged(CSSFontFace&, CSSValueList* /*oldFamilies*/ = nullptr) { }
@@ -132,11 +136,13 @@ public:
     //              ||   //  \\   ||
     //              \/  \/    \/  \/
     //             Success    Failure
-    enum class Status { Pending, Loading, TimedOut, Success, Failure };
+    enum class Status : uint8_t { Pending, Loading, TimedOut, Success, Failure };
 
     struct UnicodeRange {
         UChar32 from;
         UChar32 to;
+        bool operator==(const UnicodeRange& other) const { return from == other.from && to == other.to; }
+        bool operator!=(const UnicodeRange& other) const { return !(*this == other); }
     };
 
     bool rangesMatchCodePoint(UChar32) const;
@@ -146,9 +152,16 @@ public:
     void setWrapper(FontFace&);
     FontFace* existingWrapper() { return m_wrapper.get(); }
 
-    bool webFontsShouldAlwaysFallBack() const;
+    struct FontLoadTiming {
+        Seconds blockPeriod;
+        Seconds swapPeriod;
+    };
+    FontLoadTiming fontLoadTiming() const;
+    bool shouldIgnoreFontLoadCompletions() const;
 
     bool purgeable() const;
+
+    AllowUserInstalledFonts allowUserInstalledFonts() const;
 
     void updateStyleIfNeeded();
 
@@ -170,19 +183,24 @@ private:
 
     RefPtr<CSSValueList> m_families;
     Vector<UnicodeRange> m_ranges;
+
     FontFeatureSettings m_featureSettings;
     FontVariantSettings m_variantSettings;
-    Timer m_timeoutTimer;
-    Vector<std::unique_ptr<CSSFontFaceSource>> m_sources;
+    FontLoadingBehavior m_loadingBehavior { FontLoadingBehavior::Auto };
+
+    Vector<std::unique_ptr<CSSFontFaceSource>, 0, CrashOnOverflow, 0> m_sources;
     RefPtr<CSSFontSelector> m_fontSelector;
     RefPtr<StyleRuleFontFace> m_cssConnection;
     HashSet<Client*> m_clients;
     WeakPtr<FontFace> m_wrapper;
     FontSelectionSpecifiedCapabilities m_fontSelectionCapabilities;
+    
     Status m_status { Status::Pending };
     bool m_isLocalFallback { false };
     bool m_sourcesPopulated { false };
     bool m_mayBePurged { true };
+
+    Timer m_timeoutTimer;
 };
 
 }

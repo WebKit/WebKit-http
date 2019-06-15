@@ -5,7 +5,7 @@ description: >
     Resolved promises ignore rejections through deferred invocation of the
     provided resolving function
 es6id: 25.4.4.1
-info: >
+info: |
     [...]
     6. Let promiseCapability be NewPromiseCapability(C).
     [...]
@@ -30,7 +30,9 @@ flags: [async]
 
 var fulfiller = {
   then: function(resolve) {
-    new Promise(function(resolve) { resolve(); })
+    new Promise(function(resolve) {
+        resolve();
+      })
       .then(function() {
         resolve();
       });
@@ -38,7 +40,9 @@ var fulfiller = {
 };
 var rejector = {
   then: function(resolve, reject) {
-    new Promise(function(resolve) { resolve(); })
+    new Promise(function(resolve) {
+        resolve();
+      })
       .then(function() {
         resolve();
         reject();

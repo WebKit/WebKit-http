@@ -8,53 +8,50 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef WEBRTC_MODULES_VIDEO_CAPTURE_MAIN_SOURCE_DEVICE_INFO_IMPL_H_
-#define WEBRTC_MODULES_VIDEO_CAPTURE_MAIN_SOURCE_DEVICE_INFO_IMPL_H_
+#ifndef MODULES_VIDEO_CAPTURE_MAIN_SOURCE_DEVICE_INFO_IMPL_H_
+#define MODULES_VIDEO_CAPTURE_MAIN_SOURCE_DEVICE_INFO_IMPL_H_
 
 #include <vector>
 
-#include "webrtc/modules/video_capture/video_capture.h"
-#include "webrtc/system_wrappers/include/rw_lock_wrapper.h"
+#include "modules/video_capture/video_capture.h"
+#include "rtc_base/synchronization/rw_lock_wrapper.h"
 
-namespace webrtc
-{
-namespace videocapturemodule
-{
-class DeviceInfoImpl: public VideoCaptureModule::DeviceInfo
-{
-public:
-    DeviceInfoImpl();
-    virtual ~DeviceInfoImpl(void);
-    virtual int32_t NumberOfCapabilities(const char* deviceUniqueIdUTF8);
-    virtual int32_t GetCapability(
-        const char* deviceUniqueIdUTF8,
-        const uint32_t deviceCapabilityNumber,
-        VideoCaptureCapability& capability);
+namespace webrtc {
+namespace videocapturemodule {
+class DeviceInfoImpl : public VideoCaptureModule::DeviceInfo {
+ public:
+  DeviceInfoImpl();
+  virtual ~DeviceInfoImpl(void);
+  virtual int32_t NumberOfCapabilities(const char* deviceUniqueIdUTF8);
+  virtual int32_t GetCapability(const char* deviceUniqueIdUTF8,
+                                const uint32_t deviceCapabilityNumber,
+                                VideoCaptureCapability& capability);
 
-    virtual int32_t GetBestMatchedCapability(
-        const char* deviceUniqueIdUTF8,
-        const VideoCaptureCapability& requested,
-        VideoCaptureCapability& resulting);
-    virtual int32_t GetOrientation(const char* deviceUniqueIdUTF8,
-                                   VideoRotation& orientation);
+  virtual int32_t GetBestMatchedCapability(
+      const char* deviceUniqueIdUTF8,
+      const VideoCaptureCapability& requested,
+      VideoCaptureCapability& resulting);
+  virtual int32_t GetOrientation(const char* deviceUniqueIdUTF8,
+                                 VideoRotation& orientation);
 
-protected:
-    /* Initialize this object*/
+ protected:
+  /* Initialize this object*/
 
-    virtual int32_t Init()=0;
-    /*
-     * Fills the member variable _captureCapabilities with capabilities for the given device name.
-     */
-    virtual int32_t CreateCapabilityMap(const char* deviceUniqueIdUTF8)=0;
+  virtual int32_t Init() = 0;
+  /*
+   * Fills the member variable _captureCapabilities with capabilities for the
+   * given device name.
+   */
+  virtual int32_t CreateCapabilityMap(const char* deviceUniqueIdUTF8) = 0;
 
-protected:
-    // Data members
-    typedef std::vector<VideoCaptureCapability> VideoCaptureCapabilities;
-    VideoCaptureCapabilities _captureCapabilities;
-    RWLockWrapper& _apiLock;
-    char* _lastUsedDeviceName;
-    uint32_t _lastUsedDeviceNameLength;
+ protected:
+  // Data members
+  typedef std::vector<VideoCaptureCapability> VideoCaptureCapabilities;
+  VideoCaptureCapabilities _captureCapabilities;
+  RWLockWrapper& _apiLock;
+  char* _lastUsedDeviceName;
+  uint32_t _lastUsedDeviceNameLength;
 };
 }  // namespace videocapturemodule
 }  // namespace webrtc
-#endif // WEBRTC_MODULES_VIDEO_CAPTURE_MAIN_SOURCE_DEVICE_INFO_IMPL_H_
+#endif  // MODULES_VIDEO_CAPTURE_MAIN_SOURCE_DEVICE_INFO_IMPL_H_

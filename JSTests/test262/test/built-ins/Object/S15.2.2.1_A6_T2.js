@@ -2,14 +2,14 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+info: |
     Since calling Object as a function is identical to calling a function,
     list of arguments bracketing is allowed
 es5id: 15.2.2.1_A6_T2
 description: Creating an object with "new Object(null,2,3)"
 ---*/
 
-var obj = new Object(null,2,3);
+var obj = new Object(null, 2, 3);
 
 //CHECK#1
 if (obj.constructor !== Object) {

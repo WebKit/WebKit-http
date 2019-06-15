@@ -3,7 +3,7 @@
 /*---
 esid: sec-%typedarray%.prototype.reduce
 description: Throws a TypeError exception when `this` is not Object
-info: >
+info: |
   22.2.3.20 %TypedArray%.prototype.reduce ( callbackfn [ , initialValue ] )
 
   This function is not generic. ValidateTypedArray is applied to the this value
@@ -15,7 +15,7 @@ info: >
   1. If Type(O) is not Object, throw a TypeError exception.
   ...
 includes: [testTypedArray.js]
-features: [Symbol]
+features: [Symbol, TypedArray]
 ---*/
 
 var reduce = TypedArray.prototype.reduce;

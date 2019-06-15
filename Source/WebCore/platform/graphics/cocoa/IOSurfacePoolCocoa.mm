@@ -26,7 +26,7 @@
 #import "config.h"
 #import "IOSurfacePool.h"
 
-#if USE(IOSURFACE)
+#if HAVE(IOSURFACE)
 
 #include <QuartzCore/QuartzCore.h>
 
@@ -34,10 +34,14 @@ namespace WebCore {
 
 void IOSurfacePool::platformGarbageCollectNow()
 {
+    if (isWebThread())
+        return;
+
+    // We need to trigger a CA commit in the web process to trigger the release layer-related memory, since the WebProcess doesn't normally do CA commits.
     [CATransaction begin];
     [CATransaction commit];
 }
 
 }
 
-#endif // USE(IOSURFACE)
+#endif // HAVE(IOSURFACE)

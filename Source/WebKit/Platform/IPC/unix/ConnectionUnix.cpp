@@ -62,7 +62,7 @@
 namespace IPC {
 
 static const size_t messageMaxSize = 4096;
-static const size_t attachmentMaxAmount = 255;
+static const size_t attachmentMaxAmount = 254;
 
 class AttachmentInfo {
     WTF_MAKE_FAST_ALLOCATED;
@@ -89,9 +89,11 @@ public:
 
 private:
     Attachment::Type m_type { Attachment::Uninitialized };
-    size_t m_size { 0 };
     bool m_isNull { false };
+    size_t m_size { 0 };
 };
+
+static_assert(sizeof(MessageInfo) + sizeof(AttachmentInfo) * attachmentMaxAmount <= messageMaxSize, "messageMaxSize is too small.");
 
 void Connection::platformInitialize(Identifier identifier)
 {
@@ -175,11 +177,10 @@ bool Connection::processMessage()
 
     size_t attachmentFileDescriptorCount = 0;
     size_t attachmentCount = messageInfo.attachmentCount();
-    std::unique_ptr<AttachmentInfo[]> attachmentInfo;
+    Vector<AttachmentInfo> attachmentInfo(attachmentCount);
 
     if (attachmentCount) {
-        attachmentInfo = std::make_unique<AttachmentInfo[]>(attachmentCount);
-        memcpy(attachmentInfo.get(), messageData, sizeof(AttachmentInfo) * attachmentCount);
+        memcpy(attachmentInfo.data(), messageData, sizeof(AttachmentInfo) * attachmentCount);
         messageData += sizeof(AttachmentInfo) * attachmentCount;
 
         for (size_t i = 0; i < attachmentCount; ++i) {
@@ -466,7 +467,7 @@ bool Connection::sendOutputMessage(UnixMessage& outputMessage)
     iov[0].iov_base = reinterpret_cast<void*>(&messageInfo);
     iov[0].iov_len = sizeof(messageInfo);
 
-    std::unique_ptr<AttachmentInfo[]> attachmentInfo;
+    Vector<AttachmentInfo> attachmentInfo;
     MallocPtr<char> attachmentFDBuffer;
 
     auto& attachments = outputMessage.attachments();
@@ -493,7 +494,7 @@ bool Connection::sendOutputMessage(UnixMessage& outputMessage)
             fdPtr = reinterpret_cast<int*>(CMSG_DATA(cmsg));
         }
 
-        attachmentInfo = std::make_unique<AttachmentInfo[]>(attachments.size());
+        attachmentInfo.resize(attachments.size());
         int fdIndex = 0;
         for (size_t i = 0; i < attachments.size(); ++i) {
             attachmentInfo[i].setType(attachments[i].type());
@@ -515,7 +516,7 @@ bool Connection::sendOutputMessage(UnixMessage& outputMessage)
             }
         }
 
-        iov[iovLength].iov_base = attachmentInfo.get();
+        iov[iovLength].iov_base = attachmentInfo.data();
         iov[iovLength].iov_len = sizeof(AttachmentInfo) * attachments.size();
         ++iovLength;
     }

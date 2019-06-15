@@ -4,7 +4,7 @@
 /*---
 es6id: 11.8.3
 description: Octal-integer-literal-like sequence with a leading 0
-info: >
+info: |
     OctalIntegerLiteral ::
       0o OctalDigits
       0O OctalDigits
@@ -13,7 +13,11 @@ info: >
       OctalDigits OctalDigit
     OctalDigit :: one of
       0 1 2 3 4 5 6 7
-negative: SyntaxError
+negative:
+  phase: parse
+  type: SyntaxError
 ---*/
+
+throw "Test262: This statement should not be evaluated.";
 
 00o0;

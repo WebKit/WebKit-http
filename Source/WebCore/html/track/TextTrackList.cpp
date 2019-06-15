@@ -34,7 +34,7 @@
 #include "InbandTextTrackPrivate.h"
 #include "LoadableTextTrack.h"
 
-using namespace WebCore;
+namespace WebCore {
 
 TextTrackList::TextTrackList(HTMLMediaElement* element, ScriptExecutionContext* context)
     : TrackListBase(element, context)
@@ -187,7 +187,7 @@ void TextTrackList::append(Ref<TextTrack>&& track)
 {
     if (track->trackType() == TextTrack::AddTrack)
         m_addTrackTracks.append(track.ptr());
-    else if (is<LoadableTextTrack>(track.get())) {
+    else if (is<LoadableTextTrack>(track)) {
         // Insert tracks added for <track> element in tree order.
         size_t index = downcast<LoadableTextTrack>(track.get()).trackElementIndex();
         m_elementTracks.insert(index, track.ptr());
@@ -265,4 +265,10 @@ EventTargetInterface TextTrackList::eventTargetInterface() const
     return TextTrackListEventTargetInterfaceType;
 }
 
+const char* TextTrackList::activeDOMObjectName() const
+{
+    return "TextTrackList";
+}
+
+} // namespace WebCore
 #endif

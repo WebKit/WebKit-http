@@ -38,11 +38,28 @@ WKTypeID WKGeolocationPositionGetTypeID()
 
 WKGeolocationPositionRef WKGeolocationPositionCreate(double timestamp, double latitude, double longitude, double accuracy)
 {
-    return WKGeolocationPositionCreate_b(timestamp, latitude, longitude, accuracy, false, 0., false, 0., false, 0., false, 0.);
+    return WKGeolocationPositionCreate_c(timestamp, latitude, longitude, accuracy, false, 0., false, 0., false, 0., false, 0., false, 0.);
 }
 
 WKGeolocationPositionRef WKGeolocationPositionCreate_b(double timestamp, double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
 {
-    auto position = WebGeolocationPosition::create(timestamp, latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
+    return WKGeolocationPositionCreate_c(timestamp, latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed, false, 0.);
+}
+
+WKGeolocationPositionRef WKGeolocationPositionCreate_c(double timestamp, double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed, bool providesFloorLevel, double floorLevel)
+{
+    WebCore::GeolocationPosition corePosition { timestamp, latitude, longitude, accuracy };
+    if (providesAltitude)
+        corePosition.altitude = altitude;
+    if (providesAltitudeAccuracy)
+        corePosition.altitudeAccuracy = altitudeAccuracy;
+    if (providesHeading)
+        corePosition.heading = heading;
+    if (providesSpeed)
+        corePosition.speed = speed;
+    if (providesFloorLevel)
+        corePosition.floorLevel = floorLevel;
+
+    auto position = WebGeolocationPosition::create(WTFMove(corePosition));
     return toAPI(&position.leakRef());
 }

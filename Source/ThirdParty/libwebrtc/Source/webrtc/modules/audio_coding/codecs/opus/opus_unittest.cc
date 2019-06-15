@@ -11,12 +11,13 @@
 #include <memory>
 #include <string>
 
-#include "webrtc/base/checks.h"
-#include "webrtc/modules/audio_coding/codecs/opus/opus_inst.h"
-#include "webrtc/modules/audio_coding/codecs/opus/opus_interface.h"
-#include "webrtc/modules/audio_coding/neteq/tools/audio_loop.h"
-#include "webrtc/test/gtest.h"
-#include "webrtc/test/testsupport/fileutils.h"
+#include "modules/audio_coding/codecs/opus/opus_inst.h"
+#include "modules/audio_coding/codecs/opus/opus_interface.h"
+#include "modules/audio_coding/neteq/tools/audio_loop.h"
+#include "rtc_base/checks.h"
+#include "rtc_base/numerics/safe_conversions.h"
+#include "test/gtest.h"
+#include "test/testsupport/fileutils.h"
 
 namespace webrtc {
 
@@ -57,9 +58,12 @@ class OpusTest : public TestWithParam<::testing::tuple<int, int>> {
                    int16_t* audio_type);
 
   void SetMaxPlaybackRate(WebRtcOpusEncInst* encoder,
-                          opus_int32 expect, int32_t set);
+                          opus_int32 expect,
+                          int32_t set);
 
-  void CheckAudioBounded(const int16_t* audio, size_t samples, size_t channels,
+  void CheckAudioBounded(const int16_t* audio,
+                         size_t samples,
+                         size_t channels,
                          uint16_t bound) const;
 
   WebRtcOpusEncInst* opus_encoder_;
@@ -77,15 +81,15 @@ OpusTest::OpusTest()
       opus_decoder_(NULL),
       encoded_bytes_(0),
       channels_(static_cast<size_t>(::testing::get<0>(GetParam()))),
-      application_(::testing::get<1>(GetParam())) {
-}
+      application_(::testing::get<1>(GetParam())) {}
 
-void OpusTest::PrepareSpeechData(size_t channel, int block_length_ms,
+void OpusTest::PrepareSpeechData(size_t channel,
+                                 int block_length_ms,
                                  int loop_length_ms) {
-  const std::string file_name =
-        webrtc::test::ResourcePath((channel == 1) ?
-            "audio_coding/testfile32kHz" :
-            "audio_coding/teststereo32kHz", "pcm");
+  const std::string file_name = webrtc::test::ResourcePath(
+      (channel == 1) ? "audio_coding/testfile32kHz"
+                     : "audio_coding/teststereo32kHz",
+      "pcm");
   if (loop_length_ms < block_length_ms) {
     loop_length_ms = block_length_ms;
   }
@@ -99,13 +103,14 @@ void OpusTest::SetMaxPlaybackRate(WebRtcOpusEncInst* encoder,
                                   int32_t set) {
   opus_int32 bandwidth;
   EXPECT_EQ(0, WebRtcOpus_SetMaxPlaybackRate(opus_encoder_, set));
-  opus_encoder_ctl(opus_encoder_->encoder,
-                   OPUS_GET_MAX_BANDWIDTH(&bandwidth));
+  opus_encoder_ctl(opus_encoder_->encoder, OPUS_GET_MAX_BANDWIDTH(&bandwidth));
   EXPECT_EQ(expect, bandwidth);
 }
 
-void OpusTest::CheckAudioBounded(const int16_t* audio, size_t samples,
-                                 size_t channels, uint16_t bound) const {
+void OpusTest::CheckAudioBounded(const int16_t* audio,
+                                 size_t samples,
+                                 size_t channels,
+                                 uint16_t bound) const {
   for (size_t i = 0; i < samples; ++i) {
     for (size_t c = 0; c < channels; ++c) {
       ASSERT_GE(audio[i * channels + c], -bound);
@@ -119,16 +124,15 @@ int OpusTest::EncodeDecode(WebRtcOpusEncInst* encoder,
                            WebRtcOpusDecInst* decoder,
                            int16_t* output_audio,
                            int16_t* audio_type) {
-  int encoded_bytes_int = WebRtcOpus_Encode(
-      encoder, input_audio.data(),
-      rtc::CheckedDivExact(input_audio.size(), channels_),
-      kMaxBytes, bitstream_);
+  int encoded_bytes_int =
+      WebRtcOpus_Encode(encoder, input_audio.data(),
+                        rtc::CheckedDivExact(input_audio.size(), channels_),
+                        kMaxBytes, bitstream_);
   EXPECT_GE(encoded_bytes_int, 0);
   encoded_bytes_ = static_cast<size_t>(encoded_bytes_int);
   int est_len = WebRtcOpus_DurationEst(decoder, bitstream_, encoded_bytes_);
-  int act_len = WebRtcOpus_Decode(decoder, bitstream_,
-                                  encoded_bytes_, output_audio,
-                                  audio_type);
+  int act_len = WebRtcOpus_Decode(decoder, bitstream_, encoded_bytes_,
+                                  output_audio, audio_type);
   EXPECT_EQ(est_len, act_len);
   return act_len;
 }
@@ -140,30 +144,28 @@ void OpusTest::TestDtxEffect(bool dtx, int block_length_ms) {
   const size_t samples = kOpusRateKhz * block_length_ms;
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
   EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
 
   // Set bitrate.
-  EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_,
-                                     channels_ == 1 ? 32000 : 64000));
+  EXPECT_EQ(
+      0, WebRtcOpus_SetBitRate(opus_encoder_, channels_ == 1 ? 32000 : 64000));
 
   // Set input audio as silence.
   std::vector<int16_t> silence(samples * channels_, 0);
 
   // Setting DTX.
-  EXPECT_EQ(0, dtx ? WebRtcOpus_EnableDtx(opus_encoder_) :
-      WebRtcOpus_DisableDtx(opus_encoder_));
+  EXPECT_EQ(0, dtx ? WebRtcOpus_EnableDtx(opus_encoder_)
+                   : WebRtcOpus_DisableDtx(opus_encoder_));
 
   int16_t audio_type;
   int16_t* output_data_decode = new int16_t[samples * channels_];
 
   for (int i = 0; i < 100; ++i) {
-    EXPECT_EQ(samples,
-              static_cast<size_t>(EncodeDecode(
-                  opus_encoder_, speech_data_.GetNextBlock(), opus_decoder_,
-                  output_data_decode, &audio_type)));
+    EXPECT_EQ(samples, static_cast<size_t>(EncodeDecode(
+                           opus_encoder_, speech_data_.GetNextBlock(),
+                           opus_decoder_, output_data_decode, &audio_type)));
     // If not DTX, it should never enter DTX mode. If DTX, we do not care since
     // whether it enters DTX depends on the signal type.
     if (!dtx) {
@@ -177,10 +179,9 @@ void OpusTest::TestDtxEffect(bool dtx, int block_length_ms) {
   // We input some silent segments. In DTX mode, the encoder will stop sending.
   // However, DTX may happen after a while.
   for (int i = 0; i < 30; ++i) {
-    EXPECT_EQ(samples,
-              static_cast<size_t>(EncodeDecode(
-                  opus_encoder_, silence, opus_decoder_, output_data_decode,
-                  &audio_type)));
+    EXPECT_EQ(samples, static_cast<size_t>(
+                           EncodeDecode(opus_encoder_, silence, opus_decoder_,
+                                        output_data_decode, &audio_type)));
     if (!dtx) {
       EXPECT_GT(encoded_bytes_, 1U);
       EXPECT_EQ(0, opus_encoder_->in_dtx_mode);
@@ -226,10 +227,9 @@ void OpusTest::TestDtxEffect(bool dtx, int block_length_ms) {
     int i = 0;
     for (; i < max_dtx_frames; ++i) {
       time += block_length_ms;
-      EXPECT_EQ(samples,
-                static_cast<size_t>(EncodeDecode(
-                    opus_encoder_, silence, opus_decoder_, output_data_decode,
-                    &audio_type)));
+      EXPECT_EQ(samples, static_cast<size_t>(
+                             EncodeDecode(opus_encoder_, silence, opus_decoder_,
+                                          output_data_decode, &audio_type)));
       if (dtx) {
         if (encoded_bytes_ > 1)
           break;
@@ -262,10 +262,9 @@ void OpusTest::TestDtxEffect(bool dtx, int block_length_ms) {
 
     // Enters DTX again immediately.
     time += block_length_ms;
-    EXPECT_EQ(samples,
-              static_cast<size_t>(EncodeDecode(
-                  opus_encoder_, silence, opus_decoder_, output_data_decode,
-                  &audio_type)));
+    EXPECT_EQ(samples, static_cast<size_t>(
+                           EncodeDecode(opus_encoder_, silence, opus_decoder_,
+                                        output_data_decode, &audio_type)));
     if (dtx) {
       EXPECT_EQ(1U, encoded_bytes_);  // Send 1 byte.
       EXPECT_EQ(1, opus_encoder_->in_dtx_mode);
@@ -286,10 +285,9 @@ void OpusTest::TestDtxEffect(bool dtx, int block_length_ms) {
   silence[0] = 10000;
   if (dtx) {
     // Verify that encoder/decoder can jump out from DTX mode.
-    EXPECT_EQ(samples,
-              static_cast<size_t>(EncodeDecode(
-                  opus_encoder_, silence, opus_decoder_, output_data_decode,
-                  &audio_type)));
+    EXPECT_EQ(samples, static_cast<size_t>(
+                           EncodeDecode(opus_encoder_, silence, opus_decoder_,
+                                        output_data_decode, &audio_type)));
     EXPECT_GT(encoded_bytes_, 1U);
     EXPECT_EQ(0, opus_encoder_->in_dtx_mode);
     EXPECT_EQ(0, opus_decoder_->in_dtx_mode);
@@ -334,7 +332,7 @@ void OpusTest::TestCbrEffect(bool cbr, int block_length_ms) {
       int32_t diff = std::abs((int32_t)encoded_bytes_ - prev_pkt_size);
       max_pkt_size_diff = std::max(max_pkt_size_diff, diff);
     }
-    prev_pkt_size = encoded_bytes_;
+    prev_pkt_size = rtc::checked_cast<int32_t>(encoded_bytes_);
   }
 
   if (cbr) {
@@ -374,9 +372,8 @@ TEST(OpusTest, OpusFreeFail) {
 
 // Test normal Create and Free.
 TEST_P(OpusTest, OpusCreateFree) {
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
   EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
   EXPECT_TRUE(opus_encoder_ != NULL);
   EXPECT_TRUE(opus_decoder_ != NULL);
@@ -389,23 +386,20 @@ TEST_P(OpusTest, OpusEncodeDecode) {
   PrepareSpeechData(channels_, 20, 20);
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
-  EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_,
-                                        channels_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
+  EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
 
   // Set bitrate.
-  EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_,
-                                     channels_ == 1 ? 32000 : 64000));
+  EXPECT_EQ(
+      0, WebRtcOpus_SetBitRate(opus_encoder_, channels_ == 1 ? 32000 : 64000));
 
   // Check number of channels for decoder.
   EXPECT_EQ(channels_, WebRtcOpus_DecoderChannels(opus_decoder_));
 
   // Check application mode.
   opus_int32 app;
-  opus_encoder_ctl(opus_encoder_->encoder,
-                   OPUS_GET_APPLICATION(&app));
+  opus_encoder_ctl(opus_encoder_->encoder, OPUS_GET_APPLICATION(&app));
   EXPECT_EQ(application_ == 0 ? OPUS_APPLICATION_VOIP : OPUS_APPLICATION_AUDIO,
             app);
 
@@ -428,9 +422,8 @@ TEST_P(OpusTest, OpusSetBitRate) {
   EXPECT_EQ(-1, WebRtcOpus_SetBitRate(opus_encoder_, 60000));
 
   // Create encoder memory, try with different bitrates.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
   EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_, 30000));
   EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_, 60000));
   EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_, 300000));
@@ -445,9 +438,8 @@ TEST_P(OpusTest, OpusSetComplexity) {
   EXPECT_EQ(-1, WebRtcOpus_SetComplexity(opus_encoder_, 9));
 
   // Create encoder memory, try with different complexities.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
 
   EXPECT_EQ(0, WebRtcOpus_SetComplexity(opus_encoder_, 0));
   EXPECT_EQ(0, WebRtcOpus_SetComplexity(opus_encoder_, 10));
@@ -455,6 +447,45 @@ TEST_P(OpusTest, OpusSetComplexity) {
 
   // Free memory.
   EXPECT_EQ(0, WebRtcOpus_EncoderFree(opus_encoder_));
+}
+
+TEST_P(OpusTest, OpusSetBandwidth) {
+  PrepareSpeechData(channels_, 20, 20);
+
+  int16_t audio_type;
+  std::unique_ptr<int16_t[]> output_data_decode(
+      new int16_t[kOpus20msFrameSamples * channels_]());
+
+  // Test without creating encoder memory.
+  EXPECT_EQ(-1,
+            WebRtcOpus_SetBandwidth(opus_encoder_, OPUS_BANDWIDTH_NARROWBAND));
+  EXPECT_EQ(-1, WebRtcOpus_GetBandwidth(opus_encoder_));
+
+  // Create encoder memory, try with different bandwidths.
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
+  EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
+
+  EXPECT_EQ(-1, WebRtcOpus_SetBandwidth(opus_encoder_,
+                                        OPUS_BANDWIDTH_NARROWBAND - 1));
+  EXPECT_EQ(0,
+            WebRtcOpus_SetBandwidth(opus_encoder_, OPUS_BANDWIDTH_NARROWBAND));
+  EncodeDecode(opus_encoder_, speech_data_.GetNextBlock(), opus_decoder_,
+               output_data_decode.get(), &audio_type);
+  EXPECT_EQ(OPUS_BANDWIDTH_NARROWBAND, WebRtcOpus_GetBandwidth(opus_encoder_));
+  EXPECT_EQ(0, WebRtcOpus_SetBandwidth(opus_encoder_, OPUS_BANDWIDTH_FULLBAND));
+  EncodeDecode(opus_encoder_, speech_data_.GetNextBlock(), opus_decoder_,
+               output_data_decode.get(), &audio_type);
+  EXPECT_EQ(OPUS_BANDWIDTH_FULLBAND, WebRtcOpus_GetBandwidth(opus_encoder_));
+  EXPECT_EQ(
+      -1, WebRtcOpus_SetBandwidth(opus_encoder_, OPUS_BANDWIDTH_FULLBAND + 1));
+  EncodeDecode(opus_encoder_, speech_data_.GetNextBlock(), opus_decoder_,
+               output_data_decode.get(), &audio_type);
+  EXPECT_EQ(OPUS_BANDWIDTH_FULLBAND, WebRtcOpus_GetBandwidth(opus_encoder_));
+
+  // Free memory.
+  EXPECT_EQ(0, WebRtcOpus_EncoderFree(opus_encoder_));
+  EXPECT_EQ(0, WebRtcOpus_DecoderFree(opus_decoder_));
 }
 
 TEST_P(OpusTest, OpusForceChannels) {
@@ -484,9 +515,8 @@ TEST_P(OpusTest, OpusDecodeInit) {
   PrepareSpeechData(channels_, 20, 20);
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
   EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
 
   // Encode & decode.
@@ -500,9 +530,9 @@ TEST_P(OpusTest, OpusDecodeInit) {
   WebRtcOpus_DecoderInit(opus_decoder_);
 
   EXPECT_EQ(kOpus20msFrameSamples,
-            static_cast<size_t>(WebRtcOpus_Decode(
-                opus_decoder_, bitstream_, encoded_bytes_, output_data_decode,
-                &audio_type)));
+            static_cast<size_t>(
+                WebRtcOpus_Decode(opus_decoder_, bitstream_, encoded_bytes_,
+                                  output_data_decode, &audio_type)));
 
   // Free memory.
   delete[] output_data_decode;
@@ -516,9 +546,8 @@ TEST_P(OpusTest, OpusEnableDisableFec) {
   EXPECT_EQ(-1, WebRtcOpus_DisableFec(opus_encoder_));
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
 
   EXPECT_EQ(0, WebRtcOpus_EnableFec(opus_encoder_));
   EXPECT_EQ(0, WebRtcOpus_DisableFec(opus_encoder_));
@@ -533,29 +562,24 @@ TEST_P(OpusTest, OpusEnableDisableDtx) {
   EXPECT_EQ(-1, WebRtcOpus_DisableDtx(opus_encoder_));
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
 
   opus_int32 dtx;
 
   // DTX is off by default.
-  opus_encoder_ctl(opus_encoder_->encoder,
-                   OPUS_GET_DTX(&dtx));
+  opus_encoder_ctl(opus_encoder_->encoder, OPUS_GET_DTX(&dtx));
   EXPECT_EQ(0, dtx);
 
   // Test to enable DTX.
   EXPECT_EQ(0, WebRtcOpus_EnableDtx(opus_encoder_));
-  opus_encoder_ctl(opus_encoder_->encoder,
-                   OPUS_GET_DTX(&dtx));
+  opus_encoder_ctl(opus_encoder_->encoder, OPUS_GET_DTX(&dtx));
   EXPECT_EQ(1, dtx);
 
   // Test to disable DTX.
   EXPECT_EQ(0, WebRtcOpus_DisableDtx(opus_encoder_));
-  opus_encoder_ctl(opus_encoder_->encoder,
-                   OPUS_GET_DTX(&dtx));
+  opus_encoder_ctl(opus_encoder_->encoder, OPUS_GET_DTX(&dtx));
   EXPECT_EQ(0, dtx);
-
 
   // Free memory.
   EXPECT_EQ(0, WebRtcOpus_EncoderFree(opus_encoder_));
@@ -590,9 +614,8 @@ TEST_P(OpusTest, OpusSetPacketLossRate) {
   EXPECT_EQ(-1, WebRtcOpus_SetPacketLossRate(opus_encoder_, 50));
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
 
   EXPECT_EQ(0, WebRtcOpus_SetPacketLossRate(opus_encoder_, 50));
   EXPECT_EQ(-1, WebRtcOpus_SetPacketLossRate(opus_encoder_, -1));
@@ -607,9 +630,8 @@ TEST_P(OpusTest, OpusSetMaxPlaybackRate) {
   EXPECT_EQ(-1, WebRtcOpus_SetMaxPlaybackRate(opus_encoder_, 20000));
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
 
   SetMaxPlaybackRate(opus_encoder_, OPUS_BANDWIDTH_FULLBAND, 48000);
   SetMaxPlaybackRate(opus_encoder_, OPUS_BANDWIDTH_FULLBAND, 24001);
@@ -631,14 +653,13 @@ TEST_P(OpusTest, OpusDecodePlc) {
   PrepareSpeechData(channels_, 20, 20);
 
   // Create encoder memory.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
   EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
 
   // Set bitrate.
-  EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_,
-                                     channels_== 1 ? 32000 : 64000));
+  EXPECT_EQ(
+      0, WebRtcOpus_SetBitRate(opus_encoder_, channels_ == 1 ? 32000 : 64000));
 
   // Check number of channels for decoder.
   EXPECT_EQ(channels_, WebRtcOpus_DecoderChannels(opus_decoder_));
@@ -653,9 +674,8 @@ TEST_P(OpusTest, OpusDecodePlc) {
 
   // Call decoder PLC.
   int16_t* plc_buffer = new int16_t[kOpus20msFrameSamples * channels_];
-  EXPECT_EQ(kOpus20msFrameSamples,
-            static_cast<size_t>(WebRtcOpus_DecodePlc(
-                opus_decoder_, plc_buffer, 1)));
+  EXPECT_EQ(kOpus20msFrameSamples, static_cast<size_t>(WebRtcOpus_DecodePlc(
+                                       opus_decoder_, plc_buffer, 1)));
 
   // Free memory.
   delete[] plc_buffer;
@@ -669,34 +689,33 @@ TEST_P(OpusTest, OpusDurationEstimation) {
   PrepareSpeechData(channels_, 20, 20);
 
   // Create.
-  EXPECT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
+  EXPECT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
   EXPECT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
 
   // 10 ms. We use only first 10 ms of a 20 ms block.
   auto speech_block = speech_data_.GetNextBlock();
   int encoded_bytes_int = WebRtcOpus_Encode(
       opus_encoder_, speech_block.data(),
-      rtc::CheckedDivExact(speech_block.size(), 2 * channels_),
-      kMaxBytes, bitstream_);
+      rtc::CheckedDivExact(speech_block.size(), 2 * channels_), kMaxBytes,
+      bitstream_);
   EXPECT_GE(encoded_bytes_int, 0);
-  EXPECT_EQ(kOpus10msFrameSamples,
-            static_cast<size_t>(WebRtcOpus_DurationEst(
-                opus_decoder_, bitstream_,
-                static_cast<size_t>(encoded_bytes_int))));
+  EXPECT_EQ(
+      kOpus10msFrameSamples,
+      static_cast<size_t>(WebRtcOpus_DurationEst(
+          opus_decoder_, bitstream_, static_cast<size_t>(encoded_bytes_int))));
 
   // 20 ms
   speech_block = speech_data_.GetNextBlock();
-  encoded_bytes_int = WebRtcOpus_Encode(
-      opus_encoder_, speech_block.data(),
-      rtc::CheckedDivExact(speech_block.size(), channels_),
-      kMaxBytes, bitstream_);
+  encoded_bytes_int =
+      WebRtcOpus_Encode(opus_encoder_, speech_block.data(),
+                        rtc::CheckedDivExact(speech_block.size(), channels_),
+                        kMaxBytes, bitstream_);
   EXPECT_GE(encoded_bytes_int, 0);
-  EXPECT_EQ(kOpus20msFrameSamples,
-            static_cast<size_t>(WebRtcOpus_DurationEst(
-                opus_decoder_, bitstream_,
-                static_cast<size_t>(encoded_bytes_int))));
+  EXPECT_EQ(
+      kOpus20msFrameSamples,
+      static_cast<size_t>(WebRtcOpus_DurationEst(
+          opus_decoder_, bitstream_, static_cast<size_t>(encoded_bytes_int))));
 
   // Free memory.
   EXPECT_EQ(0, WebRtcOpus_EncoderFree(opus_encoder_));
@@ -709,15 +728,13 @@ TEST_P(OpusTest, OpusDecodeRepacketized) {
   PrepareSpeechData(channels_, 20, 20 * kPackets);
 
   // Create encoder memory.
-  ASSERT_EQ(0, WebRtcOpus_EncoderCreate(&opus_encoder_,
-                                        channels_,
-                                        application_));
-  ASSERT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_,
-                                        channels_));
+  ASSERT_EQ(0,
+            WebRtcOpus_EncoderCreate(&opus_encoder_, channels_, application_));
+  ASSERT_EQ(0, WebRtcOpus_DecoderCreate(&opus_decoder_, channels_));
 
   // Set bitrate.
-  EXPECT_EQ(0, WebRtcOpus_SetBitRate(opus_encoder_,
-                                     channels_ == 1 ? 32000 : 64000));
+  EXPECT_EQ(
+      0, WebRtcOpus_SetBitRate(opus_encoder_, channels_ == 1 ? 32000 : 64000));
 
   // Check number of channels for decoder.
   EXPECT_EQ(channels_, WebRtcOpus_DecoderChannels(opus_decoder_));
@@ -736,7 +753,9 @@ TEST_P(OpusTest, OpusDecodeRepacketized) {
         WebRtcOpus_Encode(opus_encoder_, speech_block.data(),
                           rtc::CheckedDivExact(speech_block.size(), channels_),
                           kMaxBytes, bitstream_);
-    if (opus_repacketizer_cat(rp, bitstream_, encoded_bytes_) == OPUS_OK) {
+    if (opus_repacketizer_cat(rp, bitstream_,
+                              rtc::checked_cast<opus_int32>(encoded_bytes_)) ==
+        OPUS_OK) {
       ++num_packets;
       if (num_packets == kPackets) {
         break;
@@ -756,9 +775,9 @@ TEST_P(OpusTest, OpusDecodeRepacketized) {
                 opus_decoder_, bitstream_, encoded_bytes_)));
 
   EXPECT_EQ(kOpus20msFrameSamples * kPackets,
-            static_cast<size_t>(WebRtcOpus_Decode(
-                opus_decoder_, bitstream_, encoded_bytes_,
-                output_data_decode.get(), &audio_type)));
+            static_cast<size_t>(
+                WebRtcOpus_Decode(opus_decoder_, bitstream_, encoded_bytes_,
+                                  output_data_decode.get(), &audio_type)));
 
   // Free memory.
   opus_repacketizer_destroy(rp);
@@ -769,6 +788,5 @@ TEST_P(OpusTest, OpusDecodeRepacketized) {
 INSTANTIATE_TEST_CASE_P(VariousMode,
                         OpusTest,
                         Combine(Values(1, 2), Values(0, 1)));
-
 
 }  // namespace webrtc

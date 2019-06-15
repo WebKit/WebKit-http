@@ -33,11 +33,14 @@
 #include "IDBError.h"
 #include "IDBResourceIdentifier.h"
 #include "IndexedDB.h"
-#include <heap/Strong.h>
+#include <JavaScriptCore/Strong.h>
+#include <wtf/Function.h>
+#include <wtf/Scope.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
-class DOMError;
+class DOMException;
 class Event;
 class IDBCursor;
 class IDBDatabase;
@@ -47,7 +50,6 @@ class IDBObjectStore;
 class IDBResultData;
 class IDBTransaction;
 class IDBValue;
-class ScopeGuard;
 class ThreadSafeDataBuffer;
 
 namespace IDBClient {
@@ -55,7 +57,7 @@ class IDBConnectionProxy;
 class IDBConnectionToServer;
 }
 
-class IDBRequest : public EventTargetWithInlineData, public IDBActiveDOMObject, public RefCounted<IDBRequest> {
+class IDBRequest : public EventTargetWithInlineData, public IDBActiveDOMObject, public RefCounted<IDBRequest>, public CanMakeWeakPtr<IDBRequest> {
 public:
     static Ref<IDBRequest> create(ScriptExecutionContext&, IDBObjectStore&, IDBTransaction&);
     static Ref<IDBRequest> create(ScriptExecutionContext&, IDBCursor&, IDBTransaction&);
@@ -67,13 +69,15 @@ public:
 
     virtual ~IDBRequest();
 
+    // FIXME: The following use of JSC::Strong is incorrect and can lead to storage leaks
+    // due to reference cycles; we should use JSValueInWrappedObject instead.
     using Result = Variant<RefPtr<IDBCursor>, RefPtr<IDBDatabase>, JSC::Strong<JSC::Unknown>>;
     ExceptionOr<std::optional<Result>> result() const;
 
     using Source = Variant<RefPtr<IDBObjectStore>, RefPtr<IDBIndex>, RefPtr<IDBCursor>>;
     const std::optional<Source>& source() const { return m_source; }
 
-    ExceptionOr<DOMError*> error() const;
+    ExceptionOr<DOMException*> error() const;
 
     RefPtr<IDBTransaction> transaction() const;
     
@@ -117,7 +121,7 @@ protected:
     IDBRequest(ScriptExecutionContext&, IDBClient::IDBConnectionProxy&);
 
     void enqueueEvent(Ref<Event>&&);
-    bool dispatchEvent(Event&) override;
+    void dispatchEvent(Event&) override;
 
     void setResult(Ref<IDBDatabase>&&);
 
@@ -128,7 +132,7 @@ protected:
     ReadyState m_readyState { ReadyState::Pending };
     RefPtr<IDBTransaction> m_transaction;
     bool m_shouldExposeTransactionToDOM { true };
-    RefPtr<DOMError> m_domError;
+    RefPtr<DOMException> m_domError;
     IndexedDB::RequestType m_requestType { IndexedDB::RequestType::Other };
     bool m_contextStopped { false };
     Event* m_openDatabaseSuccessEvent { nullptr };
@@ -169,8 +173,6 @@ private:
     IndexedDB::IndexRecordType m_requestedIndexRecordType { IndexedDB::IndexRecordType::Key };
 
     RefPtr<IDBCursor> m_pendingCursor;
-
-    std::unique_ptr<ScopeGuard> m_cursorRequestNotifier;
 
     Ref<IDBClient::IDBConnectionProxy> m_connectionProxy;
 };

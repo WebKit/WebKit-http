@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012, 2013, 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,40 +42,57 @@ enum OperandsLikeTag { OperandsLike };
 template<typename T>
 class Operands {
 public:
-    Operands() { }
+    Operands()
+        : m_numArguments(0) { }
     
     explicit Operands(size_t numArguments, size_t numLocals)
+        : m_numArguments(numArguments)
     {
         if (WTF::VectorTraits<T>::needsInitialization) {
-            m_arguments.resize(numArguments);
-            m_locals.resize(numLocals);
+            m_values.resize(numArguments + numLocals);
         } else {
-            m_arguments.fill(T(), numArguments);
-            m_locals.fill(T(), numLocals);
+            m_values.fill(T(), numArguments + numLocals);
         }
     }
 
     explicit Operands(size_t numArguments, size_t numLocals, const T& initialValue)
+        : m_numArguments(numArguments)
     {
-        m_arguments.fill(initialValue, numArguments);
-        m_locals.fill(initialValue, numLocals);
+        m_values.fill(initialValue, numArguments + numLocals);
     }
     
     template<typename U>
     explicit Operands(OperandsLikeTag, const Operands<U>& other)
+        : m_numArguments(other.numberOfArguments())
     {
-        m_arguments.fill(T(), other.numberOfArguments());
-        m_locals.fill(T(), other.numberOfLocals());
+        m_values.fill(T(), other.numberOfArguments() + other.numberOfLocals());
     }
     
-    size_t numberOfArguments() const { return m_arguments.size(); }
-    size_t numberOfLocals() const { return m_locals.size(); }
+    size_t numberOfArguments() const { return m_numArguments; }
+    size_t numberOfLocals() const { return m_values.size() - m_numArguments; }
     
-    T& argument(size_t idx) { return m_arguments[idx]; }
-    const T& argument(size_t idx) const { return m_arguments[idx]; }
+    size_t argumentIndex(size_t idx) const
+    {
+        ASSERT(idx < m_numArguments);
+        return idx;
+    }
     
-    T& local(size_t idx) { return m_locals[idx]; }
-    const T& local(size_t idx) const { return m_locals[idx]; }
+    size_t localIndex(size_t idx) const
+    {
+        return m_numArguments + idx;
+    }
+    
+    T& argument(size_t idx)
+    {
+        return m_values[argumentIndex(idx)];
+    }
+    const T& argument(size_t idx) const
+    {
+        return m_values[argumentIndex(idx)];
+    }
+    
+    T& local(size_t idx) { return m_values[localIndex(idx)]; }
+    const T& local(size_t idx) const { return m_values[localIndex(idx)]; }
     
     template<OperandKind operandKind>
     size_t sizeFor() const
@@ -101,62 +118,70 @@ public:
     
     void ensureLocals(size_t size)
     {
-        if (size <= m_locals.size())
+        size_t oldSize = m_values.size();
+        size_t newSize = m_numArguments + size;
+        if (newSize <= oldSize)
             return;
 
-        size_t oldSize = m_locals.size();
-        m_locals.resize(size);
+        m_values.grow(newSize);
         if (!WTF::VectorTraits<T>::needsInitialization) {
-            for (size_t i = oldSize; i < m_locals.size(); ++i)
-                m_locals[i] = T();
+            for (size_t i = oldSize; i < m_values.size(); ++i)
+                m_values[i] = T();
         }
     }
 
     void ensureLocals(size_t size, const T& ensuredValue)
     {
-        if (size <= m_locals.size())
+        size_t oldSize = m_values.size();
+        size_t newSize = m_numArguments + size;
+        if (newSize <= oldSize)
             return;
 
-        size_t oldSize = m_locals.size();
-        m_locals.resize(size);
-        for (size_t i = oldSize; i < m_locals.size(); ++i)
-            m_locals[i] = ensuredValue;
+        m_values.grow(newSize);
+        for (size_t i = oldSize; i < m_values.size(); ++i)
+            m_values[i] = ensuredValue;
     }
     
     void setLocal(size_t idx, const T& value)
     {
         ensureLocals(idx + 1);
-        
-        m_locals[idx] = value;
+        local(idx) = value;
     }
     
     T getLocal(size_t idx)
     {
-        if (idx >= m_locals.size())
-            return T();
-        return m_locals[idx];
+        return idx >= numberOfLocals() ? T() : local(idx);
     }
     
     void setArgumentFirstTime(size_t idx, const T& value)
     {
-        ASSERT(m_arguments[idx] == T());
+        ASSERT(m_values[idx] == T());
         argument(idx) = value;
     }
     
     void setLocalFirstTime(size_t idx, const T& value)
     {
-        ASSERT(idx >= m_locals.size() || m_locals[idx] == T());
+        ASSERT(idx >= numberOfLocals() || local(idx) == T());
         setLocal(idx, value);
+    }
+    
+    size_t operandIndex(int operand) const
+    {
+        if (operandIsArgument(operand))
+            return argumentIndex(VirtualRegister(operand).toArgument());
+        return localIndex(VirtualRegister(operand).toLocal());
+    }
+    
+    size_t operandIndex(VirtualRegister virtualRegister) const
+    {
+        return operandIndex(virtualRegister.offset());
     }
     
     T& operand(int operand)
     {
-        if (operandIsArgument(operand)) {
-            int argument = VirtualRegister(operand).toArgument();
-            return m_arguments[argument];
-        }
-
-        return m_locals[VirtualRegister(operand).toLocal()];
+        if (operandIsArgument(operand))
+            return argument(VirtualRegister(operand).toArgument());
+        return local(VirtualRegister(operand).toLocal());
     }
 
     T& operand(VirtualRegister virtualRegister)
@@ -180,13 +205,7 @@ public:
     
     void setOperand(int operand, const T& value)
     {
-        if (operandIsArgument(operand)) {
-            int argument = VirtualRegister(operand).toArgument();
-            m_arguments[argument] = value;
-            return;
-        }
-        
-        setLocal(VirtualRegister(operand).toLocal(), value);
+        this->operand(operand) = value;
     }
     
     void setOperand(VirtualRegister virtualRegister, const T& value)
@@ -194,32 +213,14 @@ public:
         setOperand(virtualRegister.offset(), value);
     }
 
-    size_t size() const { return numberOfArguments() + numberOfLocals(); }
-    const T& at(size_t index) const
-    {
-        if (index < numberOfArguments())
-            return m_arguments[index];
-        return m_locals[index - numberOfArguments()];
-    }
-    T& at(size_t index)
-    {
-        if (index < numberOfArguments())
-            return m_arguments[index];
-        return m_locals[index - numberOfArguments()];
-    }
+    size_t size() const { return m_values.size(); }
+    const T& at(size_t index) const { return m_values[index]; }
+    T& at(size_t index) { return m_values[index]; }
     const T& operator[](size_t index) const { return at(index); }
     T& operator[](size_t index) { return at(index); }
 
-    bool isArgument(size_t index) const { return index < numberOfArguments(); }
+    bool isArgument(size_t index) const { return index < m_numArguments; }
     bool isVariable(size_t index) const { return !isArgument(index); }
-    int argumentForIndex(size_t index) const
-    {
-        return index;
-    }
-    int variableForIndex(size_t index) const
-    {
-        return index - m_arguments.size();
-    }
     int operandForIndex(size_t index) const
     {
         if (index < numberOfArguments())
@@ -229,16 +230,6 @@ public:
     VirtualRegister virtualRegisterForIndex(size_t index) const
     {
         return VirtualRegister(operandForIndex(index));
-    }
-    size_t indexForOperand(int operand) const
-    {
-        if (operandIsArgument(operand))
-            return static_cast<size_t>(VirtualRegister(operand).toArgument());
-        return static_cast<size_t>(VirtualRegister(operand).toLocal()) + numberOfArguments();
-    }
-    size_t indexForOperand(VirtualRegister reg) const
-    {
-        return indexForOperand(reg.offset());
     }
     
     void setOperandFirstTime(int operand, const T& value)
@@ -253,10 +244,8 @@ public:
     
     void fill(T value)
     {
-        for (size_t i = 0; i < m_arguments.size(); ++i)
-            m_arguments[i] = value;
-        for (size_t i = 0; i < m_locals.size(); ++i)
-            m_locals[i] = value;
+        for (size_t i = 0; i < m_values.size(); ++i)
+            m_values[i] = value;
     }
     
     void clear()
@@ -269,15 +258,16 @@ public:
         ASSERT(numberOfArguments() == other.numberOfArguments());
         ASSERT(numberOfLocals() == other.numberOfLocals());
         
-        return m_arguments == other.m_arguments && m_locals == other.m_locals;
+        return m_values == other.m_values;
     }
     
     void dumpInContext(PrintStream& out, DumpContext* context) const;
     void dump(PrintStream& out) const;
     
 private:
-    Vector<T, 8> m_arguments;
-    Vector<T, 16> m_locals;
+    // The first m_numArguments of m_values are arguments, the rest are locals.
+    Vector<T, 24, UnsafeVectorOverflow> m_values;
+    unsigned m_numArguments;
 };
 
 } // namespace JSC

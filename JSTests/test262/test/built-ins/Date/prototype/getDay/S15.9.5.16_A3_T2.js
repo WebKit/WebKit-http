@@ -2,14 +2,15 @@
 // This code is governed by the BSD license found in the LICENSE file.
 
 /*---
-info: >
+esid: sec-date.prototype.getday
+info: |
     The Date.prototype.getDay property "length" has { ReadOnly, ! DontDelete,
     DontEnum } attributes
 es5id: 15.9.5.16_A3_T2
 description: Checking DontDelete attribute
 ---*/
 
-if (delete Date.prototype.getDay.length  !== true) {
+if (delete Date.prototype.getDay.length !== true) {
   $ERROR('#1: The Date.prototype.getDay.length property does not have the attributes DontDelete');
 }
 

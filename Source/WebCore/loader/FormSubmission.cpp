@@ -47,9 +47,9 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
-#include "NoEventDispatchAssertion.h"
+#include "ScriptDisallowedScope.h"
 #include "TextEncoding.h"
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 namespace WebCore {
 
@@ -59,7 +59,7 @@ static int64_t generateFormDataIdentifier()
 {
     // Initialize to the current time to reduce the likelihood of generating
     // identifiers that overlap with those from past/future browser sessions.
-    static int64_t nextIdentifier = static_cast<int64_t>(currentTime() * 1000000.0);
+    static int64_t nextIdentifier = static_cast<int64_t>(WallTime::now().secondsSinceEpoch().microseconds());
     return ++nextIdentifier;
 }
 
@@ -93,10 +93,10 @@ void FormSubmission::Attributes::parseAction(const String& action)
 String FormSubmission::Attributes::parseEncodingType(const String& type)
 {
     if (equalLettersIgnoringASCIICase(type, "multipart/form-data"))
-        return ASCIILiteral("multipart/form-data");
+        return "multipart/form-data"_s;
     if (equalLettersIgnoringASCIICase(type, "text/plain"))
-        return ASCIILiteral("text/plain");
-    return ASCIILiteral("application/x-www-form-urlencoded");
+        return "text/plain"_s;
+    return "application/x-www-form-urlencoded"_s;
 }
 
 void FormSubmission::Attributes::updateEncodingType(const String& type)
@@ -133,10 +133,7 @@ static TextEncoding encodingFromAcceptCharset(const String& acceptCharset, Docum
     String normalizedAcceptCharset = acceptCharset;
     normalizedAcceptCharset.replace(',', ' ');
 
-    Vector<String> charsets;
-    normalizedAcceptCharset.split(' ', charsets);
-
-    for (auto& charset : charsets) {
+    for (auto& charset : normalizedAcceptCharset.split(' ')) {
         TextEncoding encoding(charset);
         if (encoding.isValid())
             return encoding;
@@ -147,18 +144,9 @@ static TextEncoding encodingFromAcceptCharset(const String& acceptCharset, Docum
 
 Ref<FormSubmission> FormSubmission::create(HTMLFormElement& form, const Attributes& attributes, Event* event, LockHistory lockHistory, FormSubmissionTrigger trigger)
 {
-    HTMLFormControlElement* submitButton = nullptr;
-    if (event && event->target()) {
-        for (Node* node = event->target()->toNode(); node; node = node->parentNode()) {
-            if (is<HTMLFormControlElement>(*node)) {
-                submitButton = downcast<HTMLFormControlElement>(node);
-                break;
-            }
-        }
-    }
-
     auto copiedAttributes = attributes;
-    if (submitButton) {
+
+    if (auto* submitButton = form.findSubmitButton(event)) {
         AtomicString attributeValue;
         if (!(attributeValue = submitButton->attributeWithoutSynchronization(formactionAttr)).isNull())
             copiedAttributes.parseAction(attributeValue);
@@ -191,22 +179,18 @@ Ref<FormSubmission> FormSubmission::create(HTMLFormElement& form, const Attribut
     StringPairVector formValues;
 
     bool containsPasswordData = false;
-    {
-        NoEventDispatchAssertion noEventDispatchAssertion;
-
-        for (auto& control : form.associatedElements()) {
-            auto& element = control->asHTMLElement();
-            if (!element.isDisabledFormControl())
-                control->appendFormData(domFormData, isMultiPartForm);
-            if (is<HTMLInputElement>(element)) {
-                auto& input = downcast<HTMLInputElement>(element);
-                if (input.isTextField()) {
-                    formValues.append({ input.name().string(), input.value() });
-                    input.addSearchResult();
-                }
-                if (input.isPasswordField() && !input.value().isEmpty())
-                    containsPasswordData = true;
+    for (auto& control : form.copyAssociatedElementsVector()) {
+        auto& element = control->asHTMLElement();
+        if (!element.isDisabledFormControl())
+            control->appendFormData(domFormData, isMultiPartForm);
+        if (is<HTMLInputElement>(element)) {
+            auto& input = downcast<HTMLInputElement>(element);
+            if (input.isTextField()) {
+                formValues.append({ input.name(), input.value() });
+                input.addSearchResult();
             }
+            if (input.isPasswordField() && !input.value().isEmpty())
+                containsPasswordData = true;
         }
     }
 
@@ -214,10 +198,10 @@ Ref<FormSubmission> FormSubmission::create(HTMLFormElement& form, const Attribut
     String boundary;
 
     if (isMultiPartForm) {
-        formData = FormData::createMultiPart(domFormData, domFormData->encoding(), &document);
+        formData = FormData::createMultiPart(domFormData, &document);
         boundary = formData->boundary().data();
     } else {
-        formData = FormData::create(domFormData, domFormData->encoding(), attributes.method() == Method::Get ? FormData::FormURLEncoded : FormData::parseEncodingType(encodingType));
+        formData = FormData::create(domFormData, attributes.method() == Method::Get ? FormData::FormURLEncoded : FormData::parseEncodingType(encodingType));
         if (copiedAttributes.method() == Method::Post && isMailtoForm) {
             // Convert the form data into a string that we put into the URL.
             appendMailtoPostFormDataToURL(actionURL, *formData, encodingType);
@@ -228,11 +212,9 @@ Ref<FormSubmission> FormSubmission::create(HTMLFormElement& form, const Attribut
     formData->setIdentifier(generateFormDataIdentifier());
     formData->setContainsPasswordData(containsPasswordData);
 
-    String targetOrBaseTarget = copiedAttributes.target().isEmpty() ? document.baseTarget() : copiedAttributes.target();
-
     auto formState = FormState::create(form, WTFMove(formValues), document, trigger);
 
-    return adoptRef(*new FormSubmission(copiedAttributes.method(), actionURL, targetOrBaseTarget, encodingType, WTFMove(formState), formData.releaseNonNull(), boundary, lockHistory, event));
+    return adoptRef(*new FormSubmission(copiedAttributes.method(), actionURL, form.effectiveTarget(event), encodingType, WTFMove(formState), formData.releaseNonNull(), boundary, lockHistory, event));
 }
 
 URL FormSubmission::requestURL() const

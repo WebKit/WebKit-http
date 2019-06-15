@@ -31,7 +31,7 @@
 namespace WebKit {
 
 class WebPluginInfoProvider final : public WebCore::PluginInfoProvider {
-    friend class NeverDestroyed<WebPluginInfoProvider>;
+    friend NeverDestroyed<WebPluginInfoProvider>;
 
 public:
     static WebPluginInfoProvider& singleton();
@@ -45,8 +45,8 @@ public:
 private:
     WebPluginInfoProvider();
 
-    void getPluginInfo(WebCore::Page&, Vector<WebCore::PluginInfo>&) override;
-    void getWebVisiblePluginInfo(WebCore::Page&, Vector<WebCore::PluginInfo>&) override;
+    Vector<WebCore::PluginInfo> pluginInfo(WebCore::Page&, std::optional<Vector<WebCore::SupportedPluginIdentifier>>&) final;
+    Vector<WebCore::PluginInfo> webVisiblePluginInfo(WebCore::Page&, const WebCore::URL&) final;
     void refreshPlugins() override;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -68,6 +68,7 @@ private:
     bool m_shouldRefreshPlugins { false };
     Vector<WebCore::PluginInfo> m_cachedPlugins;
     Vector<WebCore::PluginInfo> m_cachedApplicationPlugins;
+    std::optional<Vector<WebCore::SupportedPluginIdentifier>> m_cachedSupportedPluginIdentifiers;
 #endif
 };
 

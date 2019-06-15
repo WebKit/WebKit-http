@@ -29,6 +29,7 @@
 #include "ResourceRequestBase.h"
 #include <wtf/RetainPtr.h>
 
+OBJC_CLASS NSCachedURLResponse;
 OBJC_CLASS NSURLRequest;
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
@@ -41,33 +42,27 @@ namespace WebCore {
 class ResourceRequest : public ResourceRequestBase {
 public:
     ResourceRequest(const String& url) 
-        : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
+        : ResourceRequestBase(URL(ParsedURLString, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
     {
     }
 
     ResourceRequest(const URL& url) 
-        : ResourceRequestBase(url, UseProtocolCachePolicy)
+        : ResourceRequestBase(url, ResourceRequestCachePolicy::UseProtocolCachePolicy)
     {
     }
 
-    ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy)
+    ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = ResourceRequestCachePolicy::UseProtocolCachePolicy)
         : ResourceRequestBase(url, policy)
     {
         setHTTPReferrer(referrer);
     }
     
     ResourceRequest()
-        : ResourceRequestBase(URL(), UseProtocolCachePolicy)
+        : ResourceRequestBase(URL(), ResourceRequestCachePolicy::UseProtocolCachePolicy)
     {
     }
     
 #if USE(CFURLCONNECTION)
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT ResourceRequest(NSURLRequest *);
-    void updateNSURLRequest();
-    void clearOrUpdateNSURLRequest();
-#endif
-
     ResourceRequest(CFURLRequestRef cfRequest)
         : ResourceRequestBase()
         , m_cfRequest(cfRequest)
@@ -84,11 +79,7 @@ public:
     WEBCORE_EXPORT void updateFromDelegatePreservingOldProperties(const ResourceRequest&);
 
 #if PLATFORM(COCOA)
-#if USE(CFURLCONNECTION)
-    bool encodingRequiresPlatformData() const { return m_httpBody || m_cfRequest; }
-#else
     bool encodingRequiresPlatformData() const { return m_httpBody || m_nsRequest; }
-#endif
     WEBCORE_EXPORT NSURLRequest *nsURLRequest(HTTPBodyUpdatePolicy) const;
 
     WEBCORE_EXPORT static CFStringRef isUserInitiatedKey();
@@ -134,5 +125,10 @@ inline bool ResourceRequest::resourcePrioritiesEnabled()
     return false;
 #endif
 }
+
+#if PLATFORM(COCOA)
+NSURLRequest *copyRequestWithStorageSession(CFURLStorageSessionRef, NSURLRequest *);
+WEBCORE_EXPORT NSCachedURLResponse *cachedResponseForRequest(CFURLStorageSessionRef, NSURLRequest *);
+#endif
 
 } // namespace WebCore

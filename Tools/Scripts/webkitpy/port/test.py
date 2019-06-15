@@ -26,13 +26,12 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import sys
 import time
 
 from webkitpy.port import Port, Driver, DriverOutput
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
-from webkitpy.common.system.filesystem_mock import MockFileSystem
 from webkitpy.common.system.crashlogs import CrashLogs
+from webkitpy.common.version_name_map import PUBLIC_TABLE, VersionNameMap
 
 
 # This sets basic expectations for a test. Each individual expectation
@@ -79,12 +78,17 @@ class TestList(object):
             test.__dict__[key] = value
         self.tests[name] = test
 
-    def add_reftest(self, name, reference_name, same_image):
+    def add_reftest(self, name, reference_name, same_image, **kwargs):
         self.add(name, actual_checksum='xxx', actual_image='XXX', is_reftest=True)
         if same_image:
             self.add(reference_name, actual_checksum='xxx', actual_image='XXX', is_reftest=True)
         else:
             self.add(reference_name, actual_checksum='yyy', actual_image='YYY', is_reftest=True)
+
+        if kwargs:
+            test = self.tests[name]
+            for key, value in kwargs.items():
+                test.__dict__[key] = value
 
     def keys(self):
         return self.tests.keys()
@@ -98,12 +102,12 @@ class TestList(object):
 #
 # These numbers may need to be updated whenever we add or delete tests.
 #
-TOTAL_TESTS = 72
+TOTAL_TESTS = 77
 TOTAL_SKIPS = 9
-TOTAL_RETRIES = 14
+TOTAL_RETRIES = 15
 
 UNEXPECTED_PASSES = 7
-UNEXPECTED_FAILURES = 17
+UNEXPECTED_FAILURES = 18
 
 
 def unit_test_list():
@@ -116,7 +120,12 @@ def unit_test_list():
     tests.add('failures/expected/timeout.html', timeout=True)
     tests.add('failures/expected/hang.html', hang=True)
     tests.add('failures/expected/missing_text.html', expected_text=None)
+    tests.add('failures/expected/leak.html', leak=True)
+    tests.add('failures/expected/flaky-leak.html', leak=True)
     tests.add('failures/expected/image.html',
+              actual_image='image_fail-pngtEXtchecksum\x00checksum_fail',
+              expected_image='image-pngtEXtchecksum\x00checksum-png')
+    tests.add('failures/expected/pixel-fail.html',
               actual_image='image_fail-pngtEXtchecksum\x00checksum_fail',
               expected_image='image-pngtEXtchecksum\x00checksum-png')
     tests.add('failures/expected/image_checksum.html',
@@ -177,6 +186,7 @@ layer at (0,0) size 800x34
     tests.add('failures/unexpected/skip_pass.html')
     tests.add('failures/unexpected/text.html', actual_text='text_fail-txt')
     tests.add('failures/unexpected/timeout.html', timeout=True)
+    tests.add('failures/unexpected/leak.html', leak=True)
     tests.add('http/tests/passes/text.html')
     tests.add('http/tests/passes/image.html')
     tests.add('http/tests/ssl/text.html')
@@ -214,6 +224,7 @@ layer at (0,0) size 800x34
     tests.add_reftest('passes/xhtreftest.xht', 'passes/xhtreftest-expected.html', same_image=True)
     tests.add_reftest('passes/phpreftest.php', 'passes/phpreftest-expected-mismatch.svg', same_image=False)
     tests.add_reftest('failures/expected/reftest.html', 'failures/expected/reftest-expected.html', same_image=False)
+    tests.add_reftest('failures/expected/leaky-reftest.html', 'failures/expected/leaky-reftest-expected.html', same_image=False, leak=True)
     tests.add_reftest('failures/expected/mismatch.html', 'failures/expected/mismatch-expected-mismatch.html', same_image=True)
     tests.add_reftest('failures/unexpected/reftest.html', 'failures/unexpected/reftest-expected.html', same_image=False)
     tests.add_reftest('failures/unexpected/mismatch.html', 'failures/unexpected/mismatch-expected-mismatch.html', same_image=True)
@@ -243,7 +254,7 @@ layer at (0,0) size 800x34
 
     # For testing test are properly included from platform directories.
     tests.add('platform/test-mac-leopard/http/test.html')
-    tests.add('platform/test-win-win7/http/test.html')
+    tests.add('platform/test-win-7sp0/http/test.html')
 
     # For --no-http tests, test that platform specific HTTP tests are properly skipped.
     tests.add('platform/test-snow-leopard/http/test.html')
@@ -281,7 +292,11 @@ def add_unit_tests_to_mock_filesystem(filesystem):
     if not filesystem.exists(LAYOUT_TEST_DIR + '/platform/test/TestExpectations'):
         filesystem.write_text_file(LAYOUT_TEST_DIR + '/platform/test/TestExpectations', """
 Bug(test) failures/expected/crash.html [ Crash ]
+Bug(test) failures/expected/leak.html [ Leak ]
+Bug(test) failures/expected/flaky-leak.html [ Failure Leak ]
+Bug(test) failures/expected/leaky-reftest.html [ ImageOnlyFailure Leak ]
 Bug(test) failures/expected/image.html [ ImageOnlyFailure ]
+Bug(test) failures/expected/pixel-fail.html [ ImageOnlyFailure ]
 Bug(test) failures/expected/audio.html [ Failure ]
 Bug(test) failures/expected/image_checksum.html [ ImageOnlyFailure ]
 Bug(test) failures/expected/mismatch.html [ ImageOnlyFailure ]
@@ -357,7 +372,7 @@ class TestPort(Port):
     ALL_BASELINE_VARIANTS = (
         'test-linux-x86_64',
         'test-mac-snowleopard', 'test-mac-leopard',
-        'test-win-vista', 'test-win-win7', 'test-win-xp',
+        'test-win-vista', 'test-win-7sp0', 'test-win-xp',
     )
 
     @classmethod
@@ -373,21 +388,16 @@ class TestPort(Port):
         self._expectations_path = LAYOUT_TEST_DIR + '/platform/test/TestExpectations'
         self._results_directory = None
 
-        self._operating_system = 'mac'
-        if self._name.startswith('test-win'):
-            self._operating_system = 'win'
-        elif self._name.startswith('test-linux'):
-            self._operating_system = 'linux'
+        self._operating_system = self._name.split('-')[1]
+        if self._operating_system == 'linux':
+            self._os_version = None
+        else:
+            self._os_version = VersionNameMap.map(self.host.platform).from_name(self._name.split('-')[2])[1]
 
-        version_map = {
-            'test-win-xp': 'xp',
-            'test-win-win7': 'win7',
-            'test-win-vista': 'vista',
-            'test-mac-leopard': 'leopard',
-            'test-mac-snowleopard': 'snowleopard',
-            'test-linux-x86_64': 'lucid',
-        }
-        self._version = version_map[self._name]
+    def version_name(self):
+        if self._os_version is None:
+            return None
+        return VersionNameMap.map(self.host.platform).to_name(self._os_version, platform=self._operating_system, table=PUBLIC_TABLE)
 
     def default_pixel_tests(self):
         return True
@@ -401,10 +411,10 @@ class TestPort(Port):
         search_paths = {
             'test-mac-snowleopard': ['test-mac-snowleopard'],
             'test-mac-leopard': ['test-mac-leopard', 'test-mac-snowleopard'],
-            'test-win-win7': ['test-win-win7'],
-            'test-win-vista': ['test-win-vista', 'test-win-win7'],
-            'test-win-xp': ['test-win-xp', 'test-win-vista', 'test-win-win7'],
-            'test-linux-x86_64': ['test-linux', 'test-win-win7'],
+            'test-win-7sp0': ['test-win-7sp0'],
+            'test-win-vista': ['test-win-vista', 'test-win-7sp0'],
+            'test-win-xp': ['test-win-xp', 'test-win-vista', 'test-win-7sp0'],
+            'test-linux-x86_64': ['test-linux'],
         }
         return [self._webkit_baseline_path(d) for d in search_paths[self.name()]]
 
@@ -414,10 +424,10 @@ class TestPort(Port):
     def worker_startup_delay_secs(self):
         return 0
 
-    def check_build(self, needs_http):
+    def check_build(self):
         return True
 
-    def check_sys_deps(self, needs_http):
+    def check_sys_deps(self):
         return True
 
     def default_configuration(self):
@@ -514,7 +524,7 @@ class TestPort(Port):
                 ('snowleopard', 'x86'),
                 ('xp', 'x86'),
                 ('vista', 'x86'),
-                ('win7', 'x86'),
+                ('7sp0', 'x86'),
                 ('lucid', 'x86'),
                 ('lucid', 'x86_64'))
 
@@ -523,7 +533,7 @@ class TestPort(Port):
 
     def configuration_specifier_macros(self):
         """To avoid surprises when introducing new macros, these are intentionally fixed in time."""
-        return {'mac': ['leopard', 'snowleopard'], 'win': ['xp', 'vista', 'win7'], 'linux': ['lucid']}
+        return {'mac': ['leopard', 'snowleopard'], 'win': ['xp', 'vista', '7sp0'], 'linux': ['lucid']}
 
     def all_baseline_variants(self):
         return self.ALL_BASELINE_VARIANTS
@@ -596,6 +606,22 @@ class TestDriver(Driver):
             crash=test.crash or test.web_process_crash, crashed_process_name=crashed_process_name,
             crashed_pid=crashed_pid, crash_log=crash_log,
             test_time=time.time() - start_time, timeout=test.timeout, error=test.error, pid=self.pid)
+
+    def do_post_tests_work(self):
+        if not self._port.get_option('world_leaks'):
+            return None
+
+        test_world_leaks_output = """TEST: file:///test.checkout/LayoutTests/failures/expected/leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leak.html
+TEST: file:///test.checkout/LayoutTests/failures/unexpected/leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/flaky-leak.html
+TEST: file:///test.checkout/LayoutTests/failures/unexpected/flaky-leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leak.html
+TEST: file:///test.checkout/LayoutTests/failures/unexpected/leak.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leak-subframe.html
+TEST: file:///test.checkout/LayoutTests/failures/expected/leaky-reftest.html
+ABANDONED DOCUMENT: file:///test.checkout/LayoutTests/failures/expected/leaky-reftest.html"""
+        return self._parse_world_leaks_output(test_world_leaks_output)
 
     def stop(self):
         self.started = False

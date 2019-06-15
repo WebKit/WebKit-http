@@ -101,14 +101,15 @@ protected:
     enum RootType { IsRootedAtNode, IsRootedAtDocument };
     static RootType rootTypeFromCollectionType(CollectionType);
 
+    mutable Lock m_namedElementCacheAssignmentLock;
+
+    const unsigned m_collectionType : 5; // CollectionType
+    const unsigned m_invalidationType : 4; // NodeListInvalidationType
+    const unsigned m_rootType : 1; // RootType
+
     Ref<ContainerNode> m_ownerNode;
 
     mutable std::unique_ptr<CollectionNamedElementCache> m_namedElementCache;
-    mutable Lock m_namedElementCacheAssignmentLock;
-    
-    const unsigned m_collectionType : 5;
-    const unsigned m_invalidationType : 4;
-    const unsigned m_rootType : 1;
 };
 
 inline ContainerNode& HTMLCollection::rootNode() const

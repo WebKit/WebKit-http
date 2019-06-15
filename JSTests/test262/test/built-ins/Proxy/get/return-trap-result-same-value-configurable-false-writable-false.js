@@ -5,7 +5,7 @@ es6id: 9.5.8
 description: >
     Proxy must report the same value for a non-writable, non-configurable
     property.
-info: >
+info: |
     [[Get]] (P, Receiver)
 
     13. If targetDesc is not undefined, then
@@ -19,15 +19,15 @@ info: >
 
 var target = {};
 var p = new Proxy(target, {
-    get: function() {
-        return 1;
-    }
+  get: function() {
+    return 1;
+  }
 });
 
 Object.defineProperty(target, 'attr', {
-    configurable: false,
-    writable: false,
-    value: 1
+  configurable: false,
+  writable: false,
+  value: 1
 });
 
 assert.sameValue(p.attr, 1);

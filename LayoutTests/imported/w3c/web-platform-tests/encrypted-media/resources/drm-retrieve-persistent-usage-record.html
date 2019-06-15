@@ -5,12 +5,12 @@
     <title>Encrypted Media Extensions: Retrieve stored persistent-usage-record</title>
     <link rel="help" href="https://w3c.github.io/encrypted-media/">
 
-    <!--  Helper scripts for Encrypted Media Extensions tests   -->
+    <!-- Helper scripts for Encrypted Media Extensions tests  -->
     <script src=/encrypted-media/util/utils.js></script>
     <script src=/encrypted-media/util/fetch.js></script>
     <script src=/encrypted-media/util/utf8.js></script>
 
-    <!--  Message handler for Clear Key keysystem  -->
+    <!-- Message handler for Clear Key keysystem -->
     <script src=/encrypted-media/util/drm-messagehandler.js></script>
 
   </head>
@@ -33,7 +33,7 @@
 
         function onFailure(error) {
             assertions.push( { actual: false, expected: true, message: error } );
-            window.opener.postMessage(assertions, '*');
+            window.opener.postMessage({ testResult: assertions }, '*');
         }
 
         function onMessage( event )
@@ -56,13 +56,13 @@
             _mediaKeySession = _mediaKeys.createSession( 'persistent-usage-record' );
             _mediaKeySession.addEventListener( 'message', onMessage );
             _mediaKeySession.closed.then( function() {
-                window.opener.postMessage(assertions, '*');
+                window.opener.postMessage({ testResult: assertions }, '*');
             });
             return _mediaKeySession.load( event.data.sessionId );
         }).then(function( success ) {
             if ( !success ) {
                 assertions.push( { actual: success, expected: true, message: "Error loading session" } );
-                window.opener.postMessage(assertions, '*');
+                window.opener.postMessage({ testResult: assertions }, '*');
             }
         }).catch( onFailure );
     });

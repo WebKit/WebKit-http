@@ -35,7 +35,9 @@ namespace JSC {
 
 #if ENABLE(JIT)
 
+namespace StructureStubInfoInternal {
 static const bool verbose = false;
+}
 
 StructureStubInfo::StructureStubInfo(AccessType accessType)
     : callSiteIndex(UINT_MAX)
@@ -48,6 +50,8 @@ StructureStubInfo::StructureStubInfo(AccessType accessType)
     , resetByGC(false)
     , tookSlowPath(false)
     , everConsidered(false)
+    , prototypeIsKnownObject(false)
+    , sawNonCell(false)
 {
 }
 
@@ -69,10 +73,24 @@ void StructureStubInfo::initArrayLength()
     cacheType = CacheType::ArrayLength;
 }
 
+void StructureStubInfo::initStringLength()
+{
+    cacheType = CacheType::StringLength;
+}
+
 void StructureStubInfo::initPutByIdReplace(CodeBlock* codeBlock, Structure* baseObjectStructure, PropertyOffset offset)
 {
     cacheType = CacheType::PutByIdReplace;
     
+    u.byIdSelf.baseObjectStructure.set(
+        *codeBlock->vm(), codeBlock, baseObjectStructure);
+    u.byIdSelf.offset = offset;
+}
+
+void StructureStubInfo::initInByIdSelf(CodeBlock* codeBlock, Structure* baseObjectStructure, PropertyOffset offset)
+{
+    cacheType = CacheType::InByIdSelf;
+
     u.byIdSelf.baseObjectStructure.set(
         *codeBlock->vm(), codeBlock, baseObjectStructure);
     u.byIdSelf.offset = offset;
@@ -87,7 +105,9 @@ void StructureStubInfo::deref()
     case CacheType::Unset:
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
+    case CacheType::InByIdSelf:
     case CacheType::ArrayLength:
+    case CacheType::StringLength:
         return;
     }
 
@@ -103,7 +123,9 @@ void StructureStubInfo::aboutToDie()
     case CacheType::Unset:
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
+    case CacheType::InByIdSelf:
     case CacheType::ArrayLength:
+    case CacheType::StringLength:
         return;
     }
 
@@ -115,7 +137,7 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
 {
     VM& vm = *codeBlock->vm();
     
-    if (verbose)
+    if (StructureStubInfoInternal::verbose)
         dataLog("Adding access case: ", accessCase, "\n");
     
     if (!accessCase)
@@ -126,8 +148,11 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
     if (cacheType == CacheType::Stub) {
         result = u.stub->addCase(locker, vm, codeBlock, *this, ident, WTFMove(accessCase));
         
-        if (verbose)
+        if (StructureStubInfoInternal::verbose)
             dataLog("Had stub, result: ", result, "\n");
+
+        if (result.shouldResetStubAndFireWatchpoints())
+            return result;
 
         if (!result.buffered()) {
             bufferedStructures.clear();
@@ -147,8 +172,11 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
         
         result = access->addCases(locker, vm, codeBlock, *this, ident, WTFMove(accessCases));
         
-        if (verbose)
+        if (StructureStubInfoInternal::verbose)
             dataLog("Created stub, result: ", result, "\n");
+
+        if (result.shouldResetStubAndFireWatchpoints())
+            return result;
 
         if (!result.buffered()) {
             bufferedStructures.clear();
@@ -164,7 +192,7 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
     // If we didn't buffer any cases then bail. If this made no changes then we'll just try again
     // subject to cool-down.
     if (!result.buffered()) {
-        if (verbose)
+        if (StructureStubInfoInternal::verbose)
             dataLog("Didn't buffer anything, bailing.\n");
         bufferedStructures.clear();
         return result;
@@ -172,7 +200,7 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
     
     // The buffering countdown tells us if we should be repatching now.
     if (bufferingCountdown) {
-        if (verbose)
+        if (StructureStubInfoInternal::verbose)
             dataLog("Countdown is too high: ", bufferingCountdown, ".\n");
         return result;
     }
@@ -183,7 +211,7 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
     
     result = u.stub->regenerate(locker, vm, codeBlock, *this, ident);
     
-    if (verbose)
+    if (StructureStubInfoInternal::verbose)
         dataLog("Regeneration result: ", result, "\n");
     
     RELEASE_ASSERT(!result.buffered());
@@ -200,10 +228,10 @@ AccessGenerationResult StructureStubInfo::addAccessCase(
 void StructureStubInfo::reset(CodeBlock* codeBlock)
 {
     bufferedStructures.clear();
-    
+
     if (cacheType == CacheType::Unset)
         return;
-    
+
     if (Options::verboseOSR()) {
         // This can be called from GC destructor calls, so we don't try to do a full dump
         // of the CodeBlock.
@@ -220,11 +248,17 @@ void StructureStubInfo::reset(CodeBlock* codeBlock)
     case AccessType::GetWithThis:
         resetGetByID(codeBlock, *this, GetByIDKind::WithThis);
         break;
+    case AccessType::GetDirect:
+        resetGetByID(codeBlock, *this, GetByIDKind::Direct);
+        break;
     case AccessType::Put:
         resetPutByID(codeBlock, *this);
         break;
     case AccessType::In:
-        resetIn(codeBlock, *this);
+        resetInByID(codeBlock, *this);
+        break;
+    case AccessType::InstanceOf:
+        resetInstanceOf(*this);
         break;
     }
     
@@ -244,6 +278,7 @@ void StructureStubInfo::visitWeakReferences(CodeBlock* codeBlock)
     switch (cacheType) {
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
+    case CacheType::InByIdSelf:
         if (Heap::isMarked(u.byIdSelf.baseObjectStructure.get()))
             return;
         break;
@@ -264,9 +299,11 @@ bool StructureStubInfo::propagateTransitions(SlotVisitor& visitor)
     switch (cacheType) {
     case CacheType::Unset:
     case CacheType::ArrayLength:
+    case CacheType::StringLength:
         return true;
     case CacheType::GetByIdSelf:
     case CacheType::PutByIdReplace:
+    case CacheType::InByIdSelf:
         return u.byIdSelf.baseObjectStructure->markIfCheap(visitor);
     case CacheType::Stub:
         return u.stub->propagateTransitions(visitor);
@@ -274,6 +311,39 @@ bool StructureStubInfo::propagateTransitions(SlotVisitor& visitor)
     
     RELEASE_ASSERT_NOT_REACHED();
     return true;
+}
+
+StubInfoSummary StructureStubInfo::summary() const
+{
+    StubInfoSummary takesSlowPath = StubInfoSummary::TakesSlowPath;
+    StubInfoSummary simple = StubInfoSummary::Simple;
+    if (cacheType == CacheType::Stub) {
+        PolymorphicAccess* list = u.stub;
+        for (unsigned i = 0; i < list->size(); ++i) {
+            const AccessCase& access = list->at(i);
+            if (access.doesCalls()) {
+                takesSlowPath = StubInfoSummary::TakesSlowPathAndMakesCalls;
+                simple = StubInfoSummary::MakesCalls;
+                break;
+            }
+        }
+    }
+    
+    if (tookSlowPath || sawNonCell)
+        return takesSlowPath;
+    
+    if (!everConsidered)
+        return StubInfoSummary::NoInformation;
+    
+    return simple;
+}
+
+StubInfoSummary StructureStubInfo::summary(const StructureStubInfo* stubInfo)
+{
+    if (!stubInfo)
+        return StubInfoSummary::NoInformation;
+    
+    return stubInfo->summary();
 }
 
 bool StructureStubInfo::containsPC(void* pc) const

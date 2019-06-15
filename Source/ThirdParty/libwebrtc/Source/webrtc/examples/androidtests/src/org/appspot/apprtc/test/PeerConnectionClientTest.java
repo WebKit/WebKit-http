@@ -16,8 +16,9 @@ import static org.junit.Assert.fail;
 import android.os.Build;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.filters.SmallTest;
+import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -27,7 +28,6 @@ import org.appspot.apprtc.AppRTCClient.SignalingParameters;
 import org.appspot.apprtc.PeerConnectionClient;
 import org.appspot.apprtc.PeerConnectionClient.PeerConnectionEvents;
 import org.appspot.apprtc.PeerConnectionClient.PeerConnectionParameters;
-import org.chromium.base.test.BaseJUnit4ClassRunner;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,15 +37,15 @@ import org.webrtc.Camera2Enumerator;
 import org.webrtc.CameraEnumerator;
 import org.webrtc.EglBase;
 import org.webrtc.IceCandidate;
-import org.webrtc.MediaCodecVideoEncoder;
 import org.webrtc.PeerConnection;
 import org.webrtc.PeerConnectionFactory;
 import org.webrtc.SessionDescription;
 import org.webrtc.StatsReport;
 import org.webrtc.VideoCapturer;
-import org.webrtc.VideoRenderer;
+import org.webrtc.VideoFrame;
+import org.webrtc.VideoSink;
 
-@RunWith(BaseJUnit4ClassRunner.class)
+@RunWith(AndroidJUnit4.class)
 public class PeerConnectionClientTest implements PeerConnectionEvents {
   private static final String TAG = "RTCClientTest";
   private static final int ICE_CONNECTION_WAIT_TIMEOUT = 10000;
@@ -73,22 +73,19 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
   private volatile PeerConnectionClient pcClient;
   private volatile boolean loopback;
 
-  // EGL context that can be used by hardware video decoders to decode to a texture.
-  private EglBase eglBase;
-
   // These are protected by their respective event objects.
   private ExecutorService signalingExecutor;
   private boolean isClosed;
   private boolean isIceConnected;
   private SessionDescription localSdp;
-  private List<IceCandidate> iceCandidates = new LinkedList<IceCandidate>();
+  private List<IceCandidate> iceCandidates = new ArrayList<>();
   private final Object localSdpEvent = new Object();
   private final Object iceCandidateEvent = new Object();
   private final Object iceConnectedEvent = new Object();
   private final Object closeEvent = new Object();
 
-  // Mock renderer implementation.
-  private static class MockRenderer implements VideoRenderer.Callbacks {
+  // Mock VideoSink implementation.
+  private static class MockSink implements VideoSink {
     // These are protected by 'this' since we gets called from worker threads.
     private String rendererName;
     private boolean renderFrameCalled = false;
@@ -96,29 +93,33 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
     // Thread-safe in itself.
     private CountDownLatch doneRendering;
 
-    public MockRenderer(int expectedFrames, String rendererName) {
+    public MockSink(int expectedFrames, String rendererName) {
       this.rendererName = rendererName;
       reset(expectedFrames);
     }
 
     // Resets render to wait for new amount of video frames.
+    // TODO(bugs.webrtc.org/8491): Remove NoSynchronizedMethodCheck suppression.
+    @SuppressWarnings("NoSynchronizedMethodCheck")
     public synchronized void reset(int expectedFrames) {
       renderFrameCalled = false;
       doneRendering = new CountDownLatch(expectedFrames);
     }
 
     @Override
-    public synchronized void renderFrame(VideoRenderer.I420Frame frame) {
+    // TODO(bugs.webrtc.org/8491): Remove NoSynchronizedMethodCheck suppression.
+    @SuppressWarnings("NoSynchronizedMethodCheck")
+    public synchronized void onFrame(VideoFrame frame) {
       if (!renderFrameCalled) {
         if (rendererName != null) {
-          Log.d(TAG, rendererName + " render frame: " + frame.rotatedWidth() + " x "
-                  + frame.rotatedHeight());
+          Log.d(TAG,
+              rendererName + " render frame: " + frame.getRotatedWidth() + " x "
+                  + frame.getRotatedHeight());
         } else {
-          Log.d(TAG, "Render frame: " + frame.rotatedWidth() + " x " + frame.rotatedHeight());
+          Log.d(TAG, "Render frame: " + frame.getRotatedWidth() + " x " + frame.getRotatedHeight());
         }
       }
       renderFrameCalled = true;
-      VideoRenderer.renderFrameDone(frame);
       doneRendering.countDown();
     }
 
@@ -202,69 +203,84 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
   // Helper wait functions.
   private boolean waitForLocalSDP(int timeoutMs) throws InterruptedException {
     synchronized (localSdpEvent) {
-      if (localSdp == null) {
-        localSdpEvent.wait(timeoutMs);
+      final long endTimeMs = System.currentTimeMillis() + timeoutMs;
+      while (localSdp == null) {
+        final long waitTimeMs = endTimeMs - System.currentTimeMillis();
+        if (waitTimeMs < 0) {
+          return false;
+        }
+        localSdpEvent.wait(waitTimeMs);
       }
-      return (localSdp != null);
+      return true;
     }
   }
 
   private boolean waitForIceCandidates(int timeoutMs) throws InterruptedException {
     synchronized (iceCandidateEvent) {
-      if (iceCandidates.size() == 0) {
+      final long endTimeMs = System.currentTimeMillis() + timeoutMs;
+      while (iceCandidates.size() == 0) {
+        final long waitTimeMs = endTimeMs - System.currentTimeMillis();
+        if (waitTimeMs < 0) {
+          return false;
+        }
         iceCandidateEvent.wait(timeoutMs);
       }
-      return (iceCandidates.size() > 0);
+      return true;
     }
   }
 
   private boolean waitForIceConnected(int timeoutMs) throws InterruptedException {
     synchronized (iceConnectedEvent) {
-      if (!isIceConnected) {
+      final long endTimeMs = System.currentTimeMillis() + timeoutMs;
+      while (!isIceConnected) {
+        final long waitTimeMs = endTimeMs - System.currentTimeMillis();
+        if (waitTimeMs < 0) {
+          Log.e(TAG, "ICE connection failure");
+          return false;
+        }
         iceConnectedEvent.wait(timeoutMs);
       }
-      if (!isIceConnected) {
-        Log.e(TAG, "ICE connection failure");
-      }
-
-      return isIceConnected;
+      return true;
     }
   }
 
   private boolean waitForPeerConnectionClosed(int timeoutMs) throws InterruptedException {
     synchronized (closeEvent) {
-      if (!isClosed) {
+      final long endTimeMs = System.currentTimeMillis() + timeoutMs;
+      while (!isClosed) {
+        final long waitTimeMs = endTimeMs - System.currentTimeMillis();
+        if (waitTimeMs < 0) {
+          return false;
+        }
         closeEvent.wait(timeoutMs);
       }
-      return isClosed;
+      return true;
     }
   }
 
-  PeerConnectionClient createPeerConnectionClient(MockRenderer localRenderer,
-      MockRenderer remoteRenderer, PeerConnectionParameters peerConnectionParameters,
-      VideoCapturer videoCapturer, EglBase.Context eglContext) {
-    List<PeerConnection.IceServer> iceServers = new LinkedList<PeerConnection.IceServer>();
+  PeerConnectionClient createPeerConnectionClient(MockSink localRenderer, MockSink remoteRenderer,
+      PeerConnectionParameters peerConnectionParameters, VideoCapturer videoCapturer) {
+    List<PeerConnection.IceServer> iceServers = new ArrayList<>();
     SignalingParameters signalingParameters =
         new SignalingParameters(iceServers, true, // iceServers, initiator.
             null, null, null, // clientId, wssUrl, wssPostUrl.
             null, null); // offerSdp, iceCandidates.
 
-    PeerConnectionClient client = PeerConnectionClient.getInstance();
+    final EglBase eglBase = EglBase.create();
+    PeerConnectionClient client =
+        new PeerConnectionClient(InstrumentationRegistry.getTargetContext(), eglBase,
+            peerConnectionParameters, this /* PeerConnectionEvents */);
     PeerConnectionFactory.Options options = new PeerConnectionFactory.Options();
     options.networkIgnoreMask = 0;
     options.disableNetworkMonitor = true;
-    client.setPeerConnectionFactoryOptions(options);
-    client.createPeerConnectionFactory(
-        InstrumentationRegistry.getTargetContext(), peerConnectionParameters, this);
-    client.createPeerConnection(
-        eglContext, localRenderer, remoteRenderer, videoCapturer, signalingParameters);
+    client.createPeerConnectionFactory(options);
+    client.createPeerConnection(localRenderer, remoteRenderer, videoCapturer, signalingParameters);
     client.createOffer();
     return client;
   }
 
   private PeerConnectionParameters createParametersForAudioCall() {
-    PeerConnectionParameters peerConnectionParameters = new PeerConnectionParameters(
-        false, /* videoCallEnabled */
+    return new PeerConnectionParameters(false, /* videoCallEnabled */
         true, /* loopback */
         false, /* tracing */
         // Video codec parameters.
@@ -280,10 +296,10 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
         "OPUS", /* audioCodec */
         false, /* noAudioProcessing */
         false, /* aecDump */
+        false, /* saveInputAudioToFile */
         false /* useOpenSLES */, false /* disableBuiltInAEC */, false /* disableBuiltInAGC */,
-        false /* disableBuiltInNS */, false /* enableLevelControl */, false /* disableWebRtcAGC */);
-
-    return peerConnectionParameters;
+        false /* disableBuiltInNS */, false /* disableWebRtcAGC */, false /* enableRtcEventLog */,
+        false /* useLegacyAudioDevice */, null /* dataChannelParameters */);
   }
 
   private VideoCapturer createCameraCapturer(boolean captureToTexture) {
@@ -301,8 +317,7 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
   }
 
   private PeerConnectionParameters createParametersForVideoCall(String videoCodec) {
-    PeerConnectionParameters peerConnectionParameters = new PeerConnectionParameters(
-        true, /* videoCallEnabled */
+    return new PeerConnectionParameters(true, /* videoCallEnabled */
         true, /* loopback */
         false, /* tracing */
         // Video codec parameters.
@@ -318,36 +333,31 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
         "OPUS", /* audioCodec */
         false, /* noAudioProcessing */
         false, /* aecDump */
+        false, /* saveInputAudioToFile */
         false /* useOpenSLES */, false /* disableBuiltInAEC */, false /* disableBuiltInAGC */,
-        false /* disableBuiltInNS */, false /* enableLevelControl */, false /* disableWebRtcAGC */);
-
-    return peerConnectionParameters;
+        false /* disableBuiltInNS */, false /* disableWebRtcAGC */, false /* enableRtcEventLog */,
+        false /* useLegacyAudioDevice */, null /* dataChannelParameters */);
   }
 
   @Before
   public void setUp() {
     signalingExecutor = Executors.newSingleThreadExecutor();
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-      eglBase = EglBase.create();
-    }
   }
 
   @After
   public void tearDown() {
     signalingExecutor.shutdown();
-    if (eglBase != null) {
-      eglBase.release();
-    }
   }
 
   @Test
   @SmallTest
   public void testSetLocalOfferMakesVideoFlowLocally() throws InterruptedException {
     Log.d(TAG, "testSetLocalOfferMakesVideoFlowLocally");
-    MockRenderer localRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
-    pcClient = createPeerConnectionClient(localRenderer, new MockRenderer(0, null),
+    MockSink localRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
+    pcClient = createPeerConnectionClient(localRenderer,
+        new MockSink(/* expectedFrames= */ 0, /* rendererName= */ null),
         createParametersForVideoCall(VIDEO_CODEC_VP8),
-        createCameraCapturer(false /* captureToTexture */), null);
+        createCameraCapturer(false /* captureToTexture */));
 
     // Wait for local SDP and ice candidates set events.
     assertTrue("Local SDP was not set.", waitForLocalSDP(WAIT_TIMEOUT));
@@ -366,17 +376,16 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
   private void doLoopbackTest(PeerConnectionParameters parameters, VideoCapturer videoCapturer,
       boolean decodeToTexture) throws InterruptedException {
     loopback = true;
-    MockRenderer localRenderer = null;
-    MockRenderer remoteRenderer = null;
+    MockSink localRenderer = null;
+    MockSink remoteRenderer = null;
     if (parameters.videoCallEnabled) {
       Log.d(TAG, "testLoopback for video " + parameters.videoCodec);
-      localRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
-      remoteRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
+      localRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
+      remoteRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
     } else {
       Log.d(TAG, "testLoopback for audio.");
     }
-    pcClient = createPeerConnectionClient(localRenderer, remoteRenderer, parameters, videoCapturer,
-        decodeToTexture ? eglBase.getEglBaseContext() : null);
+    pcClient = createPeerConnectionClient(localRenderer, remoteRenderer, parameters, videoCapturer);
 
     // Wait for local SDP, rename it to answer and set as remote SDP.
     assertTrue("Local SDP was not set.", waitForLocalSDP(WAIT_TIMEOUT));
@@ -471,58 +480,8 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
       Log.i(TAG, "Encode to textures is not supported. Requires SDK version 19");
       return;
     }
-    // TODO(perkj): If we can always capture to textures, there is no need to check if the
-    // hardware encoder supports to encode from a texture.
-    if (!MediaCodecVideoEncoder.isVp8HwSupportedUsingTextures()) {
-      Log.i(TAG, "VP8 encode to textures is not supported.");
-      return;
-    }
     doLoopbackTest(createParametersForVideoCall(VIDEO_CODEC_VP8),
         createCameraCapturer(true /* captureToTexture */), true /* decodeToTexture */);
-  }
-
-  // Test that a call can be setup even if the EGL context used during initialization is
-  // released before the Video codecs are created. The HW encoder and decoder is setup to use
-  // textures.
-  @Test
-  @SmallTest
-  public void testLoopbackEglContextReleasedAfterCreatingPc() throws InterruptedException {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
-      Log.i(TAG, "Decode to textures is not supported. Requires SDK version 19");
-      return;
-    }
-
-    loopback = true;
-    PeerConnectionParameters parameters = createParametersForVideoCall(VIDEO_CODEC_VP8);
-    MockRenderer localRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
-    MockRenderer remoteRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
-    pcClient = createPeerConnectionClient(localRenderer, remoteRenderer, parameters,
-        createCameraCapturer(true /* captureToTexture */), eglBase.getEglBaseContext());
-
-    // Wait for local SDP, rename it to answer and set as remote SDP.
-    assertTrue("Local SDP was not set.", waitForLocalSDP(WAIT_TIMEOUT));
-
-    // Release the EGL context used for creating the PeerConnectionClient.
-    // Since createPeerConnectionClient is asynchronous, we must wait for the local
-    // SessionDescription.
-    eglBase.release();
-    eglBase = null;
-
-    SessionDescription remoteSdp = new SessionDescription(
-        SessionDescription.Type.fromCanonicalForm("answer"), localSdp.description);
-    pcClient.setRemoteDescription(remoteSdp);
-
-    // Wait for ICE connection.
-    assertTrue("ICE connection failure.", waitForIceConnected(ICE_CONNECTION_WAIT_TIMEOUT));
-    // Check that local and remote video frames were rendered.
-    assertTrue(
-        "Local video frames were not rendered.", localRenderer.waitForFramesRendered(WAIT_TIMEOUT));
-    assertTrue("Remote video frames were not rendered.",
-        remoteRenderer.waitForFramesRendered(WAIT_TIMEOUT));
-
-    pcClient.close();
-    assertTrue(waitForPeerConnectionClosed(WAIT_TIMEOUT));
-    Log.d(TAG, "testLoopback done.");
   }
 
   @Test
@@ -530,12 +489,6 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
   public void testLoopbackH264CaptureToTexture() throws InterruptedException {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
       Log.i(TAG, "Encode to textures is not supported. Requires KITKAT");
-      return;
-    }
-    // TODO(perkj): If we can always capture to textures, there is no need to check if the
-    // hardware encoder supports to encode from a texture.
-    if (!MediaCodecVideoEncoder.isH264HwSupportedUsingTextures()) {
-      Log.i(TAG, "H264 encode to textures is not supported.");
       return;
     }
     doLoopbackTest(createParametersForVideoCall(VIDEO_CODEC_H264),
@@ -550,12 +503,12 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
     Log.d(TAG, "testCameraSwitch");
     loopback = true;
 
-    MockRenderer localRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
-    MockRenderer remoteRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
+    MockSink localRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
+    MockSink remoteRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
 
     pcClient = createPeerConnectionClient(localRenderer, remoteRenderer,
         createParametersForVideoCall(VIDEO_CODEC_VP8),
-        createCameraCapturer(false /* captureToTexture */), null);
+        createCameraCapturer(false /* captureToTexture */));
 
     // Wait for local SDP, rename it to answer and set as remote SDP.
     assertTrue("Local SDP was not set.", waitForLocalSDP(WAIT_TIMEOUT));
@@ -598,12 +551,12 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
     Log.d(TAG, "testVideoSourceRestart");
     loopback = true;
 
-    MockRenderer localRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
-    MockRenderer remoteRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
+    MockSink localRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
+    MockSink remoteRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
 
     pcClient = createPeerConnectionClient(localRenderer, remoteRenderer,
         createParametersForVideoCall(VIDEO_CODEC_VP8),
-        createCameraCapturer(false /* captureToTexture */), null);
+        createCameraCapturer(false /* captureToTexture */));
 
     // Wait for local SDP, rename it to answer and set as remote SDP.
     assertTrue("Local SDP was not set.", waitForLocalSDP(WAIT_TIMEOUT));
@@ -647,12 +600,12 @@ public class PeerConnectionClientTest implements PeerConnectionEvents {
     Log.d(TAG, "testCaptureFormatChange");
     loopback = true;
 
-    MockRenderer localRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
-    MockRenderer remoteRenderer = new MockRenderer(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
+    MockSink localRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, LOCAL_RENDERER_NAME);
+    MockSink remoteRenderer = new MockSink(EXPECTED_VIDEO_FRAMES, REMOTE_RENDERER_NAME);
 
     pcClient = createPeerConnectionClient(localRenderer, remoteRenderer,
         createParametersForVideoCall(VIDEO_CODEC_VP8),
-        createCameraCapturer(false /* captureToTexture */), null);
+        createCameraCapturer(false /* captureToTexture */));
 
     // Wait for local SDP, rename it to answer and set as remote SDP.
     assertTrue("Local SDP was not set.", waitForLocalSDP(WAIT_TIMEOUT));

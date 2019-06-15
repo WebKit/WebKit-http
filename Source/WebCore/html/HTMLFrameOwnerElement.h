@@ -32,11 +32,12 @@ class RenderWidget;
 class SVGDocument;
 
 class HTMLFrameOwnerElement : public HTMLElement {
+    WTF_MAKE_ISO_ALLOCATED(HTMLFrameOwnerElement);
 public:
     virtual ~HTMLFrameOwnerElement();
 
     Frame* contentFrame() const { return m_contentFrame; }
-    WEBCORE_EXPORT DOMWindow* contentWindow() const;
+    WEBCORE_EXPORT WindowProxy* contentWindow() const;
     WEBCORE_EXPORT Document* contentDocument() const;
 
     void setContentFrame(Frame*);
@@ -55,7 +56,7 @@ public:
 
     SandboxFlags sandboxFlags() const { return m_sandboxFlags; }
 
-    void scheduleinvalidateStyleAndLayerComposition();
+    void scheduleInvalidateStyleAndLayerComposition();
 
     virtual bool isURLAllowed(const URL&) const { return true; }
 
@@ -64,7 +65,7 @@ protected:
     void setSandboxFlags(SandboxFlags);
 
 private:
-    bool isKeyboardFocusable(KeyboardEvent&) const override;
+    bool isKeyboardFocusable(KeyboardEvent*) const override;
     bool isFrameOwnerElement() const final { return true; }
 
     Frame* m_contentFrame;

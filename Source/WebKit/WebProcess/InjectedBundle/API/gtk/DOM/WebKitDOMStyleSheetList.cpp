@@ -24,8 +24,7 @@
 #include "DOMObjectCache.h"
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
-#include <WebCore/ExceptionCodeDescription.h>
-#include <WebCore/JSMainThreadExecState.h>
+#include <WebCore/JSExecState.h>
 #include "WebKitDOMPrivate.h"
 #include "WebKitDOMStyleSheetListPrivate.h"
 #include "WebKitDOMStyleSheetPrivate.h"
@@ -38,6 +37,8 @@
 typedef struct _WebKitDOMStyleSheetListPrivate {
     RefPtr<WebCore::StyleSheetList> coreObject;
 } WebKitDOMStyleSheetListPrivate;
+
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
 
 namespace WebKit {
 
@@ -68,8 +69,8 @@ WebKitDOMStyleSheetList* wrapStyleSheetList(WebCore::StyleSheetList* coreObject)
 G_DEFINE_TYPE(WebKitDOMStyleSheetList, webkit_dom_style_sheet_list, WEBKIT_DOM_TYPE_OBJECT)
 
 enum {
-    PROP_0,
-    PROP_LENGTH,
+    DOM_STYLE_SHEET_LIST_PROP_0,
+    DOM_STYLE_SHEET_LIST_PROP_LENGTH,
 };
 
 static void webkit_dom_style_sheet_list_finalize(GObject* object)
@@ -87,7 +88,7 @@ static void webkit_dom_style_sheet_list_get_property(GObject* object, guint prop
     WebKitDOMStyleSheetList* self = WEBKIT_DOM_STYLE_SHEET_LIST(object);
 
     switch (propertyId) {
-    case PROP_LENGTH:
+    case DOM_STYLE_SHEET_LIST_PROP_LENGTH:
         g_value_set_ulong(value, webkit_dom_style_sheet_list_get_length(self));
         break;
     default:
@@ -117,7 +118,7 @@ static void webkit_dom_style_sheet_list_class_init(WebKitDOMStyleSheetListClass*
 
     g_object_class_install_property(
         gobjectClass,
-        PROP_LENGTH,
+        DOM_STYLE_SHEET_LIST_PROP_LENGTH,
         g_param_spec_ulong(
             "length",
             "StyleSheetList:length",
@@ -151,3 +152,4 @@ gulong webkit_dom_style_sheet_list_get_length(WebKitDOMStyleSheetList* self)
     return result;
 }
 
+G_GNUC_END_IGNORE_DEPRECATIONS;

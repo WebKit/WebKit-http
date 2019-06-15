@@ -59,9 +59,7 @@ StyleRuleKeyframes::StyleRuleKeyframes(const StyleRuleKeyframes& o)
         m_keyframes.uncheckedAppend(keyframe.copyRef());
 }
 
-StyleRuleKeyframes::~StyleRuleKeyframes()
-{
-}
+StyleRuleKeyframes::~StyleRuleKeyframes() = default;
 
 void StyleRuleKeyframes::parseDeferredRulesIfNeeded() const
 {
@@ -158,7 +156,7 @@ void CSSKeyframesRule::insertRule(const String& ruleText)
 {
     if (CSSStyleSheet* parent = parentStyleSheet()) {
         if (Document* ownerDocument = parent->ownerDocument())
-            ownerDocument->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("CSSKeyframesRule 'insertRule' function is deprecated.  Use 'appendRule' instead."));
+            ownerDocument->addConsoleMessage(MessageSource::JS, MessageLevel::Warning, "CSSKeyframesRule 'insertRule' function is deprecated.  Use 'appendRule' instead."_s);
     }
     appendRule(ruleText);
 }

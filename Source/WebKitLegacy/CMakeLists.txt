@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8.12)
 include(WebKitCommon)
-set_property(DIRECTORY . PROPERTY FOLDER "WebKit")
+set_property(DIRECTORY . PROPERTY FOLDER "WebKitLegacy")
 
-set(WebKit_SOURCES
+set(WebKitLegacy_SOURCES
     Storage/StorageAreaImpl.cpp
     Storage/StorageAreaSync.cpp
     Storage/StorageNamespaceImpl.cpp
@@ -16,40 +16,39 @@ set(WebKit_SOURCES
     WebCoreSupport/WebViewGroup.cpp
 )
 
-set(WebKit_INCLUDE_DIRECTORIES
+set(WebKitLegacy_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
-    "${WEBKIT_DIR}/Storage"
-    "${WEBKIT_DIR}/WebCoreSupport"
-    "${FORWARDING_HEADERS_DIR}/JavaScriptCore"
-    "${FORWARDING_HEADERS_DIR}/WebCore"
-    "${FORWARDING_HEADERS_DIR}/WebKitLegacy"
+    "${WEBKITLEGACY_DIR}/Storage"
+    "${WEBKITLEGACY_DIR}/WebCoreSupport"
+    "${FORWARDING_HEADERS_DIR}"
 )
 
-set(WebKit_SYSTEM_INCLUDE_DIRECTORIES
+set(WebKitLegacy_SYSTEM_INCLUDE_DIRECTORIES
     "${ICU_INCLUDE_DIRS}"
 )
 
-set(WebKit_LIBRARIES
+set(WebKitLegacy_LIBRARIES
     PRIVATE JavaScriptCore${DEBUG_SUFFIX}
     PRIVATE WebCore${DEBUG_SUFFIX}
     PRIVATE PAL${DEBUG_SUFFIX}
 )
 
+WEBKIT_FRAMEWORK_DECLARE(WebKitLegacy)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 if (MSVC)
     if (NOT ${PORT} STREQUAL "Qt")
-        ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKit_SOURCES)
-        list(APPEND WebKit_SOURCES win/WebKit.resources/WebKit.rc)
-        add_definitions(/DWEBKIT_EXPORTS /DFRAMEWORK_NAME=WebKit)
+        ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "win/WebKitPrefix.cpp" WebKitLegacy_SOURCES)
+        list(APPEND WebKitLegacy_SOURCES win/WebKit.resources/WebKit.rc)
+        add_definitions(/DWEBKIT_EXPORTS /DFRAMEWORK_NAME=WebKitLegacy)
     else ()
-        ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "qt/WebKitPrefix.cpp" WebKit_SOURCES)
+        ADD_PRECOMPILED_HEADER("WebKitPrefix.h" "qt/WebKitPrefix.cpp" WebKitLegacy_SOURCES)
     endif ()
 endif ()
 
 set(WebKit_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKit/private)
 
-WEBKIT_FRAMEWORK(WebKit)
+WEBKIT_FRAMEWORK(WebKitLegacy)
 
 if (${PORT} STREQUAL "Qt")
     set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
@@ -87,19 +86,23 @@ if (${PORT} STREQUAL "Qt")
     endif ()
 endif ()
 
-add_dependencies(WebKit WebCore)
-if (TARGET WebKitGUID)
-    add_dependencies(WebKit WebKitGUID)
+add_dependencies(WebKitLegacy WebCore)
+if (TARGET WebKitLegacyGUID)
+    add_dependencies(WebKitLegacy WebKitLegacyGUID)
 endif ()
 
 if (APPLE)
-    set_target_properties(WebKit PROPERTIES LINK_FLAGS "-umbrella WebKit")
+    set_target_properties(WebKitLegacy PROPERTIES LINK_FLAGS "-umbrella WebKit")
 endif ()
 
 if (MSVC)
     add_custom_command(
-        TARGET WebKit
+        TARGET WebKitLegacy
         POST_BUILD
-        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_WEBKIT_DIR} $<TARGET_FILE:WebKit>
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_WEBKITLEGACY_DIR} $<TARGET_FILE:WebKitLegacy>
         VERBATIM)
+
+     if (NOT WTF_PLATFORM_WIN_CAIRO)
+         add_subdirectory(win/WebKitQuartzCoreAdditions)
+     endif ()
 endif ()

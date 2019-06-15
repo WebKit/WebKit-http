@@ -16,21 +16,21 @@
 
 ******************************************************************/
 
-#ifndef WEBRTC_MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_SORT_SQ_H_
-#define WEBRTC_MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_SORT_SQ_H_
+#ifndef MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_SORT_SQ_H_
+#define MODULES_AUDIO_CODING_CODECS_ILBC_MAIN_SOURCE_SORT_SQ_H_
 
-#include "defines.h"
+#include "modules/audio_coding/codecs/ilbc/defines.h"
 
 /*----------------------------------------------------------------*
  *  scalar quantization
  *---------------------------------------------------------------*/
 
 void WebRtcIlbcfix_SortSq(
-    int16_t *xq,   /* (o) the quantized value */
-    int16_t *index,  /* (o) the quantization index */
-    int16_t x,   /* (i) the value to quantize */
-    const int16_t *cb, /* (i) the quantization codebook */
-    int16_t cb_size  /* (i) the size of the quantization codebook */
-                           );
+    int16_t* xq,       /* (o) the quantized value */
+    int16_t* index,    /* (o) the quantization index */
+    int16_t x,         /* (i) the value to quantize */
+    const int16_t* cb, /* (i) the quantization codebook */
+    int16_t cb_size    /* (i) the size of the quantization codebook */
+    );
 
 #endif

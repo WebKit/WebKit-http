@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,8 +26,7 @@
 #include "config.h"
 #include "NetworkCacheStorage.h"
 
-#if ENABLE(NETWORK_CACHE)
-
+#include "ChildProcess.h"
 #include "Logging.h"
 #include "NetworkCacheCoders.h"
 #include "NetworkCacheFileSystem.h"
@@ -47,19 +46,23 @@ static const char versionDirectoryPrefix[] = "Version ";
 static const char recordsDirectoryName[] = "Records";
 static const char blobsDirectoryName[] = "Blobs";
 static const char blobSuffix[] = "-blob";
+constexpr size_t maximumInlineBodySize { 16 * 1024 };
 
 static double computeRecordWorth(FileTimes);
 
 struct Storage::ReadOperation {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    ReadOperation(const Key& key, RetrieveCompletionHandler&& completionHandler)
-        : key(key)
+    ReadOperation(Storage& storage, const Key& key, RetrieveCompletionHandler&& completionHandler)
+        : storage(storage)
+        , key(key)
         , completionHandler(WTFMove(completionHandler))
     { }
 
     void cancel();
     bool finish();
+
+    Ref<Storage> storage;
 
     const Key key;
     const RetrieveCompletionHandler completionHandler;
@@ -69,6 +72,7 @@ public:
     BlobStorage::Blob resultBodyBlob;
     std::atomic<unsigned> activeCount { 0 };
     bool isCanceled { false };
+    Timings timings;
 };
 
 void Storage::ReadOperation::cancel()
@@ -77,8 +81,10 @@ void Storage::ReadOperation::cancel()
 
     if (isCanceled)
         return;
+    timings.completionTime = MonotonicTime::now();
+    timings.wasCanceled = true;
     isCanceled = true;
-    completionHandler(nullptr);
+    completionHandler(nullptr, timings);
 }
 
 bool Storage::ReadOperation::finish()
@@ -93,19 +99,24 @@ bool Storage::ReadOperation::finish()
         else
             resultRecord = nullptr;
     }
-    return completionHandler(WTFMove(resultRecord));
+    timings.completionTime = MonotonicTime::now();
+    return completionHandler(WTFMove(resultRecord), timings);
 }
 
 struct Storage::WriteOperation {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WriteOperation(const Record& record, MappedBodyHandler&& mappedBodyHandler)
-        : record(record)
+    WriteOperation(Storage& storage, const Record& record, MappedBodyHandler&& mappedBodyHandler, CompletionHandler<void()>&& completionHandler)
+        : storage(storage)
+        , record(record)
         , mappedBodyHandler(WTFMove(mappedBodyHandler))
+        , completionHandler(WTFMove(completionHandler))
     { }
-    
+    Ref<Storage> storage;
+
     const Record record;
     const MappedBodyHandler mappedBodyHandler;
+    CompletionHandler<void()> completionHandler;
 
     std::atomic<unsigned> activeCount { 0 };
 };
@@ -113,14 +124,16 @@ public:
 struct Storage::TraverseOperation {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    TraverseOperation(const String& type, TraverseFlags flags, TraverseHandler&& handler)
-        : type(type)
+    TraverseOperation(Storage& storage, const String& type, OptionSet<TraverseFlag> flags, TraverseHandler&& handler)
+        : storage(storage)
+        , type(type)
         , flags(flags)
         , handler(WTFMove(handler))
     { }
+    Ref<Storage> storage;
 
     const String type;
-    const TraverseFlags flags;
+    const OptionSet<TraverseFlag> flags;
     const TraverseHandler handler;
 
     Lock activeMutex;
@@ -131,34 +144,34 @@ public:
 static String makeVersionedDirectoryPath(const String& baseDirectoryPath)
 {
     String versionSubdirectory = versionDirectoryPrefix + String::number(Storage::version);
-    return WebCore::pathByAppendingComponent(baseDirectoryPath, versionSubdirectory);
+    return WebCore::FileSystem::pathByAppendingComponent(baseDirectoryPath, versionSubdirectory);
 }
 
 static String makeRecordsDirectoryPath(const String& baseDirectoryPath)
 {
-    return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), recordsDirectoryName);
+    return WebCore::FileSystem::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), recordsDirectoryName);
 }
 
 static String makeBlobDirectoryPath(const String& baseDirectoryPath)
 {
-    return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), blobsDirectoryName);
+    return WebCore::FileSystem::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), blobsDirectoryName);
 }
 
 static String makeSaltFilePath(const String& baseDirectoryPath)
 {
-    return WebCore::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), saltFileName);
+    return WebCore::FileSystem::pathByAppendingComponent(makeVersionedDirectoryPath(baseDirectoryPath), saltFileName);
 }
 
-std::unique_ptr<Storage> Storage::open(const String& cachePath, Mode mode)
+RefPtr<Storage> Storage::open(const String& cachePath, Mode mode)
 {
     ASSERT(RunLoop::isMain());
 
-    if (!WebCore::makeAllDirectories(makeVersionedDirectoryPath(cachePath)))
+    if (!WebCore::FileSystem::makeAllDirectories(makeVersionedDirectoryPath(cachePath)))
         return nullptr;
     auto salt = readOrMakeSalt(makeSaltFilePath(cachePath));
     if (!salt)
         return nullptr;
-    return std::unique_ptr<Storage>(new Storage(cachePath, mode, *salt));
+    return adoptRef(new Storage(cachePath, mode, *salt));
 }
 
 void traverseRecordsFiles(const String& recordsPath, const String& expectedType, const RecordFileTraverseFunction& function)
@@ -166,13 +179,13 @@ void traverseRecordsFiles(const String& recordsPath, const String& expectedType,
     traverseDirectory(recordsPath, [&](const String& partitionName, DirectoryEntryType entryType) {
         if (entryType != DirectoryEntryType::Directory)
             return;
-        String partitionPath = WebCore::pathByAppendingComponent(recordsPath, partitionName);
+        String partitionPath = WebCore::FileSystem::pathByAppendingComponent(recordsPath, partitionName);
         traverseDirectory(partitionPath, [&](const String& actualType, DirectoryEntryType entryType) {
             if (entryType != DirectoryEntryType::Directory)
                 return;
             if (!expectedType.isEmpty() && expectedType != actualType)
                 return;
-            String recordDirectoryPath = WebCore::pathByAppendingComponent(partitionPath, actualType);
+            String recordDirectoryPath = WebCore::FileSystem::pathByAppendingComponent(partitionPath, actualType);
             traverseDirectory(recordDirectoryPath, [&function, &recordDirectoryPath, &actualType](const String& fileName, DirectoryEntryType entryType) {
                 if (entryType != DirectoryEntryType::File || fileName.length() < Key::hashStringLength())
                     return;
@@ -192,18 +205,18 @@ static void deleteEmptyRecordsDirectories(const String& recordsPath)
             return;
 
         // Delete [type] sub-folders.
-        String partitionPath = WebCore::pathByAppendingComponent(recordsPath, partitionName);
+        String partitionPath = WebCore::FileSystem::pathByAppendingComponent(recordsPath, partitionName);
         traverseDirectory(partitionPath, [&partitionPath](const String& subdirName, DirectoryEntryType entryType) {
             if (entryType != DirectoryEntryType::Directory)
                 return;
 
             // Let system figure out if it is really empty.
-            WebCore::deleteEmptyDirectory(WebCore::pathByAppendingComponent(partitionPath, subdirName));
+            WebCore::FileSystem::deleteEmptyDirectory(WebCore::FileSystem::pathByAppendingComponent(partitionPath, subdirName));
         });
 
         // Delete [Partition] folders.
         // Let system figure out if it is really empty.
-        WebCore::deleteEmptyDirectory(WebCore::pathByAppendingComponent(recordsPath, partitionName));
+        WebCore::FileSystem::deleteEmptyDirectory(WebCore::FileSystem::pathByAppendingComponent(recordsPath, partitionName));
     });
 }
 
@@ -212,7 +225,7 @@ Storage::Storage(const String& baseDirectoryPath, Mode mode, Salt salt)
     , m_recordsPath(makeRecordsDirectoryPath(baseDirectoryPath))
     , m_mode(mode)
     , m_salt(salt)
-    , m_canUseSharedMemoryForBodyData(canUseSharedMemoryForPath(baseDirectoryPath))
+    , m_canUseBlobsForForBodyData(isSafeToUseMemoryMapForPath(baseDirectoryPath))
     , m_readOperationTimeoutTimer(*this, &Storage::cancelAllReadOperations)
     , m_writeOperationDispatchTimer(*this, &Storage::dispatchPendingWriteOperations)
     , m_ioQueue(WorkQueue::create("com.apple.WebKit.Cache.Storage", WorkQueue::Type::Concurrent))
@@ -226,6 +239,12 @@ Storage::Storage(const String& baseDirectoryPath, Mode mode, Salt salt)
 
 Storage::~Storage()
 {
+    ASSERT(RunLoop::isMain());
+    ASSERT(m_activeReadOperations.isEmpty());
+    ASSERT(m_activeWriteOperations.isEmpty());
+    ASSERT(m_activeTraverseOperations.isEmpty());
+    ASSERT(!m_synchronizationInProgress);
+    ASSERT(!m_shrinkInProgress);
 }
 
 String Storage::basePath() const
@@ -248,6 +267,14 @@ size_t Storage::approximateSize() const
     return m_approximateRecordsSize + m_blobStorage.approximateSize();
 }
 
+static size_t estimateRecordsSize(unsigned recordCount, unsigned blobCount)
+{
+    auto inlineBodyCount = recordCount - std::min(blobCount, recordCount);
+    auto headerSizes = recordCount * 4096;
+    auto inlineBodySizes = (maximumInlineBodySize / 2) * inlineBodyCount;
+    return headerSizes + inlineBodySizes;
+}
+
 void Storage::synchronize()
 {
     ASSERT(RunLoop::isMain());
@@ -258,36 +285,45 @@ void Storage::synchronize()
 
     LOG(NetworkCacheStorage, "(NetworkProcess) synchronizing cache");
 
-    backgroundIOQueue().dispatch([this] {
+    backgroundIOQueue().dispatch([this, protectedThis = makeRef(*this)] () mutable {
         auto recordFilter = std::make_unique<ContentsFilter>();
         auto blobFilter = std::make_unique<ContentsFilter>();
+
+        // Most of the disk space usage is in blobs if we are using them. Approximate records file sizes to avoid expensive stat() calls.
+        bool shouldComputeExactRecordsSize = !m_canUseBlobsForForBodyData;
         size_t recordsSize = 0;
-        unsigned count = 0;
+        unsigned recordCount = 0;
+        unsigned blobCount = 0;
+
         String anyType;
-        traverseRecordsFiles(recordsPath(), anyType, [&recordFilter, &blobFilter, &recordsSize, &count](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
-            auto filePath = WebCore::pathByAppendingComponent(recordDirectoryPath, fileName);
+        traverseRecordsFiles(recordsPath(), anyType, [&](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
+            auto filePath = WebCore::FileSystem::pathByAppendingComponent(recordDirectoryPath, fileName);
 
             Key::HashType hash;
             if (!Key::stringToHash(hashString, hash)) {
-                WebCore::deleteFile(filePath);
-                return;
-            }
-            long long fileSize = 0;
-            WebCore::getFileSize(filePath, fileSize);
-            if (!fileSize) {
-                WebCore::deleteFile(filePath);
+                WebCore::FileSystem::deleteFile(filePath);
                 return;
             }
 
             if (isBlob) {
+                ++blobCount;
                 blobFilter->add(hash);
                 return;
             }
 
+            ++recordCount;
+
+            if (shouldComputeExactRecordsSize) {
+                long long fileSize = 0;
+                WebCore::FileSystem::getFileSize(filePath, fileSize);
+                recordsSize += fileSize;
+            }
+
             recordFilter->add(hash);
-            recordsSize += fileSize;
-            ++count;
         });
+
+        if (!shouldComputeExactRecordsSize)
+            recordsSize = estimateRecordsSize(recordCount, blobCount);
 
         RunLoop::main().dispatch([this, recordFilter = WTFMove(recordFilter), blobFilter = WTFMove(blobFilter), recordsSize]() mutable {
             for (auto& recordFilterKey : m_recordFilterHashesAddedDuringSynchronization)
@@ -308,7 +344,9 @@ void Storage::synchronize()
 
         deleteEmptyRecordsDirectories(recordsPath());
 
-        LOG(NetworkCacheStorage, "(NetworkProcess) cache synchronization completed size=%zu count=%u", recordsSize, count);
+        LOG(NetworkCacheStorage, "(NetworkProcess) cache synchronization completed size=%zu recordCount=%u", recordsSize, recordCount);
+
+        RunLoop::main().dispatch([protectedThis = WTFMove(protectedThis)] { });
     });
 }
 
@@ -333,18 +371,20 @@ bool Storage::mayContain(const Key& key) const
 bool Storage::mayContainBlob(const Key& key) const
 {
     ASSERT(RunLoop::isMain());
+    if (!m_canUseBlobsForForBodyData)
+        return false;
     return !m_blobFilter || m_blobFilter->mayContain(key.hash());
 }
 
 String Storage::recordDirectoryPathForKey(const Key& key) const
 {
     ASSERT(!key.type().isEmpty());
-    return WebCore::pathByAppendingComponent(WebCore::pathByAppendingComponent(recordsPath(), key.partitionHashAsString()), key.type());
+    return WebCore::FileSystem::pathByAppendingComponent(WebCore::FileSystem::pathByAppendingComponent(recordsPath(), key.partitionHashAsString()), key.type());
 }
 
 String Storage::recordPathForKey(const Key& key) const
 {
-    return WebCore::pathByAppendingComponent(recordDirectoryPathForKey(key), key.hashAsString());
+    return WebCore::FileSystem::pathByAppendingComponent(recordDirectoryPathForKey(key), key.hashAsString());
 }
 
 static String blobPathForRecordPath(const String& recordPath)
@@ -366,7 +406,7 @@ struct RecordMetaData {
 
     unsigned cacheStorageVersion;
     Key key;
-    std::chrono::system_clock::time_point timeStamp;
+    WallTime timeStamp;
     SHA1::Digest headerHash;
     uint64_t headerSize { 0 };
     SHA1::Digest bodyHash;
@@ -440,7 +480,7 @@ void Storage::readRecord(ReadOperation& readOperation, const Data& recordData)
         return;
 
     // Sanity check against time stamps in future.
-    if (metaData.timeStamp > std::chrono::system_clock::now())
+    if (metaData.timeStamp > WallTime::now())
         return;
 
     Data bodyData;
@@ -548,14 +588,17 @@ void Storage::remove(const Key& key)
     if (!mayContain(key))
         return;
 
+    auto protectedThis = makeRef(*this);
+
     // We can't remove the key from the Bloom filter (but some false positives are expected anyway).
     // For simplicity we also don't reduce m_approximateSize on removals.
     // The next synchronization will update everything.
 
     removeFromPendingWriteOperations(key);
 
-    serialBackgroundIOQueue().dispatch([this, key] {
+    serialBackgroundIOQueue().dispatch([this, protectedThis = WTFMove(protectedThis), key] () mutable {
         deleteFiles(key);
+        RunLoop::main().dispatch([protectedThis = WTFMove(protectedThis)] { });
     });
 }
 
@@ -573,12 +616,14 @@ void Storage::remove(const Vector<Key>& keys, Function<void ()>&& completionHand
         keysToRemove.uncheckedAppend(key);
     }
 
-    serialBackgroundIOQueue().dispatch([this, keysToRemove = WTFMove(keysToRemove), completionHandler = WTFMove(completionHandler)] () mutable {
+    serialBackgroundIOQueue().dispatch([this, protectedThis = makeRef(*this), keysToRemove = WTFMove(keysToRemove), completionHandler = WTFMove(completionHandler)] () mutable {
         for (auto& key : keysToRemove)
             deleteFiles(key);
 
-        if (completionHandler)
-            RunLoop::main().dispatch(WTFMove(completionHandler));
+        RunLoop::main().dispatch([protectedThis = WTFMove(protectedThis), completionHandler = WTFMove(completionHandler)] {
+            if (completionHandler)
+                completionHandler();
+        });
     });
 }
 
@@ -586,7 +631,7 @@ void Storage::deleteFiles(const Key& key)
 {
     ASSERT(!RunLoop::isMain());
 
-    WebCore::deleteFile(recordPathForKey(key));
+    WebCore::FileSystem::deleteFile(recordPathForKey(key));
     m_blobStorage.remove(blobPathForKey(key));
 }
 
@@ -604,6 +649,13 @@ void Storage::dispatchReadOperation(std::unique_ptr<ReadOperation> readOperation
     auto& readOperation = *readOperationPtr;
     m_activeReadOperations.add(WTFMove(readOperationPtr));
 
+    readOperation.timings.dispatchTime = MonotonicTime::now();
+    readOperation.timings.synchronizationInProgressAtDispatch = m_synchronizationInProgress;
+    readOperation.timings.shrinkInProgressAtDispatch = m_shrinkInProgress;
+    readOperation.timings.dispatchCountAtDispatch = m_readOperationDispatchCount;
+
+    ++m_readOperationDispatchCount;
+
     // Avoid randomness during testing.
     if (m_mode != Mode::Testing) {
         // I/O pressure may make disk operations slow. If they start taking very long time we rather go to network.
@@ -620,8 +672,11 @@ void Storage::dispatchReadOperation(std::unique_ptr<ReadOperation> readOperation
         if (shouldGetBodyBlob)
             ++readOperation.activeCount;
 
+        readOperation.timings.recordIOStartTime = MonotonicTime::now();
+
         auto channel = IOChannel::open(recordPath, IOChannel::Type::Read);
         channel->read(0, std::numeric_limits<size_t>::max(), &ioQueue(), [this, &readOperation](const Data& fileData, int error) {
+            readOperation.timings.recordIOEndTime = MonotonicTime::now();
             if (!error)
                 readRecord(readOperation, fileData);
             finishReadOperation(readOperation);
@@ -629,8 +684,13 @@ void Storage::dispatchReadOperation(std::unique_ptr<ReadOperation> readOperation
 
         if (shouldGetBodyBlob) {
             // Read the blob in parallel with the record read.
+            readOperation.timings.blobIOStartTime = MonotonicTime::now();
+
             auto blobPath = blobPathForKey(readOperation.key);
             readOperation.resultBodyBlob = m_blobStorage.get(blobPath);
+
+            readOperation.timings.blobIOEndTime = MonotonicTime::now();
+
             finishReadOperation(readOperation);
         }
     });
@@ -649,6 +709,8 @@ void Storage::finishReadOperation(ReadOperation& readOperation)
             updateFileModificationTime(recordPathForKey(readOperation.key));
         else if (!readOperation.isCanceled)
             remove(readOperation.key);
+
+        auto protectedThis = makeRef(*this);
 
         ASSERT(m_activeReadOperations.contains(&readOperation));
         m_activeReadOperations.remove(&readOperation);
@@ -705,7 +767,7 @@ template <class T> bool retrieveFromMemory(const T& operations, const Key& key, 
         if (operation->record.key == key) {
             LOG(NetworkCacheStorage, "(NetworkProcess) found write operation in progress");
             RunLoop::main().dispatch([record = operation->record, completionHandler = WTFMove(completionHandler)] {
-                completionHandler(std::make_unique<Storage::Record>(record));
+                completionHandler(std::make_unique<Storage::Record>(record), { });
             });
             return true;
         }
@@ -728,9 +790,10 @@ void Storage::dispatchPendingWriteOperations()
     }
 }
 
-static bool shouldStoreBodyAsBlob(const Data& bodyData)
+bool Storage::shouldStoreBodyAsBlob(const Data& bodyData)
 {
-    const size_t maximumInlineBodySize { 16 * 1024 };
+    if (!m_canUseBlobsForForBodyData)
+        return false;
     return bodyData.size() > maximumInlineBodySize;
 }
 
@@ -748,7 +811,7 @@ void Storage::dispatchWriteOperation(std::unique_ptr<WriteOperation> writeOperat
         auto recordDirectorPath = recordDirectoryPathForKey(writeOperation.record.key);
         auto recordPath = recordPathForKey(writeOperation.record.key);
 
-        WebCore::makeAllDirectories(recordDirectorPath);
+        WebCore::FileSystem::makeAllDirectories(recordDirectorPath);
 
         ++writeOperation.activeCount;
 
@@ -778,6 +841,11 @@ void Storage::finishWriteOperation(WriteOperation& writeOperation)
     if (--writeOperation.activeCount)
         return;
 
+    auto protectedThis = makeRef(*this);
+
+    if (writeOperation.completionHandler)
+        writeOperation.completionHandler();
+
     m_activeWriteOperations.remove(&writeOperation);
     dispatchPendingWriteOperations();
 
@@ -791,12 +859,12 @@ void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHand
     ASSERT(!key.isNull());
 
     if (!m_capacity) {
-        completionHandler(nullptr);
+        completionHandler(nullptr, { });
         return;
     }
 
     if (!mayContain(key)) {
-        completionHandler(nullptr);
+        completionHandler(nullptr, { });
         return;
     }
 
@@ -805,12 +873,16 @@ void Storage::retrieve(const Key& key, unsigned priority, RetrieveCompletionHand
     if (retrieveFromMemory(m_activeWriteOperations, key, completionHandler))
         return;
 
-    auto readOperation = std::make_unique<ReadOperation>(key, WTFMove(completionHandler));
+    auto readOperation = std::make_unique<ReadOperation>(*this, key, WTFMove(completionHandler));
+
+    readOperation->timings.startTime = MonotonicTime::now();
+    readOperation->timings.dispatchCountAtStart = m_readOperationDispatchCount;
+
     m_pendingReadOperationsByPriority[priority].prepend(WTFMove(readOperation));
     dispatchPendingReadOperations();
 }
 
-void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
+void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler, CompletionHandler<void()>&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
     ASSERT(!record.key.isNull());
@@ -818,7 +890,7 @@ void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
     if (!m_capacity)
         return;
 
-    auto writeOperation = std::make_unique<WriteOperation>(record, WTFMove(mappedBodyHandler));
+    auto writeOperation = std::make_unique<WriteOperation>(*this, record, WTFMove(mappedBodyHandler), WTFMove(completionHandler));
     m_pendingWriteOperations.prepend(WTFMove(writeOperation));
 
     // Add key to the filter already here as we do lookups from the pending operations too.
@@ -828,29 +900,26 @@ void Storage::store(const Record& record, MappedBodyHandler&& mappedBodyHandler)
     if (!isInitialWrite)
         return;
 
-    // Delay the start of writes a bit to avoid affecting early page load.
-    // Completing writes will dispatch more writes without delay.
-    static const Seconds initialWriteDelay = 1_s;
-    m_writeOperationDispatchTimer.startOneShot(initialWriteDelay);
+    m_writeOperationDispatchTimer.startOneShot(m_initialWriteDelay);
 }
 
-void Storage::traverse(const String& type, TraverseFlags flags, TraverseHandler&& traverseHandler)
+void Storage::traverse(const String& type, OptionSet<TraverseFlag> flags, TraverseHandler&& traverseHandler)
 {
     ASSERT(RunLoop::isMain());
     ASSERT(traverseHandler);
     // Avoid non-thread safe Function copies.
 
-    auto traverseOperationPtr = std::make_unique<TraverseOperation>(type, flags, WTFMove(traverseHandler));
+    auto traverseOperationPtr = std::make_unique<TraverseOperation>(*this, type, flags, WTFMove(traverseHandler));
     auto& traverseOperation = *traverseOperationPtr;
     m_activeTraverseOperations.add(WTFMove(traverseOperationPtr));
 
     ioQueue().dispatch([this, &traverseOperation] {
         traverseRecordsFiles(recordsPath(), traverseOperation.type, [this, &traverseOperation](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
-            ASSERT(type == traverseOperation.type);
+            ASSERT(type == traverseOperation.type || traverseOperation.type.isEmpty());
             if (isBlob)
                 return;
 
-            auto recordPath = WebCore::pathByAppendingComponent(recordDirectoryPath, fileName);
+            auto recordPath = WebCore::FileSystem::pathByAppendingComponent(recordDirectoryPath, fileName);
 
             double worth = -1;
             if (traverseOperation.flags & TraverseFlag::ComputeWorth)
@@ -888,7 +957,7 @@ void Storage::traverse(const String& type, TraverseFlags flags, TraverseHandler&
                 traverseOperation.activeCondition.notifyOne();
             });
 
-            const unsigned maximumParallelReadCount = 5;
+            static const unsigned maximumParallelReadCount = 5;
             traverseOperation.activeCondition.wait(lock, [&traverseOperation] {
                 return traverseOperation.activeCount <= maximumParallelReadCount;
             });
@@ -902,6 +971,9 @@ void Storage::traverse(const String& type, TraverseFlags flags, TraverseHandler&
         }
         RunLoop::main().dispatch([this, &traverseOperation] {
             traverseOperation.handler(nullptr, { });
+
+            auto protectedThis = makeRef(*this);
+
             m_activeTraverseOperations.remove(&traverseOperation);
         });
     });
@@ -925,7 +997,7 @@ void Storage::setCapacity(size_t capacity)
     shrinkIfNeeded();
 }
 
-void Storage::clear(const String& type, std::chrono::system_clock::time_point modifiedSinceTime, Function<void ()>&& completionHandler)
+void Storage::clear(const String& type, WallTime modifiedSinceTime, Function<void ()>&& completionHandler)
 {
     ASSERT(RunLoop::isMain());
     LOG(NetworkCacheStorage, "(NetworkProcess) clearing cache");
@@ -936,16 +1008,16 @@ void Storage::clear(const String& type, std::chrono::system_clock::time_point mo
         m_blobFilter->clear();
     m_approximateRecordsSize = 0;
 
-    ioQueue().dispatch([this, modifiedSinceTime, completionHandler = WTFMove(completionHandler), type = type.isolatedCopy()] () mutable {
+    ioQueue().dispatch([this, protectedThis = makeRef(*this), modifiedSinceTime, completionHandler = WTFMove(completionHandler), type = type.isolatedCopy()] () mutable {
         auto recordsPath = this->recordsPath();
         traverseRecordsFiles(recordsPath, type, [modifiedSinceTime](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
-            auto filePath = WebCore::pathByAppendingComponent(recordDirectoryPath, fileName);
-            if (modifiedSinceTime > std::chrono::system_clock::time_point::min()) {
+            auto filePath = WebCore::FileSystem::pathByAppendingComponent(recordDirectoryPath, fileName);
+            if (modifiedSinceTime > -WallTime::infinity()) {
                 auto times = fileTimes(filePath);
                 if (times.modification < modifiedSinceTime)
                     return;
             }
-            WebCore::deleteFile(filePath);
+            WebCore::FileSystem::deleteFile(filePath);
         });
 
         deleteEmptyRecordsDirectories(recordsPath);
@@ -953,29 +1025,25 @@ void Storage::clear(const String& type, std::chrono::system_clock::time_point mo
         // This cleans unreferenced blobs.
         m_blobStorage.synchronize();
 
-        if (completionHandler) {
-            RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
+        RunLoop::main().dispatch([protectedThis = WTFMove(protectedThis), completionHandler = WTFMove(completionHandler)] {
+            if (completionHandler)
                 completionHandler();
-            });
-        }
+        });
     });
 }
 
 static double computeRecordWorth(FileTimes times)
 {
-    using namespace std::chrono;
-    using namespace std::literals::chrono_literals;
-
-    auto age = system_clock::now() - times.creation;
+    auto age = WallTime::now() - times.creation;
     // File modification time is updated manually on cache read. We don't use access time since OS may update it automatically.
     auto accessAge = times.modification - times.creation;
 
     // For sanity.
-    if (age <= 0s || accessAge < 0s || accessAge > age)
+    if (age <= 0_s || accessAge < 0_s || accessAge > age)
         return 0;
 
     // We like old entries that have been accessed recently.
-    return duration<double>(accessAge) / age;
+    return accessAge / age;
 }
 
 static double deletionProbability(FileTimes times, unsigned bodyShareCount)
@@ -1019,14 +1087,14 @@ void Storage::shrink()
 
     LOG(NetworkCacheStorage, "(NetworkProcess) shrinking cache approximateSize=%zu capacity=%zu", approximateSize(), m_capacity);
 
-    backgroundIOQueue().dispatch([this] {
+    backgroundIOQueue().dispatch([this, protectedThis = makeRef(*this)] () mutable {
         auto recordsPath = this->recordsPath();
         String anyType;
         traverseRecordsFiles(recordsPath, anyType, [this](const String& fileName, const String& hashString, const String& type, bool isBlob, const String& recordDirectoryPath) {
             if (isBlob)
                 return;
 
-            auto recordPath = WebCore::pathByAppendingComponent(recordDirectoryPath, fileName);
+            auto recordPath = WebCore::FileSystem::pathByAppendingComponent(recordDirectoryPath, fileName);
             auto blobPath = blobPathForRecordPath(recordPath);
 
             auto times = fileTimes(recordPath);
@@ -1038,12 +1106,12 @@ void Storage::shrink()
             LOG(NetworkCacheStorage, "Deletion probability=%f bodyLinkCount=%d shouldDelete=%d", probability, bodyShareCount, shouldDelete);
 
             if (shouldDelete) {
-                WebCore::deleteFile(recordPath);
+                WebCore::FileSystem::deleteFile(recordPath);
                 m_blobStorage.remove(blobPath);
             }
         });
 
-        RunLoop::main().dispatch([this] {
+        RunLoop::main().dispatch([this, protectedThis = WTFMove(protectedThis)] {
             m_shrinkInProgress = false;
             // We could synchronize during the shrink traversal. However this is fast and it is better to have just one code path.
             synchronize();
@@ -1055,7 +1123,7 @@ void Storage::shrink()
 
 void Storage::deleteOldVersions()
 {
-    backgroundIOQueue().dispatch([this] {
+    backgroundIOQueue().dispatch([this, protectedThis = makeRef(*this)] () mutable {
         auto cachePath = basePath();
         traverseDirectory(cachePath, [&cachePath](const String& subdirName, DirectoryEntryType type) {
             if (type != DirectoryEntryType::Directory)
@@ -1070,19 +1138,19 @@ void Storage::deleteOldVersions()
             if (directoryVersion >= version)
                 return;
 #if PLATFORM(MAC)
-            if (directoryVersion == lastStableVersion)
+            if (!ChildProcess::isSystemWebKit() && directoryVersion == lastStableVersion)
                 return;
 #endif
 
-            auto oldVersionPath = WebCore::pathByAppendingComponent(cachePath, subdirName);
+            auto oldVersionPath = WebCore::FileSystem::pathByAppendingComponent(cachePath, subdirName);
             LOG(NetworkCacheStorage, "(NetworkProcess) deleting old cache version, path %s", oldVersionPath.utf8().data());
 
             deleteDirectoryRecursively(oldVersionPath);
         });
+
+        RunLoop::main().dispatch([protectedThis = WTFMove(protectedThis)] { });
     });
 }
 
 }
 }
-
-#endif
