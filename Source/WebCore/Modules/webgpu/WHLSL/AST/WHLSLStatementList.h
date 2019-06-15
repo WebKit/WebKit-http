@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,24 +27,40 @@
 
 #if ENABLE(WEBGPU)
 
-#include "GPUVertexAttributeDescriptor.h"
-#include "GPUVertexInputDescriptor.h"
+#include "WHLSLLexer.h"
+#include "WHLSLStatement.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-enum class GPUIndexFormat {
-    Uint16,
-    Uint32,
+namespace WHLSL {
+
+namespace AST {
+
+class StatementList : public Statement {
+    using Base = Statement;
+public:
+    StatementList(Lexer::Token&& origin, Statements&& statements)
+        : Base(WTFMove(origin))
+        , m_statements(WTFMove(statements))
+    { }
+
+    virtual ~StatementList() = default;
+
+    Statements& statements() { return m_statements; }
+
+    bool isStatementList() const override { return true; }
+
+private:
+    Statements m_statements;
 };
 
-struct GPUInputStateDescriptor {
-    Optional<GPUIndexFormat> indexFormat;
+} // namespace AST
 
-    Vector<GPUVertexAttributeDescriptor> attributes;
-    Vector<GPUVertexInputDescriptor> inputs;
-};
+}
 
-} // namespace WebCore
+}
 
-#endif // ENABLE(WEBGPU)
+SPECIALIZE_TYPE_TRAITS_WHLSL_STATEMENT(StatementList, isStatementList())
+
+#endif

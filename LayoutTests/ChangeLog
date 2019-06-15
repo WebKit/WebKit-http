@@ -1,3 +1,230 @@
+2019-05-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245946.
+
+        Breaks the watchOS build.
+
+        Reverted changeset:
+
+        "Add an option to mute audio capture automatically when page
+        is not visible"
+        https://bugs.webkit.org/show_bug.cgi?id=198307
+        https://trac.webkit.org/changeset/245946
+
+2019-05-31  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win10] Some tests are failing only on specific machines
+        https://bugs.webkit.org/show_bug.cgi?id=197509
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: Main frame should be scrollable when pinch zoomed or software keyboard is up
+        https://bugs.webkit.org/show_bug.cgi?id=198244
+
+        Reviewed by Simon Fraser.
+
+        Added regression tests.
+
+        * fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard-expected.txt: Added.
+        * fast/scrolling/ios/body-overflow-hidden-height-100-percent-keyboard.html: Added.
+        * fast/scrolling/ios/body-overflow-hidden-height-100-percent-zoomed-1-expected.txt: Added.
+        * fast/scrolling/ios/body-overflow-hidden-height-100-percent-zoomed-1.html: Added.
+        * fast/scrolling/ios/body-overflow-hidden-height-100-percent-zoomed-2-expected.txt: Added.
+        * fast/scrolling/ios/body-overflow-hidden-height-100-percent-zoomed-2.html: Added.
+
+2019-05-30  Jer Noble  <jer.noble@apple.com>
+
+        Video playback in Safari should continue when CarPlay is plugged in
+        https://bugs.webkit.org/show_bug.cgi?id=198345
+        <rdar://problem/45505750>
+
+        Reviewed by Eric Carlson.
+
+        * media/video-isplayingtoautomotiveheadunit-expected.txt: Added.
+        * media/video-isplayingtoautomotiveheadunit.html: Added.
+
+2019-05-30  Youenn Fablet  <youenn@apple.com>
+
+        Add an option to mute audio capture automatically when page is not visible
+        https://bugs.webkit.org/show_bug.cgi?id=198307
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/mediastream/audio-muted-in-background-tab-expected.txt: Added.
+        * platform/ios/mediastream/audio-muted-in-background-tab.html: Added.
+
+2019-05-30  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Enforce variable lifetimes
+        https://bugs.webkit.org/show_bug.cgi?id=195794
+        <rdar://problem/50746293>
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-ensure-proper-variable-lifetime-2-expected.html: Added.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-2.html: Added.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-3-expected.html: Added.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-3.html: Added.
+        * webgpu/whlsl-ensure-proper-variable-lifetime-expected.html: Added.
+        * webgpu/whlsl-ensure-proper-variable-lifetime.html: Added.
+        * webgpu/whlsl-return-local-variable-expected.html: Added.
+        * webgpu/whlsl-return-local-variable.html: Added.
+
+2019-05-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245890, 245887.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+        "Video playback in Safari should continue when CarPlay is plugged in"
+        https://bugs.webkit.org/show_bug.cgi?id=198345
+        https://trac.webkit.org/changeset/245887/webkit
+
+
+2019-05-30  Dean Jackson  <dino@apple.com>
+
+        Media documents on iPad are too wide in split screen
+        https://bugs.webkit.org/show_bug.cgi?id=198405
+        <rdar://problem/50974548>
+
+        Reviewed by Tim Horton.
+
+        Make old test iPhone-specific. Add an iPad-specific test.
+        And mark all the expectations correctly.
+
+        * media/modern-media-controls/media-documents/media-document-video-ipad-sizing-expected.txt: Copied from LayoutTests/media/modern-media-controls/media-documents/media-document-video-ios-sizing-expected.txt.
+        * media/modern-media-controls/media-documents/media-document-video-ipad-sizing.html: Copied from LayoutTests/media/modern-media-controls/media-documents/media-document-video-ios-sizing.html.
+        * media/modern-media-controls/media-documents/media-document-video-iphone-sizing-expected.txt: Renamed from LayoutTests/media/modern-media-controls/media-documents/media-document-video-ios-sizing-expected.txt.
+        * media/modern-media-controls/media-documents/media-document-video-iphone-sizing.html: Renamed from LayoutTests/media/modern-media-controls/media-documents/media-document-video-ios-sizing.html.
+        * platform/ios/TestExpectations:
+        * platform/ipad/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2019-05-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: there should be a default test for WebInspectorAudit.Resources functionality
+        https://bugs.webkit.org/show_bug.cgi?id=196710
+        <rdar://problem/49712348>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/audit/manager-start-setup.html:
+        * inspector/audit/manager-start-setup-expected.txt:
+        * inspector/model/auditTestCase-expected.txt:
+        * inspector/model/auditTestCaseResult-expected.txt:
+        * inspector/model/auditTestGroup-expected.txt:
+        * inspector/unit-tests/object-utilities.html:
+        * inspector/unit-tests/object-utilities-expected.txt:
+
+2019-05-30  Andres Gonzalez  <andresg_22@apple.com>
+
+        Inserting a newline in contenteditable causes two characters to be added instead of one
+        https://bugs.webkit.org/show_bug.cgi?id=197894
+        <rdar://problem/49700998>
+
+        Reviewed by Wenson Hsieh and Chris Fleizach.
+
+        * accessibility/ios-simulator/set-selected-text-range-after-newline-expected.txt: Added.
+        * accessibility/ios-simulator/set-selected-text-range-after-newline.html: Added.
+        * accessibility/ios-simulator/text-marker-list-item-expected.txt:
+        * accessibility/set-selected-text-range-after-newline-expected.txt: Added.
+        * accessibility/set-selected-text-range-after-newline.html: Added.
+        * platform/win/TestExpectations:
+
+2019-05-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Audit: tests are unable to get the current Audit version
+        https://bugs.webkit.org/show_bug.cgi?id=198270
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/audit/run.html:
+        * inspector/audit/run-expected.txt:
+        * inspector/audit/version.html:
+
+2019-05-30  Justin Fan  <justin_fan@apple.com>
+
+        [Web GPU] Vertex Buffers/Input State API updates
+        https://bugs.webkit.org/show_bug.cgi?id=194258
+        <rdar://problem/47806127>
+
+        Reviewed by Myles C. Maxfield.
+
+        Update WebGPU tests for the new vertex buffer attributes model.
+
+        * webgpu/blend-triangle-strip.html:
+        * webgpu/buffer-command-buffer-races.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/draw-indexed-triangles.html:
+        * webgpu/js/webgpu-functions.js:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+        * webgpu/whlsl-arbitrary-vertex-attribute-locations.html:
+        * webgpu/whlsl-dereference-pointer-should-type-check.html:
+        * webgpu/whlsl-dont-crash-parsing-enum.html:
+        * webgpu/whlsl-dot-expressions.html:
+        * webgpu/whlsl-nested-dot-expression-rvalue.html:
+        * webgpu/whlsl.html:
+
+2019-05-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Missing caret when focusing an editable field if the selection was set when WKWebView wasn't first responder
+        https://bugs.webkit.org/show_bug.cgi?id=198356
+        <rdar://problem/50798593>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to exercise this scenario.
+
+        * editing/selection/ios/caret-when-focusing-editable-element-with-selection-expected.txt: Added.
+        * editing/selection/ios/caret-when-focusing-editable-element-with-selection.html: Added.
+
+2019-05-30  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Do not linkify telephone numbers inside <a> elements.
+        https://bugs.webkit.org/show_bug.cgi?id=198378
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/linkify-phone-numbers-expected.html: Added.
+        * fast/dom/linkify-phone-numbers.html: Added.
+
+2019-05-30  Jer Noble  <jer.noble@apple.com>
+
+        Video playback in Safari should continue when CarPlay is plugged in
+        https://bugs.webkit.org/show_bug.cgi?id=198345
+        <rdar://problem/45505750>
+
+        Reviewed by Eric Carlson.
+
+        * media/video-isplayingtoautomotiveheadunit-expected.txt: Added.
+        * media/video-isplayingtoautomotiveheadunit.html: Added.
+
+2019-05-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r244182) [Mac WK2] Layout Test imported/w3c/web-platform-tests/visual-viewport/viewport-resize-event-on-load-overflowing-page.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=197286
+
+        Reviewed by Simon Fraser.
+
+        * platform/mac-wk2/TestExpectations:
+
+2019-05-29  Youenn Fablet  <youenn@apple.com>
+
+        Reestablish WebSWClientConnection in case of network process crash
+        https://bugs.webkit.org/show_bug.cgi?id=198333
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/service-workers/service-worker-networkprocess-crash-expected.txt: Added.
+        * http/wpt/service-workers/service-worker-networkprocess-crash.html: Added.
+
 2019-05-29  Antti Koivisto  <antti@apple.com>
 
         Scrolling node ordering wrong when a layer has both positioning and fixed/sticky node

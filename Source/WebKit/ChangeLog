@@ -1,3 +1,594 @@
+2019-05-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245946.
+
+        Breaks the watchOS build.
+
+        Reverted changeset:
+
+        "Add an option to mute audio capture automatically when page
+        is not visible"
+        https://bugs.webkit.org/show_bug.cgi?id=198307
+        https://trac.webkit.org/changeset/245946
+
+2019-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WPERenderer: ensure we complete the last frame when leaving AC mode
+        https://bugs.webkit.org/show_bug.cgi?id=198372
+
+        Reviewed by Michael Catanzaro.
+
+        It can happen that we leave AC mode after a new image is received from the web process but before it's
+        committed. It can also happen that we receive a new image from the web process right after we have left AC
+        mode. In both cases we need to complete the frame to ensure we don't leave the wayland compositor waiting
+        forever for a frame to be completed.
+
+        * UIProcess/gtk/AcceleratedBackingStoreWayland.cpp:
+        (WebKit::AcceleratedBackingStoreWayland::update): Complete any pending image when a new surface is used.
+        (WebKit::AcceleratedBackingStoreWayland::displayBuffer): Complete the given image and return early if we already
+        left AC mode.
+        * UIProcess/gtk/AcceleratedBackingStoreWayland.h:
+
+2019-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [CoordinatedGraphics] WPERenderer: do not release the host file descritor when initializing the render target
+        https://bugs.webkit.org/show_bug.cgi?id=198371
+
+        Reviewed by Michael Catanzaro.
+
+        We are assuming that there will always be only one target for a web page. In the GTK port we destroy the render
+        target when leaving AC mode, and a new one is created when re-entering AC mode. Since the file descriptor is
+        released on the first target and adopted by libwpe, the second target passes -1 as host fd to libwpe, and the
+        new surface created by the target is not properly registered in the wayland compositor. That means that frame
+        requests for the new target are simply ignored by the wayland compositor, it returns early on surfacxe frame
+        when the surface doesn't have a view backend client.
+
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::hostFileDescriptor const): Rename it and make it const.
+        * WebProcess/WebPage/libwpe/AcceleratedSurfaceLibWPE.cpp:
+        (WebKit::AcceleratedSurfaceLibWPE::initialize): Pass a duplicated file descriptor to
+        wpe_renderer_backend_egl_target_create().
+
+2019-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Fix memory leak introduced in r245807
+        https://bugs.webkit.org/show_bug.cgi?id=198369
+
+        Reviewed by Michael Catanzaro.
+
+        We should destroy the wpe_view_backend_exportable_fdo created in AcceleratedBackingStoreWayland.
+
+        * UIProcess/gtk/AcceleratedBackingStoreWayland.cpp:
+        (WebKit::AcceleratedBackingStoreWayland::~AcceleratedBackingStoreWayland):
+
+2019-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r244182): [GTK] Web view no longer updated after re-entering AC mode
+        https://bugs.webkit.org/show_bug.cgi?id=198367
+
+        Reviewed by Sergio Villar Senin.
+
+        This happens because we leave accelerated compositing mode when a rendering update is scheduled in
+        RenderingUpdateScheduler. The ThreadedDisplayRefreshMonitor is destroyed without completing the
+        frame, so that the RenderingUpdateScheduler is left scheduled forever, ignoring any new schedule request. We
+        need to ensure we complete the frame request before destroying the display refresh monitor to leave the
+        RenderingUpdateScheduler in a consistent state.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp:
+        (WebKit::ThreadedDisplayRefreshMonitor::invalidate):
+
+2019-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: Main frame should be scrollable when pinch zoomed or software keyboard is up
+        https://bugs.webkit.org/show_bug.cgi?id=198244
+
+        Reviewed by Simon Fraser.
+
+        This is a follow up to r245006. Even when overflow: hidden is specified on the document body,
+        we still need to make it scrollable when the page is pinch zoomed or there is a content inset
+        e.g. for software keyboard. Otherwise, the user won't be able to get to the content that is
+        outside the visual viewport when pinch zoomed or the parts of the page that is not outside
+        the visual viewport due to the scrolling caused by the software keyboard being brought up.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+
+2019-05-30  Youenn Fablet  <youenn@apple.com>
+
+        Add an option to mute audio capture automatically when page is not visible
+        https://bugs.webkit.org/show_bug.cgi?id=198307
+
+        Reviewed by Eric Carlson.
+
+        Add API to set the new runtime flag.
+        Make source proxy factories implement this automatic muting.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _interruptAudioOnPageVisibilityChangeEnabled]):
+        (-[WKPreferences _setInterruptAudioOnPageVisibilityChangeEnabled:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::setAudioCapturePageState):
+        (WebKit::UserMediaCaptureManager::setVideoCapturePageState):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2019-05-30  Sihui Liu  <sihui_liu@apple.com>
+
+        WKWebsiteDataStore API fails to fetch web storage data for non-persistent data store
+        https://bugs.webkit.org/show_bug.cgi?id=198317
+        <rdar://problem/51244662>
+
+        Reviewed by Alex Christensen.
+
+        Use LocalStorageNameSpace instead of SessionStorageNameSpace for localStorage in ephemeral session or 
+        websiteDataStore.
+
+        * NetworkProcess/WebStorage/StorageManager.cpp:
+        (WebKit::StorageManager::StorageArea::isEphemeral const):
+        (WebKit::StorageManager::StorageArea::removeListener):
+        (WebKit::StorageManager::StorageArea::setItems):
+        (WebKit::StorageManager::StorageArea::openDatabaseAndImportItemsIfNeeded const):
+        (WebKit::StorageManager::LocalStorageNamespace::~LocalStorageNamespace):
+        (WebKit::StorageManager::LocalStorageNamespace::getOrCreateStorageArea):
+        (WebKit::StorageManager::LocalStorageNamespace::clearAllStorageAreas):
+        (WebKit::StorageManager::LocalStorageNamespace::ephemeralOrigins const):
+        (WebKit::StorageManager::LocalStorageNamespace::cloneTo):
+        (WebKit::StorageManager::StorageManager):
+        (WebKit::StorageManager::cloneSessionStorageNamespace):
+        (WebKit::StorageManager::getLocalStorageOrigins):
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigin):
+        (WebKit::StorageManager::deleteLocalStorageOriginsModifiedSince):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigins):
+        (WebKit::StorageManager::createLocalStorageMap):
+        (WebKit::StorageManager::createTransientLocalStorageMap):
+        (WebKit::StorageManager::createSessionStorageMap):
+        (WebKit::StorageManager::destroyStorageMap):
+        (WebKit::StorageManager::getValues):
+        (WebKit::StorageManager::setItem):
+        (WebKit::StorageManager::removeItem):
+        (WebKit::StorageManager::clear):
+        (WebKit::StorageManager::suspend):
+        (WebKit::StorageManager::resume):
+        (WebKit::StorageManager::StorageArea::isSessionStorage const): Deleted.
+        * NetworkProcess/WebStorage/StorageManager.h:
+        (): Deleted.
+        * WebProcess/WebStorage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::dispatchStorageEvent):
+        (WebKit::StorageAreaMap::dispatchSessionStorageEvent):
+        (WebKit::StorageAreaMap::connect):
+        * WebProcess/WebStorage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createEphemeralLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::createLocalStorageNamespace):
+        * WebProcess/WebStorage/StorageNamespaceImpl.h:
+        * WebProcess/WebStorage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::createLocalStorageNamespace):
+
+2019-05-30  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION (r245873) [Mac WK2] Layout Test http/wpt/service-workers/update-service-worker.https.html is a flaky crash after running new test
+        https://bugs.webkit.org/show_bug.cgi?id=198379
+        <rdar://problem/51264361>
+
+        Reviewed by Alex Christensen.
+
+        This case can happen when network process is crashing.
+        Given the WebSWClientConnection may be kept alive, it might reregister itself but in that case will never be unregistered.
+        Remove the WebSWClientConnection from the NetworkProcessConnection corresponding map on destruction time.
+        Covered by no longer crashing tests.
+
+        * WebProcess/Network/NetworkProcessConnection.cpp:
+        (WebKit::NetworkProcessConnection::removeSWClientConnection):
+        * WebProcess/Network/NetworkProcessConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::~WebSWClientConnection):
+
+2019-05-30  Chris Dumez  <cdumez@apple.com>
+
+        Network process crash when decoding SecItemResponseData
+        https://bugs.webkit.org/show_bug.cgi?id=198388
+        <rdar://problem/50408046>
+
+        Reviewed by Alex Christensen.
+
+        * Shared/cf/ArgumentCodersCF.cpp:
+        (IPC::decode):
+        When decoding the elements inside a CFArrayRef, if decoding was successful but
+        the CFTypeRef element is still null then skip it instead of trying to append it
+        to the array. A CFArray container is not allowed to contain null.
+        Some of our decoders for CFTypeRef types may not initialize the element even if
+        the decode() function returns true. For example, the decoders for CFArrayRef and
+        CFDictionaryRef return true if the encoded container was null but do not create
+        a container.
+
+        * Shared/mac/SecItemResponseData.cpp:
+        (WebKit::SecItemResponseData::SecItemResponseData):
+        nit: The wrong parameter was being moved. This is more efficient.
+
+        (WebKit::SecItemResponseData::encode const):
+        nit: Drop unnecessary .get().
+
+        * UIProcess/mac/SecItemShimProxy.cpp:
+        (WebKit::SecItemShimProxy::secItemRequest):
+        nit: Use nullptr instead of 0.
+
+2019-05-30  Sihui Liu  <sihui_liu@apple.com>
+
+        Stop StorageManager when network process is ready to suspend
+        https://bugs.webkit.org/show_bug.cgi?id=198201
+        <rdar://problem/49683172>
+
+        Reviewed by Youenn Fablet.
+
+        To avoid local storage database operations that can hold lock to database files, suspend thread of
+        StorageManager when network process is about to suspend.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::actualPrepareToSuspend):
+        (WebKit::NetworkProcess::resume):
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::~NetworkSession):
+        * NetworkProcess/WebStorage/StorageManager.cpp:
+        (WebKit::StorageManager::suspend):
+        (WebKit::StorageManager::resume):
+        * NetworkProcess/WebStorage/StorageManager.h:
+
+2019-05-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Missing caret when focusing an editable field if the selection was set when WKWebView wasn't first responder
+        https://bugs.webkit.org/show_bug.cgi?id=198356
+        <rdar://problem/50798593>
+
+        Reviewed by Tim Horton.
+
+        In this bug, the DOM selection is initially set by script in a web view that is not the first responder. Then,
+        either the user begins editing by tapping somewhere such that the selection does not change, or an editable
+        element is programmatically focused and the client allows programmatic focus to show the keyboard. This is
+        because the selection clipping rect used by the UI process when computing the bounds of the caret view is empty,
+        causing the entire caret to be clipped.
+
+        This is due to two related issues: first, no updated editor state is sent to the UI process after the element is
+        focused, if the selection has not also changed. This means that while the selection geometry is sent over to the
+        UI process, the selection clipping rect (a member of the EditorState's PostLayoutData called
+        "focusedElementRect") becomes stale in the UI process, since the there was no focused element when the
+        previously computed editor state was sent to the UI process. To fix this, we schedule a full editor state update
+        when an element is focused, to ensure that the selection is eventually updated in the UI process.
+
+        Secondly, even once the editor state update is sent to the UI process, we will actually avoid updating any text
+        selection views, since there is no change in WKSelectionDrawingInfo, which currently consists of a selection
+        type, and either a caret rect or a list of selection rects. However, since selection drawing is also affected by
+        the selection clipping rect, it seems reasonable to add the selection clipping rect to the drawing info, and
+        trigger a selection update if this selection clipping rect has changed.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (WebKit::WKSelectionDrawingInfo::WKSelectionDrawingInfo):
+
+        Add selectionClippingRect to WKSelectionDrawingInfo, and check against it when comparing two drawing infos.
+
+        (WebKit::operator==):
+        (WebKit::operator<<):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::elementDidFocus):
+
+        Schedule an editor state update when focusing an element. In many cases, an editor state update has already been
+        scheduled when focusing an element, so this becomes a no-op; however, in this scenario, it delivers updated
+        selection clipping rects (i.e. the focused element rect) and other updated information to the UI process.
+
+2019-05-30  David Quesada  <david_quesada@apple.com>
+
+        REGRESSION (r245756) [Mac] 2 TestWebKitAPI.DownloadProgress* and TestWebKitAPI._WKDownload.DownloadMonitorCancel are flaky timeouts
+        https://bugs.webkit.org/show_bug.cgi?id=198298
+        rdar://problem/51182393
+
+        Reviewed by Alexey Proskuryakov.
+
+        When canceling a download, there has always been a race condition between:
+
+         (A) the execution of Download::didCancel() within the block passed to
+             -[NSURLSessionDownloadTask cancelByProducingResumeData:] within
+             Download::platformCancelNetworkLoad(), and
+
+         (B) the invocation of -[WKNetworkSessionDelegate URLSession:task:didCompleteWithError:]
+
+        If A happens before B, the block calls didCancel() on the download, which reports the
+        cancellation to the UI process and tears down the download. When B happens, WKNetworkSessionDelegate
+        gracefully handles the fact that the Download has been removed from the map, and nothing
+        else happens. Life is good.
+
+        If B happens before A, -URLSession:task:didCompleteWithError: invokes Download::didFail(),
+        which reports a download failure (*not* a cancellation) to the UI process and tears down
+        the Download and DownloadProxy. On release builds, this can leave the tests waiting for a
+        cancellation until they time out. When A happens, the block calls Download::didCancel().
+        This messages the UI process, which results in a debug assertion failure from an unhandled
+        message since the DownloadProxy was torn down when the failure was reported. Meanwhile,
+        the network process hits a debug assertion in DownloadManager::downloadFinished() when
+        trying to remove the Download *again*.
+
+        r245756 made the bad case (B before A) more likely by adding a delay before didCancel()
+        is called.
+
+        Make this race condition impossible by eliminating the didCancel() from the cancellation
+        block, and instead relying on -URLSession:task:didCompleteWithError: to report the
+        download as canceled. This also effectively coalesces calls to platformCancelNetworkLoad(),
+        which, if called multiple times before CFNetwork reports that the download was canceled,
+        could cause multiple calls to didCancel(), resulting in the same assertion failures seen
+        in the B-before-A case.
+
+        No new tests, as recreating this race condition in the test scenario would require
+        additional machinery, and is no longer even possible since we don't depend on the calling
+        of the cancellation handler in order to report the Download as canceled.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::cancel):
+        * NetworkProcess/Downloads/Download.h:
+        (WebKit::Download::wasCanceled const):
+        * NetworkProcess/Downloads/cocoa/DownloadCocoa.mm:
+        (WebKit::Download::platformCancelNetworkLoad):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didCompleteWithError:]):
+
+2019-05-30  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] UIProcess' background task expiration handler may get called after the app is foreground again
+        https://bugs.webkit.org/show_bug.cgi?id=198380
+        <rdar://problem/49762471>
+
+        Reviewed by Geoffrey Garen.
+
+        UIProcess' background task expiration handler may get called after the app is foreground again. When
+        this happens, we already have a foreground assertion on behalf of the WebContent process, and the view
+        is visible. We would send the WillSuspendImminently IPC to the WebContent process, which would freeze
+        its layers, even though it is visible on screen.
+
+        To address the issue, we now check if the app is visible in the expiration handler. If it is visible,
+        we do not notify clients of imminent suspension. Instead, we end the background task right away and
+        call _updateBackgroundTask asynchronously to start a new background task if necessary.
+
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (-[WKProcessAssertionBackgroundTaskManager _updateBackgroundTask]):
+
+2019-05-30  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Third-party extensions using WKWebView are unable to render anything
+        https://bugs.webkit.org/show_bug.cgi?id=198359
+        <rdar://problem/51105015>
+
+        Reviewed by Brent Fulgham and Geoff Garen.
+
+        Third-party extensions using WKWebView are unable to render anything because we do not get notified
+        when the extension's visibility changes. Because we do not recognize the extension showing the
+        WebView to be foreground, we do not take a process assertion on behalf of the child processes and
+        they get suspended before they get a chance to render anything.
+
+        The root of the issue is that WebKit was relying on BKSApplicationStateMonitor.handler to get
+        notified when the extension's state switches between foreground and background. However, the handler
+        never gets called unless the extension has an appropriate entitlement.
+
+        To address the issue, we now use the same logic for extensions and we do for view services.
+        I have verified that the _UIViewServiceHostDidEnterBackgroundNotification / _UIViewServiceHostWillEnterForegroundNotification
+        notifications get sent to the extensions (even third-party). We also properly detect MobileSafari as
+        host application and are able to get MobileSafari's foreground state accurately.
+
+        * UIProcess/ApplicationStateTracker.mm:
+
+2019-05-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Rare crash under `WebPage::shouldIgnoreMetaViewport const` when shrinking to fit content
+        https://bugs.webkit.org/show_bug.cgi?id=198374
+        <rdar://problem/51261348>
+
+        Reviewed by Tim Horton.
+
+        This is a speculative fix for the crash; what appears to be happening is that the shrink-to-fit-content timer
+        is somehow being scheduled after the page has already been closed. We can probably fix this by bailing when
+        scheduling shrink-to-fit-content if m_isClosed is true.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::scheduleShrinkToFitContent):
+        (WebKit::WebPage::immediatelyShrinkToFitContent):
+
+2019-05-30  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r245881.
+
+        Broke 13 Layout tests on WK2
+
+        Reverted changeset:
+
+        "WKWebsiteDataStore API fails to fetch web storage data for
+        non-persistent data store"
+        https://bugs.webkit.org/show_bug.cgi?id=198317
+        https://trac.webkit.org/changeset/245881
+
+2019-05-30  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, WPE without a11y support build fix.
+
+        * UIProcess/wpe/WebPageProxyWPE.cpp: Include atk headers only when enabled.
+
+2019-05-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove some logic to suppress the text selection assistant during drop
+        https://bugs.webkit.org/show_bug.cgi?id=198354
+
+        Reviewed by Tim Horton.
+
+        This logic was originally added to hide the ranged selection after performing a drop in editable content.
+        However, after r245803, we (1) no longer show the keyboard and/or text selection views when dropping, and (2)
+        the final selection is now a caret, so it's no longer necessary to suppress the selection assistant.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView dropInteraction:performDrop:]):
+        (-[WKContentView dropInteraction:concludeDrop:]):
+
+2019-05-29  Sihui Liu  <sihui_liu@apple.com>
+
+        WKWebsiteDataStore API fails to fetch web storage data for non-persistent data store
+        https://bugs.webkit.org/show_bug.cgi?id=198317
+
+        Reviewed by Alex Christensen.
+
+        Use LocalStorageNameSpace instead of SessionStorageNameSpace for localStorage in ephemeral session or 
+        websiteDataStore.
+
+        * NetworkProcess/WebStorage/StorageManager.cpp:
+        (WebKit::StorageManager::StorageArea::isEphemeral const):
+        (WebKit::StorageManager::StorageArea::removeListener):
+        (WebKit::StorageManager::StorageArea::setItems):
+        (WebKit::StorageManager::StorageArea::openDatabaseAndImportItemsIfNeeded const):
+        (WebKit::StorageManager::LocalStorageNamespace::~LocalStorageNamespace):
+        (WebKit::StorageManager::LocalStorageNamespace::getOrCreateStorageArea):
+        (WebKit::StorageManager::LocalStorageNamespace::clearAllStorageAreas):
+        (WebKit::StorageManager::LocalStorageNamespace::ephemeralOrigins const):
+        (WebKit::StorageManager::LocalStorageNamespace::cloneTo):
+        (WebKit::StorageManager::StorageManager):
+        (WebKit::StorageManager::cloneSessionStorageNamespace):
+        (WebKit::StorageManager::getLocalStorageOrigins):
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigin):
+        (WebKit::StorageManager::deleteLocalStorageOriginsModifiedSince):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigins):
+        (WebKit::StorageManager::createLocalStorageMap):
+        (WebKit::StorageManager::createTransientLocalStorageMap):
+        (WebKit::StorageManager::createSessionStorageMap):
+        (WebKit::StorageManager::destroyStorageMap):
+        (WebKit::StorageManager::getValues):
+        (WebKit::StorageManager::setItem):
+        (WebKit::StorageManager::removeItem):
+        (WebKit::StorageManager::clear):
+        (WebKit::StorageManager::StorageArea::isSessionStorage const): Deleted.
+        * NetworkProcess/WebStorage/StorageManager.h:
+        (): Deleted.
+        * WebProcess/WebStorage/StorageAreaMap.cpp:
+        (WebKit::StorageAreaMap::dispatchStorageEvent):
+        (WebKit::StorageAreaMap::dispatchSessionStorageEvent):
+        (WebKit::StorageAreaMap::connect):
+        * WebProcess/WebStorage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createEphemeralLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::createLocalStorageNamespace):
+        * WebProcess/WebStorage/StorageNamespaceImpl.h:
+        * WebProcess/WebStorage/WebStorageNamespaceProvider.cpp:
+        (WebKit::WebStorageNamespaceProvider::createLocalStorageNamespace):
+
+2019-05-29  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove ENABLE definitions from WebKit config files
+        https://bugs.webkit.org/show_bug.cgi?id=197858
+
+        Reviewed by Simon Fraser.
+
+        Remove ENABLE flags that were present in the config files. Add the ENABLE flags
+        to FeatureDefines.xcconfig instead.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebKit2Prefix.h:
+        * config.h:
+
+2019-05-29  Youenn Fablet  <youenn@apple.com>
+
+        Reestablish WebSWClientConnection in case of network process crash
+        https://bugs.webkit.org/show_bug.cgi?id=198333
+
+        Reviewed by Alex Christensen.
+
+        WebSWClientConnection now takes a RefPtr<IPC::Connection> so that on network process crash, it will set it back to null.
+        On the next call that needs the connection, WebSWClientConnection will reinitialize its underlying IPC connection and its own identifier.
+        Make sure that all code paths requiring this initialization are covered.
+
+        * WebProcess/Network/NetworkProcessConnection.cpp:
+        (WebKit::NetworkProcessConnection::didClose):
+        (WebKit::NetworkProcessConnection::serviceWorkerConnectionForSession):
+        (WebKit::NetworkProcessConnection::isRegisteredActiveSWClientConnection):
+        (WebKit::NetworkProcessConnection::initializeSWClientConnection):
+        * WebProcess/Network/NetworkProcessConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::WebSWClientConnection):
+        (WebKit::WebSWClientConnection::~WebSWClientConnection):
+        (WebKit::WebSWClientConnection::initializeConnectionIfNeeded):
+        (WebKit::WebSWClientConnection::ensureConnectionAndSend):
+        (WebKit::WebSWClientConnection::scheduleJobInServer):
+        (WebKit::WebSWClientConnection::finishFetchingScriptInServer):
+        (WebKit::WebSWClientConnection::addServiceWorkerRegistrationInServer):
+        (WebKit::WebSWClientConnection::removeServiceWorkerRegistrationInServer):
+        (WebKit::WebSWClientConnection::registerServiceWorkerClient):
+        (WebKit::WebSWClientConnection::unregisterServiceWorkerClient):
+        (WebKit::WebSWClientConnection::didResolveRegistrationPromise):
+        (WebKit::WebSWClientConnection::matchRegistration):
+        (WebKit::WebSWClientConnection::runOrDelayTaskForImport):
+        (WebKit::WebSWClientConnection::whenRegistrationReady):
+        (WebKit::WebSWClientConnection::getRegistrations):
+        (WebKit::WebSWClientConnection::startFetch):
+        (WebKit::WebSWClientConnection::cancelFetch):
+        (WebKit::WebSWClientConnection::continueDidReceiveFetchResponse):
+        (WebKit::WebSWClientConnection::connectionToServerLost):
+        (WebKit::WebSWClientConnection::syncTerminateWorker):
+        (WebKit::WebSWClientConnection::serverConnectionIdentifier const):
+        (WebKit::WebSWClientConnection::updateThrottleState):
+        * WebProcess/Storage/WebSWClientConnection.h:
+
+2019-05-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS] WebPage::positionInformation() may set InteractionInformationAtPosition.isImage to true but leave image unset
+        https://bugs.webkit.org/show_bug.cgi?id=198202
+
+        Reviewed by Tim Horton.
+
+        r192037 added the flags isLink and isImage to InteractionInformationAtPosition.
+        It also made WebPage::positionInformation() set isImage to true but before 
+        ensuring there is a valid image at the position.
+
+        Safari WebKit additions assumes if isImage is true then the image has to
+        hold a valid ShareableBitmap pointer. Since WebPage::positionInformation()
+        is the only place that sets isImage, the fix is to set isImage to true
+        only  after passing all the image validation checks.
+
+        Since WebPage::positionInformation() is a little bit difficult to read
+        (182 lines), It was re-factored by splitting it to static functions. 
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::focusedElementPositionInformation):
+        (WebKit::linkIndicatorPositionInformation):
+        (WebKit::dataDetectorLinkPositionInformation):
+        (WebKit::imagePositionInformation):
+        (WebKit::boundsPositionInformation):
+        (WebKit::elementPositionInformation):
+        (WebKit::selectionPositionInformation):
+        (WebKit::textInteractionPositionInformation):
+        (WebKit::WebPage::positionInformation):
+
+2019-05-29  Geoffrey Garen  <ggaren@apple.com>
+
+        WeakPtr breaks vtables when upcasting to base classes
+        https://bugs.webkit.org/show_bug.cgi?id=188799
+
+        Reviewed by Youenn Fablet.
+
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::networkSession):
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.h:
+        * Shared/WebBackForwardListItem.cpp:
+        (WebKit::WebBackForwardListItem::suspendedPage const):
+        * Shared/WebBackForwardListItem.h:
+        (WebKit::WebBackForwardListItem::suspendedPage const): Deleted. Moved
+        functions out of line to avoid #include explosion for .get().
+
+        * UIProcess/Authentication/cocoa/SecKeyProxyStore.h:
+        (WebKit::SecKeyProxyStore::get const):
+        (WebKit::SecKeyProxyStore::weakPtrFactory const): Deleted. Adopted
+        CanMakeWeakPtr.
+
+        * UIProcess/WebAuthentication/AuthenticatorManager.h:
+        * UIProcess/WebProcessProxy.cpp: It takes an extra using declaration
+        to disambiguate multiple CanMakeWeakPtr base classes now.
+
+        (WebKit::WebProcessProxy::processPool const):
+        * UIProcess/WebProcessProxy.h:
+        (WebKit::WebProcessProxy::processPool const): Deleted. Moved
+        functions out of line to avoid #include explosion for .get().
+
 2019-05-29  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r245857.

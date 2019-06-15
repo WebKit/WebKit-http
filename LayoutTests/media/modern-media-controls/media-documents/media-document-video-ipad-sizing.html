@@ -2,10 +2,10 @@
 <script src="../../../resources/js-test-pre.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <body>
-<iframe src="../../content/test.mp4" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe>
+<iframe src="../../content/test.mp4" style="position: absolute; top: 0; left: 0; width: 200px; height: 100%;"></iframe>
 <script type="text/javascript">
 
-description("Testing the size of the media element in a video media document on iOS.");
+description("Testing the size of the media element in a video media document on iPad.");
 
 window.jsTestIsAsync = true;
 
@@ -20,9 +20,7 @@ let media;
         return;
     }
 
-    shouldBecomeEqualToString("getComputedStyle(media).height", "240px", () => {
-        shouldBeEqualToString("getComputedStyle(media).width", "320px");
-
+    shouldBecomeEqualToString("getComputedStyle(media).width", "200px", () => {
         debug("");
         iframe.remove();
         finishJSTest();

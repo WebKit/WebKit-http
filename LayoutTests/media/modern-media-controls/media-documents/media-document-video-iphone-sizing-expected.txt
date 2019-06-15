@@ -1,4 +1,4 @@
-Testing the size of the media element in a video media document on iOS.
+Testing the size of the media element in a video media document on iPhone.
 
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 

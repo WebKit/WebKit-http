@@ -370,7 +370,6 @@ TEST(DragAndDropTests, ContentEditableToContentEditable)
     loadTestPageAndEnsureInputSession(simulator.get(), @"autofocus-contenteditable");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
-    EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
     EXPECT_EQ([webView stringByEvaluatingJavaScript:@"source.textContent"].length, 0UL);
     EXPECT_WK_STREQ("Hello world", [webView stringByEvaluatingJavaScript:@"editor.textContent"].UTF8String);
 
@@ -394,7 +393,6 @@ TEST(DragAndDropTests, ContentEditableToTextarea)
     loadTestPageAndEnsureInputSession(simulator.get(), @"contenteditable-and-textarea");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
-    EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
     EXPECT_EQ([webView stringByEvaluatingJavaScript:@"source.textContent"].length, 0UL);
     EXPECT_WK_STREQ("Hello world", [webView editorValue].UTF8String);
 
@@ -455,7 +453,6 @@ TEST(DragAndDropTests, ContentEditableMoveParagraphs)
     NSUInteger firstParagraphOffset = [finalTextContent rangeOfString:@"This is the first paragraph"].location;
     NSUInteger secondParagraphOffset = [finalTextContent rangeOfString:@"This is the second paragraph"].location;
 
-    EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
     EXPECT_FALSE(firstParagraphOffset == NSNotFound);
     EXPECT_FALSE(secondParagraphOffset == NSNotFound);
     EXPECT_GT(firstParagraphOffset, secondParagraphOffset);
@@ -482,7 +479,6 @@ TEST(DragAndDropTests, TextAreaToInput)
     loadTestPageAndEnsureInputSession(simulator.get(), @"textarea-to-input");
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
-    EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
     EXPECT_EQ([webView stringByEvaluatingJavaScript:@"source.value"].length, 0UL);
     EXPECT_WK_STREQ("Hello world", [webView editorValue].UTF8String);
     checkCGRectIsEqualToCGRectWithLogging(CGRectMake(1089, 241, 2, 232), [simulator finalSelectionStartRect]);
@@ -498,8 +494,6 @@ TEST(DragAndDropTests, SinglePlainTextWordTypeIdentifiers)
     [webView stringByEvaluatingJavaScript:@"source.selectionStart = 0"];
     [webView stringByEvaluatingJavaScript:@"source.selectionEnd = source.value.length"];
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
-
-    EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
 
     NSItemProvider *itemProvider = [simulator sourceItemProviders].firstObject;
     NSArray *registeredTypes = [itemProvider registeredTypeIdentifiers];
@@ -520,8 +514,6 @@ TEST(DragAndDropTests, SinglePlainTextURLTypeIdentifiers)
     [webView stringByEvaluatingJavaScript:@"source.selectionStart = 0"];
     [webView stringByEvaluatingJavaScript:@"source.selectionEnd = source.value.length"];
     [simulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
-
-    EXPECT_TRUE([simulator suppressedSelectionCommandsDuringDrop]);
 
     NSItemProvider *itemProvider = [simulator sourceItemProviders].firstObject;
     NSArray *registeredTypes = [itemProvider registeredTypeIdentifiers];
@@ -1929,7 +1921,10 @@ TEST(DragAndDropTests, DataTransferExposePlainTextWithFileURLAsFile)
     EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"urlData.textContent"]);
     EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"htmlData.textContent"]);
     EXPECT_WK_STREQ("(FILE, text/plain)", [webView stringByEvaluatingJavaScript:@"items.textContent"]);
-    EXPECT_WK_STREQ("('text.txt', text/plain)", [webView stringByEvaluatingJavaScript:@"files.textContent"]);
+
+    NSString *filesOutput = [webView stringByEvaluatingJavaScript:@"files.textContent"];
+    EXPECT_TRUE([filesOutput containsString:@"text/plain)"]);
+    EXPECT_TRUE([filesOutput containsString:@".txt', "]);
 }
 
 TEST(DragAndDropTests, DataTransferGetDataCannotReadPrivateArbitraryTypes)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2019 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -22,23 +22,27 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-// https://github.com/gpuweb/gpuweb/blob/master/design/sketch.webidl
 
-typedef unsigned long u32;
+#pragma once
 
-[
-    ImplementedAs=GPUIndexFormat
-] enum GPUIndexFormat {
-    "uint16",
-    "uint32"
+#if ENABLE(WEBGPU)
+
+#include "GPUVertexAttributeDescriptor.h"
+#include <wtf/Vector.h>
+
+namespace WebCore {
+
+enum class GPUInputStepMode {
+    Vertex,
+    Instance,
 };
 
-[
-    Conditional=WEBGPU,
-    EnabledAtRuntime=WebGPU
-] dictionary GPUInputStateDescriptor {
-    GPUIndexFormat? indexFormat;
-
-    required sequence<GPUVertexAttributeDescriptor> attributes;
-    required sequence<GPUVertexInputDescriptor> inputs;
+struct GPUVertexBufferDescriptor {
+    uint64_t stride;
+    GPUInputStepMode stepMode;
+    Vector<GPUVertexAttributeDescriptor> attributeSet;
 };
+
+} // namespace WebCore
+
+#endif // ENABLE(WEBGPU)

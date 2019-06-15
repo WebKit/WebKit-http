@@ -1,3 +1,249 @@
+2019-05-31  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (Safari 12): SafariForWebkitDevelopment won't load any pages on Mojave, nightly builds broken
+        https://bugs.webkit.org/show_bug.cgi?id=194808
+        <rdar://problem/48278497>
+
+        Reviewed by Darin Adler.
+
+        I verified that a daily build downloaded an run on Mojave does not work without this and works with this.
+
+        * WebKitArchiveSupport/run-webkit-archive:
+        (set_dyld_framework_path):
+        Also set XPC variants of needed environment variables.
+
+2019-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Build at-spi2-core without x11 support in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=198411
+
+        Reviewed by Philippe Normand.
+
+        * wpe/jhbuild.modules:
+
+2019-05-30  Sihui Liu  <sihui_liu@apple.com>
+
+        WKWebsiteDataStore API fails to fetch web storage data for non-persistent data store
+        https://bugs.webkit.org/show_bug.cgi?id=198317
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-30  Andres Gonzalez  <andresg_22@apple.com>
+
+        Inserting a newline in contenteditable causes two characters to be added instead of one
+        https://bugs.webkit.org/show_bug.cgi?id=197894
+        <rdar://problem/49700998>
+
+        Reviewed by Wenson Hsieh and Chris Fleizach.
+
+        iOS implementation of several AccessibilityUIElement methods to execute
+        LayoutTests.
+ 
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::selectedTextRange):
+        (WTR::AccessibilityUIElement::setSelectedTextRange):
+        (WTR::AccessibilityUIElement::replaceTextInRange):
+
+2019-05-30  Keith Miller  <keith_miller@apple.com>
+
+        IsoHeaps don't notice uncommitted VA becoming the first eligible.
+        https://bugs.webkit.org/show_bug.cgi?id=198301
+
+        Reviewed by Yusuke Suzuki.
+
+        Move testbmalloc.cpp to TestWTF so it runs in automation.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/bmalloc/IsoHeap.cpp: Renamed from Source/bmalloc/test/testbmalloc.cpp.
+        (TEST):
+
+2019-05-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        DragAndDropTests.DataTransferExposePlainTextWithFileURLAsFile API test is failing
+        https://bugs.webkit.org/show_bug.cgi?id=198389
+        <rdar://problem/51266096>
+
+        Reviewed by Tim Horton.
+
+        This test started failing, since the fallback name for a dropped text file changed from "text.txt" to
+        "Document.txt" on newer iOS SDK versions. We simply fix this test by checking that the name of the file ends
+        with ".txt", and that the MIME type of the file is "text/plain".
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-30  Sihui Liu  <sihui_liu@apple.com>
+
+        Stop StorageManager when network process is ready to suspend
+        https://bugs.webkit.org/show_bug.cgi?id=198201
+        <rdar://problem/49683172>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/LocalStoragePersistence.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/local-storage-process-suspends-1.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/local-storage-process-suspends-2.html: Added.
+
+2019-05-30  David Quesada  <david_quesada@apple.com>
+
+        REGRESSION (r245756) [Mac] 2 TestWebKitAPI.DownloadProgress* and TestWebKitAPI._WKDownload.DownloadMonitorCancel are flaky timeouts
+        https://bugs.webkit.org/show_bug.cgi?id=198298
+        rdar://problem/51182393
+
+        Reviewed by Alexey Proskuryakov.
+
+        Re-enable _WKDownload.DownloadMonitorCancel, which should no longer time out with this fix.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-30  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r245881.
+
+        Broke 13 Layout tests on WK2
+
+        Reverted changeset:
+
+        "WKWebsiteDataStore API fails to fetch web storage data for
+        non-persistent data store"
+        https://bugs.webkit.org/show_bug.cgi?id=198317
+        https://trac.webkit.org/changeset/245881
+
+2019-05-30  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Update configuration to share bots across queues
+        https://bugs.webkit.org/show_bug.cgi?id=198370
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/config.json: Share bots across builder and API tester queues.
+        Also use ews119 instead of ews120 for mac API tests, as ews120 seems to have some issues as
+        noted in https://bugs.webkit.org/show_bug.cgi?id=197571#c1
+
+2019-05-30  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Switch run-webkit-tests to tailspin (Follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=198144
+        <rdar://problem/32463212>
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.look_for_new_samples): Use tailspin_file_path instead of spindump_file_path.
+
+2019-05-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove some logic to suppress the text selection assistant during drop
+        https://bugs.webkit.org/show_bug.cgi?id=198354
+
+        Reviewed by Tim Horton.
+
+        Adjust some API tests that currently check whether or not the selection assistant was suppressed during drop.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator _resetSimulatedState]):
+        (-[DragAndDropSimulator _webView:dataInteractionOperationWasHandled:forSession:itemProviders:]):
+
+2019-05-29  Sihui Liu  <sihui_liu@apple.com>
+
+        WKWebsiteDataStore API fails to fetch web storage data for non-persistent data store
+        https://bugs.webkit.org/show_bug.cgi?id=198317
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebsiteDatastore.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-29  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix for branch.
+        <rdar://problem/50625279>
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Challenge.mm:
+
+2019-05-29  Justin Michaud  <justin_michaud@apple.com>
+
+        Attempt to fix JSC test timeouts after adding collectContinuously to WASM tests.
+        https://bugs.webkit.org/show_bug.cgi?id=198322
+
+        Rubber-stamped by Michael Saboff. Disable running the new collectContinuously tests on debug builds. 
+        This matches what we do for other jsc tests. 
+
+        * Scripts/run-jsc-stress-tests:
+
+2019-05-29  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove ENABLE definitions from WebKit config files
+        https://bugs.webkit.org/show_bug.cgi?id=197858
+
+        Reviewed by Simon Fraser.
+
+        Sync FeatureDefines.xcconfig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-05-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS] WebPage::positionInformation() may set InteractionInformationAtPosition.isImage to true but leave image unset
+        https://bugs.webkit.org/show_bug.cgi?id=198202
+
+        Reviewed by Tim Horton.
+
+        The new test ensures InteractionInformationAtPosition::isImage will not
+        be to true for a broken image.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKRequestActivatedElementInfo.mm:
+        (TestWebKitAPI::TEST):
+
+2019-05-29  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style reports false-positive build/include_order warning in WTF C++ source files
+        <https://webkit.org/b/198349>
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (_classify_include): Don't return early for <wtf/Header.h>
+        includes.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (OrderOfIncludesTest.test_primary_header): Add tests for
+        <wtf/Header.h> includes.
+
+2019-05-29  Geoffrey Garen  <ggaren@apple.com>
+
+        WeakPtr breaks vtables when upcasting to base classes
+        https://bugs.webkit.org/show_bug.cgi?id=188799
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp: Adopt the new macro API instead
+        of template specialization for observing weak references.
+
+        (TestWebKitAPI::Int::Int):
+        (TestWebKitAPI::Int::operator int const):
+        (TestWebKitAPI::Int::operator== const): Use a class for integer tests
+        because WeakPtr doesn't naturally support pointing to non-class objects
+        now.
+
+        (TestWebKitAPI::Base::foo):
+        (TestWebKitAPI::Derived::foo): Inherit from CanMakeWeakPtr to enable
+        deduction of the weak pointer type.
+
+        (TestWebKitAPI::TEST): Updated to use Int.
+
+        (TestWebKitAPI::Base::weakPtrFactory const): Deleted.
+        (WTF::WeakReference<TestWebKitAPI::Base>::WeakReference): Deleted.
+        (WTF::WeakReference<TestWebKitAPI::Base>::~WeakReference): Deleted.
+
 2019-05-29  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r245857.
