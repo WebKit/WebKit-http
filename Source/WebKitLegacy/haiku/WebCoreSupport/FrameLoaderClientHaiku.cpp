@@ -126,7 +126,7 @@ void FrameLoaderClientHaiku::frameLoaderDestroyed()
         // frame loader object is gone!
 }
 
-WTF::Optional<uint64_t> FrameLoaderClientHaiku::pageID() const
+WTF::Optional<WebCore::PageIdentifier> FrameLoaderClientHaiku::pageID() const
 {
     return {};
 }

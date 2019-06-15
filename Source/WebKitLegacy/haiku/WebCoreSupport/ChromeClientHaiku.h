@@ -121,6 +121,8 @@ namespace WebCore {
         void setCursor(const Cursor&) override ;
         void setCursorHiddenUntilMouseMoves(bool) override { }
 
+		void didFinishLoadingImageForElement(HTMLImageElement&) override {}
+
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
         void scheduleAnimation() override;
 #endif

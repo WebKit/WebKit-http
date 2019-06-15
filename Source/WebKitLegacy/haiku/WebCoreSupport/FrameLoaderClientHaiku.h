@@ -65,7 +65,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void setDispatchTarget(const BMessenger& messenger);
     BWebPage* page() const;
 
-	WTF::Optional<uint64_t> pageID() const final;
+	WTF::Optional<PageIdentifier> pageID() const final;
 	WTF::Optional<uint64_t> frameID() const final;
     PAL::SessionID sessionID() const final;
 

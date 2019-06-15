@@ -62,7 +62,9 @@ static std::unique_ptr<NetworkStorageSession>& defaultSession()
 }
 
 void NetworkStorageSession::setCookiesFromDOM(const URL& firstParty,
-	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID, const String& value) const
+	const SameSiteInfo& sameSiteInfo, const URL& url,
+	WTF::Optional<uint64_t> frameID, WTF::Optional<PageIdentifier> pageID,
+	const String& value) const
 {
 	BNetworkCookie* heapCookie
 		= new BNetworkCookie(value, BUrl(url));
@@ -81,7 +83,9 @@ bool NetworkStorageSession::cookiesEnabled() const
 }
 
 std::pair<String, bool> NetworkStorageSession::cookiesForDOM(const URL& firstParty,
-	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID, WTF::Optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies) const
+	const SameSiteInfo& sameSiteInfo, const URL& url,
+	WTF::Optional<uint64_t> frameID, WTF::Optional<PageIdentifier> pageID,
+	IncludeSecureCookies includeSecureCookies) const
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Request for %s\n", url.string().utf8().data());
@@ -172,7 +176,7 @@ Vector<Cookie> NetworkStorageSession::getCookies(const URL&)
 
 bool NetworkStorageSession::getRawCookies(const URL& firstParty,
 	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID,
-	WTF::Optional<uint64_t> pageID, Vector<Cookie>& rawCookies) const
+	WTF::Optional<PageIdentifier> pageID, Vector<Cookie>& rawCookies) const
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: get raw cookies for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());
@@ -190,7 +194,7 @@ void NetworkStorageSession::flushCookieStore()
 
 std::pair<String, bool> NetworkStorageSession::cookieRequestHeaderFieldValue(const URL& firstParty,
 	const SameSiteInfo& sameSiteInfo, const URL& url, WTF::Optional<uint64_t> frameID,
-	WTF::Optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies) const
+	WTF::Optional<PageIdentifier> pageID, IncludeSecureCookies includeSecureCookies) const
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: RequestHeaderField for %s\n", url.string().utf8().data());
