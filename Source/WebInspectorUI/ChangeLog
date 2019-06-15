@@ -1,1 +1,154 @@
+2019-06-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: imported recordings do not have JavaScript call trees
+        https://bugs.webkit.org/show_bug.cgi?id=197490
+        <rdar://problem/50589158>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording.prototype.initializeCallingContextTrees):
+        Make sure to actually save the provided stack traces and samples in the export data.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord.fromJSON):
+        (WI.ScriptTimelineRecord.prototype.toJSON):
+        Drive-by: include `extraDetails`, which contains useful information like "default prevented".
+
+2019-06-10  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION(r244268): Web Inspector: Styles: navigating from Computed to Styles doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=198508
+        <rdar://problem/51375503>
+
+        Reviewed by Matt Baker.
+
+        It didn't work because the detached sidebar panel tried to access its parent view (this.parentSidebar).
+
+        * UserInterface/Views/ComputedStyleDetailsSidebarPanel.js:
+        (WI.ComputedStyleDetailsSidebarPanel.prototype.computedStyleDetailsPanelShowProperty): Added.
+        (WI.ComputedStyleDetailsSidebarPanel):
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js:
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.computedStyleDetailsPanelShowProperty): Deleted.
+        Move computedStyleDetailsPanelShowProperty to ComputedStyleDetailsSidebarPanel since it's the only
+        panel where it's needed.
+
+2019-06-10  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Web Inspector: "Copy Path to Property" doesn't work with multiline keys
+        https://bugs.webkit.org/show_bug.cgi?id=198691
+
+        Reviewed by Matt Baker.
+
+        Correctly escape line terminators to prevent doubleQuotedString from returning malformed strings.
+
+        * UserInterface/Base/Utilities.js: Use JSON.stringify.
+
+2019-06-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r246025): prototypes in object previews are visible even when setting `showOnlyJSON`
+        https://bugs.webkit.org/show_bug.cgi?id=198721
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ObjectTreeView.css:
+        (.object-tree.properties-only.json-only .object-tree-property.prototype-property): Added.
+        (.object-tree.properties-only.json-only .object-tree-property .prototype-property): Deleted.
+
+2019-06-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: longhand CSS properties overridden by shorthands miss strikethrough
+        https://bugs.webkit.org/show_bug.cgi?id=198629
+        <rdar://problem/51504160>
+
+        Reviewed by Devin Rousso.
+
+        Longhand CSS properties (e.g. "font-size") overriden by shorthands (e.g. "font") now have strikethroughs.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.set overridingProperty):
+        (WI.CSSProperty):
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._updateStyleCascade):
+        Call _associateRelatedProperties before _markOverriddenProperties because
+        _associateRelatedProperties sets relatedShorthandProperty property, which
+        is now used by _markOverriddenProperties.
+
+        (WI.DOMNodeStyles.prototype._markOverriddenProperties.isOverriddenBy):
+        (WI.DOMNodeStyles.prototype._markOverriddenProperties):
+
+2019-06-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Timelines: remove always disabled details sidebar navigation item
+        https://bugs.webkit.org/show_bug.cgi?id=198393
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView):
+
+2019-06-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r245833): Timelines: CPU: JavaScript label is missing and JavaScript section of pie chart is black
+        https://bugs.webkit.org/show_bug.cgi?id=198627
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CPUTimelineView.js:
+        (WI.CPUTimelineView.displayNameForSampleType):
+        * UserInterface/Views/CPUTimelineView.css:
+        (.timeline-view.cpu > .content > .overview .legend > .row > .swatch.sample-type-javascript):
+        (.timeline-view.cpu .circle-chart > svg > path.segment.sample-type-javascript): Added.
+        (.timeline-view.cpu .circle-chart > svg > path.segment.sample-type-script): Deleted.
+        * UserInterface/Views/CPUUsageCombinedView.css:
+        (.cpu-usage-combined-view > .graph > .range-chart .sample-type-javascript): Added.
+        (.cpu-usage-combined-view > .graph > .range-chart .sample-type-script): Deleted.
+        Use the enum string added in r245833 (`sample-type-javascript`) instead of what was there
+        before (`sample-type-script`).
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Rename `--cpu-script-*` to `--cpu-javascript-*`.
+
+2019-06-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Formatter: pretty-print CSS using a Worker
+        https://bugs.webkit.org/show_bug.cgi?id=197829
+        <rdar://problem/36891532>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Proxies/FormatterWorkerProxy.js:
+        (WI.FormatterWorkerProxy.prototype.formatCSS): Added.
+        * UserInterface/Workers/Formatter/FormatterWorker.js:
+        (FormatterWorker.prototype.formatCSS): Added.
+        * UserInterface/Workers/Formatter/CSSFormatter.js: Added.
+        (CSSFormatter):
+        (CSSFormatter.prototype.get success):
+        (CSSFormatter.prototype.get formattedText):
+        (CSSFormatter.prototype.get sourceMapData):
+        (CSSFormatter.prototype._format):
+
+        * UserInterface/Workers/Formatter/FormatterContentBuilder.js:
+        (FormatterContentBuilder.prototype.get currentLine): Added.
+
+        * UserInterface/Views/TextEditor.js:
+        (WI.TextEditor.prototype._canUseFormatterWorker):
+        (WI.TextEditor.prototype._startWorkerPrettyPrint):
+
+        * .eslintrc:
+
+2019-06-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Elements: print/rulers/compositing/paint navigation items shouldn't be visible if the inspected target doesn't have a PageAgent
+        https://bugs.webkit.org/show_bug.cgi?id=198410
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype.get navigationItems):
+        (WI.DOMTreeContentView.prototype._showRulersChanged):
+
 == Rolled over to ChangeLog-2019-06-05 ==

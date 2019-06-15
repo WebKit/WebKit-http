@@ -39,15 +39,21 @@ class Line {
     WTF_MAKE_ISO_ALLOCATED(Line);
 public:
     Line(const LayoutState&, const LayoutPoint& topLeft, LayoutUnit availableWidth, LayoutUnit minimumLineHeight, LayoutUnit baselineOffset);
+    Line(const LayoutState&, LayoutUnit logicalLeft, LayoutUnit availableWidth);
 
     class Content {
     public:
         struct Run {
-            Run(Display::Run, const InlineItem&, bool isCollapsed, bool canBeExtended);
+            struct TextContext {
+                unsigned start { 0 };
+                unsigned length { 0 };
+            };
+            Run(const InlineItem&, const Display::Rect&, TextContext, bool isCollapsed, bool canBeExtended);
 
-            // Relative to the baseline.
-            Display::Run inlineRun;
             const InlineItem& inlineItem;
+            // Relative to the baseline.
+            Display::Rect logicalRect;
+            Optional<TextContext> textContext;
             bool isCollapsed { false };
             bool canBeExtended { false };
         };
@@ -63,27 +69,26 @@ public:
         LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
         LayoutUnit logicalWidth() const { return m_logicalRect.width(); }
         LayoutUnit logicalHeight() const { return m_logicalRect.height(); }
+        LineBox::Baseline baseline() const { return m_baseline; }
 
     private:
         friend class Line;
 
         void setLogicalRect(const Display::Rect& logicalRect) { m_logicalRect = logicalRect; }
+        void setBaseline(LineBox::Baseline baseline) { m_baseline = baseline; }
         Runs& runs() { return m_runs; }
 
         Display::Rect m_logicalRect;
+        LineBox::Baseline m_baseline;
         Runs m_runs;
     };
     std::unique_ptr<Content> close();
 
-    struct InlineItemSize {
-        LayoutUnit logicalWidth;
-        Optional<LayoutUnit> logicalHeight;
-    };
-    void appendTextContent(const InlineTextItem&, InlineItemSize);
-    void appendNonReplacedInlineBox(const InlineItem&, InlineItemSize);
-    void appendReplacedInlineBox(const InlineItem&, InlineItemSize);
-    void appendInlineContainerStart(const InlineItem&, InlineItemSize);
-    void appendInlineContainerEnd(const InlineItem&, InlineItemSize);
+    void appendTextContent(const InlineTextItem&, LayoutUnit logicalWidth);
+    void appendNonReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
+    void appendReplacedInlineBox(const InlineItem&, LayoutUnit logicalWidth);
+    void appendInlineContainerStart(const InlineItem&, LayoutUnit logicalWidth);
+    void appendInlineContainerEnd(const InlineItem&, LayoutUnit logicalWidth);
     void appendHardLineBreak(const InlineItem&);
 
     bool hasContent() const { return !m_content->isVisuallyEmpty(); }
@@ -98,25 +103,24 @@ public:
     LayoutUnit logicalTop() const { return m_logicalTopLeft.y(); }
     LayoutUnit logicalBottom() const { return logicalTop() + logicalHeight(); }
 
-    struct UsedHeightAndDepth {
-        LayoutUnit height;
-        LayoutUnit depth;
-    };
-    static UsedHeightAndDepth halfLeadingMetrics(const FontMetrics&, LayoutUnit lineLogicalHeight);
+    static LineBox::Baseline halfLeadingMetrics(const FontMetrics&, LayoutUnit lineLogicalHeight);
 
 private:
     LayoutUnit logicalLeft() const { return m_logicalTopLeft.x(); }
     LayoutUnit logicalRight() const { return logicalLeft() + logicalWidth(); }
 
     LayoutUnit logicalWidth() const { return m_lineLogicalWidth; }
-    LayoutUnit logicalHeight() const { return m_logicalHeight.height + m_logicalHeight.depth; }
+    LayoutUnit logicalHeight() const { return m_contentLogicalHeight; }
 
     LayoutUnit contentLogicalWidth() const { return m_contentLogicalWidth; }
+    LayoutUnit baselineAlignedContentHeight() const { return m_baseline.ascent + m_baseline.descent; }
+    LayoutUnit baselineOffset() const { return m_baseline.offset; }
 
     void appendNonBreakableSpace(const InlineItem&, const Display::Rect& logicalRect);
     void removeTrailingTrimmableContent();
 
     void adjustBaselineAndLineHeight(const InlineItem&, LayoutUnit runHeight);
+    LayoutUnit inlineItemHeight(const InlineItem&) const;
 
     const LayoutState& m_layoutState;
     std::unique_ptr<Content> m_content;
@@ -125,8 +129,10 @@ private:
     LayoutPoint m_logicalTopLeft;
     LayoutUnit m_contentLogicalWidth;
 
-    UsedHeightAndDepth m_logicalHeight;
+    LineBox::Baseline m_baseline;
+    LayoutUnit m_contentLogicalHeight;
     LayoutUnit m_lineLogicalWidth;
+    bool m_skipVerticalAligment { false };
 };
 
 }

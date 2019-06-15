@@ -1,3 +1,652 @@
+2019-06-12  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r246350.
+
+        r246350 Introduced a failing and timing out test svg/clip-path
+        /clip-hidpi.svg
+
+        Reverted changeset:
+
+        "[cairo][SVG] Putting multiple path elements in clippath
+        causes rendering artifacts"
+        https://bugs.webkit.org/show_bug.cgi?id=198701
+        https://trac.webkit.org/changeset/246350
+
+2019-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [cairo][SVG] Putting multiple path elements in clippath causes rendering artifacts
+        https://bugs.webkit.org/show_bug.cgi?id=198701
+        <rdar://problem/51620347>
+
+        Reviewed by Don Olmstead.
+
+        * svg/clip-path/clip-hidpi-expected.svg: Added.
+        * svg/clip-path/clip-hidpi.svg: Added.
+        * svg/clip-path/clip-opacity-translate-expected.svg: Added.
+        * svg/clip-path/clip-opacity-translate.svg: Added.
+
+2019-06-12  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Some reftest fail with only one or two pixel differences in diff image
+        https://bugs.webkit.org/show_bug.cgi?id=168426
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+        svg/clip-path/clip-opacity.html results in 0.01% image diff. Marked it as ImageOnlyFailure of Bug 168426.
+
+2019-06-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Idempotent text autosizing needs to react properly to viewport changes
+        https://bugs.webkit.org/show_bug.cgi?id=198736
+        <rdar://problem/50591911>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a new layout test that programmatically adjusts the meta viewport initial scale, and dumps the resulting
+        computed sizes of several paragraphs of text, after adjusting for text autosizing.
+
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-after-changing-initial-scale-expected.txt: Added.
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-after-changing-initial-scale.html: Added.
+
+2019-06-11  Zalan Bujtas  <zalan@apple.com>
+
+        LayoutTests/fast/events/touch/ios/double-tap-for-double-click* test cases are failing
+        https://bugs.webkit.org/show_bug.cgi?id=198764
+        <rdar://problem/51035459>
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/double-tap-for-double-click1.html:
+        * fast/events/touch/ios/double-tap-for-double-click2.html:
+        * fast/events/touch/ios/double-tap-for-double-click3.html:
+
+2019-06-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246320.
+        https://bugs.webkit.org/show_bug.cgi?id=198773
+
+        New test is failing, and commit is causing another test to
+        fail. (Requested by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: AXI: Audit: image label test is throwing
+        spurious errors on elements with existing alt attr, but no
+        value: <img alt>"
+        https://bugs.webkit.org/show_bug.cgi?id=194754
+        https://trac.webkit.org/changeset/246320
+
+2019-06-11  Devin Rousso  <drousso@apple.com>
+
+        Sort the computed styles list
+        https://bugs.webkit.org/show_bug.cgi?id=198743
+
+        Reviewed by Simon Fraser
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-expected.txt:
+
+        * fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/gtk/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/ios/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/mac-sierra/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * platform/wpe/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+
+        * svg/css/getComputedStyle-basic-expected.txt:
+        * platform/gtk/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/ios/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/mac-sierra/svg/css/getComputedStyle-basic-expected.txt:
+        * platform/wpe/svg/css/getComputedStyle-basic-expected.txt:
+
+2019-06-11  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Adjust test fast/events/ios/keyup.html to ignore Shift keyups
+        https://bugs.webkit.org/show_bug.cgi?id=198768
+        <rdar://problem/46082743>
+
+        Reviewed by Brent Fulgham.
+
+        Ignore Shift keyups as in the future they will be emitted. We have existing test coverage for them
+        currently skipped in OpenSource that will be unskipped in the future once we enable ENABLE(FULL_KEYBOARD_ACCESS).
+
+        * fast/events/ios/keyup.html:
+
+2019-06-11  Daniel Bates  <dabates@apple.com>
+
+        Fix up test result following r245161.
+        <rdar://problem/51032967>
+
+        Until we get UIKit support, almost all keys, including the numpad comma key (on JIS keyboards)
+        report Dead for their key property and Unidentified for their keyIdentifier property.
+
+        * fast/events/ios/keydown-keyup-special-keys-in-non-editable-element-expected.txt:
+
+2019-06-11  Truitt Savell  <tsavell@apple.com>
+
+        r246018 introduced a falkey test on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=196508
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2019-06-11  Daniel Bates  <dabates@apple.com>
+
+        Import Content Security Policy Web Platform Tests
+        https://bugs.webkit.org/show_bug.cgi?id=198676
+        <rdar://problem/51533785>
+
+        Reviewed by Youenn Fablet.
+
+        Import tests as of 3840f46213d9a991acc9288e3863530f7502c05e (origin/master).
+
+        * TestExpectations: Skip some tests for features we do not support.
+        * platform/mac-wk1/TestExpectations: Skip some tests.
+        * platform/win/TestExpectations: Ditto.
+        * tests-options.json:
+
+2019-06-11  Daniel Bates  <dabates@apple.com>
+
+        Skip test http/tests/security/contentSecurityPolicy/navigate-self-to-data-url.html as
+        testRunner.queueLoad() does not support loading data URLs in Legacy WebKit on Mac and iOS
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2019-06-11  Daniel Bates  <dabates@apple.com>
+
+        [Win] Layout test http/tests/security/contentSecurityPolicy/navigate-self-to-blob.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=198758
+
+        It is a longstanding known issue (since 2015) that navigating to a blob URL times out on Windows.
+        Further investigation is needed. Skip another test for now.
+
+        * platform/win/TestExpectations:
+
+2019-06-11  Shawn Roberts  <sroberts@apple.com>
+
+        compositing/fixed-with-main-thread-scrolling.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=198757
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating expectations for flaky test
+
+2019-06-11  Greg Doolittle  <gr3g@apple.com>
+
+        Web Inspector: AXI: Audit: image label test is throwing spurious errors on elements with existing alt attr, but no value: <img alt>
+        https://bugs.webkit.org/show_bug.cgi?id=194754
+        <rdar://problem/48144534>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/img-alt-attribute-empty-string-expected.txt: Added.
+        * accessibility/img-alt-attribute-empty-string.html: Added.
+        * accessibility/img-alt-attribute-no-value-expected.txt: Added.
+        * accessibility/img-alt-attribute-no-value.html: Added.
+
+2019-06-11  Shawn Roberts  <sroberts@apple.com>
+
+        http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html is a flaky failure and timeout
+        https://bugs.webkit.org/show_bug.cgi?id=198185
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations: Skipping test on iOS
+
+2019-06-11  Devin Rousso  <drousso@apple.com>
+
+        Unreviewed, fix test failures after r246292.
+
+        * inspector/timeline/timeline-recording.html:
+        * inspector/timeline/timeline-recording-expected.txt:
+        Filter the contents of `sampleStackTraces` and `sampleDurations` when exporting.
+
+2019-06-11  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (iOS): Can't scroll litter-robot.com checkout form's dropdown menus
+        https://bugs.webkit.org/show_bug.cgi?id=198753
+        <rdar://problem/51355686>
+
+        Reviewed by Simon Fraser.
+
+        * fast/scrolling/ios/overflow-scroll-user-interaction-disabled-expected.txt: Added.
+        * fast/scrolling/ios/overflow-scroll-user-interaction-disabled.html: Added.
+
+2019-06-11  Youenn Fablet  <youenn@apple.com>
+
+        MediaStreamAudioSourceNode::setFormat should check for m_sourceSampleRate equality
+        https://bugs.webkit.org/show_bug.cgi?id=198740
+        <rdar://problem/47088939>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+
+2019-06-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [cairo][SVG] Putting multiple path elements in clippath causes rendering artifacts
+        https://bugs.webkit.org/show_bug.cgi?id=198701
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+        Unskipped svg/gradients/spreadMethodDiagonal3.svg and svg/gradients/spreadMethodDiagonal4.svg.
+
+        * svg/clip-path/clip-opacity-expected.html: Added.
+        * svg/clip-path/clip-opacity.html: Added.
+        * svg/clip-path/svg-in-html-expected.html: Added.
+        * svg/clip-path/svg-in-html.html: Added.
+
+2019-06-10  Daniel Bates  <dabates@apple.com>
+
+        [CSP] Blob URLs should inherit their CSP policy
+        https://bugs.webkit.org/show_bug.cgi?id=198579
+        <rdar://problem/51366878>
+
+        Reviewed by Brent Fulgham.
+
+        Actually add the tests that I inadvertently omitted from r246277.
+
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-blob-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-blob.html: Added.
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-data-url-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-data-url.html: Added.
+
+2019-06-10  Sam Weinig  <weinig@apple.com>
+
+        Remove Dashboard support
+        https://bugs.webkit.org/show_bug.cgi?id=198615
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations:
+        * cssom/cssvalue-comparison-expected.txt:
+        * cssom/cssvalue-comparison.html:
+        * fast/canvas/canvas-gradient-addStop-error-expected.txt:
+        * fast/canvas/canvas-gradient-addStop-error.html:
+        * fast/canvas/fill-stroke-clip-reset-path-expected.txt:
+        * fast/canvas/fill-stroke-clip-reset-path.html:
+        * fast/css/dashboard-regions-attr-crash-expected.txt: Removed.
+        * fast/css/dashboard-regions-attr-crash.html: Removed.
+        * fast/css/dashboard-regions-undefined-length-assertion-expected.txt: Removed.
+        * fast/css/dashboard-regions-undefined-length-assertion.html: Removed.
+        * fast/xmlhttprequest/set-dangerous-headers-in-dashboard-expected.txt: Removed.
+        * fast/xmlhttprequest/set-dangerous-headers-in-dashboard.html: Removed.
+        * http/tests/xmlhttprequest/default-content-type-dashboard-expected.txt: Removed.
+        * http/tests/xmlhttprequest/default-content-type-dashboard.html: Removed.
+        * http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard-expected.txt: Removed.
+        * http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html: Removed.
+        * legacy-animation-engine/cssom/cssvalue-comparison-expected.txt:
+        * legacy-animation-engine/cssom/cssvalue-comparison.html:
+        * mathml/mathml-in-dashboard-expected.txt: Removed.
+        * mathml/mathml-in-dashboard.html: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/ios/mathml/mathml-in-dashboard-expected.txt: Removed.
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/css/dashboard-region-parser-expected.txt: Removed.
+        * platform/mac/fast/css/dashboard-region-parser.html: Removed.
+        * platform/mac/fast/dom/HTMLImageElement/dashboard-src-quirk-expected.txt: Removed.
+        * platform/mac/fast/dom/HTMLImageElement/dashboard-src-quirk.html: Removed.
+        * platform/mac/mathml/mathml-in-dashboard-expected.png: Removed.
+        * platform/mac/mathml/mathml-in-dashboard-expected.txt: Removed.
+        * platform/mac/svg/custom/embedded-svg-disallowed-in-dashboard-expected.png: Removed.
+        * platform/mac/svg/custom/manually-parsed-embedded-svg-disallowed-in-dashboard-expected.png: Removed.
+        * platform/mac/svg/custom/manually-parsed-svg-disallowed-in-dashboard-expected.png: Removed.
+        * platform/mac/svg/custom/svg-disallowed-in-dashboard-object-expected.png: Removed.
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+        * svg/custom/embedded-svg-allowed-in-dashboard-expected.txt: Removed.
+        * svg/custom/embedded-svg-allowed-in-dashboard.xml: Removed.
+        * svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard-expected.txt: Removed.
+        * svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html: Removed.
+        * svg/custom/manually-parsed-svg-allowed-in-dashboard-expected.txt: Removed.
+        * svg/custom/manually-parsed-svg-allowed-in-dashboard.html: Removed.
+        * svg/custom/svg-allowed-in-dashboard-object-expected.txt: Removed.
+        * svg/custom/svg-allowed-in-dashboard-object.html: Removed.
+
+2019-06-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [ iOS Sim WK2 ] Layout Test editing/deleting/delete-emoji* is failing
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations: Remove failure expectation.
+        * platform/ios/editing/deleting/delete-emoji-1-expected.txt: Rebaseline test.
+        * platform/ios/editing/deleting/delete-emoji-9-expected.txt: Ditto.
+        * platform/ios/editing/deleting/delete-emoji-expected.txt: Ditto.
+
+2019-06-10  Antti Koivisto  <antti@apple.com>
+
+        Event region should be set on scrolledContentsLayer if it exists
+        https://bugs.webkit.org/show_bug.cgi?id=198717
+        <rdar://problem/51572169>
+
+        Reviewed by Simon Fraser.
+
+        * pointerevents/ios/touch-action-region-backing-sharing-expected.txt:
+        * pointerevents/ios/touch-action-region-overflow-expected.txt: Added.
+        * pointerevents/ios/touch-action-region-overflow.html: Added.
+
+2019-06-10  Daniel Bates  <dabates@apple.com>
+
+        [CSP] Blob URLs should inherit their CSP policy
+        https://bugs.webkit.org/show_bug.cgi?id=198579
+        <rdar://problem/51366878>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests to ensure that a self navigation to a Blob or Data URL inherits its CSP policy from
+        its parent document.
+
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-blob-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-blob.html: Added.
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-data-url-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/navigate-self-to-data-url.html: Added.
+
+2019-06-10  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Auto initialize local variables
+        https://bugs.webkit.org/show_bug.cgi?id=198426
+
+        Reviewed by Myles Maxfield.
+
+        * webgpu/whlsl-zero-initialize-values-2-expected.html: Added.
+        * webgpu/whlsl-zero-initialize-values-2.html: Added.
+        * webgpu/whlsl-zero-initialize-values-expected.html: Added.
+        * webgpu/whlsl-zero-initialize-values.html: Added.
+
+2019-06-10  Timothy Hatcher  <timothy@apple.com>
+
+        Integrate dark mode support for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=198687
+        rdar://problem/51545643
+
+        Reviewed by Tim Horton.
+
+        * platform/ios/TestExpectations:
+
+2019-06-10  Youenn Fablet  <youenn@apple.com>
+
+        Call was negotiated with H264 Base Profile 42e01f but encoded in High Profile
+        https://bugs.webkit.org/show_bug.cgi?id=195124
+        <rdar://problem/48453085>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-h264-expected.txt: Added.
+        * webrtc/video-h264.html: Added.
+
+2019-06-08  Cathie Chen  <cathiechen@igalia.com>
+
+        resize-observer/element-leak.html fails on Windows platform
+        https://bugs.webkit.org/show_bug.cgi?id=197908
+
+        Reviewed by Ryosuke Niwa.
+
+        We have conservative GC, the removed objects might keep alive for a while. Change the test case
+        to 20 iframes. This would make the result more accurate.
+
+        * platform/win/TestExpectations:
+        * resize-observer/element-leak-expected.txt:
+        * resize-observer/element-leak.html:
+
+2019-06-07  Youenn Fablet  <youenn@apple.com>
+
+        [ Mac Debug ] REGRESSION (r242975) Layout Test storage/indexeddb/modern/deletedatabase-2-private.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=196445
+        <rdar://problem/49483061>
+
+        Reviewed by Brady Eidson.
+
+        Unflake the test by making sure to wait for the onerror event before continuing the test.
+
+        * platform/mac-wk2/TestExpectations:
+        * storage/indexeddb/modern/resources/deletedatabase-2.js:
+        (prepareDatabase.event.target.onerror):
+        (continueTest1.request.onsuccess): Deleted.
+
+2019-06-07  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r246138.
+
+        Broke internal builds
+
+        Reverted changeset:
+
+        "[WHLSL] Educate the property resolver about IndexExpressions"
+        https://bugs.webkit.org/show_bug.cgi?id=198399
+        https://trac.webkit.org/changeset/246138
+
+2019-06-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: longhand CSS properties overridden by shorthands miss strikethrough
+        https://bugs.webkit.org/show_bug.cgi?id=198629
+        <rdar://problem/51504160>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/css/overridden-property-expected.txt:
+        * inspector/css/overridden-property.html:
+
+2019-06-07  Justin Fan  <justin_fan@apple.com>
+
+        [WebGPU] Remove GPUBuffer.setSubData and implement GPUDevice.createBufferMapped
+        https://bugs.webkit.org/show_bug.cgi?id=198591
+
+        Reviewed by Myles C. Maxfield.
+
+        GPUBuffer.setSubData has been removed from the WebGPU implementation.
+        GPUDevice.createBufferMapped has been added to the WebGPU implementation.
+        Replace all setSubData calls with appropriate replacements.
+
+        * webgpu/blend-triangle-strip.html:
+        * webgpu/blit-commands.html:
+        * webgpu/buffer-command-buffer-races.html:
+        * webgpu/buffer-resource-triangles.html:
+        * webgpu/compute-squares.html:
+        * webgpu/depth-enabled-triangle-strip.html:
+        * webgpu/draw-indexed-triangles.html:
+        * webgpu/js/webgpu-functions.js:
+        (createBufferWithData):
+        (async.mapWriteDataToBuffer):
+        * webgpu/map-read-buffers-expected.txt:
+        * webgpu/map-read-buffers.html:
+        * webgpu/texture-triangle-strip.html:
+        * webgpu/vertex-buffer-triangle-strip.html:
+
+2019-06-07  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/events/fire-mousedown-while-pressing-mouse-button.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=198679
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2019-06-07  Antoine Quint  <graouts@apple.com>
+
+        Restrict fast clicks everywhere to desktop content mode
+        https://bugs.webkit.org/show_bug.cgi?id=198610
+        <rdar://problem/50114230>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that enables fast clicks but also sets a mobile content mode.
+        
+        We also mark fast/visual-viewport/ios/min-scale-greater-than-one.html as non-flaky
+        since the flakiness was due to the fast clicks everywhere behavior being enabled on iPhone.
+
+        Finally, we can now remove the hack where ui.tap() in the Pointer Events utility returned
+        a promise with a one-second delay since the issue of double-taps being recognized instead of
+        two consecutive single taps across two tests has been resolved.
+
+        * fast/events/ios/ipad/fast-click-always-mobile-content-mode-expected.txt: Added.
+        * fast/events/ios/ipad/fast-click-always-mobile-content-mode.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+        * pointerevents/utils.js:
+
+2019-06-07  Shawn Roberts  <sroberts@apple.com>
+
+        http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=198663
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating expectations for flaky test
+
+2019-06-07  Shawn Roberts  <sroberts@apple.com>
+
+        scrollingcoordinator/mac/nested-sticky.html is a flaky Timeout and ImageOnlyFailure
+        https://bugs.webkit.org/show_bug.cgi?id=198661
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations: Updating expectations for flaky test
+
+2019-06-07  Antti Koivisto  <antti@apple.com>
+
+        position:fixed inside overflow positioning nodes is jumpy
+        https://bugs.webkit.org/show_bug.cgi?id=198647
+        <rdar://problem/51514437>
+
+        Reviewed by Frédéric Wang.
+
+        * scrollingcoordinator/ios/fixed-overflow-no-stacking-context-1-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-overflow-no-stacking-context-1.html: Added.
+        * scrollingcoordinator/ios/fixed-overflow-no-stacking-context-2-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-overflow-no-stacking-context-2.html: Added.
+        * scrollingcoordinator/ios/fixed-overflow-stacking-context-stationary-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-overflow-stacking-context-stationary.html: Added.
+
+2019-06-07  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [MSE][GStreamer] Avoid QUOTA_EXCEEDED_ERR when seeking to a buffered range just before the buffered one
+        https://bugs.webkit.org/show_bug.cgi?id=166620
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Added a test to check that, after the memory is filled by appending a continuous
+        range, a seek right before it and a new append can be done without getting a
+        QuotaExceededError on GStreamer ports. On the rest of the ports, QuotaExceededError
+        is never thrown and the expectations just check that the right buffered ranges
+        remain.
+
+        * media/media-source/media-source-append-before-last-range-no-quota-exceeded-expected.txt: Added.
+        * media/media-source/media-source-append-before-last-range-no-quota-exceeded.html: Added.
+        * platform/gtk/media/media-source/media-source-append-before-last-range-no-quota-exceeded-expected.txt: Added.
+        * platform/wpe/media/media-source/media-source-append-before-last-range-no-quota-exceeded-expected.txt: Added.
+
+
+2019-06-07  Joonghun Park  <jh718.park@samsung.com>
+
+        Implement tab-size with units
+        https://bugs.webkit.org/show_bug.cgi?id=179022
+
+        Reviewed by Simon Fraser.
+
+        This change is ported from Blink.
+        The committed revision is https://src.chromium.org/viewvc/blink?revision=189430&view=revision.
+
+        Additionally, this patch lets css "number" value be allowed as tab-size's property value,
+        not css "integer" value,
+        according to https://drafts.csswg.org/css-text-3/#tab-size-property.
+
+        * TestExpectations:
+        * css3/tab-size-expected.txt: Added.
+        * css3/tab-size.html: Added.
+        * fast/css/tab-size-expected.html:
+        * fast/css/tab-size.html:
+
+2019-06-06  Youenn Fablet  <youenn@apple.com>
+
+        Allow WebKitTestRunner to terminate network process after it finishes service worker file operations
+        https://bugs.webkit.org/show_bug.cgi?id=198584
+
+        Reviewed by Geoffrey Garen.
+
+        * http/wpt/service-workers/service-worker-networkprocess-crash.html:
+
+2019-06-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r246165.
+        https://bugs.webkit.org/show_bug.cgi?id=198636
+
+        Causing test failures in 7 content-observation tests.
+        (Requested by ShawnRoberts on #webkit).
+
+        Reverted changeset:
+
+        "Restrict fast clicks everywhere to desktop content mode"
+        https://bugs.webkit.org/show_bug.cgi?id=198610
+        https://trac.webkit.org/changeset/246165
+
+2019-06-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Formatter: pretty-print CSS using a Worker
+        https://bugs.webkit.org/show_bug.cgi?id=197829
+        <rdar://problem/36891532>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/formatting/formatting-css.html: Added.
+        * inspector/formatting/formatting-css-expected.txt: Added.
+        * inspector/formatting/resources/css-tests/basic-expected.css: Added.
+        * inspector/formatting/resources/css-tests/basic.css: Added.
+        * inspector/formatting/resources/css-tests/gradient-expected.css: Added.
+        * inspector/formatting/resources/css-tests/gradient.css: Added.
+        * inspector/formatting/resources/css-tests/keyframes-expected.css: Added.
+        * inspector/formatting/resources/css-tests/keyframes.css: Added.
+        * inspector/formatting/resources/css-tests/media-query-expected.css: Added.
+        * inspector/formatting/resources/css-tests/media-query.css: Added.
+        * inspector/formatting/resources/css-tests/selectors-expected.css: Added.
+        * inspector/formatting/resources/css-tests/selectors.css: Added.
+        * inspector/formatting/resources/css-tests/wrapping-expected.css: Added.
+        * inspector/formatting/resources/css-tests/wrapping.css: Added.
+        * inspector/formatting/resources/utilities.js:
+        (TestPage.registerInitializer.runFormattingTest):
+
+2019-06-06  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION (r243270) [ iOS Sim Release ] Layout Test imported/w3c/web-platform-tests/IndexedDB/keypath-special-identifiers.htm is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=198573
+        <rdar://problem/51447519>
+
+        Unreviewed.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        Marking test as slow.
+
+2019-06-05  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r243121): Load event should not be fired while animating the 'externalResourcesRequired' attribute 
+        https://bugs.webkit.org/show_bug.cgi?id=198576
+
+        Reviewed by Simon Fraser.
+
+        * svg/animations/animate-externalResourcesRequired-no-load-event-expected.txt: Added.
+        * svg/animations/animate-externalResourcesRequired-no-load-event.html: Added.
+
+2019-06-04  Takashi Komori  <Takashi.Komori@sony.com>
 2019-06-06  Antoine Quint  <graouts@apple.com>
 
         Restrict fast clicks everywhere to desktop content mode

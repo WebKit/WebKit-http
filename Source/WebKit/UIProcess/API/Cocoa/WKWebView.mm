@@ -155,6 +155,7 @@
 #import <UIKit/UIApplication.h>
 #import <WebCore/FrameLoaderTypes.h>
 #import <WebCore/InspectorOverlay.h>
+#import <WebCore/LocalCurrentTraitCollection.h>
 #import <WebCore/ScrollableArea.h>
 #import <WebCore/WebBackgroundTaskController.h>
 #import <WebCore/WebSQLiteDatabaseTrackerClient.h>
@@ -473,11 +474,21 @@ static bool shouldAllowSettingAnyXHRHeaderFromFileURLs()
     return _focusPreservationCount || _activeFocusedStateRetainCount;
 }
 
-#endif
+- (BOOL)_effectiveAppearanceIsDark
+{
+    return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+}
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/WKWebViewInternalAdditions.mm>
+- (BOOL)_effectiveAppearanceIsInactive
+{
+#if HAVE(OS_DARK_MODE_SUPPORT) && !PLATFORM(WATCHOS)
+    return self.traitCollection.userInterfaceLevel != UIUserInterfaceLevelElevated;
+#else
+    return NO;
 #endif
+}
+
+#endif // PLATFORM(IOS_FAMILY)
 
 static bool shouldRequireUserGestureToLoadVideo()
 {
@@ -747,6 +758,8 @@ static void validate(WKWebViewConfiguration *configuration)
 
     if (NSString *applicationNameForUserAgent = configuration.applicationNameForUserAgent)
         _page->setApplicationNameForUserAgent(applicationNameForUserAgent);
+
+    _page->setApplicationNameForDesktopUserAgent(configuration._applicationNameForDesktopUserAgent);
 
     _navigationState = std::make_unique<WebKit::NavigationState>(self);
     _page->setNavigationClient(_navigationState->createNavigationClient());
@@ -1690,10 +1703,22 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     if (!webView.opaque)
         return WebCore::Color::transparent;
 
+#if HAVE(OS_DARK_MODE_SUPPORT)
+    WebCore::LocalCurrentTraitCollection localTraitCollection(webView.traitCollection);
+#endif
+
     WebCore::Color color = baseScrollViewBackgroundColor(webView);
 
-    if (!color.isValid())
-        color = webView->_contentView ? [webView->_contentView backgroundColor].CGColor : UIColor.whiteColor.CGColor;
+    if (!color.isValid() && webView->_contentView)
+        color = [webView->_contentView backgroundColor].CGColor;
+
+    if (!color.isValid()) {
+#if HAVE(OS_DARK_MODE_SUPPORT)
+        color = UIColor.systemBackgroundColor.CGColor;
+#else
+        color = WebCore::Color::white;
+#endif
+    }
 
     CGFloat zoomScale = contentZoomScale(webView);
     CGFloat minimumZoomScale = [webView->_scrollView minimumZoomScale];
@@ -1724,7 +1749,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     if (lightness <= .5 && color.isVisible())
         [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleWhite];
     else
-        [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleDefault];
+        [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleBlack];
 }
 
 - (void)_videoControlsManagerDidChange
@@ -1986,11 +2011,11 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
     [_scrollView setMinimumZoomScale:layerTreeTransaction.minimumScaleFactor()];
     [_scrollView setMaximumZoomScale:layerTreeTransaction.maximumScaleFactor()];
-    [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
+    [_scrollView _setZoomEnabledInternal:layerTreeTransaction.allowsUserScaling()];
 #if ENABLE(ASYNC_SCROLLING)
     bool hasDockedInputView = !CGRectIsEmpty(_inputViewBounds);
     bool isZoomed = layerTreeTransaction.pageScaleFactor() > layerTreeTransaction.initialScaleFactor();
-    [_scrollView setScrollEnabled:_page->scrollingCoordinatorProxy()->hasScrollableMainFrame() || hasDockedInputView || isZoomed];
+    [_scrollView _setScrollEnabledInternal:_page->scrollingCoordinatorProxy()->hasScrollableMainFrame() || hasDockedInputView || isZoomed];
 #endif
     if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom] && [_scrollView zoomScale] != layerTreeTransaction.pageScaleFactor()) {
         LOG_WITH_STREAM(VisibleRects, stream << " updating scroll view with pageScaleFactor " << layerTreeTransaction.pageScaleFactor());
@@ -4585,6 +4610,16 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
         [_contentView _setTextColorForWebView:color sender:sender];
 }
 
+- (UIView *)inputAccessoryView
+{
+    return [_contentView inputAccessoryViewForWebView];
+}
+
+- (UIView *)inputView
+{
+    return [_contentView inputViewForWebView];
+}
+
 #endif // PLATFORM(IOS_FAMILY)
 
 - (BOOL)_isEditable
@@ -4772,6 +4807,7 @@ FOR_EACH_PRIVATE_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
 - (void)_setApplicationNameForUserAgent:(NSString *)applicationNameForUserAgent
 {
     _page->setApplicationNameForUserAgent(applicationNameForUserAgent);
+    _page->setApplicationNameForDesktopUserAgent(applicationNameForUserAgent);
 }
 
 - (NSString *)_customUserAgent
@@ -6175,6 +6211,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     CGFloat imageHeight = imageScale * snapshotRectInContentCoordinates.size.height;
     CGSize imageSize = CGSizeMake(imageWidth, imageHeight);
 
+    if ([[_customContentView class] web_requiresCustomSnapshotting]) {
+        [_customContentView web_snapshotRectInContentViewCoordinates:snapshotRectInContentCoordinates snapshotWidth:imageWidth completionHandler:completionHandler];
+        return;
+    }
+
 #if HAVE(CORE_ANIMATION_RENDER_SERVER) && HAVE(IOSURFACE)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
     if (NSString *displayName = self.window.screen.displayConfiguration.name) {
@@ -6193,6 +6234,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #endif
 
     if (_customContentView) {
+        ASSERT(![[_customContentView class] web_requiresCustomSnapshotting]);
         UIGraphicsBeginImageContextWithOptions(imageSize, YES, 1);
 
         UIView *customContentView = _customContentView.get();
@@ -7244,11 +7286,15 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView _simulateTextEntered:text];
 }
 
-#endif // PLATFORM(IOS_FAMILY)
+- (void)_dynamicUserInterfaceTraitDidChange
+{
+    if (!_page)
+        return;
+    _page->effectiveAppearanceDidChange();
+    [self _updateScrollViewBackground];
+}
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/WKWebViewAdditions.mm>
-#endif
+#endif // PLATFORM(IOS_FAMILY)
 
 - (BOOL)_beginBackSwipeForTesting
 {

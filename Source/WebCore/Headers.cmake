@@ -1086,6 +1086,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/RemoteVideoSample.h
     platform/graphics/RoundedRect.h
     platform/graphics/StringTruncator.h
+    platform/graphics/TabSize.h
     platform/graphics/TextRun.h
     platform/graphics/TiledBacking.h
     platform/graphics/TrackPrivateBase.h
@@ -1312,7 +1313,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     rendering/style/StyleColorScheme.h
     rendering/style/StyleContentAlignmentData.h
     rendering/style/StyleCustomPropertyData.h
-    rendering/style/StyleDashboardRegion.h
     rendering/style/StyleDeprecatedFlexibleBoxData.h
     rendering/style/StyleFilterData.h
     rendering/style/StyleFlexibleBoxData.h

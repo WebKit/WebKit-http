@@ -340,7 +340,9 @@ static void webkitWebContextConstructed(GObject* object)
         configuration.setDiskCacheDirectory(FileSystem::pathByAppendingComponent(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_disk_cache_directory(priv->websiteDataManager.get())), networkCacheSubdirectory));
         configuration.setApplicationCacheDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_offline_application_cache_directory(priv->websiteDataManager.get())));
         configuration.setIndexedDBDatabaseDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_indexeddb_directory(priv->websiteDataManager.get())));
+ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         configuration.setWebSQLDatabaseDirectory(FileSystem::stringFromFileSystemRepresentation(webkit_website_data_manager_get_websql_directory(priv->websiteDataManager.get())));
+ALLOW_DEPRECATED_DECLARATIONS_END
     } else if (!priv->localStorageDirectory.isNull())
         configuration.setLocalStorageDirectory(FileSystem::stringFromFileSystemRepresentation(priv->localStorageDirectory.data()));
 
@@ -1405,6 +1407,7 @@ void webkit_web_context_set_web_extensions_directory(WebKitWebContext* context, 
     g_return_if_fail(directory);
 
     context->priv->webExtensionsDirectory = directory;
+    context->priv->processPool->addSandboxPath(directory, SandboxPermission::ReadOnly);
 }
 
 /**

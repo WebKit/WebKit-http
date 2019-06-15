@@ -176,6 +176,10 @@
 
     self.layer.hitTestsAsOpaque = YES;
 
+#if PLATFORM(IOSMAC)
+    [self _setFocusRingType:UIFocusRingTypeNone];
+#endif
+
 #if HAVE(VISIBILITY_PROPAGATION_VIEW)
     [self _setupVisibilityPropagationView];
 #endif
@@ -443,7 +447,7 @@ static WebCore::FloatBoxExtent floatBoxExtent(UIEdgeInsets insets)
 
 - (NSUndoManager *)undoManager
 {
-    if (self.focusedElementInformation.shouldSynthesizeKeyEventsForUndoAndRedo && self.hasHiddenContentEditable) {
+    if (self.focusedElementInformation.shouldSynthesizeKeyEventsForEditing && self.hasHiddenContentEditable) {
         if (!_quirkyUndoManager)
             _quirkyUndoManager = adoptNS([[WKQuirkyNSUndoManager alloc] initWithContentView:self]);
         return _quirkyUndoManager.get();

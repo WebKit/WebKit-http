@@ -218,10 +218,6 @@ using PlatformDisplayID = uint32_t;
 class TransformSource;
 #endif
 
-#if ENABLE(DASHBOARD_SUPPORT)
-struct AnnotatedRegionValue;
-#endif
-
 #if ENABLE(TOUCH_EVENTS) || ENABLE(IOS_TOUCH_EVENTS)
 class Touch;
 class TouchList;
@@ -1129,15 +1125,7 @@ public:
 
     WEBCORE_EXPORT String displayStringModifiedByEncoding(const String&) const;
 
-#if ENABLE(DASHBOARD_SUPPORT)
-    void setHasAnnotatedRegions(bool f) { m_hasAnnotatedRegions = f; }
-    WEBCORE_EXPORT const Vector<AnnotatedRegionValue>& annotatedRegions() const;
-#endif
-
-    enum class AnnotationsAction { Invalidate, Update };
-    void invalidateRenderingDependentRegions(AnnotationsAction = AnnotationsAction::Invalidate);
-    void invalidateScrollbarDependentRegions();
-    void updateZOrderDependentRegions();
+    void invalidateRenderingDependentRegions();
 
     void removeAllEventListeners() final;
 
@@ -1149,7 +1137,7 @@ public:
     HashSet<SVGUseElement*> const svgUseElements() const { return m_svgUseElements; }
 
     void initSecurityContext();
-    void initContentSecurityPolicy();
+    void initContentSecurityPolicy(ContentSecurityPolicy* previousPolicy);
 
     void updateURLForPushOrReplaceState(const URL&);
     void statePopped(Ref<SerializedScriptValue>&&);
@@ -1380,7 +1368,7 @@ public:
     void addAppearanceDependentPicture(HTMLPictureElement&);
     void removeAppearanceDependentPicture(HTMLPictureElement&);
 
-    void scheduleRenderingUpdate();
+    void scheduleTimedRenderingUpdate();
 
 #if ENABLE(INTERSECTION_OBSERVER)
     void addIntersectionObserver(IntersectionObserver&);
@@ -1549,7 +1537,7 @@ private:
     friend class IgnoreOpensDuringUnloadCountIncrementer;
     friend class IgnoreDestructiveWriteCountIncrementer;
 
-    bool shouldInheritContentSecurityPolicyFromOwner() const;
+    bool shouldInheritContentSecurityPolicy() const;
 
     void updateTitleElement(Element& changingTitleElement);
     void willDetachPage() final;
@@ -1612,14 +1600,6 @@ private:
     void didAssociateFormControlsTimerFired();
 
     void wheelEventHandlersChanged();
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    void setAnnotatedRegionsDirty(bool f = true) { m_annotatedRegionsDirty = f; }
-    bool annotatedRegionsDirty() const { return m_annotatedRegionsDirty; }
-    bool hasAnnotatedRegions () const { return m_hasAnnotatedRegions; }
-    void setAnnotatedRegions(const Vector<AnnotatedRegionValue>&);
-    void updateAnnotatedRegions();
-#endif
 
     HttpEquivPolicy httpEquivPolicy() const;
     AXObjectCache* existingAXObjectCacheSlow() const;
@@ -1768,12 +1748,6 @@ private:
 #if ENABLE(DARK_MODE_CSS)
     OptionSet<ColorScheme> m_colorScheme;
     bool m_allowsColorSchemeTransformations { true };
-#endif
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    Vector<AnnotatedRegionValue> m_annotatedRegions;
-    bool m_hasAnnotatedRegions { false };
-    bool m_annotatedRegionsDirty { false };
 #endif
 
     HashMap<String, RefPtr<HTMLCanvasElement>> m_cssCanvasElements;

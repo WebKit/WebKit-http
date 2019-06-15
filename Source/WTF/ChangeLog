@@ -1,3 +1,105 @@
+2019-06-10  Simon Fraser  <simon.fraser@apple.com>
+
+        Add logging for UI-side compositing hit-testing
+        https://bugs.webkit.org/show_bug.cgi?id=198739
+
+        Reviewed by Antti Koivisto.
+
+        Make it possible to output an Objective-C object to TextStream, which will
+        log its -description.
+
+        Also add a template for OptionSet<> printing.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/text/TextStream.h:
+        (WTF::operator<<):
+        * wtf/text/cocoa/TextStreamCocoa.mm: Added.
+        (WTF::TextStream::operator<<):
+
+2019-06-11  Saam Barati  <sbarati@apple.com>
+
+        Roll out PAC cage
+        https://bugs.webkit.org/show_bug.cgi?id=198726
+
+        Reviewed by Keith Miller.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CagedPtr.h:
+        (WTF::CagedPtr::CagedPtr):
+        (WTF::CagedPtr::get const):
+        (WTF::CagedPtr::getMayBeNull const):
+        (WTF::CagedPtr::operator=):
+        (WTF::CagedPtr::operator== const):
+        (WTF::CagedPtr::operator!= const):
+        (WTF::CagedPtr::operator bool const):
+        (WTF::CagedPtr::operator* const):
+        (WTF::CagedPtr::operator-> const):
+        (WTF::CagedPtr::operator[] const):
+        (WTF::CagedPtr::getUnsafe const): Deleted.
+        (WTF::CagedPtr::at const): Deleted.
+        (WTF::CagedPtr::recage): Deleted.
+        * wtf/CagedUniquePtr.h:
+        (WTF::CagedUniquePtr::CagedUniquePtr):
+        (WTF::CagedUniquePtr::create):
+        (WTF::CagedUniquePtr::operator=):
+        (WTF::CagedUniquePtr::~CagedUniquePtr):
+        (WTF::CagedUniquePtr::destroy):
+        * wtf/Gigacage.h:
+        (Gigacage::caged):
+        (Gigacage::cagedMayBeNull): Deleted.
+        * wtf/PtrTag.h:
+        (WTF::tagArrayPtr): Deleted.
+        (WTF::untagArrayPtr): Deleted.
+        (WTF::removeArrayPtrTag): Deleted.
+        (WTF::retagArrayPtr): Deleted.
+        * wtf/TaggedArrayStoragePtr.h:
+        (WTF::TaggedArrayStoragePtr::TaggedArrayStoragePtr): Deleted.
+        (WTF::TaggedArrayStoragePtr::get const): Deleted.
+        (WTF::TaggedArrayStoragePtr::getUnsafe const): Deleted.
+        (WTF::TaggedArrayStoragePtr::resize): Deleted.
+        (WTF::TaggedArrayStoragePtr::operator bool const): Deleted.
+
+2019-06-10  Andy Estes  <aestes@apple.com>
+
+        [iOS] Use PDFKit SPI for taking snapshots when the hosting app is not entitled for global capture
+        https://bugs.webkit.org/show_bug.cgi?id=198731
+        <rdar://problem/46215174>
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h:
+
+2019-06-10  Sam Weinig  <weinig@apple.com>
+
+        Remove Dashboard support
+        https://bugs.webkit.org/show_bug.cgi?id=198615
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2019-06-10  Timothy Hatcher  <timothy@apple.com>
+
+        Integrate dark mode support for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=198687
+        rdar://problem/51545643
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+
+2019-06-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] If we have a bound interface identifier, set it on new PKPaymentRequests
+        https://bugs.webkit.org/show_bug.cgi?id=198690
+        <rdar://problem/48041803>
+
+        Reviewed by Tim Horton.
+
+        * wtf/FeatureDefines.h: Defined HAVE_PASSKIT_BOUND_INTERFACE_IDENTIFIER, and cleaned up some
+        other PassKit HAVEs.
+
 2019-06-06  Caio Lima  <ticaiolima@gmail.com>
 
         [JSCOnly] JSCOnly port is not building on macOS

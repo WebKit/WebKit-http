@@ -845,11 +845,6 @@ void WebPageProxy::didRecognizeLongPress()
     process().send(Messages::WebPage::DidRecognizeLongPress(), m_pageID);
 }
 
-void WebPageProxy::handleDoubleTapForDoubleClickAtPoint(const WebCore::IntPoint& point, OptionSet<WebEvent::Modifier> modifiers, uint64_t layerTreeTransactionIdAtLastTouchStart)
-{
-    process().send(Messages::WebPage::HandleDoubleTapForDoubleClickAtPoint(point, modifiers, layerTreeTransactionIdAtLastTouchStart), m_pageID);
-}
-
 void WebPageProxy::inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint& position)
 {
     process().send(Messages::WebPage::InspectorNodeSearchMovedToPosition(position), m_pageID);
@@ -1382,9 +1377,9 @@ WebContentMode WebPageProxy::effectiveContentModeAfterAdjustingPolicies(API::Web
         return WebContentMode::Mobile;
 
     if (policies.customUserAgent().isEmpty() && customUserAgent().isEmpty()) {
-        auto applicationName = policies.applicationNameForUserAgentWithModernCompatibility();
+        auto applicationName = policies.applicationNameForDesktopUserAgent();
         if (applicationName.isEmpty())
-            applicationName = applicationNameForUserAgent();
+            applicationName = applicationNameForDesktopUserAgent();
         policies.setCustomUserAgent(standardUserAgentWithApplicationName(applicationName, UserAgentType::Desktop));
     }
 

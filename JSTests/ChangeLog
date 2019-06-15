@@ -1,3 +1,80 @@
+2019-06-11  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        JSC should throw if proxy set returns falsish in strict mode context
+        https://bugs.webkit.org/show_bug.cgi?id=177398
+
+        Reviewed by Yusuke Suzuki.
+
+        1. Add coverage for Proxy `set` trap returning falsy value in strict mode.
+        2. RegExp methods throw unless [[Set]] succeeds. Return `true` from Proxy `set` traps to fix the tests.
+
+        * stress/proxy-set.js: Add 2 test cases.
+        * stress/regexp-match-proxy.js: Fix test.
+        * stress/regexp-replace-proxy.js: Fix test.
+
+2019-06-11  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        Error message for non-callable Proxy `construct` trap is misleading
+        https://bugs.webkit.org/show_bug.cgi?id=198637
+
+        Reviewed by Saam Barati.
+
+        * stress/proxy-construct.js:
+
+2019-06-10  Tadeu Zagallo  <tzagallo@apple.com>
+
+        AI BitURShift's result should not be unsigned
+        https://bugs.webkit.org/show_bug.cgi?id=198689
+        <rdar://problem/51550063>
+
+        Reviewed by Saam Barati.
+
+        * stress/urshift-int32-overflow.js: Added.
+        (foo.):
+        (foo):
+
+2019-06-11  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip stress/ftl-gettypedarrayoffset-wasteful.js on Arm/Linux
+
+        Unreviewed gardening.
+
+        * stress/ftl-gettypedarrayoffset-wasteful.js:
+        Skipped on arm/linux as it always times out on the bot since a change
+        between r246270 and r246278 inclusive.
+
+2019-06-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] UnlinkedCodeBlock should be eventually jettisoned in VM mini mode
+        https://bugs.webkit.org/show_bug.cgi?id=198023
+
+        Reviewed by Saam Barati.
+
+        * stress/reparsing-unlinked-codeblock.js: Added.
+        (shouldBe):
+        (hello):
+
+2019-06-09  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] Use mergePrediction in ValuePow prediction propagation
+        https://bugs.webkit.org/show_bug.cgi?id=198648
+
+        Reviewed by Saam Barati.
+
+        * stress/prediction-propagation-should-use-merge-prediction-for-value-pow.js: Added.
+
+2019-06-07  Tadeu Zagallo  <tzagallo@apple.com>
+
+        AI should get GetterSetter structure from the base's GlobalObject for GetGetterSetterByOffset
+        https://bugs.webkit.org/show_bug.cgi?id=198581
+        <rdar://problem/51099753>
+
+        Reviewed by Saam Barati.
+
+        * stress/global-object-proto-getter.js: Added.
+        (f):
+        (test):
+
 2019-06-05  Justin Michaud  <justin_michaud@apple.com>
 
         [WASM-References] Add support for Anyref tables, Table.get and Table.set (for Anyref only).

@@ -1488,6 +1488,9 @@ void WebProcessPool::setShouldUseFontSmoothing(bool useFontSmoothing)
 void WebProcessPool::setResourceLoadStatisticsEnabled(bool enabled)
 {
     sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(enabled));
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    sendToNetworkingProcess(Messages::NetworkProcess::SetResourceLoadStatisticsEnabled(enabled));
+#endif
 }
 
 void WebProcessPool::clearResourceLoadStatistics()
@@ -2594,7 +2597,8 @@ void WebProcessPool::clearWebProcessIsPlayingAudibleMedia(WebCore::ProcessIdenti
     ASSERT_UNUSED(result, result);
 
     auto* process = WebProcessProxy::processForIdentifier(processID);
-    ASSERT(process);
+    ASSERT_UNUSED(process, process);
+
     RELEASE_LOG(ProcessSuspension, "Web process pid %u is no longer playing audible media", (unsigned)process->processIdentifier());
 
     if (m_processesPlayingAudibleMedia.isEmpty()) {

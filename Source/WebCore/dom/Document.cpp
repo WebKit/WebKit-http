@@ -353,7 +353,7 @@ private:
 };
 
 #if ENABLE(INTERSECTION_OBSERVER)
-static const Seconds intersectionObserversInitialUpdateDelay { 500_ms };
+static const Seconds intersectionObserversInitialUpdateDelay { 2000_ms };
 #endif
 
 // DOM Level 2 says (letters added):
@@ -540,7 +540,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
     , m_intersectionObserversNotifyTimer(*this, &Document::notifyIntersectionObserversTimerFired)
-    , m_intersectionObserversInitialUpdateTimer(*this, &Document::scheduleRenderingUpdate)
+    , m_intersectionObserversInitialUpdateTimer(*this, &Document::scheduleTimedRenderingUpdate)
 #endif
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
 #if PLATFORM(IOS_FAMILY) && ENABLE(DEVICE_ORIENTATION)
@@ -3933,6 +3933,7 @@ void Document::addAudioProducer(MediaProducer& audioProducer)
 
 void Document::removeAudioProducer(MediaProducer& audioProducer)
 {
+    RELEASE_ASSERT(isMainThread());
     m_audioProducers.remove(audioProducer);
     updateIsPlayingMedia();
 }
@@ -4051,48 +4052,8 @@ void Document::elementInActiveChainDidDetach(Element& element)
         m_activeElement = m_activeElement->parentElement();
 }
 
-#if ENABLE(DASHBOARD_SUPPORT)
-const Vector<AnnotatedRegionValue>& Document::annotatedRegions() const
+void Document::invalidateRenderingDependentRegions()
 {
-    return m_annotatedRegions;
-}
-
-void Document::setAnnotatedRegions(const Vector<AnnotatedRegionValue>& regions)
-{
-    m_annotatedRegions = regions;
-    setAnnotatedRegionsDirty(false);
-}
-
-void Document::updateAnnotatedRegions()
-{
-    if (!hasAnnotatedRegions())
-        return;
-
-    Vector<AnnotatedRegionValue> newRegions;
-    renderBox()->collectAnnotatedRegions(newRegions); // FIXME.
-    if (newRegions == annotatedRegions())
-        return;
-
-    setAnnotatedRegions(newRegions);
-    
-    if (Page* page = this->page())
-        page->chrome().client().annotatedRegionsChanged();
-}
-#endif
-
-void Document::invalidateRenderingDependentRegions(AnnotationsAction annotationsAction)
-{
-#if ENABLE(DASHBOARD_SUPPORT)
-    // FIXME: we don't have a good invalidation/update policy for Dashboard regions. They get eagerly updated
-    // on forced layouts, and don't need to be.
-    if (annotationsAction == AnnotationsAction::Update)
-        updateAnnotatedRegions();
-    else
-        setAnnotatedRegionsDirty();
-#else
-    UNUSED_PARAM(annotationsAction);
-#endif
-
 #if PLATFORM(IOS_FAMILY) && ENABLE(TOUCH_EVENTS)
     setTouchEventRegionsNeedUpdate();
 #endif
@@ -4104,22 +4065,6 @@ void Document::invalidateRenderingDependentRegions(AnnotationsAction annotations
                 scrollingCoordinator->frameViewEventTrackingRegionsChanged(*frameView);
         }
     }
-#endif
-}
-
-void Document::invalidateScrollbarDependentRegions()
-{
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (hasAnnotatedRegions())
-        setAnnotatedRegionsDirty();
-#endif
-}
-
-void Document::updateZOrderDependentRegions()
-{
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (annotatedRegionsDirty())
-        updateAnnotatedRegions();
 #endif
 }
 
@@ -5482,6 +5427,11 @@ void Document::applyPendingXSLTransformsTimerFired()
         if (transformSourceDocument() || !processingInstruction->sheet())
             return;
 
+        // If the Document has already been detached from the frame, or the frame is currently in the process of
+        // changing to a new document, don't attempt to create a new Document from the XSLT.
+        if (!frame() || frame()->documentIsBeingReplaced())
+            return;
+
         auto processor = XSLTProcessor::create();
         processor->setXSLStyleSheet(downcast<XSLStyleSheet>(processingInstruction->sheet()));
         String resultMIMEType;
@@ -5898,12 +5848,13 @@ void Document::initSecurityContext()
     setSecurityOriginPolicy(ownerFrame->document()->securityOriginPolicy());
 }
 
-bool Document::shouldInheritContentSecurityPolicyFromOwner() const
+// FIXME: The current criterion is stricter than <https://www.w3.org/TR/CSP3/#security-inherit-csp> (Editor's Draft, 28 February 2019).
+bool Document::shouldInheritContentSecurityPolicy() const
 {
     ASSERT(m_frame);
     if (SecurityPolicy::shouldInheritSecurityOriginFromOwner(m_url))
         return true;
-    if (m_url.protocolIsData())
+    if (m_url.protocolIsData() || m_url.protocolIsBlob())
         return true;
     if (!isPluginDocument())
         return false;
@@ -5915,7 +5866,7 @@ bool Document::shouldInheritContentSecurityPolicyFromOwner() const
     return openerFrame->document()->securityOrigin().canAccess(securityOrigin());
 }
 
-void Document::initContentSecurityPolicy()
+void Document::initContentSecurityPolicy(ContentSecurityPolicy* previousPolicy)
 {
     // 1. Inherit Upgrade Insecure Requests
     Frame* parentFrame = m_frame->tree().parent();
@@ -5923,19 +5874,27 @@ void Document::initContentSecurityPolicy()
         contentSecurityPolicy()->copyUpgradeInsecureRequestStateFrom(*parentFrame->document()->contentSecurityPolicy());
 
     // 2. Inherit Content Security Policy (without copying Upgrade Insecure Requests state).
-    if (!shouldInheritContentSecurityPolicyFromOwner())
+    if (!shouldInheritContentSecurityPolicy())
         return;
-    Frame* ownerFrame = parentFrame;
-    if (!ownerFrame)
-        ownerFrame = m_frame->loader().opener();
-    if (!ownerFrame)
+    ContentSecurityPolicy* ownerPolicy = nullptr;
+    if (previousPolicy && (m_url.protocolIsData() || m_url.protocolIsBlob()))
+        ownerPolicy = previousPolicy;
+    if (!ownerPolicy) {
+        Frame* ownerFrame = parentFrame;
+        if (!ownerFrame)
+            ownerFrame = m_frame->loader().opener();
+        if (ownerFrame)
+            ownerPolicy = ownerFrame->document()->contentSecurityPolicy();
+    }
+    if (!ownerPolicy)
         return;
-    // FIXME: The CSP 3 spec. implies that only plugin documents delivered with a local scheme (e.g. blob, file, data)
-    // should inherit a policy.
+    // FIXME: We are stricter than the CSP 3 spec. with regards to plugins: we prefer to inherit the full policy unless the plugin
+    // document is opened in a new window. The CSP 3 spec. implies that only plugin documents delivered with a local scheme (e.g. blob,
+    // file, data) should inherit a policy.
     if (isPluginDocument() && m_frame->loader().opener())
-        contentSecurityPolicy()->createPolicyForPluginDocumentFrom(*ownerFrame->document()->contentSecurityPolicy());
+        contentSecurityPolicy()->createPolicyForPluginDocumentFrom(*ownerPolicy);
     else
-        contentSecurityPolicy()->copyStateFrom(ownerFrame->document()->contentSecurityPolicy());
+        contentSecurityPolicy()->copyStateFrom(ownerPolicy);
 }
 
 bool Document::isContextThread() const
@@ -7286,10 +7245,13 @@ void Document::removeAppearanceDependentPicture(HTMLPictureElement& picture)
     m_appearanceDependentPictures.remove(&picture);
 }
 
-void Document::scheduleRenderingUpdate()
+void Document::scheduleTimedRenderingUpdate()
 {
+#if ENABLE(INTERSECTION_OBSERVER)
+    m_intersectionObserversInitialUpdateTimer.stop();
+#endif
     if (auto page = this->page())
-        page->renderingUpdateScheduler().scheduleRenderingUpdate();
+        page->renderingUpdateScheduler().scheduleTimedRenderingUpdate();
 }
 
 #if ENABLE(INTERSECTION_OBSERVER)
@@ -7517,7 +7479,7 @@ void Document::notifyIntersectionObserversTimerFired()
 void Document::scheduleInitialIntersectionObservationUpdate()
 {
     if (m_readyState == Complete)
-        scheduleRenderingUpdate();
+        scheduleTimedRenderingUpdate();
     else if (!m_intersectionObserversInitialUpdateTimer.isActive())
         m_intersectionObserversInitialUpdateTimer.startOneShot(intersectionObserversInitialUpdateDelay);
 }
@@ -7599,7 +7561,7 @@ void Document::updateResizeObservations(Page& page)
         getParserLocation(url, line, column);
         reportException("ResizeObserver loop completed with undelivered notifications.", line, column, url, nullptr, nullptr);
         // Starting a new schedule the next round of notify.
-        scheduleRenderingUpdate();
+        scheduleTimedRenderingUpdate();
     }
 }
 #endif

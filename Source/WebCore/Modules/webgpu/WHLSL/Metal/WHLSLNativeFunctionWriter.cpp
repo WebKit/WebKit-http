@@ -63,6 +63,21 @@ static String mapFunctionName(String& functionName)
     return functionName;
 }
 
+static String convertAddressSpace(AST::AddressSpace addressSpace)
+{
+    switch (addressSpace) {
+    case AST::AddressSpace::Constant:
+        return "constant"_str;
+    case AST::AddressSpace::Device:
+        return "device"_str;
+    case AST::AddressSpace::Threadgroup:
+        return "threadgroup"_str;
+    default:
+        ASSERT(addressSpace == AST::AddressSpace::Thread);
+        return "thread"_str;
+    }
+}
+
 static String atomicName(String input)
 {
     if (input == "Add")
@@ -89,7 +104,8 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         if (!nativeFunctionDeclaration.parameters().size()) {
             stringBuilder.append(makeString(metalReturnName, ' ', outputFunctionName, "() {\n"));
             stringBuilder.append(makeString("    ", metalReturnName, " x;\n"));
-            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=195771 Zero-fill
+            stringBuilder.append("    thread char* ptr = static_cast<thread char*>(static_cast<thread void*>(&x));\n");
+            stringBuilder.append(makeString("    for (size_t i = 0; i < sizeof(", metalReturnName, "); ++i) ptr[i] = 0;\n"));
             stringBuilder.append("    return x;\n");
             stringBuilder.append("}\n");
             return stringBuilder.toString();
@@ -360,7 +376,7 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
             auto& fourthArgumentPointer = downcast<AST::PointerType>(*nativeFunctionDeclaration.parameters()[3]->type());
             auto fourthArgumentAddressSpace = fourthArgumentPointer.addressSpace();
             auto fourthArgumentPointee = typeNamer.mangledNameForType(fourthArgumentPointer.elementType());
-            stringBuilder.append(makeString("void ", outputFunctionName, '(', toString(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " compare, ", thirdArgument, " desired, ", toString(fourthArgumentAddressSpace), ' ', fourthArgumentPointee, "* out) {\n"));
+            stringBuilder.append(makeString("void ", outputFunctionName, '(', convertAddressSpace(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " compare, ", thirdArgument, " desired, ", convertAddressSpace(fourthArgumentAddressSpace), ' ', fourthArgumentPointee, "* out) {\n"));
             stringBuilder.append("    atomic_compare_exchange_weak_explicit(object, &compare, desired, memory_order_relaxed);\n");
             stringBuilder.append("    *out = compare;\n");
             stringBuilder.append("}\n");
@@ -378,7 +394,7 @@ String writeNativeFunction(AST::NativeFunctionDeclaration& nativeFunctionDeclara
         auto thirdArgumentAddressSpace = thirdArgumentPointer.addressSpace();
         auto thirdArgumentPointee = typeNamer.mangledNameForType(thirdArgumentPointer.elementType());
         auto name = atomicName(nativeFunctionDeclaration.name().substring("Interlocked"_str.length()));
-        stringBuilder.append(makeString("void ", outputFunctionName, '(', toString(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " operand, ", toString(thirdArgumentAddressSpace), ' ', thirdArgumentPointee, "* out) {\n"));
+        stringBuilder.append(makeString("void ", outputFunctionName, '(', convertAddressSpace(firstArgumentAddressSpace), ' ', firstArgumentPointee, "* object, ", secondArgument, " operand, ", convertAddressSpace(thirdArgumentAddressSpace), ' ', thirdArgumentPointee, "* out) {\n"));
         stringBuilder.append(makeString("    *out = atomic_fetch_", name, "_explicit(object, operand, memory_order_relaxed);\n"));
         stringBuilder.append("}\n");
         return stringBuilder.toString();

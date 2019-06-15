@@ -136,7 +136,8 @@ struct FocusedElementInformation {
     Vector<WebCore::Color> suggestedColors;
 #endif
 #endif
-    bool shouldSynthesizeKeyEventsForUndoAndRedo { false };
+    bool shouldSynthesizeKeyEventsForEditing { false };
+    bool isSpellCheckingEnabled { true };
 
     FocusedElementIdentifier focusedElementIdentifier { 0 };
 

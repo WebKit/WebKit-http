@@ -142,15 +142,6 @@ http/tests/misc/willCacheResponse-delegate-callback.html [ Skip ]
 # testRunner.setAlwaysAcceptCookies() is not implemented on Windows.
 http/tests/xmlhttprequest/cross-origin-cookie-storage.html [ Skip ]
 
-# No Dashboard compatibility mode on Windows.
-http/tests/xmlhttprequest/default-content-type-dashboard.html [ Skip ]
-http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html [ Skip ]
-svg/custom/embedded-svg-allowed-in-dashboard.xml [ Skip ]
-svg/custom/manually-parsed-svg-allowed-in-dashboard.html [ Skip ]
-svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Skip ]
-svg/custom/svg-allowed-in-dashboard-object.html [ Skip ]
-mathml/mathml-in-dashboard.html [ Skip ]
-
 # Dark mode not supported on Windows
 css-dark-mode [ Skip ]
 
@@ -2266,7 +2257,6 @@ webkit.org/b/95530 http/tests/security/inactive-document-with-empty-security-ori
 http/tests/security/mixedContent/insecure-xhr-in-main-frame.html [ Skip ] # Timeout
 http/tests/security/mixedContent/insecure-iframe-in-main-frame.html [ Skip ] # Timeout
 http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame.html [ Skip ] # Timeout
-http/tests/security/mixedContent/blob-url-in-iframe.html [ Skip ] # Timeout
 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Skip ] # Timeout
 http/tests/security/mixedContent/about-blank-iframe-in-main-frame.html [ Skip ] # Timeout
 http/tests/security/mixedContent/insecure-image-in-main-frame.html [ Skip ] # Timeout
@@ -2288,6 +2278,10 @@ http/tests/history/replacestate-post-to-get-2.html [ Skip ] # Timeout
 http/tests/workers/text-encoding.html [ Skip ] # Timeout
 http/tests/security/cross-frame-access-protocol-explicit-domain.html [ Skip ] # Timeout
 http/tests/history/back-during-onload-triggered-by-back.html [ Skip ] # Timeout
+
+# FIXME: Navigating to blob URLs timeout
+http/tests/security/mixedContent/blob-url-in-iframe.html [ Skip ]
+http/tests/security/contentSecurityPolicy/navigate-self-to-blob.html [ Skip ]
 
 # Clear Key not implemented
 http/tests/media/clearkey/clear-key-hls-aes128.html [ Skip ] # Timeout
@@ -3746,6 +3740,9 @@ http/tests/inspector/network/beacon-type.html [ Skip ]
 http/wpt/beacon/ [ Skip ]
 imported/blink/fast/beacon/ [ Skip ]
 imported/w3c/web-platform-tests/beacon/ [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-beacon-allowed.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-beacon-blocked.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-beacon-redirect-to-blocked.sub.html [ Skip ]
 http/tests/security/contentSecurityPolicy/connect-src-beacon-allowed.html [ Skip ]
 http/tests/security/contentSecurityPolicy/connect-src-beacon-blocked.html [ Skip ]
 http/tests/security/contentSecurityPolicy/report-only-connect-src-beacon-redirect-blocked.php [ Skip ]
@@ -3765,21 +3762,27 @@ webkit.org/b/174801 fast/text/line-height-minimumFontSize.html [ Failure ]
 webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
 
 # No service worker implementation for WK1
-http/tests/workers/service [ Skip ]
-http/wpt/service-workers [ Skip ]
+http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
+http/tests/cache-storage [ Skip ]
 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
+http/tests/workers/service [ Skip ]
+http/wpt/cache-storage [ Skip ]
+http/wpt/service-workers [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/securitypolicyviolation/inside-service-worker.https.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worker-src-child-fallback-blocked.https.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worker-src-child-fallback.https.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worker-src-default-fallback.https.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worker-src-script-fallback.https.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/worker-src/service-worker-src-self-fallback.https.sub.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/request/destination [ Skip ]
+imported/w3c/web-platform-tests/fetch/cross-origin-resource-policy [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Skip ]
 imported/w3c/web-platform-tests/server-timing/service_worker_idl.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers [ Skip ]
-http/tests/cache-storage [ Skip ]
-http/wpt/cache-storage [ Skip ]
-http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
-imported/w3c/web-platform-tests/fetch/api/request/destination [ Skip ]
-imported/w3c/web-platform-tests/fetch/cross-origin-resource-policy [ Skip ]
 
 # No header filtering for WK1
 http/wpt/loading/redirect-headers.html [ Skip ]
@@ -4103,10 +4106,13 @@ webkit.org/b/188169 http/tests/security/canvas-remote-read-remote-video-hls.html
 
 webkit.org/b/188600 editing/input/press-tab-during-ime-composition.html [ Failure ]
 
-http/tests/websocket [ Skip ]
 http/tests/security/mixedContent/websocket [ Skip ]
-imported/blink/http/tests/websocket [ Skip ]
+http/tests/websocket [ Skip ]
 imported/blink/http/tests/security/mixedContent/websocket [ Skip ]
+imported/blink/http/tests/websocket [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-websocket-allowed.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-websocket-blocked.sub.html [ Skip ]
+imported/w3c/web-platform-tests/content-security-policy/connect-src/connect-src-websocket-self.sub.html [ Skip ]
 
 # Feature flag only enabled for wk2
 css-custom-properties-api [ Skip ]
@@ -4402,6 +4408,4 @@ webkit.org/b/195623 http/tests/cache/link-prefetch-main-resource-iframe.html [ S
 
 webkit.org/b/198112 http/tests/security/showModalDialog-sync-cross-origin-page-load2.html [ Skip ]
 
-# The removed elements couldn't be released properly in Win.
-# The relevant bug is https://bugs.webkit.org/show_bug.cgi?id=197908
-resize-observer/element-leak.html [ Skip ]
+webkit.org/b/198679 fast/events/fire-mousedown-while-pressing-mouse-button.html [ Failure ]

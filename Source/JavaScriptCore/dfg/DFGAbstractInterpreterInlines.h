@@ -499,13 +499,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 setConstant(node, JSValue(a ^ b));
                 break;
             case BitRShift:
-                setConstant(node, JSValue(a >> static_cast<uint32_t>(b)));
+                setConstant(node, JSValue(a >> (static_cast<uint32_t>(b) & 0x1f)));
                 break;
             case BitLShift:
-                setConstant(node, JSValue(a << static_cast<uint32_t>(b)));
+                setConstant(node, JSValue(a << (static_cast<uint32_t>(b) & 0x1f)));
                 break;
             case BitURShift:
-                setConstant(node, JSValue(static_cast<uint32_t>(a) >> static_cast<uint32_t>(b)));
+                setConstant(node, JSValue(static_cast<int32_t>(static_cast<uint32_t>(a) >> (static_cast<uint32_t>(b) & 0x1f))));
                 break;
             default:
                 RELEASE_ASSERT_NOT_REACHED();
@@ -3316,13 +3316,19 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case GetGetterSetterByOffset: {
         StorageAccessData& data = node->storageAccessData();
-        JSValue result = m_graph.tryGetConstantProperty(forNode(node->child2()), data.offset);
+        AbstractValue base = forNode(node->child2());
+        JSValue result = m_graph.tryGetConstantProperty(base, data.offset);
         if (result && jsDynamicCast<GetterSetter*>(m_vm, result)) {
             setConstant(node, *m_graph.freeze(result));
             break;
         }
         
-        setForNode(node, m_graph.globalObjectFor(node->origin.semantic)->getterSetterStructure());
+        if (base.value() && base.value().isObject()) {
+            setForNode(node, asObject(base.value())->globalObject()->getterSetterStructure());
+            break;
+        }
+
+        setTypeForNode(node, SpecObjectOther);
         break;
     }
         

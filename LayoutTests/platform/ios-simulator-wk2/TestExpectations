@@ -18,14 +18,6 @@ webkit.org/b/152439 compositing/overflow/dynamic-composited-scrolling-status.htm
 
 webkit.org/b/173178 [ Release ] svg/animations/svglength-element-removed-crash.svg [ Skip ]
 
-# iOS simulator doesn’t support dashboard.
-mathml/mathml-in-dashboard.html [ Failure ]
-svg/custom/embedded-svg-allowed-in-dashboard.xml [ Failure ]
-svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Failure ]
-svg/custom/manually-parsed-svg-allowed-in-dashboard.html [ Failure ]
-svg/custom/svg-allowed-in-dashboard-object.html [ Failure ]
-http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html [ Failure ]
-
 webkit.org/b/174100 webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Skip ]
 
 webkit.org/b/173010 js/slow-stress/Int32Array-alloc-huge.html [ Pass Timeout ]
@@ -52,18 +44,10 @@ webkit.org/b/196228 http/tests/cache-storage/cache-records-persistency.https.htm
 
 webkit.org/b/196233 fast/viewport/ios/initial-scale-after-changing-view-scale.html [ Pass Timeout ]
 
-webkit.org/b/196236 [ Debug ] fast/visual-viewport/ios/min-scale-greater-than-one.html [ Pass Failure ]
-
 webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-with-link-fragment-from-prevalent-resource.html [ Pass Timeout ]
 webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-with-link-query-and-fragment-from-prevalent-resource.html [ Pass Timeout ]
 webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-with-link-query-from-prevalent-resource.html [ Pass Timeout ]
 webkit.org/b/196269 http/tests/resourceLoadStatistics/capped-lifetime-for-cookie-set-in-js-without-link-decoration-from-prevalent-resource.html [ Pass Timeout ]
-
-webkit.org/b/191709 editing/deleting/delete-emoji-1.html [ Pass Failure ]
-webkit.org/b/191709 editing/deleting/delete-emoji-9.html [ Pass Failure ]
-webkit.org/b/191709 editing/deleting/delete-emoji.html [ Pass Failure ]
-
-webkit.org/b/196300 fast/visual-viewport/ios/min-scale-greater-than-one.html [ Pass Failure ]
 
 webkit.org/b/196298 fast/viewport/ios/use-minimum-device-width-for-page-without-viewport-meta.html [ Pass Failure ]
 
@@ -104,4 +88,6 @@ webkit.org/b/192501 animations/play-state-in-shorthand.html [ Pass Failure ]
 
 webkit.org/b/182849 imported/w3c/web-platform-tests/xhr/event-upload-progress-crossorigin.htm [ Pass Failure ]
 
-webkit.org/b/198573 [ Release ] imported/w3c/web-platform-tests/IndexedDB/keypath-special-identifiers.htm [ Pass Failure ]
+imported/w3c/web-platform-tests/IndexedDB/keypath-special-identifiers.htm [ Slow ]
+
+webkit.org/b/198185 http/tests/resourceLoadStatistics/website-data-removal-for-site-navigated-to-with-link-decoration.html [ Skip ]

@@ -1144,6 +1144,9 @@ fast/css/variables/env/ios [ Pass ]
 # Dark mode not supported on iOS
 css-dark-mode [ Skip ]
 
+# Test Dark Mode CSS support for light mode on older systems.
+css-dark-mode/older-systems [ Pass ]
+
 ###
 # Known failures
 ##
@@ -1558,7 +1561,6 @@ http/tests/webarchive/test-css-url-encoding.html
 
 # XMLHttpRequest tests that fail:
 http/tests/xmlhttprequest/basic-auth-nopassword.html [ Failure ]
-http/tests/xmlhttprequest/default-content-type-dashboard.html [ Failure ]
 
 # DeviceMotion tests that time out:
 fast/dom/DeviceMotion/no-page-cache.html

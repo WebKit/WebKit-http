@@ -77,10 +77,6 @@
 #include "StyleGridData.h"
 #include "StyleGridItemData.h"
 
-#if ENABLE(DASHBOARD_SUPPORT)
-#include "StyleDashboardRegion.h"
-#endif
-
 #if ENABLE(TEXT_AUTOSIZING)
 #include "TextSizeAdjustment.h"
 #endif
@@ -661,7 +657,7 @@ public:
     TextCombine textCombine() const { return static_cast<TextCombine>(m_rareNonInheritedData->textCombine); }
     bool hasTextCombine() const { return textCombine() != TextCombine::None; }
 
-    unsigned tabSize() const { return m_rareInheritedData->tabSize; }
+    const TabSize& tabSize() const { return m_rareInheritedData->tabSize; }
 
     // End CSS3 Getters
 
@@ -833,12 +829,6 @@ public:
     void setMaxWidth(Length&& length) { SET_VAR(m_boxData, m_maxWidth, WTFMove(length)); }
     void setMinHeight(Length&& length) { SET_VAR(m_boxData, m_minHeight, WTFMove(length)); }
     void setMaxHeight(Length&& length) { SET_VAR(m_boxData, m_maxHeight, WTFMove(length)); }
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    const Vector<StyleDashboardRegion>& dashboardRegions() const { return m_rareNonInheritedData->dashboardRegions; }
-    void setDashboardRegions(const Vector<StyleDashboardRegion>& regions) { SET_VAR(m_rareNonInheritedData, dashboardRegions, regions); }
-    void setDashboardRegion(int type, const String& label, Length&& top, Length&& right, Length&& bottom, Length&& left, bool append);
-#endif
 
     void resetBorder() { resetBorderImage(); resetBorderTop(); resetBorderRight(); resetBorderBottom(); resetBorderLeft(); resetBorderRadius(); }
     void resetBorderTop() { SET_VAR(m_surroundData, border.m_top, BorderValue()); }
@@ -1190,7 +1180,7 @@ public:
     void setBackdropFilter(const FilterOperations& ops) { SET_NESTED_VAR(m_rareNonInheritedData, backdropFilter, operations, ops); }
 #endif
 
-    void setTabSize(unsigned size) { SET_VAR(m_rareInheritedData, tabSize, size); }
+    void setTabSize(const TabSize& size) { SET_VAR(m_rareInheritedData, tabSize, size); }
 
     void setBreakBefore(BreakBetween breakBehavior) { SET_VAR(m_rareNonInheritedData, breakBefore, static_cast<unsigned>(breakBehavior)); }
     void setBreakAfter(BreakBetween breakBehavior) { SET_VAR(m_rareNonInheritedData, breakAfter, static_cast<unsigned>(breakBehavior)); }
@@ -1672,7 +1662,7 @@ public:
     static GridPosition initialGridItemRowStart() { return GridPosition(); }
     static GridPosition initialGridItemRowEnd() { return GridPosition(); }
 
-    static unsigned initialTabSize() { return 8; }
+    static TabSize initialTabSize() { return 8; }
 
     static const AtomicString& initialLineGrid() { return nullAtom(); }
     static LineSnap initialLineSnap() { return LineSnap::None; }
@@ -1692,11 +1682,6 @@ public:
 
 #if ENABLE(OVERFLOW_SCROLLING_TOUCH)
     static bool initialUseTouchOverflowScrolling() { return false; }
-#endif
-
-#if ENABLE(DASHBOARD_SUPPORT)
-    static const Vector<StyleDashboardRegion>& initialDashboardRegions();
-    static const Vector<StyleDashboardRegion>& noneDashboardRegions();
 #endif
 
     static const FilterOperations& initialFilter() { static NeverDestroyed<FilterOperations> ops; return ops; }

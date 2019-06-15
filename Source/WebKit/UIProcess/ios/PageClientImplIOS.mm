@@ -476,9 +476,15 @@ void PageClientImpl::didPerformDictionaryLookup(const DictionaryPopupInfo& dicti
 #endif // ENABLE(REVEAL)
 }
 
-#if USE(APPLE_INTERNAL_SDK)
-#include <WebKitAdditions/PageClientImplIOSAdditions.mm>
-#endif
+bool PageClientImpl::effectiveAppearanceIsDark() const
+{
+    return [m_webView _effectiveAppearanceIsDark];
+}
+
+bool PageClientImpl::effectiveAppearanceIsInactive() const
+{
+    return [m_webView _effectiveAppearanceIsInactive];
+}
 
 void PageClientImpl::setRemoteLayerTreeRootNode(RemoteLayerTreeNode* rootNode)
 {
@@ -835,6 +841,16 @@ void PageClientImpl::didChangeDragCaretRect(const IntRect& previousCaretRect, co
     [m_contentView _didChangeDragCaretRect:previousCaretRect currentRect:caretRect];
 }
 #endif
+
+Seconds PageClientImpl::doubleTapForDoubleClickDelay()
+{
+    return Seconds { [m_contentView _doubleTapForDoubleClickDelay] };
+}
+
+float PageClientImpl::doubleTapForDoubleClickRadius()
+{
+    return [m_contentView _doubleTapForDoubleClickRadius];
+}
 
 #if USE(QUICK_LOOK)
 void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&& completionHandler)

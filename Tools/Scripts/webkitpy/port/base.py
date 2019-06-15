@@ -1603,6 +1603,7 @@ class Port(object):
             architecture=configuration.architecture,
             style=style,
             sdk=host.platform.build_version(),
+            flavor=self.get_option('result_report_flavor'),
         )
 
     @memoized

@@ -1210,6 +1210,11 @@ void RenderLayerCompositor::updateBackingAndHierarchy(RenderLayer& layer, Vector
         } else if (layer.needsScrollingTreeUpdate())
             scrollingNodeChanges.add(ScrollingNodeChangeFlags::LayerGeometry);
 
+        // This needs to happen after any geometry update.
+        // FIXME: Use separate bit for event region invalidation.
+        if (layerNeedsUpdate || layer.needsCompositingConfigurationUpdate())
+            layerBacking->updateEventRegion();
+
         if (auto* reflection = layer.reflectionLayer()) {
             if (auto* reflectionBacking = reflection->backing()) {
                 reflectionBacking->updateCompositedBounds();
@@ -2061,7 +2066,7 @@ String RenderLayerCompositor::layerTreeAsText(LayerTreeFlags flags)
         return String();
 
     flushPendingLayerChanges(true);
-    page().renderingUpdateScheduler().scheduleCompositingLayerFlush();
+    page().renderingUpdateScheduler().scheduleImmediateRenderingUpdate();
 
     LayerTreeAsTextBehavior layerTreeBehavior = LayerTreeAsTextBehaviorNormal;
     if (flags & LayerTreeFlagsIncludeDebugInfo)

@@ -103,7 +103,12 @@ void WebPageProxy::beginSafeBrowsingCheck(const URL& url, bool forMainFrameNavig
 #if ENABLE(CONTENT_FILTERING)
 void WebPageProxy::contentFilterDidBlockLoadForFrame(const WebCore::ContentFilterUnblockHandler& unblockHandler, uint64_t frameID)
 {
-    if (WebFrameProxy* frame = m_process->webFrame(frameID))
+    contentFilterDidBlockLoadForFrameShared(m_process.copyRef(), unblockHandler, frameID);
+}
+
+void WebPageProxy::contentFilterDidBlockLoadForFrameShared(Ref<WebProcessProxy>&& process, const WebCore::ContentFilterUnblockHandler& unblockHandler, uint64_t frameID)
+{
+    if (WebFrameProxy* frame = process->webFrame(frameID))
         frame->contentFilterDidBlockLoad(unblockHandler);
 }
 #endif
@@ -218,6 +223,12 @@ void WebPageProxy::performDictionaryLookupOfCurrentSelection()
 IPC::Connection* WebPageProxy::paymentCoordinatorConnection(const WebPaymentCoordinatorProxy&)
 {
     return messageSenderConnection();
+}
+
+const String& WebPageProxy::paymentCoordinatorBoundInterfaceIdentifier(const WebPaymentCoordinatorProxy&, PAL::SessionID sessionID)
+{
+    ASSERT_UNUSED(sessionID, sessionID == websiteDataStore().sessionID());
+    return websiteDataStore().boundInterfaceIdentifier();
 }
 
 const String& WebPageProxy::paymentCoordinatorSourceApplicationBundleIdentifier(const WebPaymentCoordinatorProxy&, PAL::SessionID sessionID)

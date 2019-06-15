@@ -1,3 +1,479 @@
+2019-06-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Deprecate WebSQL APIs
+        https://bugs.webkit.org/show_bug.cgi?id=195011
+
+        Reviewed by Carlos Garcia Campos.
+
+        * MiniBrowser/gtk/main.c:
+        (gotWebsiteDataCallback):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebsiteData.cpp:
+        (testWebsiteDataConfiguration):
+        (testWebsiteDataEphemeral):
+        (testWebsiteDataDatabases):
+
+2019-06-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Enable hyperlink auditing
+        https://bugs.webkit.org/show_bug.cgi?id=197845
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2019-06-11  Keith Rollin  <krollin@apple.com>
+
+        Open up xcfilelist processing to more platforms
+        https://bugs.webkit.org/show_bug.cgi?id=198675
+        <rdar://problem/51533238>
+
+        Reviewed by Jonathan Bedard.
+
+        Now that it's been tested, add AppleTV{OS,Simulator} to the set of
+        platforms on which to perform xcfilelist generation/updating.
+
+        * Scripts/webkitpy/generate_xcfilelists_lib/generators.py:
+        (JavaScriptCoreGenerator):
+        (WebCoreGenerator):
+        (WebKitGenerator):
+
+2019-06-11  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Fix device ASan reporting, add testing for report configurations
+        https://bugs.webkit.org/show_bug.cgi?id=198756
+
+        Reviewed by Aakash Jain.
+
+        ASan results were reporting an incorrect style. This indicates we need to be testing this upload
+        configuration thoroughly in webkitpy.
+
+        * Scripts/webkitpy/port/config.py:
+        (clear_cached_configuration): Clearing configurations should clear the ASan cache as well.
+        * Scripts/webkitpy/port/device_port.py:
+        (DevicePort.configuration_for_upload): Add ASan as style.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest):
+        (IOSDeviceTest.test_default_upload_configuration):
+        * Scripts/webkitpy/port/ios_simulator_unittest.py:
+        (IOSSimulatorTest.test_default_upload_configuration):
+        * Scripts/webkitpy/port/mock_drt_unittest.py:
+        (MockDRTPortTest.test_asan_upload_configuration):
+        * Scripts/webkitpy/port/port_testcase.py:
+        (test_default_upload_configuration):
+        (test_debug_upload_configuration):
+        (test_asan_upload_configuration):
+        (test_guard_malloc_configuration):
+        * Scripts/webkitpy/port/watch_simulator_unittest.py:
+        (WatchSimulatorTest):
+        (WatchSimulatorTest.test_default_upload_configuration):
+
+2019-06-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        tu-berlin university email web interface (Outlook Web App) goes directly to the light version instead of the normal web app
+        https://bugs.webkit.org/show_bug.cgi?id=198749
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2019-06-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Quotes are always inserted as smart quotes on stackblitz.com, causing compilation errors
+        https://bugs.webkit.org/show_bug.cgi?id=198735
+        <rdar://problem/51557159>
+
+        Reviewed by Megan Gardner.
+
+        Add a test to verify that spellcheck="false" disables smart quotes and dashes, but any other value defers to the
+        user's preferences by using UITextSmartQuotesTypeDefault and UITextSmartDashesTypeDefault.
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+
+2019-06-11  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Unreviewed, add myself to the JavaScriptCore watchlist.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2019-06-11  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Unreviewed, change my status to be a WebKit reviewer
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2019-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Use new exported image API from fdo backend
+        https://bugs.webkit.org/show_bug.cgi?id=198558
+
+        Reviewed by Philippe Normand.
+
+        * WebKitTestRunner/PlatformWPE.cmake: Do not find fdo backend and libxkb again here, since WKTR depends on
+        WPEToolingBackends that already depends on fdo backend and libxkb
+        * wpe/backends/CMakeLists.txt: Bump fdo requirements to 1.3.0 version.
+        * wpe/backends/HeadlessViewBackend.cpp:
+        (WPEToolingBackends::HeadlessViewBackend::HeadlessViewBackend):
+        (WPEToolingBackends::HeadlessViewBackend::createSnapshot):
+        (WPEToolingBackends::HeadlessViewBackend::performUpdate):
+        (WPEToolingBackends::HeadlessViewBackend::displayBuffer):
+        * wpe/backends/HeadlessViewBackend.h:
+        * wpe/backends/ViewBackend.cpp:
+        (WPEToolingBackends::ViewBackend::initialize):
+        * wpe/backends/ViewBackend.h:
+        * wpe/backends/WindowViewBackend.cpp:
+        (WPEToolingBackends::WindowViewBackend::displayBuffer):
+        * wpe/backends/WindowViewBackend.h:
+
+2019-06-10  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend run-benchmark to allow diagnosing before closing browser on test failure.
+        https://bugs.webkit.org/show_bug.cgi?id=198729
+
+        Reviewed by Ryosuke Niwa.
+
+        Add '--diagnose-directory' option to store diagnose information when test failed.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.diagnose_test_failure): Add default no-op function to base class.
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py: Added '--diagnose-directory' option.
+        (parse_args):
+        (run_benchmark_plan):
+        * Scripts/webkitpy/benchmark_runner/webdriver_benchmark_runner.py:
+        (WebDriverBenchmarkRunner._run_one_test): Added 'diagnose_test_failure' invocation on test failure.
+        * Scripts/webkitpy/benchmark_runner/webserver_benchmark_runner.py:
+        (WebServerBenchmarkRunner.__init__):
+        (WebServerBenchmarkRunner._run_one_test): Added 'diagnose_test_failure' invocation on test failure.
+
+2019-06-10  Sam Weinig  <weinig@apple.com>
+
+        Remove Dashboard support
+        https://bugs.webkit.org/show_bug.cgi?id=198615
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::staticFunctions):
+        (setUseDashboardCompatibilityModeCallback): Deleted.
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setUseDashboardCompatibilityMode): Deleted.
+        * ImageDiff/cg/Configurations/Base.xcconfig:
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/DeviceScaleFactorInDashboardRegions.mm: Removed.
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setUseDashboardCompatibilityMode): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2019-06-10  Alexey Proskuryakov  <ap@apple.com>
+
+        Tool binaries like WebKitTestRunner have too aggressive stripping, resulting in non-symbolicated crash logs
+        https://bugs.webkit.org/show_bug.cgi?id=198616
+        rdar://problem/36386573
+
+        Reviewed by David Kilzer.
+
+        Adding an explicit STRIP_STYLE to appropriate xcconfigs.
+
+        * DumpRenderTree/mac/Configurations/DumpRenderTree.xcconfig:
+        * DumpRenderTree/mac/Configurations/DumpRenderTreeApp.xcconfig:
+        * DumpRenderTree/mac/Configurations/LayoutTestHelper.xcconfig:
+        * ImageDiff/cg/Configurations/ImageDiff.xcconfig:
+        * MiniBrowser/Configurations/MiniBrowser.xcconfig:
+        * MobileMiniBrowser/Configurations/MobileMiniBrowser.xcconfig:
+        * TestWebKitAPI/Configurations/TestWTF.xcconfig:
+        * TestWebKitAPI/Configurations/TestWebKitAPI.xcconfig:
+        * WebKitTestRunner/Configurations/WebKitTestRunner.xcconfig:
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp.xcconfig:
+
+2019-06-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] fast/xsl tests are flaky when run after certain viewport shrink-to-fit tests
+        https://bugs.webkit.org/show_bug.cgi?id=198699
+        <rdar://problem/50501718>
+
+        Reviewed by Simon Fraser.
+
+        Add logic to platformResetPreferencesToConsistentValues, to reset the "ShouldIgnoreMetaViewport" preference.
+        While this is already being adjusted in platformConfigureViewForTest using the correct, TestOptions, this might
+        happen too late, allowing the shrink-to-fit-content heuristic to unexpectedly kick in on tests where testing
+        viewport parameters are used.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetPreferencesToConsistentValues):
+        (WTR::TestController::platformConfigureViewForTest):
+
+2019-06-10  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] UnlinkedCodeBlock should be eventually jettisoned in VM mini mode
+        https://bugs.webkit.org/show_bug.cgi?id=198023
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-jsc-stress-tests:
+
+2019-06-10  Timothy Hatcher  <timothy@apple.com>
+
+        Integrate dark mode support for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=198687
+        rdar://problem/51545643
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2019-06-10  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: xcrun simctl spawn *** launchctl print system output is not utf-8
+        https://bugs.webkit.org/show_bug.cgi?id=198723
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice.is_usable): Do not decode 'print system' output, it's already ASCII.
+
+2019-06-10  Sihui Liu  <sihui_liu@apple.com>
+
+        [WKHTTPCookieStore getAllCookies:] may return duplicate cookies
+        https://bugs.webkit.org/show_bug.cgi?id=198635
+        <rdar://problem/46010232>
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKHTTPCookieStore.mm:
+        (areCookiesEqual):
+        (TEST):
+
+2019-06-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [JHBuild] Bump shared-mime-info to version ≥ 1.6
+        https://bugs.webkit.org/show_bug.cgi?id=198714
+
+        Reviewed by Carlos Garcia Campos.
+
+        * gtk/jhbuild.modules: Bump shared-mime-info version to 1.10.
+        * gtk/patches/shared-mime-info-xht-glob.patch: Removed.
+        * gtk/patches/shared-mime-info-xhtml-magic.patch: Removed.
+
+2019-06-10  Philippe Normand  <pnormand@igalia.com>
+
+        [WPE][Qt] Port to new wpe_fdo_egl_exported_image API
+        https://bugs.webkit.org/show_bug.cgi?id=198713
+
+        Reviewed by Carlos Garcia Campos.
+
+        * flatpak/org.webkit.WPEModules.yaml: Include wpebackend-fdo
+        patches currently used in JHBuild.
+
+2019-06-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][Flatpak] webkit-build fails due to missing libwpe in Flatpak environment
+        https://bugs.webkit.org/show_bug.cgi?id=198711
+
+        Reviewed by Philippe Normand.
+
+        * flatpak/org.webkit.GTK.yaml: Also include modules from
+        org.webkit.WPEModules.yaml, which brings in libwpe and WPEBackend-fdo
+
+2019-06-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r246148. Add another WPEBackend-fdo patch that
+        avoids double-free condition that's causing bots to exit early.
+
+        * gtk/jhbuild.modules:
+        * gtk/wpebackend-fdo-view-backend-exportable-private-don-t-double-free-ca.patch: Added.
+        * wpe/jhbuild.modules:
+        * wpe/wpebackend-fdo-view-backend-exportable-private-don-t-double-free-ca.patch: Added.
+
+2019-06-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo][MiniBrowser] Disable MediaCapabilities until it's ready
+        https://bugs.webkit.org/show_bug.cgi?id=198655
+
+        Reviewed by Ross Kirsling.
+
+        MediaCapabilities is enabled by default for WK2, but WinCairo
+        doesn't implemented yet. Disable it in MiniBrowser.
+
+        * MiniBrowser/win/WebKitBrowserWindow.cpp:
+        (WebKitBrowserWindow::create):
+
+2019-06-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] The default application name for user agent when requesting desktop content is still "Mobile/15E148"
+        https://bugs.webkit.org/show_bug.cgi?id=198693
+        <rdar://problem/51555371>
+
+        Reviewed by Tim Horton.
+
+        Augment an existing API test to exercise three additional scenarios:
+            -   The web view configuration's application name is never set; the default should not include
+                "Mobile/15E148" in desktop mode.
+            -   The application name is explicitly set to nil; the default application name should still not include
+                "Mobile/15E148".
+            -   The application name is explicitly set to the default value, "Mobile/15E148". WKWebView should honor
+                this when generating the user agent, even in desktop mode.
+
+        * TestWebKitAPI/ios/PreferredContentMode.mm:
+        (TestWebKitAPI::setUpWebViewForPreferredContentModeTestingWithoutNavigationDelegate):
+        (TestWebKitAPI::setUpWebViewForPreferredContentModeTesting):
+        (TestWebKitAPI::TEST):
+
+2019-06-08  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Unreviewed test gardening.
+
+        Remove rtl tests. They were mistakenly marked as pass.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2019-06-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION (r244182) [WK1]: Page updates should always scheduleCompositingLayerFlush() immediately
+        https://bugs.webkit.org/show_bug.cgi?id=198664
+
+        Reviewed by Simon Fraser.
+
+        Delete repeated entries which were submitted by mistake.
+
+        * Tracing/SystemTracePoints.plist:
+
+2019-06-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Allow clients to vend custom -inputView and -inputAccessoryView by overriding WKWebView methods
+        https://bugs.webkit.org/show_bug.cgi?id=198631
+        <rdar://problem/51505431>
+
+        Reviewed by Tim Horton.
+
+        Add an API test that overrides -[WKWebView inputView] and -[WKWebView inputAccessoryView].
+
+        * TestWebKitAPI/Tests/ios/KeyboardInputTestsIOS.mm:
+        (-[CustomInputWebView initWithFrame:configuration:inputView:inputAccessoryView:]):
+        (-[CustomInputWebView inputView]):
+        (-[CustomInputWebView inputAccessoryView]):
+        (TestWebKitAPI::TEST):
+
+2019-06-07  Daniel Bates  <dabates@apple.com>
+
+        [lldb-webkit] Pretty-print all kinds of Documents
+        https://bugs.webkit.org/show_bug.cgi?id=198620
+
+        Reviewed by Simon Fraser.
+
+        Register formatters for all classes derived from WebCore::Document so we get nice summaries
+        without having to drill down in Xcode- or casting- to the base class, Document.
+
+        Older LLDB versions use to do this automatically, but this functionality was removed in newer
+        versions:
+            [[
+                Warning: previous versions of LLDB defined cascading to mean not only going through typedef
+                chains, but also through inheritance chains. This feature has been removed since it
+                significantly degrades performance. You need to set up your formatters for every type in
+                inheritance chains to which you want the formatter to apply.
+            ]]
+            <https://lldb.llvm.org/use/variable.html> (as of 06/06/2019)
+
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module):
+
+2019-06-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Support reporting results for uncommon test configurations
+        https://bugs.webkit.org/show_bug.cgi?id=198662
+        <rdar://problem/51524128>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.run): Override wk1 and wk2 flavors with specified flavor.
+        * Scripts/webkitpy/port/base.py:
+        (Port.configuration_for_upload): Set flavor based on options.
+        * Scripts/webkitpy/results/options.py:
+        (upload_options): Add result-report-flavor option.
+        * Scripts/webkitpy/test/main.py:
+        (Tester._run_tests): Set flavor based on options.
+
+2019-06-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] At least 6 API tests are failing due to an exception when writing NSAttributedString to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=198641
+        <rdar://problem/51266310>
+
+        Reviewed by Tim Horton.
+
+        Work around a bug in a lower-level framework, which currently prevents NSAttributedStrings from being written to
+        UIPasteboard by way of -[NSItemProvider registerObject:visibility:]. This is because, when saving a
+        representation of "public.rtfd" to disk, the default suggested filename (determined using CoreServices APIs
+        _UTTypeCreateSuggestedFilename and UTTypeCopyDescription) ends up being nil; UIKit then subsequently tries to
+        append nil as a path component using -URLByAppendingPathComponent:, which throws an exception. This only
+        reproduces on iOS simulator.
+
+        To work around this for the time being, simply avoid writing a representation of "public.rtfd" to disk. This
+        representation is actually ignored by most clients anyways (including WebKit), in favor of using
+        "com.apple.flat-rtfd".
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (applyWorkaroundToAllowWritingAttributedStringsToItemProviders):
+        (-[TestWKWebView initWithFrame:configuration:addToWindow:]):
+
+2019-06-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r244857): [GTK][WPE] Many tests are no longer run in the bots after r244857
+        https://bugs.webkit.org/show_bug.cgi?id=198607
+
+        Reviewed by Michael Catanzaro.
+
+        Since r244857 several test executables are compiled in the base tests directory instead of using their own sub
+        directory. Our scripts to run the tests rely on the tests location to decide whether to run them or not, or
+        determine the type of the tests.
+
+        * Scripts/run-gtk-tests:
+        (GtkTestRunner): Rename TEST_DIRS as TEST_TARGETS and use the executable names for tests not in a subdirectory.
+        (GtkTestRunner._setup_testing_environment): Fix TestWebKitAccessibility directory name.
+        (GtkTestRunner.is_glib_test): Use the test name for the ones not using a subdirectory.
+        (GtkTestRunner.is_google_test): Ditto.
+        * Scripts/run-wpe-tests:
+        (WPETestRunner): Rename TEST_DIRS as TEST_TARGETS and use the executable names for tests not in a subdirectory.
+        (WPETestRunner.is_glib_test): Use the test name for the ones not using a subdirectory.
+        (WPETestRunner.is_google_test): Ditto.
+        * glib/api_test_runner.py:
+        (TestRunner): Rename TEST_DIRS as TEST_TARGETS.
+        (TestRunner._get_tests): Handle test targets which can now contain directories and executables.
+
+2019-06-06  Keith Rollin  <krollin@apple.com>
+
+        Remove SSL-based tests from TestWebKitAPI on some configurations
+        https://bugs.webkit.org/show_bug.cgi?id=198551
+        <rdar://problem/51424996>
+
+        Reviewed by Jonathan Bedard.
+
+        Not all platforms have SSL handy, so don't include SSL-based tests on
+        those platforms.
+
+        * TestWebKitAPI/TCPServer.cpp:
+        * TestWebKitAPI/TCPServer.h:
+        * TestWebKitAPI/Tests/WebKitCocoa/Challenge.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/Proxy.mm:
+        * TestWebKitAPI/config.h:
+
 2019-06-06  Daniel Bates  <dabates@apple.com>
 
         [lldb-webkit] TypeError: cannot concatenate 'str' and 'int' objects when prettify SecurityOrigin with

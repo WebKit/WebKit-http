@@ -615,6 +615,36 @@ void WebPage::generateSyntheticEditingCommand(SyntheticEditingCommandType comman
 #endif
         @"U+0059", 89, false, false, false, modifiers, WallTime::now());
         break;
+    case SyntheticEditingCommandType::ToggleBoldface:
+        keyEvent = PlatformKeyboardEvent(PlatformEvent::KeyDown, "b", "b",
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        "b",
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        "KeyB"_s,
+#endif
+        @"U+0042", 66, false, false, false, modifiers, WallTime::now());
+        break;
+    case SyntheticEditingCommandType::ToggleItalic:
+        keyEvent = PlatformKeyboardEvent(PlatformEvent::KeyDown, "i", "i",
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        "i",
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        "KeyI"_s,
+#endif
+        @"U+0049", 73, false, false, false, modifiers, WallTime::now());
+        break;
+    case SyntheticEditingCommandType::ToggleUnderline:
+        keyEvent = PlatformKeyboardEvent(PlatformEvent::KeyDown, "u", "u",
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        "u",
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        "KeyU"_s,
+#endif
+        @"U+0055", 85, false, false, false, modifiers, WallTime::now());
+        break;
     default:
         break;
     }
@@ -770,16 +800,27 @@ void WebPage::handleTap(const IntPoint& point, OptionSet<WebEvent::Modifier> mod
         handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers);
 }
 
-void WebPage::handleDoubleTapForDoubleClickAtPoint(const IntPoint& point, OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
+bool WebPage::handlePotentialDoubleTapForDoubleClickAtPoint(OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId)
 {
+    if (!m_lastCommittedTapTimestamp || !m_lastCommittedTapLocation)
+        return false;
+
+    auto millisecondsSinceLastTap = (MonotonicTime::now() - *m_lastCommittedTapTimestamp).milliseconds();
+    if (millisecondsSinceLastTap > m_doubleTapForDoubleClickDelay.milliseconds())
+        return false;
+
+    auto distanceBetweenTaps = sqrtf(pow(m_potentialTapLocation.x() - m_lastCommittedTapLocation->x(), 2) + pow(m_potentialTapLocation.y() - m_lastCommittedTapLocation->y(), 2));
+    if (distanceBetweenTaps > m_doubleTapForDoubleClickRadius)
+        return false;
+
     FloatPoint adjustedPoint;
-    auto* nodeRespondingToDoubleClick = m_page->mainFrame().nodeRespondingToDoubleClickEvent(point, adjustedPoint);
+    auto* nodeRespondingToDoubleClick = m_page->mainFrame().nodeRespondingToDoubleClickEvent(m_potentialTapLocation, adjustedPoint);
     if (!nodeRespondingToDoubleClick)
-        return;
+        return false;
 
     auto* frameRespondingToDoubleClick = nodeRespondingToDoubleClick->document().frame();
     if (!frameRespondingToDoubleClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToDoubleClick)->firstLayerTreeTransactionIDAfterDidCommitLoad())
-        return;
+        return false;
 
     bool shiftKey = modifiers.contains(WebEvent::Modifier::ShiftKey);
     bool ctrlKey = modifiers.contains(WebEvent::Modifier::ControlKey);
@@ -788,8 +829,9 @@ void WebPage::handleDoubleTapForDoubleClickAtPoint(const IntPoint& point, Option
     auto roundedAdjustedPoint = roundedIntPoint(adjustedPoint);
     nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
     if (m_isClosed)
-        return;
+        return false;
     nodeRespondingToDoubleClick->document().frame()->eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 2, shiftKey, ctrlKey, altKey, metaKey, WallTime::now(), 0, WebCore::NoTap));
+    return true;
 }
 
 void WebPage::requestFocusedElementInformation(WebKit::CallbackID callbackID)
@@ -1010,9 +1052,18 @@ void WebPage::potentialTapAtPosition(uint64_t requestID, const WebCore::FloatPoi
 
 void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64_t lastLayerTreeTransactionId, WebCore::PointerID pointerId)
 {
-    if (!m_potentialTapNode || (!m_potentialTapNode->renderer() && !is<HTMLAreaElement>(m_potentialTapNode.get()))) {
+    auto currentPotentialTapLocation = m_potentialTapLocation; 
+    auto updateLastCommittedLocationAndTimestamp = [&] {
+        m_lastCommittedTapTimestamp = MonotonicTime::now();
+        m_lastCommittedTapLocation = currentPotentialTapLocation;
+    };
+
+    auto invalidTargetForSingleClick = !m_potentialTapNode || (!m_potentialTapNode->renderer() && !is<HTMLAreaElement>(m_potentialTapNode.get()));
+    if (invalidTargetForSingleClick) {
+        // When the node has no click eventlistener, but it may have a dblclick one.
+        handlePotentialDoubleTapForDoubleClickAtPoint(modifiers, lastLayerTreeTransactionId);
         commitPotentialTapFailed();
-        return;
+        return updateLastCommittedLocationAndTimestamp();
     }
 
     FloatPoint adjustedPoint;
@@ -1021,7 +1072,7 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
 
     if (!frameRespondingToClick || lastLayerTreeTransactionId < WebFrame::fromCoreFrame(*frameRespondingToClick)->firstLayerTreeTransactionIDAfterDidCommitLoad()) {
         commitPotentialTapFailed();
-        return;
+        return updateLastCommittedLocationAndTimestamp();
     }
 
     if (m_potentialTapNode == nodeRespondingToClick) {
@@ -1032,13 +1083,19 @@ void WebPage::commitPotentialTap(OptionSet<WebEvent::Modifier> modifiers, uint64
             commitPotentialTapFailed();
         } else
 #endif
-            handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers, pointerId);
+        {
+            if (handlePotentialDoubleTapForDoubleClickAtPoint(modifiers, lastLayerTreeTransactionId))
+                commitPotentialTapFailed();
+            else
+                handleSyntheticClick(*nodeRespondingToClick, adjustedPoint, modifiers, pointerId);
+        }
     } else
         commitPotentialTapFailed();
 
     m_potentialTapNode = nullptr;
     m_potentialTapLocation = FloatPoint();
     m_potentialTapSecurityOrigin = nullptr;
+    return updateLastCommittedLocationAndTimestamp();
 }
 
 void WebPage::commitPotentialTapFailed()
@@ -2736,6 +2793,9 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
     } else
         information.elementRect = IntRect();
 
+    if (is<HTMLElement>(m_focusedElement))
+        information.isSpellCheckingEnabled = downcast<HTMLElement>(*m_focusedElement).spellcheck();
+
     information.minimumScaleFactor = minimumPageScaleFactor();
     information.maximumScaleFactor = maximumPageScaleFactor();
     information.maximumScaleFactorIgnoringAlwaysScalable = maximumPageScaleFactorIgnoringAlwaysScalable();
@@ -2877,7 +2937,7 @@ void WebPage::getFocusedElementInformation(FocusedElementInformation& informatio
             information.isAutocorrect = focusedElement.shouldAutocorrect();
             information.autocapitalizeType = focusedElement.autocapitalizeType();
             information.inputMode = focusedElement.canonicalInputMode();
-            information.shouldSynthesizeKeyEventsForUndoAndRedo = focusedElement.document().quirks().shouldEmulateUndoRedoInHiddenEditableAreas();
+            information.shouldSynthesizeKeyEventsForEditing = focusedElement.document().quirks().shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreas();
         } else {
             information.isAutocorrect = true;
             information.autocapitalizeType = AutocapitalizeTypeDefault;
@@ -3180,7 +3240,6 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileD
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::textDocumentParameters());
     else
         m_viewportConfiguration.setDefaultConfiguration(parametersForStandardFrame());
-    m_viewportConfiguration.setIsKnownToLayOutWiderThanViewport(false);
 
     if (auto overriddenViewLayoutWidth = document->quirks().overriddenViewLayoutWidth(m_viewportConfiguration.layoutWidth()))
         m_viewportConfiguration.setViewLayoutSize(FloatSize(*overriddenViewLayoutWidth, m_viewportConfiguration.layoutHeight()));
@@ -3274,10 +3333,27 @@ bool WebPage::shouldIgnoreMetaViewport() const
     return m_page->settings().shouldIgnoreMetaViewport();
 }
 
+void WebPage::resetIdempotentTextAutosizingIfNeeded(double previousInitialScale)
+{
+    if (!m_page->settings().textAutosizingUsesIdempotentMode())
+        return;
+
+    const float minimumScaleChangeBeforeRecomputingTextAutosizing = 0.01;
+    if (std::abs(previousInitialScale - m_page->initialScale()) < minimumScaleChangeBeforeRecomputingTextAutosizing)
+        return;
+
+    if (m_page->initialScale() >= 1 && previousInitialScale >= 1)
+        return;
+
+    m_page->setNeedsRecalcStyleInAllFrames();
+}
+
 void WebPage::viewportConfigurationChanged(ZoomToInitialScale zoomToInitialScale)
 {
+    double previousInitialScale = m_page->initialScale();
     double initialScale = m_viewportConfiguration.initialScale();
     m_page->setInitialScale(initialScale);
+    resetIdempotentTextAutosizingIfNeeded(previousInitialScale);
 
     if (setFixedLayoutSize(m_viewportConfiguration.layoutSize()))
         resetTextAutosizing();

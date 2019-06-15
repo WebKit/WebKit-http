@@ -28,6 +28,7 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "JSCJSValueInlines.h"
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/StdLibExtras.h>
 #include <type_traits>
@@ -75,6 +76,8 @@ RefPtr<Table> Table::tryCreate(uint32_t initial, Optional<uint32_t> maximum, Tab
     case TableElementType::Anyref:
         return adoptRef(new Table(initial, maximum));
     }
+
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
 Optional<uint32_t> Table::grow(uint32_t delta)

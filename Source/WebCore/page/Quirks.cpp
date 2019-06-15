@@ -182,7 +182,11 @@ bool Quirks::hasWebSQLSupportQuirk() const
     m_hasWebSQLSupportQuirk = domain == "bostonglobe.com"
         || domain.endsWith(".bostonglobe.com")
         || domain == "latimes.com"
-        || domain.endsWith(".latimes.com");
+        || domain.endsWith(".latimes.com")
+        || domain == "washingtonpost.com"
+        || domain.endsWith(".washingtonpost.com")
+        || domain == "nytimes.com"
+        || domain.endsWith(".nytimes.com");
     
     return m_hasWebSQLSupportQuirk.value();
 }
@@ -238,7 +242,7 @@ static bool shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAre
 #endif
 }
 
-static bool shouldEmulateUndoRedoInHiddenEditableAreasForHost(const StringView& host)
+static bool shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreasForHost(const StringView& host)
 {
 #if PLATFORM(IOS_FAMILY)
     return equalLettersIgnoringASCIICase(host, "docs.google.com");
@@ -266,12 +270,12 @@ bool Quirks::shouldDispatchSyntheticMouseEventsWhenModifyingSelection() const
     return false;
 }
 
-bool Quirks::shouldEmulateUndoRedoInHiddenEditableAreas() const
+bool Quirks::shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreas() const
 {
     if (!needsQuirks())
         return false;
 
-    return shouldEmulateUndoRedoInHiddenEditableAreasForHost(m_document->topDocument().url().host());
+    return shouldEmulateEditingButtonsAndGesturesInHiddenEditableAreasForHost(m_document->topDocument().url().host());
 }
 
 bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreas() const
@@ -282,9 +286,9 @@ bool Quirks::shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAr
     return shouldSuppressAutocorrectionAndAutocaptializationInHiddenEditableAreasForHost(m_document->topDocument().url().host());
 }
 
+#if ENABLE(TOUCH_EVENTS)
 bool Quirks::shouldDispatchSimulatedMouseEvents() const
 {
-#if PLATFORM(IOS_FAMILY)
     if (!needsQuirks())
         return false;
 
@@ -317,9 +321,22 @@ bool Quirks::shouldDispatchSimulatedMouseEvents() const
         return true;
     if (equalLettersIgnoringASCIICase(host, "naver.com") || host.endsWithIgnoringASCIICase(".naver.com"))
         return true;
-#endif
     return false;
 }
+
+bool Quirks::shouldDispatchSimulatedMouseEventsOnTarget(EventTarget* target) const
+{
+    if (!needsQuirks() || !shouldDispatchSimulatedMouseEvents())
+        return false;
+
+    // On Google Maps, we want to limit simulated mouse events to dragging the little man that allows entering into Street View.
+    auto& url = m_document->topDocument().url();
+    auto host = url.host();
+    if (equalLettersIgnoringASCIICase(host, "www.google.com") && url.path().startsWithIgnoringASCIICase("/maps/"))
+        return is<Element>(target) && downcast<Element>(target)->getAttribute("class") == "widget-expand-button-pegman-icon";
+    return true;
+}
+#endif
 
 bool Quirks::shouldDisablePointerEventsQuirk() const
 {
