@@ -58,8 +58,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
 SET(WebKitLegacy_LOCAL_INCLUDE_DIRECTORIES
 	"${FORWARDING_HEADERS_DIR}/WebCore"
     "${WEBCORE_DIR}/Modules/notifications" # Notification.h
-    "${WEBCORE_DIR}/platform" # Language.h
-    "${WEBCORE_DIR}/platform/graphics/transforms" # AffineTransform.h
     "${WEBCORE_DIR}/platform/text" # DateTimeFormat.h
 )
 
