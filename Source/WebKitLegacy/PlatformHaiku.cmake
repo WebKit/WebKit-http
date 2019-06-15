@@ -9,7 +9,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/bindings/js"
     "${WEBCORE_DIR}/contentextensions"
     "${WEBCORE_DIR}/css/parser"
-    "${WEBCORE_DIR}/history"
     "${WEBCORE_DIR}/html/forms"
     "${WEBCORE_DIR}/inspector"
     "${WEBCORE_DIR}/loader/appcache"

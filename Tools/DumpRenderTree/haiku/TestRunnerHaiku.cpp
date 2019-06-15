@@ -216,11 +216,6 @@ void TestRunner::setTabKeyCyclesThroughElements(bool)
     notImplemented();
 }
 
-void TestRunner::setUseDashboardCompatibilityMode(bool)
-{
-    notImplemented();
-}
-
 static CString gUserStyleSheet;
 static bool gUserStyleSheetEnabled = true;
 
