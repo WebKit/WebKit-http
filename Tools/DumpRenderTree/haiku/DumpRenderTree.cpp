@@ -135,13 +135,7 @@ static void dumpFrameScrollPosition(BWebFrame* frame)
         }
 #endif
 
-        result.append("scrolled to ");
-        result.append(WTF::String::number(pos.x));
-        result.append(",");
-        result.append(WTF::String::number(pos.y));
-        result.append("\n");
-
-        printf("%s", result.toString().utf8().data());
+        printf("scrolled to %.f,%.f\n", pos.x, pos.y);
     }
 
     if (gTestRunner->dumpChildFrameScrollPositions()) {
