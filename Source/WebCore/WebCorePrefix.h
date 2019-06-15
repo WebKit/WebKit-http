@@ -111,9 +111,7 @@
 #ifndef CF_ENUM_AVAILABLE
 #define CF_ENUM_AVAILABLE(_mac, _ios)
 #endif
-#endif // OS(WINDOWS)
-
-#endif // USE(CF)
+#endif
 
 #if PLATFORM(WIN_CAIRO)
 #include <windows.h>
