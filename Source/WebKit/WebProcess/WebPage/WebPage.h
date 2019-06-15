@@ -64,6 +64,7 @@
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSizeHash.h>
 #include <WebCore/Page.h>
+#include <WebCore/PageIdentifier.h>
 #include <WebCore/PageOverlay.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/PointerID.h>
@@ -154,6 +155,7 @@ class Frame;
 class FrameSelection;
 class FrameView;
 class GraphicsContext;
+class HTMLImageElement;
 class HTMLMenuElement;
 class HTMLMenuItemElement;
 class HTMLPlugInElement;
@@ -273,7 +275,8 @@ using WKEventModifiers = uint32_t;
 
 class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender, public CanMakeWeakPtr<WebPage> {
 public:
-    static Ref<WebPage> create(uint64_t pageID, WebPageCreationParameters&&);
+    static Ref<WebPage> create(WebCore::PageIdentifier, WebPageCreationParameters&&);
+
     virtual ~WebPage();
 
     void reinitializeWebPage(WebPageCreationParameters&&);
@@ -283,7 +286,7 @@ public:
     static WebPage* fromCorePage(WebCore::Page*);
 
     WebCore::Page* corePage() const { return m_page.get(); }
-    uint64_t pageID() const { return m_pageID; }
+    WebCore::PageIdentifier pageID() const { return m_pageID; }
     PAL::SessionID sessionID() const { return m_page->sessionID(); }
     bool usesEphemeralSession() const { return m_page->usesEphemeralSession(); }
 
@@ -1113,9 +1116,12 @@ public:
     void didGetLoadDecisionForIcon(bool decision, CallbackID loadIdentifier, OptionalCallbackID);
     void setUseIconLoadingClient(bool);
 
-#if ENABLE(DATA_INTERACTION)
+#if PLATFORM(IOS_FAMILY) && ENABLE(DRAG_SUPPORT)
     void didConcludeEditDrag();
+    void didConcludeDrop();
 #endif
+
+    void didFinishLoadingImageForElement(WebCore::HTMLImageElement&);
 
     WebURLSchemeHandlerProxy* urlSchemeHandlerForScheme(const String&);
     void stopAllURLSchemeTasks();
@@ -1129,6 +1135,7 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     void hasStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, CompletionHandler<void(bool)>&&);
     void requestStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, CompletionHandler<void(WebCore::StorageAccessWasGranted, WebCore::StorageAccessPromptWasShown)>&&);
+    void wasLoadedWithDataTransferFromPrevalentResource();
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)
@@ -1148,7 +1155,7 @@ public:
     void didFinishLoadingApplicationManifest(uint64_t, const Optional<WebCore::ApplicationManifest>&);
 #endif
 
-#if PLATFORM(WPE)
+#if USE(WPE_RENDERER)
     int releaseHostFileDescriptor() { return m_hostFileDescriptor.releaseFileDescriptor(); }
 #endif
 
@@ -1166,7 +1173,7 @@ public:
     bool sendSyncWithDelayedReply(T&& message, typename T::Reply&& reply)
     {
         cancelGesturesBlockedOnSynchronousReplies();
-        return sendSync(WTFMove(message), WTFMove(reply), m_pageID, Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend);
+        return sendSync(WTFMove(message), WTFMove(reply), Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend);
     }
 
     WebCore::DOMPasteAccessResponse requestDOMPasteAccess(const String& originIdentifier);
@@ -1199,7 +1206,7 @@ public:
     void setUserIsInteracting(bool userIsInteracting) { m_userIsInteracting = userIsInteracting; }
 
 private:
-    WebPage(uint64_t pageID, WebPageCreationParameters&&);
+    WebPage(WebCore::PageIdentifier, WebPageCreationParameters&&);
 
     void updateThrottleState();
 
@@ -1258,6 +1265,7 @@ private:
 #if PLATFORM(IOS_FAMILY) && ENABLE(DATA_INTERACTION)
     void requestDragStart(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t allowedActions);
     void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t allowedActions);
+    void computeAndSendEditDragSnapshot();
 #endif
 
 #if !PLATFORM(COCOA) && !PLATFORM(WPE)
@@ -1585,7 +1593,7 @@ private:
 
     void updateMockAccessibilityElementAfterCommittingLoad();
 
-    uint64_t m_pageID;
+    WebCore::PageIdentifier m_pageID;
 
     std::unique_ptr<WebCore::Page> m_page;
     RefPtr<WebFrame> m_mainFrame;
@@ -1770,6 +1778,11 @@ private:
     WebCore::DragSourceAction m_allowedDragSourceActions { WebCore::DragSourceActionAny };
 #endif
 
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS_FAMILY)
+    HashSet<RefPtr<WebCore::HTMLImageElement>> m_pendingImageElementsForDropSnapshot;
+    RefPtr<WebCore::Range> m_rangeForDropSnapshot;
+#endif
+
     bool m_cachedMainFrameIsPinnedToLeftSide { true };
     bool m_cachedMainFrameIsPinnedToRightSide { true };
     bool m_cachedMainFrameIsPinnedToTopSide { true };
@@ -1904,7 +1917,7 @@ private:
     const String m_overrideContentSecurityPolicy;
     const Optional<double> m_cpuLimit;
 
-#if PLATFORM(WPE)
+#if USE(WPE_RENDERER)
     IPC::Attachment m_hostFileDescriptor;
 #endif
 

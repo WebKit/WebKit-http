@@ -4258,8 +4258,8 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
             }
             if (focusWidget)
                 focusWidget->setFocus(true);
-            else
-                view()->setFocus(true);
+            else if (auto* frameView = view())
+                frameView->setFocus(true);
         }
     }
 
@@ -4863,6 +4863,10 @@ ExceptionOr<void> Document::setCookie(const String& value)
 
 String Document::referrer() const
 {
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    if (!m_referrerOverride.isEmpty())
+        return m_referrerOverride;
+#endif
     if (frame())
         return frame()->loader().referrer();
     return String();
@@ -7766,7 +7770,7 @@ Logger& Document::logger()
     return *m_logger;
 }
     
-Optional<uint64_t> Document::pageID() const
+Optional<PageIdentifier> Document::pageID() const
 {
     return m_frame->loader().client().pageID();
 }
@@ -7846,6 +7850,37 @@ bool Document::hasRequestedPageSpecificStorageAccessWithUserInteraction(const Re
 void Document::setHasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain& domain)
 {
     m_registrableDomainRequestedPageSpecificStorageAccessWithUserInteraction = domain;
+}
+
+void Document::wasLoadedWithDataTransferFromPrevalentResource()
+{
+    downgradeReferrerToRegistrableDomain();
+}
+
+void Document::downgradeReferrerToRegistrableDomain()
+{
+    auto referrerStr = referrer();
+    if (referrerStr.isEmpty())
+        return;
+
+    URL referrerURL { URL(), referrerStr };
+    auto referrerPort = referrerURL.port();
+    RegistrableDomain referrerRegistrableDomain { referrerURL };
+    auto referrerRegistrableDomainStr = referrerRegistrableDomain.string();
+    if (referrerRegistrableDomainStr.isEmpty())
+        return;
+
+    StringBuilder builder;
+    builder.append(referrerURL.protocol());
+    builder.appendLiteral("://");
+    builder.append(referrerRegistrableDomainStr);
+    if (referrerPort) {
+        builder.append(':');
+        builder.appendNumber(*referrerPort);
+    }
+    builder.append('/');
+
+    m_referrerOverride = builder.toString();
 }
 #endif
 

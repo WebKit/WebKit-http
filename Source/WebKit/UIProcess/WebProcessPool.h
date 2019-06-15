@@ -44,6 +44,7 @@
 #include "WebContextClient.h"
 #include "WebContextConnectionClient.h"
 #include "WebProcessProxy.h"
+#include <WebCore/CrossSiteNavigationDataTransfer.h>
 #include <WebCore/ProcessIdentifier.h>
 #include <WebCore/RegistrableDomain.h>
 #include <WebCore/SecurityOriginHash.h>
@@ -53,6 +54,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/MemoryPressureHandler.h>
+#include <wtf/OptionSet.h>
 #include <wtf/RefCounter.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/StringHash.h>
@@ -148,6 +150,18 @@ public:
     void addMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID, IPC::MessageReceiver&);
     void removeMessageReceiver(IPC::StringReference messageReceiverName);
     void removeMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID);
+    
+    template <typename T>
+    void addMessageReceiver(IPC::StringReference messageReceiverName, ObjectIdentifier<T> destinationID, IPC::MessageReceiver& receiver)
+    {
+        addMessageReceiver(messageReceiverName, destinationID.toUInt64(), receiver);
+    }
+    
+    template <typename T>
+    void removeMessageReceiver(IPC::StringReference messageReceiverName, ObjectIdentifier<T> destinationID)
+    {
+        removeMessageReceiver(messageReceiverName, destinationID.toUInt64());
+    }
 
     bool dispatchMessage(IPC::Connection&, IPC::Decoder&);
     bool dispatchSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
@@ -193,8 +207,8 @@ public:
 
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
 
-    void pageBeginUsingWebsiteDataStore(uint64_t pageID, WebsiteDataStore&);
-    void pageEndUsingWebsiteDataStore(uint64_t pageID, WebsiteDataStore&);
+    void pageBeginUsingWebsiteDataStore(WebCore::PageIdentifier, WebsiteDataStore&);
+    void pageEndUsingWebsiteDataStore(WebCore::PageIdentifier, WebsiteDataStore&);
     bool hasPagesUsingWebsiteDataStore(WebsiteDataStore&) const;
 
     const String& injectedBundlePath() const { return m_configuration->injectedBundlePath(); }
@@ -365,7 +379,7 @@ public:
 
 #if ENABLE(SERVICE_WORKER)
     void establishWorkerContextConnectionToNetworkProcess(NetworkProcessProxy&, WebCore::RegistrableDomain&&, Optional<PAL::SessionID>);
-    ServiceWorkerProcessProxy* serviceWorkerProcessProxyFromPageID(uint64_t pageID) const;
+    ServiceWorkerProcessProxy* serviceWorkerProcessProxyFromPageID(WebCore::PageIdentifier) const;
     const HashMap<WebCore::RegistrableDomain, ServiceWorkerProcessProxy*>& serviceWorkerProxies() const { return m_serviceWorkerProcesses; }
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
     bool allowsAnySSLCertificateForServiceWorker() const { return m_allowsAnySSLCertificateForServiceWorker; }
@@ -493,7 +507,9 @@ public:
     void sendDisplayConfigurationChangedMessageForTesting();
     void clearCurrentModifierStateForTesting();
 
-    void committedCrossSiteLoadWithLinkDecoration(PAL::SessionID, const WebCore::RegistrableDomain& fromDomain, const WebCore::RegistrableDomain& toDomain, uint64_t pageID);
+#if ENABLE(RESOURCE_LOAD_STATISTICS)
+    void didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID, const WebCore::RegistrableDomain& fromDomain, const WebCore::RegistrableDomain& toDomain, OptionSet<WebCore::CrossSiteNavigationDataTransfer::Flag>, WebCore::PageIdentifier);
+#endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     void setSandboxEnabled(bool enabled) { m_sandboxEnabled = enabled; };
@@ -758,7 +774,7 @@ private:
     };
     Paths m_resolvedPaths;
 
-    HashMap<PAL::SessionID, HashSet<uint64_t>> m_sessionToPageIDsMap;
+    HashMap<PAL::SessionID, HashSet<WebCore::PageIdentifier>> m_sessionToPageIDsMap;
     RunLoop::Timer<WebProcessPool> m_serviceWorkerProcessesTerminationTimer;
 
 #if PLATFORM(IOS_FAMILY)

@@ -1,3 +1,297 @@
+2019-05-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r245857.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "WeakPtr breaks vtables when upcasting to base classes"
+        https://bugs.webkit.org/show_bug.cgi?id=188799
+        https://trac.webkit.org/changeset/245857
+
+2019-05-28  Geoffrey Garen  <ggaren@apple.com>
+
+        WeakPtr breaks vtables when upcasting to base classes
+        https://bugs.webkit.org/show_bug.cgi?id=188799
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp: Adopt the new macro API instead
+        of template specialization for observing weak references.
+
+        (TestWebKitAPI::Int::Int):
+        (TestWebKitAPI::Int::operator int const):
+        (TestWebKitAPI::Int::operator== const): Use a class for integer tests
+        because WeakPtr doesn't naturally support pointing to non-class objects
+        now.
+
+        (TestWebKitAPI::Base::foo):
+        (TestWebKitAPI::Derived::foo): Inherit from CanMakeWeakPtr to enable
+        deduction of the weak pointer type.
+
+        (TestWebKitAPI::TEST): Updated to use Int.
+
+        (TestWebKitAPI::Base::weakPtrFactory const): Deleted.
+        (WTF::WeakReference<TestWebKitAPI::Base>::WeakReference): Deleted.
+        (WTF::WeakReference<TestWebKitAPI::Base>::~WeakReference): Deleted.
+
+2019-05-29  Aakash Jain  <aakash_jain@apple.com>
+
+        Disable Flaky API Test TestWebKitAPI._WKDownload.DownloadMonitorCancel
+        https://bugs.webkit.org/show_bug.cgi?id=198328
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+
+2019-05-28  Justin Michaud  <justin_michaud@apple.com>
+
+        Attempt to fix JSC test timeouts after adding collectContinuously to WASM tests.
+        https://bugs.webkit.org/show_bug.cgi?id=198322
+
+        Reviewed by Saam Barati.
+
+        Increases the collection period from 1 to slightly higher to try to speed up the tests. Any higher and
+        the test runner does not detect the bug that required the memset in Wasm::Instance::Instance().
+
+        * Scripts/run-jsc-stress-tests:
+
+2019-05-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Respect NSItemProvider's registered types when dropping files that are loaded in-place
+        https://bugs.webkit.org/show_bug.cgi?id=198315
+        <rdar://problem/51183762>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test to verify that when dropping a file that is loaded in-place with a file extension that is
+        not a .png (but was registered to the item provider as "public.png"), the resulting attachment is contained in
+        an image element, and the resulting attachment info indicates that the dropped attachment is a png file.
+
+        Additionally, rebaseline some existing tests.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (runTestWithTemporaryImageFile):
+        (TestWebKitAPI::TEST):
+
+2019-05-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        GCHeapInspector should accept weird filename
+        https://bugs.webkit.org/show_bug.cgi?id=198314
+
+        Reviewed by Simon Fraser.
+
+        GCHeapInspector filenameForPath should have a fallback path if regexp does not match against the given path.
+
+        * GCHeapInspector/script/interface.js:
+        (filenameForPath):
+
+2019-05-28  Eric Carlson  <eric.carlson@apple.com>
+
+        [MacOS] Filter GVA warning logged to stdout
+        https://bugs.webkit.org/show_bug.cgi?id=198303
+        <rdar://problem/50098041>
+
+        Reviewed by Jer Noble.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.logging_patterns_to_strip): Filter GVA warnings.
+
+2019-05-28  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Provide UIString descriptions to improve localizations
+        https://bugs.webkit.org/show_bug.cgi?id=195132
+        <rdar://problem/48457817>
+
+        Reviewed by Devin Rousso.
+
+        Allow WI.UIString to take:
+        - WI.UIString(string, key, comment)
+        - WI.UIString(string, comment)
+        - WI.UIString(string)
+
+        * Scripts/extract-localizable-js-strings:
+
+2019-05-25  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Limit run-benchmark http server to specific interface.
+        https://bugs.webkit.org/show_bug.cgi?id=198247
+
+        Reviewed by Ryosuke Niwa.
+
+        Add '--interface' option to 'twisted_http_server.py'.
+        'SimpleHTTPServerDriver' should specify interface for http server.
+        Update regex that determines http server port from 'lsof' output to support ipv6 address.
+
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/http_server/twisted_http_server.py:
+        Added '--interface' argument.
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        Limited http server to a specific interfce.
+        Added '-P' option to 'lsof' invocation to inhibits the conversion of port numbers to port name so script won't
+        fail if it's listening on a 'well-known' port.
+        Abstracted '_check_http_server_is_running' to allow potential child class to have its own implementation.
+        (SimpleHTTPServerDriver.serve): Updated regex that determines http server port from 'lsof' output to support ipv6 address.
+        (SimpleHTTPServerDriver.kill_server): Added null check for 'self._server_process'.
+
+2019-05-28  David Xiong  <w_xiong@apple.com>
+
+        webkitpy: Switch run-webkit-tests to tailspin
+        https://bugs.webkit.org/show_bug.cgi?id=198144
+        <rdar://problem/32463212>
+
+        Reviewed by Jonathan Bedard.
+
+        Changes run-webkit-tests to run tailspin on test time out
+        rather than spindump, and edited tests to look for tailspin logs
+        instead.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.sample_process): Replaced spindump with tailspin (+ symbolication)
+        (DarwinPort):
+        (DarwinPort.tailspin_file_path):
+        (DarwinTest.spindump_file_path): Deleted.
+        * Scripts/webkitpy/port/darwin_testcase.py:
+        (DarwinTest.test_tailspin): Changed spindump test (below) to test for tailspin instead
+        (DarwinTest.test_spindump): Deleted.
+        (DarwinTest.test_spindump.logging_run_command): Deleted.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_tailspin): Changed spindump tests (inc. below) to test for tailspin instead
+        (IOSDeviceTest.test_sample_process.logging_run_command):
+        (IOSDeviceTest.test_sample_process_exception.throwing_run_command):
+        (IOSDeviceTest.test_spindump): Deleted.
+        (IOSDeviceTest.test_spindump.logging_run_command): Deleted.
+
+2019-05-28  David Xiong  <w_xiong@apple.com>
+
+        webkitpy: Using sudo on iOS device during timeout spindumps 
+        https://bugs.webkit.org/show_bug.cgi?id=198142
+
+        Reviewed by Jonathan Bedard.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.sample_process): Check target host instead of source host for sudo command.
+
+2019-05-28  Aakash Jain  <aakash_jain@apple.com>
+
+        [ews-build] Remove unused buildbot tabs
+        https://bugs.webkit.org/show_bug.cgi?id=198108
+
+        Reviewed by Jonathan Bedard.
+
+        * BuildSlaveSupport/ews-build/templates/build.jade: Removed unused 'Changes' and 'Responsible Users' tabs.
+
+2019-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use WPEBackend-fdo for accelerating compositing in Wayland instead of the nested compositor
+        https://bugs.webkit.org/show_bug.cgi?id=197944
+
+        Reviewed by Michael Catanzaro.
+
+        Add WPEBackend-fdo to jhbuild moduleset.
+
+        * gtk/jhbuild.modules:
+
+2019-05-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Dropping in an editable element should result in a ranged selection
+        https://bugs.webkit.org/show_bug.cgi?id=198267
+        <rdar://problem/51145977>
+
+        Reviewed by Tim Horton.
+
+        Adjust some existing API tests that currently check for selection rects after a drop. Instead of checking for
+        visible selection rects, simply check for the start caret rect, as determined by WKContentView's
+        -selectionRange.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::TEST):
+        (makeCGRectValue): Deleted.
+        (checkSelectionRectsWithLogging): Deleted.
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+
+        Replace finalSelectionRects with finalSelectionStartRect.
+
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator _resetSimulatedState]):
+        (-[DragAndDropSimulator runFrom:to:additionalItemRequestLocations:]):
+        (-[DragAndDropSimulator finalSelectionRects]): Deleted.
+
+2019-05-27  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Preserve repeat() notation when serializing declared values
+        https://bugs.webkit.org/show_bug.cgi?id=197840
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Adapt CSSPropertyParserTest to CSSGridIntegerRepeatValue.
+
+        * TestWebKitAPI/Tests/WebCore/CSSParser.cpp:
+        (TestWebKitAPI::computeNumberOfTracks):
+
+2019-05-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Dropped text, attachments, and images should animate into place
+        https://bugs.webkit.org/show_bug.cgi?id=198243
+        <rdar://problem/35205373>
+
+        Reviewed by Tim Horton.
+
+        Adjusts the iOS dragging simulator, and adds a new API test. See below for more detail.
+
+        * TestWebKitAPI/Tests/ios/DragAndDropTestsIOS.mm:
+        (TestWebKitAPI::isCompletelyWhite):
+        (TestWebKitAPI::TEST):
+
+        Add a test that drags and drops an image into a contenteditable element, and then observes the resulting
+        UITargetedDragPreviews upon drop.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator _resetSimulatedState]):
+        (-[DragAndDropSimulator runFrom:to:additionalItemRequestLocations:]):
+        (-[DragAndDropSimulator _concludeDropAndPerformOperationIfNecessary]):
+
+        Teach the iOS version of DragAndDropSimulator to invoke -dropInteraction:concludeDrop: on the drop interaction
+        delegate when the drop finishes. This additionally uses _doAfterReceivingEditDragSnapshotForTesting: to defer
+        the end of the simulated drag and drop until after drag previews have been received during an edit drag.
+
+        (-[DragAndDropSimulator dropPreviews]):
+        (-[DragAndDropSimulator delayedDropPreviews]):
+
+        Have the drag and drop simulator remember which previews were returned by the delegate on drop, as well as which
+        previews were provided asynchronously.
+
+        (-[DragAndDropSimulator _webView:dataInteractionOperationWasHandled:forSession:itemProviders:]):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+        Stage the new private drop interacton delegate method.
+
+2019-05-25  Simon Fraser  <simon.fraser@apple.com>
+
+        MobileMiniBrowser: Add iPad support, and allow insecure loads
+        https://bugs.webkit.org/show_bug.cgi?id=198249
+
+        Reviewed by Tim Horton.
+
+        Add iPad support to MobileMiniBrowser, and allow insecure loads.
+
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj:
+        * MobileMiniBrowser/MobileMiniBrowser/Info.plist:
+
+2019-05-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Respect -[NSItemProvider preferredPresentationSize] when dropping images
+        https://bugs.webkit.org/show_bug.cgi?id=198242
+
+        Reviewed by Beth Dakin.
+
+        Add a new test that simulates dropping an image with a preferred presentation size into an editable element
+        with attachment elements enabled.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+
 2019-05-24  Yusuke Suzuki  <ysuzuki@apple.com>
 
         Make display-profiler-output work with newer HighLine

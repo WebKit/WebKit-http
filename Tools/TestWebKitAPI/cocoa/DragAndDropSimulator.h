@@ -108,9 +108,11 @@ typedef NSDictionary<NSNumber *, NSValue *> *ProgressToCGPointValueMap;
 
 @property (nonatomic, readonly) NSArray *sourceItemProviders;
 @property (nonatomic, readonly) NSArray *observedEventNames;
-@property (nonatomic, readonly) NSArray *finalSelectionRects;
+@property (nonatomic, readonly) CGRect finalSelectionStartRect;
 @property (nonatomic, readonly) CGRect lastKnownDragCaretRect;
 @property (nonatomic, readonly) NSArray<UITargetedDragPreview *> *liftPreviews;
+@property (nonatomic, readonly) NSArray *dropPreviews;
+@property (nonatomic, readonly) NSArray *delayedDropPreviews;
 @property (nonatomic, readonly) BOOL suppressedSelectionCommandsDuringDrop;
 
 #endif // PLATFORM(IOS_FAMILY)

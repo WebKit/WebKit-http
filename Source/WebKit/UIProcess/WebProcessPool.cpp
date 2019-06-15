@@ -117,11 +117,6 @@
 #include "MemoryPressureMonitor.h"
 #endif
 
-#if PLATFORM(WAYLAND)
-#include "WaylandCompositor.h"
-#include <WebCore/PlatformDisplay.h>
-#endif
-
 #if PLATFORM(COCOA)
 #include "VersionChecks.h"
 #endif
@@ -979,11 +974,6 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     parameters.shouldEnableMemoryPressureReliefLogging = true;
 #endif
 
-#if PLATFORM(WAYLAND) && USE(EGL)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
-        parameters.waylandCompositorDisplayName = WaylandCompositor::singleton().displayName();
-#endif
-
 #if ENABLE(MEDIA_STREAM)
     parameters.shouldCaptureAudioInUIProcess = m_configuration->shouldCaptureAudioInUIProcess();
     parameters.shouldCaptureVideoInUIProcess = m_configuration->shouldCaptureVideoInUIProcess();
@@ -1296,9 +1286,9 @@ bool WebProcessPool::mayHaveRegisteredServiceWorkers(const WebsiteDataStore& sto
 }
 #endif
 
-void WebProcessPool::pageBeginUsingWebsiteDataStore(uint64_t pageID, WebsiteDataStore& dataStore)
+void WebProcessPool::pageBeginUsingWebsiteDataStore(PageIdentifier pageID, WebsiteDataStore& dataStore)
 {
-    auto result = m_sessionToPageIDsMap.add(dataStore.sessionID(), HashSet<uint64_t>()).iterator->value.add(pageID);
+    auto result = m_sessionToPageIDsMap.add(dataStore.sessionID(), HashSet<PageIdentifier>()).iterator->value.add(pageID);
     ASSERT_UNUSED(result, result.isNewEntry);
 
     auto sessionID = dataStore.sessionID();
@@ -1316,7 +1306,7 @@ void WebProcessPool::pageBeginUsingWebsiteDataStore(uint64_t pageID, WebsiteData
     }
 }
 
-void WebProcessPool::pageEndUsingWebsiteDataStore(uint64_t pageID, WebsiteDataStore& dataStore)
+void WebProcessPool::pageEndUsingWebsiteDataStore(PageIdentifier pageID, WebsiteDataStore& dataStore)
 {
     auto sessionID = dataStore.sessionID();
     auto iterator = m_sessionToPageIDsMap.find(sessionID);
@@ -2211,7 +2201,7 @@ void WebProcessPool::reinstateNetworkProcessAssertionState(NetworkProcessProxy& 
 }
 
 #if ENABLE(SERVICE_WORKER)
-ServiceWorkerProcessProxy* WebProcessPool::serviceWorkerProcessProxyFromPageID(uint64_t pageID) const
+ServiceWorkerProcessProxy* WebProcessPool::serviceWorkerProcessProxyFromPageID(PageIdentifier pageID) const
 {
     // FIXME: This is inefficient.
     for (auto* serviceWorkerProcess : m_serviceWorkerProcesses.values()) {
@@ -2519,20 +2509,15 @@ void WebProcessPool::clearCurrentModifierStateForTesting()
     sendToAllProcesses(Messages::WebProcess::ClearCurrentModifierStateForTesting());
 }
 
-void WebProcessPool::committedCrossSiteLoadWithLinkDecoration(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, uint64_t pageID)
-{
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
+void WebProcessPool::didCommitCrossSiteLoadWithDataTransfer(PAL::SessionID sessionID, const RegistrableDomain& fromDomain, const RegistrableDomain& toDomain, OptionSet<CrossSiteNavigationDataTransfer::Flag> navigationDataTransfer, PageIdentifier pageID)
+{
     if (!m_networkProcess)
         return;
 
-    m_networkProcess->committedCrossSiteLoadWithLinkDecoration(sessionID, fromDomain, toDomain, pageID, [] { });
-#else
-    UNUSED_PARAM(sessionID);
-    UNUSED_PARAM(fromDomain);
-    UNUSED_PARAM(toDomain);
-    UNUSED_PARAM(pageID);
-#endif
+    m_networkProcess->didCommitCrossSiteLoadWithDataTransfer(sessionID, fromDomain, toDomain, navigationDataTransfer, pageID);
 }
+#endif
 
 void WebProcessPool::setWebProcessHasUploads(ProcessIdentifier processID)
 {

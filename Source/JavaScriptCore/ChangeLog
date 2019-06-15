@@ -1,3 +1,123 @@
+2019-05-28  Michael Saboff  <msaboff@apple.com>
+
+        [YARR] Properly handle RegExp's that require large ParenContext space
+        https://bugs.webkit.org/show_bug.cgi?id=198065
+
+        Reviewed by Keith Miller.
+
+        Changed what happens when we exceed VM::patternContextBufferSize when compiling a RegExp
+        that needs ParenCOntextSpace to fail the RegExp JIT compilation and fall back to the YARR
+        interpreter.  This can save large amounts of JIT memory for a
+        JIT'ed function that cannot ever succeed.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::initParenContextFreeList):
+        (JSC::Yarr::YarrGenerator::compile):
+
+2019-05-28  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JITOperations putByVal should mark negative array indices as out-of-bounds
+        https://bugs.webkit.org/show_bug.cgi?id=198271
+
+        Reviewed by Saam Barati.
+
+        Similar to what was done to getByVal in r245769, we should also mark put_by_val as out-of-bounds
+        when we exit from DFG for putting to a negative index. This avoids the same scenario where we keep
+        recompiling a CodeBlock with DFG and exiting at the same bytecode.
+
+        This is a 3.7x improvement in the microbenchmark being added: put-by-val-negative-array-index.js.
+
+        * jit/JITOperations.cpp:
+
+2019-05-28  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        Unreviewed, revert r242070 due to Membuster regression
+        https://bugs.webkit.org/show_bug.cgi?id=195013
+
+        Membuster shows ~0.3% regression.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::runBeginPhase):
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::forEachSlotVisitor):
+        (JSC::Heap::numberOfSlotVisitors): Deleted.
+        * heap/MarkingConstraintSolver.cpp:
+        (JSC::MarkingConstraintSolver::didVisitSomething const):
+        * heap/SlotVisitor.h:
+
+2019-05-27  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Fix opensource build of testapi
+        https://bugs.webkit.org/show_bug.cgi?id=198256
+
+        Reviewed by Alexey Proskuryakov.
+
+        In r245564, we added custom entitlements to testapi to allow caching
+        bytecode in data vaults, but we should only use the entitlements for
+        internal builds. Otherwises, testapi gets killed on launch. Also fix the
+        formatting for the errors added in the same patch, according to comments
+        in the bug after the patch had already landed.
+
+        * API/JSScript.mm:
+        (validateBytecodeCachePath):
+        * Configurations/ToolExecutable.xcconfig:
+
+2019-05-25  Tadeu Zagallo  <tzagallo@apple.com>
+
+        JITOperations getByVal should mark negative array indices as out-of-bounds
+        https://bugs.webkit.org/show_bug.cgi?id=198229
+
+        Reviewed by Saam Barati.
+
+        get_by_val with an array or string as base value and a negative index causes DFG to OSR exit,
+        but baseline doesn't mark it as out-of-bounds, since it only considers positive indices. This
+        leads to discarding DFG code, recompiling it and exiting at the same bytecode.
+
+        This is observed in the prepack-wtb subtest of JetStream2. In popContext#CdOhFJ, the last item
+        of the array popped and the new last value is accessed using `array[array.length - 1]`, which
+        is -1 when the array is empty. It shows a ~0.5% progression in JetStream2, but it's within the
+        noise.
+
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+
+2019-05-24  Justin Michaud  <justin_michaud@apple.com>
+
+        [WASM-References] Support Anyref in globals
+        https://bugs.webkit.org/show_bug.cgi?id=198102
+
+        Reviewed by Saam Barati.
+
+        Support anyref for globals, imports and exports. This adds code in B3 and Air to emit a write barrier
+        on the JSWebAssemblyWrapper whenever an anyref global is set. This also fixes a small bug in emitCCall
+        for air where it adds code to the wrong block.
+
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::emitCCall):
+        (JSC::Wasm::AirIRGenerator::moveOpForValueType):
+        (JSC::Wasm::AirIRGenerator::setGlobal):
+        (JSC::Wasm::AirIRGenerator::emitWriteBarrierForJSWrapper):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::setGlobal):
+        (JSC::Wasm::B3IRGenerator::emitWriteBarrierForJSWrapper):
+        * wasm/WasmInstance.cpp:
+        (JSC::Wasm::Instance::Instance):
+        (JSC::Wasm::Instance::setGlobal):
+        * wasm/WasmInstance.h:
+        (JSC::Wasm::Instance::loadI32Global const):
+        (JSC::Wasm::Instance::loadI64Global const):
+        (JSC::Wasm::Instance::setGlobal):
+        (JSC::Wasm::Instance::shouldMarkGlobal):
+        (JSC::Wasm::Instance::numGlobals const):
+        * wasm/WasmSectionParser.cpp:
+        (JSC::Wasm::SectionParser::parseInitExpr):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+
 2019-05-23  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Overlay: rulers/guides should be shown whenever element selection is enabled

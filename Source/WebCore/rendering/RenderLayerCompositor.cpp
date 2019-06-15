@@ -1009,7 +1009,7 @@ void RenderLayerCompositor::computeCompositingRequirements(RenderLayer* ancestor
     // Now check for reasons to become composited that depend on the state of descendant layers.
     IndirectCompositingReason indirectCompositingReason;
     if (!willBeComposited && canBeComposited(layer)
-        && requiresCompositingForIndirectReason(layer, compositingState.compositingAncestor, currentState.subtreeIsCompositing, anyDescendantHas3DTransform, layerPaintsIntoProvidedBacking, indirectCompositingReason)) {
+        && requiresCompositingForIndirectReason(layer, currentState.subtreeIsCompositing, anyDescendantHas3DTransform, layerPaintsIntoProvidedBacking, indirectCompositingReason)) {
         layer.setIndirectCompositingReason(indirectCompositingReason);
         layerWillCompositePostDescendants();
     }
@@ -2916,8 +2916,45 @@ bool RenderLayerCompositor::requiresCompositingForOverflowScrolling(const Render
     return layer.hasCompositedScrollableOverflow();
 }
 
+static RenderLayer* enclosingCompositedScrollingLayer(const RenderLayer& layer, const RenderLayer& intermediateLayer, bool& sawIntermediateLayer)
+{
+    const auto* ancestorLayer = layer.parent();
+    while (ancestorLayer) {
+        if (ancestorLayer == &intermediateLayer)
+            sawIntermediateLayer = true;
+
+        if (ancestorLayer->hasCompositedScrollableOverflow())
+            return const_cast<RenderLayer*>(ancestorLayer);
+
+        ancestorLayer = ancestorLayer->parent();
+    }
+
+    return nullptr;
+}
+
+static bool isScrolledByOverflowScrollLayer(const RenderLayer& layer, const RenderLayer& overflowScrollLayer)
+{
+    bool scrolledByOverflowScroll = false;
+    traverseAncestorLayers(layer, [&](const RenderLayer& ancestorLayer, bool inContainingBlockChain, bool) {
+        if (&ancestorLayer == &overflowScrollLayer) {
+            scrolledByOverflowScroll = inContainingBlockChain;
+            return AncestorTraversal::Stop;
+        }
+        return AncestorTraversal::Continue;
+    });
+    return scrolledByOverflowScroll;
+}
+
+static bool isNonScrolledLayerInsideScrolledCompositedAncestor(const RenderLayer& layer, const RenderLayer& compositedAncestor, const RenderLayer& scrollingAncestor)
+{
+    bool ancestorMovedByScroller = &compositedAncestor == &scrollingAncestor || isScrolledByOverflowScrollLayer(compositedAncestor, scrollingAncestor);
+    bool layerMovedByScroller = isScrolledByOverflowScrollLayer(layer, scrollingAncestor);
+
+    return ancestorMovedByScroller && !layerMovedByScroller;
+}
+
 // FIXME: why doesn't this handle the clipping cases?
-bool RenderLayerCompositor::requiresCompositingForIndirectReason(const RenderLayer& layer, const RenderLayer* compositingAncestor, bool hasCompositedDescendants, bool has3DTransformedDescendants, bool paintsIntoProvidedBacking, IndirectCompositingReason& reason) const
+bool RenderLayerCompositor::requiresCompositingForIndirectReason(const RenderLayer& layer, bool hasCompositedDescendants, bool has3DTransformedDescendants, bool paintsIntoProvidedBacking, IndirectCompositingReason& reason) const
 {
     // When a layer has composited descendants, some effects, like 2d transforms, filters, masks etc must be implemented
     // via compositing so that they also apply to those composited descendants.
@@ -2941,8 +2978,12 @@ bool RenderLayerCompositor::requiresCompositingForIndirectReason(const RenderLay
         }
     }
 
-    if (!paintsIntoProvidedBacking && renderer.isAbsolutelyPositioned() && compositingAncestor && layer.hasCompositedScrollingAncestor()) {
-        if (layerContainingBlockCrossesCoordinatedScrollingBoundary(layer, *compositingAncestor)) {
+    // If this layer scrolls independently from the layer that it would paint into, it needs to get composited.
+    if (!paintsIntoProvidedBacking && layer.hasCompositedScrollingAncestor()) {
+        auto* paintDestination = layer.paintOrderParent();
+        bool paintDestinationIsScrolling = false;
+        auto* scrollingAncestor = enclosingCompositedScrollingLayer(layer, *paintDestination, paintDestinationIsScrolling);
+        if (isNonScrolledLayerInsideScrolledCompositedAncestor(layer, *paintDestination, *scrollingAncestor)) {
             reason = IndirectCompositingReason::OverflowScrollPositioning;
             return true;
         }
@@ -3043,43 +3084,6 @@ bool RenderLayerCompositor::useCoordinatedScrollingForLayer(const RenderLayer& l
         return scrollingCoordinator->coordinatesScrollingForOverflowLayer(layer);
 
     return false;
-}
-
-static RenderLayer* enclosingCompositedScrollingLayer(const RenderLayer& layer, const RenderLayer& intermediateLayer, bool& sawIntermediateLayer)
-{
-    const auto* currLayer = layer.parent();
-    while (currLayer) {
-        if (currLayer == &intermediateLayer)
-            sawIntermediateLayer = true;
-
-        if (currLayer->hasCompositedScrollableOverflow())
-            return const_cast<RenderLayer*>(currLayer);
-
-        currLayer = currLayer->parent();
-    }
-
-    return nullptr;
-}
-
-static bool isScrolledByOverflowScrollLayer(const RenderLayer& layer, const RenderLayer& overflowScrollLayer)
-{
-    bool scrolledByOverflowScroll = false;
-    traverseAncestorLayers(layer, [&](const RenderLayer& ancestorLayer, bool inContainingBlockChain, bool) {
-        if (&ancestorLayer == &overflowScrollLayer) {
-            scrolledByOverflowScroll = inContainingBlockChain;
-            return AncestorTraversal::Stop;
-        }
-        return AncestorTraversal::Continue;
-    });
-    return scrolledByOverflowScroll;
-}
-
-static bool isNonScrolledLayerInsideScrolledCompositedAncestor(const RenderLayer& layer, const RenderLayer& compositedAncestor, const RenderLayer& scrollingAncestor)
-{
-    bool ancestorMovedByScroller = &compositedAncestor == &scrollingAncestor || isScrolledByOverflowScrollLayer(compositedAncestor, scrollingAncestor);
-    bool layerMovedByScroller = isScrolledByOverflowScrollLayer(layer, scrollingAncestor);
-
-    return ancestorMovedByScroller && !layerMovedByScroller;
 }
 
 bool RenderLayerCompositor::layerContainingBlockCrossesCoordinatedScrollingBoundary(const RenderLayer& layer, const RenderLayer& compositedAncestor)
@@ -3779,7 +3783,7 @@ void RenderLayerCompositor::ensureRootLayer()
             m_overflowControlsHostLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
             m_overflowControlsHostLayer->setName("overflow controls host");
 
-            m_scrolledContentsLayer = GraphicsLayer::create(graphicsLayerFactory(), *this);
+            m_scrolledContentsLayer = GraphicsLayer::create(graphicsLayerFactory(), *this, GraphicsLayer::Type::ScrolledContents);
             m_scrolledContentsLayer->setName("scrolled contents");
             m_scrolledContentsLayer->setAnchorPoint({ });
 
@@ -4207,6 +4211,14 @@ ScrollingNodeID RenderLayerCompositor::updateScrollCoordinationForLayer(RenderLa
     ScrollingTreeState childTreeState;
     ScrollingTreeState* currentTreeState = &treeState;
 
+    // If there's a positioning node, it's the parent scrolling node for fixed/sticky/scrolling/frame hosting.
+    if (roles.contains(ScrollCoordinationRole::Positioning)) {
+        newNodeID = updateScrollingNodeForPositioningRole(layer, *currentTreeState, changes);
+        childTreeState.parentNodeID = newNodeID;
+        currentTreeState = &childTreeState;
+    } else
+        detachScrollCoordinatedLayer(layer, ScrollCoordinationRole::Positioning);
+
     // If is fixed or sticky, it's the parent scrolling node for scrolling/frame hosting.
     if (roles.contains(ScrollCoordinationRole::ViewportConstrained)) {
         newNodeID = updateScrollingNodeForViewportConstrainedRole(layer, *currentTreeState, changes);
@@ -4215,14 +4227,6 @@ ScrollingNodeID RenderLayerCompositor::updateScrollCoordinationForLayer(RenderLa
         currentTreeState = &childTreeState;
     } else
         detachScrollCoordinatedLayer(layer, ScrollCoordinationRole::ViewportConstrained);
-
-    // If there's a positioning node, it's the parent scrolling node for scrolling/frame hosting.
-    if (roles.contains(ScrollCoordinationRole::Positioning)) {
-        newNodeID = updateScrollingNodeForPositioningRole(layer, *currentTreeState, changes);
-        childTreeState.parentNodeID = newNodeID;
-        currentTreeState = &childTreeState;
-    } else
-        detachScrollCoordinatedLayer(layer, ScrollCoordinationRole::Positioning);
 
     if (roles.contains(ScrollCoordinationRole::Scrolling))
         newNodeID = updateScrollingNodeForScrollingRole(layer, *currentTreeState, changes);

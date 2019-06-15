@@ -825,19 +825,67 @@ void WebPage::requestAdditionalItemsForDragSession(const IntPoint& clientPositio
     send(Messages::WebPageProxy::DidHandleAdditionalDragItemsRequest(didHandleDrag));
 }
 
+void WebPage::didConcludeDrop()
+{
+    m_rangeForDropSnapshot = nullptr;
+    m_pendingImageElementsForDropSnapshot.clear();
+}
+
 void WebPage::didConcludeEditDrag()
 {
-    Optional<TextIndicatorData> textIndicatorData;
+    send(Messages::WebPageProxy::WillReceiveEditDragSnapshot());
 
-    static auto defaultTextIndicatorOptionsForEditDrag = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor| TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
-    auto& frame = m_page->focusController().focusedOrMainFrame();
-    if (auto range = frame.selection().selection().toNormalizedRange()) {
-        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultTextIndicatorOptionsForEditDrag, TextIndicatorPresentationTransition::None, FloatSize()))
-            textIndicatorData = textIndicator->data();
+    layoutIfNeeded();
+
+    m_pendingImageElementsForDropSnapshot.clear();
+
+    bool waitingForAnyImageToLoad = false;
+    auto frame = makeRef(m_page->focusController().focusedOrMainFrame());
+    if (auto selectionRange = frame->selection().selection().toNormalizedRange()) {
+        for (TextIterator iterator(selectionRange.get()); !iterator.atEnd(); iterator.advance()) {
+            auto* node = iterator.node();
+            if (!is<HTMLImageElement>(node))
+                continue;
+
+            auto& imageElement = downcast<HTMLImageElement>(*node);
+            auto* cachedImage = imageElement.cachedImage();
+            if (cachedImage && cachedImage->image() && cachedImage->image()->isNull()) {
+                m_pendingImageElementsForDropSnapshot.add(&imageElement);
+                waitingForAnyImageToLoad = true;
+            }
+        }
+        auto collapsedRange = Range::create(selectionRange->ownerDocument(), selectionRange->endPosition(), selectionRange->endPosition());
+        frame->selection().setSelectedRange(collapsedRange.ptr(), DOWNSTREAM, FrameSelection::ShouldCloseTyping::Yes, UserTriggered);
+
+        m_rangeForDropSnapshot = WTFMove(selectionRange);
     }
 
-    send(Messages::WebPageProxy::DidConcludeEditDrag(WTFMove(textIndicatorData)));
+    if (!waitingForAnyImageToLoad)
+        computeAndSendEditDragSnapshot();
 }
+
+void WebPage::didFinishLoadingImageForElement(WebCore::HTMLImageElement& element)
+{
+    if (m_pendingImageElementsForDropSnapshot.isEmpty())
+        return;
+
+    m_pendingImageElementsForDropSnapshot.remove(&element);
+
+    if (m_pendingImageElementsForDropSnapshot.isEmpty())
+        computeAndSendEditDragSnapshot();
+}
+
+void WebPage::computeAndSendEditDragSnapshot()
+{
+    Optional<TextIndicatorData> textIndicatorData;
+    static auto defaultTextIndicatorOptionsForEditDrag = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor| TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    if (auto range = std::exchange(m_rangeForDropSnapshot, nullptr)) {
+        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultTextIndicatorOptionsForEditDrag, TextIndicatorPresentationTransition::None, { }))
+            textIndicatorData = textIndicator->data();
+    }
+    send(Messages::WebPageProxy::DidReceiveEditDragSnapshot(WTFMove(textIndicatorData)));
+}
+
 #endif
 
 void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
@@ -3116,7 +3164,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& viewLayoutSize, const W
         newExposedContentRect.moveBy(adjustmentDelta);
     }
 
-    frameView.setScrollVelocity(0, 0, 0, MonotonicTime::now());
+    frameView.setScrollVelocity({ 0, 0, 0, MonotonicTime::now() });
 
     IntPoint roundedUnobscuredContentRectPosition = roundedIntPoint(newUnobscuredContentRect.location());
     frameView.setUnobscuredContentSize(newUnobscuredContentRect.size());
@@ -3289,7 +3337,7 @@ void WebPage::viewportConfigurationChanged(ZoomToInitialScale zoomToInitialScale
         minimumLayoutSizeInScrollViewCoordinates.scale(1 / scale);
         IntSize minimumLayoutSizeInDocumentCoordinates = roundedIntSize(minimumLayoutSizeInScrollViewCoordinates);
         frameView.setUnobscuredContentSize(minimumLayoutSizeInDocumentCoordinates);
-        frameView.setScrollVelocity(0, 0, 0, MonotonicTime::now());
+        frameView.setScrollVelocity({ 0, 0, 0, MonotonicTime::now() });
 
         // FIXME: We could send down the obscured margins to find a better exposed rect and unobscured rect.
         // It is not a big deal at the moment because the tile coverage will always extend past the obscured bottom inset.
@@ -3360,15 +3408,15 @@ void WebPage::applicationDidBecomeActive()
         m_page->applicationDidBecomeActive();
 }
 
-static inline void adjustVelocityDataForBoundedScale(double& horizontalVelocity, double& verticalVelocity, double& scaleChangeRate, double exposedRectScale, double minimumScale, double maximumScale)
+static inline void adjustVelocityDataForBoundedScale(VelocityData& velocityData, double exposedRectScale, double minimumScale, double maximumScale)
 {
-    if (scaleChangeRate) {
-        horizontalVelocity = 0;
-        verticalVelocity = 0;
+    if (velocityData.scaleChangeRate) {
+        velocityData.horizontalVelocity = 0;
+        velocityData.verticalVelocity = 0;
     }
 
     if (exposedRectScale >= maximumScale || exposedRectScale <= minimumScale)
-        scaleChangeRate = 0;
+        velocityData.scaleChangeRate = 0;
 }
 
 Optional<float> WebPage::scaleFromUIProcess(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo) const
@@ -3476,12 +3524,9 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     m_page->setUnobscuredSafeAreaInsets(visibleContentRectUpdateInfo.unobscuredSafeAreaInsets());
     m_page->setEnclosedInScrollableAncestorView(visibleContentRectUpdateInfo.enclosedInScrollableAncestorView());
 
-    double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();
-    double verticalVelocity = visibleContentRectUpdateInfo.verticalVelocity();
-    double scaleChangeRate = visibleContentRectUpdateInfo.scaleChangeRate();
-    adjustVelocityDataForBoundedScale(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.scale(), m_viewportConfiguration.minimumScale(), m_viewportConfiguration.maximumScale());
-
-    frameView.setScrollVelocity(horizontalVelocity, verticalVelocity, scaleChangeRate, visibleContentRectUpdateInfo.timestamp());
+    VelocityData scrollVelocity = visibleContentRectUpdateInfo.scrollVelocity();
+    adjustVelocityDataForBoundedScale(scrollVelocity, visibleContentRectUpdateInfo.scale(), m_viewportConfiguration.minimumScale(), m_viewportConfiguration.maximumScale());
+    frameView.setScrollVelocity(scrollVelocity);
 
     if (m_isInStableState) {
         if (visibleContentRectUpdateInfo.unobscuredContentRect() != visibleContentRectUpdateInfo.unobscuredContentRectRespectingInputViewBounds())

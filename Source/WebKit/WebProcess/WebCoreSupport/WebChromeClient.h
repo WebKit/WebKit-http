@@ -29,6 +29,7 @@
 #include <WebCore/ChromeClient.h>
 
 namespace WebCore {
+class HTMLImageElement;
 class RegistrableDomain;
 enum class StorageAccessPromptWasShown : bool;
 enum class StorageAccessWasGranted : bool;
@@ -120,6 +121,8 @@ private:
 
     WebCore::IntPoint accessibilityScreenToRootView(const WebCore::IntPoint&) const final;
     WebCore::IntRect rootViewToAccessibilityScreen(const WebCore::IntRect&) const final;
+
+    void didFinishLoadingImageForElement(WebCore::HTMLImageElement&) final;
 
     PlatformPageClient platformPageClient() const final;
     void contentsSizeChanged(WebCore::Frame&, const WebCore::IntSize&) const final;
@@ -369,8 +372,8 @@ private:
     void didInvalidateDocumentMarkerRects() final;
 
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
-    void hasStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void(bool)>&&) final;
-    void requestStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void(WebCore::StorageAccessWasGranted, WebCore::StorageAccessPromptWasShown)>&&) final;
+    void hasStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, WebCore::PageIdentifier, WTF::CompletionHandler<void(bool)>&&) final;
+    void requestStorageAccess(WebCore::RegistrableDomain&& subFrameDomain, WebCore::RegistrableDomain&& topFrameDomain, uint64_t frameID, WebCore::PageIdentifier, WTF::CompletionHandler<void(WebCore::StorageAccessWasGranted, WebCore::StorageAccessPromptWasShown)>&&) final;
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION)

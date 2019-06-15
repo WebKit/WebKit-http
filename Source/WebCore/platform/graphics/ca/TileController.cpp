@@ -34,8 +34,10 @@
 #include "Region.h"
 #include "TileCoverageMap.h"
 #include "TileGrid.h"
+#include "VelocityData.h"
 #include <utility>
 #include <wtf/MainThread.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/text/TextStream.h>
 
 #if HAVE(IOSURFACE)
@@ -44,7 +46,6 @@
 
 #if PLATFORM(IOS_FAMILY)
 #include "TileControllerMemoryHandlerIOS.h"
-#include <wtf/MemoryPressureHandler.h>
 #endif
 
 namespace WebCore {
@@ -239,8 +240,10 @@ bool TileController::tilesWouldChangeForCoverageRect(const FloatRect& rect) cons
 void TileController::setVelocity(const VelocityData& velocity)
 {
     bool changeAffectsTileCoverage = m_velocity.velocityOrScaleIsChanging() || velocity.velocityOrScaleIsChanging();
+
     m_velocity = velocity;
-    
+    m_haveExternalVelocityData = true;
+
     if (changeAffectsTileCoverage)
         setNeedsRevalidateTiles();
 }
@@ -359,48 +362,128 @@ IntRect TileController::boundsAtLastRevalidateWithoutMargin() const
     return boundsWithoutMargin;
 }
 
-#if !PLATFORM(IOS_FAMILY)
-// Return 'rect' padded evenly on all sides to achieve 'newSize', but make the padding uneven to contain within constrainingRect.
-static FloatRect expandRectWithinRect(const FloatRect& rect, const FloatSize& newSize, const FloatRect& constrainingRect)
+FloatRect TileController::adjustTileCoverageRect(const FloatRect& coverageRect, const FloatRect& previousVisibleRect, const FloatRect& currentVisibleRect, bool sizeChanged)
 {
-    ASSERT(newSize.width() >= rect.width() && newSize.height() >= rect.height());
+    // If the old visible rect is empty, we have no information about how the visible area is changing
+    // (maybe the layer was just created), so don't attempt to expand. Also don't attempt to expand
+    // if the size changed or the rects don't overlap.
+    if (previousVisibleRect.isEmpty() || sizeChanged  || !currentVisibleRect.intersects(previousVisibleRect))
+        return unionRect(coverageRect, currentVisibleRect);
 
-    FloatSize extraSize = newSize - rect.size();
-    
-    FloatRect expandedRect = rect;
-    expandedRect.inflateX(extraSize.width() / 2);
-    expandedRect.inflateY(extraSize.height() / 2);
+    if (MemoryPressureHandler::singleton().isUnderMemoryPressure())
+        return unionRect(coverageRect, currentVisibleRect);
 
-    if (expandedRect.x() < constrainingRect.x())
-        expandedRect.setX(constrainingRect.x());
-    else if (expandedRect.maxX() > constrainingRect.maxX())
-        expandedRect.setX(constrainingRect.maxX() - expandedRect.width());
+    const float paddingMultiplier = 2;
+
+    float leftEdgeDelta = paddingMultiplier * (currentVisibleRect.x() - previousVisibleRect.x());
+    float rightEdgeDelta = paddingMultiplier * (currentVisibleRect.maxX() - previousVisibleRect.maxX());
+
+    float topEdgeDelta = paddingMultiplier * (currentVisibleRect.y() - previousVisibleRect.y());
+    float bottomEdgeDelta = paddingMultiplier * (currentVisibleRect.maxY() - previousVisibleRect.maxY());
     
-    if (expandedRect.y() < constrainingRect.y())
-        expandedRect.setY(constrainingRect.y());
-    else if (expandedRect.maxY() > constrainingRect.maxY())
-        expandedRect.setY(constrainingRect.maxY() - expandedRect.height());
+    FloatRect expandedRect = currentVisibleRect;
+
+    // More exposed on left side.
+    if (leftEdgeDelta < 0) {
+        float newLeft = expandedRect.x() + leftEdgeDelta;
+        // Pad to the left, but don't reduce padding that's already in the backing store (since we're still exposing to the left).
+        if (newLeft < previousVisibleRect.x())
+            expandedRect.shiftXEdgeTo(newLeft);
+        else
+            expandedRect.shiftXEdgeTo(previousVisibleRect.x());
+    }
+
+    // More exposed on right.
+    if (rightEdgeDelta > 0) {
+        float newRight = expandedRect.maxX() + rightEdgeDelta;
+        // Pad to the right, but don't reduce padding that's already in the backing store (since we're still exposing to the right).
+        if (newRight > previousVisibleRect.maxX())
+            expandedRect.setWidth(newRight - expandedRect.x());
+        else
+            expandedRect.setWidth(previousVisibleRect.maxX() - expandedRect.x());
+    }
+
+    // More exposed at top.
+    if (topEdgeDelta < 0) {
+        float newTop = expandedRect.y() + topEdgeDelta;
+        if (newTop < previousVisibleRect.y())
+            expandedRect.shiftYEdgeTo(newTop);
+        else
+            expandedRect.shiftYEdgeTo(previousVisibleRect.y());
+    }
+
+    // More exposed on bottom.
+    if (bottomEdgeDelta > 0) {
+        float newBottom = expandedRect.maxY() + bottomEdgeDelta;
+        if (newBottom > previousVisibleRect.maxY())
+            expandedRect.setHeight(newBottom - expandedRect.y());
+        else
+            expandedRect.setHeight(previousVisibleRect.maxY() - expandedRect.y());
+    }
     
-    return intersection(expandedRect, constrainingRect);
+    expandedRect.intersect(boundsWithoutMargin());
+    return unionRect(coverageRect, expandedRect);
+}
+
+#if !PLATFORM(IOS_FAMILY)
+// Coverage expansion for less memory-constrained devices.
+// Kept separate to preserve historical behavior; should be merged with adjustTileCoverageWithScrollingVelocity eventually.
+FloatRect TileController::adjustTileCoverageForDesktopPageScrolling(const FloatRect& coverageRect, const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& visibleRect) const
+{
+    // FIXME: look at how far the document can scroll in each dimension.
+    FloatSize coverageSize = visibleRect.size();
+
+    bool largeVisibleRectChange = !previousVisibleRect.isEmpty() && !visibleRect.intersects(previousVisibleRect);
+
+    // Inflate the coverage rect so that it covers 2x of the visible width and 3x of the visible height.
+    // These values were chosen because it's more common to have tall pages and to scroll vertically,
+    // so we keep more tiles above and below the current area.
+    float widthScale = 1;
+    float heightScale = 1;
+
+    if (m_tileCoverage & CoverageForHorizontalScrolling && !largeVisibleRectChange)
+        widthScale = 2;
+
+    if (m_tileCoverage & CoverageForVerticalScrolling && !largeVisibleRectChange)
+        heightScale = 3;
+
+    coverageSize.scale(widthScale, heightScale);
+
+    FloatRect coverageBounds = boundsForSize(newSize);
+
+    // Return 'rect' padded evenly on all sides to achieve 'newSize', but make the padding uneven to contain within constrainingRect.
+    auto expandRectWithinRect = [](const FloatRect& rect, const FloatSize& newSize, const FloatRect& constrainingRect) {
+        ASSERT(newSize.width() >= rect.width() && newSize.height() >= rect.height());
+
+        FloatSize extraSize = newSize - rect.size();
+        
+        FloatRect expandedRect = rect;
+        expandedRect.inflateX(extraSize.width() / 2);
+        expandedRect.inflateY(extraSize.height() / 2);
+
+        if (expandedRect.x() < constrainingRect.x())
+            expandedRect.setX(constrainingRect.x());
+        else if (expandedRect.maxX() > constrainingRect.maxX())
+            expandedRect.setX(constrainingRect.maxX() - expandedRect.width());
+        
+        if (expandedRect.y() < constrainingRect.y())
+            expandedRect.setY(constrainingRect.y());
+        else if (expandedRect.maxY() > constrainingRect.maxY())
+            expandedRect.setY(constrainingRect.maxY() - expandedRect.height());
+        
+        return intersection(expandedRect, constrainingRect);
+    };
+
+    FloatRect coverage = expandRectWithinRect(visibleRect, coverageSize, coverageBounds);
+    LOG_WITH_STREAM(Tiling, stream << "TileController::adjustTileCoverageForDesktopPageScrolling newSize=" << newSize << " mode " << m_tileCoverage << " expanded to " << coverageSize << " bounds with margin " << coverageBounds << " coverage " << coverage);
+    return unionRect(coverageRect, coverage);
 }
 #endif
 
-void TileController::adjustTileCoverageRect(FloatRect& coverageRect, const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& visibleRect, float contentsScale) const
+FloatRect TileController::adjustTileCoverageWithScrollingVelocity(const FloatRect& coverageRect, const FloatSize& newSize, const FloatRect& visibleRect, float contentsScale) const
 {
-    // If the page is not in a window (for example if it's in a background tab), we limit the tile coverage rect to the visible rect.
-    if (!m_isInWindow) {
-        coverageRect = visibleRect;
-        return;
-    }
-
-#if PLATFORM(IOS_FAMILY)
-    // FIXME: unify the iOS and Mac code.
-    UNUSED_PARAM(previousVisibleRect);
-    
-    if (m_tileCoverage == CoverageForVisibleArea || MemoryPressureHandler::singleton().isUnderMemoryPressure()) {
-        coverageRect = visibleRect;
-        return;
-    }
+    if (m_tileCoverage == CoverageForVisibleArea || MemoryPressureHandler::singleton().isUnderMemoryPressure())
+        return visibleRect;
 
     double horizontalMargin = kDefaultTileSize / contentsScale;
     double verticalMargin = kDefaultTileSize / contentsScale;
@@ -427,8 +510,8 @@ void TileController::adjustTileCoverageRect(FloatRect& coverageRect, const Float
 
     if (!m_velocity.horizontalVelocity && !m_velocity.verticalVelocity) {
         if (m_velocity.scaleChangeRate > 0) {
-            coverageRect = visibleRect;
-            return;
+            LOG_WITH_STREAM(Tiling, stream << "TileController " << this << " computeTileCoverageRect - zooming, coverage is visible rect " << coverageRect);
+            return visibleRect;
         }
         futureRect.setWidth(futureRect.width() + horizontalMargin);
         futureRect.setHeight(futureRect.height() + verticalMargin);
@@ -448,36 +531,37 @@ void TileController::adjustTileCoverageRect(FloatRect& coverageRect, const Float
     if (futureRect.y() < 0)
         futureRect.setY(0);
 
-    coverageRect.unite(futureRect);
-    return;
+    LOG_WITH_STREAM(Tiling, stream << "TileController " << this << " adjustTileCoverageForScrolling - coverage " << coverageRect << " expanded to " << unionRect(coverageRect, futureRect) << " velocity " << m_velocity);
+
+    return unionRect(coverageRect, futureRect);
+}
+
+FloatRect TileController::adjustTileCoverageRectForScrolling(const FloatRect& coverageRect, const FloatSize& newSize, const FloatRect& previousVisibleRect, const FloatRect& visibleRect, float contentsScale)
+{
+    // If the page is not in a window (for example if it's in a background tab), we limit the tile coverage rect to the visible rect.
+    if (!m_isInWindow)
+        return visibleRect;
+
+#if !PLATFORM(IOS_FAMILY)
+    if (m_tileCacheLayer->isPageTiledBackingLayer())
+        return adjustTileCoverageForDesktopPageScrolling(coverageRect, newSize, previousVisibleRect, visibleRect);
 #else
-    UNUSED_PARAM(contentsScale);
-
-    // FIXME: look at how far the document can scroll in each dimension.
-    FloatSize coverageSize = visibleRect.size();
-
-    bool largeVisibleRectChange = !previousVisibleRect.isEmpty() && !visibleRect.intersects(previousVisibleRect);
-
-    // Inflate the coverage rect so that it covers 2x of the visible width and 3x of the visible height.
-    // These values were chosen because it's more common to have tall pages and to scroll vertically,
-    // so we keep more tiles above and below the current area.
-    float widthScale = 1;
-    float heightScale = 1;
-
-    if (m_tileCoverage & CoverageForHorizontalScrolling && !largeVisibleRectChange)
-        widthScale = 2;
-
-    if (m_tileCoverage & CoverageForVerticalScrolling && !largeVisibleRectChange)
-        heightScale = 3;
-    
-    coverageSize.scale(widthScale, heightScale);
-
-    FloatRect coverageBounds = boundsForSize(newSize);
-    
-    FloatRect coverage = expandRectWithinRect(visibleRect, coverageSize, coverageBounds);
-    LOG_WITH_STREAM(Tiling, stream << "TileController::computeTileCoverageRect newSize=" << newSize << " mode " << m_tileCoverage << " expanded to " << coverageSize << " bounds with margin " << coverageBounds << " coverage " << coverage);
-    coverageRect.unite(coverage);
+    UNUSED_PARAM(previousVisibleRect);
 #endif
+
+    auto computeVelocityIfNecessary = [&](FloatPoint scrollOffset) {
+        if (m_haveExternalVelocityData)
+            return;
+
+        if (!m_historicalVelocityData)
+            m_historicalVelocityData = std::make_unique<HistoricalVelocityData>();
+
+        m_velocity = m_historicalVelocityData->velocityForNewData(scrollOffset, contentsScale, MonotonicTime::now());
+    };
+    
+    computeVelocityIfNecessary(visibleRect.location());
+
+    return adjustTileCoverageWithScrollingVelocity(coverageRect, newSize, visibleRect, contentsScale);
 }
 
 void TileController::scheduleTileRevalidation(Seconds interval)

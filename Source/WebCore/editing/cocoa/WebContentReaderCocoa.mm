@@ -695,7 +695,16 @@ bool WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const String& type,
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-static Ref<HTMLElement> attachmentForFilePath(Frame& frame, const String& path)
+static String typeForAttachmentElement(const String& contentType)
+{
+    if (contentType.isEmpty())
+        return { };
+
+    auto mimeType = mimeTypeFromContentType(contentType);
+    return mimeType.isEmpty() ? contentType : mimeType;
+}
+
+static Ref<HTMLElement> attachmentForFilePath(Frame& frame, const String& path, Optional<FloatSize> preferredSize, const String& explicitContentType)
 {
     auto document = makeRef(*frame.document());
     auto attachment = HTMLAttachmentElement::create(HTMLNames::attachmentTag, document);
@@ -704,17 +713,23 @@ static Ref<HTMLElement> attachmentForFilePath(Frame& frame, const String& path)
         return attachment;
     }
 
-    String contentType;
+    bool isDirectory = FileSystem::fileIsDirectory(path, FileSystem::ShouldFollowSymbolicLinks::Yes);
+    String contentType = typeForAttachmentElement(explicitContentType);
+    if (contentType.isEmpty()) {
+        if (isDirectory)
+            contentType = kUTTypeDirectory;
+        else {
+            contentType = File::contentTypeForFile(path);
+            if (contentType.isEmpty())
+                contentType = kUTTypeData;
+        }
+    }
+
     Optional<uint64_t> fileSizeForDisplay;
-    if (FileSystem::fileIsDirectory(path, FileSystem::ShouldFollowSymbolicLinks::Yes))
-        contentType = kUTTypeDirectory;
-    else {
+    if (!isDirectory) {
         long long fileSize;
         FileSystem::getFileSize(path, fileSize);
         fileSizeForDisplay = fileSize;
-        contentType = File::contentTypeForFile(path);
-        if (contentType.isEmpty())
-            contentType = kUTTypeData;
     }
 
     frame.editor().registerAttachmentIdentifier(attachment->ensureUniqueIdentifier(), contentType, path);
@@ -723,6 +738,10 @@ static Ref<HTMLElement> attachmentForFilePath(Frame& frame, const String& path)
         auto image = HTMLImageElement::create(document);
         image->setAttributeWithoutSynchronization(HTMLNames::srcAttr, DOMURL::createObjectURL(document, File::create(path)));
         image->setAttachmentElement(WTFMove(attachment));
+        if (preferredSize) {
+            image->setAttributeWithoutSynchronization(HTMLNames::widthAttr, AtomicString::number(preferredSize->width()));
+            image->setAttributeWithoutSynchronization(HTMLNames::heightAttr, AtomicString::number(preferredSize->height()));
+        }
         return image;
     }
 
@@ -730,12 +749,11 @@ static Ref<HTMLElement> attachmentForFilePath(Frame& frame, const String& path)
     return attachment;
 }
 
-static Ref<HTMLElement> attachmentForData(Frame& frame, SharedBuffer& buffer, const String& contentType, const String& name)
+static Ref<HTMLElement> attachmentForData(Frame& frame, SharedBuffer& buffer, const String& contentType, const String& name, Optional<FloatSize> preferredSize)
 {
     auto document = makeRef(*frame.document());
     auto attachment = HTMLAttachmentElement::create(HTMLNames::attachmentTag, document);
-    auto mimeType = mimeTypeFromContentType(contentType);
-    auto typeForAttachmentElement = mimeType.isEmpty() ? contentType : mimeType;
+    auto attachmentType = typeForAttachmentElement(contentType);
 
     // FIXME: We should instead ask CoreServices for a preferred name corresponding to the given content type.
     static const char* defaultAttachmentName = "file";
@@ -747,28 +765,32 @@ static Ref<HTMLElement> attachmentForData(Frame& frame, SharedBuffer& buffer, co
         fileName = name;
 
     if (!supportsClientSideAttachmentData(frame)) {
-        attachment->setFile(File::create(Blob::create(buffer, WTFMove(typeForAttachmentElement)), fileName));
+        attachment->setFile(File::create(Blob::create(buffer, WTFMove(attachmentType)), fileName));
         return attachment;
     }
 
-    frame.editor().registerAttachmentIdentifier(attachment->ensureUniqueIdentifier(), typeForAttachmentElement, fileName, buffer);
+    frame.editor().registerAttachmentIdentifier(attachment->ensureUniqueIdentifier(), attachmentType, fileName, buffer);
 
-    if (contentTypeIsSuitableForInlineImageRepresentation(typeForAttachmentElement)) {
+    if (contentTypeIsSuitableForInlineImageRepresentation(attachmentType)) {
         auto image = HTMLImageElement::create(document);
-        image->setAttributeWithoutSynchronization(HTMLNames::srcAttr, DOMURL::createObjectURL(document, File::create(Blob::create(buffer, WTFMove(typeForAttachmentElement)), WTFMove(fileName))));
+        image->setAttributeWithoutSynchronization(HTMLNames::srcAttr, DOMURL::createObjectURL(document, File::create(Blob::create(buffer, WTFMove(attachmentType)), WTFMove(fileName))));
         image->setAttachmentElement(WTFMove(attachment));
+        if (preferredSize) {
+            image->setAttributeWithoutSynchronization(HTMLNames::widthAttr, AtomicString::number(preferredSize->width()));
+            image->setAttributeWithoutSynchronization(HTMLNames::heightAttr, AtomicString::number(preferredSize->height()));
+        }
         return image;
     }
 
-    attachment->updateAttributes({ buffer.size() }, WTFMove(typeForAttachmentElement), WTFMove(fileName));
+    attachment->updateAttributes({ buffer.size() }, WTFMove(attachmentType), WTFMove(fileName));
     return attachment;
 }
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)
 
-bool WebContentReader::readFilePaths(const Vector<String>& paths)
+bool WebContentReader::readFilePath(const String& path, Optional<FloatSize> preferredPresentationSize, const String& contentType)
 {
-    if (paths.isEmpty() || !frame.document())
+    if (path.isEmpty() || !frame.document())
         return false;
 
     auto& document = *frame.document();
@@ -776,11 +798,20 @@ bool WebContentReader::readFilePaths(const Vector<String>& paths)
         fragment = document.createDocumentFragment();
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    if (RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled()) {
-        for (auto& path : paths)
-            fragment->appendChild(attachmentForFilePath(frame, path));
-    }
+    if (RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled())
+        fragment->appendChild(attachmentForFilePath(frame, path, preferredPresentationSize, contentType));
 #endif
+
+    return true;
+}
+
+bool WebContentReader::readFilePaths(const Vector<String>& paths)
+{
+    if (paths.isEmpty() || !frame.document())
+        return false;
+
+    for (auto& path : paths)
+        readFilePath(path);
 
     return true;
 }
@@ -816,7 +847,7 @@ bool WebContentReader::readURL(const URL& url, const String& title)
     return true;
 }
 
-bool WebContentReader::readDataBuffer(SharedBuffer& buffer, const String& type, const String& name)
+bool WebContentReader::readDataBuffer(SharedBuffer& buffer, const String& type, const String& name, Optional<FloatSize> preferredPresentationSize)
 {
     if (buffer.isEmpty())
         return false;
@@ -832,7 +863,7 @@ bool WebContentReader::readDataBuffer(SharedBuffer& buffer, const String& type, 
         fragment = document->createDocumentFragment();
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    fragment->appendChild(attachmentForData(frame, buffer, type, name));
+    fragment->appendChild(attachmentForData(frame, buffer, type, name, preferredPresentationSize));
 #else
     UNUSED_PARAM(type);
     UNUSED_PARAM(name);

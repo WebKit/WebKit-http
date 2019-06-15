@@ -307,7 +307,7 @@ void Pasteboard::read(PasteboardWebContentReader& reader, WebContentReadingPolic
             auto typeForFileUpload = info.contentTypeForHighestFidelityItem();
             if (auto buffer = strategy.readBufferFromPasteboard(i, typeForFileUpload, m_pasteboardName)) {
                 readURLAlongsideAttachmentIfNecessary(reader, strategy, typeForFileUpload, m_pasteboardName, i);
-                reader.readDataBuffer(*buffer, typeForFileUpload, info.suggestedFileName);
+                reader.readDataBuffer(*buffer, typeForFileUpload, info.suggestedFileName, info.preferredPresentationSize);
                 continue;
             }
         }
@@ -345,9 +345,10 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader,
         auto info = strategy.informationForItemAtIndex(index, m_pasteboardName);
         auto attachmentFilePath = info.pathForHighestFidelityItem();
         bool canReadAttachment = policy == WebContentReadingPolicy::AnyType && RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled() && !attachmentFilePath.isEmpty();
+        auto contentType = info.contentTypeForHighestFidelityItem();
         if (canReadAttachment && prefersAttachmentRepresentation(info)) {
-            readURLAlongsideAttachmentIfNecessary(reader, strategy, info.contentTypeForHighestFidelityItem(), m_pasteboardName, index);
-            reader.readFilePaths({ WTFMove(attachmentFilePath) });
+            readURLAlongsideAttachmentIfNecessary(reader, strategy, contentType, m_pasteboardName, index);
+            reader.readFilePath(WTFMove(attachmentFilePath), info.preferredPresentationSize, contentType);
             continue;
         }
 #endif
@@ -366,7 +367,7 @@ void Pasteboard::readRespectingUTIFidelities(PasteboardWebContentReader& reader,
         }
 #if ENABLE(ATTACHMENT_ELEMENT)
         if (canReadAttachment && result == ReaderResult::DidNotReadType)
-            reader.readFilePaths({ WTFMove(attachmentFilePath) });
+            reader.readFilePath(WTFMove(attachmentFilePath), info.preferredPresentationSize, contentType);
 #endif
     }
 }

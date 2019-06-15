@@ -2860,6 +2860,9 @@ void Page::didChangeMainDocument()
 #if ENABLE(WEB_RTC)
     m_rtcController.reset(m_shouldEnableICECandidateFilteringByDefault);
 #endif
+#if ENABLE(POINTER_EVENTS)
+    m_pointerCaptureController->reset();
+#endif
 }
 
 RenderingUpdateScheduler& Page::renderingUpdateScheduler()
@@ -2994,6 +2997,11 @@ void Page::configureLoggingChannel(const String& channelName, WTFLogChannelState
     UNUSED_PARAM(state);
     UNUSED_PARAM(level);
 #endif
+}
+
+void Page::didFinishLoadingImageForElement(HTMLImageElement& element)
+{
+    chrome().client().didFinishLoadingImageForElement(element);
 }
 
 } // namespace WebCore

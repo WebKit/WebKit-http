@@ -3,7 +3,7 @@
  *                     1999 Lars Knoll <knoll@kde.org>
  *                     1999 Antti Koivisto <koivisto@kde.org>
  *                     2000 Dirk Mueller <mueller@kde.org>
- * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2019 Apple Inc. All rights reserved.
  *           (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *           (C) 2006 Alexey Proskuryakov (ap@nypop.com)
  * Copyright (C) 2009 Google Inc. All rights reserved.
@@ -99,6 +99,7 @@
 #include "StyleScope.h"
 #include "TextResourceDecoder.h"
 #include "TiledBacking.h"
+#include "VelocityData.h"
 #include "VisualViewport.h"
 #include "WheelEventTestTrigger.h"
 #include <wtf/text/TextStream.h>
@@ -3467,6 +3468,8 @@ void FrameView::autoSizeIfEnabled()
     auto& documentRenderer = downcast<RenderElement>(*firstChild);
     documentRenderer.mutableStyle().setMaxWidth(Length(m_autoSizeConstraint.width(), Fixed));
     resize(m_autoSizeConstraint.width(), m_autoSizeConstraint.height());
+
+    Ref<FrameView> protectedThis(*this);
     document->updateStyleIfNeeded();
     document->updateLayoutIgnorePendingStylesheets();
 
@@ -4865,8 +4868,11 @@ void FrameView::resetTrackedRepaints()
 
 String FrameView::trackedRepaintRectsAsText() const
 {
-    if (frame().document())
-        frame().document()->updateLayout();
+    Frame& frame = this->frame();
+    Ref<Frame> protector(frame);
+
+    if (auto* document = frame.document())
+        document->updateLayout();
 
     TextStream ts;
     if (!m_trackedRepaintRects.isEmpty()) {
@@ -5051,10 +5057,10 @@ void FrameView::setCustomSizeForResizeEvent(IntSize customSize)
     sendResizeEventIfNeeded();
 }
 
-void FrameView::setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, MonotonicTime timestamp)
+void FrameView::setScrollVelocity(const VelocityData& velocityData)
 {
     if (TiledBacking* tiledBacking = this->tiledBacking())
-        tiledBacking->setVelocity(VelocityData(horizontalVelocity, verticalVelocity, scaleChangeRate, timestamp));
+        tiledBacking->setVelocity(velocityData);
 }
 #endif // PLATFORM(IOS_FAMILY)
 

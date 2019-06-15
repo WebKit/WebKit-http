@@ -254,9 +254,6 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
 
     bridge/jsc/BridgeJSC.h
 
-    bridge/objc/WebScriptObject.h
-    bridge/objc/WebScriptObjectPrivate.h
-
     contentextensions/CombinedFiltersAlphabet.h
     contentextensions/CombinedURLFilters.h
     contentextensions/CompiledContentExtension.h
@@ -291,6 +288,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     css/CSSCustomPropertyValue.h
     css/CSSFontFaceRule.h
     css/CSSFontFamily.h
+    css/CSSGridIntegerRepeatValue.h
     css/CSSGroupingRule.h
     css/CSSImportRule.h
     css/CSSLineBoxContainValue.h
@@ -742,6 +740,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/ContextMenuContext.h
     page/ContextMenuController.h
     page/ContextMenuProvider.h
+    page/CrossSiteNavigationDataTransfer.h
     page/DOMSelection.h
     page/DOMTimer.h
     page/DOMWindow.h
@@ -779,6 +778,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     page/PageConfiguration.h
     page/PageConsoleClient.h
     page/PageGroup.h
+    page/PageIdentifier.h
     page/PageOverlay.h
     page/PageOverlayController.h
     page/PerformanceLogging.h
@@ -1089,6 +1089,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/TextRun.h
     platform/graphics/TiledBacking.h
     platform/graphics/TrackPrivateBase.h
+    platform/graphics/VelocityData.h
     platform/graphics/VideoTrackPrivate.h
     platform/graphics/WidthCache.h
     platform/graphics/WindRule.h

@@ -115,7 +115,7 @@ WebFrameLoaderClient::~WebFrameLoaderClient()
 {
 }
 
-Optional<uint64_t> WebFrameLoaderClient::pageID() const
+Optional<PageIdentifier> WebFrameLoaderClient::pageID() const
 {
     if (m_frame && m_frame->page())
         return m_frame->page()->pageID();
@@ -550,7 +550,7 @@ void WebFrameLoaderClient::dispatchDidFailProvisionalLoad(const ResourceError& e
     if (!webPage)
         return;
 
-    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailProvisionalLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->pageID(), m_frame->frameID());
+    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailProvisionalLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->pageID().toUInt64(), m_frame->frameID());
 
     RefPtr<API::Object> userData;
 
@@ -586,7 +586,7 @@ void WebFrameLoaderClient::dispatchDidFailLoad(const ResourceError& error)
     if (!webPage)
         return;
 
-    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->pageID(), m_frame->frameID());
+    RELEASE_LOG(Network, "%p - WebFrameLoaderClient::dispatchDidFailLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ")", this, webPage->pageID().toUInt64(), m_frame->frameID());
 
     RefPtr<API::Object> userData;
 
@@ -910,7 +910,9 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     if (requester.frameID() && WebProcess::singleton().webFrame(requester.frameID()))
         originatingFrameInfoData.frameID = requester.frameID();
 
-    uint64_t originatingPageID = requester.pageID() && WebProcess::singleton().webPage(requester.pageID()) ? requester.pageID() : 0;
+    Optional<PageIdentifier> originatingPageID;
+    if (requester.pageID() && WebProcess::singleton().webPage(requester.pageID()))
+        originatingPageID = requester.pageID();
 
     NavigationActionData navigationActionData;
     navigationActionData.navigationType = action->navigationType();

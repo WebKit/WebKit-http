@@ -672,6 +672,7 @@ css/CSSFontVariationValue.cpp
 css/CSSFunctionValue.cpp
 css/CSSGradientValue.cpp
 css/CSSGridAutoRepeatValue.cpp
+css/CSSGridIntegerRepeatValue.cpp
 css/CSSGridLineNamesValue.cpp
 css/CSSGridTemplateAreasValue.cpp
 css/CSSGroupingRule.cpp
@@ -1348,8 +1349,9 @@ layout/inlineformatting/InlineFormattingContextGeometry.cpp
 layout/inlineformatting/InlineFormattingContextLineLayout.cpp
 layout/inlineformatting/InlineFormattingState.cpp
 layout/inlineformatting/InlineInvalidation.cpp
+layout/inlineformatting/InlineLine.cpp
 layout/inlineformatting/InlineLineBreaker.cpp
-layout/inlineformatting/InlineRunProvider.cpp
+layout/inlineformatting/InlineTextItem.cpp
 layout/inlineformatting/text/TextUtil.cpp
 layout/layouttree/LayoutBlockContainer.cpp
 layout/layouttree/LayoutBox.cpp
@@ -1779,6 +1781,7 @@ platform/graphics/ShadowBlur.cpp
 platform/graphics/StringTruncator.cpp
 platform/graphics/SurrogatePairAwareTextIterator.cpp
 platform/graphics/TextRun.cpp
+platform/graphics/VelocityData.cpp
 platform/graphics/WOFFFileFormat.cpp
 platform/graphics/WidthIterator.cpp
 
@@ -2142,6 +2145,7 @@ rendering/style/StyleScrollSnapPoints.cpp
 rendering/style/StyleSurroundData.cpp
 rendering/style/StyleTransformData.cpp
 rendering/style/StyleVisualData.cpp
+rendering/style/TextSizeAdjustment.cpp
 rendering/style/WillChangeData.cpp
 
 rendering/svg/RenderSVGBlock.cpp

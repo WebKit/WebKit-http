@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if PLATFORM(WAYLAND) && USE(EGL)
+#if PLATFORM(WAYLAND) && USE(EGL) && !USE(WPE_RENDERER)
 
 #include "WebPageProxy.h"
 #include <WebCore/RefPtrCairo.h>
@@ -103,7 +103,7 @@ public:
     bool isRunning() const { return !!m_display; }
     String displayName() const { return m_displayName; }
 
-    void bindSurfaceToWebPage(Surface*, uint64_t pageID);
+    void bindSurfaceToWebPage(Surface*, WebCore::PageIdentifier);
     void registerWebPage(WebPageProxy&);
     void unregisterWebPage(WebPageProxy&);
 
@@ -129,4 +129,4 @@ private:
 
 } // namespace WebKit
 
-#endif // PLATFORM(WAYLAND) && USE(EGL)
+#endif // PLATFORM(WAYLAND) && USE(EGL) && !USE(WPE_RENDERER)

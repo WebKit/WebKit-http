@@ -1,3 +1,57 @@
+2019-05-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix internal watchOS build
+        https://bugs.webkit.org/show_bug.cgi?id=198344
+        <rdar://problem/51128965>
+
+        Reviewed by Geoff Garen.
+
+        * Misc/WebDownload.h:
+        Fix watchOS like we did iosmac in r245596
+
+2019-05-28  Brent Fulgham  <bfulgham@apple.com>
+        Protect frames during style and layout changes
+        https://bugs.webkit.org/show_bug.cgi?id=198047
+        <rdar://problem/50954082>
+
+        Reviewed by Zalan Bujtas.
+
+        Be more careful about the scope and lifetime of objects that participate in layout or
+        style updates. If a method decides a layout or style update is needed, it needs to
+        confirm that the elements it was operating on are still valid and needed in the
+        current operation.
+
+        * DOM/DOM.mm:
+        (-[DOMRange renderedImageForcingBlackText:renderedImageForcingBlackText:]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _selectionDraggingImage]):
+        (-[WebHTMLView selectionImageForcingBlackText:selectionImageForcingBlackText:]):
+
+2019-05-27  Chris Dumez  <cdumez@apple.com>
+
+        Use a strongly-typed identifier for pages
+        https://bugs.webkit.org/show_bug.cgi?id=198206
+
+        Reviewed by Youenn Fablet.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::pageID const):
+
+2019-05-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Dropped text, attachments, and images should animate into place
+        https://bugs.webkit.org/show_bug.cgi?id=198243
+        <rdar://problem/35205373>
+
+        Reviewed by Tim Horton.
+
+        Add a new chrome client method. See other changelogs for more detail.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::didFinishLoadingImageForElement):
+
 2019-05-21  Alex Christensen  <achristensen@webkit.org>
 
         Fix IOSMAC build

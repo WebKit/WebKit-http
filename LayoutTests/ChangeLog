@@ -1,3 +1,247 @@
+2019-05-29  Antti Koivisto  <antti@apple.com>
+
+        Scrolling node ordering wrong when a layer has both positioning and fixed/sticky node
+        https://bugs.webkit.org/show_bug.cgi?id=198329
+
+        Reviewed by Darin Adler.
+
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/sticky-in-overflow-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/sticky-in-overflow-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/sticky-in-overflow.html: Added.
+
+2019-05-28  Yacine Bandou  <yacine.bandou@softathome.com>
+
+        [MSE][GStreamer] update the readyState correctly in MediaPlayerPrivateGStreamerMSE
+        https://bugs.webkit.org/show_bug.cgi?id=197834
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add a new test that checks if the MediaElement receives the "canplaythrough"
+        event when the media content is entirely injected to MSE sourceBuffer.
+
+        * media/media-source/media-source-canplaythrough-event-expected.txt: Added.
+        * media/media-source/media-source-canplaythrough-event.html: Added.
+
+2019-05-28  Saam Barati  <sbarati@apple.com>
+
+        [WHLSL] Type of dereference is the type of the thing we point to, not a pointer to that type
+        https://bugs.webkit.org/show_bug.cgi?id=198321
+
+        Reviewed by Myles C. Maxfield.
+
+        * webgpu/whlsl-dereference-pointer-should-type-check-expected.html: Added.
+        * webgpu/whlsl-dereference-pointer-should-type-check.html: Added.
+
+2019-05-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Move idempotent text autosizing to StyleTreeResolver
+        https://bugs.webkit.org/show_bug.cgi?id=197808
+        <rdar://problem/50283983>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text-autosizing/ios/idempotentmode/css-exposure-expected.txt: Added.
+        * fast/text-autosizing/ios/idempotentmode/css-exposure.html: Added.
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-skip-expected.html: Added.
+        * fast/text-autosizing/ios/idempotentmode/idempotent-autosizing-skip.html: Added.
+        * platform/ipad/fast/text-autosizing/text-size-adjust-inline-style-expected.html: Removed.
+        * platform/ipad/fast/text-autosizing/text-size-adjust-inline-style.html: Removed.
+        We're intentionally not honoring percentages, because this is the most common way that
+        text autosizing is disabled (by setting it to 100%) on the Web today. However, Web authors
+        that have done this did it without knowing the full extent of the behavior change, and 
+        the new idempotent text autosizing code path seems to be a progression in most cases
+        we've seen.
+
+2019-05-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Use scroll-velocity-based tile coverage for overflow:scroll
+        https://bugs.webkit.org/show_bug.cgi?id=198294
+        rdar://problem/48942184
+
+        Reviewed by Tim Horton.
+
+        * tiled-drawing/scrolling/overflow/overflow-scrolled-down-tile-coverage-expected.txt: Added.
+        * tiled-drawing/scrolling/overflow/overflow-scrolled-down-tile-coverage.html: Added.
+        * tiled-drawing/scrolling/overflow/overflow-scrolled-up-tile-coverage-expected.txt: Added.
+        * tiled-drawing/scrolling/overflow/overflow-scrolled-up-tile-coverage.html: Added.
+        * tiled-drawing/scrolling/overflow/overflow-tile-coverage-expected.txt: Added.
+        * tiled-drawing/scrolling/overflow/overflow-tile-coverage.html: Added.
+
+2019-05-28  Youenn Fablet  <youenn@apple.com>
+
+        createAnswer() SDP Rejected by setLocalDescription()
+        https://bugs.webkit.org/show_bug.cgi?id=195930
+        <rdar://problem/49030489>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/h264-packetization-mode-expected.txt: Added.
+        * webrtc/h264-packetization-mode.html: Added.
+
+2019-05-28  Shawn Roberts  <sroberts@apple.com>
+
+        Unreviewed, rolling out r245475.
+
+        Newly imported test is flaky. Features need flags.
+
+        Reverted changeset:
+
+        "Implement imagesrcset and imagesizes attributes on link
+        rel=preload"
+        https://bugs.webkit.org/show_bug.cgi?id=192950
+        https://trac.webkit.org/changeset/245475
+
+2019-05-28  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION (r244182): inspector/canvas/recording-webgl-snapshots.html became flaky on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=196875
+        <rdar://problem/49873252>
+
+        Reviewed by Said Abou-Hallawa.
+
+        Remove the `frameLimit` configuration on these tests, as they're short enough that when
+        running in debug, the timing between the `InspectorCanvasAgent` automatically stopping the
+        recording and the test page's `LastFrame` event (which will manually stop the recording) is
+        too close and can result in a race condition.
+
+        Instead, just wait for the test page to say "done" (`LastFrame`) before stopping the
+        recording, ensuring that the full "flow" of the recording is under the control of the test.
+
+        This isn't an issue when using Web Inspector "normally" (e.g. not in a test), because the
+        frontend UI will "ignore" these types of errors, not to mention it would be much harder for
+        a person to get the timing just right to even encounter this situation.
+
+        * inspector/canvas/recording-webgl-snapshots.html:
+        * inspector/canvas/recording-webgl2-snapshots.html:
+        * platform/mac/TestExpectations:
+
+2019-05-28  Antoine Quint  <graouts@apple.com>
+
+        [Pointer Events WPT] Unflake imported/w3c/web-platform-tests/pointerevents/pointerevent_suppress_compat_events_on_drag_mouse.html
+        https://bugs.webkit.org/show_bug.cgi?id=197008
+
+        Reviewed by Jon Lee.
+
+        We raised an issue on the WPT test which was testing the event timestamp in an invalid manner (see https://github.com/w3c/pointerevents/issues/284
+        and https://github.com/web-platform-tests/wpt/issues/170160). As a result this test now passes reliably, so we can update the expected out and
+        the TestExpectations.
+
+        * platform/mac/TestExpectations:
+
+2019-05-28  Antti Koivisto  <antti@apple.com>
+
+        [async scrolling] Fixed positioning inside stacking context overflow scroll is jumpy
+        https://bugs.webkit.org/show_bug.cgi?id=198292
+
+        Reviewed by Darin Adler.
+
+        * scrollingcoordinator/ios/fixed-in-stacking-context-overflow-scroll-2-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-in-stacking-context-overflow-scroll-2.html: Added.
+        * scrollingcoordinator/ios/fixed-in-stacking-context-overflow-scroll-expected.html: Added.
+        * scrollingcoordinator/ios/fixed-in-stacking-context-overflow-scroll.html: Added.
+
+2019-05-27  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [CURL] Fix crashing SocketStreamHandle.
+        https://bugs.webkit.org/show_bug.cgi?id=197873
+
+        Reviewed by Fujii Hironori.
+
+        * platform/wincairo-wk1/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2019-05-27  Oriol Brufau  <obrufau@igalia.com>
+
+        [css-grid] Preserve repeat() notation when serializing declared values
+        https://bugs.webkit.org/show_bug.cgi?id=197840
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Update test expectations.
+
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set-expected.txt:
+        * fast/css-grid-layout/grid-element-auto-repeat-get-set.html:
+        * fast/css-grid-layout/grid-repeat-calc-expected.txt:
+        * fast/css-grid-layout/grid-repeat-calc.html:
+        * fast/css-grid-layout/named-grid-line-get-set-expected.txt:
+        * fast/css-grid-layout/named-grid-line-get-set.html:
+
+2019-05-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Touch support is reported even when the device doesn't have a touch screen
+        https://bugs.webkit.org/show_bug.cgi?id=139681
+
+        Reviewed by Michael Catanzaro.
+
+        Remove expectations for tests that are passing now.
+
+        * platform/gtk/TestExpectations:
+
+2019-05-26  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Downgrade document.referrer to the referrer's eTLD+1 if the page was navigated to with a prevalent resource referrer containing link decoration
+        https://bugs.webkit.org/show_bug.cgi?id=198227
+        <rdar://problem/51117258>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/resourceLoadStatistics/downgraded-referrer-for-navigation-with-link-query-from-prevalent-resource-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/downgraded-referrer-for-navigation-with-link-query-from-prevalent-resource.html: Added.
+
+2019-05-25  Youenn Fablet  <youenn@apple.com>
+
+        media/video-remote-control-playpause.html is timing out after r245712
+        https://bugs.webkit.org/show_bug.cgi?id=198238
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+        Removed old flaky expectation that is no longer valid according dashboard.
+
+2019-05-25  Simon Fraser  <simon.fraser@apple.com>
+
+        [Async overflow scrolling] Absolute positioned element inside async overflow scroll didn't get composited sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=198237
+
+        Reviewed by Antti Koivisto.
+
+        * platform/ios-wk2/scrollingcoordinator/scrolling-tree/absolute-inside-stacking-in-scroller-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/absolute-inside-stacking-in-scroller-expected.txt: Added.
+        * scrollingcoordinator/scrolling-tree/absolute-inside-stacking-in-scroller.html: Added.
+
+2019-05-25  Simon Fraser  <simon.fraser@apple.com>
+
+        [macOS] Fix programmatic scroll in RTL overflow with async scrolling enabled
+        https://bugs.webkit.org/show_bug.cgi?id=198226
+
+        Reviewed by Antti Koivisto.
+
+        * scrollingcoordinator/mac/rtl-programmatic-overflow-scroll-expected.html: Added.
+        * scrollingcoordinator/mac/rtl-programmatic-overflow-scroll.html: Added.
+
+2019-05-24  Joonghun Park  <jh718.park@samsung.com>
+
+        Make computed width of non-replaced inline return computed style.
+        https://bugs.webkit.org/show_bug.cgi?id=197814
+
+        Reviewed by Antti Koivisto.
+
+        Currently, Computed width of non-replaced inline incorrectly returns "auto"
+        instead of the computed value.
+        This patch changes the behavior according to
+        https://drafts.csswg.org/cssom/#resolved-value as below.
+
+        'If the property applies to the element or pseudo-element
+        and the resolved value of the display property is not none or contents,
+        then the resolved value is the used value.
+        Otherwise the resolved value is the computed value.'
+
+        * fast/css/getComputedStyle/getComputedStyle-resolved-values-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-with-pseudo-element-expected.txt:
+        * fast/css/getComputedStyle/getComputedStyle-with-pseudo-element.html:
+        * legacy-animation-engine/fast/css/getComputedStyle/getComputedStyle-with-pseudo-element-expected.txt:
+        * legacy-animation-engine/fast/css/getComputedStyle/getComputedStyle-with-pseudo-element.html:
+
 2019-05-24  Myles C. Maxfield  <mmaxfield@apple.com>
 
         [WHLSL] Allow vertex attributes to have arbitrary names in the shader

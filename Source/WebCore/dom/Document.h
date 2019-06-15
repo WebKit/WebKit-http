@@ -42,6 +42,7 @@
 #include "MediaProducer.h"
 #include "MutationObserver.h"
 #include "OrientationNotifier.h"
+#include "PageIdentifier.h"
 #include "PlatformEvent.h"
 #include "ReferrerPolicy.h"
 #include "Region.h"
@@ -635,7 +636,7 @@ public:
     WEBCORE_EXPORT AXObjectCache* axObjectCache() const;
     void clearAXObjectCache();
 
-    Optional<uint64_t> pageID() const;
+    Optional<PageIdentifier> pageID() const;
     // to get visually ordered hebrew and arabic pages right
     void setVisuallyOrdered();
     bool visuallyOrdered() const { return m_visuallyOrdered; }
@@ -1496,6 +1497,8 @@ public:
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     bool hasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain&);
     void setHasRequestedPageSpecificStorageAccessWithUserInteraction(const RegistrableDomain&);
+    WEBCORE_EXPORT void wasLoadedWithDataTransferFromPrevalentResource();
+    void downgradeReferrerToRegistrableDomain();
 #endif
 
     String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const URL&);
@@ -2043,6 +2046,7 @@ private:
     
 #if ENABLE(RESOURCE_LOAD_STATISTICS)
     RegistrableDomain m_registrableDomainRequestedPageSpecificStorageAccessWithUserInteraction { };
+    String m_referrerOverride;
 #endif
     
     CSSRegisteredCustomPropertySet m_CSSRegisteredPropertySet;

@@ -33,6 +33,7 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestone.h"
 #include "LinkIcon.h"
+#include "PageIdentifier.h"
 #include <functional>
 #include <wtf/Forward.h>
 #include <wtf/WallTime.h>
@@ -127,7 +128,7 @@ public:
 
     virtual void makeRepresentation(DocumentLoader*) = 0;
 
-    virtual Optional<uint64_t> pageID() const = 0;
+    virtual Optional<PageIdentifier> pageID() const = 0;
     virtual Optional<uint64_t> frameID() const = 0;
     virtual PAL::SessionID sessionID() const = 0;
 
