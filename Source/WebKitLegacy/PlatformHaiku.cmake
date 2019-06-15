@@ -22,7 +22,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/page/animation"
     "${WEBCORE_DIR}/page/csp"
-    "${WEBCORE_DIR}/page/scrolling"
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/graphics/filters"

@@ -39,7 +39,8 @@ struct media_raw_audio_format;
 
 namespace WebCore {
 
-class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
+class MediaPlayerPrivate : public MediaPlayerPrivateInterface,
+	public CanMakeWeakPtr<MediaPlayerPrivate> {
     public:
         static void registerMediaEngine(MediaEngineRegistrar);
 
@@ -103,7 +104,6 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
         BMediaTrack* m_videoTrack;
         BSoundPlayer* m_soundPlayer;
         BBitmap* m_frameBuffer;
-        WeakPtrFactory<MediaPlayerPrivate> m_holder;
 		BLocker m_mediaLock;
 
         MediaPlayer* m_player;
