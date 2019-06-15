@@ -77,13 +77,6 @@ void WebInspector::openFrontendConnection(bool underTest)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
     IPC::Connection::Identifier connectionIdentifier(socketPair.server);
     IPC::Attachment connectionClientPort(socketPair.client);
-#elif OS(WINDOWS)
-    IPC::Connection::Identifier connectionIdentifier, clientIdentifier;
-    if (!IPC::Connection::createServerAndClientIdentifiers(connectionIdentifier, clientIdentifier)) {
-        // log it?
-        return;
-    }
-    IPC::Attachment connectionClientPort(clientIdentifier);
 #elif OS(DARWIN)
     mach_port_t listeningPort = MACH_PORT_NULL;
     if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort) != KERN_SUCCESS)
@@ -94,7 +87,7 @@ void WebInspector::openFrontendConnection(bool underTest)
 
     IPC::Connection::Identifier connectionIdentifier(listeningPort);
     IPC::Attachment connectionClientPort(listeningPort, MACH_MSG_TYPE_MOVE_SEND);
-#elif PLATFORM(WIN)
+#elif OS(WINDOWS)
     IPC::Connection::Identifier connectionIdentifier, connClient;
     IPC::Connection::createServerAndClientIdentifiers(connectionIdentifier, connClient);
     IPC::Attachment connectionClientPort(connClient);
@@ -103,7 +96,7 @@ void WebInspector::openFrontendConnection(bool underTest)
     return;
 #endif
 
-#if USE(UNIX_DOMAIN_SOCKETS) || OS(DARWIN) || PLATFORM(WIN)
+#if USE(UNIX_DOMAIN_SOCKETS) || OS(DARWIN) || OS(WINDOWS)
     m_frontendConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
     m_frontendConnection->open();
 
