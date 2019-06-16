@@ -1,5 +1,4 @@
 include(platform/ImageDecoders.cmake)
-include(platform/Linux.cmake)
 include(platform/TextureMapper.cmake)
 
 if (NOT USE_LIBJPEG)
@@ -210,13 +209,6 @@ if (ENABLE_DEVICE_ORIENTATION)
         platform/qt/DeviceOrientationClientQt.cpp
         platform/qt/DeviceOrientationProviderQt.cpp
     )
-endif ()
-
-if (ENABLE_GAMEPAD_DEPRECATED)
-    list(APPEND WebCore_SOURCES
-        platform/qt/GamepadsQt.cpp
-    )
-    QTWEBKIT_GENERATE_MOC_FILES_CPP(WebCore platform/qt/GamepadsQt.cpp)
 endif ()
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)
