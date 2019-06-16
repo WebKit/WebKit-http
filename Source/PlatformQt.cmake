@@ -1,12 +1,12 @@
 # Automoc
 
 set(TARGETS_WITH_AUTOMOC
-    WebKit
+    WebKitLegacy
     WebKitWidgets
 )
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     list(APPEND TARGETS_WITH_AUTOMOC
-        WebKit2
+        WebKit
     )
 endif ()
 set_property(TARGET ${TARGETS_WITH_AUTOMOC} PROPERTY AUTOMOC ON)
@@ -33,17 +33,17 @@ if (USE_MINIMAL_DEBUG_INFO AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_options(gtest          PRIVATE -g0 -O1)
     endif ()
 
-    target_compile_options(WebKit            PRIVATE -g1 -O1 -fdebug-types-section)
-    target_compile_options(WebKit2           PRIVATE -g1 -O1 -fdebug-types-section)
+    target_compile_options(WebKitLegacy       PRIVATE -g1 -O1 -fdebug-types-section)
+    target_compile_options(WebKit             PRIVATE -g1 -O1 -fdebug-types-section)
 endif ()
 
 if (USE_MINIMAL_DEBUG_INFO_MSVC AND MSVC AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_C_FLAGS_DEBUG ${CMAKE_C_FLAGS_RELEASE})
     set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_RELEASE})
 
-    target_compile_options(WebKit             PRIVATE /Zi)
-    if (TARGET WebKit2)
-        target_compile_options(WebKit2        PRIVATE /Zi)
+    target_compile_options(WebKitLegacy       PRIVATE /Zi)
+    if (TARGET WebKit)
+        target_compile_options(WebKit         PRIVATE /Zi)
     endif ()
     if (TARGET WebKitWidgets)
         target_compile_options(WebKitWidgets  PRIVATE /Zi)
@@ -62,8 +62,8 @@ endif ()
 
 # Installation
 
-target_compile_definitions(WebKit INTERFACE QT_WEBKIT_LIB)
-target_include_directories(WebKit INTERFACE
+target_compile_definitions(WebKitLegacy INTERFACE QT_WEBKIT_LIB)
+target_include_directories(WebKitLegacy INTERFACE
     $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}>
     $<INSTALL_INTERFACE:${KDE_INSTALL_INCLUDEDIR}/QtWebKit>
 )

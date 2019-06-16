@@ -260,8 +260,8 @@ if (ENABLE_SMOOTH_SCROLLING)
     )
 endif ()
 
-# Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKit in that case.
-# This should match the opposite statement in WebKit/PlatformQt.cmake
+# Do it in the WebCore to support SHARED_CORE since WebKitWidgets won't load WebKitLegacy in that case.
+# This should match the opposite statement in WebKitLegacy/PlatformQt.cmake
 if (SHARED_CORE)
     qt5_add_resources(WebCore_SOURCES
         WebCore.qrc
@@ -315,7 +315,7 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/themeQtNoListboxes.css
 )
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     list(APPEND WebCore_SOURCES
         page/qt/GestureTapHighlighter.cpp
     )

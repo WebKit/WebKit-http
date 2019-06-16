@@ -1,14 +1,14 @@
-set(WebKit2_WebProcess_OUTPUT_NAME QtWebProcess)
-set(WebKit2_NetworkProcess_OUTPUT_NAME QtWebNetworkProcess)
-set(WebKit2_PluginProcess_OUTPUT_NAME QtWebPluginProcess)
-set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebStorageProcess)
+set(WebKit_WebProcess_OUTPUT_NAME QtWebProcess)
+set(WebKit_NetworkProcess_OUTPUT_NAME QtWebNetworkProcess)
+set(WebKit_PluginProcess_OUTPUT_NAME QtWebPluginProcess)
+set(WebKit_DatabaseProcess_OUTPUT_NAME QtWebStorageProcess)
 
-file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT_DIR})
 
 if (SHARED_CORE)
-    set(WebKit2_LIBRARY_TYPE SHARED)
+    set(WebKit_LIBRARY_TYPE SHARED)
 else ()
-    set(WebKit2_LIBRARY_TYPE STATIC)
+    set(WebKit_LIBRARY_TYPE STATIC)
 endif ()
 
 add_definitions(-DBUILDING_WEBKIT)
@@ -17,11 +17,11 @@ if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
 
-QTWEBKIT_SKIP_AUTOMOC(WebKit2)
+QTWEBKIT_SKIP_AUTOMOC(WebKit)
 
-#set(WebKit2_USE_PREFIX_HEADER ON)
+#set(WebKit_USE_PREFIX_HEADER ON)
 
-list(APPEND WebKit2_INCLUDE_DIRECTORIES
+list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${FORWARDING_HEADERS_DIR}"
     "${FORWARDING_HEADERS_DIR}/QtWebKit"
 
@@ -30,34 +30,34 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/network/qt"
     "${WEBCORE_DIR}/platform/qt"
 
-    # The WebKit2 Qt APIs depend on qwebkitglobal.h, which lives in WebKit
-    "${WEBKIT_DIR}/qt/Api"
-    "${WEBKIT_DIR}/qt/Plugins"
+    # The WebKit Qt APIs depend on qwebkitglobal.h, which lives in WebKitLegacy
+    "${WEBKITLEGACY_DIR}/qt/Api"
+    "${WEBKITLEGACY_DIR}/qt/Plugins"
 
-    "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/qt"
-    "${WEBKIT2_DIR}/NetworkProcess/qt"
+    "${WEBKIT_DIR}/NetworkProcess/CustomProtocols/qt"
+    "${WEBKIT_DIR}/NetworkProcess/qt"
 
-    "${WEBKIT2_DIR}/Shared/CoordinatedGraphics"
-    "${WEBKIT2_DIR}/Shared/Plugins/unix"
-    "${WEBKIT2_DIR}/Shared/qt"
-    "${WEBKIT2_DIR}/Shared/unix"
+    "${WEBKIT_DIR}/Shared/CoordinatedGraphics"
+    "${WEBKIT_DIR}/Shared/Plugins/unix"
+    "${WEBKIT_DIR}/Shared/qt"
+    "${WEBKIT_DIR}/Shared/unix"
 
-    "${WEBKIT2_DIR}/UIProcess/API/C/qt"
-    "${WEBKIT2_DIR}/UIProcess/API/qt"
-    "${WEBKIT2_DIR}/UIProcess/API/cpp/qt"
-    "${WEBKIT2_DIR}/UIProcess/CoordinatedGraphics"
-    "${WEBKIT2_DIR}/UIProcess/InspectorServer/qt"
-    "${WEBKIT2_DIR}/UIProcess/gstreamer"
-    "${WEBKIT2_DIR}/UIProcess/qt"
+    "${WEBKIT_DIR}/UIProcess/API/C/qt"
+    "${WEBKIT_DIR}/UIProcess/API/qt"
+    "${WEBKIT_DIR}/UIProcess/API/cpp/qt"
+    "${WEBKIT_DIR}/UIProcess/CoordinatedGraphics"
+    "${WEBKIT_DIR}/UIProcess/InspectorServer/qt"
+    "${WEBKIT_DIR}/UIProcess/gstreamer"
+    "${WEBKIT_DIR}/UIProcess/qt"
 
-    "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/unix"
-    "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape/x11"
-    "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/qt"
-    "${WEBKIT2_DIR}/WebProcess/WebPage/CoordinatedGraphics"
-    "${WEBKIT2_DIR}/WebProcess/qt"
+    "${WEBKIT_DIR}/WebProcess/Plugins/Netscape/unix"
+    "${WEBKIT_DIR}/WebProcess/Plugins/Netscape/x11"
+    "${WEBKIT_DIR}/WebProcess/WebCoreSupport/qt"
+    "${WEBKIT_DIR}/WebProcess/WebPage/CoordinatedGraphics"
+    "${WEBKIT_DIR}/WebProcess/qt"
 )
 
-list(APPEND WebKit2_SOURCES
+list(APPEND WebKit_SOURCES
     DatabaseProcess/qt/DatabaseProcessMainQt.cpp
 
     NetworkProcess/CustomProtocols/qt/CustomProtocolManagerQt.cpp
@@ -214,33 +214,33 @@ list(APPEND WebKit2_SOURCES
     WebProcess/qt/WebProcessQt.cpp
 )
 
-qt5_add_resources(WebKit2_SOURCES
+qt5_add_resources(WebKit_SOURCES
     WebKit2.qrc
 )
 
 if (USE_MACH_PORTS)
-    list(APPEND WebKit2_INCLUDE_DIRECTORIES
-        "${WEBKIT2_DIR}/Platform/IPC/mac"
-        "${WEBKIT2_DIR}/Platform/mac"
+    list(APPEND WebKit_INCLUDE_DIRECTORIES
+        "${WEBKIT_DIR}/Platform/IPC/mac"
+        "${WEBKIT_DIR}/Platform/mac"
     )
-    list(APPEND WebKit2_SOURCES
+    list(APPEND WebKit_SOURCES
         Platform/IPC/mac/ConnectionMac.mm
 
         Platform/mac/MachUtilities.cpp
         Platform/mac/SharedMemoryMac.cpp
     )
-    list(APPEND WebKit2_LIBRARIES
+    list(APPEND WebKit_LIBRARIES
         objc
     )
 elseif (WIN32)
-    list(APPEND WebKit2_SOURCES
+    list(APPEND WebKit_SOURCES
         Platform/IPC/win/AttachmentWin.cpp
         Platform/IPC/win/ConnectionWin.cpp
 
         Platform/win/SharedMemoryWin.cpp
     )
 else ()
-    list(APPEND WebKit2_SOURCES
+    list(APPEND WebKit_SOURCES
         Platform/IPC/unix/AttachmentUnix.cpp
         Platform/IPC/unix/ConnectionUnix.cpp
 
@@ -258,7 +258,7 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
     add_definitions(-DENABLE_PLUGIN_PROCESS=1)
 endif ()
 
-list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
+list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${Qt5Quick_INCLUDE_DIRS}
@@ -266,18 +266,18 @@ list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${SQLITE_INCLUDE_DIR}
 )
 
-list(APPEND WebKit2_LIBRARIES
+list(APPEND WebKit_LIBRARIES
     ${Qt5Positioning_LIBRARIES}
     ${Qt5Quick_LIBRARIES}
     ${Qt5WebChannel_LIBRARIES}
     ${X11_X11_LIB}
 )
 
-list(APPEND WebKit2_MESSAGES_IN_FILES
-    UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.messages.in
+# list(APPEND WebKit_MESSAGES_IN_FILES
+#     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.messages.in
 
-    WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.messages.in
-)
+#     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.messages.in
+# )
 
 list(APPEND WebProcess_SOURCES
     qt/MainQt.cpp
@@ -285,16 +285,16 @@ list(APPEND WebProcess_SOURCES
 
 if (NOT SHARED_CORE)
     set(WebProcess_LIBRARIES
-        WebKit
+        WebKitLegacy
     )
     set(NetworkProcess_LIBRARIES
-        WebKit
+        WebKitLegacy
     )
     set(DatabaseProcess_LIBRARIES
-        WebKit
+        WebKitLegacy
     )
     set(PluginProcess_LIBRARIES
-        WebKit
+        WebKitLegacy
     )
 endif ()
 
@@ -316,12 +316,12 @@ list(APPEND PluginProcess_SOURCES
     qt/PluginMainQt.cpp
 )
 
-add_custom_target(WebKit2-forwarding-headers
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT2_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT2_DIR} --output ${FORWARDING_HEADERS_DIR} --platform qt
+add_custom_target(WebKit-forwarding-headers
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_DIR} --output ${FORWARDING_HEADERS_DIR} --platform qt
 )
 
-set(WEBKIT2_EXTRA_DEPENDENCIES
-     WebKit2-forwarding-headers
+set(WebKit_EXTRA_DEPENDENCIES
+     WebKit-forwarding-headers
 )
 
 WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit/private DIRECTORIES UIProcess/API/qt)
@@ -330,10 +330,10 @@ if (ENABLE_API_TESTS)
     add_subdirectory(UIProcess/API/qt/tests)
 endif ()
 
-file(GLOB WebKit2_PRIVATE_HEADERS UIProcess/API/qt/*_p.h)
+file(GLOB WebKit_PRIVATE_HEADERS UIProcess/API/qt/*_p.h)
 install(
     FILES
-       ${WebKit2_PRIVATE_HEADERS}
+       ${WebKit_PRIVATE_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
     COMPONENT Data

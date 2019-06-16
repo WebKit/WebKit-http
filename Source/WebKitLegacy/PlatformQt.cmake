@@ -30,9 +30,9 @@ if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
 endif ()
 
-QTWEBKIT_SKIP_AUTOMOC(WebKit)
+QTWEBKIT_SKIP_AUTOMOC(WebKitLegacy)
 
-list(APPEND WebKit_INCLUDE_DIRECTORIES
+list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}"
     "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
@@ -182,11 +182,11 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 )
 
 # This files are not really port-independent
-list(REMOVE_ITEM WebKit_SOURCES
+list(REMOVE_ITEM WebKitLegacy_SOURCES
     WebCoreSupport/WebViewGroup.cpp
 )
 
-list(APPEND WebKit_SOURCES
+list(APPEND WebKitLegacy_SOURCES
     qt/Api/qhttpheader.cpp
     qt/Api/qwebdatabase.cpp
     qt/Api/qwebelement.cpp
@@ -238,7 +238,7 @@ list(APPEND WebKit_SOURCES
 )
 
 # Note: Qt5Network_INCLUDE_DIRS includes Qt5Core_INCLUDE_DIRS
-list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
+list(APPEND WebKitLegacy_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Gui_INCLUDE_DIRS}
     ${Qt5Gui_PRIVATE_INCLUDE_DIRS}
     ${Qt5Network_INCLUDE_DIRS}
@@ -246,29 +246,29 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${SQLITE_INCLUDE_DIR}
 )
 # Build the include path with duplicates removed
-list(REMOVE_DUPLICATES WebKit_SYSTEM_INCLUDE_DIRECTORIES)
+list(REMOVE_DUPLICATES WebKitLegacy_SYSTEM_INCLUDE_DIRECTORIES)
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     if (APPLE)
-        set(WEBKIT2_LIBRARY -Wl,-force_load WebKit2)
+        set(WEBKIT_LIBRARY -Wl,-force_load WebKit)
     elseif (MSVC)
-        set(WEBKIT2_LIBRARY "-WHOLEARCHIVE:WebKit2${CMAKE_DEBUG_POSTFIX}")
+        set(WEBKIT_LIBRARY "-WHOLEARCHIVE:WebKit${CMAKE_DEBUG_POSTFIX}")
     elseif (UNIX OR MINGW)
-        set(WEBKIT2_LIBRARY -Wl,--whole-archive WebKit2 -Wl,--no-whole-archive)
+        set(WEBKIT_LIBRARY -Wl,--whole-archive WebKit -Wl,--no-whole-archive)
     else ()
-        message(WARNING "Unknown system, linking with WebKit2 may fail!")
-        set(WEBKIT2_LIBRARY WebKit2)
+        message(WARNING "Unknown system, linking with WebKit may fail!")
+        set(WEBKIT_LIBRARY WebKit)
     endif ()
 endif ()
 
-list(APPEND WebKit_LIBRARIES
+list(APPEND WebKitLegacy_LIBRARIES
     PRIVATE
-        ${WEBKIT2_LIBRARY}
+        ${WEBKIT_LIBRARY}
         ${Qt5Quick_LIBRARIES}
         ${Qt5WebChannel_LIBRARIES}
 )
 
-list(APPEND WebKit_LIBRARIES
+list(APPEND WebKitLegacy_LIBRARIES
     PRIVATE
         ${ICU_LIBRARIES}
         ${Qt5Positioning_LIBRARIES}
@@ -282,52 +282,52 @@ list(APPEND WebKit_LIBRARIES
 )
 
 if (ENABLE_GEOLOCATION)
-    list(APPEND WebKit_SOURCES
+    list(APPEND WebKitLegacy_SOURCES
         qt/WebCoreSupport/GeolocationClientQt.cpp
         qt/WebCoreSupport/GeolocationPermissionClientQt.cpp
     )
 endif ()
 
 if (USE_QT_MULTIMEDIA)
-    qt_wrap_cpp(WebKit WebKit_SOURCES
+    qt_wrap_cpp(WebKitLegacy WebKitLegacy_SOURCES
         qt/Api/qwebfullscreenvideohandler.h
     )
-    list(APPEND WebKit_SOURCES
+    list(APPEND WebKitLegacy_SOURCES
         qt/WebCoreSupport/FullScreenVideoQt.cpp
     )
 endif ()
 
 if (ENABLE_TEST_SUPPORT)
-    list(APPEND WebKit_SOURCES
+    list(APPEND WebKitLegacy_SOURCES
         qt/WebCoreSupport/DumpRenderTreeSupportQt.cpp
         qt/WebCoreSupport/QtTestSupport.cpp
     )
     if (SHARED_CORE)
-        list(APPEND WebKit_LIBRARIES PUBLIC WebCoreTestSupport)
+        list(APPEND WebKitLegacy_LIBRARIES PUBLIC WebCoreTestSupport)
     else ()
-        list(APPEND WebKit_LIBRARIES PRIVATE WebCoreTestSupport)
+        list(APPEND WebKitLegacy_LIBRARIES PRIVATE WebCoreTestSupport)
     endif ()
 endif ()
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
-    list(APPEND WebKit_SOURCES
+    list(APPEND WebKitLegacy_SOURCES
         win/Plugins/PluginMainThreadScheduler.cpp
         win/Plugins/npapi.cpp
     )
 
     if (UNIX AND NOT APPLE)
-        list(APPEND WebKit_SOURCES
+        list(APPEND WebKitLegacy_SOURCES
             qt/Plugins/PluginPackageQt.cpp
             qt/Plugins/PluginViewQt.cpp
         )
     endif ()
 
     if (WIN32)
-        list(APPEND WebKit_INCLUDE_DIRECTORIES
+        list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
             ${WEBCORE_DIR}/platform/win
         )
 
-        list(APPEND WebKit_SOURCES
+        list(APPEND WebKitLegacy_SOURCES
             win/Plugins/PluginDatabaseWin.cpp
             win/Plugins/PluginMessageThrottlerWin.cpp
             win/Plugins/PluginPackageWin.cpp
@@ -335,7 +335,7 @@ if (ENABLE_NETSCAPE_PLUGIN_API)
         )
     endif ()
 else ()
-    list(APPEND WebKit_SOURCES
+    list(APPEND WebKitLegacy_SOURCES
         qt/Plugins/PluginPackageNone.cpp
         qt/Plugins/PluginViewNone.cpp
     )
@@ -344,13 +344,13 @@ endif ()
 # Resources have to be included directly in the final binary.
 # The linker won't pick them from a static library since they aren't referenced.
 if (NOT SHARED_CORE)
-    qt5_add_resources(WebKit_SOURCES
+    qt5_add_resources(WebKitLegacy_SOURCES
         "${WEBCORE_DIR}/WebCore.qrc"
     )
 
     if (ENABLE_INSPECTOR_UI)
         include("${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/PlatformQt.cmake")
-        list(APPEND WebKit_SOURCES
+        list(APPEND WebKitLegacy_SOURCES
             "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp"
         )
         set_property(SOURCE "${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/qrc_WebInspector.cpp" PROPERTY SKIP_AUTOMOC ON)
@@ -360,7 +360,7 @@ endif ()
 WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit DIRECTORIES qt/Api)
 
 ecm_generate_headers(
-    QtWebKit_FORWARDING_HEADERS
+    QtWebKitLegacy_FORWARDING_HEADERS
     HEADER_NAMES
         QWebDatabase
         QWebElement,QWebElementCollection
@@ -384,26 +384,26 @@ ecm_generate_headers(
     OUTPUT_DIR
         "${FORWARDING_HEADERS_DIR}/QtWebKit"
     REQUIRED_HEADERS
-        QtWebKit_HEADERS
+        QtWebKitLegacy_HEADERS
 )
 
-set(WebKit_PUBLIC_HEADERS
+set(WebKitLegacy_PUBLIC_HEADERS
     qt/Api/qwebkitglobal.h
-    ${QtWebKit_HEADERS}
-    ${QtWebKit_FORWARDING_HEADERS}
+    ${QtWebKitLegacy_HEADERS}
+    ${QtWebKitLegacy_FORWARDING_HEADERS}
 )
 
 generate_version_header("${FORWARDING_HEADERS_DIR}/QtWebKit/qtwebkitversion.h"
-    WebKit_PUBLIC_HEADERS
+    WebKitLegacy_PUBLIC_HEADERS
     QTWEBKIT
 )
 
 generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitVersion"
-    WebKit_PUBLIC_HEADERS
+    WebKitLegacy_PUBLIC_HEADERS
     "#include \"qtwebkitversion.h\"")
 
 generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitDepends"
-    WebKit_PUBLIC_HEADERS
+    WebKitLegacy_PUBLIC_HEADERS
     "#ifdef __cplusplus /* create empty PCH in C mode */
 #include <QtCore/QtCore>
 #include <QtGui/QtGui>
@@ -413,16 +413,16 @@ generate_header("${FORWARDING_HEADERS_DIR}/QtWebKit/QtWebKitDepends"
 
 install(
     FILES
-        ${WebKit_PUBLIC_HEADERS}
+        ${WebKitLegacy_PUBLIC_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKit
     COMPONENT Data
 )
 
-file(GLOB WebKit_PRIVATE_HEADERS qt/Api/*_p.h)
+file(GLOB WebKitLegacy_PRIVATE_HEADERS qt/Api/*_p.h)
 install(
     FILES
-        ${WebKit_PRIVATE_HEADERS}
+        ${WebKitLegacy_PRIVATE_HEADERS}
     DESTINATION
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
     COMPONENT Data
@@ -436,7 +436,7 @@ set(WEBKIT_PRI_RUNTIME_DEPS "core_private gui_private")
 if (QT_WEBCHANNEL)
     set(WEBKIT_PRI_RUNTIME_DEPS "webchannel ${WEBKIT_PRI_RUNTIME_DEPS}")
 endif ()
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     set(WEBKIT_PRI_RUNTIME_DEPS "qml quick ${WEBKIT_PRI_RUNTIME_DEPS}")
 endif ()
 if (ENABLE_GEOLOCATION)
@@ -506,81 +506,81 @@ if (NOT MACOS_BUILD_FRAMEWORKS)
         DESCRIPTION "Qt WebKit module"
         INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
         DEPS "${WEBKIT_PKGCONFIG_DEPS}"
-        FILENAME_VAR WebKit_PKGCONFIG_FILENAME
+        FILENAME_VAR WebKitLegacy_PKGCONFIG_FILENAME
     )
     set(ECM_PKGCONFIG_INSTALL_DIR "${LIB_INSTALL_DIR}/pkgconfig" CACHE PATH "The directory where pkgconfig will be installed to.")
-    install(FILES ${WebKit_PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR} COMPONENT Data)
+    install(FILES ${WebKitLegacy_PKGCONFIG_FILENAME} DESTINATION ${ECM_PKGCONFIG_INSTALL_DIR} COMPONENT Data)
 endif ()
 
 if (KDE_INSTALL_USE_QT_SYS_PATHS)
-    set(WebKit_PRI_ARGUMENTS
+    set(WebKitLegacy_PRI_ARGUMENTS
         BIN_INSTALL_DIR "$$QT_MODULE_BIN_BASE"
         LIB_INSTALL_DIR "$$QT_MODULE_LIB_BASE"
     )
     if (MACOS_BUILD_FRAMEWORKS)
-        list(APPEND WebKit_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
-        list(APPEND WebKit_Private_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_LIB_BASE/QtWebKit.framework/Headers/${PROJECT_VERSION}/QtWebKit"
         )
     else ()
-        list(APPEND WebKit_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit"
         )
-        list(APPEND WebKit_Private_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "$$QT_MODULE_INCLUDE_BASE/QtWebKit/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "$$QT_MODULE_INCLUDE_BASE/QtWebKit/${PROJECT_VERSION}/QtWebKit"
         )
     endif ()
 else ()
-    set(WebKit_PRI_ARGUMENTS
+    set(WebKitLegacy_PRI_ARGUMENTS
         SET_RPATH ON
     )
     if (MACOS_BUILD_FRAMEWORKS)
-        list(APPEND WebKit_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers"
             MODULE_CONFIG "lib_bundle"
         )
-        list(APPEND WebKit_Private_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "${LIB_INSTALL_DIR}/QtWebKit.framework/Headers/${PROJECT_VERSION}/QtWebKit"
         )
     else ()
-        list(APPEND WebKit_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR ${KDE_INSTALL_INCLUDEDIR}
             INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
         )
-        list(APPEND WebKit_Private_PRI_ARGUMENTS
+        list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS
             INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}"
             INCLUDE_INSTALL_DIR2 "${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit"
         )
     endif ()
 endif ()
 
-list(APPEND WebKit_Private_PRI_ARGUMENTS MODULE_CONFIG "internal_module no_link")
+list(APPEND WebKitLegacy_Private_PRI_ARGUMENTS MODULE_CONFIG "internal_module no_link")
 
 if (MACOS_BUILD_FRAMEWORKS)
-    set(WebKit_OUTPUT_NAME QtWebKit)
+    set(WebKitLegacy_OUTPUT_NAME QtWebKit)
 else ()
-    set(WebKit_OUTPUT_NAME Qt5WebKit)
+    set(WebKitLegacy_OUTPUT_NAME Qt5WebKit)
 endif ()
 
 ecm_generate_pri_file(
     BASE_NAME webkit
     NAME QtWebKit
-    LIB_NAME ${WebKit_OUTPUT_NAME}
+    LIB_NAME ${WebKitLegacy_OUTPUT_NAME}
     INCLUDE_INSTALL_DIR "${KDE_INSTALL_INCLUDEDIR}/QtWebKit"
     DEPS "${WEBKIT_PRI_DEPS}"
     RUNTIME_DEPS "${WEBKIT_PRI_RUNTIME_DEPS}"
     DEFINES QT_WEBKIT_LIB
     QT_MODULES webkit
     EXTRA_LIBS "${WEBKIT_PRI_EXTRA_LIBS}"
-    FILENAME_VAR WebKit_PRI_FILENAME
-    ${WebKit_PRI_ARGUMENTS}
+    FILENAME_VAR WebKitLegacy_PRI_FILENAME
+    ${WebKitLegacy_PRI_ARGUMENTS}
 )
 ecm_generate_pri_file(
     BASE_NAME webkit_private
@@ -591,19 +591,19 @@ ecm_generate_pri_file(
     DEFINES " "
     QT_MODULES webkit
     EXTRA_LIBS " "
-    FILENAME_VAR WebKit_Private_PRI_FILENAME
-    ${WebKit_Private_PRI_ARGUMENTS}
+    FILENAME_VAR WebKitLegacy_Private_PRI_FILENAME
+    ${WebKitLegacy_Private_PRI_ARGUMENTS}
 )
 install(
-    FILES ${WebKit_PRI_FILENAME} ${WebKit_Private_PRI_FILENAME}
+    FILES ${WebKitLegacy_PRI_FILENAME} ${WebKitLegacy_Private_PRI_FILENAME}
     DESTINATION ${ECM_MKSPECS_INSTALL_DIR}
     COMPONENT Data
 )
 
 if (QT_STATIC_BUILD)
-    set(WebKit_LIBRARY_TYPE STATIC)
+    set(WebKitLegacy_LIBRARY_TYPE STATIC)
 else ()
-    set(WebKit_LIBRARY_TYPE SHARED)
+    set(WebKitLegacy_LIBRARY_TYPE SHARED)
 endif ()
 
 
@@ -646,7 +646,7 @@ set(WebKitWidgets_LIBRARIES
         ${Qt5PrintSupport_LIBRARIES}
     PUBLIC
         ${Qt5Widgets_LIBRARIES}
-        WebKit
+        WebKitLegacy
 )
 
 if (USE_QT_MULTIMEDIA)
@@ -827,12 +827,12 @@ install(
 if (MSVC)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
         enable_language(ASM_MASM)
-        list(APPEND WebKit_SOURCES
+        list(APPEND WebKitLegacy_SOURCES
             win/Plugins/PaintHooks.asm
         )
     endif ()
 
-    list(APPEND WebKit_INCLUDE_DIRECTORIES
+    list(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
         ${DERIVED_SOURCES_WEBKIT_DIR}
     )
 
@@ -848,7 +848,7 @@ endif ()
 set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/private)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
-add_dependencies(WebKitWidgets WebKit)
+add_dependencies(WebKitWidgets WebKitLegacy)
 set_target_properties(WebKitWidgets PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
 install(TARGETS WebKitWidgets EXPORT Qt5WebKitWidgetsTargets
         DESTINATION "${LIB_INSTALL_DIR}"
@@ -901,7 +901,7 @@ if (COMPILER_IS_GCC_OR_CLANG)
     )
 endif ()
 
-if (ENABLE_WEBKIT2)
+if (ENABLE_WEBKIT)
     add_subdirectory(qt/declarative)
 endif ()
 
