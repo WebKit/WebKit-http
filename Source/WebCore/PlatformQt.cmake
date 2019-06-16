@@ -78,8 +78,6 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/qt/AudioBusQt.cpp
 
-    platform/crypto/qt/CryptoDigestQt.cpp
-
     platform/graphics/ImageSource.cpp
     platform/graphics/PlatformDisplay.cpp
     platform/graphics/WOFFFileFormat.cpp
@@ -113,8 +111,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/TileQt.cpp
     platform/graphics/qt/TransformationMatrixQt.cpp
 
-    platform/graphics/surfaces/qt/GraphicsSurfaceQt.cpp
-
     platform/graphics/x11/PlatformDisplayX11.cpp
     platform/graphics/x11/XUniqueResource.cpp
 
@@ -132,7 +128,7 @@ list(APPEND WebCore_SOURCES
     platform/network/qt/ResourceHandleQt.cpp
     platform/network/qt/ResourceRequestQt.cpp
     platform/network/qt/ResourceResponseQt.cpp
-    platform/network/qt/SocketStreamHandleQt.cpp
+    platform/network/qt/SocketStreamHandleImplQt.cpp
     platform/network/qt/SynchronousLoaderClientQt.cpp
 
     platform/qt/CursorQt.cpp
@@ -144,7 +140,6 @@ list(APPEND WebCore_SOURCES
     platform/qt/FileSystemQt.cpp
     platform/qt/KeyedDecoderQt.cpp
     platform/qt/KeyedEncoderQt.cpp
-    platform/qt/LanguageQt.cpp
     platform/qt/LocalizedStringsQt.cpp
     platform/qt/LoggingQt.cpp
     platform/qt/MainThreadSharedTimerQt.cpp
@@ -159,7 +154,6 @@ list(APPEND WebCore_SOURCES
     platform/qt/ScrollbarThemeQStyle.cpp
     platform/qt/ScrollbarThemeQt.cpp
     platform/qt/SharedBufferQt.cpp
-    platform/qt/SoundQt.cpp
     platform/qt/TemporaryLinkStubsQt.cpp
     platform/qt/ThirdPartyCookiesQt.cpp
     platform/qt/URLQt.cpp
@@ -170,8 +164,6 @@ list(APPEND WebCore_SOURCES
     platform/text/LocaleICU.cpp
 
     platform/text/hyphen/HyphenationLibHyphen.cpp
-
-    platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 
 QTWEBKIT_GENERATE_MOC_FILES_CPP(WebCore
@@ -186,7 +178,7 @@ QTWEBKIT_GENERATE_MOC_FILES_H(WebCore
 )
 
 QTWEBKIT_GENERATE_MOC_FILE_H(WebCore platform/network/qt/NetworkStateNotifierPrivate.h platform/network/qt/NetworkStateNotifierQt.cpp)
-QTWEBKIT_GENERATE_MOC_FILE_H(WebCore platform/network/qt/SocketStreamHandlePrivate.h platform/network/qt/SocketStreamHandleQt.cpp)
+QTWEBKIT_GENERATE_MOC_FILE_H(WebCore platform/network/qt/SocketStreamHandlePrivate.h platform/network/qt/SocketStreamHandleImplQt.cpp)
 
 if (COMPILER_IS_GCC_OR_CLANG)
     set_source_files_properties(
@@ -311,16 +303,6 @@ if (ENABLE_WEBKIT)
     list(APPEND WebCore_SOURCES
         page/qt/GestureTapHighlighter.cpp
     )
-    if (USE_MACH_PORTS)
-        list(APPEND WebCore_FORWARDING_HEADERS_FILES
-            platform/cocoa/MachSendRight.h
-
-            platform/spi/cocoa/MachVMSPI.h
-        )
-        list(APPEND WebCore_SOURCES
-            platform/cocoa/MachSendRight.cpp
-        )
-    endif ()
 endif ()
 
 if (ENABLE_OPENGL)
@@ -460,17 +442,6 @@ endif ()
 
 if (APPLE)
     list(APPEND WebCore_SOURCES
-        platform/VNodeTracker.cpp
-
         platform/cf/SharedBufferCF.cpp
     )
 endif ()
-
-# From PlatformEfl.cmake
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h
-    MAIN_DEPENDENCY ${WEBKIT_DIR}/scripts/generate-webkitversion.pl
-    DEPENDS ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/scripts/generate-webkitversion.pl --config ${WEBKIT_DIR}/mac/Configurations/Version.xcconfig --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
-    VERBATIM)
-list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)

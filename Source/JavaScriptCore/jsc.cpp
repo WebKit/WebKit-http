@@ -129,7 +129,6 @@
 
 #if PLATFORM(QT)
 #include <QCoreApplication>
-#include <QDateTime>
 #endif
 
 #if !defined(PATH_MAX)

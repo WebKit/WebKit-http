@@ -1,10 +1,21 @@
 list(APPEND WTF_SOURCES
+    qt/LanguageQt.cpp
     qt/MainThreadQt.cpp
     qt/RunLoopQt.cpp
 
     text/qt/StringQt.cpp
+    text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/MainThreadQt.cpp qt/RunLoopQt.cpp)
+
+if (USE_MACH_PORTS)
+    list(APPEND WTF_FORWARDING_HEADERS_FILES
+        cocoa/MachSendRight.h
+    )
+    list(APPEND WTF_SOURCES
+        cocoa/MachSendRight.cpp
+    )
+endif()
 
 list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
     ${Qt5Core_INCLUDE_DIRS}
@@ -62,6 +73,7 @@ if (WIN32)
     list(APPEND WTF_SOURCES
         threads/win/BinarySemaphoreWin.cpp
 
+        win/CPUTimeWin.cpp
         win/WorkItemWin.cpp
         win/WorkQueueWin.cpp
     )
@@ -72,6 +84,9 @@ endif ()
 
 if (APPLE)
     list(APPEND WTF_SOURCES
+        cocoa/CPUTimeCocoa.cpp
+        cocoa/WorkQueueCocoa.cpp
+
         text/cf/AtomicStringImplCF.cpp
         text/cf/StringCF.cpp
         text/cf/StringImplCF.cpp
@@ -80,9 +95,16 @@ if (APPLE)
     list(APPEND WTF_LIBRARIES
         ${COREFOUNDATION_LIBRARY}
     )
+    list(APPEND WTF_PUBLIC_HEADERS
+        cf/TypeCastsCF.h
+    )
 endif ()
 
 if (UNIX AND NOT APPLE)
+    list(APPEND WTF_SOURCES
+        unix/CPUTimeUnix.cpp
+    )
+
     check_function_exists(clock_gettime CLOCK_GETTIME_EXISTS)
     if (NOT CLOCK_GETTIME_EXISTS)
         set(CMAKE_REQUIRED_LIBRARIES rt)

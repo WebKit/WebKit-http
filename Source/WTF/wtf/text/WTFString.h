@@ -332,9 +332,9 @@ public:
 #endif
 
 #if PLATFORM(QT)
-    WTF_EXPORT_STRING_API String(const QString&);
-    WTF_EXPORT_STRING_API String(const QStringRef&);
-    WTF_EXPORT_STRING_API operator QString() const;
+    WTF_EXPORT_PRIVATE String(const QString&);
+    WTF_EXPORT_PRIVATE String(const QStringRef&);
+    WTF_EXPORT_PRIVATE operator QString() const;
 #endif
 
     WTF_EXPORT_PRIVATE static String make8BitFrom16BitSource(const UChar*, size_t);
