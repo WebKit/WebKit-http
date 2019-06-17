@@ -33,12 +33,13 @@ namespace WebCore {
 class ResourceError : public ResourceErrorBase
 {
 public:
-    ResourceError()
+    ResourceError(Type type = Type::Null)
+        : ResourceErrorBase(type)
     {
     }
 
-    ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription)
-        : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription)
+    ResourceError(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, Type type = Type::Null)
+        : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription, type)
     {
     }
 

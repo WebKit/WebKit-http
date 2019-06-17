@@ -29,7 +29,7 @@
 #include <QCryptographicHash>
 #include <QDebug>
 
-namespace WebCore {
+namespace PAL {
 
 static QCryptographicHash::Algorithm toQtAlgorithm(CryptoDigest::Algorithm algorithm)
 {

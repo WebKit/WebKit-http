@@ -34,11 +34,6 @@
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/ObjectPrototype.h>
 
-
-#if PLATFORM(QT)
-#include "qt_instance.h"
-#endif
-
 namespace JSC {
 
 namespace Bindings {

@@ -1975,7 +1975,7 @@ add_dependencies(WebCore WebCoreBindings)
 
 if (NOT MSVC AND WIN32 AND ${PORT} STREQUAL "Qt")
     ADD_PREFIX_HEADER(WebCore "${WEBCORE_DIR}/WebCorePrefix.h")
-endif()
+endif ()
 
 if (APPLE)
     set_target_properties(WebCore PROPERTIES LINK_FLAGS "-sub_library libobjc -umbrella WebKit -allowable_client WebCoreTestSupport -allowable_client WebKit2 -allowable_client WebKitLegacy")

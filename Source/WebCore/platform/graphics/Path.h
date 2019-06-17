@@ -182,7 +182,7 @@ namespace WebCore {
         void translate(const FloatSize&);
 
         // To keep Path() cheap, it does not allocate a PlatformPath immediately
-        // meaning Path::platformPath() can return null.
+        // meaning Path::platformPath() can return null (except on Qt).
 #if USE(DIRECT2D)
         PlatformPathPtr platformPath() const { return m_path.get(); }
 #else
@@ -229,6 +229,8 @@ namespace WebCore {
         COMPtr<ID2D1GeometryGroup> m_path;
         COMPtr<ID2D1PathGeometry> m_activePathGeometry;
         COMPtr<ID2D1GeometrySink> m_activePath;
+#elif PLATFORM(QT)
+        PlatformPathPtr m_path;
 #else
         PlatformPathPtr m_path { nullptr };
 #endif

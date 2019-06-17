@@ -24,10 +24,13 @@
 
 #pragma once
 
+#if PLATFORM(QT)
+#include "qt/FontPlatformDataQt.h"
+#else
+
 #include "TextFlags.h"
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
-
 
 #if PLATFORM(WIN)
 #include "COMPtr.h"
@@ -317,3 +320,5 @@ private:
 #endif
 
 } // namespace WebCore
+
+#endif // PLATFORM(QT)

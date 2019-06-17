@@ -94,7 +94,7 @@
 #endif
 
 #include <QPainter>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 using namespace WebCore;
 
@@ -537,7 +537,7 @@ void DumpRenderTreeSupportQt::setMockGeolocationPosition(QWebPageAdapter* adapte
 #if ENABLE(GEOLOCATION)
     Page* corePage = adapter->page;
     auto& mockClient = toGeolocationClientMock(GeolocationController::from(corePage)->client());
-    mockClient.setPosition(GeolocationPosition::create(currentTime(), latitude, longitude, accuracy));
+    mockClient.setPosition(GeolocationPosition::create(WallTime::now(), latitude, longitude, accuracy));
 #endif
 }
 

@@ -134,26 +134,26 @@ RunLoop::TimerBase::~TimerBase()
     stop();
 }
 
-void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
+void RunLoop::TimerBase::start(Seconds nextFireInterval, bool repeat)
 {
     stop();
-    int millis = static_cast<int>(nextFireInterval * 1000);
+    int millis = static_cast<int>(nextFireInterval.milliseconds());
     m_isRepeating = repeat;
-    m_ID = m_runLoop.m_timerObject->startTimer(millis);
+    m_ID = m_runLoop->m_timerObject->startTimer(millis);
     ASSERT(m_ID);
-    m_runLoop.m_activeTimers.set(m_ID, this);
+    m_runLoop->m_activeTimers.set(m_ID, this);
 }
 
 void RunLoop::TimerBase::stop()
 {
     if (!m_ID)
         return;
-    TimerMap::iterator it = m_runLoop.m_activeTimers.find(m_ID);
-    if (it == m_runLoop.m_activeTimers.end())
+    TimerMap::iterator it = m_runLoop->m_activeTimers.find(m_ID);
+    if (it == m_runLoop->m_activeTimers.end())
         return;
 
-    m_runLoop.m_activeTimers.remove(it);
-    m_runLoop.m_timerObject->killTimer(m_ID);
+    m_runLoop->m_activeTimers.remove(it);
+    m_runLoop->m_timerObject->killTimer(m_ID);
     m_ID = 0;
 }
 

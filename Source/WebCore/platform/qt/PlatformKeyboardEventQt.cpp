@@ -33,7 +33,7 @@
 
 #include <QKeyEvent>
 #include <ctype.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 namespace WebCore {
 
@@ -905,7 +905,7 @@ PlatformKeyboardEvent::PlatformKeyboardEvent(QKeyEvent* event, bool useNativeVir
 
     m_macCharCode = 0;
     m_qtEvent = event;
-    m_timestamp = WTF::currentTime();
+    m_timestamp = WTF::WallTime::now();
 }
 
 void PlatformKeyboardEvent::disambiguateKeyDownEvent(Type type, bool)

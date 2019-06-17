@@ -92,7 +92,7 @@ bool getFileMetadata(const String& path, FileMetadata& result)
         return false;
     result.modificationTime = info.lastModified().toTime_t();
     result.length = info.size();
-    result.type = info.isDir() ? FileMetadata::TypeDirectory : FileMetadata::TypeFile;
+    result.type = info.isDir() ? FileMetadata::Type::Directory : FileMetadata::Type::File;
     return true;
 }
 
@@ -153,7 +153,7 @@ String stringFromFileSystemRepresentation(const char* fileSystemRepresentation)
     return String::fromUTF8(fileSystemRepresentation);
 }
 
-String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)
+String openTemporaryFile(const String& prefix, FileSystem::PlatformFileHandle& handle)
 {
 #ifndef QT_NO_TEMPORARYFILE
     QTemporaryFile* tempFile = new QTemporaryFile(QDir::tempPath() + QLatin1Char('/') + QString(prefix));
@@ -164,7 +164,7 @@ String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)
         return temp->fileName();
     }
 #endif
-    handle = invalidPlatformFileHandle;
+    handle = FileSystem::invalidPlatformFileHandle;
     return String();
 }
 
@@ -186,14 +186,14 @@ FileSystem::PlatformFileHandle openFile(const String& path, FileSystem::FileOpen
     return FileSystem::invalidPlatformFileHandle;
 }
 
-int readFromFile(PlatformFileHandle handle, char* data, int length)
+int readFromFile(FileSystem::PlatformFileHandle handle, char* data, int length)
 {
     if (handle && handle->exists() && handle->isReadable())
         return handle->read(data, length);
     return 0;
 }
 
-void closeFile(PlatformFileHandle& handle)
+void closeFile(FileSystem::PlatformFileHandle& handle)
 {
     if (handle) {
         handle->close();
@@ -247,7 +247,7 @@ uint64_t getVolumeFreeSizeForPath(const char* path)
 }
 
 
-int writeToFile(PlatformFileHandle handle, const char* data, int length)
+int writeToFile(FileSystem::PlatformFileHandle handle, const char* data, int length)
 {
     if (handle && handle->exists() && handle->isWritable())
         return handle->write(data, length);

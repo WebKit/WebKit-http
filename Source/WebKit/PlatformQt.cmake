@@ -86,7 +86,7 @@ list(APPEND WebKit_SOURCES
     Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp
     Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp
 
-    Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+    Shared/Plugins/Netscape/unix/NetscapePluginModuleUnix.cpp
 
     Shared/Plugins/unix/PluginSearchPath.cpp
 
@@ -226,8 +226,9 @@ if (USE_MACH_PORTS)
     list(APPEND WebKit_SOURCES
         Platform/IPC/mac/ConnectionMac.mm
 
+        Platform/cocoa/SharedMemoryCocoa.cpp
+
         Platform/mac/MachUtilities.cpp
-        Platform/mac/SharedMemoryMac.cpp
     )
     list(APPEND WebKit_LIBRARIES
         objc
@@ -320,7 +321,7 @@ add_custom_target(WebKit-forwarding-headers
     COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_DIR} --output ${FORWARDING_HEADERS_DIR} --platform qt
 )
 
-set(WebKit_EXTRA_DEPENDENCIES
+set(WEBKIT_EXTRA_DEPENDENCIES
      WebKit-forwarding-headers
 )
 

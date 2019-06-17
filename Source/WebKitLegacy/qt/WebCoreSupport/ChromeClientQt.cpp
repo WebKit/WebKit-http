@@ -73,7 +73,7 @@
 #include <qdebug.h>
 #include <qeventloop.h>
 #include <qwindow.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
@@ -620,7 +620,7 @@ void ChromeClientQt::scheduleAnimation()
 
 void ChromeClientQt::serviceScriptedAnimations()
 {
-    m_webPage->mainFrameAdapter().frame->view()->serviceScriptedAnimations(currentTime());
+    m_webPage->mainFrameAdapter().frame->view()->serviceScriptedAnimations(WallTime::now());
 }
 #endif
 

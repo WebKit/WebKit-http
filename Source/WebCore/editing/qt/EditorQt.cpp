@@ -30,8 +30,6 @@
 #include "DocumentFragment.h"
 #include "Pasteboard.h"
 
-#include <wtf/PassRefPtr.h>
-
 namespace WebCore {
 
 void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)

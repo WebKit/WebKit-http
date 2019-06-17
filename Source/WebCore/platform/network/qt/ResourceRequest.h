@@ -39,23 +39,23 @@ class NetworkingContext;
     class ResourceRequest : public ResourceRequestBase {
     public:
         ResourceRequest(const String& url) 
-            : ResourceRequestBase(URL(ParsedURLString, url), UseProtocolCachePolicy)
+            : ResourceRequestBase(URL(ParsedURLString, url), ResourceRequestCachePolicy::UseProtocolCachePolicy)
         {
         }
 
         ResourceRequest(const URL& url) 
-            : ResourceRequestBase(url, UseProtocolCachePolicy)
+            : ResourceRequestBase(url, ResourceRequestCachePolicy::UseProtocolCachePolicy)
         {
         }
 
-        ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = UseProtocolCachePolicy) 
+        ResourceRequest(const URL& url, const String& referrer, ResourceRequestCachePolicy policy = ResourceRequestCachePolicy::UseProtocolCachePolicy)
             : ResourceRequestBase(url, policy)
         {
             setHTTPReferrer(referrer);
         }
 
         ResourceRequest()
-            : ResourceRequestBase(URL(), UseProtocolCachePolicy)
+            : ResourceRequestBase(URL(), ResourceRequestCachePolicy::UseProtocolCachePolicy)
         {
         }
 
@@ -71,11 +71,7 @@ class NetworkingContext;
         void doUpdatePlatformHTTPBody() { }
         void doUpdateResourceHTTPBody() { }
 
-        std::unique_ptr<CrossThreadResourceRequestData> doPlatformCopyData(std::unique_ptr<CrossThreadResourceRequestData> data) const { return data; }
-        void doPlatformAdopt(std::unique_ptr<CrossThreadResourceRequestData>) { }
-    };
-
-    struct CrossThreadResourceRequestData : public CrossThreadResourceRequestDataBase {
+        void doPlatformSetAsIsolatedCopy(const ResourceRequest&) const { };
     };
 
 } // namespace WebCore

@@ -122,7 +122,7 @@ public:
     void setSpreadMethod(GradientSpreadMethod);
     GradientSpreadMethod spreadMethod() const { return m_spreadMethod; }
 
-    // CG needs to transform the gradient at draw time.
+    // Qt and CG need to transform the gradient at draw time.
     void setGradientSpaceTransform(const AffineTransform& gradientSpaceTransformation);
     const AffineTransform& gradientSpaceTransform() { return m_gradientSpaceTransformation; }
 

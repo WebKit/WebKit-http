@@ -29,7 +29,7 @@
 #include "PlatformWheelEvent.h"
 #include <QTouchEvent>
 #include <QWheelEvent>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 namespace WebCore {
 
@@ -88,7 +88,7 @@ public:
 
 WebKitPlatformMouseEvent::WebKitPlatformMouseEvent(QInputEvent* event, int clickCount)
 {
-    m_timestamp = WTF::currentTime();
+    m_timestamp = WTF::WallTime::now();
 
     bool isContextMenuEvent = false;
 #ifndef QT_NO_CONTEXTMENU

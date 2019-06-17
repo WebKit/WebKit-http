@@ -34,7 +34,7 @@
 #include <WebCore/FloatSize.h>
 #include <WebCore/IntPoint.h>
 #include <WebCore/PlatformKeyboardEvent.h>
-#include <wtf/CurrentTime.h>
+#include <wtf/WallTime.h>
 
 using namespace WebCore;
 
@@ -49,7 +49,7 @@ static inline double currentTimeForEvent(const QInputEvent* event)
     if (event->timestamp())
         return static_cast<double>(event->timestamp()) / 1000;
 
-    return WTF::currentTime();
+    return WTF::WallTime::now();
 }
 
 static WebMouseEvent::Button mouseButtonForEvent(QMouseEvent *event)

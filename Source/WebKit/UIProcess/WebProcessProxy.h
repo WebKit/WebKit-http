@@ -29,7 +29,6 @@
 #include "BackgroundProcessResponsivenessTimer.h"
 #include "ChildProcessProxy.h"
 #include "MessageReceiverMap.h"
-#include "PlatformProcessIdentifier.h"
 #include "PluginInfoStore.h"
 #include "ProcessLauncher.h"
 #include "ProcessTerminationReason.h"
