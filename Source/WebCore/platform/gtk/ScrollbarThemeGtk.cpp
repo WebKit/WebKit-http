@@ -99,7 +99,6 @@ void ScrollbarThemeGtk::themeChanged()
 #endif
     updateThemeProperties();
 }
-#endif // GTK_CHECK_VERSION(3, 20, 0)
 
 #if GTK_CHECK_VERSION(3, 20, 0)
 void ScrollbarThemeGtk::updateThemeProperties()
