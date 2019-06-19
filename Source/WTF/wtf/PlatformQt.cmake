@@ -46,9 +46,9 @@ endif ()
 
 if (USE_UNIX_DOMAIN_SOCKETS)
     list(APPEND WTF_SOURCES
-        UniStdExtras.cpp
-
         qt/WorkQueueQt.cpp
+
+        unix/UniStdExtrasUnix.cpp
     )
     QTWEBKIT_GENERATE_MOC_FILES_CPP(WTF qt/WorkQueueQt.cpp)
 endif ()

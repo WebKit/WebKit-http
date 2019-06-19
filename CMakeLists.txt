@@ -187,7 +187,7 @@ if (ENABLE_TOOLS)
     add_subdirectory(Tools)
 endif ()
 
-if ("${PORT}" STREQUAL "GTK" OR "${PORT}" STREQUAL "WPE")
+if ("${PORT}" STREQUAL "GTK" OR "${PORT}" STREQUAL "WPE" OR "${PORT}" STREQUAL "Qt")
     if (DEVELOPER_MODE)
         add_subdirectory(PerformanceTests)
     endif ()
