@@ -1145,6 +1145,10 @@
 #endif
 
 #if ENABLE(WEBGL)
+#if !defined(USE_ANGLE)
+#define USE_ANGLE 0
+#endif
+
 #if (USE_ANGLE && (USE_OPENGL || USE_OPENGL_ES || (defined(USE_EGL) && USE_EGL)))
 #error USE_ANGLE is incompatible with USE_OPENGL, USE_OPENGL_ES and USE_EGL
 #endif
@@ -1603,4 +1607,8 @@
 
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000 || PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500)
 #define HAVE_APP_SSO 1
+#endif
+
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000
+#define USE_UICONTEXTMENU 1
 #endif

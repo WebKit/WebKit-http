@@ -283,19 +283,60 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
 
     case TableGet: {
         WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        unsigned tableIndex;
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(tableIndex), "can't parse table index");
         ExpressionType result, index;
         WASM_TRY_POP_EXPRESSION_STACK_INTO(index, "table.get");
-        WASM_TRY_ADD_TO_CONTEXT(addTableGet(index, result));
+        WASM_TRY_ADD_TO_CONTEXT(addTableGet(tableIndex, index, result));
         m_expressionStack.append(result);
         return { };
     }
 
     case TableSet: {
         WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        unsigned tableIndex;
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(tableIndex), "can't parse table index");
         ExpressionType val, index;
         WASM_TRY_POP_EXPRESSION_STACK_INTO(val, "table.set");
         WASM_TRY_POP_EXPRESSION_STACK_INTO(index, "table.set");
-        WASM_TRY_ADD_TO_CONTEXT(addTableSet(index, val));
+        WASM_TRY_ADD_TO_CONTEXT(addTableSet(tableIndex, index, val));
+        return { };
+    }
+
+    case ExtTable: {
+        WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");
+        uint8_t extOp;
+        WASM_PARSER_FAIL_IF(!parseUInt8(extOp), "can't parse table extended opcode");
+        unsigned tableIndex;
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(tableIndex), "can't parse table index");
+
+        switch (static_cast<ExtTableOpType>(extOp)) {
+        case ExtTableOpType::TableSize: {
+            ExpressionType result;
+            WASM_TRY_ADD_TO_CONTEXT(addTableSize(tableIndex, result));
+            m_expressionStack.append(result);
+            break;
+        }
+        case ExtTableOpType::TableGrow: {
+            ExpressionType fill, delta, result;
+            WASM_TRY_POP_EXPRESSION_STACK_INTO(delta, "table.grow");
+            WASM_TRY_POP_EXPRESSION_STACK_INTO(fill, "table.grow");
+            WASM_TRY_ADD_TO_CONTEXT(addTableGrow(tableIndex, fill, delta, result));
+            m_expressionStack.append(result);
+            break;
+        }
+        case ExtTableOpType::TableFill: {
+            ExpressionType offset, fill, count;
+            WASM_TRY_POP_EXPRESSION_STACK_INTO(count, "table.fill");
+            WASM_TRY_POP_EXPRESSION_STACK_INTO(fill, "table.fill");
+            WASM_TRY_POP_EXPRESSION_STACK_INTO(offset, "table.fill");
+            WASM_TRY_ADD_TO_CONTEXT(addTableFill(tableIndex, offset, fill, count));
+            break;
+        }
+        default:
+            WASM_PARSER_FAIL_IF(true, "invalid extended table op ", extOp);
+            break;
+        }
         return { };
     }
 
@@ -396,13 +437,13 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
 
     case CallIndirect: {
         uint32_t signatureIndex;
-        uint8_t reserved;
-        WASM_PARSER_FAIL_IF(!m_info.tableInformation, "call_indirect is only valid when a table is defined or imported");
+        uint32_t tableIndex;
+        WASM_PARSER_FAIL_IF(!m_info.tableCount(), "call_indirect is only valid when a table is defined or imported");
         WASM_PARSER_FAIL_IF(!parseVarUInt32(signatureIndex), "can't get call_indirect's signature index");
-        WASM_PARSER_FAIL_IF(!parseVarUInt1(reserved), "can't get call_indirect's reserved byte");
-        WASM_PARSER_FAIL_IF(reserved, "call_indirect's 'reserved' varuint1 must be 0x0");
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(tableIndex), "can't get call_indirect's table index");
+        WASM_PARSER_FAIL_IF(tableIndex >= m_info.tableCount(), "call_indirect's table index ", tableIndex, " invalid, limit is ", m_info.tableCount());
         WASM_PARSER_FAIL_IF(m_info.usedSignatures.size() <= signatureIndex, "call_indirect's signature index ", signatureIndex, " exceeds known signatures ", m_info.usedSignatures.size());
-        WASM_PARSER_FAIL_IF(m_info.tableInformation.type() != TableElementType::Funcref, "call_indirect is only valid when a table has type anyfunc");
+        WASM_PARSER_FAIL_IF(m_info.tables[tableIndex].type() != TableElementType::Funcref, "call_indirect is only valid when a table has type anyfunc");
 
         const Signature& calleeSignature = m_info.usedSignatures[signatureIndex].get();
         size_t argumentCount = calleeSignature.argumentCount() + 1; // Add the callee's index.
@@ -416,7 +457,7 @@ auto FunctionParser<Context>::parseExpression() -> PartialResult
         m_expressionStack.shrink(firstArgumentIndex);
 
         ExpressionType result = Context::emptyExpression();
-        WASM_TRY_ADD_TO_CONTEXT(addCallIndirect(calleeSignature, args, result));
+        WASM_TRY_ADD_TO_CONTEXT(addCallIndirect(tableIndex, calleeSignature, args, result));
 
         if (result != Context::emptyExpression())
             m_expressionStack.append(result);
@@ -631,9 +672,9 @@ auto FunctionParser<Context>::parseUnreachableExpression() -> PartialResult
 
     case CallIndirect: {
         uint32_t unused;
-        uint8_t unused2;
+        uint32_t unused2;
         WASM_PARSER_FAIL_IF(!parseVarUInt32(unused), "can't get call_indirect's signature index in unreachable context");
-        WASM_PARSER_FAIL_IF(!parseVarUInt1(unused2), "can't get call_indirect's reserved byte in unreachable context");
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(unused2), "can't get call_indirect's reserved byte in unreachable context");
         return { };
     }
 
@@ -684,8 +725,13 @@ auto FunctionParser<Context>::parseUnreachableExpression() -> PartialResult
         return { };
     }
 
+    case ExtTable:
     case TableGet:
-    case TableSet:
+    case TableSet: {
+        unsigned tableIndex;
+        WASM_PARSER_FAIL_IF(!parseVarUInt32(tableIndex), "can't parse table index");
+        FALLTHROUGH;
+    }
     case RefIsNull:
     case RefNull: {
         WASM_PARSER_FAIL_IF(!Options::useWebAssemblyReferences(), "references are not enabled");

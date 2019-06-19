@@ -237,8 +237,11 @@ public:
     PartialResult WARN_UNUSED_RETURN addRefFunc(uint32_t index, ExpressionType& result);
 
     // Tables
-    PartialResult WARN_UNUSED_RETURN addTableGet(ExpressionType& index, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addTableSet(ExpressionType& index, ExpressionType& value);
+    PartialResult WARN_UNUSED_RETURN addTableGet(unsigned, ExpressionType& index, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableSet(unsigned, ExpressionType& index, ExpressionType& value);
+    PartialResult WARN_UNUSED_RETURN addTableSize(unsigned, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableGrow(unsigned, ExpressionType& fill, ExpressionType& delta, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addTableFill(unsigned, ExpressionType& offset, ExpressionType& fill, ExpressionType& count);
 
     // Locals
     PartialResult WARN_UNUSED_RETURN getLocal(uint32_t index, ExpressionType& result);
@@ -277,7 +280,7 @@ public:
 
     // Calls
     PartialResult WARN_UNUSED_RETURN addCall(uint32_t calleeIndex, const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addCallIndirect(const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addCallIndirect(unsigned tableIndex, const Signature&, Vector<ExpressionType>& args, ExpressionType& result);
     PartialResult WARN_UNUSED_RETURN addUnreachable();
 
     PartialResult addShift(Type, B3::Air::Opcode, ExpressionType value, ExpressionType shift, ExpressionType& result);
@@ -361,6 +364,8 @@ private:
 
     TypedTmp g32() { return { newTmp(B3::GP), Type::I32 }; }
     TypedTmp g64() { return { newTmp(B3::GP), Type::I64 }; }
+    TypedTmp gAnyref() { return { newTmp(B3::GP), Type::Anyref }; }
+    TypedTmp gAnyfunc() { return { newTmp(B3::GP), Type::Anyfunc }; }
     TypedTmp f32() { return { newTmp(B3::FP), Type::F32 }; }
     TypedTmp f64() { return { newTmp(B3::FP), Type::F64 }; }
 
@@ -370,9 +375,11 @@ private:
         case Type::I32:
             return g32();
         case Type::I64:
-        case Type::Anyref:
-        case Type::Anyfunc:
             return g64();
+        case Type::Anyfunc:
+            return gAnyfunc();
+        case Type::Anyref:
+            return gAnyref();
         case Type::F32:
             return f32();
         case Type::F64:
@@ -508,6 +515,8 @@ private:
                 resultType = B3::Int32;
                 break;
             case Type::I64:
+            case Type::Anyref:
+            case Type::Anyfunc:
                 resultType = B3::Int64;
                 break;
             case Type::F32:
@@ -626,6 +635,7 @@ private:
     }
 
     uint32_t m_maxNumJSCallArguments { 0 };
+    unsigned m_numImportFunctions;
 
     B3::PatchpointSpecial* m_patchpointSpecial { nullptr };
 };
@@ -681,6 +691,7 @@ AirIRGenerator::AirIRGenerator(const ModuleInformation& info, B3::Procedure& pro
     , m_proc(procedure)
     , m_code(m_proc.code())
     , m_unlinkedWasmToWasmCalls(unlinkedWasmToWasmCalls)
+    , m_numImportFunctions(info.importFunctionCount())
 {
     m_currentBlock = m_code.addBlock();
     m_rootBlock = m_currentBlock;
@@ -968,14 +979,14 @@ auto AirIRGenerator::addRefFunc(uint32_t index, ExpressionType& result) -> Parti
     return { };
 }
 
-auto AirIRGenerator::addTableGet(ExpressionType& index, ExpressionType& result) -> PartialResult
+auto AirIRGenerator::addTableGet(unsigned tableIndex, ExpressionType& index, ExpressionType& result) -> PartialResult
 {
     // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
     ASSERT(index.tmp());
     ASSERT(index.type() == Type::I32);
-    result = tmpForType(Type::Anyref);
+    result = tmpForType(m_info.tables[tableIndex].wasmType());
 
-    emitCCall(&getWasmTableElement, result, instanceValue(), index);
+    emitCCall(&getWasmTableElement, result, instanceValue(), addConstant(Type::I32, tableIndex), index);
     emitCheck([&] {
         return Inst(BranchTest32, nullptr, Arg::resCond(MacroAssembler::Zero), result, result);
     }, [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
@@ -985,7 +996,7 @@ auto AirIRGenerator::addTableGet(ExpressionType& index, ExpressionType& result) 
     return { };
 }
 
-auto AirIRGenerator::addTableSet(ExpressionType& index, ExpressionType& value) -> PartialResult
+auto AirIRGenerator::addTableSet(unsigned tableIndex, ExpressionType& index, ExpressionType& value) -> PartialResult
 {
     // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
     ASSERT(index.tmp());
@@ -993,10 +1004,58 @@ auto AirIRGenerator::addTableSet(ExpressionType& index, ExpressionType& value) -
     ASSERT(value.tmp());
 
     auto shouldThrow = g32();
-    emitCCall(&setWasmTableElement, shouldThrow, instanceValue(), index, value);
+    emitCCall(&setWasmTableElement, shouldThrow, instanceValue(), addConstant(Type::I32, tableIndex), index, value);
 
     emitCheck([&] {
         return Inst(BranchTest32, nullptr, Arg::resCond(MacroAssembler::Zero), shouldThrow, shouldThrow);
+    }, [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+        this->emitThrowException(jit, ExceptionType::OutOfBoundsTableAccess);
+    });
+
+    return { };
+}
+
+auto AirIRGenerator::addTableSize(unsigned tableIndex, ExpressionType& result) -> PartialResult
+{
+    // FIXME: Emit this inline <https://bugs.webkit.org/show_bug.cgi?id=198506>.
+    result = tmpForType(Type::I32);
+
+    int32_t (*doSize)(Instance*, unsigned) = [] (Instance* instance, unsigned tableIndex) -> int32_t {
+        return instance->table(tableIndex)->length();
+    };
+
+    emitCCall(doSize, result, instanceValue(), addConstant(Type::I32, tableIndex));
+
+    return { };
+}
+
+auto AirIRGenerator::addTableGrow(unsigned tableIndex, ExpressionType& fill, ExpressionType& delta, ExpressionType& result) -> PartialResult
+{
+    ASSERT(fill.tmp());
+    ASSERT(isSubtype(fill.type(), m_info.tables[tableIndex].wasmType()));
+    ASSERT(delta.tmp());
+    ASSERT(delta.type() == Type::I32);
+    result = tmpForType(Type::I32);
+
+    emitCCall(&doWasmTableGrow, result, instanceValue(), addConstant(Type::I32, tableIndex), fill, delta);
+
+    return { };
+}
+
+auto AirIRGenerator::addTableFill(unsigned tableIndex, ExpressionType& offset, ExpressionType& fill, ExpressionType& count) -> PartialResult
+{
+    ASSERT(fill.tmp());
+    ASSERT(isSubtype(fill.type(), m_info.tables[tableIndex].wasmType()));
+    ASSERT(offset.tmp());
+    ASSERT(offset.type() == Type::I32);
+    ASSERT(count.tmp());
+    ASSERT(count.type() == Type::I32);
+
+    auto result = tmpForType(Type::I32);
+    emitCCall(&doWasmTableFill, result, instanceValue(), addConstant(Type::I32, tableIndex), offset, fill, count);
+
+    emitCheck([&] {
+        return Inst(BranchTest32, nullptr, Arg::resCond(MacroAssembler::Zero), result, result);
     }, [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
         this->emitThrowException(jit, ExceptionType::OutOfBoundsTableAccess);
     });
@@ -1893,11 +1952,12 @@ auto AirIRGenerator::addCall(uint32_t functionIndex, const Signature& signature,
     return { };
 }
 
-auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
+auto AirIRGenerator::addCallIndirect(unsigned tableIndex, const Signature& signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
 {
     ExpressionType calleeIndex = args.takeLast();
     ASSERT(signature.argumentCount() == args.size());
-    ASSERT(m_info.tableInformation.type() == TableElementType::Funcref);
+    ASSERT(m_info.tableCount() > tableIndex);
+    ASSERT(m_info.tables[tableIndex].type() == TableElementType::Funcref);
 
     m_makesCalls = true;
     // Note: call indirect can call either WebAssemblyFunction or WebAssemblyWrapperFunction. Because
@@ -1912,12 +1972,16 @@ auto AirIRGenerator::addCallIndirect(const Signature& signature, Vector<Expressi
     ExpressionType instancesBuffer = g64();
     ExpressionType callableFunctionBufferLength = g64();
     {
-        RELEASE_ASSERT(Arg::isValidAddrForm(Instance::offsetOfTable(), B3::Width64));
         RELEASE_ASSERT(Arg::isValidAddrForm(FuncRefTable::offsetOfFunctions(), B3::Width64));
         RELEASE_ASSERT(Arg::isValidAddrForm(FuncRefTable::offsetOfInstances(), B3::Width64));
         RELEASE_ASSERT(Arg::isValidAddrForm(FuncRefTable::offsetOfLength(), B3::Width64));
 
-        append(Move, Arg::addr(instanceValue(), Instance::offsetOfTable()), callableFunctionBufferLength);
+        if (UNLIKELY(!Arg::isValidAddrForm(Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex), B3::Width64))) {
+            append(Move, Arg::bigImm(Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex)), callableFunctionBufferLength);
+            append(Add64, instanceValue(), callableFunctionBufferLength);
+            append(Move, Arg::addr(callableFunctionBufferLength), callableFunctionBufferLength);
+        } else
+            append(Move, Arg::addr(instanceValue(), Instance::offsetOfTablePtr(m_numImportFunctions, tableIndex)), callableFunctionBufferLength);
         append(Move, Arg::addr(callableFunctionBufferLength, FuncRefTable::offsetOfFunctions()), callableFunctionBuffer);
         append(Move, Arg::addr(callableFunctionBufferLength, FuncRefTable::offsetOfInstances()), instancesBuffer);
         append(Move32, Arg::addr(callableFunctionBufferLength, Table::offsetOfLength()), callableFunctionBufferLength);

@@ -1,3 +1,181 @@
+2019-06-19  Takashi Komori  <Takashi.Komori@sony.com>
+
+        [Curl] CurlRequestScheduler doesn't terminate worker thread in a certain situation.
+        https://bugs.webkit.org/show_bug.cgi?id=198993
+
+        Cancel CurlRequest before invalidation to remove tasks from CurlRequestScheduler certainly in ~NetworkDataTaskCurl.
+
+        Reviewed by Fujii Hironori.
+
+        * NetworkProcess/curl/NetworkDataTaskCurl.cpp:
+        (WebKit::NetworkDataTaskCurl::~NetworkDataTaskCurl):
+
+2019-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Invalidate SceneIntegration in LayerTreeHost::invalidate()
+        https://bugs.webkit.org/show_bug.cgi?id=198992
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebProcess/WebPage/CoordinatedGraphics/LayerTreeHost.cpp:
+        (WebKit::LayerTreeHost::invalidate): Invalidate the
+        Nicosia::SceneIntegration object. This should properly disassociate
+        the now-invalited LayerTreeHost (a SceneIntegration client) from the
+        SceneIntegration object that can still be shared with platform layers
+        originating from this LayerTreeHost.
+
+2019-06-18  Dean Jackson  <dino@apple.com>
+
+        UIContextMenuInteraction implementation for WKContentView
+        https://bugs.webkit.org/show_bug.cgi?id=198986
+        <rdar://problem/51875189>
+
+        Reviewed by Andy Estes.
+
+        Implement UIContextMenuInteraction and its delegate as a
+        replacement for UIPreviewItemController in iOS 13.
+
+        In order to preserve existing behaviour as much as possible,
+        we check for the implementation of new WebKit API to configure
+        the menu. If that is not present, we attempt to convert
+        the results of the existing WebKit WKPreviewAction delegates
+        into something that works with UIContextMenus.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView _contentsOfUserInterfaceItem:]):
+        (-[WKContentView _registerPreview]):
+        (-[WKContentView _unregisterPreview]):
+        (-[WKContentView _showLinkPreviewsPreferenceChanged:]):
+        (needsDeprecatedPreviewAPI):
+        (uiActionForPreviewAction):
+        (menuFromPreviewOrDefaults):
+        (titleForMenu):
+        (-[WKContentView assignLegacyDataForContextMenuInteraction]):
+        (-[WKContentView contextMenuInteraction:configurationForMenuAtLocation:]):
+        (-[WKContentView _contextMenuInteraction:configurationForMenuAtLocation:completion:]):
+        (-[WKContentView continueContextMenuInteraction:]):
+        (uiImageForImage):
+        (createTargetedPreview):
+        (-[WKContentView _targetedPreview]):
+        (-[WKContentView contextMenuInteraction:previewForHighlightingMenuWithConfiguration:]):
+        (-[WKContentView contextMenuInteractionWillPresent:]):
+        (-[WKContentView contextMenuInteraction:previewForDismissingMenuWithConfiguration:]):
+        (-[WKContentView contextMenuInteraction:willCommitWithAnimator:]):
+        (-[WKContentView contextMenuInteractionDidEnd:]):
+        (-[WKContentView shouldUsePreviewForLongPress]): Deleted.
+
+2019-06-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r246575.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Update WebKit API to separately retrieve actions and use
+        context menus"
+        https://bugs.webkit.org/show_bug.cgi?id=198974
+        https://trac.webkit.org/changeset/246575
+
+2019-06-18  Alex Christensen  <achristensen@webkit.org>
+
+        Update WebKit API to separately retrieve actions and use context menus
+        https://bugs.webkit.org/show_bug.cgi?id=198974
+        <rdar://problem/50735687>
+
+        Reviewed by Tim Horton.
+
+        Update API and SPI, and add infrastructure for asynchronously requesting interaction information.
+
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+2019-06-18  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r240757): Cannot dismiss the keyboard on http://apple.com/apple-tv-plus
+        https://bugs.webkit.org/show_bug.cgi?id=198922
+        <rdar://problem/50300056>
+
+        Reviewed by Wenson Hsieh.
+
+        Actually dismiss the keyboard as intended in r240757. Do not wait for the round-trip
+        to the WebProcess to run through the -elementDidBlur steps in the UIProcess and hide
+        the keyboard when a person explicitly dismisses the keyboard via the Done button (iPhone)
+        or hide keyboard button (iPad).
+
+        Note that r240757 revealed another bug in this code, <https://bugs.webkit.org/show_bug.cgi?id=198928>.
+        I am unclear of the implications of that bug, but it is clear for this bug that it
+        never makes sense to round-trip to the WebProcess when the keyboard is dismissed by
+        a user gesture.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView endEditingAndUpdateFocusAppearanceWithReason:]): Invoke -_elementDidBlur
+        to blur the element in the UIProcess and hide the keyboard.
+        (-[WKContentView _elementDidBlur]): Prevent duplicate invocations of -didEndFormControlInteraction
+        and setIsShowingInputViewForFocusedElement messages by only doing these actions when
+        editablity changes. This covers the case where -_elementDidBlur may be invoked a second
+        time (the reply in the round-trip). In that case we don't need to do these actions.
+
+2019-06-18  Alex Christensen  <achristensen@webkit.org>
+
+        NetworkSession::networkStorageSession can return null
+        https://bugs.webkit.org/show_bug.cgi?id=198947
+        <rdar://problem/51394449>
+
+        Reviewed by Youenn Fablet.
+
+        We are seeing evidence of crashes from the map owning NetworkSessions and the map owning NetworkStorageSessions becoming out of sync
+        because NetworkSession is refcounted but NetworkStorageSession is not.  I started the complete fix in https://bugs.webkit.org/show_bug.cgi?id=194926
+        but for now let's add less risky null checks to prevent fallout.
+
+        * NetworkProcess/Classifier/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::updateClientSideCookiesAgeCap):
+        * NetworkProcess/Classifier/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::hasStorageAccessForFrame):
+        (WebKit::WebResourceLoadStatisticsStore::callHasStorageAccessForFrameHandler):
+        (WebKit::WebResourceLoadStatisticsStore::grantStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::removeAllStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::setCacheMaxAgeCap):
+        (WebKit::WebResourceLoadStatisticsStore::callUpdatePrevalentDomainsToBlockCookiesForHandler):
+        (WebKit::WebResourceLoadStatisticsStore::removePrevalentDomains):
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/NetworkSession.cpp:
+        (WebKit::NetworkSession::networkStorageSession const):
+        * NetworkProcess/NetworkSession.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::applyCookieBlockingPolicy):
+        (WebKit::NetworkDataTaskCocoa::NetworkDataTaskCocoa):
+        (WebKit::NetworkDataTaskCocoa::willPerformHTTPRedirection):
+        (WebKit::NetworkDataTaskCocoa::tryPasswordBasedAuthentication):
+
+2019-06-18  Brady Eidson  <beidson@apple.com>
+
+        Handle NSProgress calling our cancellation handler on background threads (and calling it more than once).
+        <rdar://problem/51392926> and https://bugs.webkit.org/show_bug.cgi?id=198945
+
+        Reviewed by Alex Christensen.
+
+        If you have a download in progress and quickly tap the button to cancel it multiple times, then:
+            - NSProgress calls our cancellation handler on a non-main thread, which we can't handle.
+            - They do it more than once, which is also bad.
+            - They might even do it multiple times concurrently (on different background dispatch queues)
+        
+        Let's work around these.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::cancel): Double check we're on the main thread, and handle being called twice.
+
+        * NetworkProcess/Downloads/cocoa/WKDownloadProgress.mm:
+        (-[WKDownloadProgress performCancel]): Actually cancel the WebKit::Download if we still have one.
+        (-[WKDownloadProgress progressCancelled]): Called when NSProgress calls the cancellation handler, no matter
+          which thread it does it on. By leveraging std::call_once we handle multiple calls as well as being called
+          concurrently from different threads. call_once punts the *actual* cancel operation off to the main thread.
+        (-[WKDownloadProgress initWithDownloadTask:download:URL:sandboxExtension:]): The cancellation handler is
+          now simply calling 'progressCancelled' on self, assuming the weak pointer for self is still valid.
+
 2019-06-18  Daniel Bates  <dabates@apple.com>
 
         [iOS] Pressing key while holding Command should not insert character

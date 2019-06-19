@@ -1,3 +1,228 @@
+2019-06-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][Win] CombinedDomains.json is generated twice in JavaScriptCore_CopyPrivateHeaders and JavaScriptCore projects
+        https://bugs.webkit.org/show_bug.cgi?id=198853
+
+        Reviewed by Don Olmstead.
+
+        JavaScriptCore_CopyPrivateHeaders target needs to have a direct or
+        indirect dependency of JavaScriptCore target for CMake Visual
+        Studio generator to eliminate duplicated custom commands.
+
+        * CMakeLists.txt: Added JavaScriptCore as a dependency of JavaScriptCore_CopyPrivateHeaders.
+
+2019-06-18  Yusuke Suzuki  <ysuzuki@apple.com>
+
+        [JSC] JSLock should be WebThread aware
+        https://bugs.webkit.org/show_bug.cgi?id=198911
+
+        Reviewed by Geoffrey Garen.
+
+        Since WebKitLegacy content rendering is done in WebThread instead of the main thread in iOS, user of WebKitLegacy (e.g. UIWebView) needs
+        to grab the WebThread lock (which is a recursive lock) in the main thread when touching the WebKitLegacy content.
+        But, WebKitLegacy can expose JSContext for the web view. And we can interact with the JS content through JavaScriptCore APIs. However,
+        since WebThread is a concept in WebCore, JavaScriptCore APIs do not grab the WebThread lock. As a result, WebKitLegacy web content can be
+        modified from the main thread without grabbing the WebThread lock through JavaScriptCore APIs.
+
+        This patch makes JSC aware of WebThread: JSLock grabs the WebThread lock before grabbing JS's lock. While this seems layering violation,
+        we already have many USE(WEB_THREAD) and WebThread aware code in WTF. Eventually, we should move WebThread code from WebCore to WTF since
+        JSC and WTF need to be aware of WebThread. But, for now, we just use the function pointer exposed by WebCore.
+
+        Since both JSLock and the WebThread lock are recursive locks, nested locking is totally OK. The possible problem is the order of locking.
+        We ensure that we always grab locks in (1) the WebThread lock and (2) JSLock order.
+
+        In JSLock, we take the WebThread lock, but we do not unlock it. This is how we use the WebThread lock: the WebThread lock is released
+        automatically when RunLoop finishes the current cycle, and in WebKitLegacy, we do not call unlocking function of the WebThread lock except
+        for some edge cases.
+
+        * API/JSVirtualMachine.mm:
+        (-[JSVirtualMachine isWebThreadAware]):
+        * API/JSVirtualMachineInternal.h:
+        * runtime/JSLock.cpp:
+        (JSC::JSLockHolder::JSLockHolder):
+        (JSC::JSLock::lock):
+        (JSC::JSLockHolder::init): Deleted.
+        * runtime/JSLock.h:
+        (JSC::JSLock::makeWebThreadAware):
+        (JSC::JSLock::isWebThreadAware const):
+
+2019-06-18  Justin Michaud  <justin_michaud@apple.com>
+
+        [WASM-References] Add support for Table.size, grow and fill instructions
+        https://bugs.webkit.org/show_bug.cgi?id=198761
+
+        Reviewed by Yusuke Suzuki.
+
+        Add support for Table.size, grow and fill instructions. This also required
+        adding support for two-byte opcodes to the ops generator.
+
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::gAnyref):
+        (JSC::Wasm::AirIRGenerator::tmpForType):
+        (JSC::Wasm::AirIRGenerator::addTableSize):
+        (JSC::Wasm::AirIRGenerator::addTableGrow):
+        (JSC::Wasm::AirIRGenerator::addTableFill):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addTableSize):
+        (JSC::Wasm::B3IRGenerator::addTableGrow):
+        (JSC::Wasm::B3IRGenerator::addTableFill):
+        * wasm/WasmExceptionType.h:
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::TableInformation::wasmType const):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        (JSC::Wasm::FunctionParser<Context>::parseUnreachableExpression):
+        * wasm/WasmInstance.cpp:
+        (JSC::Wasm::doWasmTableGrow):
+        (JSC::Wasm::doWasmTableFill):
+        * wasm/WasmInstance.h:
+        * wasm/WasmTable.cpp:
+        (JSC::Wasm::Table::grow):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::addTableSize):
+        (JSC::Wasm::Validate::addTableGrow):
+        (JSC::Wasm::Validate::addTableFill):
+        * wasm/generateWasmOpsHeader.py:
+        (opcodeMacroizer):
+        (ExtTableOpType):
+        * wasm/wasm.json:
+
+2019-06-18  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix signature of currentWeakRefVersion to return an uintptr_t.
+
+        * runtime/VM.h:
+        (JSC::VM::currentWeakRefVersion const):
+
+2019-06-18  Justin Michaud  <justin_michaud@apple.com>
+
+        [WASM-References] Add support for multiple tables
+        https://bugs.webkit.org/show_bug.cgi?id=198760
+
+        Reviewed by Saam Barati.
+
+        Support multiple wasm tables. We turn tableInformation into a tables array, and update all of the
+        existing users to give a table index. The array of Tables in Wasm::Instance is hung off the tail
+        to make it easier to use from jit code. 
+
+        * wasm/WasmAirIRGenerator.cpp:
+        (JSC::Wasm::AirIRGenerator::AirIRGenerator):
+        (JSC::Wasm::AirIRGenerator::addTableGet):
+        (JSC::Wasm::AirIRGenerator::addTableSet):
+        (JSC::Wasm::AirIRGenerator::addCallIndirect):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::addTableGet):
+        (JSC::Wasm::B3IRGenerator::addTableSet):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        * wasm/WasmExceptionType.h:
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::Element::Element):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        (JSC::Wasm::FunctionParser<Context>::parseUnreachableExpression):
+        * wasm/WasmInstance.cpp:
+        (JSC::Wasm::Instance::Instance):
+        (JSC::Wasm::Instance::create):
+        (JSC::Wasm::Instance::extraMemoryAllocated const):
+        (JSC::Wasm::Instance::table):
+        (JSC::Wasm::Instance::setTable):
+        * wasm/WasmInstance.h:
+        (JSC::Wasm::Instance::updateCachedMemory):
+        (JSC::Wasm::Instance::offsetOfGlobals):
+        (JSC::Wasm::Instance::offsetOfTablePtr):
+        (JSC::Wasm::Instance::allocationSize):
+        (JSC::Wasm::Instance::table): Deleted.
+        (JSC::Wasm::Instance::setTable): Deleted.
+        (JSC::Wasm::Instance::offsetOfTable): Deleted.
+        * wasm/WasmModuleInformation.h:
+        (JSC::Wasm::ModuleInformation::tableCount const):
+        * wasm/WasmSectionParser.cpp:
+        (JSC::Wasm::SectionParser::parseImport):
+        (JSC::Wasm::SectionParser::parseTableHelper):
+        (JSC::Wasm::SectionParser::parseTable):
+        (JSC::Wasm::SectionParser::parseElement):
+        * wasm/WasmTable.h:
+        (JSC::Wasm::Table::owner const):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::addTableGet):
+        (JSC::Wasm::Validate::addTableSet):
+        (JSC::Wasm::Validate::addCallIndirect):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::JSWebAssemblyInstance):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/wasm.json:
+
+2019-06-18  Alexey Shvayka  <shvaikalesh@gmail.com>
+
+        [ESNExt] String.prototype.matchAll
+        https://bugs.webkit.org/show_bug.cgi?id=186694
+
+        Reviewed by Yusuke Suzuki.
+
+        Implement String.prototype.matchAll.
+        (https://tc39.es/ecma262/#sec-string.prototype.matchall)
+
+        Also rename @globalPrivate @constructor functions and C++ variables holding them.
+
+        Shipping in Chrome since version 73.
+        Shipping in Firefox since version 67.
+
+        * CMakeLists.txt:
+        * DerivedSources-input.xcfilelist:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/wkbuiltins/builtins_generate_combined_header.py:
+        (get_var_name):
+        (generate_section_for_global_private_code_name_macro):
+        * Sources.txt:
+        * builtins/ArrayPrototype.js:
+        (globalPrivate.ArrayIterator):
+        (values):
+        (keys):
+        (entries):
+        (globalPrivate.createArrayIterator): Deleted.
+        * builtins/AsyncFromSyncIteratorPrototype.js:
+        (globalPrivate.createAsyncFromSyncIterator):
+        (globalPrivate.AsyncFromSyncIterator):
+        (globalPrivate.AsyncFromSyncIteratorConstructor): Deleted.
+        * builtins/BuiltinNames.h:
+        * builtins/MapPrototype.js:
+        (globalPrivate.MapIterator):
+        (values):
+        (keys):
+        (entries):
+        (globalPrivate.createMapIterator): Deleted.
+        * builtins/RegExpPrototype.js:
+        (globalPrivate.RegExpStringIterator):
+        (overriddenName.string_appeared_here.matchAll):
+        * builtins/RegExpStringIteratorPrototype.js: Added.
+        (next):
+        * builtins/SetPrototype.js:
+        (globalPrivate.SetIterator):
+        (values):
+        (entries):
+        (globalPrivate.createSetIterator): Deleted.
+        * builtins/StringPrototype.js:
+        (matchAll):
+        * builtins/TypedArrayPrototype.js:
+        (values):
+        (keys):
+        (entries):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/RegExpStringIteratorPrototype.cpp: Added.
+        (JSC::RegExpStringIteratorPrototype::finishCreation):
+        * runtime/RegExpStringIteratorPrototype.h: Added.
+        * runtime/StringPrototype.cpp:
+
 2019-06-18  Keith Miller  <keith_miller@apple.com>
 
         Add support for WeakRef
