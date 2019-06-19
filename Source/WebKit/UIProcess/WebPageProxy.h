@@ -311,6 +311,7 @@ class WebGestureEvent;
 class QuickLookDocumentData;
 #endif
 
+typedef GenericCallback<API::Data*> DataCallback;
 typedef GenericCallback<uint64_t> UnsignedCallback;
 typedef GenericCallback<EditingRange> EditingRangeCallback;
 typedef GenericCallback<const String&> StringCallback;

@@ -1,3 +1,84 @@
+2019-06-19  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][GTK] Fix build with unified sources disabled
+        https://bugs.webkit.org/show_bug.cgi?id=198752
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests needed.
+
+        * Modules/indexeddb/server/UniqueIDBDatabase.h: Add missing forward declaration for IDBGetRecordData,
+        replace inclusion of UniqueIDBDatabaseConnection.h with a forward declaration.
+        * Modules/indexeddb/server/UniqueIDBDatabaseConnection.h: Remove unneeded inclusion of
+        UniqueIDBDatabaseTransaction.h, add missing inclusion of UniqueIDBDatabase.h
+        * Modules/indexeddb/server/UniqueIDBDatabaseTransaction.h: Remove unneeded inclusion of
+        UniqueIDBDatabaseConnection.h inclusion.
+        * bridge/c/c_class.cpp: Add inclusion of JSCJSValueInlines.h to avoid linker errors due
+        to missing JSValue inline functions.
+        * dom/DocumentParser.h: Replace forward declaration of Document with inclusion of Document.h,
+        to avoid error due to usage of incomplete type in template expansion.
+        * dom/Microtasks.h: Add missing forward declaration of JSC::VM
+        * editing/markup.cpp: Add missing inclusion of PasteboardItemInfo.h
+        * page/Quirks.h: Add missing forward declaration of WebCore::EventTarget
+        * page/RuntimeEnabledFeatures.h: Add missing inclusion of wtf/Optional.h to avoid error due to
+        expansion of undefined template.
+        * page/SocketProvider.h: Add missing forward declaration for Document.
+        * platform/graphics/GraphicsLayerClient.h: Add missing inclusion of wtf/OptionSet.h to avoid
+        error due to expansion of undefined template.
+        * rendering/RenderMultiColumnSpannerPlaceholder.h: Replace forward declaration of RenderMultiColumnFlow
+        with inclusion of RenderMultiColumnFlow.h to avoid error due to usage of undefined class.
+
+2019-06-19  Antti Koivisto  <antti@apple.com>
+
+        RequestedScrollPosition shouldn't be applied after node reattach
+        https://bugs.webkit.org/show_bug.cgi?id=198994
+        <rdar://problem/51439685>
+
+        Reviewed by Simon Fraser.
+
+        Test: scrollingcoordinator/ios/scroll-position-after-reattach.html
+
+        If a scrolling node gets reattached, its scroll position resets to (0,0) or whatever the previous
+        requestedScrollPosition was, and the current position is lost.
+
+        * page/scrolling/ScrollingStateFixedNode.cpp:
+        (WebCore::ScrollingStateFixedNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFixedNode::setAllPropertiesChanged): Deleted.
+
+        Rename to better reflect what this is for.
+
+        * page/scrolling/ScrollingStateFixedNode.h:
+        * page/scrolling/ScrollingStateFrameHostingNode.cpp:
+        (WebCore::ScrollingStateFrameHostingNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFrameHostingNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateFrameHostingNode.h:
+        * page/scrolling/ScrollingStateFrameScrollingNode.cpp:
+        (WebCore::ScrollingStateFrameScrollingNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateFrameScrollingNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateFrameScrollingNode.h:
+        * page/scrolling/ScrollingStateNode.cpp:
+        (WebCore::ScrollingStateNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateNode.h:
+        * page/scrolling/ScrollingStatePositionedNode.cpp:
+        (WebCore::ScrollingStatePositionedNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStatePositionedNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStatePositionedNode.h:
+        * page/scrolling/ScrollingStateScrollingNode.cpp:
+        (WebCore::ScrollingStateScrollingNode::setPropertyChangedBitsAfterReattach):
+
+        Don't set RequestedScrollPosition. It is a special property that is applied only once on request
+        and shouldn't get reapplied. Nodes should keep their existing scroll position on reattach.
+
+        (WebCore::ScrollingStateScrollingNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateScrollingNode.h:
+        * page/scrolling/ScrollingStateStickyNode.cpp:
+        (WebCore::ScrollingStateStickyNode::setPropertyChangedBitsAfterReattach):
+        (WebCore::ScrollingStateStickyNode::setAllPropertiesChanged): Deleted.
+        * page/scrolling/ScrollingStateStickyNode.h:
+        * page/scrolling/ScrollingStateTree.cpp:
+        (WebCore::ScrollingStateTree::nodeWasReattachedRecursive):
+
 2019-06-18  Saam Barati  <sbarati@apple.com>
 
         [WHLSL] Support matrices
